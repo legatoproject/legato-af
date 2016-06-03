@@ -162,4 +162,26 @@ bool le_path_IsEquivalent
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a path has a particular trailing substring. For example, path
+ *
+ * pathPtr = /path/to/file.txt
+ *
+ * contains a trailing substring
+ *
+ * extPtr = .txt
+ *
+ * @return
+ *      pointer to existing trailing susbstring within path, or
+ *      NULL otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+char *le_path_FindTrailing
+(
+    const char *pathPtr,            ///< [IN] Path string.
+    const char *extPtr              ///< [IN] Trailing substring.
+);
+
+
 #endif // LEGATO_PATH_INCLUDE_GUARD

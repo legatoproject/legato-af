@@ -8,6 +8,7 @@
 
 #include "mkTools.h"
 #include "modellerCommon.h"
+#include "componentModeller.h"
 
 namespace modeller
 {
@@ -79,6 +80,13 @@ static model::ApiFile_t* GetApiFilePtr
         // Finds that .api file and adds it to this .api file's list of includes.
         auto handler = [&apiFilePtr, &searchList, &tokenPtr](std::string&& dependency)
         {
+            // Check if there is api suffix and if not add .api, as suffixes are not
+            // required in USETYPES
+            if (!path::HasSuffix(dependency, ".api"))
+            {
+                dependency += ".api";
+            }
+
             // First look in the same directory as the .api file that is doing the including.
             auto dir = path::GetContainingDir(apiFilePtr->path);
             std::string includedFilePath = file::FindFile(dependency, { dir });
@@ -142,17 +150,13 @@ static void AddSources
 
             if (path::IsCSource(filePath))
             {
-                auto objFilePtr = new model::ObjectFile_t(objFilePath,
-                                                          model::ProgramLang_t::LANG_C,
-                                                          filePath);
+                auto objFilePtr = new model::ObjectFile_t(objFilePath, filePath);
 
                 componentPtr->cObjectFiles.push_back(objFilePtr);
             }
             else if (path::IsCxxSource(filePath))
             {
-                auto objFilePtr = new model::ObjectFile_t(objFilePath,
-                                                          model::ProgramLang_t::LANG_CXX,
-                                                          filePath);
+                auto objFilePtr = new model::ObjectFile_t(objFilePath, filePath);
 
                 componentPtr->cxxObjectFiles.push_back(objFilePtr);
             }
@@ -162,6 +166,42 @@ static void AddSources
                                            + filePath + "'.");
             }
         }
+    }
+
+    if (componentPtr->HasIncompatibleLanguageCode())
+    {
+        sectionPtr->ThrowException("C/C++ source code file can't be part of a component that also "
+                                   "has Java sources.");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds the source files from a given "javaPackage:" section to a given Component_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddJavaPackage
+(
+    model::Component_t* componentPtr,
+    parseTree::CompoundItem_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
+
+    for (auto contentPtr: tokenListPtr->Contents())
+    {
+        std::string packagePath = contentPtr->text;
+        auto packagePtr = new model::JavaPackage_t(contentPtr->text, componentPtr->dir);
+
+        componentPtr->javaPackages.push_back(packagePtr);
+    }
+
+    if (componentPtr->HasIncompatibleLanguageCode())
+    {
+        sectionPtr->ThrowException("Incompatible language insert detected.");
     }
 }
 
@@ -683,21 +723,14 @@ static void AddRequiredItems
             auto subsectionPtr = parseTree::ToTokenListPtr(memberPtr);
             for (auto itemPtr : subsectionPtr->Contents())
             {
-                auto componentPath = envVars::DoSubstitution(itemPtr->text);
+                // Get a pointer to the component object for this sub-component.
+                // Note: may trigger parsing of the sub-component's .cdef.
+                auto subcomponentPtr = GetComponent(itemPtr, buildParams, { componentPtr->dir });
 
                 // Skip if environment variable substitution resulted in an empty string.
-                if (!componentPath.empty())
+                if (subcomponentPtr != NULL)
                 {
-                    auto foundPath = file::FindComponent(componentPath, buildParams.sourceDirs);
-                    if (foundPath.empty())
-                    {
-                        itemPtr->ThrowException("Couldn't find component '" + componentPath + "'.");
-                    }
-                    foundPath = path::MakeAbsolute(foundPath);
-
-                    // Get a pointer to the component object for this sub-component.
-                    // Note: may trigger parsing of the sub-component's .cdef.
-                    componentPtr->subComponents.push_back(GetComponent(foundPath, buildParams));
+                    componentPtr->subComponents.push_back(subcomponentPtr);
                 }
             }
         }
@@ -1047,6 +1080,10 @@ model::Component_t* GetComponent
         return componentPtr;
     }
 
+    // Save the old CURDIR environment variable value and set it to the dir containing this file.
+    auto oldDir = envVars::Get("CURDIR");
+    envVars::Set("CURDIR", componentDir);
+
     // Parse the .cdef file.
     auto cdefFilePath = path::Combine(componentDir, "Component.cdef");
     auto cdefFilePtr = parser::cdef::Parse(cdefFilePath, buildParams.beVerbose);
@@ -1070,6 +1107,10 @@ model::Component_t* GetComponent
         if (sectionName == "sources")
         {
             AddSources(componentPtr, sectionPtr, buildParams);
+        }
+        else if (sectionName == "javaPackage")
+        {
+            AddJavaPackage(componentPtr, sectionPtr, buildParams);
         }
         else if (sectionName == "cflags")
         {
@@ -1106,32 +1147,53 @@ model::Component_t* GetComponent
         }
     }
 
-    // If there are C sources or C++ sources, a library will be built for this component.
-    if ((!componentPtr->cObjectFiles.empty()) || (!componentPtr->cxxObjectFiles.empty()))
+    // Build a path to the Legato library dir and the Legato lib so that we can add it as a
+    // dependency for code components.
+    auto baseLibPath = path::Combine(envVars::Get("LEGATO_ROOT"),
+                                                 "build/" + buildParams.target + "/framework/lib/");
+    auto liblegatoPath = path::Combine(baseLibPath, "liblegato.so");
+
+    // If the library output directory has not been specified, then put each component's library
+    // file under its own working directory.
+    std::string baseComponentPath;
+
+    if (buildParams.libOutputDir.empty())
     {
-        // If the library output directory has not been specified, then put each component's
-        // library file under its own working directory.
-        if (buildParams.libOutputDir.empty())
-        {
-            componentPtr->lib = path::Combine(path::Combine(buildParams.workingDir,
-                                                            componentPtr->workingDir),
-                                              "obj/libComponent_" + componentPtr->name + ".so");
-        }
-        // Otherwise, put the component library directly into the library output directory.
-        else
-        {
-            componentPtr->lib = path::Combine(buildParams.libOutputDir,
-                                              "libComponent_" + componentPtr->name + ".so");
-        }
+        baseComponentPath = path::Combine(path::Combine(buildParams.workingDir,
+                                                        componentPtr->workingDir),
+                                          "obj");
+    }
+    // Otherwise, put the component library directly into the library output directory.
+    else
+    {
+        baseComponentPath = buildParams.libOutputDir;
+    }
+
+    // If there are C sources or C++ sources, a library will be built for this component.
+    if (componentPtr->HasCOrCppCode())
+    {
+        componentPtr->lib = path::Combine(baseComponentPath,
+                                          "libComponent_" + componentPtr->name + ".so");
 
         // It will have an init function that will need to be executed (unless it is built
         // "stand-alone").
         componentPtr->initFuncName = "_" + componentPtr->name + "_COMPONENT_INIT";
 
         // Changes to liblegato should trigger re-linking of the component library.
-        auto liblegatoPath = path::Combine(envVars::Get("LEGATO_ROOT"),
-                                     "build/" + buildParams.target + "/framework/lib/liblegato.so");
         componentPtr->implicitDependencies.insert(liblegatoPath);
+    }
+    else if (componentPtr->HasJavaCode())
+    {
+        componentPtr->lib = path::Combine(baseComponentPath,
+                                          "libComponent_" + componentPtr->name + ".jar");
+
+        // Changes to liblegato should trigger re-linking of the component library.
+        auto legatoJarPath = path::Combine(baseLibPath, "legato.jar");
+        auto liblegatoJniPath = path::Combine(baseLibPath, "liblegatoJni.so");
+
+        componentPtr->implicitDependencies.insert(liblegatoPath);
+        componentPtr->implicitDependencies.insert(legatoJarPath);
+        componentPtr->implicitDependencies.insert(liblegatoJniPath);
     }
 
     if (buildParams.beVerbose)
@@ -1139,7 +1201,53 @@ model::Component_t* GetComponent
         PrintSummary(componentPtr);
     }
 
+    // Restore the previous contents of the CURDIR environment variable.
+    envVars::Set("CURDIR", oldDir);
+
     return componentPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a single component residing in a directory specified by a given
+ * FILE_PATH token.
+ *
+ * @return Pointer to the component object, or NULL if the token specifies an empty environment
+ *         variable.
+ *
+ * @throw mkTools::Exception_t on error.
+ */
+//--------------------------------------------------------------------------------------------------
+model::Component_t* GetComponent
+(
+    const parseTree::Token_t* tokenPtr,
+    const mk::BuildParams_t& buildParams,
+    const std::list<std::string>& preSearchDirs ///< Dirs to search before buildParams source dirs
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Resolve the path to the component.
+    std::string componentPath = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+
+    // Skip if environment variable substitution resulted in an empty string.
+    if (componentPath.empty())
+    {
+        return NULL;
+    }
+
+    auto resolvedPath = file::FindComponent(componentPath, preSearchDirs);
+    if (resolvedPath.empty())
+    {
+        resolvedPath = file::FindComponent(componentPath, buildParams.sourceDirs);
+    }
+    if (resolvedPath.empty())
+    {
+        tokenPtr->ThrowException("Couldn't find component '" + componentPath + "'.");
+    }
+
+    // Get the component object.
+    return GetComponent(path::MakeAbsolute(resolvedPath), buildParams);
 }
 
 
@@ -1175,7 +1283,7 @@ void AddComponentInstance
 
     // Add an instance of the component to the executable.
     auto componentInstancePtr = new model::ComponentInstance_t(exePtr, componentPtr);
-    exePtr->componentInstances.push_back(componentInstancePtr);
+    exePtr->AddComponentInstance(componentInstancePtr);
 
     // For each of the component's client-side interfaces, create an interface instance.
     for (auto ifPtr : componentPtr->clientApis)

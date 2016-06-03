@@ -120,9 +120,9 @@ void GenerateExeBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto exePtr : appPtr->executables)
+    for (auto mapItem : appPtr->executables)
     {
-        GenerateBuildStatements(script, exePtr, buildParams);
+        GenerateBuildStatements(script, mapItem.second, buildParams);
     }
 }
 
@@ -467,14 +467,23 @@ void GenerateStagingBundleBuildStatements
         }
 
         // Generate a statement for bundling a component library into an application, if it has
-        // a component library (which will only be the case if the component has C or C++ sources).
-        if ((!componentPtr->cObjectFiles.empty()) || (!componentPtr->cxxObjectFiles.empty()))
+        // a component library (which will only be the case if the component has sources).
+        if ((componentPtr->HasCOrCppCode()) || (componentPtr->HasJavaCode()))
         {
             auto destPath = "$builddir/" + appPtr->workingDir
-                          + "/staging/read-only/lib/libComponent_" + componentPtr->name + ".so";
+                          + "/staging/read-only/lib/libComponent_" + componentPtr->name;
+
+            if (componentPtr->HasJavaCode())
+            {
+                destPath += ".jar";
+            }
+            else
+            {
+                destPath += ".so";
+            }
 
             // Hard link the component library into the app's lib directory.
-            script << "build " << destPath << ": HardLink " << componentPtr->lib << "\n\n";
+            script << "build " << destPath << " : HardLink " << componentPtr->lib << "\n\n";
 
             // Add the component library to the set of bundled files.
             bundledFiles.insert(destPath);
@@ -517,10 +526,15 @@ void GenerateAppBundleBuildStatement
     {
         script << " " << filePath;
     }
-    for (auto exePtr : appPtr->executables)
+    for (auto mapItem : appPtr->executables)
     {
-        script << " $builddir/" << exePtr->path;
+        script << " $builddir/" << mapItem.second->path;
     }
+
+    // It also depends on the generated config file.
+    script << " $builddir/" << appPtr->ConfigFilePath();
+
+    // End of dependency list.
     script << "\n";
 
     // Tell the build rule what the app's name and version are and where its working directory is.

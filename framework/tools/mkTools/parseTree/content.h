@@ -40,9 +40,11 @@ struct Content_t
         EXECUTABLE,     ///< Executable (TokenList_t), "exe = ( comp1 comp2 )"
         RUN_PROCESS,    ///< Process to run (TokenList_t), "proc = ( exe arg1 arg2 )"
         ENV_VAR,        ///< Environment variable (TokenList_t), "varName = value"
+        MODULE_PARAM,   ///< Module parameter (TokenList_t), "name = value"
         POOL,           ///< Pool (TokenList_t), "poolName = 123"
         APP,            ///< Named item in .sdef 'apps:' section (CompoundItemList_t),
                         ///  "appPath", "appPath { }" or "appPath { overrides }".
+        MODULE,         ///< Named item in .sdef 'kernelModules:' section (CompoundItemList_t),
         ASSET,          ///< AirVantage asset definition (Asset_t).
         ASSET_SETTING,  ///< AirVantage writable value (AssetSetting_t).
         ASSET_VARIABLE, ///< AirVantage readable value (AssetVariable_t).

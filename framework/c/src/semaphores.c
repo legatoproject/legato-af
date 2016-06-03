@@ -28,7 +28,6 @@
 #include "legato.h"
 #include "semaphores.h"
 #include "thread.h"
-#include "spy.h"
 
 // ==============================
 //  PRIVATE DATA
@@ -44,8 +43,8 @@
  * A counter that increments every time a change is made to the semaphore.
  */
 //--------------------------------------------------------------------------------------------------
-static size_t ListOfSemaphoresChgCnt = 0;
-static size_t* ListOfSemaphoresChgCntRef = &ListOfSemaphoresChgCnt;
+static size_t SemaphoreListChangeCount = 0;
+static size_t* SemaphoreListChangeCountRef = &SemaphoreListChangeCount;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -143,6 +142,20 @@ static void RemoveFromWaitingList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the semaphore list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** sem_GetSemaphoreListChgCntRef
+(
+    void
+)
+{
+    return (&SemaphoreListChangeCountRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the Semaphore module.
  *
  * This function must be called exactly once at process start-up before any other semaphore module
@@ -157,9 +170,6 @@ void sem_Init
 {
     SemaphorePoolRef = le_mem_CreatePool("semaphore", sizeof(Semaphore_t));
     le_mem_ExpandPool(SemaphorePoolRef, DEFAULT_POOL_SIZE);
-
-    // Pass the change counter of list of semaphores to the Inspect tool.
-    spy_SetListOfSemaphoresChgCntRef(&ListOfSemaphoresChgCntRef);
 }
 
 
@@ -305,14 +315,14 @@ void le_sem_Wait
 
     sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
 
-    ListOfSemaphoresChgCnt++;
+    SemaphoreListChangeCount++;
     perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
     AddToWaitingList(semaphorePtr, perThreadRecPtr);
 
     result = sem_wait(&semaphorePtr->semaphore);
 
     RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
-    ListOfSemaphoresChgCnt++;
+    SemaphoreListChangeCount++;
     perThreadRecPtr->waitingOnSemaphore = NULL;
 
     LE_FATAL_IF( (result!=0), "Thread '%s' failed to wait on semaphore '%s'. Error code %d (%m).",
@@ -386,7 +396,7 @@ le_result_t le_sem_WaitWithTimeOut
     // Retrieve reference thread
     sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
     // Save into waiting list
-    ListOfSemaphoresChgCnt++;
+    SemaphoreListChangeCount++;
     perThreadRecPtr->waitingOnSemaphore = semaphorePtr;
     AddToWaitingList(semaphorePtr, perThreadRecPtr);
 
@@ -394,7 +404,7 @@ le_result_t le_sem_WaitWithTimeOut
 
     // Remove from waiting list
     RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
-    ListOfSemaphoresChgCnt++;
+    SemaphoreListChangeCount++;
     perThreadRecPtr->waitingOnSemaphore = NULL;
 
     if (result != 0)

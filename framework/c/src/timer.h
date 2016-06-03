@@ -61,6 +61,17 @@ timer_ThreadRec_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the timer list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** timer_GetTimerListChgCntRef
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the Timer module.
  *
  * This function must be called exactly once at process start-up before any other timer module

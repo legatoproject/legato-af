@@ -44,13 +44,15 @@ struct Token_t: public Content_t
         FILE_PATH,          ///< A file system path.
         FILE_NAME,          ///< The name of a file or another name having the same constraints.
         NAME,               ///< Name safe to use as a program identifier in C-like languages.
+        DOTTED_NAME,        ///< Name safe to use as a java package name.
         GROUP_NAME,         ///< Name safe to use as a user group name in Unix.
         IPC_AGENT,          ///< App or user name in a binding (e.g., "appName" or "<userName>").
         INTEGER,            ///< Integer number, possibly with a 'K' suffix.
         SIGNED_INTEGER,     ///< Like Integer, but supports both positive and negative values.
         BOOLEAN,            ///< Either "true" or "false".
         FLOAT,              ///< Standard  C style floating point number.
-        STRING              ///< String value quoted with a ' or a ".
+        STRING,             ///< String value quoted with a ' or a ".
+        MD5_HASH,           ///< MD5 cryptographic hash/checksum.
     };
 
     Type_t type;        ///< The type of token.

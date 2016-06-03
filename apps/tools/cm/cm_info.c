@@ -51,11 +51,9 @@ void cm_info_PrintImei
     bool withHeaders
 )
 {
-    le_result_t result;
     char imei[LE_INFO_IMEI_MAX_BYTES] = {0};
 
-    result = le_info_GetImei(imei, sizeof(imei));
-    LE_ASSERT(result == LE_OK);
+    le_info_GetImei(imei, sizeof(imei));
 
     if(withHeaders)
     {
@@ -77,11 +75,9 @@ void cm_info_PrintSerialNumber
     bool withHeaders
 )
 {
-    le_result_t result;
     char serialNumber[LE_INFO_MAX_PSN_BYTES] = {0};
 
-    result = le_info_GetPlatformSerialNumber(serialNumber, sizeof(serialNumber));
-    LE_ASSERT(result == LE_OK);
+    le_info_GetPlatformSerialNumber(serialNumber, sizeof(serialNumber));
 
     if(withHeaders)
     {
@@ -103,11 +99,9 @@ void cm_info_PrintFirmwareVersion
     bool withHeaders
 )
 {
-    le_result_t result;
     char version[LE_INFO_MAX_VERS_BYTES] = {0};
 
-    result = le_info_GetFirmwareVersion(version, sizeof(version));
-    LE_ASSERT(result == LE_OK);
+    le_info_GetFirmwareVersion(version, sizeof(version));
 
     if(withHeaders)
     {
@@ -129,11 +123,9 @@ void cm_info_PrintBootloaderVersion
     bool withHeaders
 )
 {
-    le_result_t result;
     char version[LE_INFO_MAX_VERS_BYTES] = {0};
 
-    result = le_info_GetBootloaderVersion(version, sizeof(version));
-    LE_ASSERT(result == LE_OK);
+    le_info_GetBootloaderVersion(version, sizeof(version));
 
     if(withHeaders)
     {
@@ -155,11 +147,9 @@ void cm_info_PrintDeviceModel
     bool withHeaders
 )
 {
-    le_result_t result;
     char model[LE_INFO_MAX_MODEL_BYTES] = {0};
 
-    result = le_info_GetDeviceModel(model, sizeof(model));
-    LE_ASSERT(result == LE_OK);
+    le_info_GetDeviceModel(model, sizeof(model));
 
     if(withHeaders)
     {

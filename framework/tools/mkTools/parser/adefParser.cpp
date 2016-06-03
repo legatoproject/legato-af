@@ -467,6 +467,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBundlesSubsection);
     }
+    else if (sectionName == "components")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
     else if (sectionName == "executables")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseExecutable);

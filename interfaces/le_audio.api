@@ -34,10 +34,9 @@
  *
  * @section le_audio_configuration Configure the Audio
  *
- * The audio profile can be set with the le_audio_SetProfile() function. The pre-configured
- * profiles are defined with @c le_audio_Profile_t enumeration type.
+ * The audio profile can be set with the le_audio_SetProfile() function.
  *
- * @warning Ensure to check the list of supported audio profiles for your specific platform.
+ * @warning Ensure to check the number of supported audio profiles for your specific platform.
  *
  * An audio profile can be retrieved with le_audio_GetProfile() and set with le_audio_SetProfile().
  *
@@ -158,6 +157,10 @@
  *
  * When finished with it, delete it using the le_audio_DeleteConnector() function.
  *
+ * The following image shows how to connect a Player stream to play a file towards a remote end
+ * during a voice call.
+ * @image html AudioConnector.png
+
  * A sample code that implements audio connectors and audio streams during voice call can be found in
  * \b audioMccTest.c file (please refer to @ref c_audioMcc page).
  *
@@ -328,20 +331,6 @@ ENUM MediaEvent
     MEDIA_NO_MORE_SAMPLES, ///< No more audio samples to play.
     MEDIA_ERROR,           ///< Recording/playback has encountered an error.
     MEDIA_MAX              ///< Enumerate max value.
-};
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Audio profiles.
- */
-//--------------------------------------------------------------------------------------------------
-ENUM Profile
-{
-    HANDSFREE,  ///< Handsfree profile.
-    HANDSET,    ///< Handset profile.
-    HEADSET,    ///< Headset profile.
-    TTY,        ///< Teletypewriter profile (for hearing impaired use cases).
-    USB         ///< USB profile.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -617,7 +606,7 @@ HANDLER MediaHandler
 EVENT Media
 (
     Stream               streamRef IN,        ///< The audio stream reference.
-    handler              MediaHandler
+    MediaHandler         handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -783,8 +772,8 @@ HANDLER DtmfDetectorHandler
 //--------------------------------------------------------------------------------------------------
 EVENT DtmfDetector
 (
-    Stream      streamRef IN,     ///< Audio stream reference.
-    handler DtmfDetectorHandler
+    Stream              streamRef IN,     ///< Audio stream reference.
+    DtmfDetectorHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -948,7 +937,7 @@ FUNCTION le_result_t DisableAutomaticGainControl
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetProfile
 (
-    le_audio_Profile_t profile  IN ///< Audio profile.
+    uint32 profile  IN ///< Audio profile.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -962,7 +951,7 @@ FUNCTION le_result_t SetProfile
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetProfile
 (
-    le_audio_Profile_t profile  OUT ///< Audio profile.
+    uint32 profile  OUT ///< Audio profile.
 );
 
 

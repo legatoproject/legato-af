@@ -46,16 +46,16 @@ typedef struct common_OpaqueReference* common_OpaqueReferenceRef_t;
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    COMMON_ZERO,
+    COMMON_ZERO = 0,
         ///< first enum
 
-    COMMON_ONE,
+    COMMON_ONE = 1,
         ///< second enum
 
-    COMMON_TWO,
+    COMMON_TWO = 20,
         ///< third enum
 
-    COMMON_THREE
+    COMMON_THREE = 21
         ///< fourth enum
 }
 common_EnumExample_t;

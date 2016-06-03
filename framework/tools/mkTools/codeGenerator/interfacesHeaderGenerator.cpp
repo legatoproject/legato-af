@@ -17,7 +17,7 @@ namespace code
  * Generate an interfaces.h file for a given component.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateInterfacesHeader
+void GenerateCLangInterfacesHeader
 (
     const model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams
@@ -63,27 +63,32 @@ void GenerateInterfacesHeader
                   "#endif\n"
                   "\n";
 
+    model::InterfaceCFiles_t cFiles;
+
     // #include the client-side .h for each of the .api files from which only data types are used.
     for (auto interfacePtr : componentPtr->typesOnlyApis)
     {
+        interfacePtr->GetInterfaceFiles(cFiles);
         fileStream << "#include \""
-                   << path::Combine(buildParams.workingDir, interfacePtr->interfaceFile)
+                   << path::Combine(buildParams.workingDir, cFiles.interfaceFile)
                    << "\"\n";
     }
 
     // For each of the component's client-side interfaces, #include the client-side .h file.
     for (auto interfacePtr : componentPtr->clientApis)
     {
+        interfacePtr->GetInterfaceFiles(cFiles);
         fileStream << "#include \""
-                   << path::Combine(buildParams.workingDir, interfacePtr->interfaceFile)
+                   << path::Combine(buildParams.workingDir, cFiles.interfaceFile)
                    << "\"\n";
     }
 
     // For each of the component's server-side interfaces, #include the server-side .h file.
     for (auto interfacePtr : componentPtr->serverApis)
     {
+        interfacePtr->GetInterfaceFiles(cFiles);
         fileStream << "#include \""
-                   << path::Combine(buildParams.workingDir, interfacePtr->interfaceFile)
+                   << path::Combine(buildParams.workingDir, cFiles.interfaceFile)
                    << "\"\n";
     }
 

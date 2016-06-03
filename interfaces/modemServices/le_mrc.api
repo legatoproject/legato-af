@@ -156,7 +156,15 @@
  * @note If only one handler is registered, the le_mrc_RemoveNetRegStateHandler() API
  *       resets the registration mode to its original value before any handler functions were added.
  *
- * le_mrc_SetManualRegisterMode() API manually registers on a cellular network.
+ * le_mrc_SetManualRegisterMode() API registers on a cellular network.
+ *
+ * Call le_mrc_SetManualRegisterModeAsync() function to set the manual registration mode
+ *  asynchronously. The function is not blocking. The response will be returned with the
+ *  @c le_mrc_ManualSelectionHandlerFunc_t handler function.
+ *
+ * When the network registration fails, the platform specific network registration error code can
+ * be known by using le_mrc_GetPlatformSpecificRegistrationErrorCode() (refer to your platform
+ * documentation for further details).
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mrcNetworkRegistration
@@ -190,6 +198,8 @@
  * parameters are updated each time the function is called, the previous thresholds are replaced by
  * the new ones if the function is called with the same RAT.
  *
+ * @warning The threshold values must be in the allowed platform range.
+ *
  * The event is notified when we cross the range limits in both direction.
  *
  * le_mrc_RemoveSignalStrengthChangeHandler() API uninstalls the handler function.
@@ -202,6 +212,9 @@
  * le_mrc_GetServingCellId() retrieves the the serving Cell Identifier.
  *
  * le_mrc_GetServingCellLocAreaCode() retrieves the Location Area Code of the serving cell.
+ *
+ * le_mrc_GetServingCellLteTracAreaCode() retrieves the the Tracking Area Code of the serving cell
+ * (LTE only).
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mrcLocationinformation
@@ -218,6 +231,10 @@
  * Call le_mrc_PerformCellularNetworkScan() to fill a list of all network in sight.
  * You can go through all Scan Information by calling le_mrc_GetFirstCellularNetworkScan() and
  * le_mrc_GetNextCellularNetworkScan().
+ *
+ * Call le_mrc_PerformCellularNetworkScanAsync() to start a network scan asynchronously. The
+ * function is not blocking. The scan list reference will be returned with the handler function
+ * response (@c le_mrc_CellularNetworkScanHandlerFunc_t).
  *
  * For each Scan Information, you can call:
  *
@@ -613,11 +630,12 @@ HANDLER NetRegStateHandler
 /**
  * This event provides information on network registration state changes.
  *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 EVENT NetRegStateEvent
 (
-    handler NetRegStateHandler
+    NetRegStateHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -635,11 +653,12 @@ HANDLER RatChangeHandler
 /**
  * This event provides information on Radio Access Technology changes.
  *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 EVENT RatChange
 (
-    handler RatChangeHandler
+    RatChangeHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -657,15 +676,42 @@ HANDLER SignalStrengthChangeHandler
 /**
  * This event provides information on Signal Strength value changes.
  *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 EVENT SignalStrengthChange
 (
     Rat     rat IN,                       ///< Radio Access Technology
-    int32_t lowerRangeThreshold IN,       ///<  lower-range Signal strength threshold in dBm
-    int32_t upperRangeThreshold IN,       ///<  upper-range Signal strength threshold in dBm
-    handler SignalStrengthChangeHandler
+    int32   lowerRangeThreshold IN,       ///<  lower-range Signal strength threshold in dBm
+    int32   upperRangeThreshold IN,       ///<  upper-range Signal strength threshold in dBm
+    SignalStrengthChangeHandler handler
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for cellular asynchronous network scan Sending result.
+ *  Returns the reference to the List object. Null pointer if the scan failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CellularNetworkScanHandler
+(
+    ScanInformationList listRef IN    ///< Reference to the List object. Null pointer if the
+                                      ///< scan failed.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for asynchronous manual selection response
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ManualSelectionHandler
+(
+    le_result_t  result IN ///< Manual selection response
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -674,6 +720,8 @@ EVENT SignalStrengthChange
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetAutomaticRegisterMode
@@ -690,6 +738,8 @@ FUNCTION le_result_t SetAutomaticRegisterMode
  *
  * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
  *       the function won't return.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetManualRegisterMode
@@ -700,12 +750,32 @@ FUNCTION le_result_t SetManualRegisterMode
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the manual selection register mode asynchronously. This function is not blocking,
+ *  the response will be returned with a handler function.
+ *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
+ *
+ *@note <b>NOT multi-app safe</b>
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetManualRegisterModeAsync
+(
+    string mcc[MCC_LEN] IN,         ///< Mobile Country Code
+    string mnc[MNC_LEN] IN,         ///< Mobile Network Code
+    ManualSelectionHandler handler  ///< handler for sending result
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the selected Selection Register mode.
  *
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
  *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRegisterMode
@@ -715,6 +785,19 @@ FUNCTION le_result_t GetRegisterMode
     string mncPtr[MNC_LEN] OUT  ///< Mobile Network Code
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the platform specific network registration error code.
+ *
+ * @return the platform specific registration error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetPlatformSpecificRegistrationErrorCode
+(
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the Radio Access Technology preferences by using a bit mask.
@@ -722,6 +805,8 @@ FUNCTION le_result_t GetRegisterMode
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetRatPreferences
@@ -736,6 +821,8 @@ FUNCTION le_result_t SetRatPreferences
  * @return
  * - LE_FAULT  Function failed.
  * - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRatPreferences
@@ -750,6 +837,8 @@ FUNCTION le_result_t GetRatPreferences
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetBandPreferences
@@ -764,6 +853,8 @@ FUNCTION le_result_t SetBandPreferences
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBandPreferences
@@ -778,6 +869,8 @@ FUNCTION le_result_t GetBandPreferences
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetLteBandPreferences
@@ -792,6 +885,8 @@ FUNCTION le_result_t SetLteBandPreferences
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetLteBandPreferences
@@ -806,6 +901,8 @@ FUNCTION le_result_t GetLteBandPreferences
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetTdScdmaBandPreferences
@@ -820,6 +917,8 @@ FUNCTION le_result_t SetTdScdmaBandPreferences
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTdScdmaBandPreferences
@@ -839,6 +938,8 @@ FUNCTION le_result_t GetTdScdmaBandPreferences
  *
  * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
  *       the function won't return.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AddPreferredOperator
@@ -859,6 +960,8 @@ FUNCTION le_result_t AddPreferredOperator
  *
  * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
  *       the function won't return.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RemovePreferredOperator
@@ -874,6 +977,8 @@ FUNCTION le_result_t RemovePreferredOperator
  * @return
  * - Reference to the List object.
  * - Null pointer if there is no preferences list.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION PreferredOperatorList GetPreferredOperatorsList
@@ -891,6 +996,8 @@ FUNCTION PreferredOperatorList GetPreferredOperatorsList
  *
  * @note If the caller is passing a bad reference into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION PreferredOperator GetFirstPreferredOperator
@@ -910,6 +1017,8 @@ FUNCTION PreferredOperator GetFirstPreferredOperator
  *
  * @note If the caller is passing a bad reference into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION PreferredOperator GetNextPreferredOperator
@@ -924,9 +1033,11 @@ FUNCTION PreferredOperator GetNextPreferredOperator
  *
  * @note On failure, the process exits, so you don't have to worry about checking the returned
  *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void DeletePreferredOperatorsList
+FUNCTION DeletePreferredOperatorsList
 (
     PreferredOperatorList  preferredOperatorListRef ///< The list of the preferred operators.
 );
@@ -938,6 +1049,7 @@ FUNCTION void DeletePreferredOperatorsList
  * @return LE_FAULT  Function failed.
  * @return LE_OK     Function succeeded.
  *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPreferredOperatorDetails
@@ -958,6 +1070,8 @@ FUNCTION le_result_t GetPreferredOperatorDetails
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNetRegState
@@ -975,6 +1089,8 @@ FUNCTION le_result_t GetNetRegState
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSignalQual
@@ -990,6 +1106,8 @@ FUNCTION le_result_t GetSignalQual
  * @return LE_BAD_PARAMETER Bad power mode specified.
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeed.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetRadioPower
@@ -1007,6 +1125,8 @@ FUNCTION le_result_t SetRadioPower
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRadioPower
@@ -1018,8 +1138,9 @@ FUNCTION le_result_t GetRadioPower
 /**
  * This function must be called to perform a cellular network scan.
  *
- * @return
- *      Reference to the List object. Null pointer if the scan failed.
+ * @return Reference to the List object. Null pointer if the scan failed.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ScanInformationList PerformCellularNetworkScan
@@ -1027,16 +1148,35 @@ FUNCTION ScanInformationList PerformCellularNetworkScan
     RatBitMask ratMask ///< Radio Access Technology mask
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to perform a cellular network scan asynchronously. This function
+ * is not blocking, the response will be returned with a handler function.
+ *
+ *@note <b>multi-app safe</b>
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION PerformCellularNetworkScanAsync
+(
+    RatBitMask ratMask IN,               ///< Radio Access Technology mask
+    CellularNetworkScanHandler handler   ///< handler for sending result.
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the first Scan Information object reference in the list of
- * scan Information retrieved with le_mrc_PerformNetworkScan().
+ * scan Information retrieved with le_mrc_PerformCellularNetworkScan().
  *
  * @return NULL                         No scan information found.
  * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ScanInformation GetFirstCellularNetworkScan
@@ -1048,13 +1188,15 @@ FUNCTION ScanInformation GetFirstCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the next Scan Information object reference in the list of
- * scan Information retrieved with le_mrc_PerformNetworkScan().
+ * scan Information retrieved with le_mrc_PerformCellularNetworkScan().
  *
  * @return NULL                         No scan information found.
  * @return le_mrc_ScanInformationRef_t  The Scan Information object reference.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ScanInformation GetNextCellularNetworkScan
@@ -1066,14 +1208,16 @@ FUNCTION ScanInformation GetNextCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to delete the list of the Scan Information retrieved with
- * le_mrc_PerformNetworkScan().
+ * le_mrc_PerformCellularNetworkScan().
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
  *      reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void DeleteCellularNetworkScan
+FUNCTION DeleteCellularNetworkScan
 (
     ScanInformationList  scanInformationListRef ///< The list of scan information.
 );
@@ -1087,9 +1231,10 @@ FUNCTION void DeleteCellularNetworkScan
  *      - LE_OVERFLOW if the mcc or mnc would not fit in buffer
  *      - LE_FAULT for all other errors
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCellularNetworkMccMnc
@@ -1108,9 +1253,10 @@ FUNCTION le_result_t GetCellularNetworkMccMnc
  *      - LE_OVERFLOW if the operator name would not fit in buffer
  *      - LE_FAULT for all other errors
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCellularNetworkName
@@ -1123,11 +1269,11 @@ FUNCTION le_result_t GetCellularNetworkName
 /**
  * This function must be called to get the radio access technology of a scanInformationRef.
  *
- * @return
- *      - the radio access technology
+ * @return the radio access technology
  *
- * @note
- *      On failure, the process exits.
+ * @note On failure, the process exits.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Rat GetCellularNetworkRat
@@ -1142,9 +1288,10 @@ FUNCTION Rat GetCellularNetworkRat
  * @return true     The network is in use
  * @return false    The network isn't in use
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkInUse
@@ -1159,9 +1306,10 @@ FUNCTION bool IsCellularNetworkInUse
  * @return true     The network is available
  * @return false    The network isn't available
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkAvailable
@@ -1176,9 +1324,10 @@ FUNCTION bool IsCellularNetworkAvailable
  * @return true     The network is home
  * @return false    The network is roaming
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkHome
@@ -1193,9 +1342,10 @@ FUNCTION bool IsCellularNetworkHome
  * @return true     The network is forbidden
  * @return false    The network is allowed
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsCellularNetworkForbidden
@@ -1215,6 +1365,8 @@ FUNCTION bool IsCellularNetworkForbidden
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCurrentNetworkName
@@ -1230,6 +1382,7 @@ FUNCTION le_result_t GetCurrentNetworkName
  *      - LE_OK       on success
  *      - LE_FAULT    on any other failure
  *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCurrentNetworkMccMnc
@@ -1248,11 +1401,13 @@ FUNCTION le_result_t GetCurrentNetworkMccMnc
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRadioAccessTechInUse
 (
-    le_mrc_Rat_t   rat  OUT     ///< The Radio Access Technology.
+    Rat   rat  OUT     ///< The Radio Access Technology.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1262,6 +1417,8 @@ FUNCTION le_result_t GetRadioAccessTechInUse
  *
  * @return A reference to the Neighboring Cells information.
  * @return NULL if no Cells Information are available.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION NeighborCells GetNeighborCellsInfo
@@ -1272,9 +1429,10 @@ FUNCTION NeighborCells GetNeighborCellsInfo
 /**
  * This function must be called to delete the Neighboring Cells information.
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION DeleteNeighborCellsInfo
@@ -1292,6 +1450,8 @@ FUNCTION DeleteNeighborCellsInfo
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION CellInfo GetFirstNeighborCellInfo
@@ -1309,6 +1469,8 @@ FUNCTION CellInfo GetFirstNeighborCellInfo
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION CellInfo GetNextNeighborCellInfo
@@ -1324,6 +1486,8 @@ FUNCTION CellInfo GetNextNeighborCellInfo
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetNeighborCellId
@@ -1339,6 +1503,8 @@ FUNCTION uint32 GetNeighborCellId
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetNeighborCellLocAreaCode
@@ -1354,6 +1520,8 @@ FUNCTION uint32 GetNeighborCellLocAreaCode
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetNeighborCellRxLevel
@@ -1369,6 +1537,8 @@ FUNCTION int32 GetNeighborCellRxLevel
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Rat GetNeighborCellRat
@@ -1387,6 +1557,8 @@ FUNCTION Rat GetNeighborCellRat
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetNeighborCellUmtsEcIo
@@ -1404,6 +1576,8 @@ FUNCTION int32 GetNeighborCellUmtsEcIo
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNeighborCellLteIntraFreq
@@ -1425,6 +1599,8 @@ FUNCTION le_result_t GetNeighborCellLteIntraFreq
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNeighborCellLteInterFreq
@@ -1443,6 +1619,8 @@ FUNCTION le_result_t GetNeighborCellLteInterFreq
  *
  * @return A reference to the signal metrics.
  * @return NULL if no signal metrics are available.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Metrics MeasureSignalMetrics
@@ -1453,9 +1631,10 @@ FUNCTION Metrics MeasureSignalMetrics
 /**
  * This function must be called to delete the the signal metrics.
  *
- * @note
- *      On failure, the process exits, so you don't have to worry about checking the returned
- *      reference for validity.
+ * @note On failure, the process exits, so you don't have to worry about checking the returned
+ *       reference for validity.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION DeleteSignalMetrics
@@ -1471,6 +1650,8 @@ FUNCTION DeleteSignalMetrics
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Rat GetRatOfSignalMetrics
@@ -1488,6 +1669,8 @@ FUNCTION Rat GetRatOfSignalMetrics
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetGsmSignalMetrics
@@ -1507,6 +1690,8 @@ FUNCTION le_result_t GetGsmSignalMetrics
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetUmtsSignalMetrics
@@ -1530,6 +1715,8 @@ FUNCTION le_result_t GetUmtsSignalMetrics
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetLteSignalMetrics
@@ -1553,6 +1740,8 @@ FUNCTION le_result_t GetLteSignalMetrics
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCdmaSignalMetrics
@@ -1570,6 +1759,8 @@ FUNCTION le_result_t GetCdmaSignalMetrics
  * This function must be called to get the serving Cell Identifier.
  *
  * @return The Cell Identifier. 0xFFFFFFFF value is returned if the value is not available.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetServingCellId
@@ -1581,9 +1772,24 @@ FUNCTION uint32 GetServingCellId
  * This function must be called to get the Location Area Code of the serving cell.
  *
  * @return The Location Area Code. 0xFFFFFFFF value is returned if the value is not available.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION uint32 GetServingCellLocAreaCode
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Tracking Area Code of the serving cell (LTE only).
+ *
+ * @return The Tracking Area Code. 0xFFFF value is returned if the value is not available.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION uint16 GetServingCellLteTracAreaCode
 (
 );
 
@@ -1594,6 +1800,8 @@ FUNCTION uint32 GetServingCellLocAreaCode
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBandCapabilities
@@ -1608,6 +1816,8 @@ FUNCTION le_result_t GetBandCapabilities
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetLteBandCapabilities
@@ -1622,6 +1832,8 @@ FUNCTION le_result_t GetLteBandCapabilities
  * @return
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTdScdmaBandCapabilities

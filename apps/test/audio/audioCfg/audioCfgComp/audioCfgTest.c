@@ -145,7 +145,7 @@ static void TestAudioCfgEnable
 )
 {
     le_result_t          res;
-    le_audio_Profile_t   profile;
+    uint32_t              profile=1;
 
     LE_INFO("Start TestAudioCfgEnable.");
 
@@ -160,7 +160,7 @@ static void TestAudioCfgEnable
         LE_INFO("le_audio_GetProfile returns successfuly (%d)", profile);
     }
 
-    if (le_audio_SetProfile(LE_AUDIO_HANDSFREE) != LE_OK)
+    if (le_audio_SetProfile(1) != LE_OK)
     {
         LE_ERROR("le_audio_SetProfile failed!");
         ErrorCount++;

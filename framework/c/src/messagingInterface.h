@@ -59,6 +59,105 @@ msgInterface_Interface_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Service object.  Represents a single, unique service instance offered by a server.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_Service
+{
+    msgInterface_Interface_t interface; ///< The interface part of a service object.
+
+    // Stuff used only on the Server side:
+
+    void*           contextPtr;         ///< Opaque value set using le_msg_SetServiceContextPtr().
+
+    enum
+    {
+        LE_MSG_INTERFACE_SERVICE_CONNECTING,  ///< Connecting to the Service Directory.
+        LE_MSG_INTERFACE_SERVICE_ADVERTISED,  ///< Connected to the Service Directory (advertised).
+        LE_MSG_INTERFACE_SERVICE_HIDDEN       ///< Disconnected from the Service Directory (hidden).
+    }
+    state;
+
+    int             directorySocketFd;  ///< File descriptor of socket connected to the
+                                        ///  Service Directory (or -1 if not connected).
+
+    le_fdMonitor_Ref_t fdMonitorRef;///< File descriptor monitor for the directory socket.
+
+    le_thread_Ref_t serverThread;       ///< Thread that is acting as server in this process,
+                                        ///  or NULL if no server exists in this process.
+
+    le_msg_ReceiveHandler_t         recvHandler;    ///< Handler for when messages are received.
+    void*                           recvContextPtr; ///< contextPtr parameter for recvHandler.
+
+    le_dls_List_t                   openListPtr; ///< open List: list of open session handlers
+                                                 ///  called when a session is opened
+
+    le_dls_List_t                   closeListPtr; ///< open List: list of close session handlers
+                                                  ///  called when a session is opened
+}
+msgInterface_Service_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client interface object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_ClientInterface
+{
+    msgInterface_Interface_t interface; ///< The interface part of a client interface object.
+
+    // Stuff used only on the Client side:
+}
+msgInterface_ClientInterface_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the service object map; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t* msgInterface_GetServiceObjMap
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the service object map change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** msgInterface_GetServiceObjMapChgCntRef
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the client interface map; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t* msgInterface_GetClientInterfaceMap
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the client interface map change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** msgInterface_GetClientInterfaceMapChgCntRef
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the module.  This must be called only once at start-up, before any other functions in
  * that module are called.
  */

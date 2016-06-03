@@ -815,6 +815,39 @@ static void App1FieldHandler
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Delete the Object instances for the given application.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteLegatoObjectsForApp
+(
+    const char* appName  ///< The application that's being removed.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    assetData_InstanceDataRef_t instanceRef = NULL;
+    le_result_t result = LE_OK;
+
+    // Delete object 0.
+    if (assetData_GetInstanceRefById(appName, 0, 0, &instanceRef) == LE_OK)
+    {
+        LE_DEBUG("Delete app objects.");
+
+        assetData_DeleteInstanceAndAsset(instanceRef);
+
+        // Delete object 1 for each process.
+        for (int instanceId = 0; result == LE_OK; instanceId++)
+        {
+            result = assetData_GetInstanceRefById(appName, 1, instanceId, &instanceRef);
+
+            if (result == LE_OK)
+            {
+                assetData_DeleteInstanceAndAsset(instanceRef);
+            }
+        }
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -837,6 +870,8 @@ static void CreateLegatoObjectsForApp
 
     LE_FATAL_IF(appIterRef == NULL, "Configuration for known application was not found.");
 
+    // Delete the app object if it exists.
+    DeleteLegatoObjectsForApp(objNameBuffer);
 
     // Create object 0.
     LE_ASSERT(assetData_CreateInstanceById(objNameBuffer, 0, 0, &objectRef) == LE_OK);
@@ -929,7 +964,34 @@ static void CreateLegatoObjectsForApp
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Update Legato object; specifically the version.
+ */
+//--------------------------------------------------------------------------------------------------
+static void UpdateLegatoObject
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    assetData_InstanceDataRef_t legatoObjectRef = NULL;
 
+    LE_ASSERT(assetData_GetInstanceRefById(ASSET_DATA_LEGATO_OBJ_NAME,
+                                           0,
+                                           0,
+                                           &legatoObjectRef) == LE_OK);
+
+    char versionBuffer[MAX_VERSION_STR_BYTES] = "";
+
+    GetLegatoVersionStr(versionBuffer);
+
+    le_result_t result = assetData_client_SetString(legatoObjectRef, LO0F_VERSION, versionBuffer);
+    LE_ERROR_IF(result != LE_OK,
+                "Could not update Legato version field (%d): %s",
+                result,
+                LE_RESULT_TXT(result));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -963,37 +1025,6 @@ static void CreateLegatoObject
 
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- *  Delete the Object instances for the given application.
- */
-//--------------------------------------------------------------------------------------------------
-static void DeleteLegatoObjectsForApp
-(
-    const char* appName  ///< The application that's being removed.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    assetData_InstanceDataRef_t instanceRef = NULL;
-    le_result_t result = LE_OK;
-
-    // Delete object 0.
-    if (assetData_GetInstanceRefById(appName, 0, 0, &instanceRef) == LE_OK)
-    {
-        assetData_DeleteInstanceAndAsset(instanceRef);
-
-        // Delete object 1 for each process.
-        for (int instanceId = 0; result == LE_OK; instanceId++)
-        {
-            result = assetData_GetInstanceRefById(appName, 1, instanceId, &instanceRef);
-
-            if (result == LE_OK)
-            {
-                assetData_DeleteInstanceAndAsset(instanceRef);
-            }
-        }
-    }
-}
 
 
 
@@ -1163,6 +1194,7 @@ static void AppInstallHandler
     // Finally, don't forget to create Legato objects for this app.
     CreateLegatoObjectsForApp(appName);
 
+    UpdateLegatoObject();
     ClearInstallStarted();
 }
 
@@ -1217,6 +1249,8 @@ static void AppUninstallHandler
 
     // Now, delete any app objects.
     DeleteLegatoObjectsForApp(appName);
+
+    UpdateLegatoObject();
     IsLocalUninstall = false;
 }
 
@@ -1320,8 +1354,8 @@ static void UpdateProgressHandler
             SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
 
             le_update_End();
+            avcServer_RegistrationUpdate(CurrentObj9);
             CurrentObj9 = NULL;
-            avcServer_RegistrationUpdate();
 
             ClearInstallStarted();
 
@@ -1354,6 +1388,7 @@ void OnUriDownloadUpdate
         case LE_AVC_DOWNLOAD_COMPLETE:
             LE_DEBUG("Download complete.");
             SetObj9State(CurrentObj9, US_DELIVERED, UR_INITIAL_VALUE, true);
+            avcServer_RegistrationUpdate(CurrentObj9);
             CurrentObj9 = NULL;
 
             // Clear download requested flag.
@@ -1361,13 +1396,13 @@ void OnUriDownloadUpdate
             le_cfg_SetBool(iterRef, STATE_DOWNLOAD_REQUESTED, false);
             le_cfg_CommitTxn(iterRef);
 
-            avcServer_RegistrationUpdate();
             break;
 
         case LE_AVC_DOWNLOAD_FAILED:
             LE_DEBUG("Download failed.");
             // TODO: Find out the real reason this failed.
             SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
+            avcServer_RegistrationUpdate(CurrentObj9);
             CurrentObj9 = NULL;
 
             // Clear download requested flag.
@@ -1375,7 +1410,6 @@ void OnUriDownloadUpdate
             le_cfg_SetBool(iterRef, STATE_DOWNLOAD_REQUESTED, false);
             le_cfg_CommitTxn(iterRef);
 
-            avcServer_RegistrationUpdate();
             break;
 
         case LE_AVC_DOWNLOAD_PENDING:
@@ -1390,7 +1424,7 @@ void OnUriDownloadUpdate
                 LE_DEBUG("Download started.");
                 SetObj9State(CurrentObj9, US_DOWNLOAD_STARTED, UR_DOWNLOADING, true);
 
-                avcServer_RegistrationUpdate();
+                avcServer_RegistrationUpdate(CurrentObj9);
             }
             else
             {
@@ -1467,8 +1501,8 @@ static void StartInstall
         {
             LE_ERROR("Could not start update.");
             SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
+            avcServer_RegistrationUpdate(CurrentObj9);
             CurrentObj9 = NULL;
-            avcServer_RegistrationUpdate();
 
             ClearInstallStarted();
         }
@@ -1503,8 +1537,11 @@ static void PrepareUninstall
     CurrentObj9 = NULL;
 
     DeleteLegatoObjectsForApp(appName);
-    avcServer_RegistrationUpdate();
+
+    // After legato objects are removed, force a registration update by passing NULL.
+    avcServer_RegistrationUpdate(NULL);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1643,7 +1680,7 @@ static void InstallFailure
 )
 {
     SetObj9State(instanceRef, US_INITIAL, UR_INSTALLATION_FAILURE, true);
-    avcServer_RegistrationUpdate();
+    avcServer_RegistrationUpdate(instanceRef);
 }
 
 
@@ -1906,9 +1943,6 @@ static void Object9ActivityHandler
                                                      appName,
                                                      sizeof(appName)) == LE_OK);
 
-                int state;
-                LE_ASSERT(assetData_client_GetInt(instanceRef, O9F_UPDATE_STATE, &state) == LE_OK);
-
                 if (strlen(appName) > 0)
                 {
                     if ((IsLocalUninstall == false)
@@ -1917,6 +1951,13 @@ static void Object9ActivityHandler
                         CurrentObj9 = instanceRef;
                         StartUninstall();
                     }
+                }
+                // The current job was aborted on the server side. When a new job is initiated,
+                // the server sends a delete command on object 9 instances that are not in
+                // installed state.
+                else if (CurrentObj9 == instanceRef)
+                {
+                    CurrentObj9 = NULL;
                 }
             }
             break;

@@ -4,7 +4,7 @@ sandboxed: false
 
 executables:
 {
-    exe = (client)
+    exe = ($CLIENT)
 }
 
 extern:

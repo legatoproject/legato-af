@@ -71,12 +71,13 @@ pa_Gnss_Date_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    uint16_t                satSVid;        ///< Satellites in View SV ID number [PRN].
+    uint16_t                satId;          ///< Satellite in View ID number.
+    le_gnss_Constellation_t satConst;       ///< GNSS constellation type.
     bool                    satUsed;        ///< TRUE if satellite in View Used for Navigation.
-    uint8_t                 satSNR;         ///< Satellites in View Signal To Noise Ratio [dBHz].
-    uint16_t                satAzim;        ///< Satellites in View Azimuth [degrees].
+    uint8_t                 satSnr;         ///< Satellite in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;        ///< Satellite in View Azimuth [degrees].
                                             ///< Range: 0 to 360
-    uint8_t                satElev;        ///< Satellites in View Elevation [degrees].
+    uint8_t                satElev;         ///< Satellite in View Elevation [degrees].
                                             ///< Range: 0 to 90
 }
 Pa_Gnss_SvInfo_t;
@@ -150,25 +151,41 @@ typedef struct {
     bool               directionUncertaintyValid;   ///< if true, direction uncertainty is set
     uint32_t           directionUncertainty;        ///< The direction uncertainty in degrees,
                                                     ///  with 1 decimal place
-
-    bool               timeValid; ///< if true, time is set
-    pa_Gnss_Time_t     time;  ///< The time of the fix
-
-    bool               dateValid; ///< if true, date is set
-    pa_Gnss_Date_t     date;  ///< The date of the fix
+    // UTC time
+    bool               timeValid;                   ///< if true, time is set
+    pa_Gnss_Time_t     time;                        ///< The time of the fix
+    bool               dateValid;                   ///< if true, date is set
+    pa_Gnss_Date_t     date;                        ///< The date of the fix
+    // GPS time
+    bool               gpsTimeValid;        ///< if true, GPS time is set
+    uint32_t           gpsWeek;             ///< GPS week number from midnight, Jan. 6, 1980.
+    uint32_t           gpsTimeOfWeek;       ///< Amount of time in milliseconds into the GPS week.
+    // Time accuracy
+    bool            timeAccuracyValid;      ///< if true, timeAccuracy is set
+    uint32_t        timeAccuracy;           ///< Estimated Accuracy for time in milliseconds
 
     // Satellite Vehicles information
-    bool                satsInViewValid;    ///< if true, satsInView is set
-    uint8_t             satsInView;         ///< Satellites in View count.
-
-    bool                satsUsedValid;      ///< if true, satsUsed is set
-    uint8_t             satsUsed;           ///< Satellites in View used for Navigation.
+    bool                satsInViewCountValid;    ///< if true, satsInView is set
+    uint8_t             satsInViewCount;         ///< Satellites in View count.
+    bool                satsTrackingCountValid;  ///< if true, satsTrackingCount is set
+    uint8_t             satsTrackingCount;       ///< Tracking satellites in View.
+    bool                satsUsedCountValid;      ///< if true, satsUsedCount is set
+    uint8_t             satsUsedCount;           ///< Satellites in View used for Navigation.
 
     bool                satInfoValid;       ///< if true, satInfo is set
-    Pa_Gnss_SvInfo_t    satInfo[LE_GNSS_MAX_SV_INFO_NUMBER];
+    Pa_Gnss_SvInfo_t    satInfo[LE_GNSS_SV_INFO_MAX_LEN];
                                             ///< Satellite Vehicle information.
 }
 pa_Gnss_Position_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to get GNSS position data.
+ *
+ * @param position The new position.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_t* positionPtr);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -290,15 +307,6 @@ LE_SHARED le_result_t pa_gnss_GetAcquisitionRate
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for handler functions used to get GNSS position data.
- *
- * @param position The new position.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_t* positionPtr);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to register an handler for GNSS position data notifications.
  *
  * @return A handler reference, which is only needed for later removal of the handler.
@@ -360,10 +368,10 @@ LE_SHARED le_result_t pa_gnss_LoadExtendedEphemerisFile
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_gnss_GetExtendedEphemerisValidityTimes
+LE_SHARED le_result_t pa_gnss_GetExtendedEphemerisValidity
 (
-    le_clk_Time_t *startTimePtr,    ///< [OUT] Start time
-    le_clk_Time_t *stopTimePtr      ///< [OUT] Stop time
+    uint64_t *startTimePtr,    ///< [OUT] Start time in seconds (since Jan. 1, 1970)
+    uint64_t *stopTimePtr      ///< [OUT] Stop time in seconds (since Jan. 1, 1970)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -509,7 +517,7 @@ LE_SHARED le_result_t pa_gnss_SetSuplServerUrl
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_InjectSuplCertificate
 (
-    uint8_t  suplCertificateId,      ///< [IN] Certificate ID of the SUPL certificate.
+    uint8_t  suplCertificateId,      ///< [IN] ID of the SUPL certificate.
                                      ///< Certificate ID range is 0 to 9
     uint16_t suplCertificateLen,     ///< [IN] SUPL certificate size in Bytes.
     const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
@@ -528,7 +536,7 @@ LE_SHARED le_result_t pa_gnss_InjectSuplCertificate
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_gnss_DeleteSuplCertificate
 (
-    uint8_t  suplCertificateId  ///< [IN]  Certificate ID of the SUPL certificate.
+    uint8_t  suplCertificateId  ///< [IN]  ID of the SUPL certificate.
                                 ///< Certificate ID range is 0 to 9
 );
 

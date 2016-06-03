@@ -1,34 +1,32 @@
 /**
- * This module implements the le_temp's unit tests.
+ * This module implements the le_temp's integration test (work on AR8652).
  *
- *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *
- */
-
-/*
  * Instruction to execute this test
  * 1) install application test.
  * 2) Start log trace 'logread -f | grep 'temp'
  * 3) Start application 'app start tempTest'
  * 4) Start sequence execInApp tempTest tempTest <sequence number>
- *                     "Sequence <id>",
-      "Sequence <id>"
-                "    : Display Help"
-                "  0 : Get temperature"
-                "  1 : Set Get Platform Thresholds"
-                "  2 : Set Get Radio Thresholds"
-                "  3 : Configure Platform Thresolds event" or set them manualy by AT commands
-                "  4 : Configure Radio Thresolds event" or set them manualy by AT commands
-         Restart target
-         Start log trace 'logread -f | grep 'temp'
-         Start application 'app start tempTest'
-         Start sequence execInApp tempTest tempTest <sequence number>
-                "  5 : Test Thresolds event, (use CTR+C to exit before first Critical Event)
-         Change temeparture to check differrent events.
-                "  6 : Restore Radio temperature Thresolds"
-                "  7 : Restore Platform temperature Thresolds"
+ *
+ *       "Sequence <id>"
+ *                 "    : Display Help"
+ *                 "  0 : Get temperature"
+ *                 "  1 : Set Get Power Controller Thresholds"
+ *                 "  2 : Set Get Power Amplifier Thresholds"
+ *                 "  3 : Configure Power Controller Thresolds event"
+ *                 "  4 : Configure Power Amplifier Thresolds event"
+ *          Restart target
+ *          Start log trace 'logread -f | grep 'temp'
+ *          Start application 'app start tempTest'
+ *          Start sequence execInApp tempTest tempTest <sequence number>
+ *                 "  5 : Test Thresolds event, (use CTR+C to exit before first Critical Event)
+ *          Change temeparture to check differrent events.
+ *                 "  6 : Set default Power Amplifier temperature Thresolds"
+ *                 "  7 : Set default Power Controller temperature Thresolds"
  * 5) check temperature INFO traces value.
+ *
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *
  */
 
 #include "legato.h"
@@ -37,39 +35,39 @@
 #include <time.h>
 #include <semaphore.h>
 
-// Default Radio temperature thresholds.
-#define DEFAULT_RADIO_HIWARNING_THRESHOLD      110
-#define DEFAULT_RADIO_HICRITICAL_THRESHOLD     140
+// Default Power Amplifier temperature thresholds.
+#define MY_PA_HI_NORMAL_THRESHOLD      110
+#define MY_PA_HI_CRITICAL_THRESHOLD    140
 
-// Default platform temperature thresholds.
-#define DEFAULT_PLATFORM_HICRITICAL_THRESHOLD  140
-#define DEFAULT_PLATFORM_HIWARNING_THRESHOLD   90
-#define DEFAULT_PLATFORM_LOWARNING_THRESHOLD   -40
-#define DEFAULT_PLATFORM_LOCRITICAL_THRESHOLD  -45
+// Default Power Controller temperature thresholds.
+#define MY_PC_HI_CRITICAL_THRESHOLD  140
+#define MY_PC_HI_NORMAL_THRESHOLD    90
+#define MY_PC_LO_NORMAL_THRESHOLD    -40
+#define MY_PC_LO_CRITICAL_THRESHOLD  -45
 
-/* Waiting time for setting temperature Thresholds */
+// Waiting time to reach temperature Thresholds
 #define WAIT_TIME 30
 
-/* Waiting time for Threshold Events */
+// Waiting time for Threshold Events
 #define WAIT_TIME_EVENT 480
 
-/* Semaphore use for Critical Event waiting */
+// Semaphore used for Critical Event waiting
 static sem_t SemaphoreCriticalEvent;
 
-/* Value for managed Current value displaying */
-static int PoolTemp = 0;
-
-/* Value for managed Current value displaying */
+// Variables for value displaying
+static int PoolingPause = 0;
 static int TimeCounter = 0;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Helper.
- *
  */
 //--------------------------------------------------------------------------------------------------
-static void PrintUsage()
+static void PrintUsage
+(
+    void
+)
 {
     int idx;
     bool sandboxed = (getuid() != 0);
@@ -77,13 +75,13 @@ static void PrintUsage()
                     "Sequence <id>",
                     "    : Display Help",
                     "  0 : Get temperature",
-                    "  1 : Set Get Platform Thresholds",
-                    "  2 : Set Get Radio Thresholds",
-                    "  3 : Configure Platform Thresolds event",
-                    "  4 : Configure Radio Thresolds event",
+                    "  1 : Set Get Power Controller Thresholds",
+                    "  2 : Set Get Power Amplifier Thresholds",
+                    "  3 : Configure Power Controller Thresolds event",
+                    "  4 : Configure Power Amplifier Thresolds event",
                     "  5 : Test Thresolds event, (use CTR+C to exit before first Critical Event)",
-                    "  6 : Restore Radio temperature Thresolds",
-                    "  7 : Restore Platform temperature Thresolds"
+                    "  6 : Set default Power Amplifier temperature Thresolds",
+                    "  7 : Set default Power Controller temperature Thresolds"
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
@@ -99,130 +97,116 @@ static void PrintUsage()
     }
 }
 
-
-
-/*
- * Restore default Radio temperature thresholds.
+//-------------------------------------------------------------------------------------------------
+/**
+ * Set default default Power Amplifier temperature thresholds.
  */
-static void SetDefaultRadioThreshold
+//-------------------------------------------------------------------------------------------------
+static void SetDefaultPaThreshold
 (
     void
 )
 {
-
-    if ( le_temp_SetRadioThresholds(DEFAULT_RADIO_HIWARNING_THRESHOLD,
-                    DEFAULT_RADIO_HICRITICAL_THRESHOLD ) == LE_OK)
+    le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");
+    if ((le_temp_SetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", MY_PA_HI_NORMAL_THRESHOLD) != LE_OK) ||
+        (le_temp_SetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD",MY_PA_HI_CRITICAL_THRESHOLD) != LE_OK))
     {
-        LE_INFO("======== Restore Radio Threshold warning Done ========");
+        LE_INFO("======== Set default Power Amplifier Threshold Failed ========");
     }
     else
     {
-        LE_INFO("======== Restore Radio Threshold warning Failed ========");
+         LE_ASSERT(le_temp_StartMonitoring() == LE_OK);
+         LE_INFO("======== Set default Power Amplifier Threshold Done ========");
     }
 }
 
-/*
- * Restore default Platform temperature thresholds.
+//-------------------------------------------------------------------------------------------------
+/**
+ * Set default default Power Controller temperature thresholds.
  */
-static void SetDefaultPlatformThreshold
+//-------------------------------------------------------------------------------------------------
+static void SetDefaultPcThreshold
 (
     void
 )
 {
-    if ( le_temp_SetPlatformThresholds(DEFAULT_PLATFORM_LOCRITICAL_THRESHOLD,
-                    DEFAULT_PLATFORM_LOWARNING_THRESHOLD,
-                    DEFAULT_PLATFORM_HIWARNING_THRESHOLD,
-                    DEFAULT_PLATFORM_HICRITICAL_THRESHOLD) == LE_OK)
+    le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
+    if ((le_temp_SetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", MY_PC_LO_CRITICAL_THRESHOLD) != LE_OK) ||
+        (le_temp_SetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", MY_PC_LO_NORMAL_THRESHOLD) != LE_OK) ||
+        (le_temp_SetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", MY_PC_HI_NORMAL_THRESHOLD) != LE_OK) ||
+        (le_temp_SetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", MY_PC_HI_CRITICAL_THRESHOLD) != LE_OK))
     {
-        LE_INFO("======== Restore Platform Threshold Done ========");
+        LE_INFO("======== Set default Power Controller Threshold Failed ========");
     }
     else
     {
-        LE_INFO("======== Restore Platform Threshold Failed ========");
+         LE_ASSERT(le_temp_StartMonitoring() == LE_OK);
+         LE_INFO("======== Set default Power Controller Threshold Done ========");
     }
 }
-static void* DisplayTempThread(void* context)
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Thread for temperature displaying.
+ */
+//-------------------------------------------------------------------------------------------------
+static void* DisplayTempThread
+(
+    void* context
+)
 {
-    int32_t radioTemp = 0;
-    int32_t platformTemp = 0;
+    int32_t paTemp = 0;
+    int32_t pcTemp = 0;
 
     le_temp_ConnectService();
 
-    LE_INFO("Thread Start");
+    LE_INFO("DisplayTempThread Start");
 
     do
     {
-        if (PoolTemp == 2)
+        if (PoolingPause == 2)
         {
-            le_temp_GetRadioTemperature(&radioTemp);
-            le_temp_GetPlatformTemperature(&platformTemp);
-            LE_INFO("(%d) Get Radio Temp (%d), Platform Temp %d",
-                TimeCounter++, radioTemp, platformTemp);
+            le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");
+            le_temp_GetTemperature(paSensorRef, &paTemp);
+            le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
+            le_temp_GetTemperature(pcSensorRef, &pcTemp);
+            LE_INFO("(count.%d) Get Power Amplifier Temp pa.%d, Power Controller Temp pc.%d",
+                    TimeCounter++, paTemp, pcTemp);
             TimeCounter++;
         }
         sleep(1);
     }
-    while (PoolTemp > 0);
+    while (PoolingPause > 0);
 
-    // Run the event loop
     le_event_RunLoop();
     return NULL;
 }
 
-
+//-------------------------------------------------------------------------------------------------
+/**
+ * Threshold handler.
+ */
+//-------------------------------------------------------------------------------------------------
 static void ThresholdEventHandlerFunc
 (
-    le_temp_ThresholdStatus_t event,
-    void* contextPtr
+    le_temp_SensorRef_t  sensorRef,
+    const char*          thresholdPtr,
+    void*                contextPtr
 )
 {
-    switch(event)
-    {
-        case LE_TEMP_PLATFORM_HI_CRITICAL:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_PLATFORM_HI_CRITICAL");
-            sem_post(&SemaphoreCriticalEvent);
-            break;
+    char sensorName[LE_TEMP_SENSOR_NAME_MAX_BYTES] = {0};
 
-        case LE_TEMP_PLATFORM_HI_WARNING:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_PLATFORM_HI_WARNING");
-            break;
+    LE_ASSERT(le_temp_GetSensorName(sensorRef, sensorName, sizeof(sensorName)) == LE_OK);
+    LE_ASSERT(!strlen(sensorName));
 
-        case LE_TEMP_PLATFORM_LOW_CRITICAL:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_PLATFORM_LOW_CRITICAL");
-            sem_post(&SemaphoreCriticalEvent);
-            break;
-
-        case LE_TEMP_PLATFORM_LOW_WARNING:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_PLATFORM_LOW_WARNING");
-
-            break;
-
-        case LE_TEMP_PLATFORM_NORMAL:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_PLATFORM_NORMAL");
-            break;
-
-        case LE_TEMP_RADIO_HI_CRITICAL:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_RADIO_HI_CRITICAL");
-            sem_post(&SemaphoreCriticalEvent);
-            break;
-
-        case LE_TEMP_RADIO_HI_WARNING:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_RADIO_HI_WARNING");
-            break;
-
-        case LE_TEMP_RADIO_NORMAL:
-            LE_INFO("ThresholdEventHandlerFunc event LE_TEMP_RADIO_NORMAL");
-            break;
-
-        default:
-            LE_ERROR("ThresholdEventHandlerFunc event Unknown %d", event);
-            break;
-    }
+    LE_INFO("%s threshold event for %s sensor", thresholdPtr, sensorName);
 }
 
-/*
+//-------------------------------------------------------------------------------------------------
+/**
  * Event Thread
  */
+//-------------------------------------------------------------------------------------------------
 static void* EventThread(void* context)
 {
     le_temp_ThresholdEventHandlerRef_t ref;
@@ -231,11 +215,8 @@ static void* EventThread(void* context)
 
     ref = le_temp_AddThresholdEventHandler(ThresholdEventHandlerFunc, NULL);
     LE_ASSERT(ref != NULL);
-    LE_INFO("ref  0x%p", ref);
+    LE_INFO("EventThread to add Threshold event handler with ref.%p", ref);
 
-    LE_INFO("EventThread Start");
-
-    // Run the event loop
     le_event_RunLoop();
     return NULL;
 }
@@ -244,8 +225,7 @@ static void* EventThread(void* context)
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
- * - le_temp_GetRadioTemperature()
- * - le_temp_GetPlatformTemperature()
+ * - le_temp_GetTemperature()
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -253,174 +233,170 @@ static void Testle_temp_GetTemperatures
 (
 )
 {
-    int32_t temperature = 0;
-    le_result_t res = LE_FAULT;
+    int32_t temp = 0;
 
-    res = le_temp_GetRadioTemperature(&temperature);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetRadioTemperature return %d degree Celcus", temperature);
+    le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");
+    LE_ASSERT(le_temp_GetTemperature(paSensorRef, &temp) == LE_OK);
+    LE_INFO("le_temp_GetTemperature return %d degrees Celsius for Power Amplifier sensor", temp);
 
-    res = le_temp_GetPlatformTemperature(&temperature);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetPlatformTemperature return %d degree Celcus", temperature);
-
+    le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
+    LE_ASSERT(le_temp_GetTemperature(pcSensorRef, &temp) == LE_OK);
+    LE_INFO("le_temp_GetTemperature return %d degrees Celsius Power Controller sensor", temp);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
- *  - le_temp_GetPlatformThresholds()
- *  - le_temp_SetPlatformThresholds()
- *
+ *  - le_temp_GetThresholds()
+ *  - le_temp_SetThresholds()
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_temp_SetGetPlatformThresholds
+static void Testle_temp_SetGetPcThresholds
 (
+    void
 )
 {
-    le_result_t res = LE_FAULT;
-
     int32_t oldLoCriticalTemp = 0;
-    int32_t oldLoWarningTemp = 0;
-    int32_t oldHiWarningTemp = 0;
+    int32_t oldLoNormalTemp = 0;
+    int32_t oldHiNormalTemp = 0;
     int32_t oldHiCriticalTemp = 0;
 
     int32_t loCriticalTemp = 0;
-    int32_t loWarningTemp = 0;
-    int32_t hiWarningTemp = 0;
+    int32_t loNormalTemp = 0;
+    int32_t hiNormalTemp = 0;
     int32_t hiCriticalTemp = 0;
 
     int32_t refLoCriticalTemp = 0;
-    int32_t refLoWarningTemp = 0;
-    int32_t refHiWarningTemp = 0;
+    int32_t refLoNormalTemp = 0;
+    int32_t refHiNormalTemp = 0;
     int32_t refHiCriticalTemp = 0;
 
-    res = le_temp_GetPlatformThresholds(&oldLoCriticalTemp, &oldLoWarningTemp,
-                    &oldHiWarningTemp, &oldHiCriticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetPlatformThresholds(%d, %d, %d, %d)", oldLoCriticalTemp, oldLoWarningTemp,
-        oldHiWarningTemp, oldHiCriticalTemp);
+    le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLDL", &oldLoCriticalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", &oldLoNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", &oldHiNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", &oldHiCriticalTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            oldLoCriticalTemp,
+            oldLoNormalTemp,
+            oldHiNormalTemp,
+            oldHiCriticalTemp);
 
     refLoCriticalTemp = oldLoCriticalTemp + 10;
-    refLoWarningTemp = oldLoWarningTemp + 20;
-    refHiWarningTemp = oldHiWarningTemp - 20;
+    refLoNormalTemp = oldLoNormalTemp + 20;
+    refHiNormalTemp = oldHiNormalTemp - 20;
     refHiCriticalTemp = oldHiCriticalTemp -10;
 
-    LE_INFO("le_temp_SetPlatformThresholds(%d, %d, %d, %d)", refLoCriticalTemp, refLoWarningTemp,
-           refHiWarningTemp, refHiCriticalTemp);
-    res = le_temp_SetPlatformThresholds(refLoCriticalTemp, refLoWarningTemp,
-                    refHiWarningTemp, refHiCriticalTemp);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", refLoCriticalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", refLoNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", refHiNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", refHiCriticalTemp) == LE_OK);
+    LE_INFO("le_temp_SetThreshold for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            refLoCriticalTemp,
+            refLoNormalTemp,
+            refHiNormalTemp,
+            refHiCriticalTemp);
 
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", &loCriticalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", &loNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", &hiNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", &hiCriticalTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            loCriticalTemp,
+            loNormalTemp,
+            hiNormalTemp,
+            hiCriticalTemp);
 
-    res = le_temp_GetPlatformThresholds(&loCriticalTemp, &loWarningTemp,
-                    &hiWarningTemp, &hiCriticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetPlatformThresholds(%d, %d, %d, %d)", loCriticalTemp, loWarningTemp,
-        hiWarningTemp, hiCriticalTemp);
     LE_ASSERT(loCriticalTemp == refLoCriticalTemp);
-    LE_ASSERT(loWarningTemp == refLoWarningTemp);
-    LE_ASSERT(hiWarningTemp == refHiWarningTemp);
+    LE_ASSERT(loNormalTemp == refLoNormalTemp);
+    LE_ASSERT(hiNormalTemp == refHiNormalTemp);
     LE_ASSERT(hiCriticalTemp == refHiCriticalTemp);
 
-    // Test with critical threshold equal to the warning temperature.
-    LE_INFO("le_temp_SetPlatformThresholds(%d, %d, %d, %d)", refLoCriticalTemp, refLoCriticalTemp,
-        refHiWarningTemp, refHiCriticalTemp);
-    res = le_temp_SetPlatformThresholds(refLoCriticalTemp, refLoCriticalTemp,
-                    refHiWarningTemp, refHiCriticalTemp);
-    LE_ASSERT(res == LE_BAD_PARAMETER);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", oldLoCriticalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", oldLoNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", oldHiNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", oldHiCriticalTemp) == LE_OK);
+    LE_INFO("Restore Initial thresold values for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            oldLoCriticalTemp,
+            oldLoNormalTemp,
+            oldHiNormalTemp,
+            oldHiCriticalTemp);
 
-    refLoCriticalTemp = oldLoCriticalTemp + 20  ;
-    refLoWarningTemp = oldLoCriticalTemp + 10;
-    refHiWarningTemp = oldHiWarningTemp;
-    refHiCriticalTemp = oldHiCriticalTemp;
-
-    LE_INFO("le_temp_SetPlatformThresholds(%d, %d, %d, %d)", refLoCriticalTemp, refLoCriticalTemp,
-        refHiWarningTemp, refHiCriticalTemp);
-    // Test with critical threshold temperature lesser than the warning temperature.
-    res = le_temp_SetPlatformThresholds(refLoCriticalTemp, refLoCriticalTemp,
-                    refHiWarningTemp, refHiCriticalTemp);
-    LE_ASSERT(res == LE_BAD_PARAMETER);
-
-    LE_INFO("Restore Initial thresold values (%d, %d, %d, %d)",
-        oldLoCriticalTemp, oldLoWarningTemp,
-        oldHiWarningTemp, oldHiCriticalTemp);
-    res = le_temp_SetPlatformThresholds(oldLoCriticalTemp, oldLoWarningTemp,
-                    oldHiWarningTemp, oldHiCriticalTemp);
-    LE_ASSERT(res == LE_OK);
-
-    res = le_temp_GetPlatformThresholds(&loCriticalTemp, &loWarningTemp,
-                    &hiWarningTemp, &hiCriticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetPlatformThresholds(%d, %d, %d, %d)", loCriticalTemp, loWarningTemp,
-        hiWarningTemp, hiCriticalTemp);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", &loCriticalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", &loNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", &hiNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", &hiCriticalTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            loCriticalTemp,
+            loNormalTemp,
+            hiNormalTemp,
+            hiCriticalTemp);
 
     LE_ASSERT(loCriticalTemp == oldLoCriticalTemp);
-    LE_ASSERT(loWarningTemp == oldLoWarningTemp);
-    LE_ASSERT(hiWarningTemp == oldHiWarningTemp);
+    LE_ASSERT(loNormalTemp == oldLoNormalTemp);
+    LE_ASSERT(hiNormalTemp == oldHiNormalTemp);
     LE_ASSERT(hiCriticalTemp == oldHiCriticalTemp);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
- *  - le_temp_SetRadioThresholds()
- *  - le_temp_GetRadioThresholds()
+ *  - le_temp_GetThresholds()
+ *  - le_temp_SetThresholds()
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_temp_SetGetRadioThresholds
+static void Testle_temp_SetGetPaThresholds
 (
 )
 {
-    int32_t oldWarningTemp = 0;
+    int32_t oldNormalTemp = 0;
     int32_t oldCriticalTemp = 0;
-    int32_t warningTemp = 0;
+    int32_t normalTemp = 0;
     int32_t criticalTemp = 0;
-    int32_t refwarningTemp = 0;
-    int32_t refcriticalTemp = 0;
-    le_result_t res = LE_FAULT;
+    int32_t refNormalTemp = 0;
+    int32_t refCriticalTemp = 0;
 
-    res = le_temp_GetRadioThresholds(&oldWarningTemp, &oldCriticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetRadioThresholds(%d, %d)", oldWarningTemp, oldCriticalTemp);
+    le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");
 
-    refwarningTemp = oldWarningTemp - 30;
-    refcriticalTemp = oldCriticalTemp - 20;
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", &oldNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", &oldCriticalTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PA (hi_norm.%d, hi_crit.%d)",
+            oldNormalTemp,
+            oldCriticalTemp);
 
-    res = le_temp_SetRadioThresholds(refwarningTemp, refcriticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_SetThreshold(%d, %d)", refwarningTemp, refcriticalTemp);
+    refNormalTemp = oldNormalTemp - 30;
+    refCriticalTemp = oldCriticalTemp - 20;
 
-    res = le_temp_GetRadioThresholds(&warningTemp, &criticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetThreshold(%d, %d)", warningTemp, criticalTemp);
-    LE_ASSERT(warningTemp == refwarningTemp);
-    LE_ASSERT(criticalTemp == refcriticalTemp);
+    LE_ASSERT(le_temp_SetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", refNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", refCriticalTemp) == LE_OK);
+    LE_INFO("le_temp_SetThreshold for PA (hi_norm.%d, hi_crit.%d)",
+            refNormalTemp,
+            refCriticalTemp);
 
-    // Test with critical threshold equal to the warning temperature.
-    res = le_temp_SetRadioThresholds(warningTemp, warningTemp);
-    LE_INFO("le_temp_SetThreshold(%d, %d)", warningTemp, warningTemp);
-    LE_ASSERT(res == LE_BAD_PARAMETER);
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", &normalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", &criticalTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PA (hi_norm.%d, hi_crit.%d)",
+            normalTemp,
+            criticalTemp);
 
-    refwarningTemp = oldWarningTemp;
-    refcriticalTemp = oldWarningTemp - 10;
+    LE_ASSERT(normalTemp == refNormalTemp);
+    LE_ASSERT(criticalTemp == refCriticalTemp);
 
-    // Test with critical threshold temperature lesser than the warning temperature.
-    res = le_temp_SetRadioThresholds(refwarningTemp, refcriticalTemp);
-    LE_INFO("le_temp_SetThreshold(%d, %d)", refwarningTemp, refcriticalTemp);
-    LE_ASSERT(res == LE_BAD_PARAMETER);
+    LE_ASSERT(le_temp_SetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", oldNormalTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", oldCriticalTemp) == LE_OK);
+    LE_INFO("Restore Initial thresold values for PA (hi_norm.%d, hi_crit.%d)",
+            oldNormalTemp,
+            oldCriticalTemp);
 
-    LE_INFO("Restore Initial thresold values warning=%d, critical=%d",
-        oldWarningTemp, oldCriticalTemp);
 
-    res = le_temp_SetRadioThresholds(oldWarningTemp, oldCriticalTemp);
-    LE_INFO("le_temp_SetThreshold(%d, %d)", oldWarningTemp, oldCriticalTemp);
-    LE_ASSERT(res == LE_OK);
-    res = le_temp_GetRadioThresholds(&warningTemp, &criticalTemp);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetThreshold(%d, %d)", warningTemp, criticalTemp);
-    LE_ASSERT(warningTemp == oldWarningTemp);
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", &normalTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", &criticalTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PA (hi_norm.%d, hi_crit.%d)",
+            normalTemp,
+            criticalTemp);
+
+    LE_ASSERT(normalTemp == oldNormalTemp);
     LE_ASSERT(criticalTemp == oldCriticalTemp);
 }
 
@@ -428,146 +404,169 @@ static void Testle_temp_SetGetRadioThresholds
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
- *  - le_temp_GetPlatformTemperature()
- *  - le_temp_SetPlatformThresholds()
- *
+ *  - le_temp_GetTemperature()
+ *  - le_temp_SetThreshold()
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_temp_PlatformThresholdEventSetting
+static void Testle_temp_SetPcThresholdEvent
 (
+    void
 )
 {
-    int32_t warningTemperature = 0;
-    int32_t criticalTemperature = 0;
-    int32_t lowarningTemperature = 0;
-    int32_t locriticalTemperature = 0;
-
+    int32_t normTemp = 0;
+    int32_t critTemp = 0;
+    int32_t loNormTemp = 0;
+    int32_t loCritTemp = 0;
     int32_t temperature = 0;
-    le_result_t res = LE_FAULT;
 
     TimeCounter = 0;
-    PoolTemp = 1;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
+    PoolingPause = 1;
+    LE_INFO("Set PoolingPause %d", PoolingPause);
 
-    le_thread_Ref_t thread = le_thread_Create("tempTest",DisplayTempThread,NULL);
+    le_thread_Ref_t thread = le_thread_Create("tempTest", DisplayTempThread, NULL);
     le_thread_Start(thread);
 
-    LE_INFO("!!!!!!! YOU HAVE %d SECOND TO SET THE MODULE AT"
-        " THE TEMP REFERENCE !!!!!!!", WAIT_TIME);
+    LE_INFO("!!! YOU HAVE %d SECOND TO SET THE MODULE AT THE TEMP REFERENCE !!!", WAIT_TIME);
     TimeCounter = 0;
 
-    PoolTemp = 2;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
+    PoolingPause = 2;
+    LE_INFO("Set PoolingPause %d", PoolingPause);
 
     sleep(WAIT_TIME);
 
-    // Get current Platform Temperature
-    res = le_temp_GetPlatformTemperature(&temperature);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetPlatformTemperature return %d degree Celcus", temperature);
+    // Get current Power Controller Temperature
+    le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
+    LE_ASSERT(le_temp_GetTemperature(pcSensorRef, &temperature) == LE_OK);
+    LE_INFO("le_temp_GetTemperature returns %d degrees Celsius for PC", temperature);
 
-    res = le_temp_GetPlatformThresholds(&locriticalTemperature, &lowarningTemperature,
-                    &warningTemperature, &criticalTemperature);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", &loCritTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", &loNormTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", &normTemp) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", &critTemp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            loCritTemp,
+            loNormTemp,
+            normTemp,
+            critTemp);
 
-    // Set Warning Platform threshold Temperature
-    criticalTemperature = temperature + 20;
-    warningTemperature = temperature + 10;
-    lowarningTemperature = temperature - 10;
-    locriticalTemperature = temperature - 20;
+    // Set Normal Platform threshold Temperature
+    critTemp = temperature + 20;
+    normTemp = temperature + 10;
+    loNormTemp = temperature - 10;
+    loCritTemp = temperature - 20;
 
-    //criticalTemperature = DEFAULT_PLATFORM_HICRITICAL_THRESHOLD; //temperature + 20;
-    res = le_temp_SetPlatformThresholds(locriticalTemperature, lowarningTemperature,
-                    warningTemperature, criticalTemperature);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLD", loCritTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", loNormTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", normTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", critTemp) == LE_OK);
 
-    PoolTemp = 0;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
-    LE_INFO("!!!!!!! YOU MUST REBOOT THE MODULE !!!!!!!");
-    sleep(2);
+    PoolingPause = 0;
+
+    LE_ASSERT(le_temp_StartMonitoring() == LE_OK);
+
+    LE_INFO("!!! YOU MUST REBOOT THE MODULE !!!");
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
- *  - le_temp_GetradioTemperature()
- *  - le_temp_SetRadioThresholds()
- *
+ *  - le_temp_GetTemperature()
+ *  - le_temp_SetThreshold()
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_temp_RadioThresholdEventSetting
+static void Testle_temp_SetPaThresholdEvent
 (
+    void
 )
 {
-    int32_t warningTemperature = 0;
-    int32_t criticalTemperature = 0;
+    int32_t normTemp = 0;
+    int32_t critTemp = 0;
     int32_t temperature = 0;
 
-    le_result_t res = LE_FAULT;
-
     TimeCounter = 0;
-    PoolTemp = 1;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
+    PoolingPause = 1;
+    LE_INFO("Set PoolingPause %d", PoolingPause);
 
-    le_thread_Ref_t thread = le_thread_Create("tempTest",DisplayTempThread,NULL);
+    le_thread_Ref_t thread = le_thread_Create("tempTest", DisplayTempThread, NULL);
     le_thread_Start(thread);
 
-    LE_INFO("!!!!!!! YOU HAVE %d SECOND TO SET THE MODULE AT"
-           " THE TEMP REFERENCE !!!!!!!", WAIT_TIME);
+    LE_INFO("!!! YOU HAVE %d SECOND TO SET THE MODULE AT THE TEMP REFERENCE !!!", WAIT_TIME);
     TimeCounter = 0;
 
-    PoolTemp = 2;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
+    PoolingPause = 2;
+    LE_INFO("Set PoolingPause %d", PoolingPause);
 
     sleep(WAIT_TIME);
 
-    // Get current PA Tempeartaure
-    res = le_temp_GetRadioTemperature(&temperature);
-    LE_ASSERT(res == LE_OK);
-    LE_INFO("le_temp_GetRadioTemperature return %d degree Celcus", temperature);
+    // Get current PA Temperature
+    le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");
+    LE_ASSERT(le_temp_GetTemperature(paSensorRef, &temperature) == LE_OK);
+    LE_INFO("le_temp_GetTemperature returns %d degree Celsius for PA", temperature);
 
-    // Set Warning threshold Tempeartaure
-    warningTemperature = temperature + 10;
-    criticalTemperature = temperature + 20;
+    // Set Normal threshold Tempeartaure
+    normTemp = temperature + 10;
+    critTemp = temperature + 20;
 
-    LE_INFO("temperature threshold are set tole_temp_SetThreshold(%d, %d) in degree Celcus",
-        warningTemperature, criticalTemperature);
-    res = le_temp_SetRadioThresholds(warningTemperature, criticalTemperature);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", normTemp) == LE_OK);
+    LE_ASSERT(le_temp_SetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", critTemp) == LE_OK);
+    LE_INFO("Temperature threshold are set to (%d, %d) in degree Celsius",
+            normTemp,
+            critTemp);
 
-    PoolTemp = 0;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
-    LE_INFO("!!!!!!! YOU MUST REBOOT THE MODULE !!!!!!!");
-    sleep(2);
+    PoolingPause = 0;
+
+    LE_ASSERT(le_temp_StartMonitoring() == LE_OK);
+
+    LE_INFO("!!! YOU MUST REBOOT THE MODULE !!!");
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Test:
  *  - le_temp_AddThresholdEventHandler()
- *  - le_temp_SetThreshold()
- *  - le_temp_GetThreshold()
- *
+ *  - le_temp_rEMOVEThresholdEventHandler()
  */
 //--------------------------------------------------------------------------------------------------
 static void Testle_temp_ThresholdEvent
 (
+    void
 )
 {
-    //  le_temp_ThresholdEventHandlerRef_t ref;
     struct timespec ts;
     le_temp_ThresholdEventHandlerRef_t ref;
+    int32_t loNormThreshold = 0;
+    int32_t loCritThreshold = 0;
+    int32_t hiNormThreshold = 0;
+    int32_t hiCritThresholdp = 0;
+
+    le_temp_SensorRef_t pcSensorRef = le_temp_Request("POWER_CONTROLLER");
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_CRITICAL_THRESHOLDL", &loCritThreshold) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "LO_NORMAL_THRESHOLD", &loNormThreshold) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_NORMAL_THRESHOLD", &hiNormThreshold) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(pcSensorRef, "HI_CRITICAL_THRESHOLD", &hiCritThresholdp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PC (lo_crit.%d, lo_norm.%d, hi_norm.%d, hi_crit.%d)",
+            loCritThreshold,
+            loNormThreshold,
+            hiNormThreshold,
+            hiCritThresholdp);
+
+    le_temp_SensorRef_t paSensorRef = le_temp_Request("POWER_AMPLIFIER");
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_NORMAL_THRESHOLD", &hiNormThreshold) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(paSensorRef, "HI_CRITICAL_THRESHOLD", &hiCritThresholdp) == LE_OK);
+    LE_INFO("le_temp_GetThreshold for PA (hi_norm.%d, hi_crit.%d)",
+            hiNormThreshold,
+            hiCritThresholdp);
 
     TimeCounter = 0;
-    PoolTemp = 1;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
+    PoolingPause = 1;
+    LE_INFO("Set PoolingPause %d", PoolingPause);
 
     ref = le_temp_AddThresholdEventHandler(ThresholdEventHandlerFunc, NULL);
     LE_ASSERT(ref != NULL);
     LE_INFO("ref  0x%p", ref);
     le_temp_RemoveThresholdEventHandler(ref);
 
-    le_thread_Ref_t thread = le_thread_Create("tempTest",DisplayTempThread,NULL);
+    le_thread_Ref_t thread = le_thread_Create("TempTest",DisplayTempThread,NULL);
     le_thread_Start(thread);
 
     le_thread_Ref_t thread2 = le_thread_Create("EventThread",EventThread,NULL);
@@ -575,8 +574,8 @@ static void Testle_temp_ThresholdEvent
 
     sem_init(&SemaphoreCriticalEvent,0,0);
 
-    PoolTemp = 2;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
+    PoolingPause = 2;
+    LE_INFO("Set PoolingPause %d", PoolingPause);
 
     if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
     {
@@ -584,8 +583,7 @@ static void Testle_temp_ThresholdEvent
         return;
     }
 
-    LE_INFO("!!!!!!! YOU MUST WARM UP OR COLD DOWN THE"
-        " MODULE in %d second !!!!!!!", WAIT_TIME_EVENT);
+    LE_INFO("!!! YOU MUST WARM UP OR COLD DOWN THE MODULE in %d second !!!", WAIT_TIME_EVENT);
 
     ts.tv_sec += WAIT_TIME_EVENT; // Wait for 480 seconds.
     ts.tv_nsec += 0;
@@ -595,30 +593,28 @@ static void Testle_temp_ThresholdEvent
         LE_WARN("errno %d", errno);
         if ( errno == ETIMEDOUT)
         {
-            LE_WARN("Timeout for Warnig Event");
+            LE_WARN("Timeout for Warning Event");
             return;
         }
     }
 
-    PoolTemp = 0;
-    LE_INFO("Set PoolTemp %d", PoolTemp);
-    sleep(2);
+    PoolingPause = 0;
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * App init.
+ */
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    const char *  testNumberStr = NULL;
     int testNumberInt = 0;
-    int nbarg = 0;
 
-    nbarg = le_arg_NumArgs();
-    LE_INFO(" nbargument %d ", nbarg );
-    if ( nbarg  == 1 )
+    if (le_arg_NumArgs() == 1)
     {
-        testNumberStr = le_arg_GetArg(0);
-        testNumberInt = atoi(testNumberStr);
-        LE_DEBUG("Test Sequence %s => %d", testNumberStr, testNumberInt);
+        testNumberInt = atoi(le_arg_GetArg(0));
+        LE_DEBUG("Test Sequence. %d", testNumberInt);
 
         LE_INFO("======== Start temperature (%d) test sequence ========", testNumberInt);
 
@@ -634,33 +630,33 @@ COMPONENT_INIT
 
             case 1:
             {
-                LE_INFO("======== Testle_temp_SetGetPlatformThresholds Test ========");
-                Testle_temp_SetGetPlatformThresholds();
-                LE_INFO("======== Testle_temp_SetGetPlatformThresholds Test PASSED ========");
+                LE_INFO("======== Testle_temp_SetGetPcThresholds Test ========");
+                Testle_temp_SetGetPcThresholds();
+                LE_INFO("======== Testle_temp_SetGetPcThresholds Test PASSED ========");
             }
             break;
 
             case 2:
             {
-                LE_INFO("======== Testle_temp_SetGetRadioThresholds Test ========");
-                Testle_temp_SetGetRadioThresholds();
-                LE_INFO("======== Testle_temp_SetGetRadioThresholds Test PASSED ========");
+                LE_INFO("======== Testle_temp_SetGetPaThresholds Test ========");
+                Testle_temp_SetGetPaThresholds();
+                LE_INFO("======== Testle_temp_SetGetPaThresholds Test PASSED ========");
             }
             break;
 
             case 3:
             {
-                LE_INFO("======== Testle_temp_PlatformThresholdEventSetting Test ========");
-                Testle_temp_PlatformThresholdEventSetting();
-                LE_INFO("======== Testle_temp_PlatformThresholdEventSetting Test PASSED ========");
+                LE_INFO("======== Testle_temp_SetPcThresholdEvent Test ========");
+                Testle_temp_SetPcThresholdEvent();
+                LE_INFO("======== Testle_temp_SetPcThresholdEvent Test PASSED ========");
             }
             break;
 
             case 4:
             {
-                LE_INFO("======== Testle_temp_RadioThresholdEventSetting Test ========");
-                Testle_temp_RadioThresholdEventSetting();
-                LE_INFO("======== Testle_temp_RadioThresholdEventSetting Test PASSED ========");
+                LE_INFO("======== Testle_temp_SetPaThresholdEvent Test ========");
+                Testle_temp_SetPaThresholdEvent();
+                LE_INFO("======== Testle_temp_SetPaThresholdEvent Test PASSED ========");
             }
             break;
 
@@ -674,13 +670,13 @@ COMPONENT_INIT
 
             case 6:
             {
-                SetDefaultRadioThreshold();
+                SetDefaultPaThreshold();
             }
             break;
 
             case 7:
             {
-                SetDefaultPlatformThreshold();
+                SetDefaultPcThreshold();
             }
             break;
 

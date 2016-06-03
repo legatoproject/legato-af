@@ -9,7 +9,23 @@
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
-    # End-user framework documentation.
+    # End-user framework documentation
+
+    # Check if an external project needs to be handled
+    if(EXISTS $ENV{EXTERNAL_DOXYGEN_ROOT})
+        set(CMAKE_EXTERNAL_DOXYGEN_ROOT  $ENV{EXTERNAL_DOXYGEN_ROOT})
+
+        # CMake preprocesses the doxygen ".in" file and replaces variable with value
+        set(EXTERNAL_DOXYGEN_DEFINE  "EXTERNAL_DOXYGEN_DEFINE")
+        message(STATUS "Msg:External Project detected, adding to documents: " ${CMAKE_EXTERNAL_DOXYGEN_ROOT})
+
+        # Provide hook to do other build steps within the external project
+        if(EXISTS "$ENV{EXTERNAL_DOXYGEN_ROOT}/CMakeLists.txt")
+            message(STATUS "Msg:External project detected, including : $ENV{EXTERNAL_DOXYGEN_ROOT}/CMakeLists.txt")
+            include("$ENV{EXTERNAL_DOXYGEN_ROOT}/CMakeLists.txt")
+        endif()
+    endif()
+
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doxygen.user.cfg.in
                    ${CMAKE_CURRENT_BINARY_DIR}/doxygen.user.cfg
                    @ONLY

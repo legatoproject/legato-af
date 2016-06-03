@@ -1,5 +1,3 @@
-sandboxed: true
-
 executables:
 {
     voicePromptMcc2 = ( voicePromptMcc2Comp )

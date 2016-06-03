@@ -36,12 +36,7 @@ function runApps
     ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
     sleep 1
 
-    echo "##########  Clear the logs."
-    ssh root@$targetAddr "killall syslogd"
-    CheckRet
-    # Must restart syslog this way so that it gets the proper SMACK label.
-    ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
-    CheckRet
+    ClearLogs
 
     echo "##########  Run all the apps."
     for app in $appList
@@ -78,14 +73,12 @@ CheckRet
 
 
 echo "##########  Install all the apps to device '$targetAddr'."
-appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 cd "$appDir"
 CheckRet
 for app in $appList
 do
-    echo "  Installing '$appDir/$app.$targetType'"
-    instapp $app.$targetType $targetAddr
-    CheckRet
+    InstallApp ${app}
 done
 
 

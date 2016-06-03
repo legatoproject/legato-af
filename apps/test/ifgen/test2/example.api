@@ -28,7 +28,7 @@ DEFINE SOME_STRING = "some string";
 BITMASK BitMaskExample
 {
     A,      ///< first
-    B,      ///< second
+    B=0x8,  ///< second
     C       ///< third
 };
 
@@ -39,7 +39,8 @@ BITMASK BitMaskExample
 HANDLER TestAHandler
 (
     int32 x   ///< First parameter for the handler
-              ///< Second comment line
+              ///<      Second comment line is indented 5 extra spaces
+              ///<Third comment line is missing initial space
 );
 
 
@@ -48,7 +49,7 @@ HANDLER TestAHandler
  */
 EVENT TestA
 (
-    handler TestAHandler
+    TestAHandler myHandler
 );
 
 
@@ -105,6 +106,8 @@ HANDLER BugTestHandler
  *is used for
  *     testing
  * a specific bug, as well as event comment strings.
+ *
+ * Uses old-style handler, for backwards compatibility testing
  */
 EVENT BugTest
 (
@@ -130,7 +133,7 @@ FUNCTION int32 TestCallback
 (
     uint32 someParm IN,
     uint8  dataArray[5] IN,
-    handler CallbackTestHandler
+    CallbackTestHandler handler
 );
 
 /**

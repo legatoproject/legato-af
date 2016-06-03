@@ -9,8 +9,8 @@ import pyparsing
 import re
 import functools
 
-# Code generation specific files
-import codeTypes
+# Code generation specific libraries
+import common
 
 
 #-----------------------------------
@@ -35,30 +35,34 @@ DotDot = pyparsing.Literal('..').suppress()
 Equal = pyparsing.Literal('=').suppress()
 
 # Define keywords
-KeywordDirIn = pyparsing.Keyword(codeTypes.DIR_IN)
-KeywordDirOut = pyparsing.Keyword(codeTypes.DIR_OUT)
+KeywordDirIn = pyparsing.Keyword(common.DIR_IN)
+KeywordDirOut = pyparsing.Keyword(common.DIR_OUT)
 Direction = KeywordDirIn | KeywordDirOut
 
 # Define keywords for built-in types
 KeywordString = pyparsing.Keyword('string')
 KeywordFile = pyparsing.Keyword('file')
-KeywordHandlerParm = pyparsing.Keyword('handler')
 
 # Define these string literals as variables, since they are used in several places
 StringFunction = 'FUNCTION'
 StringHandler = 'HANDLER'
 StringEvent = 'EVENT'
-StringHandlerParams = 'HANDLER'
-StringAddHandlerParams = 'ADD_HANDLER'
 StringReference = 'REFERENCE'
 StringDefine = 'DEFINE'
 StringEnum = 'ENUM'
 StringBitMask = 'BITMASK'
 
+# TODO: I think these are no longer used -- need to confirm this, and remove them
+StringHandlerParams = 'HANDLER'
+StringAddHandlerParams = 'ADD_HANDLER'
+
 # Originally, the keyword was 'IMPORT', but this was changed to 'USETYPES' to better convey what
 # actually happens when importing a .api file.  Within the implementation, this is still called
 # importing.
 StringImport = 'USETYPES'
+
+# Used for error processing
+ExpectedParm = 'PARM'
 
 # Convert the string literals to pyparsing keywords
 KeywordFunction = pyparsing.Keyword(StringFunction)
@@ -85,11 +89,16 @@ KeywordList = [ StringFunction,
                 StringImport]
 
 # Define numbers
-# todo: This assumes numbers are positive; should we handle negative numbers as well?
+# todo: These definitions may need a bit of cleanup, mostly they may need better naming
 DecNumber = pyparsing.Word(pyparsing.nums)
 HexNumber = pyparsing.Combine( pyparsing.CaselessLiteral('0x') + pyparsing.Word(pyparsing.hexnums) )
 Number = HexNumber | DecNumber
 Number.setParseAction( lambda t: int(t[0],0) )
+
+# Don't combine SignedNumber into a single token, to allow space between sign and first digit
+SignedNumber = (pyparsing.Literal('-') | pyparsing.Literal('+')) + DecNumber
+Integer = HexNumber | DecNumber | SignedNumber
+Integer.setParseAction( lambda t: int(''.join(t[0:2]),0) )
 
 # Define a range expression, which gives maxSize and optionally minSize.
 # Used by arrays and strings below.
@@ -104,17 +113,10 @@ RangeExpr = ( pyparsing.Optional( (TypeIdentifier | Number)('minSize') + DotDot 
 
 
 #
-# Get the keyword at the start of the string.  This could either be:
-#  - a sequence of all-cap chars, along with underscore, or if not found,
-#  - a space-separated token.
+# Get the keyword at the start of the string.  This is a space-separated token.
 #
-PatternKeyword = re.compile("^\s*([A-Z][A-Z_]*)")
 def GetKeyword(s):
-    result = PatternKeyword.findall(s)
-    if result:
-        keyword = result[0]
-    else:
-        keyword = s.split(None, 1)[0]
+    keyword = s.split(None, 1)[0]
 
     return keyword
 
@@ -249,7 +251,13 @@ def FailFunc(s, loc, expr, err, expected=''):
         #print "Unknown keyword '%s'" % keyword
         lineno = pyparsing.lineno(loc, s)
         col = pyparsing.col(loc, s)
-        errMsg = "unknown keyword '%s'" % keyword
+
+        # If we're processing a parameter, then the keyword is actually the type, and in this
+        # case the type is unknown.
+        if expected == ExpectedParm:
+            errMsg = "unknown type '%s'" % keyword
+        else:
+            errMsg = "unknown keyword '%s'" % keyword
 
 
     # It is a real error, so print out the error message, and exit right away
@@ -279,12 +287,18 @@ def EvaluateDefinition(expr):
 
 
 
-def ProcessComment(tokens):
+ParmCommentPrefix = re.compile('^///< ?')
+
+def ProcessParmComment(tokens):
     #print tokens
     parm = tokens[0]
     if len(tokens) > 1:
-        # todo: would it be better to return a list of comment lines here?
-        parm.comment = '\n'.join(tokens[1:])
+        # Strip off the leading comment prefix, leaving the list of comments lines.
+        #
+        # Either '///< ' or '<<</' is accepted as a comment prefix. This handles the case where
+        # there is no space between the comment prefix and the following text, presumably due to
+        # a typo.  The resulting generated comments will always have a space.
+        parm.commentLines = [ ParmCommentPrefix.sub('', l) for l in tokens[1:] ]
     return parm
 
 
@@ -309,12 +323,12 @@ def MakeListExpr(content, opener='(', closer=')', allowTrailingSep=False):
     # todo: should use doxygenComment instead of pyparsing.cppStyleComment here?
     # Handle the separator between parameter expressions
     parameter_sep = content + separator + pyparsing.ZeroOrMore(pyparsing.cppStyleComment)
-    parameter_sep.setParseAction(ProcessComment)
+    parameter_sep.setParseAction(ProcessParmComment)
 
     # The last parameter does not have any trailing separator, but if a trailing separator is
     # allowed, this last parameter is optional.
     parameter = content + pyparsing.ZeroOrMore(pyparsing.cppStyleComment)
-    parameter.setParseAction(ProcessComment)
+    parameter.setParseAction(ProcessParmComment)
     if allowTrailingSep:
         parameter = pyparsing.Optional(parameter)
 
@@ -324,28 +338,30 @@ def MakeListExpr(content, opener='(', closer=')', allowTrailingSep=False):
 
 
 
-#-------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 # Parser expressions and associated processing functions
-#-------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for simple parameters
+#---------------------------------------------------------------------------------------------------
 
 def ProcessSimpleParm(tokens):
     #print tokens
 
-    # In C, an IN parameter will normally be passed by value, but there may be cases where it
-    # would be useful to pass an IN parameter by reference, e.g. if the parameter is a struct.
-    # However, structs will probably not be used that often in interfaces, so it may not really
-    # matter.
-    if tokens.direction == codeTypes.DIR_IN:
-        return codeTypes.SimpleData( tokens.name, tokens.type )
-    elif tokens.direction == codeTypes.DIR_OUT:
-        return codeTypes.PointerData( tokens.name, tokens.type, tokens.direction )
+    return codeTypes.SimpleParmData( tokens.name, tokens.type, tokens.direction )
 
 SimpleParm = ( TypeIdentifier('type')
                 + Identifier('name')
-                + pyparsing.Optional(Direction('direction'), default=codeTypes.DIR_IN) )
+                + pyparsing.Optional(Direction('direction'), default=common.DIR_IN) )
 SimpleParm.setParseAction(ProcessSimpleParm)
 
+
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for array parameters
+#---------------------------------------------------------------------------------------------------
 
 def ProcessMaxMinSize(tokens):
     # IN Arrays can have both a minSize and maxSize, whereas OUT Arrays can only have a minSize,
@@ -354,7 +370,7 @@ def ProcessMaxMinSize(tokens):
     # todo: May want to change the names of the named tokens, so I'm not mixing min/max so much.
     maxSize = None
     minSize = None
-    if tokens.direction == codeTypes.DIR_IN:
+    if tokens.direction == common.DIR_IN:
         maxSize = tokens.maxSize
         if (tokens.minSize != TokenNotSet):
             minSize = tokens.minSize
@@ -381,11 +397,11 @@ def ProcessArrayParm(tokens):
     #print tokens
 
     maxSize, minSize = ProcessMaxMinSize(tokens)
-    return codeTypes.ArrayData( tokens.name,
-                                tokens.type,
-                                tokens.direction,
-                                maxSize,
-                                minSize )
+    return codeTypes.ArrayParmData( tokens.name,
+                                    tokens.type,
+                                    tokens.direction,
+                                    maxSize,
+                                    minSize )
 
 ArrayParm = ( TypeIdentifier('type')
                 + Identifier('name')
@@ -396,6 +412,11 @@ ArrayParm = ( TypeIdentifier('type')
 ArrayParm.setParseAction(ProcessArrayParm)
 
 
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for string parameters
+#---------------------------------------------------------------------------------------------------
+
 # todo: Does it make sense to have special handling for string OUT parameters?
 #       If not, then this and the corresponding codeTypes.StringData() should
 #       be changed to only support IN parameters.
@@ -403,7 +424,7 @@ def ProcessStringParm(tokens):
     #print tokens
 
     maxSize, minSize = ProcessMaxMinSize(tokens)
-    return codeTypes.StringData( tokens.name, tokens.direction, maxSize, minSize )
+    return codeTypes.StringParmData( tokens.name, tokens.direction, maxSize, minSize )
 
 StringParm = ( KeywordString
                         + Identifier('name')
@@ -414,13 +435,15 @@ StringParm = ( KeywordString
 StringParm.setParseAction(ProcessStringParm)
 
 
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for file parameters
+#---------------------------------------------------------------------------------------------------
+
 def ProcessFileParm(tokens):
     #print tokens
 
-    if tokens.direction == codeTypes.DIR_IN:
-        return codeTypes.FileInData( tokens.name, tokens.direction )
-    elif tokens.direction == codeTypes.DIR_OUT:
-        return codeTypes.FileOutData( tokens.name, tokens.direction )
+    return codeTypes.FileParmData( tokens.name, tokens.direction )
 
 FileParm = ( KeywordFile
              + Identifier('name')
@@ -428,14 +451,20 @@ FileParm = ( KeywordFile
 FileParm.setParseAction(ProcessFileParm)
 
 
-def ProcessHandlerParm(tokens):
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for FUNCTION
+#---------------------------------------------------------------------------------------------------
+
+def ProcessTypeNameInfo(tokens):
     #print tokens
 
-    return codeTypes.HandlerTypeParmData( tokens.name )
-
-HandlerParm = ( KeywordHandlerParm
-                + Identifier('name') )
-HandlerParm.setParseAction(ProcessHandlerParm)
+    # Do the conversion to check for validity, but don't need the result. If the type is not valid,
+    # a pyparsing.ParseException will be raised.
+    # TODO: Is there a better way to do this so that we don't have to make this function part of
+    #       the public/supported interface of codeTypes.
+    if tokens.functype != TokenNotSet:
+        codeTypes.ConvertInterfaceType(tokens.functype)
 
 
 def ProcessFunc(tokens):
@@ -443,23 +472,26 @@ def ProcessFunc(tokens):
 
     f = codeTypes.FunctionData(
         tokens.funcname,
-        tokens.functype if (tokens.functype != TokenNotSet) else 'void',
+        tokens.functype if (tokens.functype != TokenNotSet) else '',
 
         # Handle the case where there are no parameters
-        tokens.body if tokens.body else [codeTypes.VoidData()],
+        tokens.body if tokens.body else [],
         tokens.comment
     )
 
     return f
 
+
 def MakeFuncExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    all_parameters = HandlerParm | StringParm | ArrayParm | FileParm | SimpleParm
+    all_parameters = StringParm | ArrayParm | FileParm | SimpleParm
+    all_parameters.setFailAction(functools.partial(FailFunc, expected=ExpectedParm))
 
     # The function type is optional but it doesn't seem work with Optional(), so need to
     # specify two separate expressions.
     typeNameInfo = ( TypeIdentifier("functype") + Identifier("funcname") ) | Identifier("funcname")
+    typeNameInfo.setParseAction(ProcessTypeNameInfo)
 
     body = MakeListExpr(all_parameters)
     # todo: Should this be ZeroOrMore comments, rather than just Optional?
@@ -476,14 +508,18 @@ def MakeFuncExpr():
 
 
 
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for HANDLER
+#---------------------------------------------------------------------------------------------------
+
 def ProcessHandlerFunc(tokens):
     #print tokens
 
-    h = codeTypes.HandlerFunctionData(
+    h = codeTypes.HandlerFuncData(
         tokens.type,
 
         # Handle the case where there are no parameters
-        tokens.body if tokens.body else [codeTypes.VoidData()],
+        tokens.body if tokens.body else [],
         tokens.comment
     )
 
@@ -493,6 +529,7 @@ def MakeHandlerExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
     allParameters = StringParm | FileParm | SimpleParm
+    allParameters.setFailAction(functools.partial(FailFunc, expected=ExpectedParm))
 
     body = MakeListExpr(allParameters)
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
@@ -507,14 +544,18 @@ def MakeHandlerExpr():
 
 
 
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for EVENT
+#---------------------------------------------------------------------------------------------------
+
 def ProcessEventFunc(tokens):
     #print tokens
 
-    f = codeTypes.AddHandlerFunctionData(
+    f = codeTypes.EventFuncData(
         tokens.eventName,
 
         # Handle the case where there are no parameters (todo: is this still necessary?)
-        tokens.body if tokens.body else [codeTypes.VoidData()],
+        tokens.body if tokens.body else [],
         tokens.comment
     )
 
@@ -523,7 +564,8 @@ def ProcessEventFunc(tokens):
 def MakeEventExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    allParameters = HandlerParm | StringParm | ArrayParm | FileParm | SimpleParm
+    allParameters = StringParm | ArrayParm | FileParm | SimpleParm
+    allParameters.setFailAction(functools.partial(FailFunc, expected=ExpectedParm))
 
     body = MakeListExpr(allParameters)
     all = ( pyparsing.Optional(pyparsing.cStyleComment)("comment")
@@ -536,6 +578,11 @@ def MakeEventExpr():
     all.setFailAction(functools.partial(FailFunc, expected=StringEvent))
     return all
 
+
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for REFERENCE
+#---------------------------------------------------------------------------------------------------
 
 def ProcessRef(tokens):
     #print tokens
@@ -557,6 +604,11 @@ def MakeRefExpr():
 
     return all
 
+
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for DEFINE
+#---------------------------------------------------------------------------------------------------
 
 def ProcessDefine(tokens):
     #print tokens
@@ -599,15 +651,19 @@ def MakeDefineExpr():
 
 
 
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for ENUM
+#---------------------------------------------------------------------------------------------------
+
 def ProcessEnumMember(tokens):
     #print tokens
 
-    r = codeTypes.EnumMemberData(tokens.name,
-                                 tokens.comment)
+    r = codeTypes.EnumMemberData( tokens.name,
+                                  tokens.value if (tokens.value != TokenNotSet) else None )
 
     return r
 
-EnumMember = Identifier('name')
+EnumMember = Identifier('name') + pyparsing.Optional( Equal + Integer('value') )
 EnumMember.setParseAction(ProcessEnumMember)
 
 
@@ -634,6 +690,11 @@ def MakeEnumExpr():
     return all
 
 
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for BITMASK
+#---------------------------------------------------------------------------------------------------
+
 def ProcessBitMask(tokens):
     #print tokens
 
@@ -657,6 +718,11 @@ def MakeBitMaskExpr():
     return all
 
 
+
+#---------------------------------------------------------------------------------------------------
+# Definitions/functions for USETYPES (i.e. import)
+#---------------------------------------------------------------------------------------------------
+
 def ProcessImport(tokens):
     #print tokens
 
@@ -678,6 +744,11 @@ def MakeImportExpr(useFailAction=True):
 
     return all
 
+
+
+#---------------------------------------------------------------------------------------------------
+# General processing / parsing related functions
+#---------------------------------------------------------------------------------------------------
 
 def ProcessDoxygen(tokens):
 
@@ -804,6 +875,16 @@ def ParseCode(codeDefn, filename):
                       importList=importList)
 
     return resultData
+
+
+#
+# Define the codeType library to use
+#
+def SetCodeTypeLibrary(codeTypeLib):
+    global codeTypes
+
+    codeTypes = codeTypeLib
+    #print 'got codeTypes'
 
 
 

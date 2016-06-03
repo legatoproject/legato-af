@@ -28,6 +28,30 @@
 #define TEST_MRC_POWER 1
 #endif
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore to synchronize threads.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t    ThreadSemaphore;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registration Thread reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t  RegistrationThreadRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Home PLMN references
+ */
+//--------------------------------------------------------------------------------------------------
+static char mccHomeStr[LE_MRC_MCC_BYTES] = {0};
+static char mncHomeStr[LE_MRC_MCC_BYTES] = {0};
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for RAT change Notifications.
@@ -217,7 +241,6 @@ static void Testle_mrc_RatHdlr()
 //--------------------------------------------------------------------------------------------------
 static void Testle_mrc_GetCurrentNetworkMccMnc()
 {
-
     le_result_t res;
     int i;
     char mccRef[LE_MRC_MCC_BYTES] = {0};
@@ -287,9 +310,7 @@ static void Testle_mrc_RegisterMode()
 {
     le_result_t res;
     int cmpRes;
-    char mccHomeStr[LE_MRC_MCC_BYTES] = {0};
     char mccStr[LE_MRC_MNC_BYTES] = {0};
-    char mncHomeStr[LE_MRC_MCC_BYTES] = {0};
     char mncStr[LE_MRC_MNC_BYTES] = {0};
     bool isManualOrigin, isManual;
 
@@ -310,6 +331,8 @@ static void Testle_mrc_RegisterMode()
 
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
+
+    LE_ASSERT(le_mrc_GetPlatformSpecificRegistrationErrorCode() == 0);
 
     sleep(5);
 
@@ -352,6 +375,117 @@ static void Testle_mrc_RegisterMode()
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(isManual == false);
     LE_INFO("le_mrc_GetRegisterMode Manual(N)");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Manual selection call back function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MyManualSelectionHandler
+(
+    le_result_t result,
+    void* contextPtr
+)
+{
+    LE_INFO("le_mrc_SetManualRegisterModeAsync return %d", result);
+    if (result == LE_OK )
+    {
+        le_sem_Post(ThreadSemaphore);
+    }
+    else
+    {
+        LE_ERROR("Failed");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread for test Register mode asynchronous .
+ *
+ * Test API: le_mrc_SetManualRegisterModeAsync() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static void* MyRegisterModeAsyncThread
+(
+    void* context   ///< Context
+)
+{
+    le_sim_ConnectService();
+    le_mrc_ConnectService();
+
+    LE_INFO("le_mrc_SetManualRegisterModeAsync mcc.%s mnc.%s",
+        mccHomeStr, mncHomeStr);
+
+    le_mrc_SetManualRegisterModeAsync(mccHomeStr, mncHomeStr, MyManualSelectionHandler, NULL);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Register mode asynchronous.
+ * This test doesn't work in roaming.!!
+ *
+ * le_mrc_SetAutomaticRegisterMode() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_RegisterModeAsync()
+{
+    char mccStr[LE_MRC_MNC_BYTES] = {0};
+    char mncStr[LE_MRC_MNC_BYTES] = {0};
+    bool isManual;
+    int cmpRes;
+    le_result_t res;
+    le_clk_Time_t time = {0,0};
+    time.sec = 120000;
+
+    res = le_mrc_SetAutomaticRegisterMode();
+    LE_ASSERT(res == LE_OK);
+
+    sleep(5);
+
+    // Get the home PLMN to compare results.
+    res = le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
+        mncHomeStr, LE_MRC_MNC_BYTES);
+    LE_ERROR_IF(res != LE_OK, "Home PLMN can't be retrieve for test case");
+    LE_ASSERT(res == LE_OK);
+    LE_INFO("Home PLMN is mcc.%s mnc.%s", mccHomeStr, mncHomeStr);
+
+    // Init the semaphore for asynchronous callback
+    ThreadSemaphore = le_sem_Create("HandlerSem",0);
+
+    RegistrationThreadRef = le_thread_Create("CallBack", MyRegisterModeAsyncThread, NULL);
+    le_thread_Start(RegistrationThreadRef);
+
+    // Wait for complete asynchronous registration
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time);
+
+    LE_ERROR_IF(res != LE_OK, "SYNC FAILED");
+    le_thread_Cancel(RegistrationThreadRef);
+    le_sem_Delete(ThreadSemaphore);
+
+    memset(mccStr,0,LE_MRC_MCC_BYTES);
+    memset(mncStr,0,LE_MRC_MNC_BYTES);
+    res = le_mrc_GetRegisterMode(&isManual, mccStr, LE_MRC_MCC_BYTES, mncStr, LE_MRC_MNC_BYTES);
+    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(isManual == true);
+    cmpRes = strcmp(mccHomeStr, mccStr);
+    LE_WARN_IF(cmpRes, "Doesn't match mccHomeStr (%s) mccStr (%s)",mccHomeStr, mccStr)
+    LE_ASSERT(cmpRes == 0);
+    cmpRes = strcmp(mncHomeStr, mncStr);
+    LE_WARN_IF(cmpRes, "Doesn't match mncHomeStr (%s) mncStr (%s)",mncHomeStr, mncStr)
+    LE_ASSERT(cmpRes == 0);
+    LE_INFO("le_mrc_GetRegisterMode %c, mcc.%s mnc.%s",
+        (isManual ? 'Y':'N'), mccStr, mncStr);
+
+    sleep(5);
+    res = le_mrc_SetAutomaticRegisterMode();
+    LE_ASSERT(res == LE_OK);
+
+    sleep(5);
 }
 //! [Register]
 
@@ -567,7 +701,105 @@ static void Testle_mrc_PerformCellularNetworkScan()
 
     le_mrc_DeleteCellularNetworkScan(scanInfoListRef);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Cellular Network Scan handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MyNetworkScanHandler
+(
+    le_mrc_ScanInformationListRef_t listRef,
+    void* contextPtr
+)
+{
+    le_mrc_ScanInformationRef_t     scanInfoRef = NULL;
+
+    LE_ASSERT(listRef != NULL);
+
+    scanInfoRef = le_mrc_GetFirstCellularNetworkScan(listRef);
+    LE_ASSERT(scanInfoRef != NULL);
+    ReadScanInfo(scanInfoRef);
+
+    while ((scanInfoRef = le_mrc_GetNextCellularNetworkScan(listRef)) != NULL)
+    {
+        ReadScanInfo(scanInfoRef);
+    }
+
+    le_mrc_DeleteCellularNetworkScan(listRef);
+
+    le_sem_Post(ThreadSemaphore);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread for asynchronous Network scan test.
+ *
+ * Test API: le_mrc_PerformCellularNetworkScanAsync() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static void* MyNetworkScanAsyncThread
+(
+    void* context   ///< See parameter documentation above.
+)
+{
+    le_mrc_RatBitMask_t bitMaskOrigin;
+
+    le_mrc_ConnectService();
+
+    // Get the current rat preference.
+    le_result_t res = le_mrc_GetRatPreferences(&bitMaskOrigin);
+    LE_ASSERT(res == LE_OK);
+
+    if ((bitMaskOrigin & LE_MRC_BITMASK_RAT_GSM) || (bitMaskOrigin == LE_MRC_BITMASK_RAT_ALL))
+    {
+        LE_INFO("Perform scan on GSM");
+        le_mrc_PerformCellularNetworkScanAsync(LE_MRC_BITMASK_RAT_GSM,
+            MyNetworkScanHandler, NULL);
+    }
+    else if (bitMaskOrigin & LE_MRC_BITMASK_RAT_UMTS)
+    {
+        LE_INFO("Perform scan on UMTS");
+        le_mrc_PerformCellularNetworkScanAsync(LE_MRC_BITMASK_RAT_UMTS,
+            MyNetworkScanHandler, NULL);
+    }
+
+    le_event_RunLoop();
+    return NULL;
+}
 //! [Network Scan]
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Cellular Network Scan asynchronous.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_PerformCellularNetworkScanAsync()
+{
+    le_result_t res;
+    le_clk_Time_t time = {0,0};
+    time.sec = 120000;
+
+    // Init the semaphore for asynchronous callback
+    ThreadSemaphore = le_sem_Create("HandlerSem",0);
+
+    RegistrationThreadRef = le_thread_Create("CallBack", MyNetworkScanAsyncThread, NULL);
+    le_thread_Start(RegistrationThreadRef);
+
+    // Wait for complete asynchronous registration
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time);
+    LE_ERROR_IF(res != LE_OK, "SYNC FAILED");
+    le_thread_Cancel(RegistrationThreadRef);
+
+    le_sem_Delete(ThreadSemaphore);
+
+    sleep(5);
+}
+
 
 //! [Band Preferences]
 //--------------------------------------------------------------------------------------------------
@@ -993,13 +1225,15 @@ static void Testle_mrc_SsHdlr()
 //--------------------------------------------------------------------------------------------------
 static void Testle_mrc_GetLocInfo()
 {
-    uint32_t  cellId;
-    uint32_t  lac;
+    uint32_t  cellId, lac;
+    uint16_t  tac;
 
     cellId = le_mrc_GetServingCellId();
     LE_INFO("le_mrc_GetServingCellId returns cellId.%d", cellId);
     lac = le_mrc_GetServingCellLocAreaCode();
     LE_INFO("le_mrc_GetServingCellLocAreaCode returns lac.%d",lac);
+    tac = le_mrc_GetServingCellLteTracAreaCode();
+    LE_INFO("le_mrc_GetServingCellLteTracAreaCode returns Tac.0x%X (%d)", tac, tac);
 }
 //! [Loc information]
 
@@ -1058,13 +1292,15 @@ static void Testle_mrc_PreferredPLMN()
                     saveMncStr[beforeIndex],
                     saveRat[beforeIndex] );
             }
-
-            LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X, GSM %c, LTE %c, UMTS %c",
-                beforeIndex, mccStr, mncStr, ratMask,
-                (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
-                (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
-                (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
-            );
+            else
+            {
+                LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X, GSM %c, LTE %c, UMTS %c",
+                    beforeIndex, mccStr, mncStr, ratMask,
+                    (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
+                    (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
+                    (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
+                );
+            }
 
             optRef = le_mrc_GetNextPreferredOperator(prefPlmnList);
 
@@ -1198,6 +1434,10 @@ COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
 
+    LE_INFO("======== PreferredPLMN Test ========");
+    Testle_mrc_PreferredPLMN();
+    LE_INFO("======== PreferredPLMN Test PASSED ========");
+
     LE_INFO("======== BandCapabilities Test ========");
     Testle_mrc_GetBandCapabilities();
     LE_INFO("======== BandCapabilities Test PASSED ========");
@@ -1244,13 +1484,13 @@ COMPONENT_INIT
     Testle_mrc_GetCurrentNetworkName();
     LE_INFO("======== GetCurrentNetworkName Test PASSED ========");
 
-    LE_INFO("======== PreferredPLMN Test ========");
-    Testle_mrc_PreferredPLMN();
-    LE_INFO("======== PreferredPLMN Test PASSED ========");
-
     LE_INFO("======== RegisterMode Test ========");
     Testle_mrc_RegisterMode();
     LE_INFO("======== RegisterMode Test PASSED ========");
+
+    LE_INFO("======== RegisterModeAsync Test ========");
+    Testle_mrc_RegisterModeAsync();
+    LE_INFO("======== RegisterModeAsync Test PASSED ========");
 
     LE_INFO("======== RatPreferences Test ========");
     Testle_mrc_RatPreferences();
@@ -1259,6 +1499,10 @@ COMPONENT_INIT
     LE_INFO("======== PerformCellularNetworkScan Test ========");
     Testle_mrc_PerformCellularNetworkScan();
     LE_INFO("======== PerformCellularNetworkScan Test PASSED ========");
+
+    LE_INFO("======== PerformCellularNetworkScanAsync Test ========");
+    Testle_mrc_PerformCellularNetworkScanAsync();
+    LE_INFO("======== PerformCellularNetworkScanAsync Test PASSED ========");
 
     LE_INFO("======== BandPreferences Test ========");
     Testle_mrc_BandPreferences();

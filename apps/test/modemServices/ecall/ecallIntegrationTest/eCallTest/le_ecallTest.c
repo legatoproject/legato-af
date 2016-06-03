@@ -331,11 +331,16 @@ void Testle_ecall_LoadMsd
     LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
 
     LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48898064, +2218092, 0) == LE_OK);
+    LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef,511,511) == LE_OK);
+    LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef,-512,-512) == LE_OK);
+
     LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_OK);
 
     // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
     LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
     LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef, 511, 511) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef, -512, -512) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0) == LE_DUPLICATE);
@@ -416,6 +421,8 @@ void Testle_ecall_StartTest
     LE_ASSERT((LastTestECallRef=le_ecall_Create()) != NULL);
 
     LE_ASSERT(le_ecall_SetMsdPosition(LastTestECallRef, true, +48898064, +2218092, 0) == LE_OK);
+    LE_ASSERT(le_ecall_SetMsdPositionN1(LastTestECallRef, 11, -22) == LE_OK);
+    LE_ASSERT(le_ecall_SetMsdPositionN2(LastTestECallRef, -33, 44) == LE_OK);
 
     LE_ASSERT(le_ecall_SetMsdPassengersCount(LastTestECallRef, 3) == LE_OK);
 

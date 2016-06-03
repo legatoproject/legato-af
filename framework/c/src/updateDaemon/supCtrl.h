@@ -47,25 +47,4 @@ void supCtrl_RestartLegato
 );
 
 
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the application's SMACK label.
- *
- * @note
- *      The app doesn't need to be installed for this function to succeed.
- *
- * @warning
- *      This function will kill the client if there is an error.
- */
-//--------------------------------------------------------------------------------------------------
-void supCtrl_GetLabel
-(
-    const char* appName,  ///< [IN]  Application name.
-    char* label,          ///< [OUT] SMACK label for the application.
-    size_t labelSize      ///< [IN]  Size of the SMACK label string.
-);
-
-
 #endif // __UPDATE_DAEMON_SUP_CTRL_H_INCLUDE_GUARD

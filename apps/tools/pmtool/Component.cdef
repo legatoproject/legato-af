@@ -1,0 +1,14 @@
+requires:
+{
+    api:
+    {
+        le_ulpm.api
+        le_bootReason.api
+        le_pm.api
+    }
+}
+
+sources:
+{
+    pmTool.c
+}

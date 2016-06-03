@@ -327,15 +327,19 @@ int cm_sim_GetSimInfo
     void
 )
 {
-    int ret;
+    int ret = EXIT_SUCCESS;
 
     cm_sim_GetCardType();
 
-    ret = cm_sim_GetSimIccid();
-    LE_ASSERT(ret == EXIT_SUCCESS);
+    if (cm_sim_GetSimIccid() != EXIT_SUCCESS)
+    {
+        ret = EXIT_FAILURE;
+    }
 
-    ret = cm_sim_GetNetworkOperator();
-    LE_ASSERT(ret == EXIT_SUCCESS);
+    if (cm_sim_GetNetworkOperator() != EXIT_SUCCESS)
+    {
+        ret = EXIT_FAILURE;
+    }
 
     cm_sim_GetSimImsi();
 

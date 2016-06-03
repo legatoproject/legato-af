@@ -7,11 +7,10 @@
 
 # Configure appropriate QMI platform adaptor build variables.
 #   Sources:
-ifndef LEGATO_PROPRIETARY_QCT_DIR
-  export LEGATO_PROPRIETARY_QCT_DIR := $(LEGATO_ROOT)/proprietary/qct/mdm9x15
-endif
 
-export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/mdm9x15/le_pa_audio
+export LEGATO_QMI_MODEM_PA_SRC := $(MODEM_PA_DIR)/qmi/components/le_pa/mdm9x15/le_pa
+export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/qmi/components/le_pa_audio/mdm9x15/le_pa_audio
+export LEGATO_QMI_UTIL_SRC = $(PROPRIETARY_UTIL_DIR)/swiQmi/mdm9x15/swiQmi
 
 include targetDefs.mdm9xxx
 

@@ -1,10 +1,4 @@
-//--------------------------------------------------------------------------------------------------
-/** @file execInApp/app.h
- *
- * Temporary solution until command apps are available.
- *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- */
+
 #ifndef LEGATO_SRC_APP_INCLUDE_GUARD
 #define LEGATO_SRC_APP_INCLUDE_GUARD
 
@@ -45,6 +39,19 @@ typedef enum
                             ///  application process is running.
 }
 app_State_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process state.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    APP_PROC_STATE_STOPPED, ///< The application process is not running.
+    APP_PROC_STATE_RUNNING  ///< The application process is running.
+}
+app_ProcState_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -91,6 +98,34 @@ void app_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets an application's name.
+ *
+ * @return
+ *      The application's name.
+ */
+//--------------------------------------------------------------------------------------------------
+const char* app_GetName
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets an application's working directory.
+ *
+ * @return
+ *      The application's sandbox path.
+ */
+//--------------------------------------------------------------------------------------------------
+const char* app_GetWorkingDir
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets an application's UID.
  *
  * @return
@@ -119,13 +154,13 @@ gid_t app_GetGid
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets an application's installation directory path.
+ * Check to see if the application is sandboxed or not.
  *
  * @return
- *      The application's install directory path.
+ *      True if the app is sandboxed, false if not.
  */
 //--------------------------------------------------------------------------------------------------
-const char* app_GetInstallDirPath
+bool app_GetIsSandboxed
 (
     app_Ref_t appRef                    ///< [IN] The application reference.
 );
@@ -133,13 +168,13 @@ const char* app_GetInstallDirPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets an application's sandbox path.
+ * Gets an application's configuration path.
  *
  * @return
- *      The path.
+ *      The application's configuration path.
  */
 //--------------------------------------------------------------------------------------------------
-const char* app_GetSandboxPath
+const char* app_GetConfigPath
 (
     app_Ref_t appRef                    ///< [IN] The application reference.
 );

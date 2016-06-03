@@ -13,7 +13,7 @@
 #define LEGATO_AVC_SERVER_INCLUDE_GUARD
 
 #include "legato.h"
-
+#include "assetData.h"
 
 //--------------------------------------------------------------------------------------------------
 // Definitions.
@@ -89,7 +89,7 @@ LE_SHARED void avcServer_ReportInstallProgress
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void avcServer_RegistrationUpdate
 (
-    void
+    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
 );
 
 //--------------------------------------------------------------------------------------------------

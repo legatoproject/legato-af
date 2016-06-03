@@ -256,13 +256,44 @@ rlim_t resLim_GetSandboxedAppTmpfsLimit
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the specified Linux resource limit value for a process.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetRLimitValue
+(
+    pid_t pid,                      // The pid of the process to set the limit for.
+    const char* resourceName,       // The resource name in the config tree.
+    int resourceID,                 // The resource ID that setrlimit() expects.
+    int value                       // The value for this resource limit.
+)
+{
+    // Check that the limit does not exceed the maximum.
+    if ( (resourceID == RLIMIT_NOFILE) && (value > MAX_LIMIT_FILE_DESCRIPTORS) )
+    {
+        LE_ERROR("Resource limit %s is greater than the maximum allowed limit (%d).  Using the \
+maximum allowed value.", resourceName, MAX_LIMIT_FILE_DESCRIPTORS);
+
+        value = MAX_LIMIT_FILE_DESCRIPTORS;
+    }
+
+    // Hard and soft limits are the same.
+    struct rlimit lim = {value, value};
+
+    LE_INFO("Setting resource limit %s to value %d.", resourceName, (int)lim.rlim_max);
+    LE_ERROR_IF(prlimit(pid, resourceID, &lim, NULL) == -1,
+                "Could not set resource limit %s (%d).  %m.", resourceName, resourceID);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets the specified Linux resource limit (rlimit) for the application/process.
  */
 //--------------------------------------------------------------------------------------------------
 static void SetRLimit
 (
     pid_t pid,                      // The pid of the process to set the limit for.
-    le_cfg_IteratorRef_t procCfg,   // The iterator for the process.  This is a iterator is owned by
+    le_cfg_IteratorRef_t procCfg,   // The iterator for the process.  This iterator is owned by
                                     // the caller and should not be deleted in this function.
     const char* resourceName,       // The resource name in the config tree.
     int resourceID,                 // The resource ID that setrlimit() expects.
@@ -272,21 +303,7 @@ static void SetRLimit
     // Get the limit value from the config tree.
     int limit = GetCfgResourceLimit(procCfg, resourceName, defaultValue);
 
-    // Check that the limit does not exceed the maximum.
-    if ( (resourceID == RLIMIT_NOFILE) && (limit > MAX_LIMIT_FILE_DESCRIPTORS) )
-    {
-        LE_ERROR("Resource limit %s is greater than the maximum allowed limit (%d).  Using the \
-maximum allowed value.", resourceName, MAX_LIMIT_FILE_DESCRIPTORS);
-
-        limit = MAX_LIMIT_FILE_DESCRIPTORS;
-    }
-
-    // Hard and soft limits are the same.
-    struct rlimit lim = {limit, limit};
-
-    LE_INFO("Setting resource limit %s to value %d.", resourceName, (int)lim.rlim_max);
-    LE_ERROR_IF(prlimit(pid, resourceID, &lim, NULL) == -1,
-                "Could not set resource limit %s (%d).  %m.", resourceName, resourceID);
+    SetRLimitValue(pid, resourceName, resourceID, limit);
 }
 
 
@@ -379,40 +396,74 @@ le_result_t resLim_SetProcLimits
     pid_t pid = proc_GetPID(procRef);
 
     // Create an iterator for this process.
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(proc_GetConfigPath(procRef));
+    if (proc_GetConfigPath(procRef) != NULL)
+    {
+        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(proc_GetConfigPath(procRef));
 
-    // Set the process resource limits.
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_CORE_DUMP_FILE_BYTES, RLIMIT_CORE,
-              DEFAULT_LIMIT_MAX_CORE_DUMP_FILE_BYTES);
+        // Set the process resource limits.
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_CORE_DUMP_FILE_BYTES, RLIMIT_CORE,
+                  DEFAULT_LIMIT_MAX_CORE_DUMP_FILE_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_BYTES, RLIMIT_FSIZE,
-              DEFAULT_LIMIT_MAX_FILE_BYTES);
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_BYTES, RLIMIT_FSIZE,
+                  DEFAULT_LIMIT_MAX_FILE_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_LOCKED_MEMORY_BYTES, RLIMIT_MEMLOCK,
-              DEFAULT_LIMIT_MAX_LOCKED_MEMORY_BYTES);
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_LOCKED_MEMORY_BYTES, RLIMIT_MEMLOCK,
+                  DEFAULT_LIMIT_MAX_LOCKED_MEMORY_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_DESCRIPTORS, RLIMIT_NOFILE,
-              DEFAULT_LIMIT_MAX_FILE_DESCRIPTORS);
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_FILE_DESCRIPTORS, RLIMIT_NOFILE,
+                  DEFAULT_LIMIT_MAX_FILE_DESCRIPTORS);
 
-    // Set the application limits.
-    //
-    // @note Even though these are application limits they still need to be set for the process
-    //       because Linux rlimits are applied to individual processes.
+        // Set the application limits.
+        //
+        // @note Even though these are application limits they still need to be set for the process
+        //       because Linux rlimits are applied to individual processes.
 
-    // Goto the application config path from the process config path.
-    le_cfg_GoToParent(procCfg);
-    le_cfg_GoToParent(procCfg);
+        // Goto the application config path from the process config path.
+        le_cfg_GoToParent(procCfg);
+        le_cfg_GoToParent(procCfg);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_MQUEUE_BYTES, RLIMIT_MSGQUEUE,
-              DEFAULT_LIMIT_MAX_MQUEUE_BYTES);
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_MQUEUE_BYTES, RLIMIT_MSGQUEUE,
+                  DEFAULT_LIMIT_MAX_MQUEUE_BYTES);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_THREADS, RLIMIT_NPROC,
-              DEFAULT_LIMIT_MAX_THREADS);
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_THREADS, RLIMIT_NPROC,
+                  DEFAULT_LIMIT_MAX_THREADS);
 
-    SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_QUEUED_SIGNALS, RLIMIT_SIGPENDING,
-              DEFAULT_LIMIT_MAX_QUEUED_SIGNALS);
+        SetRLimit(pid, procCfg, CFG_NODE_LIMIT_MAX_QUEUED_SIGNALS, RLIMIT_SIGPENDING,
+                  DEFAULT_LIMIT_MAX_QUEUED_SIGNALS);
 
-    le_cfg_CancelTxn(procCfg);
+        le_cfg_CancelTxn(procCfg);
+    }
+    else
+    {
+        // This process has no config so just use the default limits.
+
+        // Set the process resource limits.
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_CORE_DUMP_FILE_BYTES, RLIMIT_CORE,
+                        DEFAULT_LIMIT_MAX_CORE_DUMP_FILE_BYTES);
+
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_FILE_BYTES, RLIMIT_FSIZE,
+                        DEFAULT_LIMIT_MAX_FILE_BYTES);
+
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_LOCKED_MEMORY_BYTES, RLIMIT_MEMLOCK,
+                        DEFAULT_LIMIT_MAX_LOCKED_MEMORY_BYTES);
+
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_FILE_DESCRIPTORS, RLIMIT_NOFILE,
+                        DEFAULT_LIMIT_MAX_FILE_DESCRIPTORS);
+
+        // Set the application limits.
+        //
+        // @note Even though these are application limits they still need to be set for the process
+        //       because Linux rlimits are applied to individual processes.
+
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_MQUEUE_BYTES, RLIMIT_MSGQUEUE,
+                        DEFAULT_LIMIT_MAX_MQUEUE_BYTES);
+
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_THREADS, RLIMIT_NPROC,
+                        DEFAULT_LIMIT_MAX_THREADS);
+
+        SetRLimitValue(pid, CFG_NODE_LIMIT_MAX_QUEUED_SIGNALS, RLIMIT_SIGPENDING,
+                        DEFAULT_LIMIT_MAX_QUEUED_SIGNALS);
+    }
 
     // Add the process to its app's cgroups in each of the cgroup subsystems.
     cgrp_SubSys_t subSys = 0;

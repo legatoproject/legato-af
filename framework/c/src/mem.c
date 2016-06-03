@@ -44,7 +44,6 @@
  */
 #include "legato.h"
 #include "mem.h"
-#include "spy.h"
 #include "limit.h"
 
 #define USE_GUARD_BAND
@@ -116,16 +115,16 @@ MemBlock_t;
  * within this process.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t ListOfPools = LE_DLS_LIST_INIT;
+static le_dls_List_t PoolList = LE_DLS_LIST_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * A counter that increments every time a change is made to ListOfPools.
+ * A counter that increments every time a change is made to PoolList.
  */
 //--------------------------------------------------------------------------------------------------
-static size_t ListOfPoolsChgCnt = 0;
-static size_t* ListOfPoolsChgCntRef = &ListOfPoolsChgCnt;
+static size_t PoolListChangeCount = 0;
+static size_t* PoolListChangeCountRef = &PoolListChangeCount;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -142,6 +141,34 @@ static le_mem_PoolRef_t SubPoolsPool;
  */
 //--------------------------------------------------------------------------------------------------
 static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the memory pool list; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_dls_List_t* mem_GetPoolList
+(
+    void
+)
+{
+    return (&PoolList);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the memory pool list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** mem_GetPoolListChgCntRef
+(
+    void
+)
+{
+    return (&PoolListChangeCountRef);
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -450,7 +477,7 @@ static void VerifyUniquenessOfName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_dls_Link_t* poolLinkPtr = le_dls_Peek(&ListOfPools);
+    le_dls_Link_t* poolLinkPtr = le_dls_Peek(&PoolList);
 
     while (poolLinkPtr)
     {
@@ -463,7 +490,7 @@ static void VerifyUniquenessOfName
             break;
         }
 
-        poolLinkPtr = le_dls_PeekNext(&ListOfPools, poolLinkPtr);
+        poolLinkPtr = le_dls_PeekNext(&PoolList, poolLinkPtr);
     }
 }
 
@@ -489,12 +516,6 @@ void mem_Init
     // Create a memory for all sub-pools.
     SubPoolsPool = le_mem_CreatePool("SubPools", sizeof(MemPool_t));
     le_mem_ExpandPool(SubPoolsPool, DEFAULT_SUB_POOLS_POOL_SIZE);
-
-    // Pass the list of mem pools to the Inspect tool.
-    spy_SetListOfPools(&ListOfPools);
-
-    // Pass the change counter of list of mem pools to the Inspect tool.
-    spy_SetListOfPoolsChgCntRef(&ListOfPoolsChgCntRef);
 }
 
 
@@ -623,8 +644,8 @@ le_mem_PoolRef_t _le_mem_CreatePool
     VerifyUniquenessOfName(newPool);
 
     // Add the new pool to the list of pools.
-    ListOfPoolsChgCnt++;
-    le_dls_Queue(&ListOfPools, &(newPool->poolLink));
+    PoolListChangeCount++;
+    le_dls_Queue(&PoolList, &(newPool->poolLink));
 
     Unlock();
 
@@ -1210,8 +1231,8 @@ le_mem_PoolRef_t _le_mem_FindPool
     Lock();
 
     // Search all pools except for the first one because the first pool is always the sub-pools pool.
-    le_dls_Link_t* poolLinkPtr = le_dls_Peek(&ListOfPools);
-    poolLinkPtr = le_dls_PeekNext(&ListOfPools, poolLinkPtr);
+    le_dls_Link_t* poolLinkPtr = le_dls_Peek(&PoolList);
+    poolLinkPtr = le_dls_PeekNext(&PoolList, poolLinkPtr);
 
     while (poolLinkPtr)
     {
@@ -1223,7 +1244,7 @@ le_mem_PoolRef_t _le_mem_FindPool
             break;
         }
 
-        poolLinkPtr = le_dls_PeekNext(&ListOfPools, poolLinkPtr);
+        poolLinkPtr = le_dls_PeekNext(&PoolList, poolLinkPtr);
     }
 
     Unlock();
@@ -1273,8 +1294,8 @@ le_mem_PoolRef_t _le_mem_CreateSubPool
     VerifyUniquenessOfName(subPool);
 
     // Add the sub-pool to the list of pools.
-    ListOfPoolsChgCnt++;
-    le_dls_Queue(&ListOfPools, &(subPool->poolLink));
+    PoolListChangeCount++;
+    le_dls_Queue(&PoolList, &(subPool->poolLink));
 
     Unlock();
 
@@ -1326,8 +1347,8 @@ void le_mem_DeleteSubPool
     superPool->numBlocksInUse -= numBlocks;
 
     // Remove the sub-pool from the list of sub-pools.
-    ListOfPoolsChgCnt++;
-    le_dls_Remove(&ListOfPools, &(subPool->poolLink));
+    PoolListChangeCount++;
+    le_dls_Remove(&PoolList, &(subPool->poolLink));
 
     Unlock();
 

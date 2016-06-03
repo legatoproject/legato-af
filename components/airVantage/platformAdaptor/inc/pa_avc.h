@@ -73,9 +73,14 @@ typedef enum
     PA_AVC_OPTYPE_READ = 0x01,
     PA_AVC_OPTYPE_DISCOVER = 0x02,
     PA_AVC_OPTYPE_WRITE = 0x04,
+    PA_AVC_OPTYPE_WRITE_ATTR = 0x08,
     PA_AVC_OPTYPE_EXECUTE = 0x10,
     PA_AVC_OPTYPE_CREATE = 0x20,
-    PA_AVC_OPTYPE_DELETE = 0x40
+    PA_AVC_OPTYPE_DELETE = 0x40,
+    PA_AVC_OPTYPE_OBSERVE = 0x80,
+    PA_AVC_OPTYPE_NOTIFY = 0x81,
+    PA_AVC_OPTYPE_OBSERVE_CANCEL = 0x82,
+    PA_AVC_OPTYPE_OBSERVE_RESET = 0x83
 }
 pa_avc_OpType_t;
 
@@ -94,7 +99,8 @@ typedef enum
     PA_AVC_OPERR_OBJ_UNSUPPORTED = 0x02,
     PA_AVC_OPERR_OBJ_INST_UNAVAIL = 0x03,
     PA_AVC_OPERR_RESOURCE_UNSUPPORTED = 0x04,
-    PA_AVC_OPERR_INTERNAL = 0x06
+    PA_AVC_OPERR_INTERNAL = 0x06,
+    PA_AVC_OPERR_OVERFLOW = 0x7
 }
 pa_avc_OpErr_t;
 
@@ -177,6 +183,81 @@ LE_SHARED le_result_t pa_avc_StartSession
 );
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start a timer to watch the activity from the modem.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void  pa_avc_StartModemActivityTimer
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable user agreement for download and install
+ *
+ * @return
+ *     void
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_avc_EnableUserAgreement
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fill in the data structure required for lwm2m notify operation.
+ *
+ * @return
+ *      - Reference to lwm2m operation
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED pa_avc_LWM2MOperationDataRef_t pa_avc_CreateOpData
+(
+    char* prefixPtr,
+    int objId,
+    int objInstId,
+    int resourceId,
+    pa_avc_OpType_t opType,
+    uint8_t* tokenPtr,
+    uint8_t tokenLength
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Notify the server when the asset value changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_avc_NotifyChange
+(
+    pa_avc_LWM2MOperationDataRef_t notifyOpRef, ///< [IN] Reference to LWM2M operation
+    uint8_t* respPayloadPtr,                    ///< [IN] Payload, or NULL if no payload
+    size_t respPayloadNumBytes                  ///< [IN] Payload size in bytes, or 0 if no payload.
+                                                ///       If payload is a string, this is strlen()
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Respond to the read call back operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_avc_ReadCallBackReport
+(
+    pa_avc_LWM2MOperationDataRef_t opRef,       ///< [IN] Reference to LWM2M operation
+    uint8_t* respPayloadPtr,                    ///< [IN] Payload, or NULL if no payload
+    size_t respPayloadNumBytes                  ///< [IN] Payload size in bytes, or 0 if no payload.
+                                                ///       If payload is a string, this is strlen()
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Stop a session with the AirVantage server
@@ -249,6 +330,32 @@ LE_SHARED void pa_avc_GetOpPayload
     const uint8_t** payloadPtrPtr,          ///< [OUT] Pointer to payload, or NULL if no payload
     size_t* payloadNumBytesPtr              ///< [OUT] Payload size in bytes, or 0 if no payload.
                                             ///        If payload is a string, this is strlen()
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the token for the given LWM2M Operation
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_avc_GetOpToken
+(
+    pa_avc_LWM2MOperationDataRef_t opRef,   ///< [IN] Reference to LWM2M operation
+    const uint8_t** tokenPtrPtr,            ///< [OUT] Pointer to token, or NULL if no token
+    uint8_t* tokenLengthPtr                 ///< [OUT] Token Length bytes, or 0 if no token
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is this a request for reading the first block?
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED bool pa_avc_IsFirstBlock
+(
+    pa_avc_LWM2MOperationDataRef_t opRef   ///< [IN] Reference to LWM2M operation
 );
 
 
@@ -412,5 +519,128 @@ LE_SHARED void pa_avc_SetModemActivityTimeout
     int timeout     ///< [IN] Timeout
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the last http status.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED uint16_t pa_avc_GetHttpStatus
+(
+    void
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the session type.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_avc_SessionType_t pa_avc_GetSessionType
+(
+    void
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read APN configuration.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if there is any error while reading.
+ *      - LE_OVERFLOW if the buffer provided is too small.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_GetApnConfig
+(
+    char* apnName,
+    size_t apnNameNumElements,
+    char* userName,
+    size_t uNameNumElements,
+    char* userPwd,
+    size_t userPwdNumElements
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to write APN configuration.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to write the APN configuration.
+ *      - LE_OVERFLOW if one of the input strings is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_SetApnConfig
+(
+    const char* apnName,
+    const char* userName,
+    const char* userPwd
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the retry timers.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to read the timers.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_GetRetryTimers
+(
+    uint16_t* timerValuePtr,
+    size_t* numTimers
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the retry timers.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to write the timers.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_SetRetryTimers
+(
+    const uint16_t* timerValuePtr,
+    size_t numTimers
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the polling timer.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if not available
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_GetPollingTimer
+(
+    uint32_t* pollingTimerPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the polling timer.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to read the timers.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_SetPollingTimer
+(
+    uint32_t pollingTimerPtr
+);
 
 #endif // LEGATO_PA_AVC_INCLUDE_GUARD

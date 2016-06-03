@@ -1,0 +1,155 @@
+/** @page platformConstraintsTemperature Temperature monitoring
+
+The AR755x, AR8652, and WP8548 platforms support two main sensors.
+
+The dedicated string to request a sensor with le_temp_Request() function are \b "POWER_CONTROLLER"
+and \b "POWER_AMPLIFIER".
+
+<b>"POWER_AMPLIFIER" sensor</b>
+
+Two Thresholds can be set to notify the "POWER_AMPLIFIER" sensor state:
+ - \b "HI_CRITICAL_THRESHOLD"
+ - \b "HI_NORMAL_THRESHOLD"
+
+These are the strings to use with the le_temp_SetThreshold() and le_temp_GetThreshold() functions.
+
+Then, the "POWER_AMPLIFIER" sensor state will be notified with the following events (always a
+string format):
+ - \b "HI_CRITICAL_EVENT"
+ - \b "HI_WARNING_EVENT"
+ - \b "NORMAL_EVENT"
+
+if the "POWER_AMPLIFIER" sensor temperature reaches the:
+ - "HI_CRITICAL_THRESHOLD" threshold, a "HI_CRITICAL_EVENT" event occurs.
+ - "HI_NORMAL_THRESHOLD" threshold but still lower than "HI_CRITICAL_THRESHOLD" threshold, a
+   "HI_WARNING_EVENT" event occurs.
+
+@verbatim
+      ^
+      |           --> "HI_CRITICAL_EVENT"
+      |
+ "HI_CRITICAL_THRESHOLD"
+      |
+      ^           --> "HI_WARNING_EVENT"
+      |
+ "HI_NORMAL_THRESHOLD"
+      |
+      ^
+      |
+@endverbatim
+
+if the "POWER_AMPLIFIER" sensor temperature decreases below the:
+- "HI_CRITICAL_THRESHOLD" - 3°C threshold but still higher than "HI_NORMAL_THRESHOLD" threshold, a
+  "HI_WARNING_EVENT" event occurs.
+- "HI_NORMAL_THRESHOLD" - 3°C threshold, a "NORMAL_EVENT" event occurs.
+
+@verbatim
+      |
+      v
+      |
+ "HI_CRITICAL_THRESHOLD" - 3°C
+      |
+      v           --> "HI_WARNING_EVENT"
+      |
+ "HI_NORMAL_THRESHOLD" - 3°C
+      |
+      |           --> "NORMAL_EVENT"
+      v
+@endverbatim
+
+@warning
+ - A minimum gap of 2°C must be set between the thresholds.
+
+
+<b>"POWER_CONTROLLER" sensor</b>
+
+Four Thresholds can be set to notify the "POWER_CONTROLLER" sensor state:
+ - \b "HI_CRITICAL_THRESHOLD"
+ - \b "HI_NORMAL_THRESHOLD"
+ - \b "LO_NORMAL_THRESHOLD"
+ - \b "LO_CRITICAL_THRESHOLD"
+
+These are the strings to use with the le_temp_SetThreshold() and le_temp_GetThreshold() functions.
+
+Then, the "POWER_CONTROLLER" sensor state will be notified with the following events (always a
+string format):
+ - \b "HI_CRITICAL_EVENT"
+ - \b "HI_WARNING_EVENT"
+ - \b "NORMAL_EVENT"
+ - \b "LO_WARNING_EVENT"
+ - \b "LO_CRITICAL_EVENT"
+
+if the "POWER_CONTROLLER" sensor temperature reaches the:
+ - "LO_CRITICAL_THRESHOLD" threshold, a "LO_WARNING_EVENT" event occurs.
+ - "LO_NORMAL_THRESHOLD" + 3°C threshold but still lower than "HI_NORMAL_THRESHOLD" threshold, a
+   "NORMAL_EVENT" event occurs.
+ - "HI_NORMAL_THRESHOLD" threshold but still lower than "HI_CRITICAL_THRESHOLD" threshold, a
+   "HI_WARNING_EVENT" event occurs
+ - "HI_CRITICAL_THRESHOLD" threshold, a "HI_CRITICAL_EVENT" event occurs.
+
+@verbatim
+      ^
+      |           --> "HI_CRITICAL_EVENT"
+      |
+ "HI_CRITICAL_THRESHOLD"
+      |
+      ^           --> "HI_WARNING_EVENT"
+      |
+ "HI_NORMAL_THRESHOLD"
+      |
+      ^           --> "NORMAL_EVENT"
+      |
+ "LO_NORMAL_THRESHOLD" + 3°C
+      |
+      ^           --> "LO_WARNING_EVENT"
+      |
+ "LO_CRITICAL_THRESHOLD"
+      |
+      ^
+      |
+@endverbatim
+
+if the "POWER_CONTROLLER" sensor temperature decreases below the:
+ - "HI_CRITICAL_THRESHOLD" threshold, a "HI_WARNING_EVENT" event occurs.
+ - "HI_NORMAL_THRESHOLD" - 3°C threshold but still higher than "LO_NORMAL_THRESHOLD" threshold, a
+   "NORMAL_EVENT" event occurs.
+ - "LO_NORMAL_THRESHOLD" threshold but still higher than "LO_CRITICAL_THRESHOLD" threshold, a
+   "LO_WARNING_EVENT" event occurs.
+ - "LO_CRITICAL_THRESHOLD" threshold, a "LO_CRITICAL_EVENT" event occurs.
+
+@verbatim
+      |
+      v
+      |
+ "HI_CRITICAL_THRESHOLD"
+      |
+      v           --> "HI_WARNING_EVENT"
+      |
+ "HI_NORMAL_THRESHOLD" - 3°C
+      |
+      v           --> "NORMAL_EVENT"
+      |
+ "LO_NORMAL_THRESHOLD"
+      |
+      v           --> "LO_WARNING_EVENT"
+      |
+ "LO_CRITICAL_THRESHOLD"
+      |
+      |           --> "LO_CRITICAL_EVENT"
+      v
+@endverbatim
+
+@warning
+ - A minimum gap of 4°C must be set between "LO_NORMAL_THRESHOLD" and "HI_NORMAL_THRESHOLD".
+ - A minimum gap of 2°C must be set between other thresholds.
+
+
+@note Please refer to the Product Technical specification document of your platform for further
+details.
+
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

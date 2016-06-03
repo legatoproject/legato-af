@@ -2,13 +2,19 @@
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #*******************************************************************************
 
-mkapp(  secStoreTest1.adef
+mkapp(  secStoreTest1a.adef
         DEPENDS
             ## TODO: Remove all this when the mk tools do dependency checking.
             ${LEGATO_ROOT}/interfaces/le_secStore.api
-            secStoreTest1/*
+            secStoreTest1a/*
      )
 
+mkapp(  secStoreTest1b.adef
+        DEPENDS
+            ## TODO: Remove all this when the mk tools do dependency checking.
+            ${LEGATO_ROOT}/interfaces/le_secStore.api
+            secStoreTest1b/*
+     )
 
 mkapp(  secStoreTest2.adef
         DEPENDS

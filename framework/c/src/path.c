@@ -470,3 +470,37 @@ bool le_path_IsEquivalent
 
     return false;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a path has a particular trailing substring. For example, path
+ *
+ * pathPtr = /path/to/file.txt
+ *
+ * contains a trailing substring
+ *
+ * extPtr = .txt
+ *
+ * @return
+ *      pointer to existing trailing susbstring within path, or
+ *      NULL otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+char *le_path_FindTrailing
+(
+    const char *pathPtr,            ///< [IN] Path string.
+    const char *extPtr              ///< [IN] Trailing substring.
+)
+{
+    char *p;
+    // Check parameters.
+    LE_ASSERT((pathPtr != NULL) && (extPtr != NULL));
+
+    // Walk through the path and compare with extension.
+    // Note: strcmp() only compares to first mismatch, so this should be fast.
+    for (p = (char*)pathPtr; *p != '\0' && strcmp(p, extPtr); p++);
+
+    return (*p == '\0' ? NULL : p);
+}
+

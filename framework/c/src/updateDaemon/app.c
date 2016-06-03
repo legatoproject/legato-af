@@ -32,6 +32,10 @@
 #include "system.h"
 #include "supCtrl.h"
 #include "instStat.h"
+#include "installer.h"
+#include "smack.h"
+#include "sysPaths.h"
+#include "fileSystem.h"
 
 
 static const char* InstallHookScriptPath = "/legato/systems/current/bin/install-hook";
@@ -196,6 +200,201 @@ static void ExecPostinstallHook
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Recursively sets the permissions for all files and directories in application read-only directory.
+ *
+ * returns LE_OK if successful, LE_FAULT if fails.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetSmackPermReadOnlyDir
+(
+    const char* appMd5Ptr,  ///< [IN] Hash ID of the application to install.
+    const char* appNamePtr  ///< [IN] Name of the application to install.
+)
+{
+    char fileLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+
+    // Get file label
+    smack_GetAppLabel(appNamePtr, fileLabel, sizeof(fileLabel));
+
+    char readOnlyPath[LIMIT_MAX_PATH_BYTES] = "";
+    int n = snprintf(readOnlyPath,
+                 sizeof(readOnlyPath),
+                 "/legato/apps/%s/read-only",
+                 appMd5Ptr);
+    LE_ASSERT(n < sizeof(readOnlyPath));
+
+    // Open the directory tree to search.
+    char* pathArrayPtr[] = {(char *)readOnlyPath, NULL};
+
+    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_LOGICAL, NULL);
+
+    LE_FATAL_IF(ftsPtr == NULL, "Could not access dir '%s'.  %m.",
+                pathArrayPtr[0]);
+
+    le_result_t result = LE_OK;
+
+    // Step through the directory tree.
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+                {
+                    //Get dir label
+                    char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+                    char dirPerm[10] = "";
+                    int index = 0;
+                    mode_t dirMode = entPtr->fts_statp->st_mode;
+
+                    // No need to check write permission, check only read and execute permission.
+                    if (dirMode & S_IROTH)
+                    {
+                         dirPerm[index++] = 'r';
+                    }
+                    if (dirMode & S_IXOTH)
+                    {
+                        dirPerm[index++] = 'x';
+                    }
+
+                    n = snprintf(dirLabel, sizeof(dirLabel), "%s%s", fileLabel, dirPerm);
+                    LE_ASSERT(n < sizeof(dirLabel));
+                    // These are directories, visited in pre-order. Set the SMACK label.
+                    LE_DEBUG("Setting smack label: '%s' for directory: '%s'", dirLabel,
+                             entPtr->fts_accpath);
+                    result = smack_SetLabel(entPtr->fts_accpath, dirLabel);
+                }
+                break;
+
+            case FTS_DP:
+                // Same directory traversed in post-order. So ignore it.
+                break;
+
+            case FTS_F:
+                // These are files. Set the SMACK label.
+                LE_DEBUG("Setting smack label: '%s' for file: '%s'", fileLabel,
+                           entPtr->fts_accpath);
+                result = smack_SetLabel(entPtr->fts_accpath, fileLabel);
+                break;
+
+            case FTS_NS:
+            case FTS_ERR:
+            case FTS_DNR:
+            case FTS_NSOK:
+                LE_CRIT("Unexpected file type %d in app '%s' <%s>. %s",
+                        entPtr->fts_info,
+                        appNamePtr,
+                        appMd5Ptr,
+                        strerror(entPtr->fts_errno));
+                LE_CRIT("Offending path: '%s'.", entPtr->fts_path);
+                result = LE_FAULT;
+                break;
+        }
+
+        if (result != LE_OK)
+        {
+            break;
+        }
+    }
+
+    fts_close(ftsPtr);
+    return (result == LE_OK) ? LE_OK:LE_FAULT;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively sets the smack permissions for directories under apps writeable directory.
+ *
+ * returns LE_OK if successful, LE_FAULT if fails.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetPermAppWritableDir
+(
+    const char* appWritableDir,  ///< [IN] Path to apps writable directory.
+    const char* appLabel        ///< [IN] App smack label.
+)
+{
+
+    // Open the directory tree to search.
+    char* pathArrayPtr[] = {(char *)appWritableDir, NULL};
+
+    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_LOGICAL, NULL);
+
+    LE_FATAL_IF(ftsPtr == NULL, "Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+
+    le_result_t result = LE_OK;
+
+    // Step through the directory tree.
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+                {
+                    //Get dir label
+                    char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+                    char dirPerm[10] = "";
+                    int index = 0;
+                    mode_t dirMode = entPtr->fts_statp->st_mode;
+
+                    if (dirMode & S_IROTH)
+                    {
+                         dirPerm[index++] = 'r';
+                    }
+                    if (dirMode & S_IWOTH)
+                    {
+                         dirPerm[index++] = 'w';
+                    }
+                    if (dirMode & S_IXOTH)
+                    {
+                        dirPerm[index++] = 'x';
+                    }
+
+                    LE_ASSERT(snprintf(dirLabel, sizeof(dirLabel), "%s%s", appLabel, dirPerm)
+                              < sizeof(dirLabel));
+                    // These are directories, visited in pre-order. Set the SMACK label.
+                    LE_DEBUG("Setting smack label: '%s' for directory: '%s'", dirLabel,
+                             entPtr->fts_accpath);
+                    result = smack_SetLabel(entPtr->fts_accpath, dirLabel);
+                }
+                break;
+
+        }
+
+        if (result != LE_OK)
+        {
+            break;
+        }
+    }
+
+    fts_close(ftsPtr);
+    return (result == LE_OK) ? LE_OK:LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Setup smack permission for contents in app's read-only directory.
+ *
+ * @return LE_OK if successful, LE_FAULT if fails.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_SetSmackPermReadOnly
+(
+    const char* appMd5Ptr,  ///< [IN] Hash ID of the application to install.
+    const char* appNamePtr  ///< [IN] Name of the application to install.
+)
+{
+    return SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Check to see if the given application exists.
  */
 //--------------------------------------------------------------------------------------------------
@@ -229,29 +428,12 @@ void app_Hash
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char appPath[100];
-    char realPath[100];
+    char appLinkPath[100];
 
-    LE_ASSERT(snprintf(appPath, sizeof(appPath), "%s/%s", system_CurrentAppsDir, appNamePtr)
-              < sizeof(appPath));
+    LE_ASSERT(snprintf(appLinkPath, sizeof(appLinkPath), "%s/%s", system_CurrentAppsDir, appNamePtr)
+              < sizeof(appLinkPath));
 
-    ssize_t bytesRead = readlink(appPath, realPath, sizeof(realPath));
-    if (bytesRead < 0)
-    {
-        LE_FATAL("Failed to read symlink '%s' (%m).", appPath);
-    }
-    else if (bytesRead >= sizeof(realPath))
-    {
-        LE_FATAL("Contents of symlink '%s' too long (> %zu).", appPath, sizeof(realPath) - 1);
-    }
-
-    // Null-terminate.
-    realPath[bytesRead] = '\0';
-
-    LE_ASSERT(LE_OK == le_utf8_Copy(hashBuffer,
-                                    le_path_GetBasenamePtr(realPath, "/"),
-                                    LIMIT_MD5_STR_BYTES,
-                                    NULL));
+    installer_GetAppHashFromSymlink(appLinkPath, hashBuffer);
 }
 
 
@@ -305,8 +487,8 @@ le_result_t app_SetUpAppWriteables
         }
     }
 
-    // Install approriate writeable app files.
-    return system_InstallAppWriteableFiles(appMd5Ptr, appNamePtr);
+    // Install appropriate writable app files.
+    return installer_InstallAppWriteableFiles(appMd5Ptr, appNamePtr, "current");
 }
 
 
@@ -370,8 +552,18 @@ le_result_t app_InstallIndividual
             // Otherwise, stop it before we update it.
             supCtrl_StopApp(appNamePtr);
 
+            // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
+            char path[PATH_MAX] = "";
+            LE_ASSERT(le_path_Concat("/", path, sizeof(path),
+                                     APPS_WRITEABLE_DIR, appNamePtr, NULL) == LE_OK);
+
+            fs_TryLazyUmount(path);
+
             // Run the pre-install hook.
             ExecPreinstallHook(appMd5Ptr, appNamePtr);
+
+            // Set smackfs file permission for installed files
+            SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
 
             // Update non-writeable files dir symlink to point to the new version of the app
             system_SymlinkApp("current", appMd5Ptr, appNamePtr);
@@ -390,6 +582,9 @@ le_result_t app_InstallIndividual
 
         // Run the pre-install hook.
         ExecPreinstallHook(appMd5Ptr, appNamePtr);
+
+        // Set smackfs file permission for installed files
+        SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
 
         // Create a non-writeable files dir symlink pointing to the app's installed files.
         system_SymlinkApp("current", appMd5Ptr, appNamePtr);
@@ -414,17 +609,30 @@ le_result_t app_InstallIndividual
             char destDir[PATH_MAX];
             system_GetAppWriteableFilesDirPath(destDir, sizeof(destDir), "current", appNamePtr);
 
-            result = dir_MakePathSmack(destDir, (S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH), NULL);
-            if (result == LE_OK)
-            {
-                char appLabel[APPSMACK_MAX_LABEL_LEN + 1];
-                supCtrl_GetLabel(appNamePtr, appLabel, sizeof(appLabel));
+            char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+            smack_GetAppLabel(appNamePtr, appLabel, sizeof(appLabel));
 
-                result = file_CopyRecursive(srcDir, destDir, appLabel);
-            }
-            else
+            char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+            LE_ASSERT(snprintf(dirLabel, sizeof(dirLabel), "%srwx", appLabel) < sizeof(dirLabel));
+
+            if (dir_MakePathSmack(destDir, (S_IRWXU | S_IRWXG | S_IRWXO), dirLabel) != LE_OK)
             {
                 LE_ERROR("Couldn't create dir %s", destDir);
+                return LE_FAULT;
+            }
+
+            // Directory created, now copy files recursively.
+            if (file_CopyRecursive(srcDir, destDir, appLabel) != LE_OK)
+            {
+                LE_ERROR("Failed to copy files recursively from '%s' to '%s'", srcDir, destDir);
+                return LE_FAULT;
+            }
+
+            // While copying file, directories smack permission was not properly. Set it now.
+            if (SetPermAppWritableDir(destDir, appLabel) != LE_OK)
+            {
+                LE_ERROR("Failed to set smack permission in directory '%s'", destDir);
+                return LE_FAULT;
             }
         }
     }
@@ -459,7 +667,10 @@ le_result_t app_InstallIndividual
 /**
  * Remove the named app from the current running system.
  *
- * @return LE_OK if successful.
+ * @return
+ *      - LE_OK if successful.
+ *      - LE_NOT_FOUND if requested to remove non-existent app.
+ *      - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t app_RemoveIndividual
@@ -476,7 +687,7 @@ le_result_t app_RemoveIndividual
 
         LE_INFO("Ignoring request to remove non-existent app '%s'.", appNamePtr);
 
-        return LE_OK;
+        return LE_NOT_FOUND;
     }
 
     if (system_Snapshot() != LE_OK)

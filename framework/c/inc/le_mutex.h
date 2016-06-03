@@ -42,8 +42,8 @@
  * return references to them (of type le_mutex_Ref_t).
  *
  * Functions for creating mutexes:
- *  - @c le_mutex_CreateRecursive() - creates a @b normal, @b recursive mutex.
- *  - @c le_mutex_CreateNonRecursive() - creates a @b normal, @b non-recursive mutex.
+ *  - @c le_mutex_CreateRecursive() - creates a recursive mutex.
+ *  - @c le_mutex_CreateNonRecursive() - creates a non-recursive mutex.
  *
  * All mutexes have names, required for diagnostic purposes.  See
  * @ref c_mutex_diagnostics below.
@@ -97,7 +97,7 @@ typedef struct le_mutex* le_mutex_Ref_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a Normal, Recursive mutex.
+ * Create a Recursive mutex.
  *
  * @return  Returns a reference to the mutex.
  *
@@ -111,7 +111,7 @@ le_mutex_Ref_t le_mutex_CreateRecursive
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a Normal, Non-Recursive mutex.
+ * Create a Non-Recursive mutex.
  *
  * @return  Returns a reference to the mutex.
  *

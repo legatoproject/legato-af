@@ -4,13 +4,14 @@
  *
  * The mkTools parsers are composed of a Lexer and multiple parsing functions.
  *
- * There's a set of parsing functions for each type of definition file (.cdef, .adef, and .sdef),
+ * There's a set of parsing functions for each type of definition file (.cdef, .adef, .mdef and .sdef),
  * and there's one function in each set for each definition file format version supported.
  * There is also a very limited functionality parser for extracting dependencies from .api files.
  *
  * - @ref lexer.h
  * - @ref cdefParser.h
  * - @ref adefParser.h
+ * - @ref mdefParser.h
  * - @ref sdefParser.h
  * - @ref apiParser.h
  *
@@ -46,6 +47,7 @@ namespace parser
 #include "lexer.h"
 #include "cdefParser.h"
 #include "adefParser.h"
+#include "mdefParser.h"
 #include "sdefParser.h"
 #include "apiParser.h"
 

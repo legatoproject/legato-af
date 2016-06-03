@@ -5,24 +5,9 @@
  *
  * <HR>
  *
- * @section pa_temp_toc Table of Contents
- *
- *  - @ref pa_temp_intro
- *  - @ref pa_temp_rational
- *
- *
- * @section pa_temp_intro Introduction
  * These APIs are on the top of the platform-dependent adapter layer. They are independent of the
  * implementation. They guarantee the portability on different kind of platform without any changes
  * for the components developped upon these APIs.
- *
- *
- * @section pa_temp_rational Rational
- * These functions are all blocking functions, so that they return when the modem has answered or
- * when a timeout has occured due to an interrupted communication with the modem.
- *
- * They all verify the validity and the range of the input parameters before performing the modem
- * operation.
  *
  * <HR>
  *
@@ -40,54 +25,149 @@
 #ifndef LEGATO_PATEMP_INCLUDE_GUARD
 #define LEGATO_PATEMP_INCLUDE_GUARD
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * PA Temp resource opaque handle declaration (Sensor context in PA side, opaque type in LE side)
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct pa_temp_Handle* pa_temp_Handle_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for handler functions used to report the temperature change.
- *
- * @param thresholdEventPtr The temperature threshold reached.
+ * LE Temp resource opaque handle declaration (Sensor context in LE side, opaque type in PA side)
  */
 //--------------------------------------------------------------------------------------------------
-typedef void (*pa_temp_ThresholdInd_HandlerFunc_t)
+typedef struct le_temp_Handle* le_temp_Handle_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report a temperature threshold.
+ *
+ * @param leHandle      Sensor context in LE side, opaque type in PA side
+ * @param thresholdPtr  Name of the threshold.
+ * @param contextPtr    Context to be given to the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_temp_ThresholdHandlerFunc_t)
 (
-    le_temp_ThresholdStatus_t* thresholdEventPtr
+    le_temp_Handle_t leHandle,
+    const char*      thresholdPtr,
+    void*            contextPtr
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Radio temperature level in degree celsius.
+ * Request a new handle for a temperature sensor
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_temp_Request
+(
+    const char*         sensorPtr,  ///< [IN] Name of the temperature sensor.
+    le_temp_Handle_t    leHandle,   ///< [IN] Sensor context in LE side, opaque type in PA side
+    pa_temp_Handle_t*   paHandlePtr ///< [OUT] Sensor context in PA side, opaque type in LE side
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the handle of a temperature sensor
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_temp_GetHandle
+(
+    const char*         sensorPtr,  ///< [IN] Name of the temperature sensor.
+    le_temp_Handle_t*   leHandlePtr ///< [OUT] Sensor context in LE side, opaque type in PA side
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the temperature sensor's name from its handle.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_OVERFLOW      The name length exceed the maximum length.
+ *      - LE_FAULT         The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_temp_GetSensorName
+(
+    pa_temp_Handle_t    paHandle, ///< [IN] Handle of the temperature sensor.
+    char*               namePtr,  ///< [OUT] Name of the temperature sensor.
+    size_t              len       ///< [IN] The maximum length of the sensor name.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the temperature in degree Celsius.
  *
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the temperature.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_temp_GetRadioTemperature
+LE_SHARED le_result_t pa_temp_GetTemperature
 (
-    int32_t* radioTempPtr
-        ///< [OUT]
-        ///< [OUT] The Radio temperature level in degree celsius.
+    pa_temp_Handle_t    paHandle,      ///< [IN] Handle of the temperature sensor.
+    int32_t*            temperaturePtr ///< [OUT] Temperature in degree Celsius.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Platform temperature level in degree celsius.
+ * Set the Radio warning and critical temperature thresholds in degree Celsius.
+ *  When thresholds temperature are reached, a temperature event is triggered.
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the temperature.
+ *      - LE_FAULT         The function failed to set the thresholds.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_temp_GetPlatformTemperature
+LE_SHARED le_result_t pa_temp_SetThreshold
 (
-    int32_t* platformTempPtr
-        ///< [OUT]
-        ///< [OUT] The Platform temperature level in degree celsius.
+    pa_temp_Handle_t    paHandle,      ///< [IN] Handle of the temperature sensor.
+    const char*         thresholdPtr,  ///< [IN] Name of the threshold.
+    int32_t             temperature    ///< [IN] Temperature threshold in degree Celsius.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the Radio warning and critical temperature thresholds in degree Celsius.
  *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_temp_GetThreshold
+(
+    pa_temp_Handle_t    paHandle,      ///< [IN] Handle of the temperature sensor.
+    const char*         thresholdPtr,  ///< [IN] Name of the threshold.
+    int32_t*            temperaturePtr ///< [OUT] Temperature in degree Celsius.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the temperature monitoring with the temperature thresholds configured by
+ * le_temp_SetThreshold() function.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to apply the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_temp_StartMonitoring
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function is used to add a temperature status notification handler
  *
  * @return A handler reference, which is only needed for later removal of the handler.
@@ -95,127 +175,20 @@ LE_SHARED le_result_t pa_temp_GetPlatformTemperature
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_event_HandlerRef_t* pa_temp_AddTempEventHandler
 (
-    pa_temp_ThresholdInd_HandlerFunc_t   msgHandler
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Radio warning and critical temperature thresholds in degree celsius.
- *  When thresholds temperature are reached, a temperature event is triggered.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to set the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_temp_SetRadioThresholds
-(
-    int32_t hiWarningTemp,
-        ///< [IN]
-        ///< [IN] The high warning temperature threshold in degree celsius.
-
-    int32_t hiCriticalTemp
-        ///< [IN]
-        ///< [IN] The high critical temperature threshold in degree celsius.
+    pa_temp_ThresholdHandlerFunc_t  handlerFunc, ///< [IN] The handler function.
+    void*                           contextPtr   ///< [IN] The context to be given to the handler.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Radio warning and critical temperature thresholds in degree celsius.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_temp_GetRadioThresholds
-(
-    int32_t* hiWarningTempPtr,
-        ///< [OUT]
-        ///< [OUT] The high warning temperature threshold in degree celsius.
-
-    int32_t* hiCriticalTempPtr
-        ///< [OUT]
-        ///< [OUT] The high critical temperature threshold
-        ///<  in degree celsius.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Platform warning and critical temperature thresholds in degree celsius.
- *  When thresholds temperature are reached, a temperature event is triggered.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to set the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_temp_SetPlatformThresholds
-(
-    int32_t lowCriticalTemp,
-        ///< [IN]
-        ///< [IN] The low critical temperature threshold in degree celsius.
-
-    int32_t lowWarningTemp,
-        ///< [IN]
-        ///< [IN] The low warning temperature threshold in degree celsius.
-
-    int32_t hiWarningTemp,
-        ///< [IN]
-        ///< [IN] The high warning temperature threshold in degree celsius.
-
-    int32_t hiCriticalTemp
-        ///< [IN]
-        ///< [IN] The high critical temperature threshold in degree celsius.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Platform warning and critical temperature thresholds in degree celsius.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_temp_GetPlatformThresholds
-(
-    int32_t* lowCriticalTempPtr,
-        ///< [OUT]
-        ///< [OUT] The low critical temperature threshold in degree celsius.
-
-    int32_t* lowWarningTempPtr,
-        ///< [OUT]
-        ///< [OUT] The low warning temperature threshold in degree celsius.
-
-    int32_t* hiWarningTempPtr,
-        ///< [OUT]
-        ///< [OUT] The high warning temperature threshold in degree celsius.
-
-    int32_t* hiCriticalTempPtr
-        ///< [OUT]
-        ///< [OUT] The high critical temperature threshold
-        ///<  in degree celsius.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- *
- * This function is used to intialize the PA Temperature
+ * This function is used to initialize the PA Temperature
  *
  * @return
  * - LE_OK if successful.
  * - LE_FAULT if unsuccessful.
- *
- * @note This function should not be called from outside the platform adapter.
- *
- * @todo Move this prototype to another (internal) header.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_temp_Init
+LE_SHARED le_result_t pa_temp_Init
 (
     void
 );

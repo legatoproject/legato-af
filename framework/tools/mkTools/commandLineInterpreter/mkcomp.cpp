@@ -242,6 +242,22 @@ void MakeComponent
             RunNinja(BuildParams);
             // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
         }
+        // If we have not been asked to ignore any already existing build.ninja and there has
+        // been a change in either the argument list or the environment variables,
+        // save the command-line arguments and environment variables for future comparison.
+        // Note: we don't need to do this if we have been asked not to run ninja, because
+        // that only happens when ninja is already running and asking us to regenerate its
+        // script for us, and that only happens if the args and env vars have already been saved.
+        else
+        {
+            // Save the command line arguments.
+            args::Save(BuildParams, argc, argv);
+
+            // Save the environment variables.
+            // Note: we must do this before we parse the definition file, because parsing the file
+            // will result in the CURDIR environment variable being set.
+            envVars::Save(BuildParams);
+        }
     }
 
     // Locate the component.
@@ -268,17 +284,9 @@ void MakeComponent
     // Generate the ninja build script.
     ninja::Generate(componentPtr, BuildParams, argc, argv);
 
-    // If we haven't been asked not to run ninja,
+    // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)
     {
-        // Save the command-line arguments and environment variables for future comparison.
-        // Note: we don't need to do this if we have been asked not to run ninja, because
-        // that only happens when ninja is already running and asking us to regenerate its
-        // script for us, and that only happens if we just saved the args and env vars and
-        // ran ninja.
-        args::Save(BuildParams, argc, argv);
-        envVars::Save(BuildParams);
-
         RunNinja(BuildParams);
     }
 }

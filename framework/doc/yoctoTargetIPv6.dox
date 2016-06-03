@@ -1,0 +1,43 @@
+/** @page yoctoTargetIPv6 Config ECM IPv6
+
+Setting up target networking for IPv6 on ECM can be done through the host
+or directly on the target.
+
+This host code sample uses a /127 prefix (only 2 addresses, 0 & 1):
+
+@verbatim
+$ sudo ip -6 addr add fd42::0 dev usb0
+$ sudo ip -6 route add fd42::/127 dev usb0
+@endverbatim
+
+To test the connection from the host to the target, run:
+
+@verbatim
+ # ping6 fd42::0
+ @endverbatim
+
+Here's the same code sample that you run on the target:
+
+@verbatim
+# ip -6 addr add fd42::1 dev usb0
+# ip -6 route add fd42::/127 dev usb0
+@endverbatim
+
+To test the connection from the target to the host, run
+
+@verbatim
+$ ping6 fd42::1
+@endverbatim
+
+To permanently setup addresses on both sides, add the following to @c /etc/network/interfaces on the target:
+
+@verbatim
+auto usb0
+iface usb0 inet6 static
+    address fd42::0
+    netmask 127
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -45,6 +45,7 @@
 #include "app.h"
 #include "system.h"
 #include "supCtrl.h"
+#include "updateCtrl.h"
 
 
 // Default probation period.
@@ -61,7 +62,7 @@
 static enum
 {
     STATE_IDLE,         ///< The current system is "good" and there's nothing to do.
-    STATE_PROBATION,    ///< The current system is in its probation period.  Updates not allowed.
+    STATE_PROBATION,    ///< The current system is in its probation period.
     STATE_UPDATING      ///< The current system is "good" and an update is in progress.
 }
 State;
@@ -161,6 +162,25 @@ static void StartProbation
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the update state to idle, mark the system good and clean up old system files.
+ */
+//--------------------------------------------------------------------------------------------------
+void updateDaemon_MarkGood
+(
+    void
+)
+{
+        LE_INFO("System passed probation. Marking 'good'.");
+        State = STATE_IDLE;
+        // stop the probation timer - we may have been called from updateCtrl before expiry
+        // This will return LE_FAULT if the timer is not currently running but that is OK
+        le_timer_Stop(ProbationTimer);
+        system_MarkGood();
+        system_RemoveUnneeded();
+        system_RemoveUnusedApps();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -174,13 +194,15 @@ static void HandleProbationExpiry
 )
 //--------------------------------------------------------------------------------------------------
 {
-    State = STATE_IDLE;
-
-    LE_INFO("System passed probation. Marking 'good'.");
-
-    system_MarkGood();
-    system_RemoveUnneeded();
-    system_RemoveUnusedApps();
+    if (updateCtrl_IsProbationLocked() == false)
+    {
+        updateDaemon_MarkGood();
+    }
+    else
+    {
+        // Probation is Locked. Set callback for updateCtrl to call when proabtion is unlocked.
+        updateCtrl_SetProbationExpiryCallBack(updateDaemon_MarkGood);
+    }
 }
 
 
@@ -528,22 +550,25 @@ static void FinishSystemUpdate
 
     const char* usersFilePath = "/legato/systems/current/config/users.cfg";
     const char* appsFilePath = "/legato/systems/current/config/apps.cfg";
+    const char* modulesFilePath = "/legato/systems/current/config/modules.cfg";
 
-    // If users.cfg or apps.cfg exist in the directory containing the configuration data files,
+    // If users.cfg, apps.cfg or modules.cfg exist in the directory containing the configuration data files,
     // import them into the system config tree to finish a previous update operation.
     bool usersFileExists = FileExists(usersFilePath);
     bool appsFileExists = FileExists(appsFilePath);
-    if (usersFileExists || appsFileExists)
+    bool modulesFileExists = FileExists(modulesFilePath);
+    if (usersFileExists || appsFileExists || modulesFileExists)
     {
         LE_INFO("Finishing system update...");
 
         // To work around a bug in the "import" feature of the Config Tree, start by deleting
-        // the "users" and "apps" branches of the system config tree in a separate transaction
+        // the "users", "apps" and "modules" branches of the system config tree in a separate transaction
         // before starting the "import" transaction.  If we don't do this, old contents of
-        // the "users" and "apps" branches will still remain after the import operations.
+        // the "users", "apps" and "modules" branches will still remain after the import operations.
         le_cfg_IteratorRef_t i = le_cfg_CreateWriteTxn("");
         le_cfg_DeleteNode(i, "users");
         le_cfg_DeleteNode(i, "apps");
+        le_cfg_DeleteNode(i, "modules");
         le_cfg_CommitTxn(i);
 
         i = le_cfg_CreateWriteTxn("");
@@ -560,11 +585,18 @@ static void FinishSystemUpdate
             ImportFile(i, appsFilePath, "apps");
         }
 
+        if (modulesFileExists)
+        {
+            LE_INFO("Importing file '%s' into system:/modules", modulesFilePath);
+            ImportFile(i, modulesFilePath, "modules");
+        }
+
         le_cfg_CommitTxn(i);
 
         // Delete users.cfg and apps.cfg.
         DeleteFile(usersFilePath);
         DeleteFile(appsFilePath);
+        DeleteFile(modulesFilePath);
 
         LE_INFO("System update finished.");
     }
@@ -762,24 +794,30 @@ static void PipelineDone
 
     if (WIFEXITED(status))
     {
-        if (WEXITSTATUS(status) == EXIT_FAILURE)
+        if (WEXITSTATUS(status) == EXIT_SUCCESS)
+        {
+            LE_DEBUG("security-unpack completed successfully.");
+        }
+        else if (WEXITSTATUS(status) == EXIT_FAILURE)
         {
             LE_ERROR("security-unpack reported a security violation.");
-
             ErrorCode = LE_UPDATE_ERR_SECURITY_FAILURE;
         }
         else
         {
             LE_ERROR("security-unpack terminated (exit code: %d).", WEXITSTATUS(status));
+            ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
         }
     }
     else if (WIFSIGNALED(status))
     {
         LE_WARN("security-unpack was killed by signal %d.", WTERMSIG(status));
+        ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
     }
     else
     {
         LE_WARN("security-unpack died for an unknown reason (status: %d).", status);
+        ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
     }
 
     pipeline_Delete(SecurityUnpackPipeline);
@@ -878,7 +916,7 @@ void le_update_RemoveProgressHandler
  * @return
  *      - LE_OK if accepted.
  *      - LE_BUSY if another update is in progress.
- *      - LE_UNAVAILABLE if the system is still in "probation" (not marked "good" yet).
+ *      - LE_UNAVAILABLE if updates are deferred.
  */
 //-------------------------------------------------------------------------------------------------
 le_result_t le_update_Start
@@ -900,14 +938,22 @@ le_result_t le_update_Start
     switch (State)
     {
         case STATE_UPDATING:
-            LE_INFO("Update denied. Another update is already in progress.");
+            LE_WARN("Update denied. Another update is already in progress.");
             result = LE_BUSY;
             break;
 
         case STATE_PROBATION:
         case STATE_IDLE:
-            LE_INFO("Update request accepted.");
-            result = LE_OK;
+            if (updateCtrl_HasDefers())
+            {
+                LE_WARN("Updates are deferred. Request denied.");
+                result = LE_UNAVAILABLE;
+            }
+            else
+            {
+                LE_INFO("Update request accepted.");
+                result = LE_OK;
+            }
             break;
     }
     if (result != LE_OK)
@@ -928,6 +974,9 @@ le_result_t le_update_Start
     pipeline_Append(SecurityUnpackPipeline, SecurityUnpack, NULL);
     int readFd = pipeline_CreateOutputPipe(SecurityUnpackPipeline);
     pipeline_Start(SecurityUnpackPipeline, PipelineDone);
+
+    // Close the input fd as pipeline_SetInput dups() this.
+    fd_Close(clientFd);
 
     // Pass the readFd to the updateUnpacker module.
     LE_DEBUG("Starting unpack");
@@ -1041,7 +1090,11 @@ int32_t le_update_GetPreviousSystemIndex
 /**
  * Removes a given app from the target device.
  *
- * @return LE_OK if successful
+ * @return
+ *     - LE_OK if successful
+ *     - LE_BUSY if system busy.
+ *     - LE_NOT_FOUND if given app is not installed.
+ *     - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_appRemove_Remove
@@ -1053,6 +1106,13 @@ le_result_t le_appRemove_Remove
     if (State == STATE_UPDATING)
     {
         LE_WARN("App removal requested while an update is already in progress.");
+
+        return LE_BUSY;
+    }
+
+    if (updateCtrl_HasDefers())
+    {
+        LE_WARN("App removal requested while a defer is in effect.");
 
         return LE_BUSY;
     }
@@ -1157,6 +1217,8 @@ COMPONENT_INIT
 
     // Make sure that we can report app install events.
     instStat_Init();
+
+    updateCtrl_Initialize();
 
     // Register session close handler for the le_update service.
     le_msg_AddServiceCloseHandler(le_update_GetServiceRef(), UpdateServiceClosed, NULL);

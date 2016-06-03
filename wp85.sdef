@@ -1,0 +1,107 @@
+// --------------------------------------------------------------------------------------------------
+// System definition file for basic system for the Sierra Wireless WP85xx modules when building
+// the QMI-related stuff from sources.  (This can only be used by Qualcomm licensees.)
+//
+// Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+// --------------------------------------------------------------------------------------------------
+
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/airVantage/avcService
+    $LEGATO_ROOT/apps/platformServices/audioService
+    $LEGATO_ROOT/apps/platformServices/cellNetService
+    $LEGATO_ROOT/apps/platformServices/dataConnectionService
+    $LEGATO_ROOT/apps/platformServices/fwupdateService
+    $LEGATO_ROOT/apps/platformServices/modemService
+    $LEGATO_ROOT/apps/platformServices/positioningService
+    $LEGATO_ROOT/apps/platformServices/powerMgr
+    $LEGATO_ROOT/apps/platformServices/secStore
+    $LEGATO_ROOT/apps/platformServices/smsInboxService
+    $LEGATO_ROOT/apps/platformServices/voiceCallService
+    $LEGATO_ROOT/apps/platformServices/gpioService
+
+    // Command-line tools.
+    $LEGATO_ROOT/apps/tools/tools
+}
+
+commands:
+{
+    cm = tools:/bin/cm
+    fwupdate = tools:/bin/fwupdate
+    secstore = tools:/bin/secstore
+    pmtool = tools:/bin/pmtool
+}
+
+bindings:
+{
+    <root>.le_fwupdate -> fwupdateService.le_fwupdate
+}
+
+interfaceSearch:
+{
+    interfaces/modemServices
+    interfaces/positioning
+}
+
+buildVars:
+{
+    LEGATO_PROPRIETARY_QCT_DIR = $LEGATO_ROOT/proprietary/qct/wp85
+
+    PA_DIR = $LEGATO_ROOT/platformAdaptor
+
+    LEGATO_AUDIO_PA = $PA_DIR/qmi/components/le_pa_audio
+    LEGATO_AUDIO_PA_PCM = $PA_DIR/audio/pcm/alsa-intf
+    LEGATO_AUDIO_PA_AMR = $PA_DIR/audio/amr/opencore-amr
+    DEFAULT_AUDIO_PA_DIR = $LEGATO_ROOT/components/audio/platformAdaptor/default
+    LEGATO_AUDIO_PA_DEFAULT = $DEFAULT_AUDIO_PA_DIR/le_pa_audio_default
+    LEGATO_AUDIO_PA_AMR_DEFAULT = $DEFAULT_AUDIO_PA_DIR/le_pa_amr_default
+    LEGATO_AUDIO_PA_PCM_DEFAULT = $DEFAULT_AUDIO_PA_DIR/le_pa_pcm_default
+
+    MODEM_PA_DIR = $PA_DIR/qmi/components
+    LEGATO_MODEM_PA = $MODEM_PA_DIR/le_pa/mdm9x15/le_pa
+    LEGATO_MODEM_PA_DEFAULT = $LEGATO_ROOT/components/modemServices/platformAdaptor/default/le_pa_default
+    LEGATO_QMI_MODEM_PA_SRC_FILES = $MODEM_PA_DIR/le_pa
+    LEGATO_QMI_MODEM_PA_ECALL = $MODEM_PA_DIR/le_pa_ecall
+    LEGATO_MODEM_PA_ECALL_DEFAULT = $LEGATO_ROOT/components/modemServices/platformAdaptor/default/le_pa_ecall_default
+    INCLUDE_ECALL = 1
+
+    LEGATO_GNSS_PA = $PA_DIR/qmi/components/le_pa_gnss
+    LEGATO_GNSS_PA_DEFAULT = $LEGATO_ROOT/components/positioning/platformAdaptor/default/le_pa_gnss_default
+
+    LEGATO_AVC_PA = $PA_DIR/qmi/components/le_pa_avc
+    LEGATO_AVC_PA_DEFAULT = $LEGATO_ROOT/components/airVantage/platformAdaptor/default/le_pa_avc_default
+
+    LEGATO_SECSTORE_PA = $PA_DIR/qmi/components/le_pa_secStore
+    LEGATO_SECSTORE_PA_DEFAULT = $LEGATO_ROOT/components/secStore/platformAdaptor/default/le_pa_secStore_default
+
+    LEGATO_FWUPDATE_PA = $PA_DIR/qmi/components/le_pa_fwupdate
+    LEGATO_FWUPDATE_PA_DEFAULT = $LEGATO_ROOT/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
+
+    PROPRIETARY_UTIL_DIR = $PA_DIR/qmi/components
+    LEGATO_QMI_UTIL_SRC_FILES = $PROPRIETARY_UTIL_DIR/swiQmi
+    LEGATO_UTIL_PA = $PROPRIETARY_UTIL_DIR/swiQmi/mdm9x15/swiQmi
+
+    TARGET = wp85
+
+    WP85_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
+    TOOLCHAIN_PREFIX = $WP85_TOOLCHAIN_PREFIX
+    COMPILER_DIR = $WP85_TOOLCHAIN_DIR
+
+    TARGET_SANDBOX_IMPORT = TARGET_IMPORTS_ARMV7
+
+
+}
+
+// Air Vantage Agent build options.
+buildVars:
+{
+    LEGATO_FEATURE_AVMS_CONFIG = -DLEGATO_FEATURE_AVMS_CONFIG
+
+    // Uncomment the following line, if firmware supports block transfer mode.
+    // LEGATO_FEATURE_BLOCK_TRANSFER = -DLEGATO_FEATURE_BLOCK_TRANSFER
+
+    // Uncomment the following line, if firmware supports lwm2m observe.
+    // LEGATO_FEATURE_OBSERVE = -DLEGATO_FEATURE_OBSERVE
+
+}

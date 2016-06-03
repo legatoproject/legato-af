@@ -1,0 +1,10 @@
+sources:
+{
+    src/le_atClient.c
+    src/le_dev.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/at/inc
+}

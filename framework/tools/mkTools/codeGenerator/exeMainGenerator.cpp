@@ -17,7 +17,7 @@ namespace code
  * Generates a main .c for a given executable.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateExeMain
+void GenerateCLangExeMain
 (
     const model::Exe_t* exePtr,
     const mk::BuildParams_t& buildParams
@@ -33,7 +33,7 @@ void GenerateExeMain
     std::string initFuncName = "_" + defaultCompName + "_COMPONENT_INIT";
 
     // Compute the path to the file to be generated.
-    auto& sourceFile = exePtr->mainObjectFile.sourceFilePath;
+    auto sourceFile = exePtr->MainObjectFile().sourceFilePath;
 
     if (buildParams.beVerbose)
     {
@@ -58,6 +58,7 @@ void GenerateExeMain
                   "#include \"legato.h\"\n"
                   "#include \"../src/eventLoop.h\"\n"
                   "#include \"../src/log.h\"\n"
+                  "#include \"../src/args.h\"\n"
                   "#include <dlfcn.h>\n"
                   "\n"
                   "\n";
@@ -130,6 +131,8 @@ void GenerateExeMain
     // Define main().
                   "int main(int argc, char* argv[])\n"
                   "{\n"
+                  "    // Pass the args to the Command Line Arguments API.\n"
+                  "    arg_SetArgs((size_t)argc, (char**)argv);\n"
 
     // Make stdout line buffered.
                   "    // Make stdout line buffered so printf shows up in logs without flushing.\n"

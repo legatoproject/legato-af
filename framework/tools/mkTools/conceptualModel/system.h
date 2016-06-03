@@ -27,6 +27,8 @@ struct System_t
 
     std::map<std::string, App_t*> apps;  ///< Map of apps in this system (key is app name).
 
+    std::map<std::string, Module_t*> modules;  ///< Map of modules in this system (key is module name).
+
     std::map<std::string, User_t*> users; ///< Map of non-app users (key is user name).
 
     std::map<std::string, Command_t*> commands; ///< Map of commands (key is command name).

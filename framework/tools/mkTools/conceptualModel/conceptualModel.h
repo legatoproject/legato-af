@@ -85,6 +85,7 @@ namespace model
 
 #include "programmingLanguage.h"
 #include "objectFile.h"
+#include "javaPackage.h"
 #include "appLimit.h"
 #include "api.h"
 #include "binding.h"
@@ -98,6 +99,7 @@ namespace model
 #include "process.h"
 #include "processEnvironment.h"
 #include "app.h"
+#include "module.h"
 #include "command.h"
 #include "system.h"
 

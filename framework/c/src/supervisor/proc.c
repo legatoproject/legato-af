@@ -15,7 +15,6 @@
 #include "proc.h"
 #include "limit.h"
 #include "le_cfg_interface.h"
-#include "sandbox.h"
 #include "resourceLimits.h"
 #include "fileDescriptor.h"
 #include "user.h"
@@ -30,7 +29,7 @@
 /**
  * The name of the node in the config tree that contains a process's command-line arguments.
  *
- * The list of arguments is the commmand-line argument list used to start the process.  The first
+ * The list of arguments is the command-line argument list used to start the process.  The first
  * argument in the list must be the absolute path (relative to the sandbox root) of the executable
  * file.
  *
@@ -74,7 +73,7 @@
  *              realtime priority will pre-empt processes with "high", "medium", "low" and "idle"
  *              priorities.  Also, note that processes with these realtime priorities will pre-empt
  *              the Legato framework processes so take care to design realtime processes that
- *              relinguishes the CPU appropriately.
+ *              relinquishes the CPU appropriately.
  *
  *
  * If this entry in the config tree is missing or is empty, "medium" priority is used.
@@ -133,15 +132,36 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct proc_Ref
 {
-    char*           name;                                   ///< Name of the process.
-    char            cfgPathRoot[LIMIT_MAX_PATH_BYTES];      ///< Our path in the config tree.
-    app_Ref_t       appRef;         ///< Reference to the app that we are part of.
-    bool            paused;         ///< true if the process is paused.
-    pid_t           pid;            ///< The pid of the process.
-    time_t          faultTime;      ///< The time of the last fault.
-    bool            cmdKill;        ///< true if the process was killed by proc_Stop().
+    char*   namePtr;                ///< Name of the process.
+    char*   cfgPathPtr;             ///< Path in the config tree. If NULL use default settings.
+    app_Ref_t appRef;               ///< Reference to the app that we are part of.
+    pid_t   pid;                    ///< The pid of the process.
+    time_t  faultTime;              ///< The time of the last fault.
+    bool    cmdKill;                ///< true if the process was killed by proc_Stop().
+    int     stdInFd;                ///< Fd to direct standard in to.  If -1 then use /dev/null.
+    int     stdOutFd;               ///< Fd to direct standard out to.  If -1 then use /dev/null.
+    int     stdErrFd;               ///< Fd to direct standard error to.  If -1 then use /dev/null.
+    char*   execPathPtr;            ///< Executable path override.
+    char*   priorityPtr;            ///< Priority string override.
+    le_sls_List_t argsList;         ///< Arguments list override.
+    bool    argsListValid;          ///< Arguments list override valid flag.  true if argsList is
+                                    ///  valid (possibly empty).
+    FaultAction_t faultAction;      ///< Fault action override.
 }
 Process_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Argument object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char            argument[LIMIT_MAX_ARGS_STR_BYTES]; ///< Argument string.
+    le_sls_Link_t   link;                               ///< Link in a list of arguments.
+}
+Arg_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -150,6 +170,30 @@ Process_t;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ProcessPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for path and name strings.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PathPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for priority strings.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PriorityPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for argument strings.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ArgsPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -206,6 +250,9 @@ void proc_Init
 )
 {
     ProcessPool = le_mem_CreatePool("Procs", sizeof(Process_t));
+    PathPool = le_mem_CreatePool("Paths", LIMIT_MAX_PATH_BYTES);
+    PriorityPool = le_mem_CreatePool("Priority", LIMIT_MAX_PRIORITY_NAME_BYTES);
+    ArgsPool = le_mem_CreatePool("Args", sizeof(Arg_t));
 }
 
 
@@ -213,7 +260,7 @@ void proc_Init
 /**
  * Create a process object.
  *
- * @note The name of the process is the node name (last part) of the cfgPathRootPtr.
+ * @note If the config path is given, the last node in the path must be the name of the process.
  *
  * @return
  *      A reference to a process object if successful.
@@ -222,33 +269,70 @@ void proc_Init
 //--------------------------------------------------------------------------------------------------
 proc_Ref_t proc_Create
 (
-    const char* cfgPathRootPtr,     ///< [IN] The path in the config tree for this process.
-    app_Ref_t appRef                ///< [IN] Reference to the app that we are part of.
+    const char* namePtr,            ///< [IN] Name of the process.
+    app_Ref_t appRef,               ///< [IN] Reference to the app that we are part of.
+    const char* cfgPathRootPtr      ///< [IN] The path in the config tree for this process.  Can be
+                                    ///       NULL if there is no config entry for this process.
 )
 {
     Process_t* procPtr = le_mem_ForceAlloc(ProcessPool);
 
-    // Copy the config path.
-    if (le_utf8_Copy(procPtr->cfgPathRoot,
-                     cfgPathRootPtr,
-                     sizeof(procPtr->cfgPathRoot),
-                     NULL) == LE_OVERFLOW)
+    if (cfgPathRootPtr != NULL)
     {
-        LE_ERROR("Config path '%s' is too long.", cfgPathRootPtr);
+        procPtr->cfgPathPtr = le_mem_ForceAlloc(PathPool);
 
-        le_mem_Release(procPtr);
-        return NULL;
+        // Copy the config path to our buffer.
+        if (le_utf8_Copy(procPtr->cfgPathPtr,
+                         cfgPathRootPtr,
+                         LIMIT_MAX_PATH_BYTES,
+                         NULL) == LE_OVERFLOW)
+        {
+            LE_ERROR("Config path '%s' is too long.", cfgPathRootPtr);
+
+            le_mem_Release(procPtr->cfgPathPtr);
+            le_mem_Release(procPtr);
+            return NULL;
+        }
+
+        // The name of the process is the node name (last part) of the cfgPathRootPtr.
+        procPtr->namePtr = le_path_GetBasenamePtr(procPtr->cfgPathPtr, "/");
+    }
+    else
+    {
+        procPtr->namePtr = le_mem_ForceAlloc(PathPool);
+
+        // Copy the name to our buffer
+        if (le_utf8_Copy(procPtr->namePtr,
+                         namePtr,
+                         LIMIT_MAX_PATH_BYTES,
+                         NULL) == LE_OVERFLOW)
+        {
+            LE_ERROR("Process name '%s' is too long.", namePtr);
+
+            le_mem_Release(procPtr->namePtr);
+            le_mem_Release(procPtr);
+            return NULL;
+        }
+
+        procPtr->cfgPathPtr = NULL;
     }
 
-
-
-    procPtr->name = le_path_GetBasenamePtr(procPtr->cfgPathRoot, "/");
-
+    // Initialize all other parameters.
     procPtr->appRef = appRef;
     procPtr->faultTime = 0;
-    procPtr->paused = false;
     procPtr->pid = -1;  // Processes that are not running are assigned -1 as its pid.
     procPtr->cmdKill = false;
+
+    // Default to using /dev/null for standard streams.
+    procPtr->stdInFd = -1;
+    procPtr->stdOutFd = -1;
+    procPtr->stdErrFd = -1;
+
+    procPtr->execPathPtr = NULL;
+    procPtr->priorityPtr = NULL;
+    procPtr->argsListValid = false;
+    procPtr->argsList = LE_SLS_LIST_INIT;
+    procPtr->faultAction = FAULT_ACTION_NONE;
 
     return procPtr;
 }
@@ -256,7 +340,7 @@ proc_Ref_t proc_Create
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Delete the process object.  The process must be stopped before it is deleted.
+ * Delete the process object.
  *
  * @note If this function fails it will kill the calling process.
  */
@@ -266,6 +350,32 @@ void proc_Delete
     proc_Ref_t procRef              ///< [IN] The process to start.
 )
 {
+    // Delete arguments override list.
+    proc_ClearArgs(procRef);
+
+    // Delete priority override string.
+    if (procRef->priorityPtr != NULL)
+    {
+        le_mem_Release(procRef->priorityPtr);
+    }
+
+    // Delete executable override path.
+    if (procRef->execPathPtr != NULL)
+    {
+        le_mem_Release(procRef->execPathPtr);
+    }
+
+    // Delete config path or name.
+    if (procRef->cfgPathPtr != NULL)
+    {
+        le_mem_Release(procRef->cfgPathPtr);
+    }
+    else
+    {
+        le_mem_Release(procRef->namePtr);
+    }
+
+    // Release the process object.
     le_mem_Release(procRef);
 }
 
@@ -281,7 +391,7 @@ void proc_Delete
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t proc_SetPriority
+le_result_t SetProcPriority
 (
     const char* priorStr,   ///< [IN] Priority level string.
     pid_t pid               ///< [IN] PID of the process to set the priority for.
@@ -349,8 +459,7 @@ le_result_t proc_SetPriority
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the scheduling policy, priority and/or nice level for the specified process based on the
- * process' configuration settings in the config tree.
+ * Sets the scheduling policy, priority and/or nice level for the specified process.
  *
  * @note This function kills the specified process if there is an error.
  */
@@ -360,21 +469,29 @@ static void SetSchedulingPriority
     proc_Ref_t procRef      ///< [IN] The process to set the priority for.
 )
 {
-    // Read the priority setting from the config tree.
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    char priorStr[LIMIT_MAX_PRIORITY_NAME_BYTES] = "medium";
+    char* priorStrPtr = priorStr;
 
-    char priorStr[LIMIT_MAX_PRIORITY_NAME_BYTES];
-
-    if (le_cfg_GetString(procCfg, CFG_NODE_PRIORITY, priorStr, sizeof(priorStr), "medium") != LE_OK)
+    if (procRef->priorityPtr != NULL)
     {
-        LE_CRIT("Priority string for process %s is too long.  Using default priority.", procRef->name);
+        priorStrPtr = procRef->priorityPtr;
+    }
+    else if (procRef->cfgPathPtr != NULL)
+    {
+        // Read the priority setting from the config tree.
+        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
 
-        LE_ASSERT(le_utf8_Copy(priorStr, "medium", sizeof(priorStr), NULL) == LE_OK);
+        if (le_cfg_GetString(procCfg, CFG_NODE_PRIORITY, priorStr, sizeof(priorStr), "medium") != LE_OK)
+        {
+            LE_CRIT("Priority string for process %s is too long.  Using default priority.", procRef->namePtr);
+
+            LE_ASSERT(le_utf8_Copy(priorStr, "medium", sizeof(priorStr), NULL) == LE_OK);
+        }
+
+        le_cfg_CancelTxn(procCfg);
     }
 
-    le_cfg_CancelTxn(procCfg);
-
-    if (proc_SetPriority(priorStr, procRef->pid) != LE_OK)
+    if (SetProcPriority(priorStrPtr, procRef->pid) != LE_OK)
     {
         kill_Hard(procRef->pid);
     }
@@ -387,7 +504,6 @@ static void SetSchedulingPriority
  *
  * @return
  *      The number of environment variables read from the config tree if successful.
- *      LE_NOT_FOUND if there are not environment variables.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -398,44 +514,52 @@ static le_result_t GetEnvironmentVariables
     size_t maxNumEnvVars    ///< [IN] The maximum number of items envVars can hold.
 )
 {
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
-    le_cfg_GoToNode(procCfg, CFG_NODE_ENV_VARS);
+    int numEnvVars = 0;
 
-    if (le_cfg_GoToFirstChild(procCfg) != LE_OK)
+    if (procRef->cfgPathPtr != NULL)
     {
-        LE_WARN("No environment variables for process '%s'.", procRef->name);
+        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
+        le_cfg_GoToNode(procCfg, CFG_NODE_ENV_VARS);
+
+        if (le_cfg_GoToFirstChild(procCfg) != LE_OK)
+        {
+            LE_WARN("No environment variables for process '%s'.", procRef->namePtr);
+
+            le_cfg_CancelTxn(procCfg);
+            return 0;
+        }
+
+        int i = 0;
+        for (i = 0; i < maxNumEnvVars; i++)
+        {
+            if ( (le_cfg_GetNodeName(procCfg, "", envVars[i].name, LIMIT_MAX_ENV_VAR_NAME_BYTES) != LE_OK) ||
+                 (le_cfg_GetString(procCfg, "", envVars[i].value, LIMIT_MAX_PATH_BYTES, "") != LE_OK) )
+            {
+                LE_ERROR("Error reading environment variables for process '%s'.", procRef->namePtr);
+
+                le_cfg_CancelTxn(procCfg);
+                return LE_FAULT;
+            }
+
+            if (le_cfg_GoToNextSibling(procCfg) != LE_OK)
+            {
+                break;
+            }
+            else if (i >= maxNumEnvVars-1)
+            {
+                LE_ERROR("There were too many environment variables for process '%s'.", procRef->namePtr);
+
+                le_cfg_CancelTxn(procCfg);
+                return LE_FAULT;
+            }
+        }
 
         le_cfg_CancelTxn(procCfg);
-        return LE_NOT_FOUND;
+
+        numEnvVars = i + 1;
     }
 
-    int i;
-    for (i = 0; i < maxNumEnvVars; i++)
-    {
-        if ( (le_cfg_GetNodeName(procCfg, "", envVars[i].name, LIMIT_MAX_ENV_VAR_NAME_BYTES) != LE_OK) ||
-             (le_cfg_GetString(procCfg, "", envVars[i].value, LIMIT_MAX_PATH_BYTES, "") != LE_OK) )
-        {
-            LE_ERROR("Error reading environment variables for process '%s'.", procRef->name);
-
-            le_cfg_CancelTxn(procCfg);
-            return LE_FAULT;
-        }
-
-        if (le_cfg_GoToNextSibling(procCfg) != LE_OK)
-        {
-            break;
-        }
-        else if (i >= maxNumEnvVars-1)
-        {
-            LE_ERROR("There were too many environment variables for process '%s'.", procRef->name);
-
-            le_cfg_CancelTxn(procCfg);
-            return LE_FAULT;
-        }
-    }
-
-    le_cfg_CancelTxn(procCfg);
-    return i + 1;
+    return numEnvVars;
 }
 
 
@@ -497,76 +621,116 @@ static le_result_t GetArgs
                                     ///       arguments list.  The list is terminated by NULL.
 )
 {
-    // Get a config iterator to the arguments list.
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
-    le_cfg_GoToNode(procCfg, CFG_NODE_ARGS);
-
-    if (le_cfg_GoToFirstChild(procCfg) != LE_OK)
-    {
-        LE_ERROR("No arguments for process '%s'.", procRef->name);
-        le_cfg_CancelTxn(procCfg);
-        return LE_FAULT;
-    }
+#define INDEX_EXEC      0
+#define INDEX_PROC      INDEX_EXEC + 1
+#define INDEX_ARGS      INDEX_PROC + 1
 
     size_t ptrIndex = 0;
     size_t bufIndex = 0;
 
-    // Record the executable path.
-    if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex], LIMIT_MAX_ARGS_STR_BYTES, "") != LE_OK)
+    // Initialize the executable path.
+    argsPtr[INDEX_EXEC] = procRef->execPathPtr;
+
+    // Initialize the process name.
+    argsPtr[INDEX_PROC] = procRef->namePtr;
+
+    // Initialized the arguments.
+    if (procRef->argsListValid)
     {
-        LE_ERROR("Error reading argument '%s...' for process '%s'.",
-                 argsBuffers[bufIndex],
-                 procRef->name);
+        le_sls_Link_t* argLinkPtr = le_sls_Peek(&(procRef->argsList));
+
+        while (argLinkPtr != NULL)
+        {
+            Arg_t* argPtr = CONTAINER_OF(argLinkPtr, Arg_t, link);
+
+            argsPtr[INDEX_ARGS + ptrIndex] = argPtr->argument;
+            ptrIndex++;
+
+            argLinkPtr = le_sls_PeekNext(&(procRef->argsList), argLinkPtr);
+        }
+    }
+
+    // Set the executable and the args if necessary.
+    if (procRef->cfgPathPtr != NULL)
+    {
+        // Get a config iterator to the arguments list.
+        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
+        le_cfg_GoToNode(procCfg, CFG_NODE_ARGS);
+
+        if (le_cfg_GoToFirstChild(procCfg) != LE_OK)
+        {
+            LE_ERROR("No arguments for process '%s'.", procRef->namePtr);
+            le_cfg_CancelTxn(procCfg);
+            return LE_FAULT;
+        }
+
+        // Record the executable path.
+        if (procRef->execPathPtr == NULL)
+        {
+            if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex],
+                                 LIMIT_MAX_ARGS_STR_BYTES, "") != LE_OK)
+            {
+                LE_ERROR("Error reading argument '%s...' for process '%s'.",
+                         argsBuffers[bufIndex],
+                         procRef->namePtr);
+
+                le_cfg_CancelTxn(procCfg);
+                return LE_FAULT;
+            }
+
+            argsPtr[INDEX_EXEC] = argsBuffers[bufIndex];
+            bufIndex++;
+        }
+
+        // Record the arguments in the caller's list of buffers.
+        if (!procRef->argsListValid)
+        {
+            ptrIndex = 0;
+
+            while(1)
+            {
+                if (le_cfg_GoToNextSibling(procCfg) != LE_OK)
+                {
+                    break;
+                }
+                else if (bufIndex >= LIMIT_MAX_NUM_CMD_LINE_ARGS)
+                {
+                    LE_ERROR("Too many arguments for process '%s'.", procRef->namePtr);
+                    le_cfg_CancelTxn(procCfg);
+                    return LE_FAULT;
+                }
+
+                if (le_cfg_IsEmpty(procCfg, ""))
+                {
+                    LE_ERROR("Empty node in argument list for process '%s'.", procRef->namePtr);
+
+                    le_cfg_CancelTxn(procCfg);
+                    return LE_FAULT;
+                }
+
+                if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex],
+                                     LIMIT_MAX_ARGS_STR_BYTES, "") != LE_OK)
+                {
+                    LE_ERROR("Argument too long '%s...' for process '%s'.",
+                             argsBuffers[bufIndex],
+                             procRef->namePtr);
+
+                    le_cfg_CancelTxn(procCfg);
+                    return LE_FAULT;
+                }
+
+                // Point to the string.
+                argsPtr[INDEX_ARGS + ptrIndex] = argsBuffers[bufIndex];
+                ptrIndex++;
+                bufIndex++;
+            }
+        }
 
         le_cfg_CancelTxn(procCfg);
-        return LE_FAULT;
     }
 
-    argsPtr[ptrIndex++] = argsBuffers[bufIndex++];
-
-    // Record the process name in the list.
-    argsPtr[ptrIndex++] = procRef->name;
-
-    // Record the arguments in the caller's list of buffers.
-    while(1)
-    {
-        if (le_cfg_GoToNextSibling(procCfg) != LE_OK)
-        {
-            // Terminate the list.
-            argsPtr[ptrIndex] = NULL;
-            break;
-        }
-        else if (bufIndex >= LIMIT_MAX_NUM_CMD_LINE_ARGS)
-        {
-            LE_ERROR("Too many arguments for process '%s'.", procRef->name);
-            le_cfg_CancelTxn(procCfg);
-            return LE_FAULT;
-        }
-
-        if (le_cfg_IsEmpty(procCfg, ""))
-        {
-            LE_ERROR("Empty node in argument list for process '%s'.", procRef->name);
-
-            le_cfg_CancelTxn(procCfg);
-            return LE_FAULT;
-        }
-
-        if (le_cfg_GetString(procCfg, "", argsBuffers[bufIndex],
-                             LIMIT_MAX_ARGS_STR_BYTES, "") != LE_OK)
-        {
-            LE_ERROR("Argument too long '%s...' for process '%s'.",
-                     argsBuffers[bufIndex],
-                     procRef->name);
-
-            le_cfg_CancelTxn(procCfg);
-            return LE_FAULT;
-        }
-
-        // Point to the string.
-        argsPtr[ptrIndex++] = argsBuffers[bufIndex++];
-    }
-
-    le_cfg_CancelTxn(procCfg);
+    // Terminate the list.
+    argsPtr[INDEX_ARGS + ptrIndex] = NULL;
 
     return LE_OK;
 }
@@ -614,14 +778,14 @@ static void SendStdPipeToLogDaemon
         {
             logFd_StdOut(pipefd[READ_PIPE],
                          app_GetName(procRef->appRef),
-                         procRef->name,
+                         procRef->namePtr,
                          procRef->pid);
         }
         else
         {
             logFd_StdErr(pipefd[READ_PIPE],
                          app_GetName(procRef->appRef),
-                         procRef->name,
+                         procRef->namePtr,
                          procRef->pid);
         }
 
@@ -633,41 +797,87 @@ static void SendStdPipeToLogDaemon
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Redirects the specified standard stream to the write end of the provided pipe if the pipe is
- * available.  The pipe is then closed afterwards.
+ * Redirects the calling process's specified standard stream to the specified fd if the fd is a
+ * valid file descriptor.  Otherwise redirect the standard stream to the log pipe.  The log pipe is
+ * always closed afterwards.
  */
 //--------------------------------------------------------------------------------------------------
 static void RedirectStdStream
 (
-    int pipefd[2],      ///< [IN] Pipe fds.
-    int streamNum       ///< [IN] Either STDOUT_FILENO or STDERR_FILENO.
+    int fd,                 ///< [IN] Fd to redirect to.
+    int logPipe[2],         ///< [IN] Log standard out pipe.
+    int streamNum           ///< [IN] Either STDOUT_FILENO or STDERR_FILENO.
 )
 {
-    if (pipefd[READ_PIPE] != -1)
+    if (fd >= 0)
     {
-        // Duplicate the write end of the pipe onto the process' standard stream.
-        LE_FATAL_IF(dup2(pipefd[WRITE_PIPE], streamNum) == -1,
+        // Duplicate the fd onto the process' standard stream.  Leave the original fd open so it can
+        // be re-used later.
+        LE_FATAL_IF(dup2(fd, streamNum) == -1, "Could not duplicate fd.  %m.");
+    }
+    else
+    {
+        // Duplicate the write end of the log pipe onto the process' standard stream.
+        LE_FATAL_IF(dup2(logPipe[WRITE_PIPE], streamNum) == -1,
                     "Could not duplicate fd.  %m.");
 
         // Close the two ends of the pipe because we don't need them.
-        fd_Close(pipefd[READ_PIPE]);
-        fd_Close(pipefd[WRITE_PIPE]);
+        fd_Close(logPipe[READ_PIPE]);
+        fd_Close(logPipe[WRITE_PIPE]);
     }
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a pipe.  On failure the fd values are set to -1.
+ * Redirects the calling process's standard in, standard out and standard error to either the
+ * process's stored file descriptors (possibly set by a client process) or to the specified log
+ * pipes.  The log pipes are always closed afterwards.
  */
 //--------------------------------------------------------------------------------------------------
-static void CreatePipe
+static void RedirectStdStreams
+(
+    proc_Ref_t procRef,         ///< [IN] Process reference.
+    int stdOutLogPipe[2],       ///< [IN] Log standard out pipe.
+    int stdErrLogPipe[2]        ///< [IN] Log standard in pipe.
+)
+{
+    RedirectStdStream(procRef->stdErrFd, stdErrLogPipe, STDERR_FILENO);
+    RedirectStdStream(procRef->stdOutFd, stdOutLogPipe, STDOUT_FILENO);
+
+    if (procRef->stdInFd >= 0)
+    {
+        // Duplicate the fd onto the process' standard in.  Leave the original fd open so it can
+        // be re-used later.
+        LE_FATAL_IF(dup2(procRef->stdInFd, STDIN_FILENO) == -1, "Could not duplicate fd.  %m.");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a pipe for logging either stdout or stderr.  The logging pipe is only created if the
+ * process's stdout/stderr should not be redirected somewhere else.  If the pipe is not created the
+ * pipe's fd values are set to -1.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CreateLogPipe
 (
     proc_Ref_t procRef, ///< [IN] Process to create the pipe for.
     int pipefd[2],      ///< [OUT] Pipe fds.
     int streamNum       ///< [IN] Either STDOUT_FILENO or STDERR_FILENO.
 )
 {
+    if ( ((streamNum == STDERR_FILENO) && (procRef->stdErrFd != -1)) ||
+         ((streamNum == STDOUT_FILENO) && (procRef->stdOutFd != -1)) )
+    {
+        // Don't create the log pipe.
+        pipefd[0] = -1;
+        pipefd[1] = -1;
+
+        return;
+    }
+
     if (pipe(pipefd) != 0)
     {
         pipefd[0] = -1;
@@ -676,12 +886,12 @@ static void CreatePipe
         if (streamNum == STDERR_FILENO)
         {
             LE_ERROR("Could not create pipe. %s process' stderr will not be available.  %m.",
-                     procRef->name);
+                     procRef->namePtr);
         }
         else
         {
             LE_ERROR("Could not create pipe. %s process' stdout will not be available.  %m.",
-                     procRef->name);
+                     procRef->namePtr);
         }
     }
 }
@@ -689,36 +899,66 @@ static void CreatePipe
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start the process.
+ * Confines the calling process into the sandbox.  The current working directory will be set to "/"
+ * relative to the sandbox.
  *
- * If the sandboxDirPtr is not Null then the process will chroot to the sandboxDirPtr and
- * workingDirPtr is relative to the sandboxDirPtr.
- *
- * If sandboxDirPtr is NULL then the process will not be sandboxed and workingDirPtr is relative to
- * the current working directory of the calling process.
+ * @note Kills the calling process if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConfineProcInSandbox
+(
+    const char* sandboxRootPtr, ///< [IN] Path to the sandbox root.
+    uid_t uid,                  ///< [IN] The user ID the process should be set to.
+    gid_t gid,                  ///< [IN] The group ID the process should be set to.
+    const gid_t* groupsPtr,     ///< [IN] List of supplementary groups for this process.
+    size_t numGroups            ///< [IN] The number of groups in the supplementary groups list.
+)
+{
+    // @Note: The order of the following statements is important and should not be changed carelessly.
+
+    // Change working directory.
+    LE_FATAL_IF(chdir(sandboxRootPtr) != 0,
+                "Could not change working directory to '%s'.  %m", sandboxRootPtr);
+
+    // Chroot to the sandbox.
+    LE_FATAL_IF(chroot(sandboxRootPtr) != 0, "Could not chroot to '%s'.  %m", sandboxRootPtr);
+
+    // Clear our supplementary groups list.
+    LE_FATAL_IF(setgroups(0, NULL) == -1, "Could not set the supplementary groups list.  %m.");
+
+    // Populate our supplementary groups list with the provided list.
+    LE_FATAL_IF(setgroups(numGroups, groupsPtr) == -1,
+                "Could not set the supplementary groups list.  %m.");
+
+    // Set our process's primary group ID.
+    LE_FATAL_IF(setgid(gid) == -1, "Could not set the group ID.  %m.");
+
+    // Set our process's user ID.  This sets all of our user IDs (real, effective, saved).  This
+    // call also clears all cababilities.  This function in particular MUST be called after all
+    // the previous system calls because once we make this call we will lose root priviledges.
+    LE_FATAL_IF(setuid(uid) == -1, "Could not set the user ID.  %m.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts a process.  If the process belongs to a sandboxed app the process will run in its sandbox,
+ * otherwise the process will run in its working directory as root.
  *
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static inline le_result_t StartProc
+le_result_t proc_Start
 (
-    proc_Ref_t procRef,             ///< [IN] The process to start.
-    const char* workingDirPtr,      ///< [IN] The path to the process's working directory, relative
-                                    ///       to the sandbox directory.
-    uid_t uid,                      ///< [IN] The user ID to start the process as.
-    gid_t gid,                      ///< [IN] The primary group ID for this process.
-    const gid_t* groupsPtr,         ///< [IN] List of supplementary groups for this process.
-    size_t numGroups,               ///< [IN] The number of groups in the supplementary groups list.
-    const char* sandboxDirPtr       ///< [IN] The path to the root of the sandbox this process is to
-                                    ///       run in.  If NULL then process will be unsandboxed.
+    proc_Ref_t procRef              ///< [IN] The process to start.
 )
 {
     if (procRef->pid != -1)
     {
         LE_ERROR("Process '%s' (PID: %d) cannot be started because it is already running.",
-                 procRef->name, procRef->pid);
+                 procRef->namePtr, procRef->pid);
         return LE_FAULT;
     }
 
@@ -736,7 +976,7 @@ static inline le_result_t StartProc
     if (numEnvVars == LE_FAULT)
     {
         LE_ERROR("Error getting environment variables.  Process '%s' cannot be started.",
-                 procRef->name);
+                 procRef->namePtr);
         return LE_FAULT;
     }
 
@@ -747,7 +987,7 @@ static inline le_result_t StartProc
     if (GetArgs(procRef, argsBuffers, argsPtr) != LE_OK)
     {
         LE_ERROR("Could not get command line arguments, process '%s' cannot be started.",
-                 procRef->name);
+                 procRef->namePtr);
         return LE_FAULT;
     }
 
@@ -758,10 +998,10 @@ static inline le_result_t StartProc
     appSmack_GetLabel(app_GetName(procRef->appRef), smackLabel, sizeof(smackLabel));
 
     // Create pipes for the process's standard error and standard out streams.
-    int stderrPipe[2];
-    int stdoutPipe[2];
-    CreatePipe(procRef, stderrPipe, STDERR_FILENO);
-    CreatePipe(procRef, stdoutPipe, STDOUT_FILENO);
+    int logStdOutPipe[2];
+    int logStdErrPipe[2];
+    CreateLogPipe(procRef, logStdOutPipe, STDOUT_FILENO);
+    CreateLogPipe(procRef, logStdErrPipe, STDERR_FILENO);
 
     // Create the child process
     pid_t pID = fork();
@@ -791,8 +1031,7 @@ static inline le_result_t StartProc
         // The parent has allowed us to continue.
 
         // Redirect the process's standard streams.
-        RedirectStdStream(stderrPipe, STDERR_FILENO);
-        RedirectStdStream(stdoutPipe, STDOUT_FILENO);
+        RedirectStdStreams(procRef, logStdOutPipe, logStdErrPipe);
 
         // Set the process's SMACK label.
         smack_SetMyLabel(smackLabel);
@@ -808,14 +1047,25 @@ static inline le_result_t StartProc
         SetEnvironmentVariables(envVars, numEnvVars);
 
         // Setup the process environment.
-        if (sandboxDirPtr != NULL)
+        if (app_GetIsSandboxed(procRef->appRef))
         {
+            // Get the app's supplementary groups list.
+            gid_t groups[LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS];
+            size_t numGroups = LIMIT_MAX_NUM_SUPPLEMENTARY_GROUPS;
+
+            LE_FATAL_IF(app_GetSupplementaryGroups(procRef->appRef, groups, &numGroups) != LE_OK,
+                        "Supplementary groups list is too small.");
+
             // Sandbox the process.
-            sandbox_ConfineProc(sandboxDirPtr, uid, gid, groupsPtr, numGroups, workingDirPtr);
+            ConfineProcInSandbox(app_GetWorkingDir(procRef->appRef),
+                                app_GetUid(procRef->appRef),
+                                app_GetGid(procRef->appRef),
+                                groups,
+                                numGroups);
         }
         else
         {
-            ConfigNonSandboxedProcess(workingDirPtr);
+            ConfigNonSandboxedProcess(app_GetWorkingDir(procRef->appRef));
         }
 
         // Launch the child program.  This should not return unless there was an error.
@@ -832,7 +1082,6 @@ static inline le_result_t StartProc
     }
 
     procRef->pid = pID;
-    procRef->paused = false;
 
     // Don't need this end of the pipe.
     fd_Close(syncPipeFd[READ_PIPE]);
@@ -841,8 +1090,8 @@ static inline le_result_t StartProc
     SetSchedulingPriority(procRef);
 
     // Send standard pipes to the log daemon so they will show up in the logs.
-    SendStdPipeToLogDaemon(procRef, stderrPipe, STDERR_FILENO);
-    SendStdPipeToLogDaemon(procRef, stdoutPipe, STDOUT_FILENO);
+    SendStdPipeToLogDaemon(procRef, logStdErrPipe, STDERR_FILENO);
+    SendStdPipeToLogDaemon(procRef, logStdOutPipe, STDOUT_FILENO);
 
     // Set the resource limits for the child process while the child process is blocked.
     if (resLim_SetProcLimits(procRef) != LE_OK)
@@ -852,73 +1101,12 @@ static inline le_result_t StartProc
         kill_Hard(procRef->pid);
     }
 
-    LE_INFO("Starting process '%s' with pid %d", procRef->name, procRef->pid);
+    LE_INFO("Starting process '%s' with pid %d", procRef->namePtr, procRef->pid);
 
     // Unblock the child process.
     fd_Close(syncPipeFd[WRITE_PIPE]);
 
     return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Starts a process, running as the root user, in a given working directory.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t proc_Start
-(
-    proc_Ref_t procRef,             ///< [IN] The process to start.
-    const char* workingDirPtr       ///< [IN] The path to the process's working directory, relative
-                                    ///       to the sandbox directory.
-)
-{
-    return proc_StartInSandbox(procRef,
-                               workingDirPtr,
-                               0,
-                               0,
-                               NULL,
-                               0,
-                               NULL);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Start the process in a sandbox.
- *
- * The process will chroot to the sandboxDirPtr and assume the workingDirPtr is relative to the
- * sandboxDirPtr.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t proc_StartInSandbox
-(
-    proc_Ref_t procRef,             ///< [IN] The process to start.
-    const char* workingDirPtr,      ///< [IN] The path to the process's working directory, relative
-                                    ///       to the sandbox directory.
-    uid_t uid,                      ///< [IN] The user ID to start the process as.
-    gid_t gid,                      ///< [IN] The primary group ID for this process.
-    const gid_t* groupsPtr,         ///< [IN] List of supplementary groups for this process.
-    size_t numGroups,               ///< [IN] The number of groups in the supplementary groups list.
-    const char* sandboxDirPtr       ///< [IN] The path to the root of the sandbox this process is to
-                                    ///       run in.  If NULL then process will be unsandboxed.
-)
-{
-    return StartProc(procRef,
-                     workingDirPtr,
-                     uid,
-                     gid,
-                     groupsPtr,
-                     numGroups,
-                     sandboxDirPtr);
 }
 
 
@@ -958,13 +1146,9 @@ proc_State_t proc_GetState
     {
         return PROC_STATE_STOPPED;
     }
-    else if (!(procRef->paused))
-    {
-        return PROC_STATE_RUNNING;
-    }
     else
     {
-        return PROC_STATE_PAUSED;
+        return PROC_STATE_RUNNING;
     }
 }
 
@@ -1000,7 +1184,7 @@ const char* proc_GetName
     proc_Ref_t procRef             ///< [IN] The process reference.
 )
 {
-    return (const char*)procRef->name;
+    return (const char*)procRef->namePtr;
 }
 
 
@@ -1023,27 +1207,11 @@ const char* proc_GetAppName
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the process's previous fault time.
- *
- * @return
- *      The process's name.
- */
-//--------------------------------------------------------------------------------------------------
-time_t proc_GetFaultTime
-(
-    proc_Ref_t procRef             ///< [IN] The process reference.
-)
-{
-    return procRef->faultTime;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Get the process's config path.
  *
  * @return
  *      The process's config path.
+ *      NULL if the process does not have a config.
  */
 //--------------------------------------------------------------------------------------------------
 const char* proc_GetConfigPath
@@ -1051,7 +1219,7 @@ const char* proc_GetConfigPath
     proc_Ref_t procRef             ///< [IN] The process reference.
 )
 {
-    return (const char*)procRef->cfgPathRoot;
+    return (const char*)procRef->cfgPathPtr;
 }
 
 
@@ -1069,26 +1237,288 @@ bool proc_IsRealtime
     proc_Ref_t procRef             ///< [IN] The process reference.
 )
 {
-    // Read the priority setting from the config tree.
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    char priorStr[LIMIT_MAX_PRIORITY_NAME_BYTES] = "medium";
+    char* priorStrPtr = priorStr;
 
-    char priorStr[LIMIT_MAX_PRIORITY_NAME_BYTES];
-    le_result_t result = le_cfg_GetString(procCfg,
-                                          CFG_NODE_PRIORITY,
-                                          priorStr,
-                                          sizeof(priorStr),
-                                          "medium");
+    if (procRef->priorityPtr != NULL)
+    {
+        priorStrPtr = procRef->priorityPtr;
+    }
+    else if (procRef->cfgPathPtr != NULL)
+    {
+        // Read the priority setting from the config tree.
+        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
 
-    le_cfg_CancelTxn(procCfg);
+        le_result_t result = le_cfg_GetString(procCfg,
+                                              CFG_NODE_PRIORITY,
+                                              priorStr,
+                                              sizeof(priorStr),
+                                              "medium");
 
-    if ( (result == LE_OK) &&
-         (priorStr[0] == 'r') && (priorStr[1] == 't') )
+        le_cfg_CancelTxn(procCfg);
+
+        if (result != LE_OK)
+        {
+            return false;
+        }
+    }
+
+    if ( (priorStrPtr[0] == 'r') && (priorStrPtr[1] == 't') )
     {
         return true;
     }
 
     return false;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's file descriptors to use as its standard in.
+ *
+ * By default the standard in is directed to /dev/null.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetStdIn
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    int stdInFd                 ///< [IN] File descriptor to use as the app proc's standard in.
+)
+{
+    procRef->stdInFd = stdInFd;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's file descriptors to use as its standard out.
+ *
+ * By default the standard out is directed to the logs.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetStdOut
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    int stdOutFd                ///< [IN] File descriptor to use as the app proc's standard out.
+)
+{
+    procRef->stdOutFd = stdOutFd;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's file descriptors to use as its standard error.
+ *
+ * By default the standard out is directed to the logs.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetStdErr
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    int stdErrFd                ///< [IN] File descriptor to use as the app proc's standard error.
+)
+{
+    procRef->stdErrFd = stdErrFd;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's executable path.
+ *
+ * This overrides the configured executable path if available.  If the configuration for the process
+ * is unavailable this function must be called to set the executable path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the executable path is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t proc_SetExecPath
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    const char* execPathPtr     ///< [IN] Executable path to use for this process.  NULL to clear
+                                ///       the executable path.
+)
+{
+    // Clear the executable path.
+    if (execPathPtr == NULL)
+    {
+        if (procRef->execPathPtr == NULL)
+        {
+            return LE_OK;
+        }
+
+        le_mem_Release(procRef->execPathPtr);
+        procRef->execPathPtr = NULL;
+        return LE_OK;
+    }
+
+    // Set the executable path.
+    if (procRef->execPathPtr == NULL)
+    {
+        procRef->execPathPtr = le_mem_ForceAlloc(PathPool);
+    }
+
+    return le_utf8_Copy(procRef->execPathPtr, execPathPtr, LIMIT_MAX_PATH_BYTES, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the process's priority.
+ *
+ * This overrides the configured priority if available.
+ *
+ * The priority level string can be either "idle", "low", "medium", "high", "rt1" ... "rt32".
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the priority string is too long.
+ *      LE_FAULT if the priority string is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t proc_SetPriority
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    const char* priorityPtr     ///< [IN] Priority string.  NULL to clear the priority.
+)
+{
+    // Clear the priority string.
+    if (priorityPtr == NULL)
+    {
+        if (procRef->priorityPtr == NULL)
+        {
+            return LE_OK;
+        }
+
+        le_mem_Release(procRef->priorityPtr);
+        procRef->priorityPtr = NULL;
+        return LE_OK;
+    }
+
+    // Check if the priority string is valid.
+    if ( (strcmp(priorityPtr, "idle") == 0) ||
+         (strcmp(priorityPtr, "low") == 0) ||
+         (strcmp(priorityPtr, "medium") == 0) ||
+         (strcmp(priorityPtr, "high") == 0) )
+    {
+        goto setPriority;
+    }
+
+    if ( (priorityPtr[0] == 'r') && (priorityPtr[1] == 't') )
+    {
+        int rtLevel;
+
+        if ( (le_utf8_ParseInt(&rtLevel, &(priorityPtr[2])) == LE_OK) &&
+             (rtLevel >= MIN_RT_PRIORITY) &&
+             (rtLevel <= MAX_RT_PRIORITY) )
+        {
+            goto setPriority;
+        }
+    }
+
+    return LE_FAULT;
+
+setPriority:
+
+    // Set the priority string.
+    if (procRef->priorityPtr == NULL)
+    {
+        procRef->priorityPtr = le_mem_ForceAlloc(PathPool);
+    }
+
+    return le_utf8_Copy(procRef->priorityPtr, priorityPtr, LIMIT_MAX_PRIORITY_NAME_BYTES, NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a cmd-line argument to a process.  Adding a NULL argPtr is valid and can be used to validate
+ * the args list without actually adding an argument.  This is useful for overriding the configured
+ * arguments with an empty list.
+ *
+ * This overrides the configured arguments if available.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the argument string is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t proc_AddArgs
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    const char* argPtr          ///< [IN] Argument string.
+)
+{
+    if (argPtr != NULL)
+    {
+        Arg_t* argObjPtr = le_mem_ForceAlloc(ArgsPool);
+
+        if (le_utf8_Copy(argObjPtr->argument, argPtr, LIMIT_MAX_ARGS_STR_BYTES, NULL) != LE_OK)
+        {
+            le_mem_Release(argObjPtr);
+            return LE_OVERFLOW;
+        }
+
+        argObjPtr->link = LE_SLS_LINK_INIT;
+
+        le_sls_Queue(&(procRef->argsList), &(argObjPtr->link));
+    }
+
+    procRef->argsListValid = true;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes and invalidates the cmd-line arguments to a process.  This means the process will only
+ * use arguments from the config if available.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_ClearArgs
+(
+    proc_Ref_t procRef          ///< [IN] The process reference.
+)
+{
+    procRef->argsListValid = false;
+
+    // Delete arguments override list.
+    le_sls_Link_t* argLinkPtr = le_sls_Pop(&(procRef->argsList));
+
+    while (argLinkPtr != NULL)
+    {
+        Arg_t* argPtr = CONTAINER_OF(argLinkPtr, Arg_t, link);
+
+        le_mem_Release(argPtr);
+
+        argLinkPtr = le_sls_Pop(&(procRef->argsList));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set fault action.
+ *
+ * This overrides the configured fault action if available.
+ *
+ * The fault action can be set to FAULT_ACTION_NONE to indicate that the configured fault action
+ * should be used if available.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetFaultAction
+(
+    proc_Ref_t procRef,                 ///< [IN] The process reference.
+    FaultAction_t faultAction           ///< [IN] Fault action.
+)
+{
+    procRef->faultAction = faultAction;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1098,13 +1528,25 @@ bool proc_IsRealtime
  *      The fault action.
  */
 //--------------------------------------------------------------------------------------------------
-static proc_FaultAction_t GetFaultAction
+static FaultAction_t GetFaultAction
 (
     proc_Ref_t procRef              ///< [IN] The process reference.
 )
 {
+    if (procRef->faultAction != FAULT_ACTION_NONE)
+    {
+        // Use the fault action override.
+        return procRef->faultAction;
+    }
+
+    if (procRef->cfgPathPtr == NULL)
+    {
+        // Use the default fault action.
+        return FAULT_ACTION_IGNORE;
+    }
+
     // Read the process's fault action from the config tree.
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
 
     char faultActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
     le_result_t result = le_cfg_GetString(procCfg, CFG_NODE_FAULT_ACTION,
@@ -1116,47 +1558,48 @@ static proc_FaultAction_t GetFaultAction
     if (result != LE_OK)
     {
         LE_CRIT("Fault action string for process '%s' is too long.  Assume 'ignore'.",
-                procRef->name);
-        return PROC_FAULT_ACTION_IGNORE;
+                procRef->namePtr);
+        return FAULT_ACTION_IGNORE;
     }
 
     if (strcmp(faultActionStr, RESTART_STR) == 0)
     {
-        return PROC_FAULT_ACTION_RESTART;
+        return FAULT_ACTION_RESTART_PROC;
     }
 
     if (strcmp(faultActionStr, RESTART_APP_STR) == 0)
     {
-        return PROC_FAULT_ACTION_RESTART_APP;
+        return FAULT_ACTION_RESTART_APP;
     }
 
     if (strcmp(faultActionStr, STOP_APP_STR) == 0)
     {
-        return PROC_FAULT_ACTION_STOP_APP;
+        return FAULT_ACTION_STOP_APP;
     }
 
     if (strcmp(faultActionStr, REBOOT_STR) == 0)
     {
-        return PROC_FAULT_ACTION_REBOOT;
+        return FAULT_ACTION_REBOOT;
     }
 
     if (strcmp(faultActionStr, IGNORE_STR) == 0)
     {
-        return PROC_FAULT_ACTION_IGNORE;
+        return FAULT_ACTION_IGNORE;
     }
 
     if (faultActionStr[0] == '\0')  // If no fault action is specified,
     {
         LE_INFO("No fault action specified for process '%s'. Assuming 'ignore'.",
-                procRef->name);
+                procRef->namePtr);
 
-        return PROC_FAULT_ACTION_IGNORE;
+        return FAULT_ACTION_IGNORE;
     }
 
     LE_WARN("Unrecognized fault action for process '%s'.  Assume 'ignore'.",
-            procRef->name);
-    return PROC_FAULT_ACTION_IGNORE;
+            procRef->namePtr);
+    return FAULT_ACTION_IGNORE;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1179,7 +1622,7 @@ static void CaptureDebugData
                      "/legato/systems/current/bin/saveLogs %s %s %s %s",
                      app_GetIsSandboxed(procRef->appRef) ? "SANDBOXED" : "NOTSANDBOXED",
                      app_GetName(procRef->appRef),
-                     procRef->name,
+                     procRef->namePtr,
                      isRebooting ? "REBOOT" : "");
 
     if (s >= sizeof(command))
@@ -1218,14 +1661,8 @@ wdog_action_WatchdogAction_t proc_GetWatchdogAction
     // The result is passed back up to app to handle as with fault action.
     wdog_action_WatchdogAction_t watchdogAction = WATCHDOG_ACTION_NOT_FOUND;
     {
-
-        if (procRef->paused)
-        {
-            return WATCHDOG_ACTION_HANDLED;
-        };
-
         // Read the process's fault action from the config tree.
-        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathRoot);
+        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
 
         char watchdogActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
         le_result_t result = le_cfg_GetString(procCfg, wdog_action_GetConfigNode(),
@@ -1236,17 +1673,17 @@ wdog_action_WatchdogAction_t proc_GetWatchdogAction
         // Set the watchdog action based on the fault action string.
         if (result == LE_OK)
         {
-            LE_WARN("%s watchdogAction '%s' in proc section", procRef->name, watchdogActionStr);
+            LE_WARN("%s watchdogAction '%s' in proc section", procRef->namePtr, watchdogActionStr);
             watchdogAction = wdog_action_EnumFromString(watchdogActionStr);
             if (WATCHDOG_ACTION_ERROR == watchdogAction)
             {
-                LE_WARN("%s watchdogAction '%s' unknown", procRef->name, watchdogActionStr);
+                LE_WARN("%s watchdogAction '%s' unknown", procRef->namePtr, watchdogActionStr);
             }
         }
         else
         {
             LE_CRIT("Watchdog action string for process '%s' is too long.",
-                    procRef->name);
+                    procRef->namePtr);
             watchdogAction = WATCHDOG_ACTION_ERROR;
         }
     }
@@ -1268,13 +1705,13 @@ wdog_action_WatchdogAction_t proc_GetWatchdogAction
 static bool ReachedFaultLimit
 (
     proc_Ref_t procRef,                 ///< [IN] The process reference.
-    proc_FaultAction_t currFaultAction, ///< [IN] The process's current fault action.
+    FaultAction_t currFaultAction,      ///< [IN] The process's current fault action.
     time_t prevFaultTime                ///< [IN] Time of the previous fault.
 )
 {
     switch (currFaultAction)
     {
-        case PROC_FAULT_ACTION_RESTART:
+        case FAULT_ACTION_RESTART_PROC:
             if ( (procRef->faultTime != 0) &&
                  (procRef->faultTime - prevFaultTime <= FAULT_LIMIT_INTERVAL_RESTART) )
             {
@@ -1282,7 +1719,7 @@ static bool ReachedFaultLimit
             }
             break;
 
-        case PROC_FAULT_ACTION_RESTART_APP:
+        case FAULT_ACTION_RESTART_APP:
             if ( (procRef->faultTime != 0) &&
                  (procRef->faultTime - prevFaultTime <= FAULT_LIMIT_INTERVAL_RESTART_APP) )
             {
@@ -1307,103 +1744,91 @@ static bool ReachedFaultLimit
  *      The fault action that should be taken for this process.
  */
 //--------------------------------------------------------------------------------------------------
-proc_FaultAction_t proc_SigChildHandler
+FaultAction_t proc_SigChildHandler
 (
     proc_Ref_t procRef,             ///< [IN] The process reference.
     int procExitStatus              ///< [IN] The status of the process given by wait().
 )
 {
-    proc_FaultAction_t faultAction = PROC_FAULT_ACTION_NO_FAULT;
+    FaultAction_t faultAction = FAULT_ACTION_NONE;
 
-    if (WIFSTOPPED(procExitStatus))
+    if (procRef->cmdKill)
     {
-        procRef->paused = true;
+        // The cmdKill flag was set which means the process died because we killed it so
+        // it was not a fault.  Reset the cmdKill flag so that if this process is restarted
+        // faults will still be caught.
+        procRef->cmdKill = false;
 
-        LE_INFO("Process '%s' (PID: %d) has paused.", procRef->name, procRef->pid);
+        // Remember that this process is dead.
+        procRef->pid = -1;
+
+        return FAULT_ACTION_NONE;
     }
-    else if (WIFCONTINUED(procExitStatus))
+
+    // Remember the previous fault time.
+    time_t prevFaultTime = procRef->faultTime;
+
+    // Record the fault time.
+    procRef->faultTime = (le_clk_GetAbsoluteTime()).sec;
+
+    if (WIFEXITED(procExitStatus))
     {
-        procRef->paused = false;
+        LE_INFO("Process '%s' (PID: %d) has exited with exit code %d.",
+                procRef->namePtr, procRef->pid, WEXITSTATUS(procExitStatus));
 
-        LE_INFO("Process '%s' (PID: %d) has been continued.", procRef->name, procRef->pid);
-    }
-    else  // The process died.
-    {
-        if (procRef->cmdKill)
+        if (WEXITSTATUS(procExitStatus) != EXIT_SUCCESS)
         {
-            // The cmdKill flag was set which means the process died because we killed it so
-            // it was not a fault.  Reset the cmdKill flag so that if this process is restarted
-            // faults will still be caught.
-            procRef->cmdKill = false;
-
-            // Remember that this process is dead.
-            procRef->pid = -1;
-
-            return PROC_FAULT_ACTION_NO_FAULT;
-        }
-
-        // Remember the previous fault time.
-        time_t prevFaultTime = procRef->faultTime;
-
-        // Record the fault time.
-        procRef->faultTime = (le_clk_GetAbsoluteTime()).sec;
-
-        if (WIFEXITED(procExitStatus))
-        {
-            LE_INFO("Process '%s' (PID: %d) has exited with exit code %d.",
-                    procRef->name, procRef->pid, WEXITSTATUS(procExitStatus));
-
-            if (WEXITSTATUS(procExitStatus) != EXIT_SUCCESS)
-            {
-                faultAction = GetFaultAction(procRef);
-            }
-        }
-        else if (WIFSIGNALED(procExitStatus))
-        {
-            int sig = WTERMSIG(procExitStatus);
-
-            // WARNING: strsignal() is non-reentrant.  We use it here because the Supervisor is
-            //          single threaded.
-            LE_INFO("Process '%s' (PID: %d) has exited due to signal %d (%s).",
-                    procRef->name, procRef->pid, sig, strsignal(sig));
-
             faultAction = GetFaultAction(procRef);
         }
+    }
+    else if (WIFSIGNALED(procExitStatus))
+    {
+        int sig = WTERMSIG(procExitStatus);
 
-        // Record the fact that the process is dead.
-        procRef->pid = -1;
-        procRef->paused = false;
+        // WARNING: strsignal() is non-reentrant.  We use it here because the Supervisor is
+        //          single threaded.
+        LE_INFO("Process '%s' (PID: %d) has exited due to signal %d (%s).",
+                procRef->namePtr, procRef->pid, sig, strsignal(sig));
 
-        // If the process has reached its fault limit, take action to stop
-        // the apparently futile attempts to start this thing.
-        if (ReachedFaultLimit(procRef, faultAction, prevFaultTime))
+        faultAction = GetFaultAction(procRef);
+    }
+    else
+    {
+        LE_FATAL("Unexpected status value (%d) for pid %d.", procExitStatus, procRef->pid);
+    }
+
+    // Record the fact that the process is dead.
+    procRef->pid = -1;
+
+    // If the process has reached its fault limit, take action to stop
+    // the apparently futile attempts to start this thing.
+    if (ReachedFaultLimit(procRef, faultAction, prevFaultTime))
+    {
+        if (system_IsGood())
         {
-            if (system_IsGood())
-            {
-                LE_CRIT("Process '%s' reached the fault limit (in a 'good' system) "
-                         "and will be stopped.",
-                         procRef->name);
+            LE_CRIT("Process '%s' reached the fault limit (in a 'good' system) "
+                     "and will be stopped.",
+                     procRef->namePtr);
 
-                faultAction = PROC_FAULT_ACTION_STOP_APP;
-            }
-            else
-            {
-                LE_EMERG("Process '%s' reached fault limit while system in probation. "
-                         "Device will be rebooted.",
-                         procRef->name);
-
-                faultAction = PROC_FAULT_ACTION_REBOOT;
-            }
+            faultAction = FAULT_ACTION_STOP_APP;
         }
-
-        // If the process stopped due to an error, save all relevant data for future diagnosis.
-        if (faultAction != PROC_FAULT_ACTION_NO_FAULT)
+        else
         {
-            // Check if we're rebooting.  If we are, this data needs to be saved in a more permanent
-            // location.
-            bool isRebooting = (faultAction == PROC_FAULT_ACTION_REBOOT);
-            CaptureDebugData(procRef, isRebooting);
+            LE_EMERG("Process '%s' reached fault limit while system in probation. "
+                     "Device will be rebooted.",
+                     procRef->namePtr);
+
+            faultAction = FAULT_ACTION_REBOOT;
         }
+    }
+
+    // If the process stopped due to an error, save all relevant data for future diagnosis.
+    if (faultAction != FAULT_ACTION_NONE)
+    {
+        // Check if we're rebooting.  If we are, this data needs to be saved in a more permanent
+        // location.
+        bool isRebooting = (faultAction == FAULT_ACTION_REBOOT);
+        CaptureDebugData(procRef, isRebooting);
     }
 
     return faultAction;

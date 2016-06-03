@@ -17,12 +17,66 @@
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of sensors (can be extended dynamically).
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_OF_SENSOR   10
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Data structure of a sensor context.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_temp_Handle_t        paHandle;
+    le_temp_SensorRef_t     ref;                             ///< sensor reference
+    char                    thresholdEvent[LE_TEMP_THRESHOLD_NAME_MAX_BYTES];
+    le_dls_Link_t           link;                            ///< Object node link
+} SensorCtx_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Temperature threshold report structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_temp_SensorRef_t ref;                             ///< sensor reference
+    char                threshold[LE_TEMP_THRESHOLD_NAME_MAX_BYTES];
+} ThresholdReport_t;
+
+//--------------------------------------------------------------------------------------------------
 //                                       Static declarations
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for Sensors.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   SensorPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * list of sensor context.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t  SensorList;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for the antenna reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t SensorRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -32,10 +86,47 @@
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t TemperatureThresholdEventId;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for Temperature threshold Event reporting.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ThresholdReportPool;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer Radio Access Technology Change Handler.
+ * Look for a sensor reference corresponding to a name.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_temp_SensorRef_t FindSensorRef
+(
+    const char*  sensorPtr     ///< [IN] Name of the temperature sensor.
+)
+{
+    le_temp_Handle_t    leHandle;
+
+    if (pa_temp_GetHandle(sensorPtr, &leHandle) == LE_OK)
+    {
+        if (leHandle)
+        {
+            SensorCtx_t* sensorCtxPtr=(SensorCtx_t*)leHandle;
+            return sensorCtxPtr->ref;
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Temperature Handler.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -45,35 +136,82 @@ static void FirstLayerTemperatureChangeHandler
     void* secondLayerHandlerFunc
 )
 {
-    le_temp_ThresholdStatus_t*           tempPtr = reportPtr;
+    ThresholdReport_t*                  tempPtr = reportPtr;
     le_temp_ThresholdEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
-    clientHandlerFunc(*tempPtr, le_event_GetContextPtr());
+    LE_DEBUG("Call application handler for %p sensor reference with '%s' threshold",
+             tempPtr->ref,
+             tempPtr->threshold);
 
-    // The reportPtr is a reference counted object, so need to release it
+    // Call the client handler
+    clientHandlerFunc(tempPtr->ref,
+                      tempPtr->threshold,
+                      le_event_GetContextPtr() );
+
     le_mem_Release(reportPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Temperature Change handler function.
+ * PA Temperature Change handler function.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void TemperatureChangeHandler
+static void PaTemperatureThresholdHandler
 (
-    le_temp_ThresholdStatus_t* thresholdEventPtr
+    le_temp_Handle_t leHandle,      ///< [IN] Handle of the temperature sensor.
+    const char*      thresholdPtr,  ///< [IN] Name of the threshold.
+    void*            contextPtr
 )
 {
-    // Notify all the registered client's handlers
-    le_event_ReportWithRefCounting(TemperatureThresholdEventId, thresholdEventPtr);
+    SensorCtx_t* sensorCtxPtr = (SensorCtx_t*)leHandle;
+
+    ThresholdReport_t* tempEventPtr = le_mem_ForceAlloc(ThresholdReportPool);
+
+    tempEventPtr->ref = sensorCtxPtr->ref;
+    strncpy(tempEventPtr->threshold, thresholdPtr, LE_TEMP_THRESHOLD_NAME_MAX_BYTES);
+
+    LE_INFO("Report '%s' threshold for %p sensor reference",
+             tempEventPtr->threshold,
+             tempEventPtr->ref);
+
+    le_event_ReportWithRefCounting(TemperatureThresholdEventId, tempEventPtr);
 }
+
 
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
 //--------------------------------------------------------------------------------------------------
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Initialization of the Legato Temperature Monitoring Service
+ */
+//--------------------------------------------------------------------------------------------------
+void le_temp_Init
+(
+    void
+)
+{
+    LE_DEBUG("call marker.");
+
+    // Create an event Id for temperature change notification
+    TemperatureThresholdEventId = le_event_CreateIdWithRefCounting("TempThresholdEvent");
+
+    ThresholdReportPool = le_mem_CreatePool("ThresholdReportPool",
+                                            sizeof(ThresholdReport_t));
+
+    SensorPool = le_mem_CreatePool("SensorPool",
+                                   sizeof(SensorCtx_t));
+
+    SensorRefMap = le_ref_CreateMap("SensorRefMap", MAX_NUM_OF_SENSOR);
+
+    SensorList = LE_DLS_LIST_INIT;
+
+    // Register a handler function for new temperature Threshold Event
+    pa_temp_AddTempEventHandler(PaTemperatureThresholdHandler, NULL);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -93,6 +231,8 @@ le_temp_ThresholdEventHandlerRef_t le_temp_AddThresholdEventHandler
 {
     le_event_HandlerRef_t        handlerRef;
 
+    LE_DEBUG("call marker.");
+
     if (handlerPtr == NULL)
     {
         LE_KILL_CLIENT("Handler function is NULL !");
@@ -100,9 +240,9 @@ le_temp_ThresholdEventHandlerRef_t le_temp_AddThresholdEventHandler
     }
 
     handlerRef = le_event_AddLayeredHandler("TemperatureThresholdHandler",
-                    TemperatureThresholdEventId,
-                    FirstLayerTemperatureChangeHandler,
-                    (le_event_HandlerFunc_t)handlerPtr);
+                                            TemperatureThresholdEventId,
+                                            FirstLayerTemperatureChangeHandler,
+                                            (le_event_HandlerFunc_t)handlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -120,6 +260,8 @@ void le_temp_RemoveThresholdEventHandler
         ///< [IN]
 )
 {
+    LE_DEBUG("call marker.");
+
     if (addHandlerRef == NULL)
     {
         LE_KILL_CLIENT("addHandlerRef function is NULL !");
@@ -131,225 +273,277 @@ void le_temp_RemoveThresholdEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Platform temperature level in degree celsius.
+ * Request a temperature sensor reference.
+ *
+ * @return
+ *      - Reference to the temperature sensor.
+ *      - NULL when the requested sensor is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_temp_SensorRef_t le_temp_Request
+(
+    const char*  sensorPtr ///< [IN] Name of the temperature sensor.
+)
+{
+    size_t              length;
+    SensorCtx_t*        currentPtr=NULL;
+    le_temp_SensorRef_t sensorRef;
+
+    LE_DEBUG("call marker.");
+
+    if (sensorPtr == NULL)
+    {
+        LE_KILL_CLIENT("sensorPtr is NULL !");
+        return NULL;
+    }
+
+    if(strlen(sensorPtr) > (LE_TEMP_SENSOR_NAME_MAX_BYTES-1))
+    {
+        LE_KILL_CLIENT("strlen(sensorPtr) > %d", (LE_TEMP_SENSOR_NAME_MAX_BYTES-1));
+        return NULL;
+    }
+
+    length = strnlen(sensorPtr, LE_TEMP_SENSOR_NAME_MAX_BYTES+1);
+    if (!length)
+    {
+        return NULL;
+    }
+
+    if (length > LE_TEMP_SENSOR_NAME_MAX_BYTES)
+    {
+        return NULL;
+    }
+
+    // Check if this sensor already exists
+    if ((sensorRef = FindSensorRef(sensorPtr)) != NULL)
+    {
+        SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
+        le_mem_AddRef(sensorCtxPtr);
+        return sensorRef;
+    }
+    else
+    {
+        currentPtr = le_mem_ForceAlloc(SensorPool);
+
+        if (pa_temp_Request(sensorPtr,
+                            (le_temp_Handle_t)currentPtr,
+                            &currentPtr->paHandle) == LE_OK)
+        {
+            currentPtr->ref = le_ref_CreateRef(SensorRefMap, currentPtr);
+            currentPtr->link = LE_DLS_LINK_INIT;
+            le_dls_Queue(&SensorList, &(currentPtr->link));
+
+            LE_DEBUG("Create a new sensor reference (%p)", currentPtr->ref);
+            return currentPtr->ref;
+        }
+        else
+        {
+            le_mem_Release(currentPtr);
+            LE_DEBUG("This sensor (%s) doesn't exist on your platform", sensorPtr);
+            return NULL;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the temperature sensor's name from its reference.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_OVERFLOW      The name length exceed the maximum length.
+ *      - LE_FAULT         The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_temp_GetSensorName
+(
+    le_temp_SensorRef_t sensorRef,      ///< [IN]  Temperature sensor reference.
+    char*               sensorNamePtr,  ///< [OUT] Name of the temperature sensor.
+    size_t              len             ///< [IN] The maximum length of the sensor name.
+)
+{
+    SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
+
+    LE_DEBUG("call marker.");
+
+    if (sensorCtxPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sensorRef);
+        return LE_FAULT;
+    }
+
+    if (sensorNamePtr == NULL)
+    {
+        LE_KILL_CLIENT("sensorNamePtr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_temp_GetSensorName(sensorCtxPtr->paHandle, sensorNamePtr, len);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the temperature in degree Celsius.
  *
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the temperature.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_temp_GetPlatformTemperature
+le_result_t le_temp_GetTemperature
 (
-    int32_t* platformTempPtr
-        ///< [OUT]
-        ///< [OUT] The Platform temperature level in degree celsius.
+    le_temp_SensorRef_t  sensorRef,     ///< [IN] Temperature sensor reference.
+    int32_t*             temperaturePtr ///< [OUT] Temperature in degree Celsius.
 )
 {
-    if (platformTempPtr == NULL)
+    SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
+
+    LE_DEBUG("call marker.");
+
+    if (sensorCtxPtr == NULL)
     {
-        LE_KILL_CLIENT("platformTempPtr is NULL!!");
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sensorRef);
         return LE_FAULT;
     }
 
-    return pa_temp_GetPlatformTemperature(platformTempPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Radio temperature level in degree celsius.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the temperature.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_temp_GetRadioTemperature
-(
-    int32_t* radioTempPtr
-        ///< [OUT]
-        ///< [OUT] The Radio temperature level in degree celsius.
-)
-{
-    if (radioTempPtr == NULL)
+    if (temperaturePtr == NULL)
     {
-        LE_KILL_CLIENT("radioTempPtr is NULL!!");
+        LE_KILL_CLIENT("temperaturePtr is NULL!!");
         return LE_FAULT;
     }
 
-    return pa_temp_GetRadioTemperature(radioTempPtr);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Radio warning and critical temperature thresholds in degree celsius.
- *  When thresholds temperature are reached, a temperature event is triggered.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
- *                           the hiCritical threshold.
- *      - LE_FAULT         The function failed to set the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_temp_SetRadioThresholds
-(
-    int32_t hiWarningTemp,
-        ///< [IN]
-        ///< [IN] The high warning temperature threshold in degree celsius.
-
-    int32_t hiCriticalTemp
-        ///< [IN]
-        ///< [IN] The high critical temperature threshold in degree celsius.
-)
-{
-    if ((hiWarningTemp + 1) >= hiCriticalTemp)
-    {
-        LE_ERROR("hiWarningTemp(%d) is higther or close to the hiCriticalTemp (%d)",
-                        hiWarningTemp,  hiCriticalTemp);
-        return LE_BAD_PARAMETER;
-    }
-
-    return pa_temp_SetRadioThresholds(hiWarningTemp, hiCriticalTemp);
+    return pa_temp_GetTemperature(sensorCtxPtr->paHandle, temperaturePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the Radio warning and critical temperature thresholds in degree celsius.
+ * Set the temperature threshold in degree Celsius. This function does not start the temperature
+ * monitoring, call le_temp_StartMonitoring() to start it.
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the thresholds.
+ *      - LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_temp_GetRadioThresholds
+le_result_t le_temp_SetThreshold
 (
-    int32_t* hiWarningTempPtr,
-        ///< [OUT]
-        ///< [OUT] The high warning temperature threshold in degree celsius.
-
-    int32_t* hiCriticalTempPtr
-        ///< [OUT]
-        ///< [OUT] The high critical temperature threshold
-        ///<  in degree celsius.
+    le_temp_SensorRef_t  sensorRef,     ///< [IN] Temperature sensor reference.
+    const char*          thresholdPtr,  ///< [IN] Name of the threshold.
+    int32_t              temperature    ///< [IN] Temperature threshold in degree Celsius.
 )
 {
-    if ( (hiWarningTempPtr == NULL) || (hiCriticalTempPtr == NULL))
+    size_t       length;
+    SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
+
+    LE_DEBUG("call marker.");
+
+    if (sensorCtxPtr == NULL)
     {
-        LE_KILL_CLIENT("hiWarningTempPtr or/and hiCriticalTempPtr are NULL!!");
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sensorRef);
         return LE_FAULT;
     }
-    return pa_temp_GetRadioThresholds(hiWarningTempPtr, hiCriticalTempPtr);
-}
 
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the Platform warning and critical temperature thresholds in degree celsius.
- *  When thresholds temperature are reached, a temperature event is triggered.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_BAD_PARAMETER The hiWarning threshold + 1 is equal to or higher than
- *                           the hiCritical threshold.
- *                         The loWwarning threshold is equal to or higher than
- *                           the hiWarning threshold.
- *                         The loWwarning threshold is equal to or lower than
- *                           the loCritical threshold.
- *      - LE_FAULT         The function failed to set the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_temp_SetPlatformThresholds
-(
-    int32_t lowCriticalTemp,
-        ///< [IN]
-        ///< [IN] The low critical temperature threshold in degree celsius.
-
-    int32_t lowWarningTemp,
-        ///< [IN]
-        ///< [IN] The low warning temperature threshold in degree celsius.
-
-    int32_t hiWarningTemp,
-        ///< [IN]
-        ///< [IN] The high warning temperature threshold in degree celsius.
-
-    int32_t hiCriticalTemp
-        ///< [IN]
-        ///< [IN] The high critical temperature threshold in degree celsius.
-)
-{
-    if ( (lowCriticalTemp >= lowWarningTemp)
-         || (lowWarningTemp >= hiWarningTemp)
-         || ((hiWarningTemp + 1) >= hiCriticalTemp) )
+    if (thresholdPtr == NULL)
     {
-        LE_ERROR("Condition lowCriticalTemp < lowWarningTemp"
-                        " < hiWarningTemp < hiCriticalTemp FAILED");
-        LE_ERROR("Condition %d < %d < %d < %d FAILED",
-             lowCriticalTemp, lowWarningTemp, hiWarningTemp, hiCriticalTemp );
-        return LE_BAD_PARAMETER;
-    }
-
-   return pa_temp_SetPlatformThresholds(lowCriticalTemp, lowWarningTemp,
-                                        hiWarningTemp, hiCriticalTemp);
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Platform warning and critical temperature thresholds in degree celsius.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the thresholds.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_temp_GetPlatformThresholds
-(
-    int32_t* lowCriticalTempPtr,
-        ///< [OUT]
-        ///< [OUT] The low critical temperature threshold in degree celsius.
-
-    int32_t* lowWarningTempPtr,
-        ///< [OUT]
-        ///< [OUT] The low warning temperature threshold in degree celsius.
-
-    int32_t* hiWarningTempPtr,
-        ///< [OUT]
-        ///< [OUT] The high warning temperature threshold in degree celsius.
-
-    int32_t* hiCriticalTempPtr
-        ///< [OUT]
-        ///< [OUT] The high critical temperature threshold
-        ///<  in degree celsius.
-)
-{
-    if ( (lowCriticalTempPtr == NULL) || (lowWarningTempPtr == NULL)
-         || (hiWarningTempPtr == NULL) || (hiCriticalTempPtr == NULL) )
-    {
-        LE_KILL_CLIENT("Parameters pointer are NULL!!");
+        LE_KILL_CLIENT("thresholdPtr is NULL !");
         return LE_FAULT;
     }
-    return pa_temp_GetPlatformThresholds(lowCriticalTempPtr, lowWarningTempPtr,
-                    hiWarningTempPtr, hiCriticalTempPtr);
+
+    if(strlen(thresholdPtr) > (LE_TEMP_THRESHOLD_NAME_MAX_BYTES-1))
+    {
+        LE_KILL_CLIENT("strlen(thresholdPtr) > %d", (LE_TEMP_THRESHOLD_NAME_MAX_BYTES-1));
+        return LE_FAULT;
+    }
+
+    length = strnlen(thresholdPtr, LE_TEMP_THRESHOLD_NAME_MAX_BYTES+1);
+    if (!length)
+    {
+        return LE_FAULT;
+    }
+
+    if (length > LE_TEMP_THRESHOLD_NAME_MAX_BYTES)
+    {
+        return LE_FAULT;
+    }
+
+    return pa_temp_SetThreshold(sensorCtxPtr->paHandle, thresholdPtr, temperature);
 }
 
-
-
-//-------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
- * Initialization of the Legato Temperature Monitoring Service
+ * Get the temperature threshold in degree Celsius.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_temp_Init
+le_result_t le_temp_GetThreshold
+(
+    le_temp_SensorRef_t  sensorRef,     ///< [IN] Temperature sensor reference.
+    const char*          thresholdPtr,  ///< [IN] Name of the threshold.
+    int32_t*             temperaturePtr ///< [OUT] Temperature threshold in degree Celsius.
+)
+{
+    size_t       length;
+    SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
+
+    LE_DEBUG("call marker.");
+
+    if (sensorCtxPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sensorRef);
+        return LE_FAULT;
+    }
+
+    if (thresholdPtr == NULL)
+    {
+        LE_KILL_CLIENT("thresholdPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if(strlen(thresholdPtr) > (LE_TEMP_THRESHOLD_NAME_MAX_BYTES-1))
+    {
+        LE_KILL_CLIENT("strlen(thresholdPtr) > %d", (LE_TEMP_THRESHOLD_NAME_MAX_BYTES-1));
+        return LE_FAULT;
+    }
+
+    length = strnlen(thresholdPtr, LE_TEMP_THRESHOLD_NAME_MAX_BYTES+1);
+    if (!length)
+    {
+        return LE_FAULT;
+    }
+
+    if (length > LE_TEMP_THRESHOLD_NAME_MAX_BYTES)
+    {
+        return LE_FAULT;
+    }
+
+    if (temperaturePtr == NULL)
+    {
+        LE_KILL_CLIENT("temperaturePtr is NULL!!");
+        return LE_FAULT;
+    }
+
+    return pa_temp_GetThreshold(sensorCtxPtr->paHandle, thresholdPtr, temperaturePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the temperature monitoring with the temperature thresholds configured by
+ * le_temp_SetThreshold() function.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to apply the thresholds.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_temp_StartMonitoring
 (
     void
 )
 {
-    // Create an event Id for temperature change notification
-    TemperatureThresholdEventId = le_event_CreateIdWithRefCounting("TemperatureThresholdEvent");
+    LE_DEBUG("call marker.");
 
-    // Register a handler function for new temperature Threshold Event
-    pa_temp_AddTempEventHandler (TemperatureChangeHandler);
+    return pa_temp_StartMonitoring();
 }

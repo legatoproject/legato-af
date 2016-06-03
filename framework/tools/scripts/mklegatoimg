@@ -35,32 +35,6 @@ CheckRet() {
     fi
 }
 
-FindToolchain() {
-    toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
-
-    TOOLCHAIN_DIR=${!toolchain_dir_env_name}
-    if [ -z "$TOOLCHAIN_DIR" ]; then
-        TOOLCHAIN_DIR=$(findtoolchain $TARGET)
-    fi
-
-    TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
-
-    export PATH=$TOOLCHAIN_ROOT/usr/bin:$TOOLCHAIN_ROOT/usr/sbin:$PATH
-}
-
-FindTool() {
-    TOOL_NAME=$1
-    TOOL_VAR_DEST=$2
-
-    TOOL_PATH=$(which $TOOL_NAME 2> /dev/null)
-    if [ -z "$TOOL_PATH" ]; then
-        echo "Warning: Unable to find $TOOL_NAME within toolchain, please update your toolchain."
-        return 1
-    fi
-
-    export ${TOOL_VAR_DEST}=${TOOL_PATH}
-}
-
 while getopts ":t:o:d:v:" arg
 do
     echo "$OPTARG == $(readlink -f $OPTARG)"
@@ -153,47 +127,66 @@ GenerateUbinizeCfg() {
     echo "mode=ubi" >> $UBINIZE_CFG_PATH
     echo "image=$IMAGE_PATH" >> $UBINIZE_CFG_PATH
     echo "vol_id=0" >> $UBINIZE_CFG_PATH
-    echo "vol_size=10MiB" >> $UBINIZE_CFG_PATH
     echo "vol_type=dynamic" >> $UBINIZE_CFG_PATH
     echo "vol_name=legato" >> $UBINIZE_CFG_PATH
+    echo "vol_flags=autoresize" >> $UBINIZE_CFG_PATH
 }
 
 CreateImgFs() {
-    IMG_TYPE=${1:-yaffs2}
+    local img_type=${1:-yaffs2}
+    local ubi_img_type=${2:-squashfs}
 
-    echo "$TARGET: Generating the framework image ($IMG_TYPE)"
+    echo "$TARGET: Generating the framework image ($img_type)"
 
     if [ -z "$TOOLCHAIN_DIR" ]; then
         echo "Unable to find toolchain"
         exit 1
     fi
 
-    LEGATO_IMG="$OUTPUT_DIR/legato.$IMG_TYPE"
+    local legato_img="$OUTPUT_DIR/legato.$img_type"
+    if [[ "$img_type" == "ubi" ]]; then
+        legato_img="$OUTPUT_DIR/legato.$ubi_img_type.$img_type"
+    fi
 
-    TEMP_DIR="$OUTPUT_DIR/legatoimg/$IMG_TYPE"
-    mkdir -p $TEMP_DIR
+    local temp_dir="$OUTPUT_DIR/legatoimg/$img_type"
+    mkdir -p $temp_dir
 
-    cd $TEMP_DIR
+    cd $temp_dir
 
-    case $IMG_TYPE in
+    case $img_type in
         yaffs2)
             FindTool "mkyaffs2image" MKYAFFS2
             CheckRet
 
-            $MKYAFFS2 -c $PAGE_SIZE -s $OOB_SIZE "$STAGING_DIR" "$LEGATO_IMG" > yaffs2.log
+            $MKYAFFS2 -c $PAGE_SIZE -s $OOB_SIZE "$STAGING_DIR" "$legato_img" > yaffs2.log
             CheckRet
             ;;
-        ubi)
+
+        ubifs)
+            FindTool "mkfs.ubifs" MKUBIFS
+            if [ $? -ne 0 ]; then
+                echo "Warning: Unable to produce ubifs image: mkfs.ubifs needed"
+                return 1
+            fi
+
+            $MKUBIFS -r "$STAGING_DIR" -o "$legato_img" -m $PAGE_SIZE -e $LAB_SIZE -c $MAX_LEB_COUNT -F > ubifs.log
+            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend -all-root > squashfs.log
+            CheckRet
+            ;;
+
+        squashfs)
             FindTool "mksquashfs" MKSQUASHFS
             if [ $? -ne 0 ]; then
                 echo "Warning: Unable to produce squashfs image: mksquashfs needed"
                 return 1
             fi
 
-            SQUASHFS_IMG="$OUTPUT_DIR/legato.squashfs"
-
-            $MKSQUASHFS "$STAGING_DIR" "$SQUASHFS_IMG" -noappend -all-root > squashfs.log
+            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend -all-root > squashfs.log
             CheckRet
+            ;;
+
+        ubi)
+            CreateImgFs ${ubi_img_type}
 
             FindTool "ubinize" UBINIZE
             if [ $? -ne 0 ]; then
@@ -201,22 +194,31 @@ CreateImgFs() {
                 return 1
             fi
 
-            GenerateUbinizeCfg $SQUASHFS_IMG ${TEMP_DIR}/ubinize.cfg
+            GenerateUbinizeCfg $LEGATO_IMG ${temp_dir}/ubinize.cfg
 
-            $UBINIZE -o $LEGATO_IMG -m $PAGE_SIZE -p $PEB_SIZE -s $PAGE_SIZE ${TEMP_DIR}/ubinize.cfg > ubinize.log
+            $UBINIZE -o $legato_img -m $PAGE_SIZE -p $PEB_SIZE -s $PAGE_SIZE ${temp_dir}/ubinize.cfg > ubinize.log
             CheckRet
             ;;
+
         *)
-            echo "Unknown image type '$IMG_TYPE'"
+            echo "Unknown image type '$img_type'"
             exit 1
             ;;
     esac
+
+    export LEGATO_IMG=$legato_img
 }
 
 GenerateCwe() {
-    IMG_TYPE=${1:-yaffs2}
+    img_path=$1
+    cwe_suffix=${2:-yaffs2}
 
     echo "$TARGET: Generating the framework cwe"
+
+    if ! [ -f ${img_path} ] ; then
+        echo "$TARGET: $img_path does not exist"
+        exit 1
+    fi
 
     FindTool "hdrcnv" HDRCNV
     CheckRet
@@ -224,47 +226,56 @@ GenerateCwe() {
     FindTool "cwezip" CWEZIP
     CheckRet
 
-    TMPMBN=$TEMP_DIR/temp.mbn
-    if [ -f ${TMPMBN}.hdr ] ; then rm -f ${TMPMBN}.hdr; fi
-    if [ -f ${TMPMBN}.cwe ] ; then rm -f ${TMPMBN}.cwe; fi
-    if [ -f ${TMPMBN}.cwe.z ] ; then rm -f ${TMPMBN}.cwe.z; fi
+    local temp_dir="$OUTPUT_DIR/legatoimg/$cwe_suffix"
+    mkdir -p $temp_dir
+
+    cd $temp_dir
+
+    local tmpmbn=$temp_dir/temp.mbn
+    if [ -f ${tmpmbn}.hdr ] ; then rm -f ${tmpmbn}.hdr; fi
+    if [ -f ${tmpmbn}.cwe ] ; then rm -f ${tmpmbn}.cwe; fi
+    if [ -f ${tmpmbn}.cwe.z ] ; then rm -f ${tmpmbn}.cwe.z; fi
     if [ -f legato.cwe ] ; then rm -f legato.cwe; fi
     if [ -f legato.hdr ] ; then rm -f legato.hdr; fi
     if [ -f legatoz.cwe ] ; then rm -f legatoz.cwe; fi
     if [ -f legatoz.hdr ] ; then rm -f legatoz.hdr; fi
 
-    $HDRCNV ${LEGATO_IMG} -OH ${TMPMBN}.hdr -IT USER -PT $PLATFORM -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-tmp.log
+    $HDRCNV ${img_path} -OH ${tmpmbn}.hdr -IT USER -PT $PLATFORM -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-tmp.log
     CheckRet
 
-    cat ${TMPMBN}.hdr ${LEGATO_IMG} > ${TMPMBN}.cwe
+    cat ${tmpmbn}.hdr ${img_path} > ${tmpmbn}.cwe
     CheckRet
 
     # legato.cwe
-    $HDRCNV ${TMPMBN}.cwe -OH legato.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato.log
+    $HDRCNV ${tmpmbn}.cwe -OH legato.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato.log
     CheckRet
 
-    cat legato.hdr ${TMPMBN}.cwe > $OUTPUT_DIR/legato-${IMG_TYPE}.cwe
+    cat legato.hdr ${tmpmbn}.cwe > $OUTPUT_DIR/legato-${cwe_suffix}.cwe
     CheckRet
 
     # legatoz.cwe
-    $CWEZIP ${TMPMBN}.cwe -c -o ${TMPMBN}.cwe.z > cwezip.log
-    CheckRet
+    if $SUPPORT_COMPRESSION; then
+        $CWEZIP ${tmpmbn}.cwe -c -o ${tmpmbn}.cwe.z > cwezip.log
+        CheckRet
 
-    $HDRCNV ${TMPMBN}.cwe.z -OH legatoz.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz.log
-    CheckRet
+        $HDRCNV ${tmpmbn}.cwe.z -OH legatoz.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz.log
+        CheckRet
 
-    cat legatoz.hdr ${TMPMBN}.cwe.z > $OUTPUT_DIR/legatoz-${IMG_TYPE}.cwe
-    CheckRet
+        cat legatoz.hdr ${tmpmbn}.cwe.z > $OUTPUT_DIR/legatoz-${cwe_suffix}.cwe
+        CheckRet
+    fi
 }
 
 CreateImg_mdm9x15() {
-    IMG_TYPE=${1:-yaffs2}
+    local img_type=${1:-yaffs2}
+    local ubi_img_type=${2:-squashfs}
 
     PAGE_SIZE=4096
     OOB_SIZE=160
     PEB_SIZE=256KiB
     COMPAT_BYTE=00000001
     PLATFORM=9X15
+    SUPPORT_COMPRESSION=true
 
     case $TARGET in
         ar7)    PID='A911' ;;
@@ -279,42 +290,95 @@ CreateImg_mdm9x15() {
         ;;
     esac
 
-    CreateImgFs $IMG_TYPE
-    GenerateCwe $IMG_TYPE
+    local cwe_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        cwe_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $ubi_img_type
+    GenerateCwe $LEGATO_IMG $cwe_suffix
+}
+
+CreateImg_mdm9x28() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-ubifs}
+
+    PAGE_SIZE=2048
+    OOB_SIZE=64
+    PEB_SIZE=128KiB
+    LAB_SIZE=126976
+    MAX_LEB_COUNT=1208
+    COMPAT_BYTE=00000001
+    PID='9X28'
+    PLATFORM=$PID
+    SUPPORT_COMPRESSION=false
+
+    local cwe_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        cwe_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $ubi_img_type
+    GenerateCwe $LEGATO_IMG $cwe_suffix
+}
+
+CreateImg_mdm9x40() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-squashfs}
+
+    PAGE_SIZE=4096
+    OOB_SIZE=224
+    PEB_SIZE=256KiB
+    COMPAT_BYTE=00000001
+    PID='9X40'
+    PLATFORM=$PID
+    SUPPORT_COMPRESSION=false
+
+    local cwe_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        cwe_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $ubi_img_type
+    GenerateCwe $LEGATO_IMG $cwe_suffix
 }
 
 DefaultImg() {
-    IMG_TYPE=${1:-yaffs2}
+    local cwe_suffix=${1:-yaffs2}
 
-    ln -sf legato.${IMG_TYPE} $OUTPUT_DIR/legato.default
+    ln -sf legato.${cwe_suffix} $OUTPUT_DIR/legato.default
 
-    if [ -e "$OUTPUT_DIR/legato-${IMG_TYPE}.cwe" ]; then
-        ln -sf legato-${IMG_TYPE}.cwe $OUTPUT_DIR/legato.cwe
-        ln -sf legatoz-${IMG_TYPE}.cwe $OUTPUT_DIR/legatoz.cwe
-    fi
-}
-
-DefaultImg_mdm9x15() {
-    IMG_TYPE=yaffs2
-
-    # Only use ubi for WP85 for now
-    if [[ "$TARGET" == "wp85" ]]; then
-        IMG_TYPE=ubi
-
-        if ! [ -e "$OUTPUT_DIR/legato-ubi.cwe" ]; then
-            echo "Warning: Unable to provide valid CWE image for WP85"
-            return 1
-        fi
+    if [ -e "$OUTPUT_DIR/legato-${cwe_suffix}.cwe" ]; then
+        ln -sf legato-${cwe_suffix}.cwe $OUTPUT_DIR/legato.cwe
     fi
 
-    DefaultImg $IMG_TYPE
+    if [ -e "$OUTPUT_DIR/legatoz-${cwe_suffix}.cwe" ]; then
+        ln -sf legatoz-${cwe_suffix}.cwe $OUTPUT_DIR/legatoz.cwe
+    fi
 }
 
 case $TARGET in
-    ar7 | ar86 | wp85)
+    ar7 | ar86)
         CreateImg_mdm9x15 yaffs2
-        CreateImg_mdm9x15 ubi
-        DefaultImg_mdm9x15
+        DefaultImg yaffs2
+        ;;
+    wp85)
+        CreateImg_mdm9x15 yaffs2
+        CreateImg_mdm9x15 ubi squashfs
+        DefaultImg "squashfs.ubi"
+        ;;
+    ar758x)
+        CreateImg_mdm9x28 ubi squashfs
+        CreateImg_mdm9x28 ubi ubifs
+        DefaultImg "ubifs.ubi"
+        ;;
+    ar759x)
+        CreateImg_mdm9x40 yaffs2
+        CreateImg_mdm9x40 ubi squashfs
+        DefaultImg "squashfs.ubi"
+        ;;
+    raspi)
+        CreateImgFs squashfs
         ;;
     ?)
         echo "$0: nothing to do for target $TARGET"

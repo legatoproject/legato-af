@@ -37,7 +37,7 @@ if [ "$COMMAND" = "query" ]
 then
     SetTargetIP $2
     SshToTarget "$BIN_PATH/fwupdate query"
-    exit 0
+    exit $?
 fi
 
 if [ "$COMMAND" = "download" ]
@@ -51,8 +51,7 @@ then
     SetTargetIP $3
 
     cat "$FILE" | SshToTarget "$BIN_PATH/fwupdate download -"
-    exit 0
+    exit $?
 fi
-
 
 ExitWithError "Command '$COMMAND' unknown."

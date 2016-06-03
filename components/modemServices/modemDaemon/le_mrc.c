@@ -91,6 +91,36 @@
 #define MAX_NUM_METRICS 1
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Mutex to prevent race condition with asynchronous functions.
+ */
+//--------------------------------------------------------------------------------------------------
+static pthread_mutex_t RegisteringNetworkMutex = PTHREAD_MUTEX_INITIALIZER;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Macro used to prevent race condition with asynchronous functions.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LOCK()    LE_FATAL_IF((pthread_mutex_lock(&RegisteringNetworkMutex)!=0),"Could not lock the mutex")
+#define UNLOCK()  LE_FATAL_IF((pthread_mutex_unlock(&RegisteringNetworkMutex)!=0),"Could not unlock the mutex")
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MRC command Type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MRC_CMD_TYPE_ASYNC_REGISTRATION = 0, ///< Pool and perform a network registration.
+    LE_MRC_CMD_TYPE_ASYNC_SCAN         = 1  ///< Pool and perform a cellular network scan.
+}
+CmdType_t;
+
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -189,6 +219,35 @@ typedef struct
     int32_t                                  ssThreshold;    ///< Signal strength threshold in dBm.
     le_dls_Link_t                            link;           ///< Object node link.
 } SignalStrengthHandlerCtx_t;
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MRC selection command structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    CmdType_t       command;          ///< Command Request.
+    void           *callBackPtr;      ///< The Callback Response.
+    void           *context;          ///< Context.
+    union
+    {
+        struct
+        {
+            le_mrc_RatBitMask_t ratMask;      ///< ratMask.
+        } scan;
+
+        struct
+        {
+            char  mccStr[LE_MRC_MCC_BYTES];  ///< Mobile Country Code
+            char  mncStr[LE_MRC_MNC_BYTES];  ///< Mobile Network Code
+        } selection;
+    };
+} CmdRequest_t;
+
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
@@ -316,6 +375,21 @@ static le_event_Id_t GsmSsChangeId;
 static le_event_Id_t UmtsSsChangeId;
 static le_event_Id_t LteSsChangeId;
 static le_event_Id_t CdmaSsChangeId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for message sending commands.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t MrcCommandEventId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for Preferred network Operator.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PreferredNetworkOperatorPool;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -579,6 +653,321 @@ static void SignalStrengthIndHandlerFunc
     }
 }
 
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to process an asynchronous command
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProcessMrcCommandEventHandler
+(
+    void* msgCommand
+)
+{
+    le_result_t res;
+
+    void * ctxPtr = ((CmdRequest_t*) msgCommand)->context;
+    CmdType_t command = ((CmdRequest_t*) msgCommand)->command;
+
+    if( command == LE_MRC_CMD_TYPE_ASYNC_REGISTRATION)
+    {
+        char * mccStr = ((CmdRequest_t*) msgCommand)->selection.mccStr;
+        char * mncStr = ((CmdRequest_t*) msgCommand)->selection.mncStr;
+        le_mrc_ManualSelectionHandlerFunc_t handlerFunc =
+                           ((CmdRequest_t*) msgCommand)->callBackPtr;
+
+        LE_DEBUG("Register plmn (%s,%s)", mccStr, mncStr);
+
+        LOCK();
+        res = pa_mrc_RegisterNetwork(mccStr, mncStr);
+        UNLOCK();
+
+        // Check if a handler function is available.
+        if (handlerFunc)
+        {
+            LE_DEBUG("Calling handler (%p), Status %d", handlerFunc, res);
+            handlerFunc (res, ctxPtr);
+        }
+        else
+        {
+            LE_WARN("No handler function, status %d!!", res);
+        }
+    }
+    else if(command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
+    {
+        le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc =
+                        ((CmdRequest_t*) msgCommand)->callBackPtr;
+        le_mrc_RatBitMask_t ratMask =
+                        ((CmdRequest_t*) msgCommand)->scan.ratMask;
+
+        ScanInfoList_t* newScanInformationListPtr = NULL;
+        le_mrc_ScanInformationListRef_t scanInformationListRef = NULL;
+
+        newScanInformationListPtr = le_mem_ForceAlloc(ScanInformationListPool);
+        newScanInformationListPtr->paScanInfoList = LE_DLS_LIST_INIT;
+        newScanInformationListPtr->safeRefScanInfoList = LE_DLS_LIST_INIT;
+        newScanInformationListPtr->currentLink = NULL;
+
+        LOCK();
+        res = pa_mrc_PerformNetworkScan(ratMask, PA_MRC_SCAN_PLMN,
+            &(newScanInformationListPtr->paScanInfoList));
+        UNLOCK();
+
+        if (res != LE_OK)
+        {
+            le_mem_Release(newScanInformationListPtr);
+        }
+        else
+        {
+            scanInformationListRef =
+                     le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
+        }
+
+        // Check if a handler function is available.
+        if (handlerFunc)
+        {
+            LE_DEBUG("Sending Scan information list ref (%p)", scanInformationListRef);
+            handlerFunc (scanInformationListRef, ctxPtr);
+        }
+        else
+        {
+            LE_WARN("No handler function, status %d!!", res);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This thread does the actual work of Pool and perform a registration or a cellular network scan.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* MrcCommandThread
+(
+    void* contextPtr
+)
+{
+    // Register for MRC command events
+    le_event_AddHandler("ProcessMrcCommandHandler", MrcCommandEventId,
+        ProcessMrcCommandEventHandler);
+
+    // Run the event loop
+    le_event_RunLoop();
+    return NULL;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to remove a mobile country/network code in the list
+ *
+ * @return
+ *      - LE_OK             On success
+ *      - LE_NOT_FOUND      Not present in preferred PLMN list
+ *      - LE_FAULT          For all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RemovePreferredOperators
+(
+    le_dls_List_t      *preferredOperatorsListPtr,   ///< [IN] List of preferred network operator
+    const char*         mccPtr,                      ///< [IN] Mobile Country Code
+    const char*         mncPtr                       ///< [IN] Mobile Network Code
+)
+{
+    pa_mrc_PreferredNetworkOperator_t* nodePtr;
+    le_dls_Link_t *linkPtr;
+
+    LE_DEBUG("Removing [%s,%s]", mccPtr, mncPtr);
+
+    linkPtr = le_dls_Peek(preferredOperatorsListPtr);
+
+    if (linkPtr == NULL)
+    {
+        return LE_FAULT;
+    }
+
+    while (linkPtr != NULL)
+    {
+        // Get the node from MsgList
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PreferredNetworkOperator_t, link);
+
+        if ( (strncmp(nodePtr->mobileCode.mcc, mccPtr, LE_MRC_MCC_BYTES) == 0)
+                        && (strncmp(nodePtr->mobileCode.mnc, mncPtr, LE_MRC_MNC_BYTES) == 0))
+        {
+            LE_DEBUG("Found [%s,%s] in the list, Removed it", mccPtr, mncPtr);
+            le_dls_Remove(preferredOperatorsListPtr,linkPtr);
+            le_mem_Release(nodePtr);
+            return LE_OK;
+        }
+
+        // Get Next element
+        linkPtr = le_dls_PeekNext(preferredOperatorsListPtr, linkPtr);
+    }
+
+    return LE_NOT_FOUND;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to add a new mobile country/network code in the list
+ *
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AddPreferredOperators
+(
+    le_dls_List_t*      preferredOperatorsListPtr,   ///< [OUT] List of preferred network operator
+    const char*         mccPtr,                      ///< [IN] Mobile Country Code
+    const char*         mncPtr,                      ///< [IN] Mobile Network Code
+    le_mrc_RatBitMask_t ratMask                      ///< [IN] Radio Access Technology mask
+)
+{
+    pa_mrc_PreferredNetworkOperator_t* nodePtr;
+    le_dls_Link_t *linkPtr;
+
+    LE_DEBUG("Adding [%s,%s] = 0x%.04"PRIX16, mccPtr, mncPtr, ratMask);
+
+    linkPtr = le_dls_Peek(preferredOperatorsListPtr);
+
+    while (linkPtr != NULL)
+    {
+        // Get the node from MsgList
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PreferredNetworkOperator_t, link);
+
+        if ( (strncmp(nodePtr->mobileCode.mcc, mccPtr, LE_MRC_MCC_BYTES) == 0) &&
+             (strncmp(nodePtr->mobileCode.mnc, mncPtr, LE_MRC_MNC_BYTES) == 0))
+        {
+            if (nodePtr->ratMask != ratMask)
+            {
+                uint8_t bitMask = 0x00;
+                bitMask = (uint8_t)(nodePtr->ratMask | ratMask);
+                LE_DEBUG("Found [%s,%s] in the list, change ratMask from %d to %d",
+                                mccPtr, mncPtr, nodePtr->ratMask, bitMask);
+                nodePtr->ratMask = (le_mrc_RatBitMask_t)bitMask;
+            }
+            else
+            {
+                LE_DEBUG("Found [%s,%s] in the list, no change", mccPtr, mncPtr);
+            }
+            return LE_OK;
+        }
+
+        // Get Next element
+        linkPtr = le_dls_PeekNext(preferredOperatorsListPtr, linkPtr);
+    }
+
+    nodePtr = le_mem_ForceAlloc(PreferredNetworkOperatorPool);
+    if (nodePtr == NULL)
+    {
+        return LE_FAULT;
+    }
+
+    le_utf8_Copy(nodePtr->mobileCode.mcc, mccPtr, LE_MRC_MCC_BYTES, NULL);
+    le_utf8_Copy(nodePtr->mobileCode.mnc, mncPtr, LE_MRC_MNC_BYTES, NULL);
+    nodePtr->ratMask = ratMask;
+    nodePtr->link = LE_DLS_LINK_INIT;
+
+    le_dls_Queue(preferredOperatorsListPtr, &(nodePtr->link));
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to clear the preferred list.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeletePreferredOperatorsList
+(
+    le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
+)
+{
+    pa_mrc_PreferredNetworkOperator_t* nodePtr;
+    le_dls_Link_t *linkPtr;
+
+    while ((linkPtr=le_dls_Pop(preferredOperatorsListPtr)) != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_mrc_PreferredNetworkOperator_t, link);
+        le_mem_Release(nodePtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current preferred operators list.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetPreferredOperatorsList
+(
+    le_dls_List_t*   preferredOperatorListPtr,    ///< [IN/OUT] The preferred operators list.
+    bool  plmnStatic,      ///< [IN] Include Static preferred Operators.
+    bool  plmnUser,        ///< [IN] Include Users preferred Operators.
+    int32_t* nbItem        ///< [OUT] number of Preferred operator found if success.
+)
+{
+    int32_t total = 0;
+    le_result_t res;
+
+    if (preferredOperatorListPtr == NULL)
+    {
+        LE_FATAL("preferredOperatorListPtr is NULL !");
+    }
+
+    if(pa_mrc_CountPreferredOperators(plmnStatic, plmnUser, &total) == LE_OK)
+    {
+        if(total > 0)
+        {
+            size_t i;
+            pa_mrc_PreferredNetworkOperator_t mrcPrefNetworkPtr[total];
+            memset(mrcPrefNetworkPtr, 0 , sizeof(pa_mrc_PreferredNetworkOperator_t)*total);
+
+            res = pa_mrc_GetPreferredOperators(mrcPrefNetworkPtr, plmnStatic, plmnUser, &total);
+
+            if (res == LE_OK)
+            {
+                for (i=0; i < total; i++)
+                {
+                    pa_mrc_PreferredNetworkOperator_t* prefNetworkPtr =
+                                    (pa_mrc_PreferredNetworkOperator_t*)
+                                    le_mem_ForceAlloc(PreferredNetworkOperatorPool);
+
+                    memcpy(prefNetworkPtr, &mrcPrefNetworkPtr[i],
+                        sizeof(pa_mrc_PreferredNetworkOperator_t));
+
+                    prefNetworkPtr->index = i;
+                    prefNetworkPtr->link = LE_DLS_LINK_INIT;
+                    le_dls_Queue(preferredOperatorListPtr, &(prefNetworkPtr->link));
+
+                    LE_DEBUG("3GPP [%d] MCC.%s MNC.%s QmiRat %04X", prefNetworkPtr->index,
+                        prefNetworkPtr->mobileCode.mcc,
+                        prefNetworkPtr->mobileCode.mnc,
+                        prefNetworkPtr->ratMask);
+                }
+            }
+        }
+        *nbItem = total;
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
@@ -614,7 +1003,8 @@ void le_mrc_Init
     // Create the pool for Preferred cells information list.
     PrefOpsListPool = le_mem_CreatePool("PrefOpListPool", sizeof(PreferredOperatorsList_t));
 
-    // Create the Safe Reference Map to use for neighboring cells information object Safe References.
+    // Create the Safe Reference Map to use for neighboring cells information object Safe
+    // References.
     CellRefMap = le_ref_CreateMap("CellInfoCellMap", MAX_NUM_NEIGHBORS);
 
     // Create the pool for cells information safe ref list.
@@ -637,6 +1027,9 @@ void le_mrc_Init
     //  References.
     PreferredOperatorsListRefMap = le_ref_CreateMap("PreferredOperatorsListRefMap",
                     MAX_NUM_PREFERRED_OPERATORS_LISTS);
+
+    PreferredNetworkOperatorPool = le_mem_CreatePool("PreferredNetworkOperatorPool",
+                                             sizeof(pa_mrc_PreferredNetworkOperator_t));
 
     // Create the pool for Signal Metrics.
     MetricsPool = le_mem_CreatePool("MetricsPool", sizeof(pa_mrc_SignalMetrics_t));
@@ -664,6 +1057,10 @@ void le_mrc_Init
 
     // Register a handler function for Signal Strength change indication
     pa_mrc_AddSignalStrengthIndHandler(SignalStrengthIndHandlerFunc, NULL);
+
+    MrcCommandEventId = le_event_CreateId("CommandEvent",
+        sizeof(CmdRequest_t));
+    le_thread_Start(le_thread_Create("MrcManualSelectionThread", MrcCommandThread, NULL));
 
     // Get & Set the Network registration state notification
     LE_DEBUG("Get the Network registration state notification configuration");
@@ -703,6 +1100,7 @@ le_result_t le_mrc_SetAutomaticRegisterMode
         return LE_OK;
     }
 }
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the manual Selection Register mode with the MCC/MNC parameters.
@@ -721,6 +1119,7 @@ le_result_t le_mrc_SetManualRegisterMode
     const char*      mncPtr    ///< [IN] Mobile Network Code
 )
 {
+    le_result_t res;
     if (mccPtr == NULL)
     {
         LE_KILL_CLIENT("mccPtr is NULL !");
@@ -744,7 +1143,11 @@ le_result_t le_mrc_SetManualRegisterMode
         return LE_FAULT;
     }
 
-    if ( pa_mrc_RegisterNetwork(mccPtr, mncPtr) != LE_OK )
+    LOCK();
+    res = pa_mrc_RegisterNetwork(mccPtr, mncPtr);
+    UNLOCK();
+
+    if ( res != LE_OK )
     {
         LE_ERROR("Cannot Register to Network [%s,%s]", mccPtr, mncPtr);
         return LE_FAULT;
@@ -754,6 +1157,66 @@ le_result_t le_mrc_SetManualRegisterMode
         return LE_OK;
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the manual selection register mode asynchronously. This function is not blocking,
+ *  the response will be returned with a handler function.
+ *
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
+ *       the function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_SetManualRegisterModeAsync
+(
+    const char* mccStr,
+        ///< [IN]
+        ///< Mobile Country Code
+
+    const char* mncStr,
+        ///< [IN]
+        ///< Mobile Network Code
+
+    le_mrc_ManualSelectionHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    CmdRequest_t cmd;
+
+    if (mccStr == NULL)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL !");
+    }
+    if (mncStr == NULL)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+    }
+
+    if(strlen(mccStr) > LE_MRC_MCC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
+    }
+
+    if(strlen(mncStr) > LE_MRC_MNC_LEN)
+    {
+        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+    }
+
+    cmd.context = contextPtr;
+    cmd.callBackPtr = handlerPtr;
+    cmd.command = LE_MRC_CMD_TYPE_ASYNC_REGISTRATION;
+    strncpy(cmd.selection.mccStr, mccStr, LE_MRC_MCC_LEN);
+    strncpy(cmd.selection.mncStr, mncStr, LE_MRC_MNC_LEN);
+
+    // Sending manual Selection command
+    LE_DEBUG("Send manual Selection command");
+    le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -821,6 +1284,23 @@ le_result_t le_mrc_GetRegisterMode
 
         return LE_OK;
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the platform specific network registration error code.
+ *
+ * @return the platform specific registration error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_mrc_GetPlatformSpecificRegistrationErrorCode
+(
+    void
+)
+{
+    return pa_mrc_GetPlatformSpecificRegistrationErrorCode();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1152,34 +1632,29 @@ le_result_t le_mrc_AddPreferredOperator
         return LE_BAD_PARAMETER;
     }
 
-    nbEntries = pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true);
-
-    if (nbEntries < 0)
+    if (GetPreferredOperatorsList(&preferredOperatorsList, false, true, &nbEntries) != LE_OK)
     {
         LE_ERROR("No preferred Operator list available!!");
         return LE_NOT_FOUND;
     }
 
-    if (nbEntries == 0)
-    {
-        LE_WARN("Preferred PLMN Operator list is empty!");
-    }
+    LE_WARN_IF((nbEntries == 0), "Preferred PLMN Operator list is empty!");
 
-    if ( pa_mrc_AddPreferredOperators(&preferredOperatorsList, mcc, mnc, ratMask) != LE_OK )
+    if ( AddPreferredOperators(&preferredOperatorsList, mcc, mnc, ratMask) != LE_OK )
     {
         LE_ERROR("Could not add [%s,%s] into the preferred operator list", mcc, mnc);
-        pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
+        DeletePreferredOperatorsList(&preferredOperatorsList);
         return LE_FAULT;
     }
 
     if ( pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK )
     {
         LE_ERROR("Could not save the preferred operator list");
-        pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
+        DeletePreferredOperatorsList(&preferredOperatorsList);
         return LE_FAULT;
     }
 
-    pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
+    DeletePreferredOperatorsList(&preferredOperatorsList);
     return LE_OK;
 }
 
@@ -1208,6 +1683,8 @@ le_result_t le_mrc_RemovePreferredOperator
 )
 {
     le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
+    int32_t nbItem;
+    le_result_t res;
 
     if (mcc == NULL)
     {
@@ -1233,27 +1710,31 @@ le_result_t le_mrc_RemovePreferredOperator
         return LE_FAULT;
     }
 
-    if (pa_mrc_GetPreferredOperatorsList(&preferredOperatorsList, false, true) <= 0)
+    res = GetPreferredOperatorsList(&preferredOperatorsList, false, true, &nbItem);
+    if (res == LE_OK)
+    {
+        if (RemovePreferredOperators(&preferredOperatorsList, mcc, mnc) == LE_OK)
+        {
+            if (pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK)
+            {
+                LE_ERROR("Could not save the preferred operator list");
+                res = LE_FAULT;
+            }
+        }
+        else
+        {
+            LE_ERROR("Could not remove [%s,%s] into the preferred operator list", mcc, mnc);
+            res = LE_FAULT;
+        }
+        DeletePreferredOperatorsList(&preferredOperatorsList);
+    }
+    else
     {
         LE_ERROR("No preferred Operator present in modem!");
-        return LE_NOT_FOUND;
+        res = LE_NOT_FOUND;
     }
 
-    if ( pa_mrc_RemovePreferredOperators(&preferredOperatorsList, mcc, mnc) != LE_OK )
-    {
-        LE_ERROR("Could not remove [%s,%s] into the preferred operator list", mcc, mnc);
-        return LE_FAULT;
-    }
-
-    if ( pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK )
-    {
-        LE_ERROR("Could not save the preferred operator list");
-        return LE_FAULT;
-    }
-
-    pa_mrc_DeletePreferredOperatorsList(&preferredOperatorsList);
-
-    return LE_OK;
+    return res;
 }
 
 
@@ -1279,12 +1760,21 @@ le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
         OperatorListPtr->paPrefOpList = LE_DLS_LIST_INIT;
         OperatorListPtr->safeRefPrefOpList = LE_DLS_LIST_INIT;
         OperatorListPtr->currentLinkPtr = NULL;
-        OperatorListPtr->opsCount = pa_mrc_GetPreferredOperatorsList(
-                        &(OperatorListPtr->paPrefOpList), false, true);
-        if (OperatorListPtr->opsCount > 0)
+        le_result_t res = GetPreferredOperatorsList(
+            &(OperatorListPtr->paPrefOpList), false, true, &OperatorListPtr->opsCount);
+
+        if (res == LE_OK)
         {
-            // Create and return a Safe Reference for this List object.
-            return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
+            if (OperatorListPtr->opsCount)
+            {
+                // Create and return a Safe Reference for this List object.
+                return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
+            }
+            else
+            {
+                // no item in list
+                return NULL;
+            }
         }
         else
         {
@@ -1422,7 +1912,7 @@ void le_mrc_DeletePreferredOperatorsList
 
     prefOperatorsListPtr->currentLinkPtr = NULL;
 
-    pa_mrc_DeletePreferredOperatorsList(&prefOperatorsListPtr->paPrefOpList);
+    DeletePreferredOperatorsList(&prefOperatorsListPtr->paPrefOpList);
 
     // Delete the safe Reference list.
     DeletePreferredOperatorsSafeRefList(&(prefOperatorsListPtr->safeRefPrefOpList));
@@ -1891,24 +2381,60 @@ le_mrc_ScanInformationListRef_t le_mrc_PerformCellularNetworkScan
     newScanInformationListPtr->safeRefScanInfoList = LE_DLS_LIST_INIT;
     newScanInformationListPtr->currentLink = NULL;
 
+    LOCK();
     result = pa_mrc_PerformNetworkScan(ratMask,
                                        PA_MRC_SCAN_PLMN,
                                        &(newScanInformationListPtr->paScanInfoList));
+    UNLOCK();
 
     if (result != LE_OK)
     {
         le_mem_Release(newScanInformationListPtr);
-
         return NULL;
     }
 
     return le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to perform a cellular network scan asynchronously. This function
+ * is not blocking, the response will be returned with a handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_PerformCellularNetworkScanAsync
+(
+    le_mrc_RatBitMask_t ratMask,
+        ///< [IN]
+        ///< Radio Access Technology mask
+
+    le_mrc_CellularNetworkScanHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    CmdRequest_t cmd;
+
+    cmd.context = contextPtr;
+    cmd.callBackPtr = handlerPtr;
+    cmd.command = LE_MRC_CMD_TYPE_ASYNC_SCAN;
+    cmd.scan.ratMask = ratMask;
+
+    // Sending Cellular Network scan command
+    LE_DEBUG("Send asynchronous Cellular Network scan command");
+    le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
+}
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the first Scan Information object reference in the list of
- * scan Information retrieved with le_mrc_PerformNetworkScan().
+ * scan Information retrieved with le_mrc_PerformCellularNetworkScan().
  *
  * @return NULL                         No scan information found.
  * @return le_mrc_ScanInformationRef_t The Scan Information object reference.
@@ -1956,7 +2482,7 @@ le_mrc_ScanInformationRef_t le_mrc_GetFirstCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the next Scan Information object reference in the list of
- * scan Information retrieved with le_mrc_PerformNetworkScan().
+ * scan Information retrieved with le_mrc_PerformCellularNetworkScan().
  *
  * @return NULL                         No scan information found.
  * @return le_mrc_ScanInformationRef_t The Scan Information object reference.
@@ -1993,7 +2519,8 @@ le_mrc_ScanInformationRef_t le_mrc_GetNextCellularNetworkScan
         ScanInfoSafeRef_t* newScanInformationPtr = le_mem_ForceAlloc(ScanInformationSafeRefPool);
         newScanInformationPtr->safeRef = le_ref_CreateRef(ScanInformationRefMap,nodePtr);
         newScanInformationPtr->link = LE_DLS_LINK_INIT;
-        le_dls_Queue(&(scanInformationListPtr->safeRefScanInfoList),&(newScanInformationPtr->link));
+        le_dls_Queue(&(scanInformationListPtr->safeRefScanInfoList),
+            &(newScanInformationPtr->link));
 
         return (le_mrc_ScanInformationRef_t)newScanInformationPtr->safeRef;
     }
@@ -2006,7 +2533,7 @@ le_mrc_ScanInformationRef_t le_mrc_GetNextCellularNetworkScan
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to delete the list of the Scan Information retrieved with
- * le_mrc_PerformNetworkScan().
+ * le_mrc_PerformCellularNetworkScan().
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
@@ -2427,7 +2954,8 @@ le_mrc_CellInfoRef_t le_mrc_GetNextNeighborCellInfo
         return NULL;
     }
 
-    linkPtr = le_dls_PeekNext(&(ngbrCellsInfoListPtr->paNgbrCellInfoList), ngbrCellsInfoListPtr->currentLinkPtr);
+    linkPtr = le_dls_PeekNext(&(ngbrCellsInfoListPtr->paNgbrCellInfoList),
+        ngbrCellsInfoListPtr->currentLinkPtr);
     if (linkPtr != NULL)
     {
         nodePtr = CONTAINER_OF(linkPtr, pa_mrc_CellInfo_t, link);
@@ -3021,6 +3549,7 @@ void le_mrc_RemoveSignalStrengthChangeHandler
    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the serving cell Identifier.
@@ -3045,6 +3574,33 @@ uint32_t le_mrc_GetServingCellId
         return 0xFFFFFFFF;
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Tracking Area Code of the serving cell.
+ *
+ * @return The Tracking Area Code. 0xFFFF value is returned if the value is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t le_mrc_GetServingCellLteTracAreaCode
+(
+    void
+)
+{
+    uint16_t tac;
+
+    if (pa_mrc_GetServingCellLteTracAreaCode(&tac) == LE_OK)
+    {
+        return tac;
+    }
+    else
+    {
+        LE_ERROR("Cannot retrieve the serving cell Tracking area code!");
+        return 0xFFFF;
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

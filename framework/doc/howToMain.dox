@@ -1,21 +1,21 @@
 /** @page howToMain How To
 
-This section contains info about frequently needed tasks.
-
-@subpage howToSecurity <br>
-@subpage howToCustomizeUART <br>
-@subpage howToCustomizeUSB <br>
-@subpage howToDebug <br>
-@subpage howToConfigTree <br>
-@subpage howToEcall <br>
-@subpage howToGNSS <br>
-@subpage howToPowerMgmt <br>
-@subpage howToNMEA <br>
-@subpage howToPortLegacyGen <br>
-@subpage howToSetUserTimebase <br>
-@subpage howToAV <br>
-@subpage howToLogs <br>
-@subpage howToSoftwareUpdate
+This section contains topics about frequently needed tasks:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage howToCustomizeUART | customize UART on WP85 module    |
+| @subpage howToDebug |  different ways to debug apps  |
+| @subpage howToConfigTree | info on how to manage target config tree   |
+| @subpage howToPowerMgmt | summary about how to manage device power   |
+| @subpage howToEcall |  PDF about general Legato eCall features |
+| @subpage howToGNSS |  summary about how to manage GNSS on target  |
+| @subpage howToSecurity |  info about sandboxes and SMACK  |
+| @subpage howToPortLegacyGen | details on how to port legacy apps to Legato  |
+| @subpage howToSetUserTimebase |  details on how to set user timebase  |
+| @subpage howToNMEA | summary about NMEA setup   |
+| @subpage howToAV | how to use AirVantage to remotely administer Legato apps   |
+| @subpage howToLogs | details on how to access and use Legato Logs   |
+| @subpage howToSoftwareUpdate | details on software update features   |
 
 <HR>
 

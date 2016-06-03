@@ -1,0 +1,76 @@
+sandboxed: true
+
+bundles:
+{
+    file:
+    {
+        [x] binaries/lighttpd /
+
+    }
+
+    dir:
+    {
+        binaries/lib /modlibs
+        pages /pages
+        cfg /cfg
+    }
+}
+
+requires:
+{
+    file:
+    {
+        /lib/libutil.so.1 /lib/libutil.so.1
+        /etc/nsswitch.conf /etc/nsswitch.conf
+        /lib/libnss_compat.so.2 /lib/libnss_compat.so.2
+        /lib/libnsl.so.1 /lib/libnsl.so.1
+        /lib/libproc-3.2.8.so /lib/libproc-3.2.8.so
+        /etc/passwd /etc/passwd
+        /lib/libcrypto.so.1.0.0 /lib/libcrypto.so.1.0.0
+    }
+
+    dir:
+    {
+        /proc /         // for ps (listing running processes)
+        /bin /
+        /sbin /
+        /legato/systems /legato/
+        /mnt/legato/system /mnt/legato/
+        /usr/lib /usr/
+        /usr/bin /usr/
+        /usr/include /usr/
+    }
+
+    device:
+    {
+        [rw] /dev/null /dev/null
+        [r] /dev/urandom /dev/urandom
+        [r] /dev/random /dev/random
+    }
+
+    configTree:
+    {
+        [r] system
+    }
+}
+
+bindings:
+{
+    *.le_cfg -> <root>.le_cfg
+    *.le_update -> <root>.le_update
+    *.le_appInfo -> <root>.le_appInfo
+}
+
+start: auto
+processes:
+{
+    envVars:
+    {
+        HOME="/"
+    }
+
+    run:
+    {
+        ( /lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
+    }
+}

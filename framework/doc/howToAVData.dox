@@ -2,8 +2,8 @@
 
 This topic describes how to manage data (read/write/execute) for cloud sevices like AirVantage.
 
-Legato provides easy LWM2M connectivity to AirVantage through a .cdef  file @ref defFilesCdef_assets section
- using pre-built APIs.
+Legato provides easy LWM2M connectivity to AirVantage through a .cdef file @ref defFilesCdef_assets section
+using pre-built APIs.
 
 @section howToAVData_APIs AirVantage APIs
 
@@ -18,7 +18,48 @@ You add an @ref defFilesCdef_assets' section to your app's component definition 
 AirVantage data including associating data types, setting default values, and executing commands using the
 pre-built @ref c_le_avdata APIs.
 
-<HR>
+@section howToAVData_enableObserve Enable Observe
+
+The LWM2M Observe feature is now supported by Legato. Observe provides a method to notify the server
+when there are changes to an asset. Read requests can also be initiated on an asset that is observed.
+
+You have to enable LWM2M Observe in the AirVantage device app model first by adding the following
+value to the app model:
+@code
+        <dm>
+            <action impl="LWM2M_OBSERVE"/>
+        </dm>
+@endcode
+
+This will cause the server to enable Observe for all user-defined assets of all apps on the device
+as well as on LWM2M objects /4 /5 /9 /1024.
+
+For detailed info on the LWM2M Observe specification, see the
+<a href="http://technical.openmobilealliance.org/Technical/technical-information/release-program/current-releases/oma-lightweightm2m-v1-0">OMA-TS-LightweightM2M-V1_0-20160407-C.pdf</a>,
+Section 5.5.
+
+Once Observe is enabled, the following sequence happens between target device and server:
+- server requests Observe on an asset
+- device agrees and sends Observe response
+- device sends notification (automatically when app changes any asset using one of these functions:
+    - le_avdata_SetString()
+    - le_avdata_SetBinary()
+    - le_avdata_SetBool()
+    - le_avdata_SetFloat()
+    - le_avdata_SetInt().
+
+Currently, the advanced features for Observe are not supported. This includes attributes such as minimum
+and maximum reporting times.  Notifications are sent as soon as one of the listed functions are called.
+
+@section howToAVData_readObserve Read Asset
+
+There are several ways to read an asset's data from AirVantage:
+
+ - a simple read operation can be initiated from the server.
+ - if the app has registered a read callback on a variable field, the server can cause the field
+   value to be sampled by reading this variable field.
+ - enable LWM2M_OBSERVE on the server and any changes to the asset will be pushed to the server
+   by the device.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

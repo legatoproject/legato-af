@@ -119,7 +119,7 @@ static void GenerateBuildStatement
         exePath = "$builddir/" + exePath;
     }
     script << "build " << exePath << ": " << GetLinkRule(exePtr) <<
-              " $builddir/" << exePtr->mainObjectFile.path;
+              " $builddir/" << exePtr->MainObjectFile().path;
 
     // Link in all the .o files for C/C++ sources.
     for (auto objFilePtr : exePtr->cObjectFiles)
@@ -271,37 +271,82 @@ void GenerateBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Add build statements for all the .o files to be built from C/C++ sources.
-    for (auto objFilePtr : exePtr->cObjectFiles)
+    if (exePtr->hasCOrCppCode)
     {
-        script << "build $builddir/" << objFilePtr->path << ":"
-                  " CompileC " << objFilePtr->sourceFilePath << "\n"
-                  "  cFlags = $cFlags ";
-        GenerateCandCxxFlags(script, exePtr, buildParams);
-        script << "\n\n";
+        // Add build statements for all the .o files to be built from C/C++ sources.
+        for (auto objFilePtr : exePtr->cObjectFiles)
+        {
+            script << "build $builddir/" << objFilePtr->path << ":"
+                      " CompileC " << objFilePtr->sourceFilePath << "\n"
+                      "  cFlags = $cFlags ";
+            GenerateCandCxxFlags(script, exePtr, buildParams);
+            script << "\n\n";
+        }
+        for (auto objFilePtr : exePtr->cxxObjectFiles)
+        {
+            script << "build $builddir/" << objFilePtr->path << ":"
+                      " CompileCxx " << objFilePtr->sourceFilePath << "\n"
+                      "  cxxFlags = $cxxFlags ";
+            GenerateCandCxxFlags(script, exePtr, buildParams);
+            script << "\n\n";
+        }
+
+        // Add a build statement for the executable's _main.c.o file.
+        auto mainObjectFile = exePtr->MainObjectFile();
+
+        std::string defaultComponentName = exePtr->name + "_exe";
+        script << "build $builddir/" << mainObjectFile.path << ":"
+                  " CompileC " << mainObjectFile.sourceFilePath << "\n"
+                  // Define the component name, log session variable, and log filter variable.
+                  "  cFlags = $cFlags"
+                  " -DLE_COMPONENT_NAME=" << defaultComponentName <<
+                  " -DLE_LOG_SESSION=" << defaultComponentName << "_LogSession"
+                  " -DLE_LOG_LEVEL_FILTER_PTR=" << defaultComponentName << "_LogLevelFilterPtr "
+                  "\n\n";
+
+        // Add a build statement for the executable file.
+        GenerateBuildStatement(script, exePtr, buildParams);
     }
-    for (auto objFilePtr : exePtr->cxxObjectFiles)
+    else if (exePtr->hasJavaCode)
     {
-        script << "build $builddir/" << objFilePtr->path << ":"
-                  " CompileCxx " << objFilePtr->sourceFilePath << "\n"
-                  "  cxxFlags = $cxxFlags ";
-        GenerateCandCxxFlags(script, exePtr, buildParams);
-        script << "\n\n";
+        auto legatoJarPath = path::Combine(envVars::Get("LEGATO_ROOT"),
+                                           "build/$target/framework/lib/legato.jar");
+
+        auto mainObjectFile = exePtr->MainObjectFile();
+        std::string classDestPath;
+
+        std::list<std::string> classPath = { legatoJarPath };
+        std::list<std::string> dependencies = { legatoJarPath, classDestPath };
+
+        if (exePtr->appPtr != NULL)
+        {
+            classDestPath = "$builddir/app/" + exePtr->appPtr->name;
+        }
+        else
+        {
+            classDestPath = "$builddir/";
+        }
+
+        classDestPath += "/obj/" + exePtr->name;
+
+        for (auto componentInstPtr : exePtr->componentInstances)
+        {
+            auto componentPtr = componentInstPtr->componentPtr;
+
+            if (componentPtr->HasJavaCode())
+            {
+                classPath.push_back(componentPtr->lib);
+                dependencies.push_back(componentPtr->lib);
+            }
+        }
+
+        GenerateJavaBuildCommand(script,
+                                 path::Combine("$builddir/", exePtr->path),
+                                 classDestPath,
+                                 { mainObjectFile.sourceFilePath },
+                                 classPath,
+                                 dependencies);
     }
-
-    // Add a build statement for the executable's _main.c.o file.
-    std::string defaultComponentName = exePtr->name + "_exe";
-    script << "build $builddir/" << exePtr->mainObjectFile.path << ":"
-              " CompileC " << exePtr->mainObjectFile.sourceFilePath << "\n"
-              // Define the component name, log session variable, and log filter variable.
-              "  cFlags = $cFlags"
-              " -DLE_COMPONENT_NAME=" << defaultComponentName <<
-              " -DLE_LOG_SESSION=" << defaultComponentName << "_LogSession"
-              " -DLE_LOG_LEVEL_FILTER_PTR=" << defaultComponentName << "_LogLevelFilterPtr "
-              "\n\n";
-
-    // Add a build statement for the executable file.
-    GenerateBuildStatement(script, exePtr, buildParams);
 }
 
 

@@ -244,9 +244,46 @@ ApiTypesOnlyInterface_t::ApiTypesOnlyInterface_t
 :   ApiRef_t(aPtr, cPtr, iName)
 //--------------------------------------------------------------------------------------------------
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated C files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiTypesOnlyInterface_t::GetInterfaceFiles
+(
+    InterfaceCFiles_t& cFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
     std::string codeGenDir = path::Combine(apiFilePtr->codeGenDir, "client/");
 
-    interfaceFile = codeGenDir + apiFilePtr->defaultPrefix + "_interface.h";
+    cFiles.interfaceFile = codeGenDir + apiFilePtr->defaultPrefix + "_interface.h";
+    cFiles.internalHFile = "";
+    cFiles.sourceFile = "";
+    cFiles.objectFile = "";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated Java files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiTypesOnlyInterface_t::GetInterfaceFiles
+(
+    InterfaceJavaFiles_t& javaFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(componentPtr->workingDir, "src/io/legato/api/");
+
+    javaFiles.interfaceSourceFile = srcDir + internalName + ".java";
+    javaFiles.implementationSourceFile = "";
 }
 
 
@@ -266,12 +303,46 @@ ApiClientInterface_t::ApiClientInterface_t
     manualStart(false)
 //--------------------------------------------------------------------------------------------------
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated client C files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiClientInterface_t::GetInterfaceFiles
+(
+    InterfaceCFiles_t& cFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
     std::string codeGenDir = path::Combine(apiFilePtr->codeGenDir, "client/");
 
-    interfaceFile = codeGenDir + internalName + "_interface.h";
-    internalHFile = codeGenDir + internalName + "_messages.h";
-    sourceFile = codeGenDir + internalName + "_client.c";
-    objectFile = codeGenDir + internalName + "_client.c.o";
+    cFiles.interfaceFile = codeGenDir + internalName + "_interface.h";
+    cFiles.internalHFile = codeGenDir + internalName + "_messages.h";
+    cFiles.sourceFile = codeGenDir + internalName + "_client.c";
+    cFiles.objectFile = codeGenDir + internalName + "_client.c.o";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated client Java files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiClientInterface_t::GetInterfaceFiles
+(
+    InterfaceJavaFiles_t& javaFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(componentPtr->workingDir, "src/io/legato/api/");
+
+    javaFiles.interfaceSourceFile = srcDir + internalName + ".java";
+    javaFiles.implementationSourceFile = srcDir + "implementation/" + internalName + "Client.java";
 }
 
 
@@ -293,6 +364,21 @@ ApiServerInterface_t::ApiServerInterface_t
     manualStart(false)
 //--------------------------------------------------------------------------------------------------
 {
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated server C files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiServerInterface_t::GetInterfaceFiles
+(
+    InterfaceCFiles_t& cFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
     std::string codeGenDir;
 
     if (async)
@@ -304,10 +390,29 @@ ApiServerInterface_t::ApiServerInterface_t
         codeGenDir = path::Combine(apiFilePtr->codeGenDir, "server/");
     }
 
-    interfaceFile = codeGenDir + internalName + "_server.h";
-    internalHFile = codeGenDir + internalName + "_messages.h";
-    sourceFile = codeGenDir + internalName + "_server.c";
-    objectFile = codeGenDir + internalName + "_server.o";
+    cFiles.interfaceFile = codeGenDir + internalName + "_server.h";
+    cFiles.internalHFile = codeGenDir + internalName + "_messages.h";
+    cFiles.sourceFile = codeGenDir + internalName + "_server.c";
+    cFiles.objectFile = codeGenDir + internalName + "_server.o";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated server Java files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiServerInterface_t::GetInterfaceFiles
+(
+    InterfaceJavaFiles_t& javaFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(componentPtr->workingDir, "src/io/legato/api/");
+
+    javaFiles.interfaceSourceFile = srcDir + internalName + ".java";
+    javaFiles.implementationSourceFile = srcDir + "implementation/" + internalName + "Server.java";
 }
 
 

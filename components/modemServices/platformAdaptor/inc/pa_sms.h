@@ -414,7 +414,6 @@ LE_SHARED le_result_t pa_sms_SetSmsc
     const char*    smscPtr  ///< [IN] The Short message service center.
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Activate Cell Broadcast message notification

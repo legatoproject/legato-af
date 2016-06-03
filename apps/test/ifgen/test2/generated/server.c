@@ -45,37 +45,38 @@ __attribute__((unused)) static void* PackString(void* msgBufPtr, const char* dat
     // todo: should check for buffer overflow, but not sure what to do if it happens
     //       i.e. is it a fatal error, or just return a result
 
-    // Add one for the null character
-    size_t dataSize = strlen(dataStr) + 1;
+    // Get the sizes
+    uint32_t strSize = strlen(dataStr);
+    const uint32_t sizeOfStrSize = sizeof(strSize);
 
-    memcpy( msgBufPtr, dataStr, dataSize );
-    return ( msgBufPtr + dataSize );
+    // Always pack the string size first, and then the string itself
+    memcpy( msgBufPtr, &strSize, sizeOfStrSize );
+    msgBufPtr += sizeOfStrSize;
+    memcpy( msgBufPtr, dataStr, strSize );
+
+    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
+    return ( msgBufPtr + strSize );
 }
 
 // Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** dataStrPtr)
+__attribute__((unused)) static void* UnpackString(void* msgBufPtr, char* dataStr, size_t dataSize)
 {
-    // Add one for the null character
-    size_t dataSize = strlen(msgBufPtr) + 1;
+    // todo: should check for buffer overflow, but not sure what to do if it happens
+    //       i.e. is it a fatal error, or just return a result
 
-    // Strings do not have to be word aligned, so just return a pointer
-    // into the message buffer
-    *dataStrPtr = msgBufPtr;
-    return ( msgBufPtr + dataSize );
-}
+    uint32_t strSize;
+    const uint32_t sizeOfStrSize = sizeof(strSize);
 
-// todo: This function may eventually replace all usage of UnpackString() above.
-//       Maybe there should also be a PackDataString() function as well?
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
-{
-    // Number of bytes copied from msg buffer, not including null terminator
-    size_t numBytes = strlen(msgBufPtr);
+    // Get the string size first, and then the actual string
+    memcpy( &strSize, msgBufPtr, sizeOfStrSize );
+    msgBufPtr += sizeOfStrSize;
 
-    // todo: For now, assume the string will always fit in the buffer. This may not always be true.
-    memcpy(dataPtr, msgBufPtr, dataSize);
-    ((char*)dataPtr)[dataSize-1] = 0;
-    return ( msgBufPtr + (numBytes + 1) );
+    // Copy the string, and make sure it is null-terminated
+    memcpy( dataStr, msgBufPtr, strSize );
+    dataStr[strSize] = 0;
+
+    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
+    return ( msgBufPtr + strSize );
 }
 
 
@@ -545,8 +546,8 @@ static void Handle_allParameters
         outputNumElements = 10;
     }
 
-    const char* label;
-    _msgBufPtr = UnpackString( _msgBufPtr, &label );
+    char label[21];
+    _msgBufPtr = UnpackString( _msgBufPtr, label, 21 );
 
     size_t responseNumElements;
     _msgBufPtr = UnpackData( _msgBufPtr, &responseNumElements, sizeof(size_t) );
@@ -708,8 +709,8 @@ static void Handle_AddBugTestHandler
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
     // Unpack the input parameters from the message
-    const char* newPathPtr;
-    _msgBufPtr = UnpackString( _msgBufPtr, &newPathPtr );
+    char newPathPtr[513];
+    _msgBufPtr = UnpackString( _msgBufPtr, newPathPtr, 513 );
 
 
 

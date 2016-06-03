@@ -51,7 +51,7 @@ then
 fi
 
 scriptDir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-appDir="$LEGATO_ROOT/build/$targetType/bin/samples"
+appDir="$LEGATO_ROOT/build/$targetType/samples"
 
 echo "Make sure Legato is running."
 ssh root@$targetAddr "$BIN_PATH/legato start"
@@ -59,15 +59,14 @@ CheckRet
 
 echo "Install helloWorld app from sample apps."
 cd "$appDir"
-instapp helloWorld.$targetType $targetAddr
-CheckRet
+InstallApp helloWorld
 
 echo "Check that the app installed properly."
 CheckAppIsInstalled "helloWorld"
 
 echo "Attempt to install a corrupted version of the helloWorld app."
 cd "$scriptDir"
-instapp helloWorld.ar7 $targetAddr
+InstallApp helloWorld.ar7
 
 echo "Check that the helloWorld app is still installed."
 CheckAppIsInstalled "helloWorld"

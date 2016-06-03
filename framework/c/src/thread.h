@@ -38,6 +38,7 @@ typedef struct
     le_dls_Link_t           link;           ///< Link for exposure to the Inpsect tool.
     char    name[MAX_THREAD_NAME_SIZE];     ///< The name of the thread.
     pthread_attr_t          attr;           ///< The thread's attributes.
+    le_thread_Priority_t    priority;       ///< The thread's priority.
     bool                    isJoinable;     ///< true = the thread is joinable, false = detached.
 
     /// Thread state.
@@ -60,6 +61,28 @@ typedef struct
     timer_ThreadRec_t       timerRec;       ///< The thread's timer record.
 }
 thread_Obj_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the thread obj list; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_dls_List_t* thread_GetThreadObjList
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the thread obj list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** thread_GetThreadObjListChgCntRef
+(
+    void
+);
 
 
 //--------------------------------------------------------------------------------------------------

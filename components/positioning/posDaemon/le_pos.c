@@ -1534,7 +1534,7 @@ le_result_t le_pos_Get3DLocation
     int32_t*       latitudePtr,    ///< [OUT] The Latitude in degrees, positive North.
     int32_t*       longitudePtr,   ///< [OUT] The Longitude in degrees, positive East.
     int32_t*       hAccuracyPtr,   ///< [OUT] The horizontal position's accuracy.
-    int32_t*       altitudePtr,    ///< [OUT] The Altitude in metres, above Mean Sea Level.
+    int32_t*       altitudePtr,    ///< [OUT] The Altitude in meters, above Mean Sea Level.
     int32_t*       vAccuracyPtr    ///< [OUT] The vertical position's accuracy.
 )
 {

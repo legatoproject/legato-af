@@ -1,0 +1,21 @@
+
+executables:
+{
+    avcObserveApp = ( componentObserveApp )
+}
+
+processes:
+{
+    run:
+    {
+        (avcObserveApp)
+    }
+}
+
+bindings:
+{
+    avcObserveApp.componentObserveApp.le_avdata -> avcService.le_avdata
+    avcObserveApp.componentObserveApp.le_avc -> avcService.le_avc
+}
+
+version: 1.0

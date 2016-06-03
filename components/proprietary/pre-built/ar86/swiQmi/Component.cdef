@@ -3,9 +3,6 @@ bundles:
     file:
     {
         [r] libComponent_swiQmi.so                          /lib/
-        [r] ${LEGATO_SYSROOT}/usr/lib/libqmiservices.so.1   /lib/
-        [r] ${LEGATO_SYSROOT}/usr/lib/libqmi_cci.so.1       /lib/
-        [r] ${LEGATO_SYSROOT}/usr/lib/libloc_api.so.1       /lib/
     }
 }
 
@@ -14,7 +11,5 @@ requires:
     lib:
     {
         libComponent_swiQmi.so
-        ${LEGATO_SYSROOT}/usr/lib/libsierra_qapi.a
-        ${LEGATO_SYSROOT}/usr/lib/libsierra_qcsi.a
     }
 }

@@ -73,18 +73,22 @@ void fwDaemons_SetIntermediateShutdownHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The SIGCHLD handler for the framework daemons.
+ * The SIGCHLD handler for the framework daemons.  This should be called from the Supervisor's
+ * SIGCHILD handler.
+ *
+ * @note
+ *      This function will reap the child if the child is a framework daemon, otherwise the child
+ *      will remain unreaped.
  *
  * @return
  *      LE_OK if the signal was handled without incident.
- *      LE_NOT_FOUND if the pid is not a framework daemon.
+ *      LE_NOT_FOUND if the pid is not a framework daemon.  The child will not be reaped.
  *      LE_FAULT if the signal indicates the failure of one of the framework daemons.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t fwDaemons_SigChildHandler
 (
-    pid_t pid,              ///< [IN] Pid of the process that produced the SIGCHLD.
-    int status              ///< [IN] Status of the process.
+    pid_t pid               ///< [IN] Pid of the process that produced the SIGCHLD.
 );
 
 

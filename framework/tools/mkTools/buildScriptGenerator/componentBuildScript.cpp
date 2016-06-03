@@ -58,19 +58,25 @@ static void GenerateCommonCAndCxxFlags
     // code generation directory.
     for (auto ifPtr : componentPtr->serverApis)
     {
-        script << " -I$builddir/" << path::GetContainingDir(ifPtr->interfaceFile);
+        model::InterfaceCFiles_t cFiles;
+        ifPtr->GetInterfaceFiles(cFiles);
+        script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
     }
 
     // For each client-side interface, include the client code generation directory.
     for (auto ifPtr : componentPtr->clientApis)
     {
-        script << " -I$builddir/" << path::GetContainingDir(ifPtr->interfaceFile);
+        model::InterfaceCFiles_t cFiles;
+        ifPtr->GetInterfaceFiles(cFiles);
+        script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
     }
 
     // For each "types-only" required API, include the client code generation directory.
     for (auto ifPtr : componentPtr->typesOnlyApis)
     {
-        script << " -I$builddir/" << path::GetContainingDir(ifPtr->interfaceFile);
+        model::InterfaceCFiles_t cFiles;
+        ifPtr->GetInterfaceFiles(cFiles);
+        script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
     }
 
     // For each server-side USETYPES statement, include the server code generation directory.
@@ -222,21 +228,31 @@ static void GetInterfaceHeaders
 )
 //--------------------------------------------------------------------------------------------------
 {
+
     for (auto ifPtr : componentPtr->typesOnlyApis)
     {
-        result += " $builddir/" + ifPtr->interfaceFile;
+        model::InterfaceCFiles_t cFiles;
+        ifPtr->GetInterfaceFiles(cFiles);
+
+        result += " $builddir/" + cFiles.interfaceFile;
     }
 
     for (auto ifPtr : componentPtr->serverApis)
     {
-        result += " $builddir/" + ifPtr->interfaceFile;
-        result += " $builddir/" + ifPtr->internalHFile;
+        model::InterfaceCFiles_t cFiles;
+        ifPtr->GetInterfaceFiles(cFiles);
+
+        result += " $builddir/" + cFiles.interfaceFile;
+        result += " $builddir/" + cFiles.internalHFile;
     }
 
     for (auto ifPtr : componentPtr->clientApis)
     {
-        result += " $builddir/" + ifPtr->interfaceFile;
-        result += " $builddir/" + ifPtr->internalHFile;
+        model::InterfaceCFiles_t cFiles;
+        ifPtr->GetInterfaceFiles(cFiles);
+
+        result += " $builddir/" + cFiles.interfaceFile;
+        result += " $builddir/" + cFiles.internalHFile;
     }
 
     for (auto apiFilePtr : componentPtr->clientUsetypesApis)
@@ -280,7 +296,6 @@ static void GenerateComponentLibBuildStatement
         // No source files.  No library to build.
         return;
     }
-
     // Create the build statement.
     script << "build " << componentPtr->lib << ": " << rule;
 
@@ -298,11 +313,17 @@ static void GenerateComponentLibBuildStatement
     // code for the component's required and provided APIs.
     for (auto apiPtr : componentPtr->clientApis)
     {
-        script << " $builddir/" << apiPtr->objectFile;
+        model::InterfaceCFiles_t cFiles;
+        apiPtr->GetInterfaceFiles(cFiles);
+
+        script << " $builddir/" << cFiles.objectFile;
     }
     for (auto apiPtr : componentPtr->serverApis)
     {
-        script << " $builddir/" << apiPtr->objectFile;
+        model::InterfaceCFiles_t cFiles;
+        apiPtr->GetInterfaceFiles(cFiles);
+
+        script << " $builddir/" << cFiles.objectFile;
     }
 
     // And the object file for the component-specific generated code in _componentMain.c.
@@ -404,6 +425,38 @@ static void GenerateCxxSourceBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * .
+ **/
+//--------------------------------------------------------------------------------------------------
+template<typename ApiType>
+static void ColateSources
+(
+    const std::string& workDir,
+    const std::list<ApiType*>& interfaces,
+    std::list<std::string>& sourceList
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto apiPtr : interfaces)
+    {
+        model::InterfaceJavaFiles_t javaFiles;
+        apiPtr->GetInterfaceFiles(javaFiles);
+
+        if (javaFiles.interfaceSourceFile.empty() == false)
+        {
+            sourceList.push_back(path::Combine(workDir, javaFiles.interfaceSourceFile));
+        }
+
+        if (javaFiles.implementationSourceFile.empty() == false)
+        {
+            sourceList.push_back(path::Combine(workDir, javaFiles.implementationSourceFile));
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate a build statements for a component library that is shareable between multiple
  * executables.
  **/
@@ -416,8 +469,11 @@ void GenerateBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Add the build statement for the component library.
-    GenerateComponentLibBuildStatement(script, componentPtr, buildParams);
+    if (componentPtr->HasCOrCppCode())
+    {
+        // Add the build statement for the component library.
+        GenerateComponentLibBuildStatement(script, componentPtr, buildParams);
+    }
 
     // Create a set of header files that need to be generated for all IPC API interfaces.
     std::string interfaceHeaders;
@@ -433,14 +489,57 @@ void GenerateBuildStatements
         GenerateCxxSourceBuildStatement(script, componentPtr, objFilePtr, interfaceHeaders);
     }
 
-    // Add a build statement for the generated component-specific code.
-    script << "build $builddir/" << componentPtr->workingDir + "/obj/_componentMain.c.o" << ":"
-              " CompileC $builddir/" << componentPtr->workingDir + "/src/_componentMain.c" << "\n";
-    script << "  cFlags = $cFlags";
-    GenerateCommonCAndCxxFlags(script, componentPtr);
-    script << "\n\n";
-}
+    if (componentPtr->HasCOrCppCode())
+    {
+        // Add a build statement for the generated component-specific code.
+        script << "build $builddir/" << componentPtr->workingDir + "/obj/_componentMain.c.o" << ":"
+                  " CompileC $builddir/" << componentPtr->workingDir + "/src/_componentMain.c"
+               << "\n";
 
+        script << "  cFlags = $cFlags";
+        GenerateCommonCAndCxxFlags(script, componentPtr);
+        script << "\n\n";
+    }
+    else if (componentPtr->HasJavaCode())
+    {
+        std::list<std::string> sourceList =
+            {
+                "$builddir/" + componentPtr->workingDir + "/src/io/legato/generated/component/" +
+                componentPtr->name + "/Factory.java"
+            };
+
+        for (auto package : componentPtr->javaPackages)
+        {
+            for (auto sourceFile : package->sourceFiles)
+            {
+                sourceList.push_back(path::Combine(componentPtr->dir, sourceFile));
+            }
+        }
+
+        ColateSources<model::ApiTypesOnlyInterface_t>(buildParams.workingDir,
+                                                      componentPtr->typesOnlyApis,
+                                                      sourceList);
+
+        ColateSources<model::ApiServerInterface_t>(buildParams.workingDir,
+                                                   componentPtr->serverApis,
+                                                   sourceList);
+
+        ColateSources<model::ApiClientInterface_t>(buildParams.workingDir,
+                                                   componentPtr->clientApis,
+                                                   sourceList);
+
+        auto legatoJarPath = path::Combine(envVars::Get("LEGATO_ROOT"),
+                                           "build/$target/framework/lib/legato.jar");
+        auto classDestPath = "$builddir/" + componentPtr->workingDir + "/obj";
+
+        GenerateJavaBuildCommand(script,
+                                 componentPtr->lib,
+                                 classDestPath,
+                                 sourceList,
+                                 { legatoJarPath },
+                                 { legatoJarPath, classDestPath });
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------

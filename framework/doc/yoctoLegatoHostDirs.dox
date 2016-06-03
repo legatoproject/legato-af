@@ -1,0 +1,37 @@
+/** @page yoctoLegatoHostDirs Host Directories
+
+These are the top level Legato Dev Host directories installed:
+
+<b>3rdParty </b> -
+CUnit system used for automated unit testing.
+
+<b>apps </b> -
+apps, including audio, data, modem and positioning services, samples and test apps.
+
+<b>bin </b> -
+created by build system and populated with executable files run on the
+development host that ran the build. Contains files like @c mkapp
+and @c mkexe.
+
+<b>build</b> -
+results of a framework build. Includes @c build/tools (tools used by the build system)
+and @c build/target (output of a build for a specific target e.g., /build/wp85).
+
+<b>cmake </b> -
+CMake scripts used by the build system.
+
+<b>components </b> -
+pre-built audio, data, modem and positioning components.
+
+<b>framework</b> -
+source code for the Legato framework.
+
+<b>interfaces </b> -
+pre-built audio, data, modem and positioning interfaces.
+
+<b>targetFiles </b> -
+files for installation on target devices.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

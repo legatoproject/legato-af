@@ -1,0 +1,40 @@
+#! /bin/sh
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+LEGATO_SYSTEM_PATH="/legato/systems/current/bin"
+
+# Add LEGATO_SYSTEM_PATH with PATH.
+export PATH=$LEGATO_SYSTEM_PATH:$PATH
+
+case "$1" in
+
+    stop)
+        # if legato isn't running legato script likely won't be found as current/bin
+        # won't be set.
+        if [ -d $LEGATO_SYSTEM_PATH ]; then
+            legato stop
+        else
+            echo "Called stop but legato doesn't seem to be running."
+        fi
+    ;;
+
+    "")
+        # Configure the Kernel to dump core files in the format: "core-<Exe Name>-<Unix Time-stamp>"
+        # Where the Unix time-stamp is the count in seconds since the Epoch.
+        echo "core-%e-%t" > /proc/sys/kernel/core_pattern
+
+        # Create home folder for root user. This is needed when flash is blank.
+        mkdir -p /home/root
+
+        # Add LEGATO_SYSTEM_PATH to /etc/profile if it is not added there.
+        grep -F $LEGATO_SYSTEM_PATH /etc/profile >/dev/null
+        if [ $? -ne 0 ]; then
+            echo "export PATH=$LEGATO_SYSTEM_PATH:\$PATH" >> /etc/profile
+        fi
+
+        cd /mnt/legato
+        ./system/bin/startSystem
+    ;;
+
+esac
+

@@ -1,5 +1,5 @@
 /**
- * @page c_pa_adc Temperature Monitoring Platform Adapter API
+ * @page c_pa_adc ADC Platform Adapter API
  *
  * @ref pa_adc.h "API Reference"
  *
@@ -41,8 +41,13 @@
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_adc_ReadValue
 (
-    le_adc_AdcChannelInput_t  adcChannel,  ///< [IN] Channel to read
-    int32_t*                  adcValuePtr  ///< [OUT] value returned by adc read
+    const char* adcNamePtr,
+        ///< [IN]
+        ///< Name of the ADC to read.
+
+    int32_t* adcValuePtr
+        ///< [OUT]
+        ///< The adc value
 );
 
 #endif // LEGATO_PAADC_INCLUDE_GUARD

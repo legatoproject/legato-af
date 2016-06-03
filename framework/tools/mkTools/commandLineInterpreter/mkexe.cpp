@@ -253,20 +253,9 @@ static void VerifyAtLeastOneSourceFile
 //--------------------------------------------------------------------------------------------------
 {
     // Check for C or C++ source files being built directly into the exe (outside of components).
-    if (ExePtr->cObjectFiles.empty() && ExePtr->cxxObjectFiles.empty())
+    if (   (ExePtr->hasCOrCppCode == false)
+        && (ExePtr->hasJavaCode == false))
     {
-        // Check all the components instantiated in this exe.
-        for (auto componentInstancePtr : ExePtr->componentInstances)
-        {
-            auto componentPtr = componentInstancePtr->componentPtr;
-
-            if (   (componentPtr->cObjectFiles.empty() == false)
-                || (componentPtr->cxxObjectFiles.empty() == false)  )
-            {
-                return;
-            }
-        }
-
         throw mk::Exception_t("Executable doesn't contain any source code files.");
     }
 }
@@ -317,12 +306,10 @@ static void ConstructObjectModel
             auto objFilePath = "obj/" + md5(path::MakeCanonical(sourceFilePath)) + ".o";
 
             // Create an object file object for this source file.
-            auto objFilePtr = new model::ObjectFile_t(objFilePath,
-                                                      model::ProgramLang_t::LANG_C,
-                                                      sourceFilePath);
+            auto objFilePtr = new model::ObjectFile_t(objFilePath, sourceFilePath);
 
             // Add the object file to the exe's list of C object files.
-            ExePtr->cObjectFiles.push_back(objFilePtr);
+            ExePtr->AddCObjectFile(objFilePtr);
         }
         // Is it a C++ source code file path?
         else if (path::IsCxxSource(contentName))
@@ -344,12 +331,10 @@ static void ConstructObjectModel
             auto objFilePath = "obj/" + md5(path::MakeCanonical(sourceFilePath)) + ".o";
 
             // Create an object file object for this source file.
-            auto objFilePtr = new model::ObjectFile_t(objFilePath,
-                                                      model::ProgramLang_t::LANG_CXX,
-                                                      sourceFilePath);
+            auto objFilePtr = new model::ObjectFile_t(objFilePath, sourceFilePath);
 
             // Add the object file to the exe's list of C++ object files.
-            ExePtr->cxxObjectFiles.push_back(objFilePtr);
+            ExePtr->AddCppObjectFile(objFilePtr);
         }
         // Is it a library file path?
         else if (path::IsLibrary(contentName))
@@ -430,6 +415,22 @@ void MakeExecutable
             RunNinja(BuildParams);
             // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
         }
+        // If we have not been asked to ignore any already existing build.ninja and there has
+        // been a change in either the argument list or the environment variables,
+        // save the command-line arguments and environment variables for future comparison.
+        // Note: we don't need to do this if we have been asked not to run ninja, because
+        // that only happens when ninja is already running and asking us to regenerate its
+        // script for us, and that only happens if the args and env vars have already been saved.
+        else
+        {
+            // Save the command line arguments.
+            args::Save(BuildParams, argc, argv);
+
+            // Save the environment variables.
+            // Note: we must do this before we parse the definition file, because parsing the file
+            // will result in the CURDIR environment variable being set.
+            envVars::Save(BuildParams);
+        }
     }
 
     ConstructObjectModel();
@@ -455,17 +456,9 @@ void MakeExecutable
     // Generate a build.ninja for the executable.
     ninja::Generate(ExePtr, BuildParams, argc, argv);
 
-    // If we haven't been asked not to run ninja,
+    // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)
     {
-        // Save the command-line arguments and environment variables for future comparison.
-        // Note: we don't need to do this if we have been asked not to run ninja, because
-        // that only happens when ninja is already running and asking us to regenerate its
-        // script for us, and that only happens if we just saved the args and env vars and
-        // ran ninja.
-        args::Save(BuildParams, argc, argv);
-        envVars::Save(BuildParams);
-
         RunNinja(BuildParams);
     }
 }

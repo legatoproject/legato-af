@@ -31,7 +31,11 @@ USETYPES le_limit.api;
 /**
  * Removes a given app from the target device.
  *
- * @return LE_OK if successful
+ * @return
+ *     - LE_OK if successful
+ *     - LE_BUSY if system busy.
+ *     - LE_NOT_FOUND if given app is not installed.
+ *     - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Remove

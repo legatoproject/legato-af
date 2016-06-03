@@ -18,6 +18,49 @@ namespace internal
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parses the contents of a "preloaded:" section in an app's override list.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseAppPreloadedSection
+(
+    Lexer_t& lexer,
+    parseTree::Token_t* sectionNameTokenPtr     ///< The token containing the section name.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto sectionPtr = new parseTree::SimpleSection_t(sectionNameTokenPtr);
+
+    // Skip over any whitespace or comments.
+    SkipWhitespaceAndComments(lexer);
+
+    // Expect a ':' next.
+    (void)lexer.Pull(parseTree::Token_t::COLON);
+
+    // Skip over any whitespace or comments.
+    SkipWhitespaceAndComments(lexer);
+
+    // Expect the content token next.
+    if (lexer.IsMatch(parseTree::Token_t::BOOLEAN))
+    {
+        sectionPtr->AddContent(lexer.Pull(parseTree::Token_t::BOOLEAN));
+    }
+    else if (lexer.IsMatch(parseTree::Token_t::MD5_HASH))
+    {
+        sectionPtr->AddContent(lexer.Pull(parseTree::Token_t::MD5_HASH));
+    }
+    else
+    {
+        lexer.ThrowException("'preloaded' section must contain 'true', 'false', or an MD5 hash.");
+    }
+
+    return sectionPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses an entry in an app's override list.
  *
  * @return Pointer to the item.
@@ -81,7 +124,7 @@ static parseTree::CompoundItem_t* ParseAppOverride
     }
     else if (sectionName == "preloaded")
     {
-        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::BOOLEAN);
+        return ParseAppPreloadedSection(lexer, sectionNameTokenPtr);
     }
     else if (sectionName == "watchdogAction")
     {
@@ -149,6 +192,28 @@ static parseTree::CompoundItemList_t* ParseApp
     return itemPtr;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parses an entry in the "kernelModules:" section in a .sdef file.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItemList_t* ParseModule
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // kernelModules: subsection contains paths to pre-built module binaries
+    // Pull the module filename and create a new object for it.
+    auto itemPtr = new parseTree::Module_t(lexer.Pull(parseTree::Token_t::FILE_PATH));
+
+    SkipWhitespaceAndComments(lexer);
+
+    return itemPtr;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -248,6 +313,27 @@ static parseTree::Binding_t* ParseBinding
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse an environment variable definition in the "buildVars:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::TokenList_t* ParseBuildVar
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // An buildVars entry is a simple named item containing a FILE_PATH token.
+    return ParseSimpleNamedItem(lexer,
+                                lexer.Pull(parseTree::Token_t::NAME),
+                                parseTree::Content_t::ENV_VAR,
+                                parseTree::Token_t::FILE_PATH);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a command.
  *
  * @return Pointer to the item.
@@ -311,9 +397,21 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBinding);
     }
+    else if (sectionName == "buildVars")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBuildVar);
+    }
     else if (sectionName == "commands")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseCommand);
+    }
+    else if (sectionName == "interfaceSearch")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (sectionName == "kernelModules")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseModule);
     }
     else
     {

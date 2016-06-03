@@ -9,6 +9,7 @@
 #include "legato.h"
 #include "watchdogAction.h"
 
+
 #ifndef LEGATO_SRC_PROC_INCLUDE_GUARD
 #define LEGATO_SRC_PROC_INCLUDE_GUARD
 
@@ -30,28 +31,9 @@ typedef enum
 {
     PROC_STATE_STOPPED,     ///< The process object does not reference an actual runing process, ie.
                             /// no valid PID.
-    PROC_STATE_RUNNING,     ///< The process object references an actual process with a valid PID.
-    PROC_STATE_PAUSED       ///< The process object references a process that has been stopped, ie.
-                            ///  it was sent a SIGSTOP signal.
+    PROC_STATE_RUNNING      ///< The process object references an actual process with a valid PID.
 }
 proc_State_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Process fault actions.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    PROC_FAULT_ACTION_NO_FAULT,         ///< There wasn't a fault.
-    PROC_FAULT_ACTION_IGNORE,           ///< A fault occured but no further action is required.
-    PROC_FAULT_ACTION_RESTART,          ///< The process should be restarted.
-    PROC_FAULT_ACTION_RESTART_APP,      ///< The application should be restarted.
-    PROC_FAULT_ACTION_STOP_APP,         ///< The application should be terminated.
-    PROC_FAULT_ACTION_REBOOT            ///< The system should be rebooted.
-}
-proc_FaultAction_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -69,7 +51,7 @@ void proc_Init
 /**
  * Create a process object.
  *
- * @note The name of the process is the node name (last part) of the cfgPathRootPtr.
+ * @note If the config path is given, the last node in the path must be the name of the process.
  *
  * @return
  *      A reference to a process object if successful.
@@ -78,8 +60,10 @@ void proc_Init
 //--------------------------------------------------------------------------------------------------
 proc_Ref_t proc_Create
 (
-    const char* cfgPathRootPtr,     ///< [IN] The path in the config tree for this process.
-    app_Ref_t appRef                ///< [IN] Reference to the app that we are part of.
+    const char* namePtr,            ///< [IN] Name of the process.
+    app_Ref_t appRef,               ///< [IN] Reference to the app that we are part of.
+    const char* cfgPathRootPtr      ///< [IN] The path in the config tree for this process.  Can be
+                                    ///       NULL if there is no config entry for this process.
 );
 
 
@@ -98,7 +82,8 @@ void proc_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Starts a process, running as the root user, in a given working directory.
+ * Starts a process.  If the process belongs to a sandboxed app the process will run in its sandbox,
+ * otherwise the process will run in its working directory as root.
  *
  * @return
  *      LE_OK if successful.
@@ -107,35 +92,7 @@ void proc_Delete
 //--------------------------------------------------------------------------------------------------
 le_result_t proc_Start
 (
-    proc_Ref_t procRef,             ///< [IN] The process to start.
-    const char* workingDirPtr       ///< [IN] The path to the process's working directory, relative
-                                    ///       to the sandbox directory.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Start the process in a sandbox.
- *
- * The process will chroot to the sandboxDirPtr and assume the workingDirPtr is relative to the
- * sandboxDirPtr.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t proc_StartInSandbox
-(
-    proc_Ref_t procRef,             ///< [IN] The process to start.
-    const char* workingDirPtr,      ///< [IN] The path to the process's working directory, relative
-                                    ///       to the sandbox directory.
-    uid_t uid,                      ///< [IN] The user ID to start the process as.
-    gid_t gid,                      ///< [IN] The primary group ID for this process.
-    const gid_t* groupsPtr,         ///< [IN] List of supplementary groups for this process.
-    size_t numGroups,               ///< [IN] The number of groups in the supplementary groups list.
-    const char* sandboxDirPtr       ///< [IN] The path to the root of the sandbox this process is to
-                                    ///       run in.  If NULL then process will be unsandboxed.
+    proc_Ref_t procRef              ///< [IN] The process to start.
 );
 
 
@@ -214,6 +171,7 @@ const char* proc_GetAppName
  *
  * @return
  *      The process's config path.
+ *      NULL if the process does not have a config.
  */
 //--------------------------------------------------------------------------------------------------
 const char* proc_GetConfigPath
@@ -239,17 +197,150 @@ bool proc_IsRealtime
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the process's file descriptors to use as its standard in.
+ *
+ * By default the standard in is directed to /dev/null.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetStdIn
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    int stdInFd                 ///< [IN] File descriptor to use as the app proc's standard in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's file descriptors to use as its standard out.
+ *
+ * By default the standard out is directed to the logs.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetStdOut
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    int stdOutFd                ///< [IN] File descriptor to use as the app proc's standard out.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's file descriptors to use as its standard error.
+ *
+ * By default the standard out is directed to the logs.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetStdErr
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    int stdErrFd                ///< [IN] File descriptor to use as the app proc's standard error.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the process's executable path.
+ *
+ * This overrides the configured executable path if available.  If the configuration for the process
+ * is unavailable this function must be called to set the executable path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the executable path is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t proc_SetExecPath
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    const char* execPathPtr     ///< [IN] Executable path to use for this process.  NULL to clear
+                                ///       the executable path.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the process's priority.
+ *
+ * This overrides the configured priority if available.
+ *
+ * The priority level string can be either "idle", "low", "medium", "high", "rt1" ... "rt32".
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the priority string is too long.
+ *      LE_FAULT if the priority string is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t proc_SetPriority
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    const char* priorityPtr     ///< [IN] Priority string.  NULL to clear the priority.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a cmd-line argument to a process.  Adding a NULL argPtr is valid and can be used to validate
+ * the args list without actually adding an argument.  This is useful for overriding the configured
+ * arguments with an empty list.
+ *
+ * This overrides the configured arguments if available.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the argument string is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t proc_AddArgs
+(
+    proc_Ref_t procRef,         ///< [IN] The process reference.
+    const char* argPtr          ///< [IN] Argument string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes and invalidates the cmd-line arguments to a process.  This means the process will only
+ * use arguments from the config if available.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_ClearArgs
+(
+    proc_Ref_t procRef          ///< [IN] The process reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set fault action.
+ *
+ * This overrides the configured fault action if available.
+ *
+ * The fault action can be set to FAULT_ACTION_NONE to indicate that the configured fault action
+ * should be used if available.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetFaultAction
+(
+    proc_Ref_t procRef,                 ///< [IN] The process reference.
+    FaultAction_t faultAction           ///< [IN] Fault action.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This handler must be called when a SIGCHILD is received for the specified process.
  *
  * @return
  *      The fault action that should be taken for this process.
  */
 //--------------------------------------------------------------------------------------------------
-proc_FaultAction_t proc_SigChildHandler
+FaultAction_t proc_SigChildHandler
 (
     proc_Ref_t procRef,             ///< [IN] The process reference.
     int procExitStatus              ///< [IN] The status of the process given by wait().
 );
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -265,23 +356,6 @@ proc_FaultAction_t proc_SigChildHandler
 wdog_action_WatchdogAction_t proc_GetWatchdogAction
 (
     proc_Ref_t procRef             ///< [IN] The process reference.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets the priority level for the specified process.
- *
- * The priority level string can be either "idle", "low", "medium", "high", "rt1" ... "rt32".
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t proc_SetPriority
-(
-    const char* priorStr,   ///< [IN] Priority level string.
-    pid_t pid               ///< [IN] PID of the process to set the priority for.
 );
 
 

@@ -59,6 +59,21 @@ void app_PrepUnpackDir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Setup smack permission for contents in app's read-only directory.
+ *
+ * @return LE_OK if successful, LE_FAULT if fails.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_SetSmackPermReadOnly
+(
+    const char* appMd5Ptr,  ///< [IN] Hash ID of the application to install.
+    const char* appNamePtr  ///< [IN] Name of the application to install.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set up a given app's writeable files in the "unpack" system.
  *
  * Files will be copied to the system unpack area based on whether an app with the same name
@@ -94,7 +109,10 @@ le_result_t app_InstallIndividual
 /**
  * Remove the named app from the current running system.
  *
- * @return LE_OK if successful.
+ * @return
+ *      - LE_OK if successful.
+ *      - LE_NOT_FOUND if requested to remove non-existent app.
+ *      - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t app_RemoveIndividual

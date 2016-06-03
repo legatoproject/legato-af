@@ -1,11 +1,25 @@
+/**
+ * @page c_pa_ips Input Power Supply Monitoring Platform Adapter API
+ *
+ * @ref pa_ips.h "API Reference"
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2015. Use of this work is subject to license.
+ */
+
+
 /** @file pa_ips.h
+ *
+ * Legato @ref c_pa_ips include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-#ifndef LEGATO_PAIPS_INCLUDE_GUARD
-#define LEGATO_PAIPS_INCLUDE_GUARD
+#ifndef LEGATO_PA_IPS_INCLUDE_GUARD
+#define LEGATO_PA_IPS_INCLUDE_GUARD
 
+#include "interfaces.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -32,7 +46,6 @@ LE_SHARED le_event_HandlerRef_t* pa_ips_AddVoltageEventHandler
 (
     pa_ips_ThresholdInd_HandlerFunc_t   msgHandler
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -80,7 +93,6 @@ LE_SHARED le_result_t pa_SetVoltageThresholds
         ///< [IN] The high critical input voltage threshold in [mV].
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the Platform warning and critical input voltage thresholds in [mV].
@@ -123,4 +135,4 @@ le_result_t pa_ips_Init
     void
 );
 
-#endif // LEGATO_PAIPS_INCLUDE_GUARD
+#endif // LEGATO_PA_IPS_INCLUDE_GUARD

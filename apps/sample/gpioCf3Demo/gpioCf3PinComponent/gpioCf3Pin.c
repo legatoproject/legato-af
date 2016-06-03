@@ -36,16 +36,16 @@ static void Pin21GpioSignal()
     le_gpioPin21_SetInput(1);
     active = le_gpioPin21_Read();
     LE_INFO("Pin21 read active: %d", active);
-    
+
     le_gpioPin21_SetPushPullOutput(LE_GPIOPIN21_ACTIVE_HIGH, true);
     LE_INFO("Pin21 read PP - High: %d", le_gpioPin21_Read());
-    
+
     le_gpioPin21_SetPushPullOutput(LE_GPIOPIN21_ACTIVE_LOW, true);
     LE_INFO("Pin21 read PP - Low: %d", le_gpioPin21_Read());
-    
+
     le_gpioPin21_SetPushPullOutput(LE_GPIOPIN21_ACTIVE_HIGH, false);
     LE_INFO("Pin21 read PP - High: %d", le_gpioPin21_Read());
-    
+
     le_gpioPin21_SetPushPullOutput(LE_GPIOPIN21_ACTIVE_LOW, false);
     LE_INFO("Pin21 read PP - Low: %d", le_gpioPin21_Read());
 }
@@ -63,12 +63,12 @@ static void Pin22GpioSignal()
     LE_INFO("Pin22 read active: %d", value);
 
     le_gpioPin22_ChangeEventHandlerRef_t ref = le_gpioPin22_AddChangeEventHandler(LE_GPIOPIN22_EDGE_FALLING, Pin22ChangeCallback, &Pin22, 0);
-    
+
     // Change the edge setting
     le_gpioPin22_SetEdgeSense(LE_GPIOPIN22_EDGE_BOTH);
     le_gpioPin22_DisableEdgeSense();
     le_gpioPin22_SetEdgeSense(LE_GPIOPIN22_EDGE_RISING);
-    
+
     // Remove the handler
     le_gpioPin22_RemoveChangeEventHandler(ref);
 }
@@ -76,25 +76,25 @@ static void Pin22GpioSignal()
 static void PinsReadConfig()
 {
     LE_INFO("Pin 21 active = %s", le_gpioPin21_IsActive()?"true":"false");
-    
+
     le_gpioPin22_Edge_t edge = le_gpioPin22_GetEdgeSense();
-    if (edge == LE_GPIOPIN22_EDGE_FALLING) 
+    if (edge == LE_GPIOPIN22_EDGE_FALLING)
     {
         LE_INFO("Pin 22 edge sense = falling");
     }
-    else if (edge == LE_GPIOPIN22_EDGE_RISING) 
+    else if (edge == LE_GPIOPIN22_EDGE_RISING)
     {
         LE_INFO("Pin 22 edge sense = rising");
     }
-    else if (edge == LE_GPIOPIN22_EDGE_BOTH) 
+    else if (edge == LE_GPIOPIN22_EDGE_BOTH)
     {
         LE_INFO("Pin 22 edge sense = both");
     }
-    else if (edge == LE_GPIOPIN22_EDGE_NONE) 
+    else if (edge == LE_GPIOPIN22_EDGE_NONE)
     {
         LE_INFO("Pin 22 edge sense = none");
     }
-    
+
     le_gpioPin21_Polarity_t pol = le_gpioPin21_GetPolarity();
     if (pol == LE_GPIOPIN21_ACTIVE_HIGH)
     {
@@ -104,16 +104,16 @@ static void PinsReadConfig()
     {
         LE_INFO("Pin 21 polarity = ACTIVE_LOW");
     }
-    
+
     LE_INFO("Pin 21 is input = %s", le_gpioPin21_IsInput()?"true":"false");
     LE_INFO("Pin 22 is output = %s", le_gpioPin22_IsOutput()?"true":"false");
-    
+
     le_gpioPin21_PullUpDown_t pud = le_gpioPin21_GetPullUpDown();
-    if (pud == LE_GPIOPIN21_PULL_DOWN) 
+    if (pud == LE_GPIOPIN21_PULL_DOWN)
     {
         LE_INFO("Pin 21 pull up/down = down");
     }
-    else if (pud == LE_GPIOPIN21_PULL_UP) 
+    else if (pud == LE_GPIOPIN21_PULL_UP)
     {
         LE_INFO("Pin 21 pull up/down = up");
     }
@@ -136,9 +136,9 @@ COMPONENT_INIT
 
     Pin21GpioSignal();
     Pin22GpioSignal();
-    
+
     PinsReadConfig();
-    
+
     // This should abort the test app
     SecondCallbackTest();
 

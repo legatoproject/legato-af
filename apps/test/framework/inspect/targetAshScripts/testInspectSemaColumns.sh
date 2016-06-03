@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# NOTE: This script is currently not used, since the "traceable" column is removed.
+# However I am keeping this around in case implementation changes in the future.
+
+
 logFileName=__Inspect_testSemaColumns_log_deleteme
 
 PrintUsage()

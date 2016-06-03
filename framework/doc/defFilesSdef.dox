@@ -55,7 +55,32 @@ the .adef setting for all processes in that app:
 @ref defFilesAdef_watchdogAction <br>
 @ref defFilesAdef_watchdogTimeout <br>
 
-@subsection defFilesSdef_appsMaxPriority Max Priority
+@subsection defFilesSdef_appsInterfaceSearch interfaceSearch
+
+This section is used to specify directories in which @c mksys should look for interface files,
+such as @c .api files and @c .h files, when building components in the system.
+
+@verbatim
+interfaceSearch:
+{
+    $LEGATO_ROOT/interfaces/modemServices   // Dir containing Legato modem services APIs.
+
+    interfaces  // Dir containing custom interfaces belonging to this system.
+}
+@endverbatim
+
+To allow components to be relocated in the build host file system, components should not specify
+interface file search paths outside of their own directories. But, to truly separate interfaces
+from implementation, interfaces should be kept outside of components. This can be accomplished
+by adding interface search directory paths to the @c interfaceSearch section in the .sdef file.
+
+@note @c mksys command-line arguments (<c>-i</c> or <c>--interface-search</c>) could also be
+used to solve this problem, but that forces the developer to use a build script to launch @c mksys
+(so they don't have to remember all the right interface directory paths and type them on the
+command line each time they run @c mksys).
+
+
+@subsection defFilesSdef_appsMaxPriority maxPriority
 
 Sets the maximum priority level the app it permitted to use.
 
@@ -80,10 +105,14 @@ apps:
 Another process in the same .adef configured to start at low priority
 will still start at low priority.
 
-@subsection defFilesSdef_appsPreloaded Preloaded
+@subsection defFilesSdef_appsPreloaded preloaded
 
 Indicates whether or not an app must be preloaded onto the target device separately from the
 rest of the system.
+
+If you are not sure whether or not you need this feature, you probably don't.  Use of this
+feature is intended for very specific use cases.  It is encouraged that delta updates of systems
+be used instead, whenever practical.
 
 The legato AF supports being installed in a read-only partition, mounted as <c>/mnt/legato</c> in
 the target file system.  Writeable files will be kept in another file system mounted as
@@ -119,9 +148,38 @@ apps:
 }
 @endcode
 
-If you are not sure whether or not you need this feature, you probably don't.  Use of this
-feature is intended for very specific use cases.  It is encouraged that delta updates of systems
-be used instead, whenever practical.
+After you have built the new system, verify that the app that was marked "preloaded" in the .sdef
+file has the same MD5 hash as the app that is actually installed on the target.  You can do this
+by comparing the contents of the symlink in <c>/legato/systems/current/apps/</c> on
+the target with the contents of the symlink in the <c>staging/apps/</c> directory of the system's
+build directory on the build host.
+
+@code
+$ ssh root@192.168.2.2 'readlink /legato/systems/current/apps/userInterface'
+/legato/apps/a60357d912ff3b4b28e080580b34fff3
+$ readlink build/wp85/system/staging/apps/userInterface
+/legato/apps/a60357d912ff3b4b28e080580b34fff3
+@endcode
+
+If these are different, then something has changed that has resulted in the built version of your
+app to be different in the context of your new system.  If you continue to install your new system
+on the target, the "preloaded" app will not start.  But, if you find yourself in this situation,
+and you are absolutely certain that the version of the preloaded app that is on your target is
+still compatible with the new system you are about to install, and you can't afford to
+install the new version of your app, then you have another option:
+Change the "true" in your "preloaded: true" statement in your .sdef file to the MD5 hash of the
+old version of the app installed on your target.
+
+@code
+apps:
+{
+    modemService
+    audioService
+    dataConnectionService
+    controller
+    userInterface { preloaded: a60357d912ff3b4b28e080580b34fff3 }
+}
+@endcode
 
 
 @section defFilesSdef_bindings bindings
@@ -164,6 +222,77 @@ bindings:
 For security reasons, binding between apps is never performed unless explicitly
 specified in the @c .sdef or @c .adef files.
 
+
+@section defFilesSdef_buildVars buildVars
+
+Build environment variables can be defined inside the .sdef file using "buildVars:" sections.
+This will define variables in the build tools' process environment at build time.
+
+@verbatim
+buildVars:
+{
+    PRODUCT_VERSION = "0.2.3 - beta"
+    HARDWARE_REV = 4
+    DEBUG = 1
+}
+@endverbatim
+
+These are defined using "name = value" pairs, where the value can be a quoted string and may
+contain the values of other environment variables that were previously defined.
+
+All @c buildVars: sections will be evaluated before processing any other sections.  So, even
+if a @c buildVars: section appears after another section that uses it, the variables will be
+available in that other section.
+
+@note This is necessary to allow the sharing of components between apps.  If two apps contained
+the same component, but each app were built with a different set of environment variables, it
+would be hard to tell which set of environment variables were used to build the shared component,
+and the component may behave in an unexpected way for one of the apps.
+
+@verbatim
+apps:
+{
+    $APP_PATH
+}
+
+buildVars:
+{
+    APP_PATH = path/to/app
+}
+@endverbatim
+
+Within the @c buildVars: sections, the order of the definitions matters.
+
+@verbatim
+buildVars:
+{
+    X = foo  // X is now "foo"
+
+    X = bar  // X has been changed to "bar"
+
+    X = foo${X}  // X has been changed to "foobar"
+
+    X = "$X baz" // X has been changed to "foobar baz"
+}
+@endverbatim
+
+@section defFilesSdef_kernelModules kernelModules
+
+The optional @c kernelModules: section declares a list of pre-built kernel modules to be
+bundled and installed with Legato.
+
+Each entry represents a path to the @ref defFilesMdef ".mdef" definition file that describes how the module is
+installed on the target.
+
+This code sample shows the @kernelModules section declaring the
+"/path/to/kernel/module/hello.mdef" be bundled with Legato:
+
+@code
+kernelModules:
+{
+    /path/to/kernel/module/hello
+}
+@endcode
 
 @section defFilesSdef_commands commands
 

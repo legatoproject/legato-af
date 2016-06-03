@@ -9,7 +9,6 @@
 #include "legato.h"
 #include "timer.h"
 #include "thread.h"
-#include "spy.h"
 #include "fileDescriptor.h"
 #include <sys/timerfd.h>
 #include "fileDescriptor.h"
@@ -27,8 +26,8 @@
  * A counter that increments every time a change is made to the timer list.
  */
 //--------------------------------------------------------------------------------------------------
-static size_t ListOfTimersChgCnt = 0;
-static size_t* ListOfTimersChgCntRef = &ListOfTimersChgCnt;
+static size_t TimerListChangeCount = 0;
+static size_t* TimerListChangeCountRef = &TimerListChangeCount;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -145,7 +144,7 @@ static void AddToTimerList
         linkPtr = le_dls_PeekNext(listPtr, linkPtr);
     }
 
-    ListOfTimersChgCnt++;
+    TimerListChangeCount++;
     if (linkPtr == NULL)
     {
         // The list is either empty, or the new timer has the largest expiry time.
@@ -208,7 +207,7 @@ static Timer_t* PopFromTimerList
     linkPtr = le_dls_Pop(listPtr);
     if (linkPtr != NULL)
     {
-        ListOfTimersChgCnt++;
+        TimerListChangeCount++;
         timerPtr = CONTAINER_OF(linkPtr, Timer_t, link);
 
         // The timer is no longer on the active list
@@ -242,7 +241,7 @@ static le_result_t RemoveFromTimerList
 
     // Remove the timer from the active list
     timerPtr->isActive = false;
-    ListOfTimersChgCnt++;
+    TimerListChangeCount++;
     le_dls_Remove(listPtr, &timerPtr->link);
 
     return LE_OK;
@@ -495,6 +494,19 @@ static void TimerFdHandler
 //  MODULE/COMPONENT FUNCTIONS
 // =============================================
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the timer list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** timer_GetTimerListChgCntRef
+(
+    void
+)
+{
+    return (&TimerListChangeCountRef);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -550,9 +562,6 @@ void timer_Init
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
     TraceRef = le_log_GetTraceRef("timers");
-
-    // Pass the change counter of list of timers to the Inspect tool.
-    spy_SetListOfTimersChgCntRef(&ListOfTimersChgCntRef);
 }
 
 

@@ -1,0 +1,150 @@
+/** @page howToSecuritySandboxUse Use Sandboxes
+
+This topic describes how to create your apps to properly use Legato's @ref basicSecuritySandbox feature.
+We've used a Python hello world app example of sandboxing throughout this topic.
+
+@section howToSecurity_Sandbox_createApps Create Sandboxed Apps
+
+To use sandboxing properly, you basically import everything your app needs into your
+sandbox. See @ref basicAppsCreate for details on the basic elements needed for Legato apps.
+
+Create your @c hello.py app like this:
+@code
+
+python
+print("Hello world!")
+
+@endcode
+
+@section howToSecurity_Sandbox_import Import Stuff
+
+You need to import your app and the Python library into the sandbox. To do this, you create an @c .adef
+like this @c helloPython.adef sample:
+@code
+
+    bundles:
+    {
+        file:
+        {
+            hello.py /
+        }
+    }
+    requires:
+    {
+        file:
+        {
+            /usr/bin/python /usr/bin/
+        }
+    }
+    processes:
+    {
+        run:
+        {
+            ( python /hello.py)
+        }
+    }
+@endcode
+
+@section howToSandbox_build Build and Install App
+
+You're ready to build and install your sandboxed app:
+@code
+mkapp helloPython.adef  -t wp85 && instapp helloPython.wp85.update 192.168.2.2
+@endcode
+
+@section howToSandbox_checkLogs Check Logs
+Okay, not quite so fast. To ensure everything fired correctly, you need to check your log:
+@code
+logread | grep python
+@endcode
+
+Although you loaded the libraries, you may still see an error like this output for our @c py example:
+
+@code
+python: error while loading shared libraries: libpython2.7.so.1.0: cannot open shared object file: No such file or directory
+@endcode
+
+The library path <code>/usr/lib/libpython2.7.so.1.0 /usr/lib/</code> needs to be added to the
+@c .adef to the @c requires/file section:
+
+@code
+
+    bundles:
+    {
+        file:
+        {
+            hello.py /
+        }
+    }
+    requires:
+    {
+        file:
+        {
+            /usr/bin/python /usr/bin/
+            /usr/lib/libpython2.7.so.1.0 /usr/lib/
+         }
+    }
+    processes:
+    {
+        run:
+        {
+            ( python /hello.py)
+        }
+    }
+@endcode
+
+If you're unsure of a library path, run:
+@code
+find -name libpython2.7.so.1.0 /
+@endcode
+
+Then you need to build and install it again:
+@code
+mkapp helloPython.adef  -t wp85 && instapp helloPython.wp85.update 192.168.2.2
+@endcode
+
+Check the log, and it's still complaining about @c libutil.so.1, so we add
+@c /lib/libutil.so.1 /lib/ to the requires/files section:
+@code
+    requires:
+    {
+        file:
+        {
+            /usr/bin/python /usr/bin/
+            /usr/lib/libpython2.7.so.1.0 /usr/lib/
+            /lib/libutil.so.1 /lib/
+        }
+    }
+@endcode
+
+You also need to add these directories to the @c .adef dir section:
+@code
+    dir:
+    {
+        /usr/lib/python2.7 /usr/lib/
+        /usr/include/python2.7 /usr/include/
+    }
+@endcode
+
+@section howToSandbox_envVars Environment Variables
+
+The log now displays something like <code>getpwuid(): uid not found: 1017</code>.
+You need to set the environment variables. For our @c py example, you add this to the @c .adef file
+processes section:
+@code
+    envVars:
+    {
+        HOME="/"
+    }
+
+
+@endcode
+
+@section howToSandbox_success Sandbox Working Correctly
+
+Viewing the logs one more time, you see <code>INFO | python[8816] | Hello world!</code>.
+Congrats, you just setup up a properly sandboxed Legato app!
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

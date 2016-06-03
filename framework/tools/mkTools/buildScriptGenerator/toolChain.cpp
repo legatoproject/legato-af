@@ -282,7 +282,7 @@ std::string GetSysRootPath
     // If compiler is clang, skip sysroot determination
     if(IsCompilerClang(compilerPath))
     {
-        return "/";
+        return "";
     }
 
     std::string commandLine = compilerPath + " --print-sysroot";
@@ -300,9 +300,8 @@ std::string GetSysRootPath
     if (fgets(buffer, bufferSize, output) != buffer)
     {
         std::cerr << "Warning: Failed to receive sysroot path from compiler '" << compilerPath
-                  << "' (errno: " << strerror(errno) << ").  Assuming '/'." << std::endl;
-        buffer[0] = '/';
-        buffer[1] = '\0';
+                  << "' (errno: " << strerror(errno) << ")." << std::endl;
+        buffer[0] = '\0';
     }
     else
     {
@@ -314,7 +313,15 @@ std::string GetSysRootPath
         }
     }
 
-    // Close the connection and collect the exit code from ifgen.
+    // Yocto >= 1.8 returns '/not/exist' as a sysroot path
+    if (buffer == std::string("/not/exist"))
+    {
+        std::cerr << "Warning: Invalid sysroot returned from compiler '" << compilerPath
+                  << "' (returned '" << buffer << "')." << std::endl;
+        buffer[0] = '\0';
+    }
+
+    // Close the connection and collect the exit code from the compiler.
     int result;
     do
     {

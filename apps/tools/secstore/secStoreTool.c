@@ -33,7 +33,7 @@ static cmdHandlerFunc_t CommandHandler = NULL;
  * The path specified on the command line.
  */
 //--------------------------------------------------------------------------------------------------
-static char Path[SECSTOREADMIN_MAX_PATH_SIZE] = "/";
+static char Path[SECSTOREADMIN_MAX_PATH_BYTES] = "/";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -92,9 +92,12 @@ static void PrintHelp
         "    secstore total\n"
         "       Gets the total space and free space, in bytes, for all of secure storage.\n"
         "\n"
+        "    secstore readmeta\n"
+        "       Prints the contents of the meta file.\n"
+        "\n"
         );
 
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -121,6 +124,21 @@ static void PrintHelp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prints a generic message on stderr so that the user is aware there is a problem, and then exits.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InternalErr
+(
+    void
+)
+{
+    fprintf(stderr, "Internal error check logs for details.\n");
+    exit(EXIT_FAILURE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * List entries.
  */
 //--------------------------------------------------------------------------------------------------
@@ -137,7 +155,7 @@ static void ListEntries
         while (secStoreAdmin_Next(iterRef) == LE_OK)
         {
             bool isDir;
-            char entryName[SECSTOREADMIN_MAX_PATH_SIZE];
+            char entryName[SECSTOREADMIN_MAX_PATH_BYTES];
 
             if (secStoreAdmin_GetEntry(iterRef, entryName, sizeof(entryName), &isDir) == LE_OK)
             {
@@ -147,7 +165,7 @@ static void ListEntries
                 if (ListSizeFlag)
                 {
                     // Get the entry size.
-                    char fullPath[SECSTOREADMIN_MAX_PATH_SIZE] = "";
+                    char fullPath[SECSTOREADMIN_MAX_PATH_BYTES] = "";
 
                     if (le_path_Concat("/", fullPath, sizeof(fullPath), Path, entryName, NULL) != LE_OK)
                     {
@@ -224,7 +242,7 @@ static void PrintEntry
     // Print entry.
     if (result == LE_OK)
     {
-        printf("%.*s\n", (int)bufSize, (char*)buf);
+        printf("%s", (char*)buf);
     }
     else if (result == LE_NOT_FOUND)
     {
@@ -280,7 +298,7 @@ static void WriteEntry
     }
     while ( (numBytes == -1) && (errno == EINTR) );
 
-    if (numBytes > 0)
+    if (numBytes >= 0)
     {
         // Write the buffer to secure storage.
         le_result_t result = secStoreAdmin_Write(Path, buf, numBytes);
@@ -394,6 +412,124 @@ static void PrintTotalSizes
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prints the contents of the meta file.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReadMeta
+(
+    void
+)
+{
+    /* Copy the meta file from sfs to a temporary location for faster access. */
+    char tmpFilePath[SECSTOREADMIN_MAX_PATH_BYTES] = "/tmp/tempMetaFile_secStoreTool_Deleteme";
+
+    le_result_t result = secStoreAdmin_CopyMetaTo(tmpFilePath);
+
+    if (result != LE_OK)
+    {
+        LE_EMERG("Could not copy the meta file to path %s.  Result code %s.",
+                 tmpFilePath,
+                 LE_RESULT_TXT(result));
+
+        /* Delete the temp file. */
+        if (unlink(tmpFilePath) != 0)
+        {
+            INTERNAL_ERR("Could not delete %s. %m.", tmpFilePath);
+        }
+
+        InternalErr();
+    }
+
+    /* Open the temp file. */
+    FILE* tmpFilePtr;
+
+    do
+    {
+        tmpFilePtr = fopen(tmpFilePath, "r");
+    }
+    while ( (tmpFilePtr == NULL) && (errno == EINTR) );
+
+    if (tmpFilePtr == NULL)
+    {
+        LE_EMERG("Could not open temp file %s. %m.", tmpFilePath);
+
+        /* Delete the temp file. */
+        if (unlink(tmpFilePath) != 0)
+        {
+            INTERNAL_ERR("Could not delete %s. %m.", tmpFilePath);
+        }
+
+        InternalErr();
+    }
+
+    /* Read the temp file. */
+
+    // Buffer to store a line read from a meta file.
+    // This buffer should accomodate either a link path or a sfs item path.
+    // The max limit for a link path should be more than enough for sfs item path as well.
+    char lineBuf[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
+    bool printedNewLine = true;
+    while (fgets(lineBuf, sizeof(lineBuf), tmpFilePtr) != NULL)
+    {
+        // Remove the trailing newline char.
+        size_t len = strlen(lineBuf);
+
+        if (lineBuf[len - 1] == '\n')
+        {
+            lineBuf[len - 1] = '\0';
+        }
+
+        printf("%s", lineBuf);
+
+        if (printedNewLine)
+        {
+            printf(" ");
+            printedNewLine = false;
+        }
+        else
+        {
+            printf("\n");
+            printedNewLine = true;
+        }
+    }
+
+    // check if fgets encountered error before reaching the end of the file.
+    if (ferror(tmpFilePtr))
+    {
+        fprintf(stderr, "Error reading temp file %s. %m.\n", tmpFilePath);
+    }
+
+    /* Close the temp file. */
+    int r;
+    do
+    {
+        r = fclose(tmpFilePtr);
+    }
+    while ( (r != 0) && (errno == EINTR) );
+
+    if (r != 0)
+    {
+        LE_EMERG("Could not close %s. %m.", tmpFilePath);
+
+        /* Delete the temp file. */
+        if (unlink(tmpFilePath) != 0)
+        {
+            INTERNAL_ERR("Could not delete %s. %m.", tmpFilePath);
+        }
+
+        InternalErr();
+    }
+
+    /* Delete the temp file. */
+    if (unlink(tmpFilePath) != 0)
+    {
+        INTERNAL_ERR("Could not delete %s. %m.", tmpFilePath);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets the path specified on the command-line.
  */
 //--------------------------------------------------------------------------------------------------
@@ -469,6 +605,10 @@ static void SetCommandHandler
     {
         CommandHandler = PrintTotalSizes;
     }
+    else if (strcmp(argPtr, "readmeta") == 0)
+    {
+        CommandHandler = ReadMeta;
+    }
     else
     {
         fprintf(stderr, "Unknown command.\n");
@@ -490,5 +630,5 @@ COMPONENT_INIT
     // Call the actual command handler.
     CommandHandler();
 
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }

@@ -15,7 +15,7 @@
  *  - <pdp_type> if the packet data protocol to be used: "ipv4", "ipv6", or "ipv4v6"
  *  - <apn> is the APN to be used
  *  - <authentification_type> (optional): authentification requested: "auth_none" (default), pap",
- * or "chap"
+ *  "chap", "pap-chap"
  *  - <username> (optional): username for authentification
  *  - <password> (optional): password for authentification
  *
@@ -28,8 +28,11 @@
 #include "le_print.h"
 #include "errno.h"
 
+#define TEST_DEF(X) {#X, X}
+
 // Semaphore
 static le_sem_Ref_t    TestSemaphore;
+static le_sem_Ref_t    AsyncTestSemaphore;
 
 //! [Profiles]
 static const char DefaultCid[] = "default";
@@ -39,7 +42,7 @@ static const char PdpIpv6[] = "ipv6";
 static const char PdpIpv4v6[] = "ipv4v6";
 static const char AuthPap[] = "pap";
 static const char AuthChap[] = "chap";
-
+static const char AuthPapChap[] = "pap-chap";
 
 // Structure used to set the configuration
 typedef struct
@@ -52,6 +55,78 @@ typedef struct
     char   password[LE_MDC_PASSWORD_NAME_MAX_LEN];  // password for authentification
 }
 Configuration_t;
+
+// Tests cases
+typedef enum
+{
+    TEST_SYNC,
+    TEST_ASYNC,
+    TEST_MAX
+} Testcase_t;
+
+// Tests definition
+struct
+{
+    char testName[20];
+    Testcase_t  testCase;
+} testsDef[] = {
+                    TEST_DEF(TEST_SYNC),
+                    TEST_DEF(TEST_ASYNC),
+                    TEST_DEF(TEST_MAX)
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Session handler response for connection and disconnection.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionHandlerFunc
+(
+    le_mdc_ProfileRef_t profileRef,
+    le_result_t result,
+    void* contextPtr
+)
+{
+    le_result_t* activationPtr = contextPtr;
+    *activationPtr = result;
+
+    LE_INFO("Session result %d for profile %d", result, le_mdc_GetProfileIndex(profileRef));
+
+    le_sem_Post(AsyncTestSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start asynchronous session.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionStartAsync
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    le_mdc_ProfileRef_t profileRef = param1Ptr;
+
+    le_mdc_StartSessionAsync(profileRef, SessionHandlerFunc, param2Ptr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop asynchronous session.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionStopAsync
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    le_mdc_ProfileRef_t profileRef = param1Ptr;
+
+    le_mdc_StopSessionAsync(profileRef, SessionHandlerFunc, param2Ptr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -191,7 +266,12 @@ static void SetConfiguration
     if ( configuration.auth[0] != '\0' )
     {
         // Set the authentification, username and password
-        if ( strncmp(configuration.auth, AuthPap, sizeof(AuthPap)) == 0 )
+        if ( strncmp(configuration.auth, AuthPapChap, sizeof(AuthPapChap)) == 0 )
+        {
+            auth = LE_MDC_AUTH_PAP | LE_MDC_AUTH_CHAP;
+        }
+        // Set the authentification, username and password
+        else if ( strncmp(configuration.auth, AuthPap, sizeof(AuthPap)) == 0 )
         {
             auth = LE_MDC_AUTH_PAP;
         }
@@ -362,6 +442,8 @@ static void* TestThread
     le_event_RunLoop();
 }
 
+
+
 //! [Statistics]
 //--------------------------------------------------------------------------------------------------
 /**
@@ -374,6 +456,7 @@ void TestConnectivity
     le_mdc_ProfileRef_t profileRef
 )
 {
+    le_result_t res;
     char systemCmd[200] = {0};
     char itfName[LE_MDC_INTERFACE_NAME_MAX_BYTES]="\0";
 
@@ -402,7 +485,12 @@ void TestConnectivity
         snprintf(systemCmd, sizeof(systemCmd), "ping6 -c 4 www.sierrawireless.com -I %s", itfName);
     }
 
-    LE_ASSERT(system(systemCmd) == 0);
+    res = system(systemCmd);
+    if (res != LE_OK)
+    {
+        le_mdc_StopSession(profileRef);
+    }
+    LE_ASSERT(res == LE_OK);
 
     // Get data counters
     uint64_t rxBytes=0, txBytes=0;
@@ -421,42 +509,114 @@ void TestConnectivity
 COMPONENT_INIT
 {
     le_mdc_ProfileRef_t profileRef  = NULL;
+    le_clk_Time_t myTimeout = { 0, 0 };
+    myTimeout.sec = 120;
+    le_result_t res;
+    Testcase_t test = TEST_SYNC;
+    le_thread_Ref_t testThread;
 
     TestSemaphore = le_sem_Create("TestSemaphore",0);
+    AsyncTestSemaphore = le_sem_Create("AsyncTestSemaphore",0);
+
+    LE_INFO("======= MDC TEST STARTED =======");
 
     // Set the configuration
     SetConfiguration(&profileRef);
 
+    testThread = le_thread_Create("MDC_Test", TestThread, &profileRef);
+
     // Start a thread to treat the event handler.
-    le_thread_Start(le_thread_Create("MDC_Test", TestThread, &profileRef));
+    le_thread_Start(testThread);
 
-    /* Wait for the call of the event handler */
-    le_sem_Wait(TestSemaphore);
+    // Wait for the call of the event handler
+    res = le_sem_WaitWithTimeOut(TestSemaphore, myTimeout);
+    LE_ASSERT(res == LE_OK);
 
-    LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
+    while (testsDef[test].testCase != TEST_MAX)
+    {
+        LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
 
-    // start the profile
-    LE_ASSERT( le_mdc_StartSession(profileRef) == LE_OK );
+        LE_INFO("======= MDC %s STARTED =======", testsDef[test].testName);
 
-    /* Wait for the call of the event handler */
-    le_sem_Wait(TestSemaphore);
+        // start the profile
+        switch (testsDef[test].testCase)
+        {
+            case TEST_SYNC:
+                LE_ASSERT( le_mdc_StartSession(profileRef) == LE_OK );
+            break;
+            case TEST_ASYNC:
+            {
+                le_result_t sessionStart = LE_FAULT;
 
-    // Set the network configuration
-    SetNetworkConfiguration(profileRef);
+                le_event_QueueFunctionToThread(testThread,
+                                   SessionStartAsync,
+                                   profileRef,
+                                   &sessionStart);
 
-    sleep(5);
+                // Wait for the call of the event handler
+                res = le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout);
+                LE_ASSERT(res == LE_OK);
+                LE_ASSERT(sessionStart == LE_OK);
+            }
+            break;
+            default:
+                LE_ERROR("Unknown test case");
+                exit(EXIT_FAILURE);
+        }
 
-    // Test the new interface
-    TestConnectivity(profileRef);
+        // Wait for the call of the event handler
+        res = le_sem_WaitWithTimeOut(TestSemaphore, myTimeout);
+        LE_ASSERT(res == LE_OK);
 
-    // Stop the session
-    LE_ASSERT(le_mdc_StopSession(profileRef) == LE_OK);
+        // Set the network configuration
+        SetNetworkConfiguration(profileRef);
 
-    /* Wait for the call of the event handler */
-    le_sem_Wait(TestSemaphore);
+        sleep(5);
 
-    LE_INFO("Test ended");
+        // Test the new interface
+        TestConnectivity(profileRef);
 
-    exit(1);
+        // Stop the session
+        switch (testsDef[test].testCase)
+        {
+            case TEST_SYNC:
+                LE_ASSERT(le_mdc_StopSession(profileRef) == LE_OK);
+            break;
+            case TEST_ASYNC:
+            {
+                le_result_t sessionStart = LE_FAULT;
+                le_event_QueueFunctionToThread(testThread,
+                                   SessionStopAsync,
+                                   profileRef,
+                                   &sessionStart);
+
+                // Wait for the call of the event handler
+                res = le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout);
+                LE_ASSERT(res == LE_OK);
+                LE_ASSERT(sessionStart == LE_OK);
+            }
+            break;
+            default:
+                LE_ERROR("Unknown test case");
+                exit(EXIT_FAILURE);
+        }
+
+
+        // Wait for the call of the event handler
+        res = le_sem_WaitWithTimeOut(TestSemaphore, myTimeout);
+        LE_ASSERT(res == LE_OK);
+
+        LE_INFO("======= MDC %s PASSED =======", testsDef[test].testName);
+
+        sleep(5);
+
+        test++;
+    }
+
+    LE_INFO("======= MDC TEST PASSED =======");
+
+    le_thread_Cancel(testThread);
+
+    exit(EXIT_SUCCESS);
 }
 

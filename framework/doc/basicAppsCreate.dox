@@ -11,16 +11,17 @@ logs <c>Hello World.</c> when the process it's in starts up:
 
 Then you're ready for the next level: @ref basicAppsAddThings, @ref basicAppsIPC, and
 @ref basicAppsCompMulti.
+
 @section basicAppsCreate_sampleDir Sample Directories and Files
 
 Typical apps have directories and files that look this:
-@code
+@verbatim
 helloWorld/
 ├── helloComp
 │   ├── Component.cdef
 │   └── hello.c
 └── helloWorld.adef
-@endcode
+@endverbatim
 
 @section basicAppsCreate_component Create Component
 Complete these steps to create a component: @ref basicAppsCreate_componentCreateDir,
@@ -30,17 +31,17 @@ Complete these steps to create a component: @ref basicAppsCreate_componentCreate
 
 @c 1. Create a directory: the directory name will become the component name:
 
-@verbatim
+@code
 $ mkdir helloComp
-@endverbatim
+@endcode
 
 @subsection basicAppsCreate_componentC Create C Source File
 
 @c 2. Create source (implementation) file @c hello.c:
 
-@verbatim
+@code
 $ gedit helloComp/hello.c
-@endverbatim
+@endcode
 
 It should contain the following:
 
@@ -103,16 +104,16 @@ the log using @c LE_INFO().
 
 @c 3. Create a @c cdef file called @c Component.cdef like this:
 
-@verbatim
+@code
 $ gedit helloComp/Component.cdef
-@endverbatim
+@endcode
 
-@verbatim
- sources:
- {
-     hello.c
- }
- @endverbatim
+@code
+sources:
+{
+    hello.c
+}
+@endcode
 
 See @ref defFiles for complete info.
 
@@ -122,7 +123,7 @@ You need to create an @c adef file before you can build you app.
 
 @c 4. Create an @c adef file called @c helloWorld.adef like this:
 
-@verbatim
+@code
 executables:
 {
     helloWorld = ( helloComp )
@@ -135,7 +136,7 @@ processes:
         (helloWorld)
     }
 }
-@endverbatim
+@endcode
 
 This defines one executable called @c helloWorld implemented by @c helloComp
 and then starts one instance of the helloWorld executable.
@@ -153,9 +154,9 @@ target.
 This is how to build the helloWorld app to install on the
 Sierra Wireless WP85 module:
 
-@verbatim
+@code
 $ mkapp -t wp85 helloWorld.adef
-@endverbatim
+@endcode
 
 @note If you're building an AR7, substitute @c ar7 in the mkapp run command.
 
@@ -163,9 +164,9 @@ $ mkapp -t wp85 helloWorld.adef
 
 @c 6. Use @c instapp to install the app on your target:
 
-@verbatim
+@code
 $ instapp helloWorld.wp85.update <ip addr>
-@endverbatim
+@endcode
 
 The second argument is the target device's IP address where to install the app.
 This will connect to the target and install the app.
@@ -173,24 +174,24 @@ This will connect to the target and install the app.
 @section basicAppsCreate_usage Usage
 
 These usage tips are based on running a secure shell (SSH) to interface with
-the target. See @ref getstartedTargetMain if you need to setup your target device and
-communications.
+the target. See <a href="http://www.mangoh.io/getting-started.html">mangoh.io</a> if you
+need to setup your target device.
 
 @subsection basicAppsCreate_usageLogin Target Login
 
 Login to your target using a secure shell connection:
 
-@verbatim
-ssh root@192.168.1.2
-@endverbatim
+@code
+$ ssh root@192.168.2.2
+@endcode
 
 @subsection basicAppsCreate_usageStartApp Target Start App
 
 Start your application using the <code>app start</code> command:
 
-@verbatim
-app start helloWorld
-@endverbatim
+@code
+$ app start helloWorld
+@endcode
 
 @subsection basicAppsCreate_usageViewLogs View Logs
 
@@ -199,41 +200,41 @@ the target device.
 
 Run @c logread (on the target) to view the system log.
 
-@verbatim
+@code
 # logread
-@endverbatim
+@endcode
 
 Use logread's @a -f option to start monitoring the logs and display messages as they are logged.
 
-@verbatim
+@code
 # logread -f
-@endverbatim
+@endcode
 
-Here's a code sample accessing the logs on a target device with IP address 192.168.1.2 through an ssh connection:
-@verbatim
-ssh root@192.168.1.2 '/sbin/logread -f'
-@endverbatim
+Here's a code sample accessing the logs on a target device with IP address 192.168.2.2 through an ssh connection:
+@code
+$ ssh root@192.168.2.2 '/sbin/logread -f'
+@endcode
 
 @subsection basicAppsCreate_usageRmApp Remove App
 
 From the host PC, run @c rmapp to uninstall the app:
 
-@verbatim
+@code
 $ rmapp helloWorld.wp85 <ip addr>
-@endverbatim
+@endcode
 
 From the target run:
-@verbatim
-app remove <app name>
-@endverbatim
+@code
+# app remove <app name>
+@endcode
 
 @subsection basicAppsCreate_usageLsApp List App
 
 Use @c lsapp to list the apps installed on a target.
 
-@verbatim
+@code
 $ lsapp <ip addr>
-@endverbatim
+@endcode
 
 <HR>
 

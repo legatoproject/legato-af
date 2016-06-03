@@ -150,7 +150,7 @@ void GenerateCode
     for (auto exePtr : appPtr->executables)
     {
         // Generate _main.c.
-        code::GenerateExeMain(exePtr, buildParams);
+        code::GenerateExeMain(exePtr.second, buildParams);
     }
 
     // Generate the manifest.app file for Air Vantage.

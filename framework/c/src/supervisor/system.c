@@ -13,13 +13,14 @@
 #include "properties.h"
 #include "system.h"
 #include "file.h"
+#include "sysPaths.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Location of the status file for the current system
  */
 //--------------------------------------------------------------------------------------------------
-static const char* CurrentStatusPath = "/legato/systems/current/status";
+#define CURRENT_STATUS_PATH             CURRENT_SYSTEM_PATH"/status"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -36,16 +37,16 @@ bool system_IsGood
 {
     char statusBuffer[100] = "";
 
-    if (file_Exists(CurrentStatusPath) == false)
+    if (file_Exists(CURRENT_STATUS_PATH) == false)
     {
         LE_DEBUG("System status file does not exist, system is 'untried'.");
         return false;
     }
 
-    if (file_ReadStr(CurrentStatusPath, statusBuffer, sizeof(statusBuffer)) == -1)
+    if (file_ReadStr(CURRENT_STATUS_PATH, statusBuffer, sizeof(statusBuffer)) == -1)
     {
         LE_ERROR("The system status file '%s' could not be read, assuming a bad system.",
-                 CurrentStatusPath);
+                 CURRENT_STATUS_PATH);
         return false;
     }
 

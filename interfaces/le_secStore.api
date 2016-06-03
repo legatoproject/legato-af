@@ -41,6 +41,12 @@
    }
    @endverbatim
  *
+ * Whenever the secure storage is modified, a timer of 300 seconds is started. When the timer
+ * expires, a backup is performed to capture all changes since the previous backup. If the secure
+ * storage is not modified, then the backup is not performed.
+ * If corruption in the secure storage is detected, a restore is performed and the target device is
+ * rebooted.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -59,10 +65,11 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum number of characters permitted for a secure storage item name.
+ * Maximum number of characters and byte storage size permitted for a secure storage item name.
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_NAME_SIZE = 255;
+DEFINE MAX_NAME_BYTES = (MAX_NAME_SIZE + 1);
 
 
 //--------------------------------------------------------------------------------------------------

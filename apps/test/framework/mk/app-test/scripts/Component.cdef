@@ -1,0 +1,9 @@
+
+bundles:
+{
+    file:
+    {
+        [x] foo.sh /bin/
+        [x] bar.sh /usr/local/bin/
+    }
+}

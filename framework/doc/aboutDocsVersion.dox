@@ -1,4 +1,11 @@
-/** @page aboutDocsVersion Versions
+/** @page aboutDocsVersion Docs Versions
+
+@section aboutDocsVersion_pdf PDF version
+
+The Legato online docs are also available in a
+<a href= "http://source.sierrawireless.com/Resources/Resources/Legato/referencemanual.aspx">PDF doc</a>.
+
+@section aboutDocsVersion_previous Previous versions
 
 Previously released versions of the Legato online help are stored on GitHub in the related
 directory.

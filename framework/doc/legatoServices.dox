@@ -6,22 +6,23 @@ features. The Services @subpage legatoServicesOverview page has high-level info.
 This table lists Legato's Services &mdash; multi-app safe means arbitration is fully managed among apps so
 multiple apps can share the same resources.
 
-| Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage legatoServicesAirVantage  | AirVantage server for communication and data       | @image html green_dot.png |
-| @subpage c_audio                   | Control audio features                             |                           |
-| @subpage c_le_cellnet              | Register and manage modems                         | @image html green_dot.png |
-| @subpage legatoServicesConfigTree  | Target configuration database                      | @image html green_dot.png |
-| @subpage c_le_data                 | Request data connection                            | @image html green_dot.png |
-| @subpage c_gpio                    | Configure general purpose input/output             |                           |
-| @subpage legatoServicesModem       | modem services                                     | @image html yellow_dot.png|
-| @subpage legatoServicesPositioning | posititioning services                             | @image html yellow_dot.png|
-| @subpage legatoServicesPowerMain          | Device power management                            |                           |
-| @subpage legatoServicesSecStoreMain    | Secure storage for sensitive data           | @image html green_dot.png |
-| @subpage legatoServicesSMS         | SMS and SMS Inbox                                  | @image html green_dot.png |
-| @subpage legatoServicesSupervisor  | Control framework and apps                         | @image html yellow_dot.png|
-| @subpage legatoServicesUpdateMain  | update modem firmware and apps                     | @image html yellow_dot.png|
-| @subpage c_le_voicecall            | Voice communications                               | @image html green_dot.png |
+| Service                               | Description                                        | multi-app safe             |
+| ------------------------------------- | -------------------------------------------------- | :------------------------: |
+| @subpage legatoServicesAirVantage     | AirVantage server for communication and data       | @image html green_dot.png  |
+| @subpage c_audio                      | Control audio features                             |                            |
+| @subpage c_le_cellnet                 | Register and manage modems                         | @image html green_dot.png  |
+| @subpage legatoServicesConfigTree     | Target configuration database                      | @image html green_dot.png  |
+| @subpage c_le_data                    | Request data connection                            | @image html green_dot.png  |
+| @subpage c_gpio                       | Configure general purpose input/output             |                            |
+| @subpage legatoServicesModem          | Modem services                                     | @image html yellow_dot.png |
+| @subpage legatoServicesPositioning    | Posititioning services                             | @image html yellow_dot.png |
+| @subpage legatoServicesPowerMain      | Device power management                            |                            |
+| @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data                  | @image html green_dot.png  |
+| @subpage legatoServicesSMS            | SMS and SMS Inbox                                  | @image html green_dot.png  |
+| @subpage legatoServicesSupervisor     | Control framework and apps                         | @image html yellow_dot.png |
+| @subpage legatoServicesUpdateMain     | Update modem firmware and apps                     | @image html yellow_dot.png |
+| @subpage c_le_voicecall               | Voice communications                               | @image html green_dot.png  |
+| @subpage legatoServicesWiFi           | WiFi                                               |                            |
 
  <br>
 

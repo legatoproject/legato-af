@@ -20,7 +20,7 @@ help_long_description=(
 " - -t [TARGETS]: comma-separated list of targets the package should be generated for (eg 'ar7,wp85')"
 )
 
-TARGETS="ar7,ar86,wp85"
+TARGETS="ar7,ar86,ar758x,ar759x,wp85"
 
 CheckForHelp $@
 
@@ -37,7 +37,7 @@ do
     esac
 done
 
-EXCLUDE_PATTERN='^proprietary|proprietary/swiQmi|qmi/le_pa|mdm9x15/le_pa|test/.*/qmi|jenkins-build|.gitreview|.gitmodules|sonar.sh'
+EXCLUDE_PATTERN='^proprietary|platformAdaptor/qmi|run-tests|.gitreview|.gitmodules|sonar.sh'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
 VERSION=$(cat $LEGATO_ROOT/version)
@@ -52,17 +52,39 @@ echo "Preparing package in $STAGE_DIR"
 rm -rf $STAGE_DIR
 mkdir -p $STAGE_DIR
 
-# Copy files managed by git, except the ones that match EXCLUDE_PATTERN
-git ls-tree -r --name-only HEAD | egrep -v $EXCLUDE_PATTERN | while read LINE ;
-do
-    echo "Copying $LINE"
-    if [ -L "$LINE" ]; then
-        cp -R --preserve=links $LINE $STAGE_DIR/$LINE
-    else
-        mkdir -p $(dirname $STAGE_DIR/$LINE)
-        cp $LINE $STAGE_DIR/$LINE
-    fi
+CopyRepo() {
+    local path=$1
+    local exclude_pattern=$2
+
+    cd $LEGATO_ROOT/$path
+
+    mkdir -p $STAGE_DIR/$path
+
+    set -e
+
+    # Copy files managed by git, except the ones that match exclude_pattern
+    git ls-tree -r --name-only HEAD | egrep -v $exclude_pattern | while read LINE; do
+        echo "Copying [$path] $LINE"
+        if [ -L "$LINE" ]; then
+            cp -R --preserve=links "$LINE" "$STAGE_DIR/$path/$LINE"
+        else
+            mkdir -p $(dirname "$STAGE_DIR/$path/$LINE")
+            cp "$LINE" "$STAGE_DIR/$path/$LINE"
+        fi
+    done
+
+    set +e
+}
+
+# Copy Legato
+CopyRepo "" $EXCLUDE_PATTERN
+
+# Copy modules
+for module in $(ls -1 $LEGATO_ROOT/modules); do
+    CopyRepo modules/$module "$EXCLUDE_PATTERN|.gitignore"
 done
+
+cd $LEGATO_ROOT
 
 # Copy PA binaries
 StageComponent() {
@@ -129,12 +151,12 @@ StagePaComponent() {
 StageComponent   swiQmi \
                  "system/app/modemService/staging/read-only/lib/libComponent_swiQmi.so" \
                  "components/proprietary/pre-built" \
-                 ar7 ar86 wp85
+                 ar7 ar86 wp85 ar758x ar759x
 
-StagePaComponent le_pa_audio     audioService        audio           ar7 ar86 wp85
-StagePaComponent le_pa           modemService        modemServices   ar7 ar86 wp85
-StagePaComponent le_pa_ecall     modemService        modemServices   ar7 ar86
-StagePaComponent le_pa_gnss      positioningService  positioning     ar7 ar86 wp85
+StagePaComponent le_pa_audio     audioService        audio           ar7 ar86 wp85 ar759x
+StagePaComponent le_pa           modemService        modemServices   ar7 ar86 wp85 ar758x ar759x
+StagePaComponent le_pa_ecall     modemService        modemServices   ar7 ar86 ar759x
+StagePaComponent le_pa_gnss      positioningService  positioning     ar7 ar86 wp85 ar759x
 StagePaComponent le_pa_avc       avcService          airVantage      ar7 ar86 wp85
 StagePaComponent le_pa_secStore  secStore            secStore        ar7 ar86 wp85
 StagePaComponent le_pa_fwupdate  fwupdateService     fwupdate        ar7 ar86 wp85

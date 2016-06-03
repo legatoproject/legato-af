@@ -1,4 +1,4 @@
-/** @page howToSecurity Configure Security
+/** @page howToSecurity Manage Sandboxes and Security
 
 
 Legato @ref basicSecuritySandbox "sandboxes" provide a security mechanism to separate running apps
@@ -8,15 +8,15 @@ By default, the Supervisor automatically creates (and destroys) sandboxes for ea
 files and IPC services needed). At runtime, only these @e approved files and IPC services can be
 accessed by the app.
 
-You @subpage howToSecuritySandbox "configure" Legato sandboxes through @ref defFiles.
+You @subpage howToSecuritySandboxOverview "configure" Legato sandboxes through @ref defFiles.
+
+Here are some details on creating and building a @subpage howToSecuritySandboxUse.
 
 <HR>
 
 Legato also supports
-@subpage howToSecuritySmack 
+@subpage howToSecuritySmack
 
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

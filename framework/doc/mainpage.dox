@@ -2,9 +2,7 @@
 
 @subpage buildAppsMain <br>
 @subpage buildPlatformMain <br>
-@subpage aboutMain
-
-<HR>
+@subpage aboutMain <br>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

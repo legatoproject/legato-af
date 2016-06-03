@@ -1,5 +1,3 @@
-sandboxed: false
-
 executables:
 {
     eCallTest = ( eCallTest )

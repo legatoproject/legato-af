@@ -21,6 +21,7 @@ struct DefFile_t
     {
         CDEF,
         ADEF,
+        MDEF,
         SDEF
     };
 
@@ -63,6 +64,17 @@ struct CdefFile_t : public DefFile_t
 struct AdefFile_t : public DefFile_t
 {
     AdefFile_t(const std::string& filePath): DefFile_t(ADEF, filePath) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a parsed .mdef file.
+ */
+//--------------------------------------------------------------------------------------------------
+struct MdefFile_t : public DefFile_t
+{
+    MdefFile_t(const std::string& filePath): DefFile_t(MDEF, filePath) {}
 };
 
 

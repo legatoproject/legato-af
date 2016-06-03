@@ -12,6 +12,7 @@ mkexe(${TEST_EXE}
       -i ${LEGATO_ROOT}/interfaces
       -i ${LEGATO_ROOT}/components/airVantage/avcDaemon/
       -i ${LEGATO_ROOT}/framework/c/src
+      -i ${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
 )
 
 # This goes into the "tests" directory, with all the other executables

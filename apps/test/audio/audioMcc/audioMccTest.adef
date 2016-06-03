@@ -12,7 +12,7 @@ bundles:
         [r]     audio/0-to-9.wav   /
         [r]     audio/male.wav     /
         [r]     audio/0-to-9.amr   /
-        [w]     record/remote.wav  /
+        [rw]     record/remote.wav  /
     }
 }
 

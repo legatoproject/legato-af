@@ -77,10 +77,10 @@ typedef enum
     A = 0x1,
         ///< first
 
-    B = 0x2,
+    B = 0x8,
         ///< second
 
-    C = 0x4
+    C = 0x10
         ///< third
 }
 BitMaskExample_t;
@@ -108,7 +108,8 @@ typedef struct BugTestHandler* BugTestHandlerRef_t;
  *
  * @param x
  *        First parameter for the handler
- *        Second comment line
+ *             Second comment line is indented 5 extra spaces
+ *        Third comment line is missing initial space
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
@@ -159,7 +160,7 @@ typedef void (*CallbackTestHandlerFunc_t)
 //--------------------------------------------------------------------------------------------------
 TestAHandlerRef_t AddTestAHandler
 (
-    TestAHandlerFunc_t handlerPtr,
+    TestAHandlerFunc_t myHandlerPtr,
         ///< [IN]
 
     void* contextPtr
@@ -185,9 +186,8 @@ void RemoveTestAHandler
 void allParameters
 (
     common_EnumExample_t a,
-        ///< [IN]
-        ///< first one-line comment
-        ///< second one-line comment
+        ///< [IN] first one-line comment
+        ///<      second one-line comment
 
     uint32_t* bPtr,
         ///< [OUT]
@@ -199,9 +199,8 @@ void allParameters
         ///< [IN]
 
     uint32_t* outputPtr,
-        ///< [OUT]
-        ///< some more comments here
-        ///< and some comments here as well
+        ///< [OUT] some more comments here
+        ///<       and some comments here as well
 
     size_t* outputNumElementsPtr,
         ///< [INOUT]
@@ -210,16 +209,14 @@ void allParameters
         ///< [IN]
 
     char* response,
-        ///< [OUT]
-        ///< comments on final parameter, first line
-        ///< and more comments
+        ///< [OUT] comments on final parameter, first line
+        ///<       and more comments
 
     size_t responseNumElements,
         ///< [IN]
 
     char* more,
-        ///< [OUT]
-        ///< This parameter tests a bug fix
+        ///< [OUT] This parameter tests a bug fix
 
     size_t moreNumElements
         ///< [IN]
@@ -233,12 +230,10 @@ void allParameters
 void FileTest
 (
     int dataFile,
-        ///< [IN]
-        ///< file descriptor as IN parameter
+        ///< [IN] file descriptor as IN parameter
 
     int* dataOutPtr
-        ///< [OUT]
-        ///< file descriptor as OUT parameter
+        ///< [OUT] file descriptor as OUT parameter
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -260,6 +255,8 @@ void TriggerTestA
  * is used for
  *     testing
  * a specific bug, as well as event comment strings.
+ *
+ * Uses old-style handler, for backwards compatibility testing
  */
 //--------------------------------------------------------------------------------------------------
 BugTestHandlerRef_t AddBugTestHandler

@@ -1,0 +1,19 @@
+start: manual
+
+executables:
+{
+    secStoreTest1a = (secStoreTest1a)
+}
+
+processes:
+{
+    run:
+    {
+        (secStoreTest1a "-l" 8192)
+    }
+}
+
+bindings:
+{
+    secStoreTest1a.secStoreTest1a.le_secStore -> secStore.le_secStore
+}

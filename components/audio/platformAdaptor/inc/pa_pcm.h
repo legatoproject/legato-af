@@ -94,6 +94,4 @@ LE_SHARED le_result_t pa_pcm_InitPlayback
     le_audio_SamplePcmConfig_t* pcmConfig   ///< [IN] Samples PCM configuration
 );
 
-
-
 #endif // LEGATO_PAPCM_INCLUDE_GUARD

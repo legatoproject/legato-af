@@ -522,7 +522,7 @@ GENERATE_DEPRECATEDLIST= NO
 # The ENABLED_SECTIONS tag can be used to enable conditional
 # documentation sections, marked by \if sectionname ... \endif.
 
-ENABLED_SECTIONS       =
+ENABLED_SECTIONS       =  @EXTERNAL_DOXYGEN_DEFINE@
 
 # The MAX_INITIALIZER_LINES tag determines the maximum number of lines
 # the initial value of a variable or macro consists of for it to appear in
@@ -652,7 +652,8 @@ INPUT                  = "@LEGATO_ROOT@/framework/doc" \
                          "@LEGATO_ROOT@/framework/c/inc" \
                          "@LEGATO_ROOT@/apps/sample/eCallDemo/doc" \
                          "@LEGATO_BINARY_DIR@/interfaces" \
-                         "@LEGATO_BINARY_DIR@/framework/doc/generated"
+                         "@LEGATO_BINARY_DIR@/framework/doc/generated" \
+                         "@CMAKE_EXTERNAL_DOXYGEN_ROOT@"
 
 
 # This tag can be used to specify the character encoding of the source files
@@ -791,7 +792,7 @@ INLINE_SOURCES         = NO
 # doxygen to hide any special comment blocks from generated source code
 # fragments. Normal C and C++ comments will always remain visible.
 
-STRIP_CODE_COMMENTS    = YES
+STRIP_CODE_COMMENTS    = NO
 
 # If the REFERENCED_BY_RELATION tag is set to YES
 # then for each documented function all documented

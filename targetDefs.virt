@@ -28,11 +28,10 @@ endif
 
 export COMPILER_DIR := $(VIRT_TOOLCHAIN_DIR)
 export TARGET := virt
-export LEGATO_AUDIO_PA := $(AUDIO_PA_DIR)/simu/le_pa_audio
-export LEGATO_UTIL_PA = $(AT_MANAGER_DIR)
-export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/simu/le_pa
-export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/simu/le_pa_gnss
-export LEGATO_AVC_PA = $(AVC_PA_DIR)/simu/le_pa_avc
-export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/simu/le_pa_secStore
-export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/simu/le_pa_fwupdate
+export LEGATO_AUDIO_PA := $(AUDIO_PA_DIR)/simu/components/le_pa_audio
+export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/simu/components/le_pa
+export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/simu/components/le_pa_gnss
+export LEGATO_AVC_PA = $(AVC_PA_DIR)/simu/components/le_pa_avc
+export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/simu/components/le_pa_secStore
+export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/simu/components/le_pa_fwupdate
 export PLATFORM_SIMULATION := 1

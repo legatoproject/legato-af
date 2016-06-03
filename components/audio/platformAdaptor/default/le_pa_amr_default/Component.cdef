@@ -1,0 +1,18 @@
+requires:
+{
+    api:
+    {
+        le_audio.api [types-only]
+    }
+}
+
+sources:
+{
+    pa_amr_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../..
+    -I$CURDIR/../../inc
+}

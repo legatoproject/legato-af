@@ -1,0 +1,97 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
+
+help_short_desc="Check the consistency of PA libraries"
+
+help_usage=(
+"TARGET"
+)
+
+help_long_description=(
+"Once Legato has been built, this script check PA (Platform Adaptor) libraries."
+)
+
+CheckForHelp $@
+TARGET=$1
+RET=0
+
+echo "Checking PAs"
+
+if [ -z "$TARGET" ]; then
+    echo "No target provided"
+    exit 1
+fi
+
+BUILD_DIR="$LEGATO_ROOT/build/$TARGET"
+RESULT_DIR="$BUILD_DIR/pa-check"
+PA_DIFF_DIR="$RESULT_DIR/symbols/"
+PA_PATH_LIST="$RESULT_DIR/pa-path-list.txt"
+PA_NAME_LIST="$RESULT_DIR/pa-name-list.txt"
+
+if ! [ -d "$BUILD_DIR" ]; then
+    echo "Build for $TARGET must be available."
+    exit 1
+fi
+
+FindTool "file" FILETOOL
+
+FindToolchain
+FindTool "objdump" OBJDUMP
+
+rm -rf $RESULT_DIR
+mkdir -p $PA_DIFF_DIR
+
+# Look for all PA libraries
+find $BUILD_DIR/system/component -name 'libComponent_le_pa*.so' > $PA_PATH_LIST
+
+# Extract library names from $PA_PATH_LIST
+rm -f $PA_NAME_LIST
+while read comp_path; do
+    comp_name=$(basename $comp_path)
+
+    if [[ $comp_name == *default* ]]; then
+        continue
+    fi
+
+    echo $comp_name >> $PA_NAME_LIST
+done < $PA_PATH_LIST
+
+# Sort the name list
+cat ${PA_NAME_LIST} | sort > ${PA_NAME_LIST}.sorted
+mv ${PA_NAME_LIST}.sorted ${PA_NAME_LIST}
+
+# Analyze each library
+while read comp_name; do
+    comp_path=$(grep $comp_name $PA_PATH_LIST)
+
+    if [ -n "$FILETOOL" ]; then
+        comp_info="($($FILETOOL -b $comp_path))"
+    fi
+
+    echo "Analyzing $comp_name $comp_info"
+    $OBJDUMP -x $comp_path | grep ' pa_' | grep '.text' | awk '{print $6}' | sort > $PA_DIFF_DIR/${comp_name}.actual
+
+    # Find default
+    default_name=$(echo $comp_name | sed 's/.so/_default.so/')
+    default_path=$(grep $default_name $PA_PATH_LIST)
+    if [ -z "$default_path" ]; then
+        echo "Unable to find default PA for $comp_name"
+        exit 1
+    fi
+
+    $OBJDUMP -x $default_path | grep ' pa_' | grep '.text' | awk '{print $6}' | sort > $PA_DIFF_DIR/${comp_name}.default
+
+    diff $PA_DIFF_DIR/${comp_name}.actual $PA_DIFF_DIR/${comp_name}.default | grep -E '[<>]' | grep -Ev '_Init$' | sed 's/^</ [obsolete]/' | sed 's/^>/ [default]/' | tee $PA_DIFF_DIR/${comp_name}.diff
+
+    if [[ $(wc -c < $PA_DIFF_DIR/${comp_name}.diff) -ne 0 ]]; then
+        RET=1
+    fi
+done < $PA_NAME_LIST
+
+exit ${RET}
+

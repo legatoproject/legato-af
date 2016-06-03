@@ -26,7 +26,7 @@ typedef struct
                 const size_t length;
                 const uint8_t data[256];
                 le_result_t conversionResult;
-        } gsm_7bits, gsm_8bits;
+        } gsm_7bits, gsm_8bits, gsm_ucs2;
         struct
         {
                 const size_t length;
@@ -64,6 +64,21 @@ static const PduAssoc_t PduAssocDb[] =
                 0xF6, 0x00, 0x04, 0xAD, 0x14, 0x54, 0x65, 0x73, 0x74, 0x20,
                 0x73, 0x65, 0x6E, 0x64, 0x69, 0x6E, 0x67, 0x20, 0x6D, 0x65,
                 0x73, 0x73, 0x61, 0x67, 0x65,
+            },
+        },
+        .gsm_ucs2 =
+        {
+            .conversionResult = LE_OK,
+            .length = 55,
+            .data =
+            {
+                0x00, 0x11, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61,
+                0x15, 0x68, 0xF6, 0x00, 0x08, 0xAD, 0x28, 0x00,
+                0x54, 0x00, 0x65, 0x00, 0x73, 0x00, 0x74, 0x00,
+                0x20, 0x00, 0x73, 0x00, 0x65, 0x00, 0x6E, 0x00,
+                0x64, 0x00, 0x69, 0x00, 0x6E, 0x00, 0x67, 0x00,
+                0x20, 0x00, 0x6D, 0x00, 0x65, 0x00, 0x73, 0x00,
+                0x73, 0x00, 0x61, 0x00, 0x67, 0x00, 0x65,
             },
         },
         .cdma_7bits =
@@ -982,7 +997,7 @@ static const PduReceived_t PduReceivedDb[] =
     },
     /* 7 */
     /*
-     * 07913396050046F2040B913356417922F600085160802150618004D83DDC7F
+     * 07913396050046F2040B913356417922F600085160802150618004004D0079
      *
      * SMS DELIVER (receive)
      * Receipt requested: no
@@ -995,35 +1010,35 @@ static const PduReceived_t PduReceivedDb[] =
      * TP-DCS-desc: Uncompressed Text, No class
      * Alphabet: UCS2 (16bit)
      *
-     * <not decoded>
+     * My
      * Length: 2
      */
     {
-        .checkLength = false, /* SMS not supported */
-        .checkData = false, /* SMS not supported */
+        .checkLength = true, /* SMS not supported */
+        .checkData = true, /* SMS not supported */
         .proto = PA_SMS_PROTOCOL_GSM,
         .length = 31,
         .data =
         {
             0x07, 0x91, 0x33, 0x96, 0x05, 0x00, 0x46, 0xF2, 0x04, 0x0B,
             0x91, 0x33, 0x56, 0x41, 0x79, 0x22, 0xF6, 0x00, 0x08, 0x51,
-            0x60, 0x80, 0x21, 0x50, 0x61, 0x80, 0x04, 0xD8, 0x3D, 0xDC,
-            0x7F,
+            0x60, 0x80, 0x21, 0x50, 0x61, 0x80, 0x04, 0x00, 0x4D, 0x00,
+            0x79,
         },
         .expected =
         {
-            .result = LE_UNSUPPORTED,
-            .encoding = SMSPDU_7_BITS,
+            .result = LE_OK,
+            .encoding = SMSPDU_UCS2_16_BITS,
             .message =
             {
                 .type = PA_SMS_DELIVER,
                 .smsDeliver =
                 {
-                    .oa = "33651497226",
-                    .format = LE_SMS_FORMAT_TEXT,
+                    .oa = "+33651497226",
+                    .format = LE_SMS_FORMAT_UCS2,
                     .scts = "15/06/08,12:05:16+08",
-                    .data = "",
-                    .dataLen = 2,
+                    .data = { 0x00, 0x4d, 0x00, 0x79 },
+                    .dataLen = 4,
                 },
             },
         },
@@ -1119,40 +1134,58 @@ static const PduReceived_t PduReceivedDb[] =
     },
     /* 10 */
     /*
-     * 004D00790020006C006F00630061006C0020005000440055
+     * 07913366003000F0040B913366921237F000086110125110
+     * 934014004D00790020006D006500730073006100670065
      *
-     *
-     *
-     * SMS SUBMIT (send)
+     * SMS DELIVER (receive)
      * Receipt requested: no
-     * SMSC: 0123456789
-     * Receipient: 3314567890
+     * SMSC: 33660003000
+     * Sender: 33662921730
      * TOA: 91 international, Numbering Plan: unknown
-     * Validity: Rel 63w
+     * TimeStamp: 21/01/16 15:01:39 GMT +01:00
      * TP-PID: 00
      * TP-DCS: 08
      * TP-DCS-desc: Uncompressed Text, No class
      * Alphabet: UCS2 (16bit)
      *
-     * My local PDU
-     * Length: 12
+     * My message
+     * Length: 10
      */
     {
         .checkLength = true,
-        .checkData = false,
+        .checkData = true,
         .proto = PA_SMS_PROTOCOL_GSM,
-        .length = 44,
+        .length = 47,
         .data =
         {
-        0x06, 0x81, 0x10, 0x32, 0x54, 0x76, 0x98, 0x11, 0x00, 0x0A,
-        0x91, 0x33, 0x41, 0x65, 0x87, 0x09, 0x00, 0x08, 0xFF, 0x18,
-        0x00, 0x4D, 0x00, 0x79, 0x00, 0x20, 0x00, 0x6C, 0x00, 0x6F,
-        0x00, 0x63, 0x00, 0x61, 0x00, 0x6C, 0x00, 0x20, 0x00, 0x50,
-        0x00, 0x44, 0x00, 0x55,
+            0x07, 0x91, 0x33, 0x66, 0x00, 0x30, 0x00, 0xF0, 0x04, 0x0B,
+            0x91, 0x33, 0x66, 0x92, 0x12, 0x37, 0xF0, 0x00, 0x08, 0x61,
+            0x10, 0x12, 0x51, 0x10, 0x93, 0x40, 0x14, 0x00, 0x4D, 0x00,
+            0x79, 0x00, 0x20, 0x00, 0x6D, 0x00, 0x65, 0x00, 0x73, 0x00,
+            0x73, 0x00, 0x61, 0x00, 0x67, 0x00, 0x65,
         },
         .expected =
         {
-        .result = LE_UNSUPPORTED,
+            .result = LE_OK,
+            .encoding = SMSPDU_UCS2_16_BITS,
+            .message =
+            {
+                .type = PA_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "+33662921730",
+                    .format = LE_SMS_FORMAT_UCS2,
+                    .scts = "16/01/21,15:01:39+04",
+                    //"My message",
+                    //004D00790020006D006500730073006100670065
+                    .data =
+                    {
+                        0x00, 0x4D, 0x00, 0x79, 0x00, 0x20, 0x00, 0x6D, 0x00, 0x65,
+                        0x00, 0x73, 0x00, 0x73, 0x00, 0x61, 0x00, 0x67, 0x00, 0x65,
+                    },
+                    .dataLen = 20,
+                },
+            },
         },
     },
 };
@@ -1486,6 +1519,111 @@ static le_result_t TestEncodePdu
                 {
                     LE_ERROR("Unexpected type");
                     return LE_FAULT;
+                }
+            }
+        }
+
+        if (assoc->gsm_ucs2.length)
+        {
+            /* GSM Encode UCS2 bits */
+            uint8_t ucs2stringconverted[LE_SMS_UCS2_MAX_BYTES] = { 0 };
+            int len = strlen(assoc->text);
+
+            if (len > LE_SMS_UCS2_MAX_CHARS)
+            {
+                return LE_FAULT;
+            }
+            for (i = 0; i < len; i++)
+            {
+                ucs2stringconverted[i*2] = 0x00;
+                ucs2stringconverted[i*2+1] = assoc->text[i];
+            }
+            len = len *2;
+
+            LE_INFO("Encoding in UCS2 GSM %d %d", len, i*2);
+
+            res = smsPdu_Encode(PA_SMS_PROTOCOL_GSM,
+                (const uint8_t*) ucs2stringconverted,
+                len,
+                assoc->dest,
+                SMSPDU_UCS2_16_BITS,
+                assoc->type,
+                &pdu);
+
+            if (res != assoc->gsm_ucs2.conversionResult )
+            {
+                return LE_FAULT;
+            }
+
+            if ( res == LE_OK )
+            {
+                LE_INFO("Source: (%zu)", assoc->gsm_ucs2.length);
+                LE_INFO("Encoded: (%u)", pdu.dataLen);
+
+                /* Check */
+                if (pdu.dataLen != assoc->gsm_ucs2.length )
+                {
+                    return LE_FAULT;
+                }
+
+                if (memcmp(pdu.data, assoc->gsm_ucs2.data, pdu.dataLen) != 0 )
+                {
+                    DumpPdu("Pdu ref:",assoc->gsm_ucs2.data, assoc->gsm_ucs2.length);
+                    DumpPdu("Pdu encoded:",pdu.data, pdu.dataLen);
+                    return LE_FAULT;
+                }
+
+                /* Decode */
+                res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM,pdu.data,pdu.dataLen,&message);
+                if (res != LE_OK)
+                {
+                    return LE_FAULT;
+                }
+
+                if (message.type != assoc->type)
+                {
+                    return LE_FAULT;
+                }
+                LE_INFO("Type: %u", message.type);
+
+                switch(message.type)
+                {
+                    case PA_SMS_DELIVER:
+                    {
+                        LE_INFO("Format: %u", message.smsDeliver.format);
+                        LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
+                        if (message.smsDeliver.format != LE_SMS_FORMAT_UCS2)
+                        {
+                            return LE_FAULT;
+                        }
+                        if (memcmp(message.smsDeliver.data,assoc->text,strlen(assoc->text)) != 0)
+                        {
+                            return LE_FAULT;
+                        }
+                    }
+                    break;
+
+                    case PA_SMS_SUBMIT:
+                    {
+                        LE_INFO("Format: %u", message.smsSubmit.format);
+                        LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
+                        LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
+                        if (message.smsSubmit.format != LE_SMS_FORMAT_UCS2)
+                        {
+                            return LE_FAULT;
+                        }
+                        if (memcmp(message.smsSubmit.data,ucs2stringconverted,len) != 0)
+                        {
+                            return LE_FAULT;
+                        }
+                    }
+                    break;
+
+                    default:
+                    {
+                        LE_ERROR("Unexpected type");
+                        return LE_FAULT;
+                    }
                 }
             }
         }

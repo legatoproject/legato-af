@@ -1,0 +1,33 @@
+
+requires:
+{
+    api:
+    {
+        le_avdata.api
+        le_avc.api
+    }
+}
+
+sources:
+{
+    observeAppMain.c
+}
+
+assets:
+{
+    myCar =
+    {
+        settings:
+        {
+            string RegistrationNumber = "BC1234"
+        }
+        variables:
+        {
+            float InteriorTemperature = 20.00
+            int Speed = 0
+            bool LowFuelWarning = false
+            float ComputeBatteryHealth = 100.00
+        }
+    }
+}
+

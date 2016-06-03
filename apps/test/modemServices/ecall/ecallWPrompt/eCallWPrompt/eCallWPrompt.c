@@ -345,6 +345,10 @@ static void StartTestECall
 
     LE_ASSERT(le_ecall_SetMsdPosition(LastTestECallRef, true, +48898064, +2218092, 0) == LE_OK);
 
+    LE_ASSERT(le_ecall_SetMsdPositionN1(LastTestECallRef, 0, 11) == LE_OK);
+
+    LE_ASSERT(le_ecall_SetMsdPositionN2(LastTestECallRef, -22, -33) == LE_OK);
+
     LE_ASSERT(le_ecall_SetMsdPassengersCount(LastTestECallRef, 3) == LE_OK);
 
     ConnectAudio();

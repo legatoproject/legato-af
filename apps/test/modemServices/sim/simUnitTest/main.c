@@ -322,7 +322,7 @@ static void CheckSimStates
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_AddHandlers
+static void TestSim_AddHandlers
 (
     void
 )
@@ -383,7 +383,7 @@ void TestSim_AddHandlers
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_PinPuk
+static void TestSim_PinPuk
 (
     void
 )
@@ -515,7 +515,7 @@ void TestSim_PinPuk
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_LockUnlockChange
+static void TestSim_LockUnlockChange
 (
     void
 )
@@ -578,7 +578,7 @@ void TestSim_LockUnlockChange
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_SimCardInformation
+static void TestSim_SimCardInformation
 (
     void
 )
@@ -644,7 +644,7 @@ void TestSim_SimCardInformation
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_HomeNetwork
+static void TestSim_HomeNetwork
 (
     void
 )
@@ -704,7 +704,7 @@ void TestSim_HomeNetwork
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_Stk
+static void TestSim_Stk
 (
     void
 )
@@ -763,7 +763,7 @@ void TestSim_Stk
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_LocalSwap
+static void TestSim_LocalSwap
 (
     void
 )
@@ -820,7 +820,7 @@ void TestSim_LocalSwap
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestSim_RemoveHandlers
+static void TestSim_RemoveHandlers
 (
     void
 )
@@ -851,6 +851,105 @@ void TestSim_RemoveHandlers
 
     // Wait for the semaphore timeout to check that handlers are not called
     LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test SIM access
+ *
+ * API tested:
+ * - le_sim_SendApdu
+ * - le_sim_RemoveSimToolkitEventHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSim_SimAccess
+(
+    void
+)
+{
+    pa_simSimu_SetSimAccessTest(true);
+
+    uint8_t apdu[]={ 0x00, 0xA4, 0x00, 0x0C, 0x02, 0x6F, 0x07 };
+    uint8_t simResponse[10];
+    size_t rspLen = sizeof(simResponse);
+    uint8_t expectedResult[] = {0x90, 0x00};
+
+    // Test le_sim_SendApdu() API
+    LE_ASSERT( le_sim_SendApdu( CurrentSimId,
+                                apdu,
+                                sizeof(apdu),
+                                simResponse,
+                                &rspLen) == LE_OK );
+
+    LE_ASSERT( rspLen == sizeof(expectedResult) );
+    LE_ASSERT( memcmp(simResponse,expectedResult, rspLen) == 0 );
+
+    // Test pa_sim_SendSimCommand() API
+    uint8_t p1=1,p2=2,p3=3;
+    uint8_t dataAdn[] = {0x4A,0x61,0x63,0x6B,0x79,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x05,
+                     0x81,0x10,0x92,0x90,0x71,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+    rspLen = 100;
+    uint8_t rsp[rspLen];
+
+    struct
+    {
+        le_sim_Command_t command;
+        le_result_t      result;
+    } test[LE_SIM_COMMAND_MAX+1] = {
+                    {
+                        LE_SIM_READ_RECORD,
+                        LE_OK
+                    },
+                    {
+                        LE_SIM_READ_BINARY,
+                        LE_OK
+                    },
+                    {
+                        LE_SIM_UPDATE_RECORD,
+                        LE_OK
+                    },
+                    {
+                        LE_SIM_UPDATE_BINARY,
+                        LE_OK
+                    },
+                    {
+                        LE_SIM_COMMAND_MAX,
+                        LE_BAD_PARAMETER
+                    }
+               };
+
+    int runningTest = 0;
+    uint8_t swi1, swi2;
+
+    for (; runningTest <= LE_SIM_COMMAND_MAX; runningTest++)
+    {
+        swi1 = swi2 = 0;
+
+        LE_ASSERT( le_sim_SendCommand(CurrentSimId,
+                                      test[runningTest].command,
+                                      "6F3A",
+                                      p1,
+                                      p2,
+                                      p3,
+                                      dataAdn,
+                                      sizeof(dataAdn),
+                                      "3F007F10",
+                                      &swi1,
+                                      &swi2,
+                                      rsp,
+                                      &rspLen) == test[runningTest].result );
+
+        if (test[runningTest].result == LE_OK)
+        {
+            LE_ASSERT(swi1 == 0x90);
+            LE_ASSERT(swi2 == 0x00);
+        }
+    }
+
+    pa_simSimu_SetSimAccessTest(false);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -895,6 +994,9 @@ COMPONENT_INIT
 
     LE_INFO("======== multi-profile Test  ========");
     TestSim_LocalSwap();
+
+    LE_INFO("======== SIM access Test  ========");
+    TestSim_SimAccess();
 
     LE_INFO("======== Handlers removal Test  ========");
     TestSim_RemoveHandlers();

@@ -34,6 +34,9 @@
  * default index used by the modem for Bearer Independent Protocol (BIP).
  * The maximum number of data profiles supported is modem dependent and can be retrieved with
  * le_mdc_NumProfiles().
+ *
+ * @note le_mdc_GetProfile() creates a new profile if the profile's index can't be found.
+ *
  * A pre-defined data profile can also be retrieved using le_mdc_GetProfileFromApn() thanks to its
  * APN.
  *
@@ -60,6 +63,10 @@
  * can be used. A data session can be stopped using le_mdc_StopSession(). The number of
  * simultaneous data sessions supported is dependent on the modem, but cannot be more than the
  * maximum number of supported profiles.
+ *
+ * A data session can be started using le_mdc_StartSessionAsync() and stopped using
+ * le_mdc_StopSessionAsync(). These functions are not blocking. The response will be returned
+ * with the @c le_mdc_SessionHandlerFunc_t handler function.
  *
  * The current state of a data session can be queried using le_mdc_GetSessionState(). An application
  * can also a register handler to be notified when the session state changes. The handler
@@ -94,9 +101,15 @@
  * le_mdc_GetIPv4DNSAddresses() or le_mdc_GetIPv6GatewayAddress(), le_mdc_GetIPv6DNSAddresses().
  * The Access Point Name can be retrieved by le_mdc_GetAPN(). The Data bearer
  * Technology can be retreived by le_mdc_GetDataBearerTechnology().
+ *
  * When the data session is stopped, the disconnection reason can be known using
- * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() (refer
- * to your platform documentation for further details).
+ * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() (refer to
+ * your platform documentation for further details).
+ *
+ * When the data session connection fails, the failure reason can be known using
+ * le_mdc_GetDisconnectionReason(), le_mdc_GetPlatformSpecificDisconnectionCode() or
+ * le_mdc_GetPlatformSpecificFailureConnectionReason() (refer to your platform documentation
+ * for further details).
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mdcDataSessions
@@ -263,10 +276,10 @@ ENUM Pdp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumeration of Authentication.
+ * Authentication bit mask.
  */
 //--------------------------------------------------------------------------------------------------
-ENUM Auth
+BITMASK Auth
 {
     AUTH_NONE,    ///< no authentication
     AUTH_PAP,     ///< PAP protocol
@@ -365,14 +378,26 @@ HANDLER MtPdpSessionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Handler for asynchronous session start and stop result response
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER SessionHandler
+(
+    Profile      profileRef IN,  ///< Profile reference
+    le_result_t  result     IN   ///< Session start or stop result response
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This event provides information on data session connection state changes for the given profileRef.
  *
  */
 //--------------------------------------------------------------------------------------------------
 EVENT SessionState
 (
-    Profile profileRef, ///< The profile object of interest
-    handler SessionStateHandler
+    Profile             profileRef,  ///< The profile object of interest
+    SessionStateHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -383,12 +408,14 @@ EVENT SessionState
 //--------------------------------------------------------------------------------------------------
 EVENT MtPdpSessionState
 (
-    handler SessionStateHandler
+    SessionStateHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Get Profile Reference for index
+ *
+ * @note Create a new profile if the profile's index can't be found.
  *
  * @warning Ensure to check the list of supported data profiles for your specific platform.
  *
@@ -437,6 +464,22 @@ FUNCTION le_result_t StartSession
     Profile profileRef  ///< Start data session for this profile object
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start profile data session.
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StartSessionAsync
+(
+    Profile profileRef,     ///< Start data session for this profile object
+    SessionHandler handler  ///< Handler for start data session result
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Stop profile data session.
@@ -454,6 +497,22 @@ FUNCTION le_result_t StopSession
 (
     Profile profileRef ///< Stop data session for this profile object
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop profile data session.
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StopSessionAsync
+(
+    Profile profileRef,      ///< Stop data session for this profile object
+    SessionHandler handler   ///< Handler for stop data session result
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -683,9 +742,9 @@ FUNCTION bool IsIPv6
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetDataBearerTechnology
 (
-    Profile                       profileRef,                    ///< Query this profile object
-    le_mdc_DataBearerTechnology_t downlinkDataBearerTechPtr OUT, ///< downlink data bearer technology
-    le_mdc_DataBearerTechnology_t uplinkDataBearerTechPtr OUT    ///< uplink data bearer technology
+    Profile              profileRef,                    ///< Query this profile object
+    DataBearerTechnology downlinkDataBearerTechPtr OUT, ///< downlink data bearer technology
+    DataBearerTechnology uplinkDataBearerTechPtr OUT    ///< uplink data bearer technology
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -735,7 +794,7 @@ FUNCTION le_result_t ResetBytesCounter
 FUNCTION le_result_t SetPDP
 (
     Profile      profileRef,    ///< Query this profile object
-    le_mdc_Pdp_t pdp            ///< The Packet Data Protocol
+    Pdp          pdp            ///< The Packet Data Protocol
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -749,7 +808,7 @@ FUNCTION le_result_t SetPDP
  *      The process exits, if an invalid profile object is given
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_mdc_Pdp_t GetPDP
+FUNCTION Pdp GetPDP
 (
     Profile profileRef     ///< Query this profile object
 );
@@ -830,12 +889,16 @@ FUNCTION le_result_t GetAPN
  *       function will not return.
  * @note If password is too long (max PASSWORD_NAME_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
+ * @note Both PAP and CHAP authentification can be set for 3GPP network: in this case, the device
+ *       decides which authentication procedure is performed. For example, the device can have a
+ *       policy to select the most secure authentication mechanism.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetAuthentication
 (
     Profile       profileRef,                           ///< Query this profile object
-    le_mdc_Auth_t type,                                 ///< Authentication type
+    Auth          type,                                 ///< Authentication type
     string        userName[USER_NAME_MAX_LEN] IN,       ///< UserName used by authentication
     string        password[PASSWORD_NAME_MAX_LEN] IN    ///< Password used by authentication
 );
@@ -857,7 +920,7 @@ FUNCTION le_result_t SetAuthentication
 FUNCTION le_result_t GetAuthentication
 (
     Profile       profileRef,                           ///< Query this profile object
-    le_mdc_Auth_t type OUT,                             ///< Authentication type
+    Auth          type OUT,                             ///< Authentication type
     string        userName[USER_NAME_MAX_LEN] OUT,      ///< UserName used by authentication
     string        password[PASSWORD_NAME_MAX_LEN] OUT   ///< Password used by authentication
 );
@@ -918,4 +981,20 @@ FUNCTION DisconnectionReason GetDisconnectionReason
 FUNCTION int32 GetPlatformSpecificDisconnectionCode
 (
     Profile profileRef  IN                 ///< profile reference
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific connection failure reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION GetPlatformSpecificFailureConnectionReason
+(
+    Profile profileRef  IN,      ///< profile reference
+    int32   failureType OUT,     ///< platform specific failure type
+    int32   failureCode OUT      ///< platform specific failure code
 );

@@ -3,9 +3,8 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-#ifndef LEGATO_LETEMP_INCLUDE_GUARD
-#define LEGATO_LETEMP_INCLUDE_GUARD
-
+#ifndef LEGATO_LETEMP_LOCAL_INCLUDE_GUARD
+#define LEGATO_LETEMP_LOCAL_INCLUDE_GUARD
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -17,4 +16,4 @@ void le_temp_Init
     void
 );
 
-#endif // LEGATO_LETEMP_INCLUDE_GUARD
+#endif // LEGATO_LETEMP_LOCAL_INCLUDE_GUARD

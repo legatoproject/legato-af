@@ -1,0 +1,12 @@
+sources:
+{
+    selector.c
+}
+
+requires:
+{
+    api:
+    {
+        songs.api
+    }
+}

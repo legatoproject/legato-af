@@ -16,10 +16,26 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * true = -f or --force was specified on the command-line.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool Force = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * true = -r or --remove was specified on the command-line.
  */
 //--------------------------------------------------------------------------------------------------
 static bool DoRemove = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * set to true in an option parsing callback if the option should cause the update or removal work
+ * to be skipped.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool Done = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -48,6 +64,9 @@ static void PrintHelp
         "    update --help\n"
         "    update [FILE_NAME]\n"
         "    update --remove APP_NAME\n"
+        "    update --mark-good\n"
+        "    update --mark-bad\n"
+        "    update --defer\n"
         "\n"
         "DESCRIPTION:\n"
         "    update --help\n"
@@ -61,11 +80,42 @@ static void PrintHelp
         "     update --remove APP_NAME\n"
         "     update -r APP_NAME\n"
         "        Removes an app from the device.\n"
+        "\n"
+        "    update --mark-good\n"
+        "    update -g\n"
+        "        Ends the new system probation period and marks the current system good.\n"
+        "        Ignored if the current system is already marked good."
+        "\n"
+        "    update --mark-bad\n"
+        "    update -b\n"
+        "        Marks the current system bad and reboots to rollback to the previous good system.\n"
+        "        The command has no effect if the current system has already been marked good.\n"
+        "        The restart waits for any deferral that is in effect.\n"
+        "\n"
+        "    update --defer\n"
+        "    update -d\n"
+        "        Command causes all updates to be deferred as long as the program is left running.\n"
+        "        To release the deferral use Ctrl-C or kill to exit this command.\n"
+        "        More than one deferral can be in effect at any time. All of them must be cleared\n"
+        "        before an update can take place.\n"
     );
 
     exit(EXIT_SUCCESS);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called when --force or -f appear on the command-line.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetForce
+(
+    void
+)
+{
+    Force = true;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -87,6 +137,101 @@ static void RemoveSelected
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called when --mark-good or -g appear on the command-line.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MarkGood
+(
+    void
+)
+{
+    le_updateCtrl_ConnectService();
+    le_result_t result = le_updateCtrl_MarkGood(Force);
+    switch (result)
+    {
+        case LE_OK:
+            printf("System is now marked 'Good'");
+            exit(EXIT_SUCCESS);
+            break;
+
+        case LE_BUSY:
+            fprintf(stderr, "**ERROR: One or more processes are holding probation locks - check logs.\n");
+            fprintf(stderr, "Use -f (or --force) option to override.\n");
+            exit(EXIT_FAILURE);
+            break;
+
+        case LE_DUPLICATE:
+            fprintf(stderr, "**ERROR: The probation period has already ended. Nothing to do.\n");
+            exit(EXIT_FAILURE);
+            break;
+
+        default:
+            fprintf(stderr, "**ERROR: Unknown return code from le_updateCtrl_MarkGood().\n");
+            exit(EXIT_FAILURE);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called when --mark-bad or -b appear on the command-line.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MarkBad
+(
+    void
+)
+{
+    le_updateCtrl_ConnectService();
+    le_updateCtrl_FailProbation();
+    exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called when we get SIGINT (generally user hits Ctrl-C) so we can release
+ * our Defer before we die.
+ */
+//--------------------------------------------------------------------------------------------------
+static void EndDeferral
+(
+    int sigNum
+)
+{
+    le_updateCtrl_Allow();
+    exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function that gets called when --defer or -d appear on the command-line.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StartDeferral
+(
+    void
+)
+{
+    le_updateCtrl_ConnectService();
+    // Setup the signal event handler before we do Defer. This way, even if we get signalled
+    // before Defer gets done we won't deal with the signal until the next time round the
+    // event loop - so our Defer and Allow count will match by the time we exit.
+    le_sig_Block(SIGINT);
+    le_sig_SetEventHandler(SIGINT, EndDeferral);
+    le_sig_Block(SIGTERM);
+    le_sig_SetEventHandler(SIGTERM, EndDeferral);
+
+    le_updateCtrl_Defer();
+    // Our work is done here. Go wait on the event loop until someone SIGINTs or kills us.
+    Done = true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 /**
  * Gets the file descriptor for the input stream.  Input file either might be given via STDIN or
@@ -296,8 +441,7 @@ static void Update
             exit(EXIT_FAILURE);
 
         case LE_UNAVAILABLE:
-            fprintf(stderr, "**ERROR: The system is still in its probation period"
-                            " (not marked \"good\" yet).\n");
+            fprintf(stderr, "**ERROR: Updates are currently deferred.\n");
             exit(EXIT_FAILURE);
 
         case LE_OK:
@@ -328,14 +472,21 @@ static void RemoveApp
     {
         exit(EXIT_SUCCESS);
     }
+    else if (result == LE_BUSY)
+    {
+        fprintf(stderr, "Failed to remove app '%s'. System busy, check logs.\n", appNamePtr);
+    }
+    else if (result == LE_NOT_FOUND)
+    {
+        fprintf(stderr, "App '%s' is not installed\n", appNamePtr);
+    }
     else
     {
         fprintf(stderr, "Failed to remove app '%s' (%s)\n", appNamePtr, LE_RESULT_TXT(result));
-
-        exit(EXIT_FAILURE);
     }
-}
 
+    exit(EXIT_FAILURE);
+}
 
 
 COMPONENT_INIT
@@ -343,8 +494,20 @@ COMPONENT_INIT
     // update --help
     le_arg_SetFlagCallback(PrintHelp, NULL, "help");
 
+    // force option --force for mark-good. Must be set first
+    le_arg_SetFlagCallback(SetForce, "f", "force");
+
     // update --remove APP_NAME
     le_arg_SetFlagCallback(RemoveSelected, "r", "remove");
+
+    // update --mark-good
+    le_arg_SetFlagCallback(MarkGood,"g", "mark-good");
+
+    // update --mark-bad
+    le_arg_SetFlagCallback(MarkBad, "b", "mark-bad");
+
+    // update --defer
+    le_arg_SetFlagCallback(StartDeferral, "d", "defer");
 
     // update [FILE_NAME]
     le_arg_AddPositionalCallback(HandlePositionalArg);
@@ -352,26 +515,29 @@ COMPONENT_INIT
 
     le_arg_Scan();
 
-    // If --remove (or -r) was specified, then remove the app.
-    if (DoRemove)
+    if (!Done)
     {
-        if (ArgPtr == NULL)
+        // If --remove (or -r) was specified, then remove the app.
+        if (DoRemove)
         {
-            fprintf(stderr, "No app name specified.\n");
-            exit(EXIT_FAILURE);
-        }
+            if (ArgPtr == NULL)
+            {
+                fprintf(stderr, "No app name specified.\n");
+                exit(EXIT_FAILURE);
+            }
 
-        RemoveApp(ArgPtr);
-    }
-    // If --remove (or -r) was NOT specified, then process an update pack.
-    else
-    {
-        // If no file path was provided on the command line, default to "-" for standard in.
-        if (ArgPtr == NULL)
+            RemoveApp(ArgPtr);
+        }
+        // If --remove (or -r) was NOT specified, then process an update pack.
+        else
         {
-            ArgPtr = "-";
-        }
+            // If no file path was provided on the command line, default to "-" for standard in.
+            if (ArgPtr == NULL)
+            {
+                ArgPtr = "-";
+            }
 
-        Update(ArgPtr);
+            Update(ArgPtr);
+        }
     }
 }

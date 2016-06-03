@@ -42,6 +42,13 @@ static uint8_t PDU_TEST_PATTERN_7BITS[]=
 
 static uint8_t BINARY_TEST_PATTERN[]={0x05,0x01,0x00,0x0A};
 
+static uint16_t UCS2_TEST_PATTERN[] =
+    {   0x4900, 0x7400, 0x2000, 0x6900, 0x7300, 0x2000, 0x7400, 0x6800,
+        0x6500, 0x2000, 0x5600, 0x6F00, 0x6900, 0x6300, 0x6500, 0x2000,
+        0x2100, 0x2100, 0x2100, 0x2000, 0x4100, 0x7200, 0x6500, 0x2000,
+        0x7900, 0x6f00, 0x7500, 0x2000, 0x7200, 0x6500, 0x6100, 0x6400,
+        0x7900, 0x2000
+    };
 
 static char DEST_TEST_PATTERN[] = "0123456789";
 
@@ -89,6 +96,7 @@ static void Testle_sms_SetGetText
 
     le_sms_Delete(myMsg);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -146,6 +154,66 @@ static void Testle_sms_SetGetBinary
 
     le_sms_Delete(myMsg);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: UCS2 content Message Object Set/Get APIS.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_sms_SetGetUCS2
+(
+    void
+)
+{
+    le_sms_MsgRef_t       myMsg;
+    char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
+    char                  tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    uint16_t              ucs2Raw[LE_SMS_UCS2_MAX_CHARS];
+    size_t                uintval;
+    uint32_t              i;
+
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+
+    LE_ASSERT(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN) == LE_OK);
+
+    LE_ASSERT(le_sms_SetUCS2(myMsg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN) / 2) == LE_OK);
+
+    LE_ASSERT(le_sms_GetFormat(myMsg) == LE_SMS_FORMAT_UCS2);
+
+    LE_ASSERT(le_sms_GetSenderTel(myMsg, tel, sizeof(tel)) == LE_NOT_PERMITTED);
+
+    LE_ASSERT(le_sms_GetTimeStamp(myMsg, timestamp, sizeof(timestamp)) == LE_NOT_PERMITTED);
+
+    uintval = le_sms_GetUserdataLen(myMsg);
+    LE_ASSERT(uintval == (sizeof(UCS2_TEST_PATTERN) / 2));
+
+    uintval = 1;
+    LE_ASSERT(le_sms_GetUCS2(myMsg, ucs2Raw, &uintval) == LE_OVERFLOW);
+
+    uintval = sizeof(UCS2_TEST_PATTERN);
+    LE_ASSERT(le_sms_GetUCS2(myMsg, ucs2Raw, &uintval) == LE_OK);
+
+    for(i=0; i < (sizeof(UCS2_TEST_PATTERN)/2); i++)
+    {
+        LE_ERROR_IF(ucs2Raw[i] != UCS2_TEST_PATTERN[i],
+            "%d/%d 0x%04X==0x%04X", (int) i, (int) sizeof(UCS2_TEST_PATTERN)/2,
+            ucs2Raw[i],
+            UCS2_TEST_PATTERN[i]);
+        LE_ASSERT(ucs2Raw[i] == UCS2_TEST_PATTERN[i]);
+    }
+
+    LE_ASSERT(uintval == sizeof(UCS2_TEST_PATTERN) / 2);
+
+    LE_ASSERT(le_sms_SetDestination(myMsg, VOID_PATTERN) == LE_BAD_PARAMETER);
+
+    LE_ASSERT(le_sms_SetUCS2(myMsg, UCS2_TEST_PATTERN, 0) == LE_BAD_PARAMETER);
+
+    le_sms_Delete(myMsg);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -297,6 +365,9 @@ void testle_sms_SmsApiUnitTest
 
     LE_INFO("Test Testle_sms_SetGetPDU started");
     Testle_sms_SetGetPDU();
+
+    LE_INFO("Test Testle_sms_SetGetUCS2 started");
+    Testle_sms_SetGetUCS2();
 
     LE_INFO("Test Testle_sms_ErrorDecodingReceivedList started");
     Testle_sms_ErrorDecodingReceivedList();

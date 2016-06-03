@@ -19,7 +19,7 @@
  * Cgroup sub-system names.
  */
 //--------------------------------------------------------------------------------------------------
-static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu", "memory", "freezer"};
+static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "freezer"};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -405,7 +405,7 @@ le_result_t cgrp_Create
 
     if (result == LE_DUPLICATE)
     {
-        LE_ERROR("Cgroup %s already exists.", path);
+        LE_WARN("Cgroup %s already exists.", path);
         return LE_DUPLICATE;
     }
     else if (result == LE_FAULT)

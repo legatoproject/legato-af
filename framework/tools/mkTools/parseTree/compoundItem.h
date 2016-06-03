@@ -252,6 +252,17 @@ struct EnvVar_t : TokenList_t
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Represents a module parameter inside a "params:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+struct ModuleParam_t : TokenList_t
+{
+    ModuleParam_t(Token_t* firstTokenPtr): TokenList_t(MODULE_PARAM, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Represents a single entry inside a "pools:" section.
  */
 //--------------------------------------------------------------------------------------------------
@@ -339,6 +350,17 @@ struct ComplexSection_t : CompoundItemList_t
 struct App_t : CompoundItemList_t
 {
     App_t(Token_t* firstTokenPtr): CompoundItemList_t(APP, firstTokenPtr) {}
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a named entry for a given application in an "kernelModules:" section of a .sdef file.
+ */
+//--------------------------------------------------------------------------------------------------
+struct Module_t : CompoundItemList_t
+{
+    Module_t(Token_t* firstTokenPtr): CompoundItemList_t(MODULE, firstTokenPtr) {}
 };
 
 

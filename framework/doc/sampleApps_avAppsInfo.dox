@@ -3,6 +3,9 @@
 This sample app demonstrates using @c assets to transfer @ref basicLWM2MData over AirVantage.
 It's also a working utility to provide info about apps running on a remote target.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/avAppsInfo">sample app code</a>.
+
 @section sampleApps_avAppsInfo_background Background info
 
 To use this app, you should understand how to @ref howToAVConnect. <br>

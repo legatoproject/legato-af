@@ -32,6 +32,7 @@ requires:
 
     component:
     {
+        $LEGATO_AVC_PA_DEFAULT
         $LEGATO_AVC_PA
     }
 }

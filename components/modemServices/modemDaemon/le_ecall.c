@@ -79,6 +79,14 @@
 //--------------------------------------------------------------------------------------------------
 #define SET_BIT_MASK_VALUE(_value_, _bitmask_) ((_value_ == true) ? _bitmask_ : 0)
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration for eCall handler and  MCC notification synchronization timeout
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_ECALL_SEM_TIMEOUT_SEC         3
+#define LE_ECALL_SEM_TIMEOUT_USEC        0
+
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -145,12 +153,13 @@ typedef struct
                                                                         ///< the MSD
                                                                         ///< transmission and
                                                                         ///< received two AL-ACKs
-    bool                    wasConnected;                               ///< flag indicating whether
+    bool                    isConnected;                                ///< flag indicating whether
                                                                         ///< a connection with PSAP
-                                                                        ///< was established
+                                                                        ///< is established
     bool                    isSessionStopped;                           ///< Flag indicating that
                                                                         ///< the previous session
                                                                         ///< was manually stopped.
+    bool                    isRedialPeriod;                             ///< Redial period ongoing
     uint32_t                maxRedialAttempts;                          ///< Maximum redial attempts
     msd_t                   msd;                                        ///< MSD
     uint8_t                 builtMsd[LE_ECALL_MSD_MAX_LEN];             ///< built MSD
@@ -236,6 +245,14 @@ static msd_EraGlonassData_t EraGlonassDataObj;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Semaphore to synchronize eCall handler with MCC notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t SemaphoreRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Convert Decimal Degrees in Degrees/Minutes/Seconds and return the corresponding value in
  * milliarcseconds.
  *
@@ -261,20 +278,20 @@ static int32_t ConvertDdToDms
 
     // compute degrees
     deg = ddVal/1000000;
-    LE_INFO("ddVal.%d, degrees.%d", ddVal, deg);
+    LE_DEBUG("ddVal.%d, degrees.%d", ddVal, deg);
 
     // compute minutes
     degMod = ddVal%1000000;
     minAbs = degMod*60;
     int32_t min = minAbs/1000000;
-    LE_INFO("minute.%d", min);
+    LE_DEBUG("minute.%d", min);
 
     // compute seconds
     secDec = minAbs - min*1000000;
     sec = secDec*60 / 1000000;
-    LE_INFO("secondes.%e", sec);
+    LE_DEBUG("secondes.%e", sec);
 
-    LE_INFO("final result: %d", (int32_t)((deg*60*60.000 + min*60.000 + sec)*1000));
+    LE_DEBUG("final result: %d", (int32_t)((deg*60*60.000 + min*60.000 + sec)*1000));
 
     return ((int32_t)((deg*60*60.000 + min*60.000 + sec)*1000));
 }
@@ -299,6 +316,43 @@ static void ReportState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Stop all the timers.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void StopTimers
+(
+    void
+)
+{
+    if(ECallObj.intervalTimer)
+    {
+        LE_DEBUG("Stop the Interval timer");
+        if (le_timer_IsRunning(ECallObj.intervalTimer))
+        {
+            le_timer_Stop(ECallObj.intervalTimer);
+        }
+    }
+    if(ECallObj.panEur.remainingDialDurationTimer)
+    {
+        LE_DEBUG("Stop the PAN-European RemainingDialDuration timer");
+        if (le_timer_IsRunning(ECallObj.panEur.remainingDialDurationTimer))
+        {
+            le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
+        }
+    }
+    if(ECallObj.eraGlonass.dialDurationTimer)
+    {
+        LE_DEBUG("Stop the ERA-GLONASS DialDuration timer");
+        if (le_timer_IsRunning(ECallObj.eraGlonass.dialDurationTimer))
+        {
+            le_timer_Stop(ECallObj.eraGlonass.dialDurationTimer);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Dial Duration Timer handler.
  *
  */
@@ -312,10 +366,11 @@ static void DialDurationTimerHandler
 
     ECallObj.eraGlonass.dialAttemptsCount = 0;
 
-    ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-
-    // Stop any eCall tentative on going, the stop event will be notified by the Modem
-    pa_ecall_Stop();
+    if(ECallObj.isRedialPeriod)
+    {
+        ECallObj.isRedialPeriod = false;
+        ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -331,11 +386,11 @@ static void RemainingDialDurationTimerHandler
 {
     LE_INFO("[PAN-EUROPEAN] remaining dial duration expires! Stop dialing eCall...");
     ECallObj.panEur.stopDialing = true;
-
-    ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-
-    // Stop any eCall tentative on going, the stop event will be notified by the Modem
-    pa_ecall_Stop();
+    if(ECallObj.isRedialPeriod)
+    {
+        ECallObj.isRedialPeriod = false;
+        ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -381,8 +436,12 @@ static void IntervalTimerHandler
                     "duration has expired, stop dialing...",
                     ECallObj.eraGlonass.dialAttempts,
                     ECallObj.eraGlonass.dialAttempts);
-
-            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+            StopTimers();
+            if(ECallObj.isRedialPeriod)
+            {
+                ECallObj.isRedialPeriod = false;
+                ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+            }
         }
     }
     else
@@ -403,43 +462,6 @@ static void IntervalTimerHandler
                 }
             }
             pa_ecall_Start(ECallObj.startType, &ECallObj.callId);
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stop all the timers.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void StopTimers
-(
-    void
-)
-{
-    if(ECallObj.intervalTimer)
-    {
-        LE_DEBUG("Stop the Interval timer");
-        if (le_timer_IsRunning(ECallObj.intervalTimer))
-        {
-            le_timer_Stop(ECallObj.intervalTimer);
-        }
-    }
-    if(ECallObj.panEur.remainingDialDurationTimer)
-    {
-        LE_DEBUG("Stop the PAN-European RemainingDialDuration timer");
-        if (le_timer_IsRunning(ECallObj.panEur.remainingDialDurationTimer))
-        {
-            le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
-        }
-    }
-    if(ECallObj.eraGlonass.dialDurationTimer)
-    {
-        LE_DEBUG("Stop the ERA-GLONASS DialDuration timer");
-        if (le_timer_IsRunning(ECallObj.eraGlonass.dialDurationTimer))
-        {
-            le_timer_Stop(ECallObj.eraGlonass.dialDurationTimer);
         }
     }
 }
@@ -844,18 +866,35 @@ static le_result_t EncodeMsd
         // Encode optional Data for ERA GLONASS if any
         if(SystemStandard == PA_ECALL_ERA_GLONASS)
         {
-            eCallPtr->msd.msdMsg.optionalData.oid = oid;
-            eCallPtr->msd.msdMsg.optionalData.oidlen = sizeof( oid );
-            if ((eCallPtr->msd.msdMsg.optionalData.dataLen =
-                msd_EncodeOptionalDataForEraGlonass(
-                    &EraGlonassDataObj, outOptionalDataForEraGlonass))
-                < 0)
+
+            if (EraGlonassDataObj.presentCrashInfo ||
+                EraGlonassDataObj.presentCrashSeverity ||
+                EraGlonassDataObj.presentDiagnosticResult)
             {
-                LE_ERROR("Unable to encode optional Data for ERA GLONASS!");
-                return LE_FAULT;
+                if ((eCallPtr->msd.msdMsg.optionalData.dataLen =
+                    msd_EncodeOptionalDataForEraGlonass(
+                        &EraGlonassDataObj, outOptionalDataForEraGlonass))
+                    < 0)
+                {
+                    LE_ERROR("Unable to encode optional Data for ERA GLONASS!");
+                    return LE_FAULT;
+                }
+
+                if( 0 < eCallPtr->msd.msdMsg.optionalData.dataLen )
+                {
+                    eCallPtr->msd.msdMsg.optionalData.oid = oid;
+                    eCallPtr->msd.msdMsg.optionalData.oidlen = sizeof( oid );
+                    eCallPtr->msd.msdMsg.optionalDataPres = true;
+                    eCallPtr->msd.msdMsg.optionalData.data = outOptionalDataForEraGlonass;
+                }
             }
-            eCallPtr->msd.msdMsg.optionalDataPres = true;
-            eCallPtr->msd.msdMsg.optionalData.data = outOptionalDataForEraGlonass;
+            else
+            {
+                eCallPtr->msd.msdMsg.optionalDataPres = false;
+                eCallPtr->msd.msdMsg.optionalData.oid = NULL;
+                eCallPtr->msd.msdMsg.optionalData.oidlen = 0;
+                eCallPtr->msd.msdMsg.optionalData.dataLen = 0;
+            }
 
             LE_DEBUG("eCall optional Data: Length %d",
                      eCallPtr->msd.msdMsg.optionalData.dataLen);
@@ -910,6 +949,8 @@ static void ECallStateHandler
     le_ecall_State_t* statePtr
 )
 {
+    bool reportEndOfRedialPeriod = false;
+
     LE_DEBUG("Handler Function called with state %d", *statePtr);
 
     // Update eCall state
@@ -924,6 +965,8 @@ static void ECallStateHandler
             ECallObj.startTentativeTime = le_clk_GetRelativeTime();
             ECallObj.termination = LE_MCC_TERM_UNDEFINED;
             ECallObj.specificTerm = 0;
+            ECallObj.llackOrT5OrT7Received = false;
+            ECallObj.isRedialPeriod = true;
             LE_DEBUG("Start dialing...");
             if (SystemStandard == PA_ECALL_ERA_GLONASS)
             {
@@ -940,23 +983,62 @@ static void ECallStateHandler
 
         case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
         {
+            le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
+                                    .usec=LE_ECALL_SEM_TIMEOUT_USEC };
+            le_result_t semTerminaisonResult = LE_FAULT;
+
+            // Get Call terminaison result
+            if (ECallObj.isConnected)
+            {
+
+                semTerminaisonResult = le_sem_WaitWithTimeOut(SemaphoreRef,timer);
+                if (semTerminaisonResult == LE_OK)
+                {
+                    LE_DEBUG("Termination: %d, llackOrT5OrT7Received %d, sem %d"
+                            , ECallObj.termination
+                            , ECallObj.llackOrT5OrT7Received
+                            , semTerminaisonResult);
+
+                    // Check redial condition (cf N16062:2014 7.9)
+                    if (ECallObj.llackOrT5OrT7Received &&
+                       (ECallObj.termination == LE_MCC_TERM_REMOTE_ENDED))
+                    {
+                        // After the IVS has received the LL-ACK
+                        // or T5 – IVS wait for SEND MSD period
+                        // or T7 – IVS MSD maximum transmission time ends,
+                        // the IVS shall recognise a normal hang-up from the network.
+                        // The IVS shall not attempt an automatic redial following
+                        // a call clear-down.
+
+                        StopTimers();
+                        // Redial deactivated
+                        if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+                        {
+                            ECallObj.panEur.stopDialing = true;
+                            // Report End Of Redial Period event after the LE_ECALL* event
+                            reportEndOfRedialPeriod = true;
+                        }
+                        else// ERAGLONASS
+                        {
+                            ECallObj.eraGlonass.dialAttemptsCount = 0;
+                            // Report End Of Redial Period event after the LE_ECALL* event
+                            reportEndOfRedialPeriod = true;
+                        }
+                    }
+                }
+                else
+                {
+                    LE_ERROR("MCC notification timeout happen");
+                }
+            }
+
+            // Check redial condition
             if (!ECallObj.isCompleted && !ECallObj.isSessionStopped)
             {
-                if (ECallObj.wasConnected)
+                if (ECallObj.isConnected)
                 {
                     LE_ERROR("Connection with PSAP has dropped!");
-
-                    ECallObj.wasConnected = false;
-
-                    // cf N16062:2014 7.9
-                    if (ECallObj.llackOrT5OrT7Received &&
-                        (ECallObj.termination == LE_MCC_TERM_REMOTE_ENDED))
-                    {
-                        // treatment will be done in the callEventHandler
-                        LE_DEBUG("Call ended and llack or T5 or T7 received");
-                        break;
-                    }
-
+                    ECallObj.isConnected = false;
 
                     if (SystemStandard == PA_ECALL_ERA_GLONASS)
                     {
@@ -986,7 +1068,7 @@ static void ECallStateHandler
                             }
                         }
                     }
-                    else
+                    else if(!ECallObj.panEur.stopDialing)
                     {
                         // PAN-EUROPEAN
                         LE_WARN("[PAN-EUROPEAN] Got 120 seconds to reconnect with PSAP");
@@ -1049,7 +1131,7 @@ static void ECallStateHandler
 
         case LE_ECALL_STATE_CONNECTED: /* Emergency call is established */
         {
-            ECallObj.wasConnected = true;
+            ECallObj.isConnected = true;
             StopTimers();
             switch(ECallObj.startType)
             {
@@ -1102,14 +1184,44 @@ static void ECallStateHandler
             break;
         }
 
+        case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN: /* AL-ACK clear-down received */
+        {
+            // According to the eCall standard (FprEN 16062:2014) / eCall clear-down
+            //After the PSAP has sent the LL-ACK or T4 – PSAP wait for INITIATION signal period
+            // or T8 - PSAP MSD maximum reception time ends
+            // and the IVS receives a AL-ACK with status = “clear- down”,
+            // it shall clear-down the call.
+            // The IVS shall not attempt an automatic redial following a call clear-down.
+            StopTimers();
+            // Redial deactivated
+            if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+            {
+                ECallObj.panEur.stopDialing = true;
+            }
+            else // ERAGLONASS
+            {
+                ECallObj.eraGlonass.dialAttemptsCount = 0;
+            }
+
+            // Report End Of Redial Period event after the LE_ECALL* event
+            reportEndOfRedialPeriod = true;
+            break;
+        }
+
+
+        case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by PSAP
+                                        or IVS le_ecall_End() */
+        {
+            ECallObj.isStarted = false;
+            break;
+        }
+
         case LE_ECALL_STATE_MSD_TX_STARTED: /* MSD transmission is started */
         case LE_ECALL_STATE_WAITING_PSAP_START_IND: /* Waiting for PSAP start indication */
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED: /* PSAP start indication received */
         case LE_ECALL_STATE_LLNACK_RECEIVED: /* LL-NACK received */
-        case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN: /* AL-ACK clear-down received */
         case LE_ECALL_STATE_MSD_TX_COMPLETED: /* MSD transmission is complete */
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
-        case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by PSAP or IVS le_ecall_End() */
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
         {
             // Nothing to do, just report the event
@@ -1130,13 +1242,16 @@ static void ECallStateHandler
         }
     }
 
-    // DISCONNECTED event is sent by CallEventHandler() function
-    if (*statePtr != LE_ECALL_STATE_DISCONNECTED)
+    // Report the eCall state
+    ReportState(*statePtr);
+
+    // Report the End of Redial Period event
+    if(reportEndOfRedialPeriod && ECallObj.isRedialPeriod)
     {
-        ReportState(*statePtr);
+        ECallObj.isRedialPeriod = false;
+        ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
     }
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1160,9 +1275,12 @@ static void CallEventHandler
         return;
     }
 
-    LE_DEBUG("isStarted %d event %d", eCallPtr->isStarted, event);
+    LE_DEBUG("isStarted %d isCompleted %d event %d"
+            , eCallPtr->isStarted
+            ,  eCallPtr->isCompleted
+            , event);
 
-    if (eCallPtr->isStarted)
+    if (eCallPtr->isConnected)
     {
         le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
 
@@ -1178,39 +1296,37 @@ static void CallEventHandler
         {
             eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
             eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
-            eCallPtr->callId = -1;
 
-            // Termination reason are updated, report the DISCONNECTED event
-            ReportState(LE_ECALL_STATE_DISCONNECTED);
-
-            eCallPtr->isStarted = false;
-
-            LE_DEBUG("termination: %d, llackOrT5OrT7Received %d", eCallPtr->termination,
-                     eCallPtr->llackOrT5OrT7Received);
-
-            if (eCallPtr->llackOrT5OrT7Received &&
-               (eCallPtr->termination == LE_MCC_TERM_REMOTE_ENDED))
-            {
-                StopTimers();
-
-                if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
-                {
-                    eCallPtr->panEur.stopDialing = true;
-                }
-                else // ERAGLONASS
-                {
-                    eCallPtr->eraGlonass.dialAttemptsCount = 0;
-                }
-
-                ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-
-                eCallPtr->isSessionStopped = true;
-
-                // Stop any eCall tentative on going, the stop event will be notified by the Modem
-                pa_ecall_Stop();
-            }
+            LE_DEBUG("Call termination status available");
+            // Synchronize eCall handler with MCC notification
+            le_sem_Post(SemaphoreRef);
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ECall event handler function thread
+ */
+//--------------------------------------------------------------------------------------------------
+static void* ECallThread
+(
+    void* contextPtr
+)
+{
+    LE_INFO("ECall event thread started");
+
+    // Register a handler function for eCall state indications
+    if (pa_ecall_AddEventHandler(ECallStateHandler) == NULL)
+    {
+        LE_ERROR("Add pa_ecall_AddEventHandler failed");
+        return NULL;
+    }
+
+    // Run the event loop
+    le_event_RunLoop();
+
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1252,6 +1368,7 @@ le_result_t le_ecall_Init
     ECallObj.msd.version = 1;
     ECallObj.isPushed = true;
     ECallObj.maxRedialAttempts = 10,
+    ECallObj.isRedialPeriod = true;
     ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_PASSENGER_M1;
     ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent = false;
     ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent = false;
@@ -1274,7 +1391,7 @@ le_result_t le_ecall_Init
 
     // Ecall Context initialization
     ECallObj.startType = PA_ECALL_START_MANUAL;
-    ECallObj.wasConnected = false;
+    ECallObj.isConnected = false;
     ECallObj.isStarted = false;
     ECallObj.isCompleted = false;
     ECallObj.isSessionStopped = true;
@@ -1283,6 +1400,7 @@ le_result_t le_ecall_Init
 
     ECallObj.panEur.stopDialing = false;
     ECallObj.panEur.remainingDialDurationTimer = le_timer_Create("RemainingDialDuration");
+    ECallObj.llackOrT5OrT7Received = false;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
@@ -1319,6 +1437,8 @@ le_result_t le_ecall_Init
     ECallObj.msd.msdMsg.msdStruct.control.automaticActivation = true;
     ECallObj.msd.msdMsg.msdStruct.control.testCall = false;
     ECallObj.msd.msdMsg.msdStruct.control.positionCanBeTrusted = false;
+    ECallObj.msd.msdMsg.msdStruct.recentVehLocationN1Pres = false;
+    ECallObj.msd.msdMsg.msdStruct.recentVehLocationN2Pres = false;
     ECallObj.msd.msdMsg.msdStruct.numberOfPassengersPres = false;
     ECallObj.msd.msdMsg.msdStruct.numberOfPassengers = 0;
     ECallObj.state = LE_ECALL_STATE_STOPPED;
@@ -1357,24 +1477,23 @@ le_result_t le_ecall_Init
              ECallObj.maxRedialAttempts,
              (int)ECallObj.msd.msdMsg.msdStruct.control.vehType);
 
-    // Register a handler function for eCall state indications
-    if (pa_ecall_AddEventHandler(ECallStateHandler) == NULL)
-    {
-        LE_ERROR("Add pa_ecall_AddEventHandler failed");
-        return LE_FAULT;
-    }
-
     // Initialize call identifier
     ECallObj.callId = -1;
 
     // Initialize call termination
     ECallObj.termination = LE_MCC_TERM_UNDEFINED;
 
-    // Add a handler on calls
+    // Register handler on call events
     le_mcc_AddCallEventHandler(CallEventHandler, &ECallObj);
 
     // Register object, which also means it was initialized properly
     ECallObj.ref = le_ref_CreateRef(ECallRefMap, &ECallObj);
+
+    // Start ECall thread
+    le_thread_Start(le_thread_Create("ECallThread", ECallThread, NULL));
+
+    // Init semaphore to synchronize eCall handler with MCC notification
+    SemaphoreRef = le_sem_Create("MccNotificationSem",0);
 
     return LE_OK;
 }
@@ -1555,6 +1674,129 @@ le_result_t le_ecall_SetMsdPosition
     eCallPtr->msd.msdMsg.msdStruct.vehLocation.latitude = ConvertDdToDms(latitude);
     eCallPtr->msd.msdMsg.msdStruct.vehLocation.longitude = ConvertDdToDms(longitude);
     eCallPtr->msd.msdMsg.msdStruct.vehDirection = direction;
+
+    return EncodeMsd(eCallPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the position Delta N-1 from position set in le_ecall_SetMsdPosition() transmitted by the MSD.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad input parameter
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetMsdPositionN1
+(
+    le_ecall_CallRef_t  ecallRef,   ///< eCall reference
+    int32_t     latitudeDeltaN1,    ///< latitude delta from position set in SetMsdPosition
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (±1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (± -1583m)
+    int32_t     longitudeDeltaN1    ///< longitude delta from position set in SetMsdPosition
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (±1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (± -1583m)
+)
+{
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (eCallPtr->isMsdImported)
+    {
+        LE_ERROR("An MSD has been already imported!");
+        return LE_DUPLICATE;
+    }
+
+    if ((latitudeDeltaN1 > ASN1_LATITUDE_DELTA_MAX) ||
+        (latitudeDeltaN1 < ASN1_LATITUDE_DELTA_MIN))
+    {
+        LE_ERROR("Maximum latitude delta value is %d, minimum latitude value is %d!",
+            ASN1_LATITUDE_DELTA_MAX, ASN1_LATITUDE_DELTA_MIN);
+        return LE_BAD_PARAMETER;
+    }
+    if ((longitudeDeltaN1 > ASN1_LONGITUDE_DELTA_MAX) ||
+        (longitudeDeltaN1 < ASN1_LONGITUDE_DELTA_MIN))
+    {
+        LE_ERROR("Maximum longitude delta value is %d, minimum longitude value is %d!",
+            ASN1_LONGITUDE_DELTA_MAX, ASN1_LONGITUDE_DELTA_MIN );
+        return LE_BAD_PARAMETER;
+    }
+
+    eCallPtr->msd.msdMsg.msdStruct.recentVehLocationN1Pres = true;
+    eCallPtr->msd.msdMsg.msdStruct.recentVehLocationN1.latitudeDelta = latitudeDeltaN1;
+    eCallPtr->msd.msdMsg.msdStruct.recentVehLocationN1.longitudeDelta = longitudeDeltaN1;
+
+    return EncodeMsd(eCallPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the position Delta N-2 from position set in le_ecall_SetMsdPosition() transmitted by the MSD.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad input parameter
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetMsdPositionN2
+(
+    le_ecall_CallRef_t  ecallRef,   ///< eCall reference
+    int32_t     latitudeDeltaN2,    ///< latitude delta from position set in SetMsdPositionN1
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (±1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (± -1583m)
+    int32_t     longitudeDeltaN2    ///< longitude delta from position set in SetMsdPositionN1
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (±1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (± -1583m)
+)
+
+{
+    ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
+    if (eCallPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (eCallPtr->isMsdImported)
+    {
+        LE_ERROR("An MSD has been already imported!");
+        return LE_DUPLICATE;
+    }
+
+    if ((latitudeDeltaN2 > ASN1_LATITUDE_DELTA_MAX) ||
+        (latitudeDeltaN2 < ASN1_LATITUDE_DELTA_MIN))
+    {
+        LE_ERROR("Maximum latitude delta value is %d, minimum latitude value is %d!",
+            ASN1_LATITUDE_DELTA_MAX, ASN1_LATITUDE_DELTA_MIN);
+        return LE_BAD_PARAMETER;
+    }
+    if ((longitudeDeltaN2 > ASN1_LONGITUDE_DELTA_MAX) ||
+        (longitudeDeltaN2 < ASN1_LONGITUDE_DELTA_MIN))
+    {
+        LE_ERROR("Maximum longitude delta value is %d, minimum longitude value is %d!",
+            ASN1_LONGITUDE_DELTA_MAX, ASN1_LONGITUDE_DELTA_MIN );
+        return LE_BAD_PARAMETER;
+    }
+
+    eCallPtr->msd.msdMsg.msdStruct.recentVehLocationN2Pres = true;
+    eCallPtr->msd.msdMsg.msdStruct.recentVehLocationN2.latitudeDelta = latitudeDeltaN2;
+    eCallPtr->msd.msdMsg.msdStruct.recentVehLocationN2.longitudeDelta = longitudeDeltaN2;
 
     return EncodeMsd(eCallPtr);
 }
@@ -2101,7 +2343,7 @@ le_ecall_StateChangeHandlerRef_t le_ecall_AddStateChangeHandler
         return NULL;
     }
 
-    handlerRef = le_event_AddLayeredHandler("ECallStateHandler",
+    handlerRef = le_event_AddLayeredHandler("ECallStateChangeHandler",
                                             ECallEventStateId,
                                             FirstLayerECallStateChangeHandler,
                                             (le_event_HandlerFunc_t)handlerPtr);

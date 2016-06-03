@@ -318,7 +318,7 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
  * @return This will return a newly created iterator reference.
  */
 // -------------------------------------------------------------------------------------------------
-FUNCTION le_cfg_IteratorRef_t CreateReadTxn
+FUNCTION Iterator CreateReadTxn
 (
     string basePath[STR_LEN] IN  ///< Path to the location to create the new iterator.
 );
@@ -340,7 +340,7 @@ FUNCTION le_cfg_IteratorRef_t CreateReadTxn
  * @return This will return a newly created iterator reference.
  */
 // -------------------------------------------------------------------------------------------------
-FUNCTION le_cfg_IteratorRef_t CreateWriteTxn
+FUNCTION Iterator CreateWriteTxn
 (
     string basePath[STR_LEN] IN  ///< Path to the location to create the new iterator.
 );
@@ -356,7 +356,7 @@ FUNCTION le_cfg_IteratorRef_t CreateWriteTxn
 // -------------------------------------------------------------------------------------------------
 FUNCTION CommitTxn
 (
-    le_cfg_IteratorRef_t iteratorRef IN  ///< Iterator object to commit.
+    Iterator iteratorRef IN  ///< Iterator object to commit.
 );
 
 
@@ -370,7 +370,7 @@ FUNCTION CommitTxn
 // -------------------------------------------------------------------------------------------------
 FUNCTION CancelTxn
 (
-    le_cfg_IteratorRef_t iteratorRef IN  ///< Iterator object to close.
+    Iterator iteratorRef IN  ///< Iterator object to close.
 );
 
 
@@ -386,8 +386,8 @@ FUNCTION CancelTxn
 // -------------------------------------------------------------------------------------------------
 FUNCTION GoToNode
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to move.
-    string newPath[STR_LEN]          IN   ///< Absolute or relative path from the current location.
+    Iterator iteratorRef    IN,  ///< Iterator to move.
+    string newPath[STR_LEN] IN   ///< Absolute or relative path from the current location.
 );
 
 
@@ -403,7 +403,7 @@ FUNCTION GoToNode
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GoToParent
 (
-    le_cfg_IteratorRef_t iteratorRef IN  ///< Iterator to move.
+    Iterator iteratorRef IN  ///< Iterator to move.
 );
 
 
@@ -424,7 +424,7 @@ FUNCTION le_result_t GoToParent
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GoToFirstChild
 (
-    le_cfg_IteratorRef_t iteratorRef IN  ///< Iterator object to move.
+    Iterator iteratorRef IN  ///< Iterator object to move.
 );
 
 
@@ -452,7 +452,7 @@ FUNCTION le_result_t GoToFirstChild
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GoToNextSibling
 (
-    le_cfg_IteratorRef_t iteratorRef IN  ///< Iterator to iterate.
+    Iterator iteratorRef IN  ///< Iterator to iterate.
 );
 
 
@@ -489,10 +489,10 @@ FUNCTION le_result_t GoToNextSibling
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPath
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to move.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    string pathBuffer[STR_LEN]       OUT  ///< Absolute path to the iterator's current node.
+    Iterator iteratorRef       IN,  ///< Iterator to move.
+    string path[STR_LEN]       IN,  ///< Path to the target node. Can be an absolute path, or
+                                    ///< a path relative from the iterator's current position.
+    string pathBuffer[STR_LEN] OUT  ///< Absolute path to the iterator's current node.
 );
 
 
@@ -503,11 +503,11 @@ FUNCTION le_result_t GetPath
  * @return le_cfg_nodeType_t value indicating the stored value.
  */
 // -------------------------------------------------------------------------------------------------
-FUNCTION le_cfg_nodeType_t GetNodeType
+FUNCTION nodeType GetNodeType
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator object to use to read from the tree.
-    string path[STR_LEN]             IN   ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
+    Iterator iteratorRef IN,  ///< Iterator object to use to read from the tree.
+    string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
 );
 
 
@@ -521,10 +521,10 @@ FUNCTION le_cfg_nodeType_t GetNodeType
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNodeName
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator object to use to read from the tree.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    string name[STR_LEN]             OUT  ///< Read the name of the node object.
+    Iterator iteratorRef IN,  ///< Iterator object to use to read from the tree.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    string name[STR_LEN] OUT  ///< Read the name of the node object.
 );
 
 
@@ -557,7 +557,7 @@ HANDLER ChangeHandler
 EVENT Change
 (
     string newPath[STR_LEN] IN, ///< Path to the object to watch.
-    handler ChangeHandler       ///< Handler to receive change notification
+    ChangeHandler handler       ///< Handler to receive change notification
 );
 
 
@@ -582,9 +582,9 @@ EVENT Change
 // -------------------------------------------------------------------------------------------------
 FUNCTION DeleteNode
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN   ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
 );
 
 
@@ -602,9 +602,9 @@ FUNCTION DeleteNode
 // -------------------------------------------------------------------------------------------------
 FUNCTION bool IsEmpty
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN   ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
 );
 
 
@@ -620,9 +620,9 @@ FUNCTION bool IsEmpty
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetEmpty
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN   ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
 );
 
 
@@ -635,9 +635,9 @@ FUNCTION SetEmpty
 // -------------------------------------------------------------------------------------------------
 FUNCTION bool NodeExists
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN   ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN   ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
 );
 
 
@@ -656,13 +656,13 @@ FUNCTION bool NodeExists
 // -------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetString
 (
-    le_cfg_IteratorRef_t iteratorRef IN,   ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,   ///< Path to the target node. Can be an absolute path,
-                                           ///< or a path relative from the iterator's current
-                                           ///< position.
-    string value[STR_LEN]            OUT,  ///< Buffer to write the value into.
-    string defaultValue[STR_LEN]     IN    ///< Default value to use if the original can't be
-                                           ///<   read.
+    Iterator iteratorRef         IN,   ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN]         IN,   ///< Path to the target node. Can be an absolute path,
+                                       ///< or a path relative from the iterator's current
+                                       ///< position.
+    string value[STR_LEN]        OUT,  ///< Buffer to write the value into.
+    string defaultValue[STR_LEN] IN    ///< Default value to use if the original can't be
+                                       ///<   read.
 );
 
 
@@ -676,10 +676,10 @@ FUNCTION le_result_t GetString
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetString
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    string value[STR_LEN]            IN   ///< Value to write.
+    Iterator iteratorRef  IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN]  IN,  ///< Path to the target node. Can be an absolute path, or
+                               ///< a path relative from the iterator's current position.
+    string value[STR_LEN] IN   ///< Value to write.
 );
 
 
@@ -699,11 +699,11 @@ FUNCTION SetString
 // -------------------------------------------------------------------------------------------------
 FUNCTION int32 GetInt
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    int32 defaultValue               IN   ///< Default value to use if the original can't be
-                                          ///<   read.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    int32 defaultValue   IN   ///< Default value to use if the original can't be
+                              ///<   read.
 );
 
 
@@ -717,10 +717,10 @@ FUNCTION int32 GetInt
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetInt
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    int32 value                      IN   ///< Value to write.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    int32 value          IN   ///< Value to write.
 );
 
 
@@ -738,11 +738,11 @@ FUNCTION SetInt
 // -------------------------------------------------------------------------------------------------
 FUNCTION double GetFloat
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    double defaultValue              IN   ///< Default value to use if the original can't be
-                                          ///<   read.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    double defaultValue  IN   ///< Default value to use if the original can't be
+                              ///<   read.
 );
 
 
@@ -758,10 +758,10 @@ FUNCTION double GetFloat
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetFloat
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    double value                     IN   ///< Value to write.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    double value         IN   ///< Value to write.
 );
 
 
@@ -778,11 +778,11 @@ FUNCTION SetFloat
 // -------------------------------------------------------------------------------------------------
 FUNCTION bool GetBool
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    bool defaultValue                IN   ///< Default value to use if the original can't be
-                                          ///<   read.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    bool defaultValue    IN   ///< Default value to use if the original can't be
+                              ///<   read.
 );
 
 
@@ -796,10 +796,10 @@ FUNCTION bool GetBool
 // -------------------------------------------------------------------------------------------------
 FUNCTION SetBool
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
-    string path[STR_LEN]             IN,  ///< Path to the target node. Can be an absolute path, or
-                                          ///< a path relative from the iterator's current position.
-    bool value                       IN   ///< Value to write.
+    Iterator iteratorRef IN,  ///< Iterator to use as a basis for the transaction.
+    string path[STR_LEN] IN,  ///< Path to the target node. Can be an absolute path, or
+                              ///< a path relative from the iterator's current position.
+    bool value           IN   ///< Value to write.
 );
 
 

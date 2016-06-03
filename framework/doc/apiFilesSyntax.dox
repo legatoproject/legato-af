@@ -59,9 +59,9 @@ be removed in a future release.
 
 A DEFINE is specified as:
 
-@verbatim
+@code
 DEFINE <name> = <value>;
-@endverbatim
+@endcode
 
 The @c value can be a string or an expression evaluated to a numeric value (when the definition is
 read).
@@ -106,30 +106,34 @@ You can share type definitions between .api files with USETYPES. This is commonl
 importing, although only the type definitions are imported or used. Any code related definitions in
 a .api file, e.g. FUNCTION, are ignored.  These USETYPES can even be nested.
 
-As an example of usage, suppose the files defs.api, common.api and example.api are defined as
+@note It is not necessary to include the @c .api extension when importing.
+I.e. @verbatim USETYPES defn; @endverbatim is equivalent to
+@verbatim USETYPES defn.api; @endverbatim
+
+As an example of usage, suppose the files defn.api, common.api and example.api are defined as
 follows:
 
-defs.api
+defn.api
 @verbatim
 DEFINE FIVE = 5;
 @endverbatim
 
 common.api
 @verbatim
-USETYPES defs.api;
+USETYPES defn.api;
 
-DEFINE TEN = defs.FIVE + 5;
+DEFINE TEN = defn.FIVE + 5;
 @endverbatim
 
 example.api
 @verbatim
 USETYPES common.api;
 
-DEFINE twenty = common.TEN + defs.FIVE + 5;
+DEFINE twenty = common.TEN + defn.FIVE + 5;
 @endverbatim
 
 This example illustrates that nesting causes an implicit USETYPES.  Thus, any definitions from
-defs.api, can be used in example.api, in the same way as if it had explicitly imported defs.api.
+defn.api, can be used in example.api, in the same way as if it had explicitly imported defn.api.
 
 
 @section apiFilesSyntax_function Specifying a Function

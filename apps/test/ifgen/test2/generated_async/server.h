@@ -85,10 +85,10 @@ typedef enum
     A = 0x1,
         ///< first
 
-    B = 0x2,
+    B = 0x8,
         ///< second
 
-    C = 0x4
+    C = 0x10
         ///< third
 }
 BitMaskExample_t;
@@ -116,7 +116,8 @@ typedef struct BugTestHandler* BugTestHandlerRef_t;
  *
  * @param x
  *        First parameter for the handler
- *        Second comment line
+ *             Second comment line is indented 5 extra spaces
+ *        Third comment line is missing initial space
  * @param contextPtr
  */
 //--------------------------------------------------------------------------------------------------
@@ -167,7 +168,7 @@ typedef void (*CallbackTestHandlerFunc_t)
 //--------------------------------------------------------------------------------------------------
 TestAHandlerRef_t AddTestAHandler
 (
-    TestAHandlerFunc_t handlerPtr,
+    TestAHandlerFunc_t myHandlerPtr,
         ///< [IN]
 
     void* contextPtr
@@ -267,6 +268,8 @@ void TriggerTestA
  * is used for
  *     testing
  * a specific bug, as well as event comment strings.
+ *
+ * Uses old-style handler, for backwards compatibility testing
  */
 //--------------------------------------------------------------------------------------------------
 BugTestHandlerRef_t AddBugTestHandler

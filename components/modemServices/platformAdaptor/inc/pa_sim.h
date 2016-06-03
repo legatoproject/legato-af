@@ -560,4 +560,67 @@ LE_SHARED le_result_t pa_sim_ConfirmSimToolkitCommand
     bool  confirmation ///< [IN] true to accept, false to reject
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to send a generic command to the SIM.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      - The function failed to select the SIM card for this operation
+ *                          - The requested SIM file is not found
+ *      - LE_OVERFLOW       Response buffer is too small to copy the SIM answer.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_SendCommand
+(
+    le_sim_Command_t command,
+        ///< [IN]
+        ///< The SIM command.
+
+    const char* fileIdentifier,
+        ///< [IN]
+        ///< File identifier
+
+    uint8_t p1,
+        ///< [IN]
+        ///< Parameter P1 passed to the SIM
+
+    uint8_t p2,
+        ///< [IN]
+        ///< Parameter P2 passed to the SIM
+
+    uint8_t p3,
+        ///< [IN]
+        ///< Parameter P3 passed to the SIM
+
+    const uint8_t* dataPtr,
+        ///< [IN]
+        ///< data command.
+
+    size_t dataNumElements,
+        ///< [IN]
+
+    const char* path,
+        ///< [IN]
+        ///< path of the elementary file
+
+    uint8_t* sw1Ptr,
+        ///< [OUT]
+        ///< SW1 received from the SIM
+
+    uint8_t* sw2Ptr,
+        ///< [OUT]
+        ///< SW2 received from the SIM
+
+    uint8_t* responsePtr,
+        ///< [OUT]
+        ///< SIM response.
+
+    size_t* responseNumElementsPtr
+        ///< [INOUT]
+);
+
+
 #endif // LEGATO_PASIM_INCLUDE_GUARD

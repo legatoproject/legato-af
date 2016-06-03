@@ -273,8 +273,6 @@ le_thread_Ref_t le_thread_Create
  *
  * @return
  *      - LE_OK if successful.
- *      - LE_NOT_PERMITTED if the calling thread doesn't have the necessary permission levels to
- *                          use the requested priority level.
  *      - LE_OUT_OF_RANGE if the priority level requested is out of range.
  */
 //--------------------------------------------------------------------------------------------------

@@ -577,3 +577,34 @@ void smack_RevokeSubject
 
     LE_DEBUG("Revoked SMACK label '%s'.", subjectLabelPtr);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets an application's SMACK label.
+ *
+ * @warning
+ *      This function will call LE_KILL_CLIENT() if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetAppLabel
+(
+    const char* appName, ///< [IN] The name of the application.
+    char* label,         ///< [OUT] Ptr to the buffer the label will be written into.
+    size_t labelSize     ///< [IN] Size (in bytes) of the label buffer.
+)
+{
+    if (appName[0] == '\0')
+    {
+        LE_KILL_CLIENT("App name should not be empty.");
+        return;
+    }
+
+    int n = snprintf(label, labelSize, "%s%s", SMACK_APP_PREFIX, appName);
+
+    if (n >= labelSize)
+    {
+        LE_KILL_CLIENT("Buffer is too small to hold label for app %s.", appName);
+        return;
+    }
+}

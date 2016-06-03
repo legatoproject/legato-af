@@ -551,7 +551,8 @@ int32_t msd_EncodeMsdMessage
         int32_t latitudeDeltaTmp, longitudeDeltaTmp;
         /* latitudeDelta */
         latitudeDeltaTmp = msdDataPtr->msdMsg.msdStruct.recentVehLocationN1.latitudeDelta;
-        if((latitudeDeltaTmp < -512) || (latitudeDeltaTmp > 511))
+        if((latitudeDeltaTmp < ASN1_LATITUDE_DELTA_MIN) ||
+           (latitudeDeltaTmp > ASN1_LATITUDE_DELTA_MAX))
         {
             LE_ERROR("Bad latitude delta 1 value.%d", latitudeDeltaTmp);
             return LE_FAULT;
@@ -561,7 +562,8 @@ int32_t msd_EncodeMsdMessage
 
         /* longitudeDelta */
         longitudeDeltaTmp = msdDataPtr->msdMsg.msdStruct.recentVehLocationN1.longitudeDelta;
-        if((longitudeDeltaTmp < -512) || (longitudeDeltaTmp > 511))
+        if((longitudeDeltaTmp < ASN1_LONGITUDE_DELTA_MIN) ||
+           (longitudeDeltaTmp > ASN1_LONGITUDE_DELTA_MAX))
         {
             LE_ERROR("Bad longitude delta 1 value.%d", longitudeDeltaTmp);
             return LE_FAULT;
@@ -576,7 +578,8 @@ int32_t msd_EncodeMsdMessage
         int32_t latitudeDeltaTmp, longitudeDeltaTmp;
         /* latitudeDelta */
         latitudeDeltaTmp = msdDataPtr->msdMsg.msdStruct.recentVehLocationN2.latitudeDelta;
-        if((latitudeDeltaTmp < -512) || (latitudeDeltaTmp > 511))
+        if((latitudeDeltaTmp < ASN1_LATITUDE_DELTA_MIN) ||
+           (latitudeDeltaTmp > ASN1_LATITUDE_DELTA_MAX))
         {
             LE_ERROR("Bad latitude delta 2 value.%d", latitudeDeltaTmp);
             return LE_FAULT;
@@ -587,7 +590,8 @@ int32_t msd_EncodeMsdMessage
 
         /* longitudeDelta */
         longitudeDeltaTmp = msdDataPtr->msdMsg.msdStruct.recentVehLocationN2.longitudeDelta;
-        if((longitudeDeltaTmp < -512) || (longitudeDeltaTmp > 511))
+        if((longitudeDeltaTmp < ASN1_LONGITUDE_DELTA_MIN) ||
+           (longitudeDeltaTmp > ASN1_LONGITUDE_DELTA_MAX))
         {
             LE_ERROR("Bad longitude delta 2 value.%d", longitudeDeltaTmp);
             return LE_FAULT;

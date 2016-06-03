@@ -2,26 +2,26 @@ sandboxed: false
 
 version: 1.0.0
 maxFileSystemBytes: 512K
-	executables:
-	{
-			textloc = ( textLocComponent )
-	}
+
+executables:
+{
+        textloc = ( textLocComponent )
+}
 
 processes:
 {
-		envVars:
-		{
-			LE_LOG_LEVEL = DEBUG
-			// This is a non-existent fictitious phone number. Change it to a valid phone number.
-			DEST_CELL_NO = 8005550101
-		}
-		run:
-		{
-			( textloc )
-		}
-		maxCoreDumpFileBytes: 512K
-		maxFileBytes: 512K
-
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+        // This is a non-existent fictitious phone number. Change it to a valid phone number.
+        DEST_CELL_NO = 8005550101
+    }
+    run:
+    {
+        ( textloc )
+    }
+    maxCoreDumpFileBytes: 512K
+    maxFileBytes: 512K
 }
 
 bindings:

@@ -21,4 +21,26 @@ bool fs_IsMounted
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a path location is a mount point (has file system mounted at that location).
+ */
+//--------------------------------------------------------------------------------------------------
+bool fs_IsMountPoint
+(
+    const char* path                ///< [IN] Path to check.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Lazy umount any file systems that may be mounted at the specified location.
+ */
+//--------------------------------------------------------------------------------------------------
+void fs_TryLazyUmount
+(
+    const char* pathPtr             ///< [IN] Mount point.
+);
+
+
 #endif // LE_FILE_SYSTEM_H_INCLUDE_GUARD

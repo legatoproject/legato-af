@@ -322,9 +322,6 @@ static void* TestThread
     FakeHandlerRef = le_audio_AddMediaHandler(FakeStreamRef, FakeHandler, NULL);
     LE_ASSERT(FakeHandlerRef != NULL);
 
-    // unlock CreateTestThread() function
-    le_sem_Post(ThreadSemaphore);
-
     // Execute APIs according to the test case
     switch(TestCase)
     {
@@ -352,6 +349,9 @@ static void* TestThread
         default:
         break;
     }
+
+    // unlock CreateTestThread() function
+    le_sem_Post(ThreadSemaphore);
 
     // run the event loop
     le_event_RunLoop();
@@ -684,6 +684,9 @@ void Testle_audio_PlaySamples
 
     // close the player stream
     le_audio_Close(playbackStreamRef);
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -760,6 +763,9 @@ void Testle_audio_PlayFile
 
     // Delete the created file
     unlink("test.amrwb");
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -831,6 +837,9 @@ void Testle_audio_CaptureSamples
 
     // close the recorder stream
     le_audio_Close(captureStreamRef);
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -966,6 +975,9 @@ void Testle_audio_RecordFile
     }
 
     unlink("test.wav");
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1013,6 +1025,9 @@ void Testle_audio_DecodingDtmf
 
     // close the modem voice RX stream
     le_audio_Close(streamVoiceRxRef);
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1079,6 +1094,9 @@ void Testle_audio_PlayDtmf
 
     // close the player stream
     le_audio_Close(playbackStreamRef);
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1147,7 +1165,7 @@ int main(int argc, char *argv[])
     LE_INFO("======== Test capture samples ========");
     Testle_audio_CaptureSamples();
 
-    LE_INFO("======== Test capture samples ========");
+    LE_INFO("======== Test capture file ========");
     Testle_audio_RecordFile();
 
     LE_INFO("======== Test decoding dtmf ========");

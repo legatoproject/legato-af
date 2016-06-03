@@ -3,6 +3,7 @@ requires:
     api:
     {
         le_update.api [manual-start]
+        le_updateCtrl.api [manual-start]
         le_appRemove.api [manual-start]
     }
 }

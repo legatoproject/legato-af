@@ -35,8 +35,19 @@ wp85)
         /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         )
     ;;
-virt_arm)
+ar758x)
     TOOLCHAIN_DIRS=(
+        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        )
+    ;;
+ar759x)
+    TOOLCHAIN_DIRS=(
+        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+        )
+    ;;
+raspi | virt_arm)
+    TOOLCHAIN_DIRS=(
+        /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
         /opt/swi/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         /opt/swi/y16/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi

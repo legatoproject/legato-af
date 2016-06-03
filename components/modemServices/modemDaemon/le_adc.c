@@ -23,9 +23,13 @@
 //--------------------------------------------------------------------------------------------------
 le_result_t le_adc_ReadValue
 (
-    le_adc_AdcChannelInput_t  adcChannel, ///< [IN] channel to sample
-    int32_t*                  adcValuePtr ///< [OUT] sample value
+    const char* adcNamePtr,
+        ///< [IN]
+        ///< Name of the ADC to read.
 
+    int32_t* adcValuePtr
+        ///< [OUT]
+        ///< The adc value
 )
 {
     if (adcValuePtr == NULL)
@@ -33,6 +37,6 @@ le_result_t le_adc_ReadValue
         LE_KILL_CLIENT("Parameters pointer are NULL!!");
         return LE_FAULT;
     }
-    return pa_adc_ReadValue(adcChannel, adcValuePtr);
+    return pa_adc_ReadValue(adcNamePtr, adcValuePtr);
 }
 

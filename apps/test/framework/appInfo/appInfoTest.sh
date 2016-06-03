@@ -39,7 +39,7 @@ echo "Make sure Legato is running."
 ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
-appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 cd "$appDir"
 CheckRet
 
@@ -48,7 +48,7 @@ ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
 echo "Install the testAppInfo app."
-instapp testAppInfo.$targetType $targetAddr
+InstallApp testAppInfo
 CheckRet
 
 ssh root@$targetAddr  "$BIN_PATH/app start testAppInfo"

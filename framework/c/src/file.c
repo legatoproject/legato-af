@@ -14,6 +14,7 @@
 #include "smack.h"
 #include "fileDescriptor.h"
 #include "file.h"
+#include "fileSystem.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -155,19 +156,22 @@ ssize_t file_ReadStr
  * The null terminator will not be written.
  * The file will be opened, the string will be written and the file will be closed.
  * If the file does not exist, it will be created.
- * If the file did previously exist, its previous contents will be discarded.
+ * If the file did previously exist, its previous contents will be discarded, but its previous
+ * DAC permissions will be kept.  To replace the existing file completely, use
+ * file_WriteStrAtomic().
  */
 //--------------------------------------------------------------------------------------------------
 void file_WriteStr
 (
-    const char* filePath,  ///< [IN] Path to the file to write.
-    const char* string     ///< [IN] A string to write to this file.
+    const char* filePath,   ///< [IN] Path to the file to write.
+    const char* string,     ///< [IN] A string to write to this file.
+    mode_t mode             ///< [IN] DAC permission bits (see man 2 open). E.g., 0644 = rw-r--r--
 )
 //--------------------------------------------------------------------------------------------------
 {
     int fd;
 
-    fd = open(filePath, O_WRONLY | O_TRUNC | O_CREAT);
+    fd = open(filePath, O_WRONLY | O_TRUNC | O_CREAT, mode);
     if (fd == -1)
     {
         LE_FATAL("Unable to open file '%s' for writing (%m).", filePath);
@@ -213,8 +217,9 @@ void file_WriteStr
 //--------------------------------------------------------------------------------------------------
 void file_WriteStrAtomic
 (
-    const char* filePath,  ///< [IN] Path to the file to write.
-    const char* string     ///< [IN] A string to write to this file.
+    const char* filePath,      ///< [IN] Path to the file to write.
+    const char* string,        ///< [IN] A string to write to this file.
+    mode_t mode                ///< [IN] DAC permission bits (see man 2 open). E.g., 0644 = rw-r--r--
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -225,7 +230,7 @@ void file_WriteStrAtomic
         LE_FATAL("File path '%s' is too long (>= PATH_MAX - 4).", filePath);
     }
 
-    file_WriteStr(tempFilePath, string);
+    file_WriteStr(tempFilePath, string, mode);
 
     file_Rename(tempFilePath, filePath);
 }
@@ -482,6 +487,9 @@ le_result_t file_Copy
 /**
  * Copy a batch of files recursively from one directory into another.
  *
+ * @note Does not copy mounted files or any files under mounted directories.  Does not copy anything
+ *       if the source path directory is empty.
+ *
  * @return - LE_OK if the copy was successful.
  *         - LE_NOT_PERMITTED if either the source or destination paths are not files or could not
  *           be opened.
@@ -549,18 +557,15 @@ le_result_t file_CopyRecursive
     char* pathArrayPtr[] = { (char*)sourcePathPtr, NULL };
     FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
 
+    result = LE_OK;
+
     FTSENT* entPtr;
     while ((entPtr = fts_read(ftsPtr)) != NULL)
     {
-        char newPath[PATH_MAX];
+        char newPath[PATH_MAX] = "";
 
-        int n = snprintf(newPath,
-                         sizeof(newPath),
-                         "%s/%s",
-                         destPathPtr,
-                         entPtr->fts_path + sourcePathLen);
-
-        if (n >= sizeof(newPath))
+        if (le_path_Concat("/", newPath, sizeof(newPath),
+                           destPathPtr, entPtr->fts_path + sourcePathLen, NULL) != LE_OK)
         {
             LE_CRIT("Destination path to file '%s' too long.",
                     le_path_GetBasenamePtr(entPtr->fts_path, "/"));
@@ -574,10 +579,21 @@ le_result_t file_CopyRecursive
             case FTS_D:
                 if (entPtr->fts_level > 0)
                 {
-                    if (le_dir_Make(newPath, entPtr->fts_statp->st_mode) == LE_FAULT)
+                    if (fs_IsMountPoint(entPtr->fts_path))
                     {
-                        result = LE_NOT_PERMITTED;
-                        goto cleanup;
+                        if (fts_set(ftsPtr, entPtr, FTS_SKIP) != 0)
+                        {
+                            result = LE_IO_ERROR;
+                            goto cleanup;
+                        }
+                    }
+                    else
+                    {
+                        if (le_dir_MakePath(newPath, entPtr->fts_statp->st_mode) == LE_FAULT)
+                        {
+                            result = LE_NOT_PERMITTED;
+                            goto cleanup;
+                        }
                     }
                 }
                 break;
@@ -587,17 +603,27 @@ le_result_t file_CopyRecursive
                 // Nothing to do here.
                 break;
 
+            // Unspecified type.
+            case FTS_DEFAULT:
+                // Nothing to do here.
+                break;
+
+            // Regular file.
             case FTS_F:
-                result = file_Copy(entPtr->fts_path, newPath, smackLabelPtr);
-                if (result != LE_OK)
+                if (!fs_IsMountPoint(entPtr->fts_path))
                 {
-                    goto cleanup;
+                    result = file_Copy(entPtr->fts_path, newPath, smackLabelPtr);
+                    if (result != LE_OK)
+                    {
+                        goto cleanup;
+                    }
                 }
                 break;
 
             // A symbolic link or a symbolic link that doesn't point to a file.
             case FTS_SL:
             case FTS_SLNONE:
+                if (!fs_IsMountPoint(entPtr->fts_path))
                 {
                     char linkBuffer[PATH_MAX] = "";
                     ssize_t bytesRead = readlink(entPtr->fts_path, linkBuffer, sizeof(linkBuffer));

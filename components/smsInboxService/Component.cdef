@@ -9,7 +9,7 @@ provides:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/cfgEntries
+    -I$CURDIR/../cfgEntries
     -I$LEGATO_BUILD/framework/libjansson/include
 }
 

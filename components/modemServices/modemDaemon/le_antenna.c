@@ -399,6 +399,7 @@ void le_antenna_RemoveStatusEventHandler
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_UNSUPPORTED if the Antenna detection is not supported
  *      - LE_FAULT on other failure
  *
  */

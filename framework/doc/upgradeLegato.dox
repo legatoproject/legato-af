@@ -1,12 +1,8 @@
-/** @page legatoUpgradeBeta Upgrade Notes
+/** @page legatoUpgrade Upgrade Notes
 
-Here's important upgrade info for Legato Beta:
-
-<a href ="http://www.legato.io/legato-docs/16_01/legatoUpgrade16_01.html">Beta 15.10 to 16.01</a> <br>
-<a href ="http://www.legato.io/legato-docs/15_10/legatoUpgrade15_10.html">Beta 15.08 to 15.10</a>
-
-
-<HR>
+<a href ="http://www.legato.io/legato-docs/16_04/legatoUpgrade16_04.html">16.01 to 16.04</a> <br>
+<a href ="http://www.legato.io/legato-docs/16_01/legatoUpgrade16_01_2.html">Beta 15.10 to 16.01</a> <br>
+<a href ="http://www.legato.io/legato-docs/15_10/legatoUpgrade15_10_1.html">Beta 15.08 to Beta 15.10</a>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

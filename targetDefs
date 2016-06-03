@@ -15,6 +15,16 @@ else ifeq ($(MAKECMDGOALS),ar7)
 else ifeq ($(MAKECMDGOALS),tests_ar7)
   include targetDefs.ar7
 
+else ifeq ($(MAKECMDGOALS),ar759x)
+  include targetDefs.ar759x
+else ifeq ($(MAKECMDGOALS),tests_ar759x)
+  include targetDefs.ar759x
+
+else ifeq ($(MAKECMDGOALS),ar758x)
+  include targetDefs.ar758x
+else ifeq ($(MAKECMDGOALS),tests_ar758x)
+  include targetDefs.ar758x
+
 else ifeq ($(MAKECMDGOALS),ar86)
   include targetDefs.ar86
 else ifeq ($(MAKECMDGOALS),tests_ar86)
@@ -29,6 +39,11 @@ else ifeq ($(MAKECMDGOALS),virt)
   include targetDefs.virt
 else ifeq ($(MAKECMDGOALS),tests_virt)
   include targetDefs.virt
+
+else ifeq ($(MAKECMDGOALS),raspi)
+  include targetDefs.raspi
+else ifeq ($(MAKECMDGOALS),tests_raspi)
+  include targetDefs.raspi
 
 else ifeq ($(MAKECMDGOALS),docs)
   include targetDefs.localhost

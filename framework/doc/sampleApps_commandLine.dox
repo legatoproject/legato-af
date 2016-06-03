@@ -4,6 +4,9 @@ This sample demonstrates a simple app running inside a sandbox that prints infor
 or directories specified from the command line. It has an @c adef with an executables section, and
 @c cdef with sources section.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/commandLine">sample app code</a>.
+
 Run this to install the sample app:
 
 @verbatim
@@ -17,13 +20,29 @@ If you're using an AR7 module in your target, substitute @c ar7 for wp85.
 This sample app takes a command with a list of file/directory paths, and accepts additional options like
 @c -x or @c --max-count.
 
-@ref sampleApps_startApp
+Here's an example on how to run the command-line sample app:
 
-<HR>
+Start your Legato app <code>app start <appname></code>.
+
+Change to the sandbox directory:
+@code
+cd /tmp/legato/sandboxes/<appname>/bin
+@endcode
+
+This is how to access a regular file:
+
+@code
+root@swi-mdm9x15:/tmp/legato/sandboxes/fileInfo/bin# ./fileInfo type /etc/hosts --max-count=10
+@endcode
+
+This is how to access permissions to control read/write, group members' and others' read access.
+@code
+root@swi-mdm9x15:/tmp/legato/sandboxes/fileInfo/bin# ./fileInfo permissions /etc/hosts --max-count=10 @endcode
+
+@ref sampleApps_startApp
 
 See <br>
 @ref basicAppsCreate
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

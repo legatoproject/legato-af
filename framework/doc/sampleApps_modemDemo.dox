@@ -7,6 +7,9 @@ Before you install this sample app:
 - register your SIM network. See @ref toolsTarget_cm_sim.
 - set an APN name. See @ref toolsTarget_cm_data.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/modemDemo">sample app code</a>.
+
 Run this to install the sample app:
 
 @verbatim

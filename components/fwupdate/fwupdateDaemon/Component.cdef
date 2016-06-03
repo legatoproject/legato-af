@@ -14,13 +14,14 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
+    -I$CURDIR/../platformAdaptor/inc
 }
 
 requires:
 {
     component:
     {
+        $LEGATO_FWUPDATE_PA_DEFAULT
         $LEGATO_FWUPDATE_PA
     }
 }

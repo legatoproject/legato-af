@@ -38,6 +38,18 @@ typedef struct
      " Test pattern Large Text Test pattern Large Text Test pattern Large Text Test patt"
 #define TEXT_TEST_PATTERN        "Text Test pattern"
 
+/*
+ * UCS2 test pattern
+ */
+static const uint16_t UCS2_TEST_PATTERN[] =
+{   0x4900, 0x7400, 0x2000, 0x6900, 0x7300, 0x2000, 0x7400, 0x6800,
+    0x6500, 0x2000, 0x5600, 0x6F00, 0x6900, 0x6300, 0x6500, 0x2000,
+    0x2100, 0x2100, 0x2100, 0x2000, 0x4100, 0x7200, 0x6500, 0x2000,
+    0x7900, 0x6f00, 0x7500, 0x2000, 0x7200, 0x6500, 0x6100, 0x6400,
+    0x7900, 0x2000, 0x3F00
+};
+
+
 #define FAIL_TEXT_TEST_PATTERN  "Fail Text Test pattern Fail Text Test pattern Fail Text Test" \
     " pattern Fail Text Test pattern Fail Text Test pattern Fail Text Test pattern Fail" \
     " Text Test pattern Text Test pattern "
@@ -121,6 +133,8 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
     char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
     char                  text[LE_SMS_TEXT_MAX_BYTES] = {0};
     uint8_t               smsPduDataPtr[LE_SMS_PDU_MAX_BYTES] = {0};
+    uint16_t              smsUcs2Ptr[LE_SMS_UCS2_MAX_CHARS] = {0};
+    size_t                smsUcs2Len;
     char                  smsPduDataHexString[(LE_SMS_PDU_MAX_BYTES * 2) + 1] = {0};
     size_t                uintval;
     size_t                smsPduLen1, smsPduLen2;
@@ -135,14 +149,14 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
 
     if (res != LE_OK)
     {
-        LE_ERROR("FAILED !!");
+        LE_ERROR("step FAILED !!");
         return;
     }
 
     smsPduLen2 = le_sms_GetPDULen(msg);
     // Check consistent between both APIs.
 
-    LE_ASSERT((smsPduLen1 == smsPduLen2));
+    LE_ASSERT(smsPduLen1 == smsPduLen2);
 
     if ( le_hex_BinaryToString(smsPduDataPtr, smsPduLen2, smsPduDataHexString,
             sizeof(smsPduDataHexString)) < 1 )
@@ -156,40 +170,38 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
 
     if (myformat == LE_SMS_FORMAT_TEXT)
     {
+        LE_INFO("SMS TEXT received");
         res = le_sms_GetSenderTel(msg, tel, 1);
         if(res != LE_OVERFLOW)
         {
-            LE_ERROR("-TEST 1/13- Check le_sms_GetSenderTel failure (LE_OVERFLOW expected) !");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST 1- Check le_sms_GetSenderTel failure (LE_OVERFLOW expected) !");
+            LE_ASSERT(res != LE_OVERFLOW);
         }
         else
         {
-            LE_INFO("-TEST 1/13- Check le_sms_GetSenderTel passed (LE_OVERFLOW expected).");
+            LE_INFO("-TEST 1- Check le_sms_GetSenderTel passed (LE_OVERFLOW expected).");
         }
 
         res = le_sms_GetSenderTel(msg, tel, sizeof(tel));
         if(res != LE_OK)
         {
-            LE_ERROR("-TEST 2/13- Check le_sms_GetSenderTel failure (LE_OK expected) !");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST 2- Check le_sms_GetSenderTel failure (LE_OK expected) !");
+            LE_ASSERT(res != LE_OK);
         }
         else
         {
-            LE_INFO("-TEST 2/13- Check le_sms_GetSenderTel passed (%s) (LE_OK expected).", tel);
+            LE_INFO("-TEST 2- Check le_sms_GetSenderTel passed (%s) (LE_OK expected).", tel);
         }
 
         if(strncmp(&tel[strlen(tel)-4], &DEST_TEST_PATTERN[strlen(DEST_TEST_PATTERN)-4], 4))
         {
-            LE_ERROR("-TEST  3/13- Check le_sms_GetSenderTel, bad Sender Telephone number! (%s)",
+            LE_ERROR("-TEST  3- Check le_sms_GetSenderTel, bad Sender Telephone number! (%s)",
                             tel);
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ASSERT(true);
         }
         else
         {
-            LE_INFO("-TEST  3/13- Check le_sms_GetSenderTel, Sender Telephone number OK.");
+            LE_INFO("-TEST  3- Check le_sms_GetSenderTel, Sender Telephone number OK.");
         }
 
         uintval = le_sms_GetUserdataLen(msg);
@@ -197,49 +209,45 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
            (uintval != strlen(SHORT_TEXT_TEST_PATTERN)) &&
            (uintval != strlen(LARGE_TEXT_TEST_PATTERN)))
         {
-            LE_ERROR("-TEST  4/13- Check le_sms_GetLen, bad expected text length! (%zd)", uintval);
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  4- Check le_sms_GetLen, bad expected text length! (%zd)", uintval);
+            LE_ASSERT(true);
         }
         else
         {
-            LE_INFO("-TEST  4/13- Check le_sms_GetLen OK.");
+            LE_INFO("-TEST  4- Check le_sms_GetLen OK.");
         }
 
         res = le_sms_GetTimeStamp(msg, timestamp, 1);
         if(res != LE_OVERFLOW)
         {
-            LE_ERROR("-TEST  5/13- Check le_sms_GetTimeStamp -LE_OVERFLOW error- failure!");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  5- Check le_sms_GetTimeStamp -LE_OVERFLOW error- failure!");
+            LE_ASSERT(res != LE_OVERFLOW);
         }
         else
         {
-            LE_INFO("-TEST  5/13- Check le_sms_GetTimeStamp -LE_OVERFLOW error- OK.");
+            LE_INFO("-TEST  5- Check le_sms_GetTimeStamp -LE_OVERFLOW error- OK.");
         }
 
         res = le_sms_GetTimeStamp(msg, timestamp, sizeof(timestamp));
         if(res != LE_OK)
         {
-            LE_ERROR("-TEST  6/13- Check le_sms_GetTimeStamp failure!");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  6- Check le_sms_GetTimeStamp failure!");
+            LE_ASSERT(res != LE_OK);
         }
         else
         {
-            LE_INFO("-TEST  6/13- Check le_sms_GetTimeStamp OK (%s).", timestamp);
+            LE_INFO("-TEST  6- Check le_sms_GetTimeStamp OK (%s).", timestamp);
         }
 
         res = le_sms_GetText(msg, text, sizeof(text));
         if(res != LE_OK)
         {
-            LE_ERROR("-TEST  7/13- Check le_sms_GetText failure!");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  7- Check le_sms_GetText failure!");
+            LE_ASSERT(res != LE_OK);
         }
         else
         {
-            LE_INFO("-TEST  7/13- Check le_sms_GetText OK.");
+            LE_INFO("-TEST  7- Check le_sms_GetText OK.");
         }
 
         if((strncmp(text, TEXT_TEST_PATTERN, strlen(TEXT_TEST_PATTERN)) != 0) &&
@@ -247,38 +255,35 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
            (strncmp(text, LARGE_TEXT_TEST_PATTERN, strlen(LARGE_TEXT_TEST_PATTERN)) != 0)
         )
         {
-            LE_ERROR("-TEST  8/13- Check le_sms_GetText, bad expected received text! (%s)", text);
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  8- Check le_sms_GetText, bad expected received text! (%s)", text);
+            LE_ASSERT(true);
         }
         else
         {
-            LE_INFO("-TEST  8/13- Check le_sms_GetText, received text OK.");
+            LE_INFO("-TEST  8- Check le_sms_GetText, received text OK.");
         }
 
         // Verify that the message is read-only
         res = le_sms_SetDestination(msg, DEST_TEST_PATTERN);
         if(res != LE_NOT_PERMITTED)
         {
-            LE_ERROR("-TEST  9/13- Check le_sms_SetDestination, parameter check failure!");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  9- Check le_sms_SetDestination, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
         }
         else
         {
-            LE_INFO("-TEST  9/13- Check le_sms_SetDestination OK.");
+            LE_INFO("-TEST  9- Check le_sms_SetDestination OK.");
         }
 
         res = le_sms_SetText(msg, TEXT_TEST_PATTERN);
         if(res != LE_NOT_PERMITTED)
         {
-            LE_ERROR("-TEST  10/13- Check le_sms_SetText, parameter check failure!");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  10- Check le_sms_SetText, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
         }
         else
         {
-            LE_INFO("-TEST  10/13- Check le_sms_SetText OK.");
+            LE_INFO("-TEST  10- Check le_sms_SetText OK.");
         }
 
         // Verify Mark Read/Unread functions
@@ -287,13 +292,12 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         mystatus = le_sms_GetStatus(msg);
         if(mystatus != LE_SMS_RX_READ)
         {
-            LE_ERROR("-TEST  11/13- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  11- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            LE_ASSERT(mystatus != LE_SMS_RX_READ);
         }
         else
         {
-            LE_INFO("-TEST  11/13- Check le_sms_GetStatus, status OK.");
+            LE_INFO("-TEST  11- Check le_sms_GetStatus, status OK.");
         }
 
         le_sms_MarkUnread(msg);
@@ -301,25 +305,175 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         mystatus = le_sms_GetStatus(msg);
         if(mystatus != LE_SMS_RX_UNREAD)
         {
-            LE_ERROR("-TEST  12/13- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  12- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            LE_ASSERT(mystatus != LE_SMS_RX_UNREAD);
         }
         else
         {
-            LE_INFO("-TEST  12/13- Check le_sms_GetStatus, status OK.");
+            LE_INFO("-TEST  12- Check le_sms_GetStatus, status OK.");
         }
 
         res = le_sms_DeleteFromStorage(msg);
         if(res != LE_OK)
         {
-            LE_ERROR("-TEST  13/13- Check le_sms_DeleteFromStorage failure!");
-            LE_ERROR("FAILED !!");
-            return;
+            LE_ERROR("-TEST  13- Check le_sms_DeleteFromStorage failure!");
+            LE_ASSERT(res != LE_OK);
         }
         else
         {
-            LE_INFO("-TEST  13/13- Check le_sms_DeleteFromStorage OK.");
+            LE_INFO("-TEST  13- Check le_sms_DeleteFromStorage OK.");
+        }
+        NbSmsRx --;
+    }
+    if (myformat == LE_SMS_FORMAT_UCS2)
+    {
+        LE_INFO("SMS UCS2 received");
+        res = le_sms_GetSenderTel(msg, tel, 1);
+        if(res != LE_OVERFLOW)
+        {
+            LE_ERROR("-TEST 1- Check le_sms_GetSenderTel failure (LE_OVERFLOW expected) !");
+            LE_ASSERT(res != LE_OVERFLOW);
+        }
+        else
+        {
+            LE_INFO("-TEST 1- Check le_sms_GetSenderTel passed (LE_OVERFLOW expected).");
+        }
+
+        res = le_sms_GetSenderTel(msg, tel, sizeof(tel));
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST 2- Check le_sms_GetSenderTel failure (LE_OK expected) !");
+            LE_ASSERT(res != LE_OK);
+        }
+        else
+        {
+            LE_INFO("-TEST 2- Check le_sms_GetSenderTel passed (%s) (LE_OK expected).", tel);
+        }
+
+        if(strncmp(&tel[strlen(tel)-4], &DEST_TEST_PATTERN[strlen(DEST_TEST_PATTERN)-4], 4))
+        {
+            LE_ERROR("-TEST  3- Check le_sms_GetSenderTel, bad Sender Telephone number! (%s)",
+                tel);
+            LE_ASSERT(true);
+        }
+        else
+        {
+            LE_INFO("-TEST  3- Check le_sms_GetSenderTel, Sender Telephone number OK.");
+        }
+
+        uintval = le_sms_GetUserdataLen(msg);
+        if(uintval != (sizeof(UCS2_TEST_PATTERN) /2))
+        {
+            LE_ERROR("-TEST  4- Check le_sms_GetLen, bad expected text length! (%zd)", uintval);
+            LE_ASSERT(uintval != (sizeof(UCS2_TEST_PATTERN) /2));
+        }
+        else
+        {
+            LE_INFO("-TEST  4- Check le_sms_GetLen OK.");
+        }
+
+        res = le_sms_GetTimeStamp(msg, timestamp, 1);
+        if(res != LE_OVERFLOW)
+        {
+            LE_ERROR("-TEST  5- Check le_sms_GetTimeStamp -LE_OVERFLOW error- failure!");
+            LE_ASSERT(res != LE_OVERFLOW);
+        }
+        else
+        {
+            LE_INFO("-TEST  5- Check le_sms_GetTimeStamp -LE_OVERFLOW error- OK.");
+        }
+
+        res = le_sms_GetTimeStamp(msg, timestamp, sizeof(timestamp));
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST  6- Check le_sms_GetTimeStamp failure!");
+            LE_ASSERT(res != LE_OK);
+        }
+        else
+        {
+            LE_INFO("-TEST  6- Check le_sms_GetTimeStamp OK (%s).", timestamp);
+        }
+        smsUcs2Len = sizeof(smsUcs2Ptr) / 2;
+        res = le_sms_GetUCS2(msg, smsUcs2Ptr, &smsUcs2Len);
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST  7- Check le_sms_GetUcs2 failure!");
+            LE_ASSERT(res != LE_OK);
+        }
+        else
+        {
+            LE_INFO("-TEST  7- Check le_sms_GetUcs2 OK.");
+        }
+
+        if(memcmp(smsUcs2Ptr, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN)) != 0)
+        {
+            LE_ERROR("-TEST  8- Check le_sms_GetUcs2, bad expected received UCS2!");
+            LE_ASSERT(true);
+        }
+        else
+        {
+            LE_INFO("-TEST  8- Check le_sms_GetUcs2, received text OK.");
+        }
+
+        // Verify that the message is read-only
+        res = le_sms_SetDestination(msg, DEST_TEST_PATTERN);
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  9- Check le_sms_SetDestination, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
+        }
+        else
+        {
+            LE_INFO("-TEST  9- Check le_sms_SetDestination OK.");
+        }
+
+        res = le_sms_SetUCS2(msg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN) / 2);
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  10- Check le_sms_SetUCS2, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
+        }
+        else
+        {
+            LE_INFO("-TEST  10- Check UCS2_TEST_PATTERN OK.");
+        }
+
+        // Verify Mark Read/Unread functions
+        le_sms_MarkRead(msg);
+
+        mystatus = le_sms_GetStatus(msg);
+        if(mystatus != LE_SMS_RX_READ)
+        {
+            LE_ERROR("-TEST  11- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            LE_ASSERT(mystatus != LE_SMS_RX_READ);
+        }
+        else
+        {
+            LE_INFO("-TEST  11- Check le_sms_GetStatus, status OK.");
+        }
+
+        le_sms_MarkUnread(msg);
+
+        mystatus = le_sms_GetStatus(msg);
+        if(mystatus != LE_SMS_RX_UNREAD)
+        {
+            LE_ERROR("-TEST  12- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            LE_ASSERT(mystatus != LE_SMS_RX_UNREAD);
+        }
+        else
+        {
+            LE_INFO("-TEST  12- Check le_sms_GetStatus, status OK.");
+        }
+
+        res = le_sms_DeleteFromStorage(msg);
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST  13- Check le_sms_DeleteFromStorage failure!");
+            LE_ASSERT(res != LE_OK);
+        }
+        else
+        {
+            LE_INFO("-TEST  13- Check le_sms_DeleteFromStorage OK.");
         }
         NbSmsRx --;
     }
@@ -770,7 +924,8 @@ static le_result_t Testle_sms_Send_Text
             return LE_FAULT;
         }
 
-        res = WaitFunction(&SmsRxSynchronization, 10000);
+        res = WaitFunction(&SmsRxSynchronization, 40000);
+        LE_ERROR_IF(res != LE_OK, "SYNC FAILED");
 
         le_sms_Delete(myMsg);
     }
@@ -781,6 +936,77 @@ static le_result_t Testle_sms_Send_Text
     return res;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Send a UCS2 message.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t Testle_sms_Send_UCS2
+(
+    void
+)
+{
+    le_result_t           res = LE_FAULT;
+    le_sms_MsgRef_t       myMsg;
+
+    NbSmsRx = 1;
+
+    // Init the semaphore for synchronous API (hangup, answer)
+    sem_init(&SmsRxSynchronization,0,0);
+
+    RxThread = le_thread_Create("Rx SMS reception", MyRxThread, NULL);
+    le_thread_Start(RxThread);
+
+    // Wait for thread starting.
+    sleep(2);
+
+    // Check if Thread SMS RX handler has been started
+    if (!RxHdlrRef)
+    {
+        LE_ERROR("Handler not ready !!");
+        return LE_FAULT;
+    }
+
+    myMsg = le_sms_Create();
+    if (myMsg)
+    {
+
+        LE_DEBUG("-TEST- Create Msg %p", myMsg);
+
+        res = le_sms_SetDestination(myMsg, DEST_TEST_PATTERN);
+        if (res != LE_OK)
+        {
+            le_sms_Delete(myMsg);
+            return LE_FAULT;
+        }
+
+        res = le_sms_SetUCS2(myMsg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN) / 2);
+        if (res != LE_OK)
+        {
+            le_sms_Delete(myMsg);
+            return LE_FAULT;
+        }
+
+        res = le_sms_Send(myMsg);
+        if ((res == LE_FAULT) || (res == LE_FORMAT_ERROR))
+        {
+            le_sms_Delete(myMsg);
+            return LE_FAULT;
+        }
+
+        res = WaitFunction(&SmsRxSynchronization, 120000);
+        LE_ERROR_IF(res != LE_OK, "SYNC FAILED");
+
+        le_sms_Delete(myMsg);
+    }
+
+    le_sms_RemoveRxMessageHandler(RxHdlrRef);
+    le_thread_Cancel(RxThread);
+
+    return res;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -805,6 +1031,7 @@ static le_result_t Testle_sms_AsyncSendTextTimeout
     le_thread_Start(TxCallBack);
 
     res = WaitFunction(&SmsTxSynchronization, 120000);
+    LE_ERROR_IF(res != LE_OK, "SYNC FAILED");
 
     le_thread_Cancel(TxCallBack);
 
@@ -835,6 +1062,8 @@ static le_result_t Testle_sms_AsyncSendText
     le_thread_Start(TxCallBack);
 
     res = WaitFunction(&SmsTxSynchronization, 120000);
+    LE_ERROR_IF(res != LE_OK, "SYNC FAILED");
+
     le_thread_Cancel(TxCallBack);
 
     return res;
@@ -1019,97 +1248,53 @@ static le_result_t Testle_sms_ReceivedList()
     le_sms_Status_t         mystatus;
 
     myMsg = le_sms_Create();
-    if (!myMsg)
-    {
-        return LE_FAULT;
-    }
+    LE_ASSERT(!myMsg);
 
     res = le_sms_SetDestination(myMsg, DEST_TEST_PATTERN);
-    if (res != LE_OK)
-    {
-        le_sms_Delete(myMsg);
-        return LE_FAULT;
-    }
+    LE_ASSERT(res != LE_OK);
 
     res = le_sms_SetText(myMsg, TEXT_TEST_PATTERN);
-    if (res != LE_OK)
-    {
-        le_sms_Delete(myMsg);
-        return LE_FAULT;
-    }
+    LE_ASSERT(res != LE_OK);
 
     res = le_sms_Send(myMsg);
-    if ((res == LE_FAULT) || (res == LE_FORMAT_ERROR))
-    {
-        le_sms_Delete(myMsg);
-        return LE_FAULT;
-    }
+    LE_ASSERT((res == LE_FAULT) || (res == LE_FORMAT_ERROR));
 
     res = le_sms_Send(myMsg);
-    if ((res == LE_FAULT) || (res == LE_FORMAT_ERROR))
-    {
-        le_sms_Delete(myMsg);
-        return LE_FAULT;
-    }
+    LE_ASSERT((res == LE_FAULT) || (res == LE_FORMAT_ERROR));
 
-    sleep(5);
+    sleep(10);
 
     // List Received messages
     receivedList = le_sms_CreateRxMsgList();
-    if (!receivedList)
-    {
-        le_sms_Delete(myMsg);
-        return LE_FAULT;
-    }
+    LE_ASSERT(!receivedList);
 
     lMsg1 = le_sms_GetFirst(receivedList);
     if (lMsg1 != NULL)
     {
         mystatus = le_sms_GetStatus(lMsg1);
-        if ((mystatus != LE_SMS_RX_READ) && (mystatus != LE_SMS_RX_UNREAD))
-        {
-            le_sms_Delete(myMsg);
-            LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            return LE_FAULT;
-        }
-        // le_sms_Delete() API kills client if message belongs in a Rx list.
-        LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
+        LE_ASSERT((mystatus != LE_SMS_RX_READ) && (mystatus != LE_SMS_RX_UNREAD));
 
         // Verify Mark Read functions on Rx message list
         le_sms_MarkRead(lMsg1);
         mystatus = le_sms_GetStatus(lMsg1);
-        if(mystatus != LE_SMS_RX_READ)
-        {
-            LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            le_sms_Delete(myMsg);
-            return LE_FAULT;
-        }
+        LE_ASSERT(mystatus != LE_SMS_RX_READ);
 
         // Verify Mark Unread functions on Rx message list
         le_sms_MarkUnread(lMsg1);
         mystatus = le_sms_GetStatus(lMsg1);
-        if(mystatus != LE_SMS_RX_UNREAD)
-        {
-            LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            le_sms_Delete(myMsg);
-            return LE_FAULT;
-        }
+        LE_ASSERT(mystatus != LE_SMS_RX_UNREAD);
 
         // Verify Mark Read functions on Rx message list
         le_sms_MarkRead(lMsg1);
         mystatus = le_sms_GetStatus(lMsg1);
-        if(mystatus != LE_SMS_RX_READ)
-        {
-            LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            le_sms_Delete(myMsg);
-            return LE_FAULT;
-        }
+        LE_ASSERT(mystatus != LE_SMS_RX_READ);
+
         LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
         le_sms_DeleteFromStorage(lMsg1);
     }
     else
     {
-        LE_ERROR("Test requiered at less 2 SMSs in the storage");
+        LE_ERROR("Test required at less 2 SMSs in the storage");
         return LE_FAULT;
     }
 
@@ -1117,12 +1302,8 @@ static le_result_t Testle_sms_ReceivedList()
     if (lMsg2 != NULL)
     {
         mystatus = le_sms_GetStatus(lMsg2);
-        if ((mystatus != LE_SMS_RX_READ) && (mystatus != LE_SMS_RX_UNREAD))
-        {
-            le_sms_Delete(myMsg);
-            LE_ERROR("- Check le_sms_GetStatus, bad status (%d)!", mystatus);
-            return LE_FAULT;
-        }
+        LE_ASSERT((mystatus != LE_SMS_RX_READ) && (mystatus != LE_SMS_RX_UNREAD));
+
         LE_INFO("-TEST- Delete Rx message 2 from storage.%p", lMsg2);
         le_sms_DeleteFromStorage(lMsg2);
     }
@@ -1166,27 +1347,30 @@ COMPONENT_INIT
         DeleteMessages();
 
         res = Testle_sms_AsyncSendTextTimeout();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 
         res = Testle_sms_Send_Binary();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 
         res = Testle_sms_Send_Text();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 
         res = Testle_sms_ReceivedList();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 
         res = Testle_sms_AsyncSendText();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 
 #if PDU_TEST
         res = Testle_sms_AsyncSendPdu();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 
         res = Testle_sms_Send_Pdu();
-        LE_ASSERT(res != LE_OK);
+        LE_ASSERT(res == LE_OK);
 #endif
+
+        res = Testle_sms_Send_UCS2();
+        LE_ASSERT(res == LE_OK);
 
         LE_INFO("smsTest sequence PASSED");
         // Delete all Rx SMS message

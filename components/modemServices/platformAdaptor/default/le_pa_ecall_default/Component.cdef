@@ -1,0 +1,19 @@
+requires:
+{
+    api:
+    {
+        le_mdmDefs.api  [types-only]
+        le_ecall.api    [types-only]
+    }
+}
+
+sources:
+{
+    pa_ecall_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+    -I$CURDIR/../../../modemDaemon
+}

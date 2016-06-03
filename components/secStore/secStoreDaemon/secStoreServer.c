@@ -140,10 +140,10 @@ static le_ref_MapRef_t EntryIterMap = NULL;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char path[SECSTOREADMIN_MAX_PATH_SIZE]; ///< Entry name.
-    bool isDir;                             ///< true if the entry is a directory, otherwise the
-                                            ///  entry is a file.
-    le_sls_Link_t link;                     ///< Link in entries iterator.
+    char path[SECSTOREADMIN_MAX_PATH_BYTES]; ///< Entry name.
+    bool isDir;                              ///< true if the entry is a directory, otherwise the
+                                             ///  entry is a file.
+    le_sls_Link_t link;                      ///< Link in entries iterator.
 }
 Entry_t;
 
@@ -682,7 +682,7 @@ static le_result_t CheckClientLimit
     }
 
     // Get the size of the item in the secure storage if it already exists.
-    char itemPath[SECSTOREADMIN_MAX_PATH_SIZE] = "";
+    char itemPath[SECSTOREADMIN_MAX_PATH_BYTES] = "";
 
     LE_FATAL_IF(le_path_Concat("/", itemPath, sizeof(itemPath), clientPathPtr, itemNamePtr, NULL) != LE_OK,
                 "Client %s's path for item %s is too long.", clientNamePtr, itemNamePtr);
@@ -751,7 +751,8 @@ static bool IsValidName
 //--------------------------------------------------------------------------------------------------
 /**
  * Writes an item to secure storage.  If the item already exists then it will be overwritten with
- * the new value.  If the item does not already exist then it will be created.
+ * the new value.  If the item does not already exist then it will be created.  Specifying 0 for
+ * buffer size means emptying an existing file or creating a 0-byte file.
  *
  * @return
  *      LE_OK if successful.
@@ -802,7 +803,7 @@ le_result_t le_secStore_Write
     }
 
     // Get the path to the client's secure storage area.
-    char path[SECSTOREADMIN_MAX_PATH_SIZE];
+    char path[SECSTOREADMIN_MAX_PATH_BYTES];
     GetClientPath(clientName, isApp, path, sizeof(path));
 
     // Check the available limit for the client.
@@ -883,7 +884,7 @@ le_result_t le_secStore_Read
     }
 
     // Get the path to the client's secure storage area.
-    char path[SECSTOREADMIN_MAX_PATH_SIZE];
+    char path[SECSTOREADMIN_MAX_PATH_BYTES];
     GetClientPath(clientName, isApp, path, sizeof(path));
 
     // Read the item from the secure storage.
@@ -939,7 +940,7 @@ le_result_t le_secStore_Delete
     }
 
     // Get the path to the client's secure storage area.
-    char path[SECSTOREADMIN_MAX_PATH_SIZE];
+    char path[SECSTOREADMIN_MAX_PATH_BYTES];
     GetClientPath(clientName, isApp, path, sizeof(path));
 
     // Delete the item from the secure storage.
@@ -971,7 +972,7 @@ static bool IsInEntryList
     {
         Entry_t* entryPtr = CONTAINER_OF(linkPtr, Entry_t, link);
 
-        if (strncmp(entryPtr->path, entry, SECSTOREADMIN_MAX_PATH_SIZE) == 0)
+        if (strncmp(entryPtr->path, entry, SECSTOREADMIN_MAX_PATH_BYTES) == 0)
         {
             return true;
         }
@@ -1012,7 +1013,7 @@ static bool IsValidPath
         return false;
     }
 
-    if (pathLen >= SECSTOREADMIN_MAX_PATH_SIZE)
+    if (pathLen > SECSTOREADMIN_MAX_PATH_SIZE)
     {
         LE_ERROR("Path is too long.");
         return false;
@@ -1122,7 +1123,7 @@ static void StoreEntry
 
         LE_ASSERT(le_utf8_Copy(entryPtr->path,
                                entryNamePtr,
-                               SECSTOREADMIN_MAX_PATH_SIZE,
+                               SECSTOREADMIN_MAX_PATH_BYTES,
                                NULL) == LE_OK);
         entryPtr->isDir = isDir;
 
@@ -1393,6 +1394,28 @@ le_result_t secStoreAdmin_Read
 
     // Read the item from the secure storage.
     return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy the meta file to the specified path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the meta file does not exist.
+ *      LE_UNAVAILABLE if the sfs is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreAdmin_CopyMetaTo
+(
+    const char* path
+        ///< [IN]
+        ///< Destination path of meta file copy.
+)
+{
+    return pa_secStore_CopyMetaTo(path);
 }
 
 

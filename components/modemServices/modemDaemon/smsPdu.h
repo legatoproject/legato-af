@@ -12,11 +12,11 @@
 #define SMSPDU_H_
 
 typedef enum {
-    SMSPDU_7_BITS = 0x0,        ///< Characters are encoded on 7 bits
-                                ///<  (for GSM (GSM 03.38), for CDMA 7bits Ascii)
-    SMSPDU_8_BITS = 0x1,        ///< Informations are treated as raw data on 8 bits
-    SMSPDU_UCS_2  = 0x2,        ///< Characters are encoded using UCS-2 on 16 bits
-    SMSPDU_ENCODING_UNKNOWN,    ///< Unknown encoding format
+    SMSPDU_7_BITS        = 0x0,   ///< Characters are encoded on 7 bits
+                                  ///<  (for GSM (GSM 03.38), for CDMA 7bits Ascii)
+    SMSPDU_8_BITS        = 0x1,   ///< Informations are treated as raw data on 8 bits
+    SMSPDU_UCS2_16_BITS  = 0x2,   ///< Characters are encoded using UCS-2 on 16 bits
+    SMSPDU_ENCODING_UNKNOWN,      ///< Unknown encoding format
 }
 smsPdu_Encoding_t;
 

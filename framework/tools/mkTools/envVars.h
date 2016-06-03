@@ -40,11 +40,24 @@ std::string GetRequired
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a given environment variable.  If the variable already exists, replaces its
+ * value.
+ */
+//--------------------------------------------------------------------------------------------------
+void Set
+(
+    const std::string& name,  ///< The name of the environment variable.
+    const std::string& value  ///< The value of the environment variable.
+);
+
+
 //----------------------------------------------------------------------------------------------
 /**
  * Adds target-specific environment variables (e.g., LEGATO_TARGET) to the process's environment.
  *
- * The environment will get inherited by any child processes, including the shell that is used
+ * The environment will get inherited by any child processes, including the shell that ninja uses
  * to run the compiler and linker.  Also, this allows these environment variables to be used in
  * paths in .sdef, .adef, and .cdef files.
  */
@@ -52,6 +65,20 @@ std::string GetRequired
 void SetTargetSpecific
 (
     const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+);
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Checks if a given environment variable name is one of the reserved environment variable names
+ * (e.g., LEGATO_TARGET).
+ *
+ * @return true if reserved, false if not.
+ */
+//----------------------------------------------------------------------------------------------
+bool IsReserved
+(
+    const std::string& name  ///< Name of the variable.
 );
 
 

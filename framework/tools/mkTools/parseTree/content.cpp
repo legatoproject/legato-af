@@ -83,6 +83,9 @@ std::string Content_t::TypeName
         case ENV_VAR:
             return "environment variable";
 
+        case MODULE_PARAM:
+            return "module parameter";
+
         case POOL:
             return "pool";
 

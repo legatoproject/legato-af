@@ -106,12 +106,20 @@ void GenerateBuildRules
 {
     std::string cCompilerPath = GetCCompilerPath(target);
     std::string cxxCompilerPath = GetCxxCompilerPath(target);
+    std::string sysrootOption;
+
+    std::string envValue = envVars::Get("LEGATO_SYSROOT");
+    if (!envValue.empty())
+    {
+        sysrootOption = path::Combine("--sysroot=", envValue);
+    }
 
     // Generate rule for compiling a C source code file.
     script << "rule CompileC\n"
               "  description = Compiling C source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << cCompilerPath << " -MMD -MF $out.d -c $in -o $out"
+              "  command = " << cCompilerPath << " " << sysrootOption <<
+              " -MMD -MF $out.d -c $in -o $out"
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
@@ -128,7 +136,8 @@ void GenerateBuildRules
     script << "rule CompileCxx\n"
               "  description = Compiling C++ source\n"
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
-              "  command = " << cxxCompilerPath << " -MMD -MF $out.d -c $in -o $out"
+              "  command = " << cxxCompilerPath << " " << sysrootOption <<
+              " -MMD -MF $out.d -c $in -o $out"
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
@@ -144,22 +153,33 @@ void GenerateBuildRules
     // Generate rules for linking C and C++ object code files into shared libraries.
     script << "rule LinkCLib\n"
               "  description = Linking C library\n"
-              "  command = " << cCompilerPath << " -shared -o $out $in $ldFlags\n"
+              "  command = " << cCompilerPath << " " << sysrootOption <<
+              " -shared -o $out $in $ldFlags\n"
               "\n";
 
     script << "rule LinkCxxLib\n"
               "  description = Linking C++ library\n"
-              "  command = " << cxxCompilerPath << " -shared -o $out $in $ldFlags\n"
+              "  command = " << cxxCompilerPath << " " << sysrootOption <<
+              " -shared -o $out $in $ldFlags\n"
               "\n";
 
     script << "rule LinkCExe\n"
               "  description = Linking C executable\n"
-              "  command = " << cCompilerPath << " -o $out $in $ldFlags\n"
+              "  command = " << cCompilerPath << " " << sysrootOption <<
+              " -o $out $in $ldFlags\n"
               "\n";
 
     script << "rule LinkCxxExe\n"
               "  description = Linking C++ executable\n"
-              "  command = " << cxxCompilerPath << " -o $out $in $ldFlags\n"
+              "  command = " << cxxCompilerPath << " " << sysrootOption <<
+              " -o $out $in $ldFlags\n"
+              "\n";
+
+    // Generate rules for compiling Java code.
+    script << "rule CompileJava\n"
+              "  description = Compiling Java source\n"
+              "  command = javac -cp $classPath -d $classDestPath $in && $\n"
+              "            jar -cf $out -C $classDestPath .\n"
               "\n";
 
     // Generate a rule for running ifgen.
@@ -177,6 +197,13 @@ void GenerateBuildRules
     script << "rule HardLink\n"
               "  description = Creating hard link\n"
               "  command = ln -T -f $in $out\n"
+              "\n";
+
+    // Generate a rule for copying a file.
+    script << "rule CopyF\n"
+              "  description = Copying file\n"
+              "  command = cp -d -f -T $in $out && $\n"
+              "            chmod $modeFlags $out\n"
               "\n";
 
     // Generate a rule for re-building the build.ninja script when it is out of date.
@@ -329,18 +356,21 @@ static void GenerateBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (generatedSet.find(ifPtr->interfaceFile) == generatedSet.end())
-    {
-        generatedSet.insert(ifPtr->interfaceFile);
+    model::InterfaceCFiles_t cFiles;
+    ifPtr->GetInterfaceFiles(cFiles);
 
-        script << "build $builddir/" << ifPtr->interfaceFile << ":"
+    if (generatedSet.find(cFiles.interfaceFile) == generatedSet.end())
+    {
+        generatedSet.insert(cFiles.interfaceFile);
+
+        script << "build $builddir/" << cFiles.interfaceFile << ":"
                   " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
         GetIncludedApis(script, ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags = --gen-interface"
                   " --name-prefix " << ifPtr->internalName <<
                   " --file-prefix " << ifPtr->internalName << " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(ifPtr->interfaceFile) << "\n"
+                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.interfaceFile) << "\n"
                   "\n";
     }
 }
@@ -361,18 +391,21 @@ static void GenerateBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
+    model::InterfaceCFiles_t cFiles;
+    ifPtr->GetInterfaceFiles(cFiles);
+
     if (   (!buildParams.codeGenOnly)
-        && (generatedSet.find(ifPtr->objectFile) == generatedSet.end())  )
+        && (generatedSet.find(cFiles.objectFile) == generatedSet.end())  )
     {
-        generatedSet.insert(ifPtr->objectFile);
+        generatedSet.insert(cFiles.objectFile);
 
         // .o file
-        script << "build $builddir/" << ifPtr->objectFile << ":"
-                  " CompileC $builddir/" << ifPtr->sourceFile;
+        script << "build $builddir/" << cFiles.objectFile << ":"
+                  " CompileC $builddir/" << cFiles.sourceFile;
 
         // Add dependencies on the generated .h files for this interface so we make sure
         // those get built first.
-        script << " | $builddir/" << ifPtr->internalHFile << " $builddir/" << ifPtr->interfaceFile;
+        script << " | $builddir/" << cFiles.internalHFile << " $builddir/" << cFiles.interfaceFile;
 
         // Build a set containing all the .h files that will be included by the .h file generated
         // for this .api file.
@@ -405,22 +438,22 @@ static void GenerateBuildStatement
     // .c file and .h files
     std::string generatedFiles;
     std::string ifgenFlags;
-    if (generatedSet.find(ifPtr->sourceFile) == generatedSet.end())
+    if (generatedSet.find(cFiles.sourceFile) == generatedSet.end())
     {
-        generatedSet.insert(ifPtr->sourceFile);
-        generatedFiles += " $builddir/" + ifPtr->sourceFile;
+        generatedSet.insert(cFiles.sourceFile);
+        generatedFiles += " $builddir/" + cFiles.sourceFile;
         ifgenFlags += " --gen-client";
     }
-    if (generatedSet.find(ifPtr->interfaceFile) == generatedSet.end())
+    if (generatedSet.find(cFiles.interfaceFile) == generatedSet.end())
     {
-        generatedSet.insert(ifPtr->interfaceFile);
-        generatedFiles += " $builddir/" + ifPtr->interfaceFile;
+        generatedSet.insert(cFiles.interfaceFile);
+        generatedFiles += " $builddir/" + cFiles.interfaceFile;
         ifgenFlags += " --gen-interface";
     }
-    if (generatedSet.find(ifPtr->internalHFile) == generatedSet.end())
+    if (generatedSet.find(cFiles.internalHFile) == generatedSet.end())
     {
-        generatedSet.insert(ifPtr->internalHFile);
-        generatedFiles += " $builddir/" + ifPtr->internalHFile;
+        generatedSet.insert(cFiles.internalHFile);
+        generatedFiles += " $builddir/" + cFiles.internalHFile;
         ifgenFlags += " --gen-local";
     }
     if (!generatedFiles.empty())
@@ -432,8 +465,71 @@ static void GenerateBuildStatement
         GetIncludedApis(script, ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(ifPtr->sourceFile) << "\n\n";
+                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n\n";
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the Java ifgen build statement for the client/server side of an API.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateJavaBuildStatement
+(
+    std::ofstream& script,  ///< Build script to write to.
+    const model::InterfaceJavaFiles_t& javaFiles,
+    const model::Component_t* componentPtr,
+    const model::ApiFile_t* apiFilePtr,
+    const std::string& internalName,
+    const std::string& workDir,
+    bool isClient,
+    std::set<std::string>& generatedSet
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string apiFlag = isClient ? "--gen-client" : "--gen-server";
+
+    script << "build " << path::Combine(workDir, javaFiles.interfaceSourceFile) << " $\n"
+              "      " << path::Combine(workDir, javaFiles.implementationSourceFile) << " : $\n"
+              "      GenInterfaceCode " << apiFilePtr->path << " | ";
+
+    GetIncludedApis(script, apiFilePtr);
+
+    script << "\n"
+              "  ifgenFlags = --lang Java " << apiFlag << " --name-prefix "
+           << internalName << " $ifgenFlags\n"
+              "  outputDir = " << path::Combine(workDir,
+                                                path::Combine(componentPtr->workingDir, "src"))
+           << "\n\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the Java ifgen build statement for the client side of an API.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateJavaBuildStatement
+(
+    std::ofstream& script,  ///< Build script to write to.
+    const model::ApiClientInterface_t* ifPtr,
+    const mk::BuildParams_t& buildParams,
+    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    model::InterfaceJavaFiles_t javaFiles;
+    ifPtr->GetInterfaceFiles(javaFiles);
+
+    GenerateJavaBuildStatement(script,
+                               javaFiles,
+                               ifPtr->componentPtr,
+                               ifPtr->apiFilePtr,
+                               ifPtr->internalName,
+                               buildParams.workingDir,
+                               true, // isClient
+                               generatedSet);
 }
 
 
@@ -452,18 +548,21 @@ static void GenerateBuildStatement
 )
 //--------------------------------------------------------------------------------------------------
 {
+    model::InterfaceCFiles_t cFiles;
+    ifPtr->GetInterfaceFiles(cFiles);
+
     if (   (!buildParams.codeGenOnly)
-        && (generatedSet.find(ifPtr->objectFile) == generatedSet.end())  )
+        && (generatedSet.find(cFiles.objectFile) == generatedSet.end())  )
     {
-        generatedSet.insert(ifPtr->objectFile);
+        generatedSet.insert(cFiles.objectFile);
 
         // .o file
-        script << "build $builddir/" << ifPtr->objectFile << ":"
-                  " CompileC $builddir/" << ifPtr->sourceFile;
+        script << "build $builddir/" << cFiles.objectFile << ":"
+                  " CompileC $builddir/" << cFiles.sourceFile;
 
         // Add order-only dependencies on the generated .h files for this interface so we make sure
         // those get built first.
-        script << " | $builddir/" << ifPtr->internalHFile << " $builddir/" << ifPtr->interfaceFile;
+        script << " | $builddir/" << cFiles.internalHFile << " $builddir/" << cFiles.interfaceFile;
 
         // Build a set containing all the .h files that will be included (via USETYPES statements)
         // by the .h file generated for this .api file.
@@ -496,22 +595,22 @@ static void GenerateBuildStatement
     // .c file and .h files
     std::string generatedFiles;
     std::string ifgenFlags;
-    if (generatedSet.find(ifPtr->sourceFile) == generatedSet.end())
+    if (generatedSet.find(cFiles.sourceFile) == generatedSet.end())
     {
-        generatedSet.insert(ifPtr->sourceFile);
-        generatedFiles += " $builddir/" + ifPtr->sourceFile;
+        generatedSet.insert(cFiles.sourceFile);
+        generatedFiles += " $builddir/" + cFiles.sourceFile;
         ifgenFlags += " --gen-server";
     }
-    if (generatedSet.find(ifPtr->interfaceFile) == generatedSet.end())
+    if (generatedSet.find(cFiles.interfaceFile) == generatedSet.end())
     {
-        generatedSet.insert(ifPtr->interfaceFile);
-        generatedFiles += " $builddir/" + ifPtr->interfaceFile;
+        generatedSet.insert(cFiles.interfaceFile);
+        generatedFiles += " $builddir/" + cFiles.interfaceFile;
         ifgenFlags += " --gen-server-interface";
     }
-    if (generatedSet.find(ifPtr->internalHFile) == generatedSet.end())
+    if (generatedSet.find(cFiles.internalHFile) == generatedSet.end())
     {
-        generatedSet.insert(ifPtr->internalHFile);
-        generatedFiles += " $builddir/" + ifPtr->internalHFile;
+        generatedSet.insert(cFiles.internalHFile);
+        generatedFiles += " $builddir/" + cFiles.internalHFile;
         ifgenFlags += " --gen-local";
     }
     if (!generatedFiles.empty())
@@ -527,9 +626,37 @@ static void GenerateBuildStatement
         GetIncludedApis(script, ifPtr->apiFilePtr);
         script << "\n"
                   "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(ifPtr->sourceFile) << "\n"
+                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n"
                   "\n";
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the Java ifgen build statement for the server side of an API.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateJavaBuildStatement
+(
+    std::ofstream& script,  ///< Build script to write to.
+    const model::ApiServerInterface_t* ifPtr,
+    const mk::BuildParams_t& buildParams,
+    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    model::InterfaceJavaFiles_t javaFiles;
+    ifPtr->GetInterfaceFiles(javaFiles);
+
+    GenerateJavaBuildStatement(script,
+                               javaFiles,
+                               ifPtr->componentPtr,
+                               ifPtr->apiFilePtr,
+                               ifPtr->internalName,
+                               buildParams.workingDir,
+                               false,  // isClient
+                               generatedSet);
 }
 
 
@@ -548,6 +675,8 @@ void GenerateIpcBuildStatements
 )
 //--------------------------------------------------------------------------------------------------
 {
+    bool isJava = componentPtr->HasJavaCode();
+
     for (auto typesOnlyApi : componentPtr->typesOnlyApis)
     {
         GenerateBuildStatement(script, typesOnlyApi, buildParams, generatedSet);
@@ -565,12 +694,26 @@ void GenerateIpcBuildStatements
 
     for (auto clientApi : componentPtr->clientApis)
     {
-        GenerateBuildStatement(script, clientApi, buildParams, generatedSet);
+        if (isJava)
+        {
+            GenerateJavaBuildStatement(script, clientApi, buildParams, generatedSet);
+        }
+        else
+        {
+            GenerateBuildStatement(script, clientApi, buildParams, generatedSet);
+        }
     }
 
     for (auto serverApi : componentPtr->serverApis)
     {
-        GenerateBuildStatement(script, serverApi, buildParams, generatedSet);
+        if (isJava)
+        {
+            GenerateJavaBuildStatement(script, serverApi, buildParams, generatedSet);
+        }
+        else
+        {
+            GenerateBuildStatement(script, serverApi, buildParams, generatedSet);
+        }
     }
 }
 
@@ -600,6 +743,65 @@ void GenerateIpcBuildStatements
         GenerateIpcBuildStatements(script, mapEntry.second, buildParams, generatedSet);
     }
 }
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the build commands necessary to compile java code and create a Jar file to contain the
+ * generated .class files.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GenerateJavaBuildCommand
+(
+    std::ofstream& script,
+    const std::string& outputJar,
+    const std::string& classDestPath,
+    const std::list<std::string>& sources,
+    const std::list<std::string>& classPath,
+    const std::list<std::string>& dependencies
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // The intermediate directory will be required, so add a rule to make sure that it exits.  Then
+    // generate the rule to compile the Java code into .class files, and to package them up into a
+    // .jar file.
+    script << "build " << classDestPath << " : MakeDir\n\n"
+              "build " << outputJar << " $\n"
+              "  : CompileJava";
+
+    for (auto& source : sources)
+    {
+        script << " " << source;
+    }
+
+    script << " $\n  |";
+
+    for (auto& dep : dependencies)
+    {
+        script << " " << dep;
+    }
+
+    script << "\n"
+              "  classPath = ";
+
+    for (auto iter = classPath.begin(); iter != classPath.end(); ++iter)
+    {
+        if (iter != classPath.begin())
+        {
+            script << ":";
+        }
+
+        script << *iter;
+    }
+
+    script << "\n"
+              "  classDestPath = " << classDestPath << "\n"
+              "\n";
+}
+
+
+
 
 
 

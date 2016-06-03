@@ -47,6 +47,22 @@ static le_hashmap_Ref_t ClientInterfaceMapRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * A counter that increments every time a change is made to ServiceMapRef.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t ServiceObjMapChangeCount = 0;
+static size_t* ServiceObjMapChangeCountRef = &ServiceObjMapChangeCount;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A counter that increments every time a change is made to ClientInterfaceMapRef.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t ClientInterfaceMapChangeCount = 0;
+static size_t* ClientInterfaceMapChangeCountRef = &ClientInterfaceMapChangeCount;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for the handlers reference
  */
 //--------------------------------------------------------------------------------------------------
@@ -93,61 +109,6 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
  **/
 //--------------------------------------------------------------------------------------------------
 static pthread_key_t ThreadLocalRxMsgKey;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Service object.  Represents a single, unique service instance offered by a server.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_msg_Service
-{
-    msgInterface_Interface_t interface; ///< The interface part of a service object.
-
-    // Stuff used only on the Server side:
-
-    void*           contextPtr;         ///< Opaque value set using le_msg_SetServiceContextPtr().
-
-    enum
-    {
-        LE_MSG_INTERFACE_SERVICE_CONNECTING,  ///< Connecting to the Service Directory.
-        LE_MSG_INTERFACE_SERVICE_ADVERTISED,  ///< Connected to the Service Directory (advertised).
-        LE_MSG_INTERFACE_SERVICE_HIDDEN       ///< Disconnected from the Service Directory (hidden).
-    }
-    state;
-
-    int             directorySocketFd;  ///< File descriptor of socket connected to the
-                                        ///  Service Directory (or -1 if not connected).
-
-    le_fdMonitor_Ref_t fdMonitorRef;///< File descriptor monitor for the directory socket.
-
-    le_thread_Ref_t serverThread;       ///< Thread that is acting as server in this process,
-                                        ///  or NULL if no server exists in this process.
-
-    le_msg_ReceiveHandler_t         recvHandler;    ///< Handler for when messages are received.
-    void*                           recvContextPtr; ///< contextPtr parameter for recvHandler.
-
-    le_dls_List_t                   openListPtr; ///< open List: list of open session handlers
-                                                 ///  called when a session is opened
-
-    le_dls_List_t                   closeListPtr; ///< open List: list of close session handlers
-                                                  ///  called when a session is opened
-}
-Service_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Client interface object.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_msg_ClientInterface
-{
-    msgInterface_Interface_t interface; ///< The interface part of a client interface object.
-
-    // Stuff used only on the Client side:
-}
-ClientInterface_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -251,14 +212,14 @@ static void InitInterface
  * @warning Assumes that the Mutex is locked.
  */
 //--------------------------------------------------------------------------------------------------
-static Service_t* CreateService
+static msgInterface_Service_t* CreateService
 (
     le_msg_ProtocolRef_t    protocolRef,
     const char*             interfaceName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Service_t* servicePtr = le_mem_ForceAlloc(ServicePoolRef);
+    msgInterface_Service_t* servicePtr = le_mem_ForceAlloc(ServicePoolRef);
 
     InitInterface(protocolRef, interfaceName, LE_MSG_INTERFACE_SERVER,
                   (msgInterface_Interface_t*)servicePtr);
@@ -278,6 +239,7 @@ static Service_t* CreateService
     // Initialize the open handlers dls
     servicePtr->openListPtr = LE_DLS_LIST_INIT;
 
+    ServiceObjMapChangeCount++;
     le_hashmap_Put(ServiceMapRef, &servicePtr->interface.id, servicePtr);
 
     return servicePtr;
@@ -293,18 +255,21 @@ static Service_t* CreateService
  * @warning Assumes that the Mutex is locked.
  */
 //--------------------------------------------------------------------------------------------------
-static ClientInterface_t* CreateClientInterface
+static msgInterface_ClientInterface_t* CreateClientInterface
 (
     le_msg_ProtocolRef_t    protocolRef,
     const char*             interfaceName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ClientInterface_t* clientPtr = le_mem_ForceAlloc(ClientInterfacePoolRef);
+    msgInterface_ClientInterface_t* clientPtr = le_mem_ForceAlloc(ClientInterfacePoolRef);
 
-    InitInterface(protocolRef, interfaceName, LE_MSG_INTERFACE_CLIENT,
+    InitInterface(protocolRef,
+                  interfaceName,
+                  LE_MSG_INTERFACE_CLIENT,
                   (msgInterface_Interface_t*)clientPtr);
 
+    ClientInterfaceMapChangeCount++;
     le_hashmap_Put(ClientInterfaceMapRef, &clientPtr->interface.id, clientPtr);
 
     return clientPtr;
@@ -323,7 +288,7 @@ static ClientInterface_t* CreateClientInterface
  * @warning Assumes that the Mutex is locked.
  */
 //--------------------------------------------------------------------------------------------------
-static Service_t* GetService
+static msgInterface_Service_t* GetService
 (
     le_msg_ProtocolRef_t    protocolRef,
     const char*             interfaceName
@@ -338,7 +303,7 @@ static Service_t* GetService
                 interfaceName,
                 sizeof(id.name));
 
-    Service_t* servicePtr = le_hashmap_Get(ServiceMapRef, &id);
+    msgInterface_Service_t* servicePtr = le_hashmap_Get(ServiceMapRef, &id);
     if (servicePtr == NULL)
     {
         servicePtr = CreateService(protocolRef, interfaceName);
@@ -364,22 +329,26 @@ static Service_t* GetService
  * @warning Assumes that the Mutex is locked.
  */
 //--------------------------------------------------------------------------------------------------
-static ClientInterface_t* GetClient
+static msgInterface_ClientInterface_t* GetClient
 (
     le_msg_ProtocolRef_t    protocolRef,
     const char*             interfaceName
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Create an ID structure for this interface.
     msgInterface_Id_t id;
 
     id.protocolRef = protocolRef;
+
     LE_FATAL_IF(le_utf8_Copy(id.name, interfaceName, sizeof(id.name), NULL) == LE_OVERFLOW,
                 "Service ID '%s' too long (should only be %zu bytes total).",
                 interfaceName,
                 sizeof(id.name));
 
-    ClientInterface_t* clientPtr = le_hashmap_Get(ClientInterfaceMapRef, &id);
+    // Look up the ID in the client hash map to see if a client already exists for this interface.
+    msgInterface_ClientInterface_t* clientPtr = le_hashmap_Get(ClientInterfaceMapRef, &id);
+
     if (clientPtr == NULL)
     {
         clientPtr = CreateClientInterface(protocolRef, interfaceName);
@@ -408,46 +377,53 @@ static void ServiceDestructor
 )
 //--------------------------------------------------------------------------------------------------
 {
-    le_dls_Link_t* linkPtr = NULL;
+    msgInterface_Service_t* servicePtr = objPtr;
 
-    Service_t* servicePtr = objPtr;
-
+    ServiceObjMapChangeCount++;
     le_hashmap_Remove(ServiceMapRef, &servicePtr->interface.id);
 
-    /* Release the close handlers dls */
-    do
+    // Release the close handlers
+    le_dls_Link_t* linkPtr;
+    while ((linkPtr = le_dls_PopTail(&servicePtr->closeListPtr)) != NULL)
     {
-        linkPtr = le_dls_PopTail(&servicePtr->closeListPtr);
+        SessionEventHandler_t* closeEventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
 
-        if (linkPtr)
-        {
-            SessionEventHandler_t* closeEventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
+        le_ref_DeleteRef(HandlersRefMap, closeEventPtr->ref);
 
-            /* Delete the reference */
-            le_ref_DeleteRef(HandlersRefMap, closeEventPtr->ref);
-
-            /* Release the memory */
-            le_mem_Release(closeEventPtr);
-        }
+        le_mem_Release(closeEventPtr);
     }
-    while (linkPtr);
 
-    /* Release the open handlers dls */
-    do
+    // Release the open handlers
+    while ((linkPtr = le_dls_PopTail(&servicePtr->openListPtr)) != NULL)
     {
-        linkPtr = le_dls_PopTail(&servicePtr->openListPtr);
+        SessionEventHandler_t* openEventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
 
-        if (linkPtr)
-        {
-            SessionEventHandler_t* openEventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
+        le_ref_DeleteRef(HandlersRefMap, openEventPtr->ref);
 
-            /* Delete the reference */
-            le_ref_DeleteRef(HandlersRefMap, openEventPtr->ref);
-
-            le_mem_Release(openEventPtr);
-        }
+        le_mem_Release(openEventPtr);
     }
-    while (linkPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a Client Interface object is about to be returned back to the
+ * Client Interface Pool.
+ *
+ * @warning Assumes that the Mutex is locked, therefore the Mutex must be locked during all
+ *          calls to le_mem_Release() for Client Interface objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ClientInterfaceDestructor
+(
+    void* objPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    msgInterface_ClientInterface_t* clientPtr = objPtr;
+
+    ClientInterfaceMapChangeCount++;
+    le_hashmap_Remove(ClientInterfaceMapRef, &clientPtr->interface.id);
 }
 
 
@@ -493,7 +469,7 @@ static void CallOpenHandler
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketWriteable
 (
-    Service_t* servicePtr
+    msgInterface_Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -555,7 +531,7 @@ static void DirectorySocketWriteable
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketReadable
 (
-    Service_t* servicePtr
+    msgInterface_Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -619,7 +595,7 @@ static void DirectorySocketReadable
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketClosed
 (
-    Service_t* servicePtr
+    msgInterface_Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -638,7 +614,7 @@ static void DirectorySocketClosed
 //--------------------------------------------------------------------------------------------------
 static void DirectorySocketError
 (
-    Service_t* servicePtr
+    msgInterface_Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -661,7 +637,7 @@ static void DirectorySocketEventHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Service_t* servicePtr = le_fdMonitor_GetContextPtr();
+    msgInterface_Service_t* servicePtr = le_fdMonitor_GetContextPtr();
 
     LE_ASSERT(fd == servicePtr->directorySocketFd);
 
@@ -695,7 +671,7 @@ static void DirectorySocketEventHandler
 //--------------------------------------------------------------------------------------------------
 static void StartMonitoringDirectorySocket
 (
-    Service_t*  servicePtr
+    msgInterface_Service_t*  servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -729,7 +705,7 @@ static void StartMonitoringDirectorySocket
 //--------------------------------------------------------------------------------------------------
 static void CloseAllSessions
 (
-    Service_t* servicePtr
+    msgInterface_Service_t* servicePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -759,6 +735,62 @@ static void CloseAllSessions
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the service object map; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t* msgInterface_GetServiceObjMap
+(
+    void
+)
+{
+    return (&ServiceMapRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the service object map change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** msgInterface_GetServiceObjMapChgCntRef
+(
+    void
+)
+{
+    return (&ServiceObjMapChangeCountRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the client interface map; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_hashmap_Ref_t* msgInterface_GetClientInterfaceMap
+(
+    void
+)
+{
+    return (&ClientInterfaceMapRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the client interface map change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** msgInterface_GetClientInterfaceMapChgCntRef
+(
+    void
+)
+{
+    return (&ClientInterfaceMapChangeCountRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the module.  This must be called only once at start-up, before
  * any other functions in that module are called.
  */
@@ -770,14 +802,15 @@ void msgInterface_Init
 //--------------------------------------------------------------------------------------------------
 {
     // Create and initialize the pool of Service objects.
-    ServicePoolRef = le_mem_CreatePool("MessagingServices", sizeof(Service_t));
+    ServicePoolRef = le_mem_CreatePool("MessagingServices", sizeof(msgInterface_Service_t));
     le_mem_ExpandPool(ServicePoolRef, MAX_EXPECTED_SERVICES);
     le_mem_SetDestructor(ServicePoolRef, ServiceDestructor);
 
     // Create and initialize the pool of Client Interface objects.
     ClientInterfacePoolRef = le_mem_CreatePool("MessagingClientInterfaces",
-                                               sizeof(ClientInterface_t));
+                                               sizeof(msgInterface_ClientInterface_t));
     le_mem_ExpandPool(ClientInterfacePoolRef, MAX_EXPECTED_CLIENT_INTERFACES );
+    le_mem_SetDestructor(ClientInterfacePoolRef, ClientInterfaceDestructor);
 
     // Create and initialize the pool of event handlers objects.
     HandlerEventPoolRef = le_mem_CreatePool("HandlerEventPool", sizeof(SessionEventHandler_t));
@@ -797,8 +830,6 @@ void msgInterface_Init
                                               MAX_EXPECTED_CLIENT_INTERFACES,
                                               ComputeInterfaceIdHash,
                                               AreInterfaceIdsTheSame);
-
-
 
     // Create the key to be used to identify thread-local data records containing the Message
     // Reference when running a Service's message receive handler.
@@ -825,7 +856,7 @@ le_msg_ClientInterfaceRef_t msgInterface_GetClient
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ClientInterface_t* clientPtr;
+    msgInterface_ClientInterface_t* clientPtr;
 
     LOCK
     clientPtr = GetClient(protocolRef, interfaceName);
@@ -876,7 +907,7 @@ void msgInterface_Release
 )
 {
     // NOTE: Must lock the mutex before releasing in case the destructor runs, because
-    //       the destructor manipulates the service map, which is shared by all threads in the
+    //       the destructor manipulates structures that are shared by all threads in the
     //       process.
 
     LOCK
@@ -1021,7 +1052,7 @@ le_msg_ServiceRef_t le_msg_CreateService
     LOCK
 
     // Get a Service object.
-    Service_t* servicePtr = GetService(protocolRef, interfaceName);
+    msgInterface_Service_t* servicePtr = GetService(protocolRef, interfaceName);
 
     // If the Service object already has a server thread, then it means that this service
     // is already being offered by someone else in this very process.
@@ -1186,13 +1217,11 @@ void le_msg_RemoveServiceHandler
     {
         SessionEventHandler_t* eventPtr = CONTAINER_OF(linkPtr, SessionEventHandler_t, link);
 
-        /* Remove the link from the close handlers dls */
+        // Remove from the close handler list
         le_dls_Remove(eventPtr->listPtr, linkPtr);
 
-        /* Release memory */
         le_mem_Release(eventPtr);
 
-        /* Delete the reference */
         le_ref_DeleteRef(HandlersRefMap, handlerRef);
     }
 }

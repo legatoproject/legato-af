@@ -31,6 +31,7 @@ std::string Get
 (
     const std::string& name  ///< The name of the environment variable.
 )
+//--------------------------------------------------------------------------------------------------
 {
     const char* value = getenv(name.c_str());
 
@@ -56,6 +57,7 @@ std::string GetRequired
 (
     const std::string& name  ///< The name of the environment variable.
 )
+//--------------------------------------------------------------------------------------------------
 {
     const char* value = getenv(name.c_str());
 
@@ -65,6 +67,27 @@ std::string GetRequired
     }
 
     return value;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the value of a given environment variable.  If the variable already exists, replaces its
+ * value.
+ */
+//--------------------------------------------------------------------------------------------------
+void Set
+(
+    const std::string& name,  ///< The name of the environment variable.
+    const std::string& value  ///< The value of the environment variable.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (setenv(name.c_str(), value.c_str(), true /* overwrite existing */) != 0)
+    {
+        throw mk::Exception_t("Failed to set environment variable '" + name + "' to '"
+                              + value + "'.");
+    }
 }
 
 
@@ -83,37 +106,51 @@ void SetTargetSpecific
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (setenv("LEGATO_TARGET", target.c_str(), true /* overwrite existing */) != 0)
-    {
-        throw mk::Exception_t("Failed to set LEGATO_TARGET environment variable to '"
-                                   + target + "'.");
-    }
+    // WARNING: If you add another target-specific variable, remember to update IsReserved().
 
+    // Set LEGATO_TARGET.
+    Set("LEGATO_TARGET", target.c_str());
+
+    // Set LEGATO_BUILD based on the contents of LEGATO_ROOT, which must be already defined.
     std::string path = GetRequired("LEGATO_ROOT");
-
     if (path.empty())
     {
         throw mk::Exception_t("LEGATO_ROOT environment variable is empty.");
     }
-
     path = path::Combine(path, "build/" + target);
+    Set("LEGATO_BUILD", path.c_str());
 
-    if (setenv("LEGATO_BUILD", path.c_str(), true /* overwrite existing */) != 0)
-    {
-        throw mk::Exception_t("Failed to set LEGATO_BUILD environment variable to '"
-                                   + path + "'.");
-    }
-
+    // Set LEGATO_SYSROOT.
     auto sysRoot = ninja::GetSysRootPath(ninja::GetCCompilerPath(target));
-    if (sysRoot.empty())
+    if (!sysRoot.empty())
     {
-        throw mk::Exception_t("Failed to determine sysroot for target '" + target + "'.");
+        if (setenv("LEGATO_SYSROOT", sysRoot.c_str(), false /* not overwrite existing */) != 0)
+        {
+            throw mk::Exception_t("Failed to set LEGATO_SYSROOT environment variable to '"
+                                       + sysRoot + "'.");
+        }
     }
-    if (setenv("LEGATO_SYSROOT", sysRoot.c_str(), true /* overwrite existing */) != 0)
-    {
-        throw mk::Exception_t("Failed to set LEGATO_SYSROOT environment variable to '"
-                                   + sysRoot + "'.");
-    }
+}
+
+
+//----------------------------------------------------------------------------------------------
+/**
+ * Checks if a given environment variable name is one of the reserved environment variable names
+ * (e.g., LEGATO_TARGET).
+ *
+ * @return true if reserved, false if not.
+ */
+//----------------------------------------------------------------------------------------------
+bool IsReserved
+(
+    const std::string& name  ///< Name of the variable.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return (   (name == "LEGATO_ROOT")
+            || (name == "LEGATO_TARGET")
+            || (name == "LEGATO_BUILD")
+            || (name == "LEGATO_SYSROOT") );
 }
 
 
@@ -360,6 +397,11 @@ bool MatchesSaved
         saveFile.getline(lineBuff, sizeof(lineBuff));
         if (saveFile.eof())
         {
+            if (buildParams.beVerbose)
+            {
+                std::cout << "Env var '" << environ[i] << "' was added." << std::endl;
+            }
+
             goto different;
         }
         else if (!saveFile.good())
@@ -370,6 +412,11 @@ bool MatchesSaved
         // Compare the line from the file with the environment variable.
         if (strcmp(environ[i], lineBuff) != 0)
         {
+            if (buildParams.beVerbose)
+            {
+                std::cout << "Env var '" << lineBuff << "' became '" << environ[i] << "'." << std::endl;
+            }
+
             goto different;
         }
     }
@@ -380,6 +427,11 @@ bool MatchesSaved
     if (saveFile.eof())
     {
         return true;
+    }
+
+    if (buildParams.beVerbose)
+    {
+        std::cout << "Env var '" << lineBuff << "' was removed." << std::endl;
     }
 
 different:

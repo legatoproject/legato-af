@@ -13,6 +13,7 @@
 #include "unixSocket.h"
 #include "serviceDirectory/serviceDirectoryProtocol.h"
 #include "messagingMessage.h"
+#include "messagingProtocol.h"
 
 // =======================================
 //  PRIVATE DATA
@@ -28,21 +29,6 @@
 static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;
 #define LOCK    LE_ASSERT(pthread_mutex_lock(&Mutex) == 0);
 #define UNLOCK  LE_ASSERT(pthread_mutex_unlock(&Mutex) == 0);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Represents a messaging protocol.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_msg_Protocol
-{
-    le_sls_Link_t link;                     ///< Used to link this into the Protocol List.
-    char id[LIMIT_MAX_PROTOCOL_ID_BYTES];   ///< Unique identifier for the protocol.
-    size_t maxPayloadSize;                  ///< Max payload size (in bytes) in this protocol.
-    le_mem_PoolRef_t messagePoolRef;        ///< Pool of Message objects.
-}
-Protocol_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -76,7 +62,7 @@ static le_mem_PoolRef_t ProtocolPoolRef;
  * @return A pointer to the Protocol object or NULL if not found.
  */
 //--------------------------------------------------------------------------------------------------
-static Protocol_t* FindProtocol
+static msgProtocol_Protocol_t* FindProtocol
 (
     const char* protocolId      ///< [in] String uniquely identifying the the protocol and version.
 )
@@ -89,7 +75,7 @@ static Protocol_t* FindProtocol
     linkPtr = le_sls_Peek(&ProtocolList);
     while (linkPtr != NULL)
     {
-        Protocol_t* protocolPtr = CONTAINER_OF(linkPtr, Protocol_t, link);
+        msgProtocol_Protocol_t* protocolPtr = CONTAINER_OF(linkPtr, msgProtocol_Protocol_t, link);
         if (strcmp(protocolId, protocolPtr->id) == 0)
         {
             UNLOCK
@@ -113,14 +99,14 @@ static Protocol_t* FindProtocol
  * @return  A pointer to the object.  Never returns on failure.
  */
 //--------------------------------------------------------------------------------------------------
-static Protocol_t* CreateProtocol
+static msgProtocol_Protocol_t* CreateProtocol
 (
     const char* protocolId,     ///< [in] String uniquely identifying the the protocol and version.
     size_t largestMsgSize       ///< [in] Size (in bytes) of the largest message in the protocol.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Protocol_t* protocolPtr = le_mem_ForceAlloc(ProtocolPoolRef);
+    msgProtocol_Protocol_t* protocolPtr = le_mem_ForceAlloc(ProtocolPoolRef);
 
     protocolPtr->link = LE_SLS_LINK_INIT;
     protocolPtr->maxPayloadSize = largestMsgSize;
@@ -157,7 +143,7 @@ void msgProto_Init
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ProtocolPoolRef = le_mem_CreatePool("Protocol", sizeof(Protocol_t));
+    ProtocolPoolRef = le_mem_CreatePool("Protocol", sizeof(msgProtocol_Protocol_t));
     le_mem_ExpandPool(ProtocolPoolRef, 5);  /// @todo Make this configurable.
 }
 
@@ -198,7 +184,7 @@ le_msg_ProtocolRef_t le_msg_GetProtocolRef
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Protocol_t* protocolPtr = FindProtocol(protocolId);
+    msgProtocol_Protocol_t* protocolPtr = FindProtocol(protocolId);
     if (protocolPtr == NULL)
     {
         protocolPtr = CreateProtocol(protocolId, largestMsgSize);

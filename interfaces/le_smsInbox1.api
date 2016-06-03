@@ -225,7 +225,7 @@ FUNCTION Close
 //--------------------------------------------------------------------------------------------------
 HANDLER RxMessageHandler
 (
-    uint32_t msgId          ///< Message identifier.
+    uint32 msgId          ///< Message identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -236,7 +236,7 @@ HANDLER RxMessageHandler
 //--------------------------------------------------------------------------------------------------
 EVENT RxMessage
 (
-    handler RxMessageHandler
+    RxMessageHandler handler
 );
 
 //-------------------------------------------------------------------------------------------------
@@ -248,7 +248,7 @@ EVENT RxMessage
 //--------------------------------------------------------------------------------------------------
 FUNCTION DeleteMsg
 (
-    uint32_t msgId      IN  ///< Message identifier.
+    uint32 msgId      IN  ///< Message identifier.
 );
 
  //--------------------------------------------------------------------------------------------------
@@ -266,8 +266,8 @@ FUNCTION DeleteMsg
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetImsi
 (
-    uint32_t msgId                   IN,   ///< Message identifier.
-    string   imsi[le_sim.IMSI_LEN]   OUT   ///< IMSI.
+    uint32 msgId                   IN,   ///< Message identifier.
+    string imsi[le_sim.IMSI_LEN]   OUT   ///< IMSI.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -284,7 +284,7 @@ FUNCTION le_result_t GetImsi
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_sms.Format GetFormat
 (
-    uint32_t msgId                   IN    ///< Message identifier.
+    uint32 msgId                   IN    ///< Message identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -299,8 +299,8 @@ FUNCTION le_sms.Format GetFormat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSenderTel
 (
-    uint32_t msgId                             IN,   ///< Message identifier.
-    string   tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT   ///< Identifier string.
+    uint32 msgId                             IN,   ///< Message identifier.
+    string tel[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT   ///< Identifier string.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -316,9 +316,9 @@ FUNCTION le_result_t GetSenderTel
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTimeStamp
 (
-    uint32_t msgId                               IN, ///< Message identifier.
-    string   timestamp[le_sms.TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (for text or binary
-                                                     ///<  messages). String format:
+    uint32 msgId                               IN, ///< Message identifier.
+    string timestamp[le_sms.TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (for text or binary
+                                                   ///<  messages). String format:
                                                    ///< "yy/MM/dd,hh:mm:ss+/-zz"
                                                    ///< (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
 );
@@ -331,9 +331,9 @@ FUNCTION le_result_t GetTimeStamp
  *         binary and PDU messages.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION size_t GetMsgLen
+FUNCTION size GetMsgLen
 (
-    uint32_t msgId                              IN  ///< Message identifier.
+    uint32 msgId                              IN  ///< Message identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -350,8 +350,8 @@ FUNCTION size_t GetMsgLen
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetText
 (
-    uint32_t msgId                     IN,  ///< Message identifier.
-    string   text[le_sms.TEXT_MAX_LEN] OUT  ///< Message text.
+    uint32 msgId                     IN,  ///< Message identifier.
+    string text[le_sms.TEXT_MAX_LEN] OUT  ///< Message text.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -368,8 +368,8 @@ FUNCTION le_result_t GetText
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBinary
 (
-    uint32_t msgId                        IN,  ///< Message identifier.
-    uint8    bin[le_sms.BINARY_MAX_BYTES] OUT  ///< Binary message.
+    uint32 msgId                        IN,  ///< Message identifier.
+    uint8  bin[le_sms.BINARY_MAX_BYTES] OUT  ///< Binary message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -388,8 +388,8 @@ FUNCTION le_result_t GetBinary
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPdu
 (
-    uint32_t msgId                     IN,  ///< Message identifier.
-    uint8    pdu[le_sms.PDU_MAX_BYTES] OUT  ///< PDU message.
+    uint32 msgId                     IN,  ///< Message identifier.
+    uint8  pdu[le_sms.PDU_MAX_BYTES] OUT  ///< PDU message.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -401,7 +401,7 @@ FUNCTION le_result_t GetPdu
  *  - Message identifier.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint32_t GetFirst
+FUNCTION uint32 GetFirst
 (
     Session sessionRef IN ///< Mailbox session reference.
 );
@@ -415,7 +415,7 @@ FUNCTION uint32_t GetFirst
  *  - Message identifier.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION uint32_t GetNext
+FUNCTION uint32 GetNext
 (
     Session sessionRef IN ///< Mailbox session reference.
 );
@@ -433,7 +433,7 @@ FUNCTION uint32_t GetNext
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsUnread
 (
-    uint32_t msgId      IN   ///< Message identifier.
+    uint32 msgId      IN   ///< Message identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -444,9 +444,9 @@ FUNCTION bool IsUnread
  *        the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void MarkRead
+FUNCTION MarkRead
 (
-    uint32_t msgId      IN   ///< Message identifier.
+    uint32 msgId      IN   ///< Message identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -457,9 +457,9 @@ FUNCTION void MarkRead
  *        the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void MarkUnread
+FUNCTION MarkUnread
 (
-    uint32_t msgId      IN   ///< Message identifier.
+    uint32 msgId      IN   ///< Message identifier.
 );
 
 

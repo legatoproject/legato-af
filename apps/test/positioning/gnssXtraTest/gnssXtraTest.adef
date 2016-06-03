@@ -1,0 +1,26 @@
+sandboxed: false
+
+executables:
+{
+    gnssXtraTest = ( gnssXtraTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (gnssXtraTest)
+    }
+}
+
+start: manual
+
+bindings:
+{
+    gnssXtraTest.gnssXtraTest.le_gnss -> positioningService.le_gnss
+}

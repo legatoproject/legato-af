@@ -3,8 +3,6 @@ bundles:
     file:
     {
         [r] libComponent_le_pa_ecall.so   /lib/
-        [r] ${LEGATO_SYSROOT}/usr/lib/libqmiservices.so.1         /lib/
-        [r] ${LEGATO_SYSROOT}/usr/lib/libqmi_cci.so.1             /lib/
     }
 }
 

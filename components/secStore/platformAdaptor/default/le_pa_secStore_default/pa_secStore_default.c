@@ -64,6 +64,26 @@ LE_SHARED le_result_t pa_secStore_Read
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Copy the meta file to the specified path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the meta file does not exist.
+ *      LE_UNAVAILABLE if the sfs is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_secStore_CopyMetaTo
+(
+    const char* pathPtr             ///< [IN] Destination path of meta file copy.
+)
+{
+    return LE_UNAVAILABLE;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Deletes the specified path and everything under it.
  *
  * @return

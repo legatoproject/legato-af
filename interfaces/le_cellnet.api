@@ -29,63 +29,42 @@
  * @section c_le_cellnet_requesting Requesting the Cellular Network
  *
  * The Cellular Network can be requested using le_cellnet_Request(). The le_cellnet_Request
- * function will turn on the radio if it is switched off and it will unlock the SIM if a PIN code is
- * required (it will retrieve the needed information from the config DB,
- * cf. @ref c_le_cellnet_configdb).
- * Before the cellular network is requested, an application should register a network state handler
- * using le_cellnet_AddStateEventHandler(). Once the cellular network becomes available, the handler
- * will be called to indicate that the modem is now registered on the network.
+ * function will turn on the radio if it is switched off and it will unlock the SIM if a PIN code
+ * is required (it will retrieve the needed information from the config tree,
+ * cf. @ref c_le_cellnet_config).
+ * Before the cellular network is requested, an application should register a network state
+ * handler using le_cellnet_AddStateEventHandler(). Once the cellular network becomes available,
+ * the handler will be called to indicate that the modem is now registered on the network.
  *
  * If the state of the network changes, then the handler will be called with the new state.
  *
  * To release the cellular network, an application can use le_cellnet_Release(). Once all user
  * applications release the cellular network access, then the service will turn off the radio.
  *
- * All configuration data required for a network registration, such as the PIN code of the SIM, will
- * be stored in the Config DB.
+ * All configuration data required for a network registration, such as the PIN code of the SIM,
+ * will be stored in the Config tree by the use of the le_cellnet_SetSimPinCode() function.
  *
- * @section c_le_cellnet_options Network Options
  *
- * @note The functionaliy described in this section is not currently implemented; this
- * description is provided to outline future functionality.
+ * @section c_le_cellnet_config Cellular Network configuration
  *
- * Some applications may have network requirements that are not met by the default cellular network
- * service. For example, it would specify the SIM on which it wants to operate.
+ * Setting the SIM PIN code in the config tree and retreiving it is performed by two functions:
+ * le_cellnet_SetSimPinCode() and le_cellnet_GetSimPinCode().
  *
- * In this case, an application can create a request object using le_cellnet_CreateRequest(),
- * set optional values on that request object, using le_cellnet_SelectSim() and then submits that
- * object to a cellular network request, using le_cellnet_SubmitRequest().
+ * The le_cellnet_SetSimPinCode() function takes two parameters : SIM identifier and SIM card
+ * PIN code and stores the PIN code in the rigth path of the config tree.
+ * Note that the function erases the previous stored SIM card PIN code.
+ * Note that it is possible to set and retry a void entry ("") corresponding to an unlocked SIM.
  *
- * @section c_le_cellnet_configdb Cellular Network configuration tree
- * @copydoc c_le_cellnet_configdbPage_Hide
- *
- * <HR>
- *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- */
-
-/**
- * @interface c_le_cellnet_configdbPage_Hide
- *
- * The configuration database path for the SIM is:
- * @verbatim
-   /
-       modemServices/
-           sim/
-               1/
-                   pin<string> == <PIN_CODE>
-
-  @endverbatim
- *
- *  - '1' is the sim slot number that le_sim_GetSelectedCard() is returning.
- *
- *  - 'PIN_CODE' is the PIN code for the SIM card.
+ * The le_cellnet_GetSimPinCode() function takes one parameter: the SIM identifier and retreives
+ * the SIM card PIN code from the config tree.
  *
  * @note
  * when a new SIM is inserted and :
- *   - is locked, Cellular Network Service will read automatically the config DB in order to try to
- * enter the pin for the SIM card.
+ *   - is locked, Cellular Network Service will read automatically the config tree in order to try
+ *     to enter the pin for the SIM card.
  *   - is blocked, Cellular Network Service just log an error and did not try to enter the puk code.
+ *   - when setting a too long PIN code (max 8 digits), a fatal error occurs, the function will
+ *     not return.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -100,6 +79,8 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
+
+USETYPES le_sim.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -142,7 +123,7 @@ HANDLER StateHandler
 //--------------------------------------------------------------------------------------------------
 EVENT StateEvent
 (
-    handler StateHandler
+    StateHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -168,5 +149,45 @@ FUNCTION Release
     RequestObj cellNetRef IN  ///< Reference to a cellular network request.
 );
 
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Set the PIN code in the config tree.
+ *
+ * @return
+ *    LE_OUT_OF_RANGE    Invalid simId
+ *  - LE_FORMAT_ERROR    PIN code is not in string format.
+ *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
+ *  - LE_OK              The function succeeded.
+ *  - LE_FAULT           The function failed on any other errors
+ *
+ * @note If PIN code is too long (max 8 digits), it is a fatal error, the
+ *       function will not return.
+ *
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSimPinCode
+(
+    le_sim.Id simId                    IN,  ///< SIM identifier.
+    string pinCode[le_sim.PIN_MAX_LEN] IN  ///< PIN code to insert in the config tree.
+ );
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Retreive the PIN code from the config tree.
+ *
+ * @return
+ *    LE_OUT_OF_RANGE    Invalid simId
+ *  - LE_NOT_FOUND       PIN code is not found in the config tree.
+ *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
+ *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
+ *  - LE_OK              The function succeeded.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSimPinCode
+(
+    le_sim.Id simId                    IN,  ///< SIM identifier.
+    string pinCode[le_sim.PIN_MAX_LEN] OUT  ///< Read the PIN code from the config tree.
+);
 
 

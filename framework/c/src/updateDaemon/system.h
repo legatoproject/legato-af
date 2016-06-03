@@ -1,15 +1,16 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @file systemDef.h
+ * @file system.h
  *
- * Blah.
+ * Functions exported by the Update Daemon's "system" module, which encapsulates detailed knowledge
+ * of how to operate on systems.
  *
  * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
-#ifndef LEGATO_SYSTEM_H_INCLUDE_GUARD
-#define LEGATO_SYSTEM_H_INCLUDE_GUARD
+#ifndef LEGATO_UPDATE_DAEMON_SYSTEM_H_INCLUDE_GUARD
+#define LEGATO_UPDATE_DAEMON_SYSTEM_H_INCLUDE_GUARD
 
 
 //--------------------------------------------------------------------------------------------------
@@ -182,23 +183,6 @@ le_result_t system_GetSystemHash
 void system_SymlinkApp
 (
     const char* systemNamePtr,  ///< E.g., "current" or "unpack".
-    const char* appMd5Ptr,
-    const char* appNamePtr
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Install a given app's writeable files in the "unpack" system from either the app's install
- * directory (/legato/apps/<hash>) or the current running system, as appropriate for each file.
- *
- * @warning Assumes the app identified by the hash is installed in /legato/apps/<hash>.
- *
- * @return LE_OK if successful.
- **/
-//--------------------------------------------------------------------------------------------------
-le_result_t system_InstallAppWriteableFiles
-(
     const char* appMd5Ptr,
     const char* appNamePtr
 );
@@ -394,4 +378,4 @@ void system_GetAppWriteableFilesDirPath
 );
 
 
-#endif // LEGATO_SYSTEM_H_INCLUDE_GUARD
+#endif // LEGATO_UPDATE_DAEMON_SYSTEM_H_INCLUDE_GUARD

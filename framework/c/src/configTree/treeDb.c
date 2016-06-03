@@ -1665,6 +1665,8 @@ static void GetTreePath
 /**
  *  Check to see if a configTree file at the given revision already exists in the filesystem.
  *
+ *  @note If the tree file exists, but is empty, then it is invalid and will be deleted.
+ *
  *  @return True if the named file exists, false otherwise.
  */
 // -------------------------------------------------------------------------------------------------
@@ -1684,15 +1686,34 @@ static bool TreeFileExists
         return false;
     }
 
-    // Now call into the Linux and ask the file system if the file exists.
-    bool result = false;
-
-    if (access(fullPath, R_OK) != -1)
+    // stat() the file to see if it exists and get its size.
+    struct stat s;
+    if (stat(fullPath, &s) == -1)
     {
-        result = true;
+        LE_DEBUG("Can't stat file '%s' (%m).", fullPath);
+        return false;
     }
 
-    return result;
+    // Make sure it's a regular file.
+    if (!S_ISREG(s.st_mode))
+    {
+        LE_FATAL("Object at '%s' is not a regular file.", fullPath);
+    }
+
+    // If it's zero size, delete it and report that it doesn't exist.
+    if (s.st_size == 0)
+    {
+        if (unlink(fullPath) == -1)
+        {
+            LE_FATAL("Failed to unlink empty file '%s' (%m).", fullPath);
+        }
+
+        return false;
+    }
+
+    // NOTE: The Config Tree generally runs as root, so permissions should be irrelevant.
+
+    return true;
 }
 
 
@@ -1700,10 +1721,14 @@ static bool TreeFileExists
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Check the filesystem and get the "valid" version of the file.  That is, if there are two files
- *  for a given tree, we use the older one.  The idea being, if there are two versions of the same
- *  file in the filesystem then it's highly likely there was a system failure during a streaming
- *  operation.  So we abandon the newer file and go with the older more reliable file.
+ * Check the filesystem and get the current "valid" version of the file and update the tree object
+ * with that version number.
+ *
+ * If there are two files for a given tree, we use the older one.  The idea being, if there are
+ * two versions of the same file in the filesystem then there was a system failure during a save
+ * operation.  So we abandon the newer (probably incomplete) file and go with the older file;
+ * unless the size of the older file is zero, which can happen if deletion of that file is
+ * interrupted.
  */
 // -------------------------------------------------------------------------------------------------
 static void UpdateRevision

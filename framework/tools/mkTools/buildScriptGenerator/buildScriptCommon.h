@@ -110,6 +110,23 @@ void GenerateIpcBuildStatements
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given build script the build statements for all the IPC client and server
+ * header files, source code files, and object files needed by all components in the model.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GenerateJavaBuildCommand
+(
+    std::ofstream& script,
+    const std::string& outputJar,
+    const std::string& classDestPath,
+    const std::list<std::string>& sources,
+    const std::list<std::string>& classPath,
+    const std::list<std::string>& dependencies
+
+);
+
 
 } // namespace ninja
 

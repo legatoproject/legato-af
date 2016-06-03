@@ -84,11 +84,11 @@ REFERENCE Iterator;
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ImportTree
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Write iterator that is being used for the import.
-    string filePath[512]             IN,  ///< Import the tree data from the this file.
-    string nodePath[512]             IN   ///< Where in the tree should this import happen?  Leave
-                                          ///<   as an empty string to use the iterator's current
-                                          ///<   node.
+    le_cfg.Iterator iteratorRef IN,  ///< Write iterator that is being used for the import.
+    string filePath[512]        IN,  ///< Import the tree data from the this file.
+    string nodePath[512]        IN   ///< Where in the tree should this import happen?  Leave
+                                     ///<   as an empty string to use the iterator's current
+                                     ///<   node.
 );
 
 
@@ -107,11 +107,11 @@ FUNCTION le_result_t ImportTree
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExportTree
 (
-    le_cfg_IteratorRef_t iteratorRef IN,  ///< Write iterator that is being used for the export.
-    string filePath[512]             IN,  ///< Import the tree data from the this file.
-    string nodePath[512]             IN   ///< Where in the tree should this export happen?  Leave
-                                          ///<   as an empty string to use the iterator's current
-                                          ///<   node.
+    le_cfg.Iterator iteratorRef IN,  ///< Write iterator that is being used for the export.
+    string filePath[512]        IN,  ///< Import the tree data from the this file.
+    string nodePath[512]        IN   ///< Where in the tree should this export happen?  Leave
+                                     ///<   as an empty string to use the iterator's current
+                                     ///<   node.
 );
 
 
@@ -150,7 +150,7 @@ FUNCTION DeleteTree
  * config tree daemon.
  */
 //-------------------------------------------------------------------------------------------------
-FUNCTION le_cfgAdmin_IteratorRef_t CreateTreeIterator
+FUNCTION Iterator CreateTreeIterator
 (
 );
 
@@ -162,7 +162,7 @@ FUNCTION le_cfgAdmin_IteratorRef_t CreateTreeIterator
 //-------------------------------------------------------------------------------------------------
 FUNCTION ReleaseTreeIterator
 (
-    le_cfgAdmin_IteratorRef_t iteratorRef IN  ///< Iterator object to release.
+    Iterator iteratorRef IN  ///< Iterator object to release.
 );
 
 
@@ -177,9 +177,9 @@ FUNCTION ReleaseTreeIterator
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetTreeName
 (
-    le_cfgAdmin_IteratorRef_t iteratorRef IN,  ///< Iterator object to read.
-    string name[64] OUT                        ///< Name of the currently referenced tree is
-                                               ///<   passed in this out parameter.
+    Iterator iteratorRef IN,  ///< Iterator object to read.
+    string name[64] OUT       ///< Name of the currently referenced tree is
+                              ///<   passed in this out parameter.
 );
 
 
@@ -193,5 +193,5 @@ FUNCTION le_result_t GetTreeName
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t NextTree
 (
-    le_cfgAdmin_IteratorRef_t iteratorRef IN  ///< Iterator to iterate.
+    Iterator iteratorRef IN  ///< Iterator to iterate.
 );

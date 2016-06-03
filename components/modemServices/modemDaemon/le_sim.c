@@ -460,15 +460,6 @@ le_result_t le_sim_Init
         GetSimCardInformation(&SimList[i], LE_SIM_ABSENT);
     }
 
-    if (pa_sim_GetSelectedCard(&SelectedCard) != LE_OK)
-    {
-        LE_CRIT("Unable to get selected card.");
-        return LE_FAULT;
-    }
-    GetSimCardInformation(&SimList[SelectedCard], LE_SIM_STATE_UNKNOWN);
-
-    LE_DEBUG("SIM %u is selected.", SelectedCard);
-
     // Create an event Id for new SIM state notifications
     NewSimStateEventId = le_event_CreateId("NewSimStateEventId", sizeof(Sim_Event_t));
 
@@ -484,6 +475,15 @@ le_result_t le_sim_Init
         LE_CRIT("Add new SIM state handler failed");
         return LE_FAULT;
     }
+
+    if (pa_sim_GetSelectedCard(&SelectedCard) != LE_OK)
+    {
+        LE_CRIT("Unable to get selected card.");
+        return LE_FAULT;
+    }
+    GetSimCardInformation(&SimList[SelectedCard], LE_SIM_STATE_UNKNOWN);
+
+    LE_DEBUG("SIM %u is selected.", SelectedCard);
 
     return LE_OK;
 }
@@ -1721,4 +1721,150 @@ le_result_t le_sim_RejectSimToolkitCommand
     {
         return pa_sim_ConfirmSimToolkitCommand(false);
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send APDU command to the SIM.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      The function failed to select the SIM card for this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SendApdu
+(
+    le_sim_Id_t simId,
+        ///< [IN]
+        ///< The SIM identifier.
+
+    const uint8_t* commandApduPtr,
+        ///< [IN]
+        ///< APDU command.
+
+    size_t commandApduNumElements,
+        ///< [IN]
+
+    uint8_t* responseApdu,
+        ///< [OUT]
+        ///< SIM response.
+
+    size_t* responseApduNumElementsPtr
+        ///< [INOUT]
+)
+{
+    if ((commandApduNumElements > LE_SIM_APDU_MAX_BYTES) ||
+        (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
+    {
+        LE_ERROR("Too many elements");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        LE_ERROR("Invalid simId (%d) provided!", simId);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (SelectSIMCard(simId) != LE_OK)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    return pa_sim_SendApdu(commandApduPtr,
+                           commandApduNumElements,
+                           responseApdu,
+                           responseApduNumElementsPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a command to the SIM.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      - The function failed to select the SIM card for this operation
+ *                          - The requested SIM file is not found
+ *      - LE_OVERFLOW       Response buffer is too small to copy the SIM answer.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SendCommand
+(
+    le_sim_Id_t simId,
+        ///< [IN]
+        ///< The SIM identifier.
+
+    le_sim_Command_t command,
+        ///< [IN]
+        ///< The SIM command.
+
+    const char* fileIdentifier,
+        ///< [IN]
+        ///< File identifier
+
+    uint8_t p1,
+        ///< [IN]
+        ///< Parameter P1 passed to the SIM
+
+    uint8_t p2,
+        ///< [IN]
+        ///< Parameter P2 passed to the SIM
+
+    uint8_t p3,
+        ///< [IN]
+        ///< Parameter P3 passed to the SIM
+
+    const uint8_t* dataPtr,
+        ///< [IN]
+        ///< data command.
+
+    size_t dataNumElements,
+        ///< [IN]
+
+    const char* path,
+        ///< [IN]
+        ///< path of the elementary file
+
+    uint8_t* sw1Ptr,
+        ///< [OUT]
+        ///< SW1 received from the SIM
+
+    uint8_t* sw2Ptr,
+        ///< [OUT]
+        ///< SW2 received from the SIM
+
+    uint8_t* responsePtr,
+        ///< [OUT]
+        ///< SIM response.
+
+    size_t* responseNumElementsPtr
+        ///< [INOUT]
+)
+{
+    if ((simId >= LE_SIM_ID_MAX) ||
+        (command >= LE_SIM_COMMAND_MAX) ||
+        (dataNumElements > LE_SIM_DATA_MAX_BYTES) ||
+        (*responseNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
+    {
+        LE_ERROR("Invalid argument");
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_sim_SendCommand( command,
+                               fileIdentifier,
+                               p1,
+                               p2,
+                               p3,
+                               dataPtr,
+                               dataNumElements,
+                               path,
+                               sw1Ptr,
+                               sw2Ptr,
+                               responsePtr,
+                               responseNumElementsPtr
+                             );
 }

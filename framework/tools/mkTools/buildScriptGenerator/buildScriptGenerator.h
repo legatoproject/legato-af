@@ -87,6 +87,20 @@ void Generate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate a build script for a module.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Generate
+(
+    const model::Module_t* modulePtr,
+    const mk::BuildParams_t& buildParams,
+    int argc,           ///< Count of the number of command line parameters.
+    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate a build script for a system.
  **/
 //--------------------------------------------------------------------------------------------------

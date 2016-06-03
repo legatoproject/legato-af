@@ -13,12 +13,10 @@ struct ObjectFile_t
 {
     std::string path;   ///< Path to the object file relative to the working directory.
 
-    ProgramLang_t language; ///< Programming language the source code is written in.
-
     std::string sourceFilePath; ///< Absolute path to the source code file.
 
-    ObjectFile_t(const std::string& p, ProgramLang_t l, const std::string& s)
-                                                       : path(p), language(l), sourceFilePath(s) {}
+    ObjectFile_t(const std::string& p, const std::string& s)
+        : path(p), sourceFilePath(s) {}
 };
 
 

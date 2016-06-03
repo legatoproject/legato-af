@@ -142,6 +142,7 @@ static void ECallStateHandler
         case LE_ECALL_STATE_DISCONNECTED:
         {
             LE_INFO("New eCall state is LE_ECALL_STATE_DISCONNECTED.");
+            LE_INFO("Termination reason: %d", le_ecall_GetTerminationReason(eCallRef) );
             break;
         }
         case LE_ECALL_STATE_WAITING_PSAP_START_IND:
@@ -206,8 +207,6 @@ static void ECallStateHandler
         case LE_ECALL_STATE_COMPLETED:
         {
             LE_INFO("New eCall state is LE_ECALL_STATE_COMPLETED.");
-            le_ecall_End(eCallRef);
-            le_ecall_Delete(eCallRef);
             break;
         }
         case LE_ECALL_STATE_FAILED:
@@ -290,6 +289,18 @@ static void StartSession
                                          longitude,
                                          direction) != LE_OK),
                 "Unable to set the position!");
+
+    // for demo purposes N-1 is hardcoded
+    LE_ERROR_IF((le_ecall_SetMsdPositionN1(ECallRef,
+                                         -512,
+                                         -512) != LE_OK),
+                "Unable to set the position N-1!");
+
+    // for demo purposes N-2 is hardcoded
+    LE_ERROR_IF((le_ecall_SetMsdPositionN2(ECallRef,
+                                         511,
+                                         0) != LE_OK),
+                "Unable to set the position N-2!");
 
     if (paxCount > 0)
     {

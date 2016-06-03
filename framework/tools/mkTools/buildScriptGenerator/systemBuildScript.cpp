@@ -14,6 +14,7 @@
 #include "buildScriptCommon.h"
 #include "exeBuildScript.h"
 #include "appBuildScript.h"
+#include "moduleBuildScript.h"
 #include "componentBuildScript.h"
 
 namespace ninja
@@ -70,6 +71,13 @@ static void GenerateSystemBuildRules
     "            find $$LEGATO_ROOT/build/$target/framework/lib/* -type d -prune -o"
                        " \\( -type f -o -type l \\) -print | xargs cp -P -t $stagingDir/lib && $\n"
 
+    // Create modules directory and copy kernel modules into it
+    "            mkdir -p $stagingDir/modules && $\n"
+    "            if [ -d $$LEGATO_ROOT/build/$target/system/modules ] ; then $\n"
+    "                find $$LEGATO_ROOT/build/$target/system/modules/*/*.ko -print"
+                          "| xargs cp -P -t $stagingDir/modules ; $\n"
+    "            fi && $\n"
+
     // Create an apps directory for the symlinks to the apps.
     "            mkdir -p $stagingDir/apps && $\n";
 
@@ -81,11 +89,22 @@ static void GenerateSystemBuildRules
         std::string appInfoFile = "$builddir/app/" + appPtr->name + "/staging/info.properties";
         std::string symLink = "$stagingDir/apps/" + appPtr->name;
 
-        // Extract the app's MD5 hash from the info.properties file.
-        script <<
-        "            md5=`grep '^app.md5=' " << appInfoFile << " | sed 's/^app.md5=//'` && $\n"
+        // If the app is "preloaded" on the target and its MD5 is specified in the .sdef file,
+        // then "hard code" the specified MD5 into the build script.
+        // Otherwise, extract the app's MD5 hash from the info.properties file.
+        if (appPtr->isPreloaded && !appPtr->preloadedMd5.empty())
+        {
+            script <<
+            "            md5=" << appPtr->preloadedMd5 << " && $\n";
+        }
+        else
+        {
+            script <<
+            "            md5=`grep '^app.md5=' " << appInfoFile << " | sed 's/^app.md5=//'` && $\n";
+        }
 
         // Add a symlink to /legato/apps/$HASH from staging/system/apps/appName.
+        script <<
         "            ln -sf /legato/apps/$$md5 " << symLink << " && $\n";
     }
 
@@ -200,6 +219,14 @@ static void GenerateSystemPackBuildStatement
         }
     }
 
+    // Also re-package system if any module binaries changed.
+    for (auto& mapEntry : systemPtr->modules)
+    {
+        auto modulePtr = mapEntry.second;
+
+        script << " $builddir/" << modulePtr->objFilePtr->path;
+    }
+
     // This must also be done again if any of the Legato framework daemons or on-target
     // tools has changed.  We can detect that by checking the "md5" file in the framework's
     // build directory.
@@ -226,6 +253,13 @@ static void GenerateNinjaScriptBuildStatement
 
     // Add the .sdef file to the dependencies.
     dependencies.insert(systemPtr->defFilePtr->path);
+
+    // For each module in the system
+    for (auto& mapEntry: systemPtr->modules)
+    {
+        // Add the .mdef file to dependencies.
+        dependencies.insert(mapEntry.second->defFilePtr->path);
+    }
 
     // For each app in the system,
     for (auto& mapEntry : systemPtr->apps)
@@ -279,7 +313,7 @@ static void GenerateNinjaScriptBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Generate a build script for an application.
+ * Generate build script for the system.
  **/
 //--------------------------------------------------------------------------------------------------
 void Generate
@@ -322,6 +356,14 @@ void Generate
     // If we are not just generating code,
     if (!buildParams.codeGenOnly)
     {
+        // For each module in .sdef file
+        for (auto& mapEntry : systemPtr->modules)
+        {
+            auto modulePtr = mapEntry.second;
+
+            GenerateBuildStatements(script, modulePtr, buildParams);
+        }
+
         // For each app built by the mk tools for this system,
         for (auto& mapEntry : systemPtr->apps)
         {

@@ -169,6 +169,9 @@ static void* ECallLoopThread
 
             LE_ASSERT((MytECallRef=le_ecall_Create()) != NULL);
             LE_ASSERT(le_ecall_SetMsdPosition(MytECallRef, true, +48898064, +2218092, 0) == LE_OK);
+            LE_ASSERT(le_ecall_SetMsdPositionN1(MytECallRef, -11, 22) == LE_OK);
+            LE_ASSERT(le_ecall_SetMsdPositionN2(MytECallRef, 33, -44) == LE_OK);
+
             LE_ASSERT(le_ecall_SetMsdPassengersCount(MytECallRef, 3) == LE_OK);
             LE_ASSERT(le_ecall_StartTest(MytECallRef) == LE_OK);
             LE_INFO("Start eCall #%d", TestCount);
@@ -205,6 +208,10 @@ static void StartStressECall
     LE_ASSERT((MytECallRef=le_ecall_Create()) != NULL);
 
     LE_ASSERT(le_ecall_SetMsdPosition(MytECallRef, true, +48898064, +2218092, 0) == LE_OK);
+
+    LE_ASSERT(le_ecall_SetMsdPositionN1(MytECallRef, -512, -512) == LE_OK);
+
+    LE_ASSERT(le_ecall_SetMsdPositionN2(MytECallRef, 511, 511) == LE_OK);
 
     LE_ASSERT(le_ecall_SetMsdPassengersCount(MytECallRef, 3) == LE_OK);
 

@@ -413,6 +413,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
+    else if (sectionName == "javaPackage")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::DOTTED_NAME);
+    }
     else if (sectionName == "bundles")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBundlesSubsection);

@@ -563,6 +563,47 @@ static void Testle_mcc_SetClir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: Test call waiting supplementary service.
+ *
+ * API tested:
+ * - le_mcc_SetCallWaitingServiceStatus
+ * - le_mcc_GetCallWaitingServiceStatus
+ * - le_mcc_ActiveCall
+ *
+ * Exit if failed
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_mcc_callWaiting
+(
+    void
+)
+{
+    bool callWaitingStatus = false;
+    LE_ASSERT(le_mcc_SetCallWaitingService(true) == LE_OK);
+    LE_ASSERT(le_mcc_GetCallWaitingService(&callWaitingStatus) == LE_OK);
+    LE_ASSERT(callWaitingStatus == LE_ON);
+    LE_ASSERT(le_mcc_SetCallWaitingService(false) == LE_OK);
+    LE_ASSERT(le_mcc_GetCallWaitingService(&callWaitingStatus) == LE_OK);
+    LE_ASSERT(callWaitingStatus == LE_OFF);
+
+    LE_ASSERT((CurrentCallRef = le_mcc_Create(DESTINATION_NUMBER)) != NULL);
+    LE_ASSERT(le_mcc_ActivateCall(CurrentCallRef) == LE_FAULT);
+    pa_mccSimu_SetVoiceDialResult(LE_OK);
+    LE_ASSERT(le_mcc_Start(CurrentCallRef) == LE_OK);
+    CurrentCallEvent = LE_MCC_EVENT_WAITING;
+    pa_mccSimu_ReportCallEvent(DESTINATION_NUMBER, LE_MCC_EVENT_WAITING);
+    SynchTest();
+    LE_ASSERT(le_mcc_ActivateCall(CurrentCallRef) == LE_OK);
+    CurrentCallEvent = LE_MCC_EVENT_TERMINATED;
+    CurrentTerm = 0;
+    CurrentTermCode = 0;
+    pa_mccSimu_ReportCallEvent(DESTINATION_NUMBER, LE_MCC_EVENT_TERMINATED);
+    SynchTest();
+    le_mcc_Delete(CurrentCallRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the test environmeent:
  * - create some tasks (simulate multi app)
  * - create semaphore (to make checkpoints and synchronize test and tasks)
@@ -615,7 +656,16 @@ void Testle_mcc_AddHandlers
     _ClientSessionRef = (le_msg_SessionRef_t)(tempSessionRef);
 
     LE_ASSERT((CurrentCallRef = le_mcc_Create(DESTINATION_NUMBER)) != NULL);
+
+    // Simulate a failed voice call
+    pa_mccSimu_SetVoiceDialResult(LE_FAULT);
+    LE_ASSERT(le_mcc_Start(CurrentCallRef) == LE_FAULT);
+
+    // voice call is now possible
+    pa_mccSimu_SetVoiceDialResult(LE_OK);
     LE_ASSERT(le_mcc_Start(CurrentCallRef) == LE_OK);
+    LE_ASSERT(le_mcc_Start(CurrentCallRef) == LE_BUSY);
+    LE_ASSERT(le_mcc_Delete(CurrentCallRef) == LE_FAULT);
 
     // Simulate outgoing call
     SimulateAndCheckOutgoingCallEvent(LE_MCC_EVENT_SETUP);
@@ -754,7 +804,7 @@ void Testle_mcc_RemoveHandlers
     LE_ASSERT(le_mcc_Start(CurrentCallRef) == LE_OK);
 
     // Provoke event which should call the handlers
-    pa_mccSimu_ReportCallEvent(DESTINATION_NUMBER, LE_MCC_EVENT_SETUP);
+    pa_mccSimu_ReportCallEvent(DESTINATION_NUMBER, LE_MCC_EVENT_TERMINATED);
 
     // Wait for the semaphore timeout to check that handlers are not called
     LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT );
@@ -799,7 +849,7 @@ static void* UnitTestInit
 COMPONENT_INIT
 {
     // To reactivate for all DEBUG logs
-    // le_log_SetFilterLevel(LE_LOG_DEBUG);
+    //le_log_SetFilterLevel(LE_LOG_DEBUG);
 
     // Create a semaphore to coordinate Initialization
     InitSemaphore = le_sem_Create("InitSem",0);
@@ -814,6 +864,8 @@ COMPONENT_INIT
     Testle_mcc_AddHandlers();
     LE_INFO("======== GetTerminationReason Test  ========");
     Testle_mcc_GetTerminationReason();
+    LE_INFO("======== call waiting Test  ========");
+    Testle_mcc_callWaiting();
     LE_INFO("======== RemoveHandlers Test  ========");
     Testle_mcc_RemoveHandlers();
 

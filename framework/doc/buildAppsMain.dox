@@ -1,31 +1,30 @@
-/** @page buildAppsMain Build Apps 
+/** @page buildAppsMain Build Apps
 
-<h2>Welcome</h2>
+These topics contain info to understand Legato basics, reference API details and available tools:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage buildAppsConcepts | Legato basic concepts |
+| @subpage apiGuidesMain | Service and C Library API reference |
+| @subpage tools | Target, Host, and Build tools' info |
+| @cond EXTERNAL_DOXYGEN_DEFINE @subpage external_proj_mainpage@endcond | WiFi Service plugin |
 
-<a href="http://www.sierrawireless.com/productsandservices/airprime_wireless_modules/smart_modules/legato/">Legato</a>
-is an open source embedded platform built on Linux designed to simplify embedded IoT development.
 
 <h2>Overview</h2>
 
+
+<a href="http://www.legato.io/">Legato</a> is an open source embedded platform built on Linux
+designed to simplify embedded IoT development.
+
 Legato has everything you need to connect the IoT fast:
 
-Programming language APIs &mdash; dev tools and APIs to easily write software
+- Programming language APIs &mdash; dev tools and APIs to easily write software
 components and specify how apps will use them.
-
-Target runtime environment &mdash; set of daemon processes cooperatively implement
+- Target runtime environment &mdash; set of daemon processes cooperatively implement
 execution sandboxes, secure IPC, fault monitoring.
-
-Development and build tools &mdash; target, host, and build tools to create apps ready for deployment
+- Development and build tools &mdash; target, host, and build tools to create apps ready for deployment
 to your devices.
-
-Documentation and automated tests &mdash; a raft of @ref aboutDocs "docs" and automated tests
-ready to use. 
-
-@subpage getstartedMain <br>
-@subpage buildAppsDocumentation
-
-
-<HR>
+- Documentation and automated tests &mdash; a raft of docs and automated tests
+ready to use.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

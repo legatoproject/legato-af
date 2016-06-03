@@ -413,11 +413,21 @@ static void UntarDone
         else
         {
             // Rename the app's unpack directory to the appropriate location.
+            // But first, unlink whatever happens to be in that location, in case there's a
+            // dangling symlink where this app is supposed to go (because of
+            // a botched usage of the "preloaded: true" feature in the .sdef).
             char path[PATH_MAX];
             LE_ASSERT(snprintf(path, sizeof(path), "/legato/apps/%s", Md5) < sizeof(path));
+            (void)unlink(path);
             if (rename(app_UnpackPath, path) != 0)
             {
                 LE_EMERG("Failed to rename '%s' to '%s', %m.", app_UnpackPath, path);
+            }
+
+            if (app_SetSmackPermReadOnly(Md5, AppName) != LE_OK)
+            {
+                HandleInternalError();
+                return;
             }
 
             // Set up the app's writeable files in the new system (copying from install dir and/or
@@ -453,6 +463,7 @@ static void SkipForwardDone
     // Even if we skip the payload we still need to process the install.
     if (Type == TYPE_APP_CHANGE)
     {
+        LE_DEBUG("Installing App: %s <%s>", AppName, Md5);
         // App update pack.  Process each app as an individual app install.
         if (app_InstallIndividual(Md5, AppName) != LE_OK)
         {
@@ -462,6 +473,7 @@ static void SkipForwardDone
     }
     else
     {
+        LE_DEBUG("Setting up files in appWriteable directory for App: %s <%s>.", AppName, Md5);
         // System update pack.  The app dir will already be set up in the system's "unpack" area.
         // Just might need to build up the app's writeable files if it has any.
         if (app_SetUpAppWriteables(Md5, AppName) != LE_OK)
@@ -928,7 +940,7 @@ static void JsonDone
             PercentDone = 0;
             ReportProgress();
 
-            if (app_RemoveIndividual(AppName) != LE_OK)
+            if (app_RemoveIndividual(AppName) == LE_FAULT)
             {
                 HandleInternalError();
                 return;

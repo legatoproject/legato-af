@@ -1,11 +1,10 @@
 /** @page apiGuidesMain API Guides
 
 These API guides are available:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage legatoServices            | pre-built services                                  |
-| @subpage c_APIs                          | C Language library                              |
-
-<HR>
+| Section                                  | Description                                        |
+| ---------------------------------------- | -------------------------------------------------- |
+| @subpage legatoServices                  | Pre-built services                                 |
+| @subpage c_APIs                          | C Language library                                 |
+| <a href="files.html">C Prototypes</a>    | C Prototype file reference                         |
 
 **/

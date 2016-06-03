@@ -1,16 +1,10 @@
 /** @page tools Tools
 
-This section contains info about tools available for the target and host, as well as info on tools
-to build your  Legato apps.
-
-<HR>
-
-@subpage toolsTarget <br>
-@subpage toolsHost <br>
-@subpage buildTools <br>
-
-<HR>
-
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+These topics contain info about available Legato tools:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage toolsTarget   | run on target device    |
+| @subpage toolsHost      | run on a host PC          |
+| @subpage buildTools    | run on host PC to build apps    |
 
 **/

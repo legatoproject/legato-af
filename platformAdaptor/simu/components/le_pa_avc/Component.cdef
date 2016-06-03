@@ -1,0 +1,9 @@
+sources:
+{
+    pa_avc_simu.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/airVantage/platformAdaptor/inc
+}

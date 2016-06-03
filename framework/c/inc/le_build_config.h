@@ -1,6 +1,6 @@
 
 /**
- * @page c_le_build_cfg Legato Build Configuration
+ * @page c_le_build_cfg Build Configuration
  *
  * In the file @c le_build_conifg.h are a number of preprocessor macros.  Uncommenting these macros
  * enables a non-standard feature of the framework.

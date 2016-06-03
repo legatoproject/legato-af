@@ -29,5 +29,5 @@
 //--------------------------------------------------------------------------------------------------
 FUNCTION StartSession
 (
-    uint32_t  paxCount  IN ///< number of passengers
+    uint32  paxCount  IN ///< number of passengers
 );

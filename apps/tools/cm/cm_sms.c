@@ -42,7 +42,7 @@ void cm_sms_PrintSmsHelp
             "Options:\n"
             "\t<number>: Destination number\n"
             "\t<content>: Text is encoded in ASCII format (ISO8859-15) and"
-            " characters have to exist in the GSM 23.038 7 bit alphabet"
+            " characters have to exist in the GSM 23.038 7 bit alphabet\n"
             "\t<file>: File path OR - for standard input (stdin)\n"
             "\t<optional max sms>: (Optional) Limit for the number of SMS the file is split in\n"
             );
@@ -54,9 +54,10 @@ void cm_sms_PrintSmsHelp
  */
 //-------------------------------------------------------------------------------------------------
 typedef union {
-    char    text[LE_SMS_TEXT_MAX_BYTES];
-    uint8_t binary[LE_SMS_BINARY_MAX_BYTES];
-    uint8_t pdu[LE_SMS_PDU_MAX_BYTES];
+    char     text[LE_SMS_TEXT_MAX_BYTES];
+    uint8_t  binary[LE_SMS_BINARY_MAX_BYTES];
+    uint8_t  pdu[LE_SMS_PDU_MAX_BYTES];
+    uint16_t ucs2[LE_SMS_UCS2_MAX_CHARS];
 }
 SmsContent_t;
 
@@ -71,6 +72,42 @@ typedef struct {
     int  msgToPrint;            ///< Index of message to print (-1 for all)
 }
 PrintMessageContext_t;
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Helper function to print an array of binary data (hexdump like).
+ */
+//-------------------------------------------------------------------------------------------------
+static void PrintUCS2Data
+(
+    const uint16_t * dataPtr,
+    size_t dataNb
+)
+{
+    int i;
+    const char * paddingPtr = "       ";
+
+    printf("%s", paddingPtr);
+
+    for(i = 0; i < dataNb; i++)
+    {
+        printf("%04X ", dataPtr[i]);
+
+        switch(i % 8)
+        {
+            case 3:
+                printf("  ");
+                break;
+
+            case 7:
+                printf("\n%s", paddingPtr);
+                break;
+        }
+    }
+
+    printf("\n");
+}
+
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -190,6 +227,21 @@ static void PrintMessage
             PrintBinaryData(content.pdu, length);
             break;
         }
+
+        case LE_SMS_FORMAT_UCS2:
+        {
+            contentSz = sizeof(content.ucs2) / 2;
+
+            res = le_sms_GetUCS2(msgRef, content.ucs2, &contentSz);
+            LE_ASSERT(res == LE_OK);
+
+            length = le_sms_GetUserdataLen(msgRef);
+
+            snprintf(header, sizeof(header), " UserDataLen (%zd)", length);
+            cm_cmn_FormatPrint(header, "UCS2");
+            PrintUCS2Data(content.ucs2, length);
+        }
+        break;
 
         default:
         {

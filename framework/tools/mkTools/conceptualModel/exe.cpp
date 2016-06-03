@@ -21,14 +21,20 @@ Exe_t::Exe_t
 (
     const std::string& exePath,
     App_t* appPointer,
-    const std::string& workingDir   ///< mk tool working directory path.
+    const std::string& mkWorkingDir   ///< mk tool working directory path.
 )
 //--------------------------------------------------------------------------------------------------
 :   path(exePath),
     name(path::GetIdentifierSafeName(path::GetLastNode(path))),
     appPtr(appPointer),
+    workingDir(mkWorkingDir),
     exeDefPtr(NULL),
-    mainObjectFile("obj/" + name + "/_main.c.o", LANG_C, "src/" + name + "/_main.c")
+
+    hasCCode(false),
+    hasCppCode(false),
+    hasCOrCppCode(false),
+    hasJavaCode(false),
+    hasIncompatibleLanguageCode(false)
 //--------------------------------------------------------------------------------------------------
 {
     // If being built as part of an app,
@@ -40,7 +46,68 @@ Exe_t::Exe_t
         {
             path = path::Combine(appPtr->workingDir, path);
         }
+    }
+}
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a new component instance to the executable.
+ **/
+//--------------------------------------------------------------------------------------------------
+void Exe_t::AddComponentInstance
+(
+    ComponentInstance_t* componentInstancePtr  ///< The instance to add.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    componentInstances.push_back(componentInstancePtr);
+
+    hasCCode |= componentInstancePtr->componentPtr->HasCCode();
+    hasCppCode |= componentInstancePtr->componentPtr->HasCppCode();
+
+    hasCOrCppCode |= hasCCode || hasCppCode;
+
+    hasJavaCode |= componentInstancePtr->componentPtr->HasJavaCode();
+
+    hasIncompatibleLanguageCode |= hasCOrCppCode && hasJavaCode;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compute the paths to the main object file and main source file based on the language detected.
+ **/
+//--------------------------------------------------------------------------------------------------
+ObjectFile_t Exe_t::MainObjectFile
+(
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string objectName;
+    std::string sourceName;
+
+    if (hasCOrCppCode)
+    {
+        objectName = "obj/" + name + "/_main.c.o";
+        sourceName = "src/" + name + "/_main.c";
+    }
+    else if (hasJavaCode)
+    {
+        objectName = "src/" + name + "/io/legato/generated/exe/" + name + "/Main.class";
+        sourceName = "src/" + name + "/io/legato/generated/exe/" + name + "/Main.java";
+    }
+    else
+    {
+        throw mk::Exception_t("Unexpected language for main executable.");
+    }
+
+    ObjectFile_t mainObjectFile(objectName, sourceName);
+
+    // If being built as part of an app,
+    if (appPtr != NULL)
+    {
         // The main C source code file and its object file will be generated in a subdirectory
         // of the app's working dir too.
         mainObjectFile.path = path::Combine(appPtr->workingDir, mainObjectFile.path);
@@ -50,6 +117,8 @@ Exe_t::Exe_t
 
     // Compute the absolute path of the main C source file that will be generated for this exe.
     mainObjectFile.sourceFilePath = path::Combine(workingDir, mainObjectFile.sourceFilePath);
+
+    return mainObjectFile;
 }
 
 

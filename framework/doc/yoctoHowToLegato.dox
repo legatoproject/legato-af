@@ -1,0 +1,16 @@
+/** @page yoctoHowToLegato How To Build Legato Yocto
+
+These topics contain Legato Yocto distribution platform-specific info:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage yoctoBuildLegato |   how to build Legato   |
+| @subpage yoctoTargetSW   |   how to update target software  |
+| @subpage yoctoLinuxAndroid   |  info on restoring targets   |
+| @subpage yoctoTargetHostCom  |  tips to communicate with target |
+| @subpage yoctoConfigIP  | configure target IP address  |
+| @subpage yoctoTargetIPv6 |  configure target for IPv6    |
+| @subpage yoctoUninstallLegato  |   uninstall the Legato Yocto dist  |
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

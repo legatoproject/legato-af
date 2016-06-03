@@ -100,6 +100,8 @@
  *
  * The dynamic values of the MSD can be set with:
  * - le_ecall_SetMsdPosition() sets the position of the vehicle.
+ * - le_ecall_SetMsdPositionN1() sets the first delta position of the vehicle.
+ * - le_ecall_SetMsdPositionN2() sets the second delta position of the vehicle.
  * - le_ecall_SetMsdPassengersCount() sets the number of passengers.
  *
  * The MSD is automatically encoded with the dynamic values and the static values retrieved from
@@ -662,7 +664,7 @@ HANDLER StateChangeHandler
 //--------------------------------------------------------------------------------------------------
 EVENT StateChange
 (
-    handler StateChangeHandler
+    StateChangeHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -750,6 +752,58 @@ FUNCTION le_result_t SetMsdPosition
     int32       direction  IN  ///< direction of the vehicle from magnetic north (0 to 358, clockwise)
                                ///< in 2-degrees unit. Valid range is 0 to 179. If direction of
                                ///< travel is invalid or unknown, the value 0xFF shall be used.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the position Delta N-1 from position set in le_ecall_SetMsdPosition() transmitted by the MSD.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad input parameter
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetMsdPositionN1
+(
+    Call        ecallRef   IN, ///< eCall reference
+    int32       latitudeDeltaN1 IN, ///< longitude delta from position set in SetMsdPosition
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (+- 1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (+- -1583m)
+    int32       longitudeDeltaN1 IN ///< longitude delta from position set in SetMsdPosition
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (+-1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (+- -1583m) )
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the position Delta N-2 from position set in le_ecall_SetMsdPositionN1() transmitted by the MSD.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_DUPLICATE an MSD has been already imported
+ *      - LE_BAD_PARAMETER bad input parameter
+ *      - LE_FAULT on other failures
+ *
+ * @note The process exits, if an invalid eCall reference is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetMsdPositionN2
+(
+    Call        ecallRef   IN,      ///< eCall reference
+    int32       latitudeDeltaN2 IN, ///< longitude delta from position set in SetMsdPositionN1
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (+-1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (+- -1583m)
+    int32       longitudeDeltaN2 IN ///< longitude delta from position set in SetMsdPositionN1
+                                    ///< 1 Unit = 100 miliarcseconds, which is approximately 3m
+                                    ///< maximum value: 511 = 0 0'51.100'' (+-1580m)
+                                    ///< minimum value: -512 = -0 0'51.200'' (+- -1583m) )
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1137,7 +1191,7 @@ FUNCTION le_result_t GetEraGlonassDialDuration
 FUNCTION le_result_t SetMsdEraGlonassCrashSeverity
 (
     Call        ecallRef        IN,  ///< eCall reference
-    uint32_t    crashSeverity   IN   ///< the ERA-GLONASS crash severity parameter
+    uint32      crashSeverity   IN   ///< the ERA-GLONASS crash severity parameter
 );
 
 //--------------------------------------------------------------------------------------------------

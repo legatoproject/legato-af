@@ -38,10 +38,11 @@ USETYPES le_secStore.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum number of characters permitted for a secure storage path.
+ * Maximum number of characters and byte storage size permitted for a path.
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_PATH_SIZE = 511;
+DEFINE MAX_PATH_BYTES = (MAX_PATH_SIZE + 1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -155,6 +156,23 @@ FUNCTION le_result_t Read
 (
     string path[MAX_PATH_SIZE] IN,              ///< Path of the secure storage item.
     uint8 buf[le_secStore.MAX_ITEM_SIZE] OUT    ///< Buffer to store the data in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy the meta file to the specified path.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the meta file does not exist.
+ *      LE_UNAVAILABLE if the sfs is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CopyMetaTo
+(
+    string path[MAX_PATH_SIZE] IN                 ///< Destination path of meta file copy.
 );
 
 

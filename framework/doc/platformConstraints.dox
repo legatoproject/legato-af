@@ -3,7 +3,11 @@
 The AR755x, AR8652, and WP8548 platforms have the following limitations:
 
 @subpage platformConstraintsAudio <br>
-@subpage platformConstraintsSecStorage
+@subpage platformConstraintsSecStorage <br>
+@subpage platformConstraintsAdc <br>
+@subpage platformConstraintsSim <br>
+@subpage platformConstraintsStk <br>
+@subpage platformConstraintsTemperature
 
 <HR>
 

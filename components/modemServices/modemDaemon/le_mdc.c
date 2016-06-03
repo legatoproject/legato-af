@@ -42,6 +42,19 @@
 #define LE_MDC_MAX_PROFILE_INDEX            16
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * MDC command Type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    STOP_SESSION  = 0,  ///< Stop data session
+    START_SESSION = 1   ///< Start data session
+}
+CmdType_t;
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -52,15 +65,29 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint32_t profileIndex;                  ///< Index of the profile on the modem
-    le_event_Id_t sessionStateEvent;        ///< Event to report when session changes state
-    pa_mdc_ProfileData_t modemData;         ///< Profile data that is written to the modem
-    le_mdc_ProfileRef_t profileRef;         ///< Profile Safe Reference
-    le_mdc_ConState_t ConnectionStatus;     ///< Data session connection status
-    le_mdc_DisconnectionReason_t disc;      ///< Disconnection reason
-    int32_t  discCode;                      ///< Platform specific disconnection code
+    uint32_t profileIndex;                     ///< Index of the profile on the modem
+    le_event_Id_t sessionStateEvent;           ///< Event to report when session changes state
+    pa_mdc_ProfileData_t modemData;            ///< Profile data that is written to the modem
+    le_mdc_ProfileRef_t profileRef;            ///< Profile Safe Reference
+    le_mdc_ConState_t connectionStatus;        ///< Data session connection status
+    pa_mdc_ConnectionFailureCode_t conFailure; ///< connection or disconnection failure reason
 }
 le_mdc_Profile_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request command structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    CmdType_t                   command;             ///< Command Request.
+    le_mdc_ProfileRef_t         profileRef;          ///< Profile reference.
+    le_mdc_SessionHandlerFunc_t handlerFunc;         ///< The Handler function.
+    void                        *contextPtr;         ///< Context.
+} CmdRequest_t;
+
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
@@ -95,6 +122,13 @@ static le_ref_MapRef_t DataProfileRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t MtPdpEventId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for sending commands.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t CommandEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -162,7 +196,7 @@ static void FirstLayerSessionStateChangeHandler
     le_mdc_SessionStateHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(  (*profilePtr)->profileRef,
-                        (*profilePtr)->ConnectionStatus,
+                        (*profilePtr)->connectionStatus,
                         le_event_GetContextPtr()
                      );
 }
@@ -195,22 +229,24 @@ static void NewSessionStateHandler
         }
         else
         {
-            LE_DEBUG("profileIndex %d ConnectionStatus %d", sessionStatePtr->profileIndex,
-                                                            profilePtr->ConnectionStatus);
+            LE_DEBUG("profileIndex %d, old connection status %d, new state %d",
+                                                            sessionStatePtr->profileIndex,
+                                                            profilePtr->connectionStatus,
+                                                            sessionStatePtr->newState);
             // Event report
-            if (profilePtr->ConnectionStatus != sessionStatePtr->newState)
+            if (profilePtr->connectionStatus != sessionStatePtr->newState)
             {
                 // Report the event for the given profile
                 le_event_Report(profilePtr->sessionStateEvent, &profilePtr, sizeof(profilePtr));
                 // Update Connection Status
-                profilePtr->ConnectionStatus = sessionStatePtr->newState;
+                profilePtr->connectionStatus = sessionStatePtr->newState;
             }
 
             // Get disconnection reason
             if (sessionStatePtr->newState == LE_MDC_DISCONNECTED)
             {
-                profilePtr->disc = sessionStatePtr->disc;
-                profilePtr->discCode = sessionStatePtr->discCode;
+                profilePtr->conFailure.callEndFailure = sessionStatePtr->disc;
+                profilePtr->conFailure.callEndFailureCode = sessionStatePtr->discCode;
             }
         }
     }
@@ -222,7 +258,6 @@ static void NewSessionStateHandler
             LE_DEBUG("MT-PDP profile created - index %d", sessionStatePtr->profileIndex);
             le_mdc_ProfileRef_t profileRef = CreateModemProfile(sessionStatePtr->profileIndex);
             profilePtr =  le_ref_Lookup(DataProfileRefMap, profileRef);
-
         }
         else
         {
@@ -242,7 +277,7 @@ static void NewSessionStateHandler
             {
                 // Update profile
                 profilePtr->sessionStateEvent= MtPdpEventId;
-                profilePtr->ConnectionStatus = sessionStatePtr->newState;
+                profilePtr->connectionStatus = sessionStatePtr->newState;
                 // Report the MT-PDP notification event with the given profile
                 le_event_Report(MtPdpEventId, &profilePtr, sizeof(profilePtr));
             }
@@ -322,9 +357,9 @@ static le_mdc_ProfileRef_t CreateModemProfile
         profilePtr->sessionStateEvent = le_event_CreateId(eventName, sizeof(le_mdc_Profile_t*));
 
         // Init the remaining fields
-        profilePtr->ConnectionStatus = -1;
-        profilePtr->disc = LE_MDC_DISC_UNDEFINED;
-        profilePtr->discCode = 0;
+        profilePtr->connectionStatus = -1;
+        profilePtr->conFailure.callEndFailure = LE_MDC_DISC_UNDEFINED;
+        profilePtr->conFailure.callEndFailureCode = 0;
 
         // Create a Safe Reference for this data profile object.
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
@@ -425,6 +460,93 @@ static le_result_t FindApnFromFile
     return result;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to process a command
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProcessCommandEventHandler
+(
+    void* msgCommand
+)
+{
+    le_result_t result = LE_BAD_PARAMETER;
+    CmdRequest_t* cmdRequestPtr = msgCommand;
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, cmdRequestPtr->profileRef);
+
+    if (profilePtr == NULL)
+    {
+        LE_ERROR("Invalid reference (%p) found!", cmdRequestPtr->profileRef);
+    }
+    else
+    {
+        if (cmdRequestPtr->command == START_SESSION)
+        {
+            switch (profilePtr->modemData.pdp)
+            {
+                case LE_MDC_PDP_IPV4:
+                {
+                    result = pa_mdc_StartSessionIPV4(profilePtr->profileIndex);
+                }
+                break;
+                case LE_MDC_PDP_IPV6:
+                {
+                    result = pa_mdc_StartSessionIPV6(profilePtr->profileIndex);
+                }
+                break;
+                case LE_MDC_PDP_IPV4V6:
+                {
+                    result = pa_mdc_StartSessionIPV4V6(profilePtr->profileIndex);
+                }
+                break;
+                default:
+                    result = LE_FAULT;
+            }
+        }
+        else if(cmdRequestPtr->command == STOP_SESSION)
+        {
+            result = pa_mdc_StopSession(profilePtr->profileIndex);
+        }
+        else
+        {
+            LE_ERROR("Command undefined");
+        }
+
+        // Check if a handler function is available.
+        if (cmdRequestPtr->handlerFunc)
+        {
+            LE_DEBUG("Calling Handler (%p), Status %d", cmdRequestPtr->handlerFunc, result);
+            cmdRequestPtr->handlerFunc( cmdRequestPtr->profileRef,
+                                        result,
+                                        cmdRequestPtr->contextPtr );
+        }
+        else
+        {
+            LE_WARN("No CallhandlerFunction, status %d!!", result);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This thread stacks queries and starts or stops the data session.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* CommandThread
+(
+    void* contextPtr
+)
+{
+    // Register for MDC command events
+    le_event_AddHandler("ProcessCommandHandler", CommandEventId,
+        ProcessCommandEventHandler);
+
+    // Run the event loop
+    le_event_RunLoop();
+    return NULL;
+}
+
 // =============================================
 //  MODULE/COMPONENT FUNCTIONS
 // =============================================
@@ -452,13 +574,16 @@ void le_mdc_Init
     // Create the Safe Reference Map to use for data profile object Safe References.
     DataProfileRefMap = le_ref_CreateMap("DataProfileMap", PA_MDC_MAX_PROFILE);
 
-
     // Subscribe to the session state handler
     pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
 
     /* MT-PDP management */
     // Create an event Id for MT-PDP notification
     MtPdpEventId = le_event_CreateId("MtPdpNotif", sizeof(le_mdc_Profile_t*));
+
+    CommandEventId = le_event_CreateId("CommandEventId",
+         sizeof(CmdRequest_t));
+    le_thread_Start(le_thread_Create("CommandEventThread", CommandThread, NULL));
 
     //  MT-PDP change handler counter initialization
     MtPdpStateChangeHandlerCounter = 0;
@@ -471,6 +596,8 @@ void le_mdc_Init
 //--------------------------------------------------------------------------------------------------
 /**
  * Get Profile Reference for index
+ *
+ * @note Create a new profile if the profile's index can't be found.
  *
  * @return
  *      - Reference to the data profile
@@ -631,6 +758,11 @@ le_result_t le_mdc_StartSession
         return LE_BAD_PARAMETER;
     }
 
+    profilePtr->conFailure.callEndFailure = LE_MDC_DISC_UNDEFINED;
+    profilePtr->conFailure.callEndFailureCode = 0;
+    profilePtr->conFailure.callConnectionFailureType = 0;
+    profilePtr->conFailure.callConnectionFailureCode = 0;
+
     switch (profilePtr->modemData.pdp)
     {
         case LE_MDC_PDP_IPV4:
@@ -649,10 +781,64 @@ le_result_t le_mdc_StartSession
         }
         break;
         default:
+        {
+            LE_DEBUG("Unknown PDP type %d", profilePtr->modemData.pdp);
             return LE_FAULT;
+        }
+    }
+
+    if (result != LE_OK)
+    {
+        pa_mdc_GetConnectionFailureReason(profilePtr->profileIndex, &profilePtr->conFailure);
+        LE_ERROR("Get Connection failure %d, %d, %d, %d",
+            profilePtr->conFailure.callEndFailure,
+            profilePtr->conFailure.callEndFailureCode,
+            profilePtr->conFailure.callConnectionFailureType,
+            profilePtr->conFailure.callConnectionFailureCode);
     }
 
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start profile data session.
+ * The start result is given through given handler.
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mdc_StartSessionAsync
+(
+    le_mdc_ProfileRef_t profileRef,
+        ///< [IN] Start data session for this profile object
+
+    le_mdc_SessionHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    CmdRequest_t cmd;
+    memset(&cmd,0,sizeof(CmdRequest_t));
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return;
+    }
+
+    cmd.command = START_SESSION;
+    cmd.profileRef = profileRef;
+    cmd.contextPtr = contextPtr;
+    cmd.handlerFunc = handlerPtr;
+
+    // Sending start data session command
+    LE_DEBUG("Send start data session command");
+    le_event_Report(CommandEventId, &cmd, sizeof(cmd));
 }
 
 
@@ -682,6 +868,46 @@ le_result_t le_mdc_StopSession
     }
 
     return pa_mdc_StopSession(profilePtr->profileIndex);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop profile data session.
+ * The stop result is given through given handler.
+ *
+ * @note
+ *      The process exits, if an invalid profile object is given
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mdc_StopSessionAsync
+(
+    le_mdc_ProfileRef_t profileRef,
+        ///< [IN] Stop data session for this profile object
+
+    le_mdc_SessionHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+    CmdRequest_t cmd;
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
+        return;
+    }
+
+    cmd.command = STOP_SESSION;
+    cmd.profileRef = profileRef;
+    cmd.contextPtr = contextPtr;
+    cmd.handlerFunc = handlerPtr;
+
+    // Sending stop data session command
+    LE_DEBUG("Send stop data session command");
+    le_event_Report(CommandEventId, &cmd, sizeof(cmd));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1561,6 +1787,10 @@ le_result_t le_mdc_GetAPN
  *       function will not return.
  * @note If password is too long (max PASSWORD_NAME_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
+ * @note Both PAP and CHAP authentification can be set for 3GPP network: in this case, the device
+ *       decides which authentication procedure is performed. For example, the device can have a
+ *       policy to select the most secure authentication mechanism.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_SetAuthentication
@@ -1743,7 +1973,7 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
         return LE_MDC_DISC_UNDEFINED;
     }
 
-    return (profilePtr->disc);
+    return (profilePtr->conFailure.callEndFailure);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1771,5 +2001,46 @@ int32_t le_mdc_GetPlatformSpecificDisconnectionCode
         return LE_MDC_DISC_UNDEFINED;
     }
 
-    return (profilePtr->discCode);
+    return (profilePtr->conFailure.callEndFailureCode);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called to get the platform specific connection failure reason.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mdc_GetPlatformSpecificFailureConnectionReason
+(
+    le_mdc_ProfileRef_t profileRef,
+        ///< [IN]
+        ///< profile reference
+
+    int32_t* failureTypePtr,
+        ///< [OUT]
+        ///< platform specific failure type
+
+    int32_t* failureCodePtr
+        ///< [OUT]
+        ///< platform specific failure code
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if (!failureTypePtr || !failureCodePtr)
+    {
+        LE_KILL_CLIENT("failureTypePtr or failureCodePtr is NULL !");
+        return;
+    }
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return;
+    }
+
+    *failureCodePtr = profilePtr->conFailure.callConnectionFailureCode;
+    *failureTypePtr = profilePtr->conFailure.callConnectionFailureType;
 }

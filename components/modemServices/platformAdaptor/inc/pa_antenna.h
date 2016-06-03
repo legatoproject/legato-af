@@ -1,4 +1,26 @@
+/**
+ * @page c_pa_antenna Antenna Platform Adapter API
+ *
+ * @ref pa_antenna.h "API Reference"
+ *
+ * <HR>
+ *
+ * These APIs are independent of platform. The implementation is in a platform specific adaptor
+ * and applications that use these APIs can be trivially ported between platforms that implement
+ * the APIs.
+ *
+ * These functions are blocking and return when the modem has replied to the request or a timeout
+ * has occurred.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. 2015. Use of this work is subject to license.
+ */
+
+
 /** @file pa_antenna.h
+ *
+ * Legato @ref c_pa_antenna include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -6,6 +28,7 @@
 #ifndef LEGATO_PAANTENNA_INCLUDE_GUARD
 #define LEGATO_PAANTENNA_INCLUDE_GUARD
 
+#include "interfaces.h"
 
 typedef struct
 {
@@ -94,6 +117,7 @@ LE_SHARED le_result_t pa_antenna_GetOpenLimit
  *
  * @return
  * - LE_OK on success
+ * - LE_UNSUPPORTED if the antenna detection is not supported
  * - LE_FAULT on failure
  *
  */

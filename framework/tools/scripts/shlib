@@ -69,24 +69,28 @@ PrintSynopsisSection() {
 PrintDescriptionSection() {
     if [[ $help_long_description ]]; then
         echo "${bh}DESCRIPTION${eh}"
+        echo "$verbatim"
         for desc_line in "${help_long_description[@]}"; do
             printf "    %s\\n" "$desc_line"
         done \
             | sed 's^\@^\\@^g' \
             | sed 's^<^\\<^g'
         echo ""
+        echo "$endverbatim"
     fi
 }
 
 PrintNotesSection() {
     if [[ $help_notes ]]; then
         echo "${bh}NOTES${eh}"
+        echo "$verbatim"
         for desc_line in "${help_notes[@]}"; do
             printf "    %s\\n" "$desc_line"
         done \
             | sed 's^\@^\\@^g' \
             | sed 's^<^\\<^g'
         echo ""
+        echo "$endverbatim"
     fi
 }
 
@@ -200,6 +204,35 @@ SetTargetIP()
 
         ExitWithError "Device address $TARGET_IP seems to be unreachable."
     fi
+}
+
+# Function to be able to use the toolchain within a script
+FindToolchain() {
+    toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
+
+    TOOLCHAIN_DIR=${!toolchain_dir_env_name}
+    if [ -z "$TOOLCHAIN_DIR" ]; then
+        TOOLCHAIN_DIR=$(findtoolchain $TARGET)
+    fi
+
+    TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
+
+    export PATH=$TOOLCHAIN_ROOT/usr/bin:$TOOLCHAIN_ROOT/usr/sbin:$PATH
+}
+
+# Function to find a tool, eventually considering the toolchain if FindToolchain
+# has been called previously
+FindTool() {
+    TOOL_NAME=$1
+    TOOL_VAR_DEST=$2
+
+    TOOL_PATH=$(which $TOOL_NAME 2> /dev/null)
+    if [ -z "$TOOL_PATH" ]; then
+        echo "Warning: Unable to find $TOOL_NAME within toolchain, please update your toolchain."
+        return 1
+    fi
+
+    export ${TOOL_VAR_DEST}=${TOOL_PATH}
 }
 
 # scp command needs help with ipv6 else it gets confused by ':' so add '[' and ']'

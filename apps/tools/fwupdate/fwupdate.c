@@ -133,9 +133,13 @@ static void TryConnect
 //--------------------------------------------------------------------------------------------------
 /**
  * Process the download firmware command
+ *
+ * @return
+ *      - LE_OK if the download was successful
+ *      - LE_FAULT if there was an issue during the download process
  */
 //--------------------------------------------------------------------------------------------------
-static void DownloadFirmware
+static le_result_t DownloadFirmware
 (
     const char* fileName    ///< Name of file containing firmware image
 )
@@ -157,7 +161,7 @@ static void DownloadFirmware
         {
             // Inform the user of the error; it's also useful to log this info
             printf("Can't open file '%s' : %m\n", fileName);
-            LE_FATAL("Can't open file '%s' : %m", fileName);
+            return LE_FAULT;
         }
     }
 
@@ -175,43 +179,63 @@ static void DownloadFirmware
     else
     {
         printf("Error in download\n");
+        return LE_FAULT;
     }
+
+    return LE_OK;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Process the query command, and print out the firmware, bootloader and linux versions.
+ *
+ * @return
+ *      - LE_OK if it was possible to show all versions
+ *      - LE_FAULT if that was not the case
  */
 //--------------------------------------------------------------------------------------------------
-static void QueryVersion
+static le_result_t QueryVersion
 (
     void
 )
 {
+    le_result_t result = LE_OK;
+
     TryConnect(le_fwupdate_ConnectService, "fwupdateService");
 
     // Connected to service so continue
-    le_result_t result;
     char version[MAX_VERS_BYTES];
     struct utsname linuxInfo;
 
-    result = le_fwupdate_GetFirmwareVersion(version, sizeof(version));
-    if ( result == LE_OK )
+    if ( le_fwupdate_GetFirmwareVersion(version, sizeof(version)) == LE_OK )
     {
         printf("Firmware Version: %s\n", version);
     }
+    else
+    {
+        result = LE_FAULT;
+    }
 
-    result = le_fwupdate_GetBootloaderVersion(version, sizeof(version));
-    if ( result == LE_OK )
+    if ( le_fwupdate_GetBootloaderVersion(version, sizeof(version)) == LE_OK )
     {
         printf("Bootloader Version: %s\n", version);
+    }
+    else
+    {
+        result = LE_FAULT;
     }
 
     if ( uname(&linuxInfo) == 0 )
     {
         printf("Linux Version: %s %s\n", linuxInfo.release, linuxInfo.version);
     }
+    else
+    {
+        result = LE_FAULT;
+    }
+
+    return result;
 }
 
 
@@ -238,8 +262,12 @@ COMPONENT_INIT
             // Get the filename of the firmware image; could be '-' if stdin
             if (le_arg_NumArgs() > 1)
             {
-                DownloadFirmware(le_arg_GetArg(1));
-                exit(EXIT_SUCCESS);
+                if (DownloadFirmware(le_arg_GetArg(1)) == LE_OK)
+                {
+                    exit(EXIT_SUCCESS);
+                }
+
+                exit(EXIT_FAILURE);
             }
             else
             {
@@ -249,8 +277,12 @@ COMPONENT_INIT
 
         else if ( strcmp(command, "query") == 0 )
         {
-            QueryVersion();
-            exit(EXIT_SUCCESS);
+            if (QueryVersion() == LE_OK)
+            {
+                exit(EXIT_SUCCESS);
+            }
+
+            exit(EXIT_FAILURE);
         }
 
         else

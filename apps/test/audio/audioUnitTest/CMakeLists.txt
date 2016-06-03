@@ -7,7 +7,7 @@ set(APP_TARGET audioUnitTest)
 
 set(INTERFACES_AUDIO "${LEGATO_ROOT}/interfaces")
 set(LEGATO_AUDIO "${LEGATO_ROOT}/components/audio/")
-set(PA_SIMU_AUDIO "${LEGATO_AUDIO}/platformAdaptor/simu/le_pa_audio/")
+set(PA_SIMU_AUDIO "${LEGATO_ROOT}/platformAdaptor/simu/components/le_pa_audio/")
 set (TEST "apps/test/audio/${APP_TARGET}")
 set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 set(LEGATO_LIBRARY_PATH ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/lib/liblegato.so)

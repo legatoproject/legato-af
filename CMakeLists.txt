@@ -57,8 +57,26 @@ endif()
 
 set(LEGATO_PROPRIETARY_QCT_DIR $ENV{LEGATO_PROPRIETARY_QCT_DIR})
 
+# Target: ar759x
+if(LEGATO_TARGET MATCHES "ar759x")
+    set(LEGATO_COMPONENTS_MODEM "QMI")
+    #set(LEGATO_COMPONENTS_GNSS "QMI")
+    set(LEGATO_COMPONENTS_AUDIO "ar759x")
+    #set(LEGATO_COMPONENTS_AVC "QMI")
+    #set(LEGATO_COMPONENTS_SECSTORE "QMI")
+    #set(LEGATO_COMPONENTS_FWUPDATE "QMI")
+
+# Target: ar758x
+elseif(LEGATO_TARGET MATCHES "ar758x")
+    set(LEGATO_COMPONENTS_MODEM "QMI")
+    #set(LEGATO_COMPONENTS_GNSS "QMI")
+    #set(LEGATO_COMPONENTS_AUDIO "ar7")
+    #set(LEGATO_COMPONENTS_AVC "QMI")
+    #set(LEGATO_COMPONENTS_SECSTORE "QMI")
+    #set(LEGATO_COMPONENTS_FWUPDATE "QMI")
+
 # Target: ar7
-if(LEGATO_TARGET MATCHES "ar7")
+elseif(LEGATO_TARGET MATCHES "ar7")
     set(LEGATO_COMPONENTS_MODEM "QMI")
     set(LEGATO_COMPONENTS_GNSS "QMI")
     set(LEGATO_COMPONENTS_AUDIO "ar7")
@@ -92,6 +110,15 @@ elseif(LEGATO_TARGET MATCHES "virt")
     set(LEGATO_COMPONENTS_SECSTORE "simu")
     set(LEGATO_COMPONENTS_FWUPDATE "simu")
 
+# Target: raspi
+elseif(LEGATO_TARGET MATCHES "raspi")
+    set(LEGATO_COMPONENTS_MODEM "AT")
+    set(LEGATO_COMPONENTS_GNSS "AT")
+    set(LEGATO_COMPONENTS_AUDIO "STUB")
+    set(LEGATO_COMPONENTS_AVC "AT")
+    set(LEGATO_COMPONENTS_SECSTORE "AT")
+    set(LEGATO_COMPONENTS_FWUPDATE "AT")
+
 # Target: localhost
 elseif(LEGATO_TARGET MATCHES "localhost")
 
@@ -100,10 +127,6 @@ else()
     message(FATAL_ERROR "Invalid Target: ${LEGATO_TARGET}")
 endif()
 
-# Target is an automotive platform
-if(AUTOMOTIVE_TARGET)
-    add_definitions(-DAUTOMOTIVE_TARGET)
-endif()
 
 ## Output
 set(DOCUMENTATION_OUTPUT_PATH   ${LEGATO_ROOT}/build/doc)
@@ -168,9 +191,7 @@ endif()
 
 ## Paths to AT Manager include files needed by various platform adapters that use it.
 set (LEGATO_COMPONENTS_AT_MANAGER_INCLUDE_DIRS
-        modemServices/platformAdaptor/at/atManager/inc
-        modemServices/platformAdaptor/at/atManager/devices/adapter_layer/inc
-        modemServices/platformAdaptor/at/atManager/devices/uart/inc
+        at/inc
         )
 
 # Documentation
@@ -183,3 +204,12 @@ enable_testing()
 
 # Sample and Test Applications
 add_subdirectory(apps)
+
+# Platform Adaptor specifc Applications
+file(GLOB PAs RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/platformAdaptor ${CMAKE_CURRENT_SOURCE_DIR}/platformAdaptor/*)
+foreach(pa ${PAs})
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/platformAdaptor/${pa}/CMakeLists.txt)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/platformAdaptor/${pa})
+    endif()
+endforeach()
+

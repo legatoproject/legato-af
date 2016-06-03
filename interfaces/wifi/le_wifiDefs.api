@@ -1,0 +1,99 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_wifiDefs_interface.h
+ *
+ * Definition file common to multiple wifi related services.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+/**
+ * The maximum length of the textual representation of an IP address.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_IP_LENGTH   = 15;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The maximum length of the wep key
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_WEPKEY_LENGTH   = 63;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The maximum number of bytes of the wep key
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_WEPKEY_BYTES   = (MAX_WEPKEY_LENGTH+1);
+
+/**
+ * The maximum length of the pass-phrase used to generate PSK is 63 bytes. See 802.11-2007: H4.2.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PASSPHRASE_LENGTH   = 63;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of PSK, Pre Shared Key.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PASSPHRASE_BYTES = (MAX_PASSPHRASE_LENGTH+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The length of the PSK, Pre Shared Key, is 64 bytes. See 802.11-2007: H4.2.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PSK_LENGTH   = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of PSK, Pre Shared Key.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PSK_BYTES = (MAX_PSK_LENGTH+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the User-Name. RFC2865 recommends the ability to handle at least 63 octets.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_USERNAME_LENGTH   = 63;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the User-Name.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_USERNAME_BYTES = (MAX_USERNAME_LENGTH+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the User-Name. RFC2865 recommends at least 130.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PASSWORD_LENGTH   = 130;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the User-Name.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_PASSWORD_BYTES = (MAX_PASSWORD_LENGTH+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The maximum length of octets of the Service set identification (SSID).
+ * @note that while the values are probably human readable, this is not a string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SSID_BYTES  =  32;
+
+

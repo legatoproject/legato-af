@@ -2,7 +2,7 @@
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #*******************************************************************************
 
-if(LEGATO_COMPONENTS_AUDIO MATCHES "ar7")
+if(LEGATO_COMPONENTS_AUDIO EQUAL "ar7")
 
     mkapp(paAudioAr7Test.adef
           -i ${LEGATO_ROOT}/components/audio/platformAdaptor/inc

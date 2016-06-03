@@ -545,12 +545,18 @@ static le_result_t WavWriteFd
 {
     WavHeader_t hdr;
     WavParams_t* wavParamPtr =  (WavParams_t*) mediaCtxPtr->codecParams;
+    int oldstate = PTHREAD_CANCEL_ENABLE, dummy = PTHREAD_CANCEL_ENABLE;
+
+    // This function is set to no cancelable to avoid desynchronisation between the data and the
+    // header
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
 
     int32_t len = write(mediaCtxPtr->fd_out, bufferInPtr, bufferLen);
 
     if (len != bufferLen)
     {
         LE_ERROR("write error: %d written, expected %d, errno %d", len, bufferLen, errno);
+        pthread_setcancelstate(oldstate, &dummy);
         return LE_FAULT;
     }
 
@@ -565,6 +571,7 @@ static le_result_t WavWriteFd
     if (len != sizeof(wavParamPtr->recordingSize))
     {
         LE_ERROR("read error: %d written, errno %d", len, errno);
+        pthread_setcancelstate(oldstate, &dummy);
         return LE_FAULT;
     }
 
@@ -577,10 +584,13 @@ static le_result_t WavWriteFd
     if (len != sizeof(riffSize))
     {
         LE_ERROR("read error: %d written, errno %d", len, errno);
+        pthread_setcancelstate(oldstate, &dummy);
         return LE_FAULT;
     }
 
     lseek(mediaCtxPtr->fd_out, sizeof(WavHeader_t)+wavParamPtr->recordingSize, SEEK_SET);
+
+    pthread_setcancelstate(oldstate, &dummy);
 
     return LE_OK;
 }
@@ -1149,9 +1159,10 @@ static void PlayThreadControl
     {
         case PAUSE:
             // stop the timer to make a pause
-            if (le_timer_IsRunning(threadContextPtr->timerRef))
+            if (le_timer_IsRunning(threadContextPtr->timerRef) && !threadContextPtr->pause)
             {
-                threadContextPtr->operationResult = le_timer_Stop(threadContextPtr->timerRef);
+                threadContextPtr->pause = true;
+                threadContextPtr->operationResult = LE_OK;
             }
             else
             {
@@ -1162,9 +1173,10 @@ static void PlayThreadControl
 
         case RESUME:
             // start the timer to resume the playback
-            if (!le_timer_IsRunning(threadContextPtr->timerRef))
+            if (le_timer_IsRunning(threadContextPtr->timerRef) && threadContextPtr->pause)
             {
-                threadContextPtr->operationResult = le_timer_Start(threadContextPtr->timerRef);
+                threadContextPtr->pause = false;
+                threadContextPtr->operationResult = LE_OK;
             }
             else
             {
@@ -1425,7 +1437,15 @@ static void PlaybackThreadTimer
             threadContextPtr->isNoMoreSamplesEventSent = false;
 
             // reading file descriptor
-            len = read(threadContextPtr->fd, data, bufsize);
+            if (threadContextPtr->pause)
+            {
+                memset(data, 0, bufsize);
+                len = bufsize;
+            }
+            else
+            {
+                len = read(threadContextPtr->fd, data, bufsize);
+            }
 
             if (len == bufsize)
             {
@@ -1620,6 +1640,8 @@ le_result_t le_media_PlayDtmf
     {
         LE_ERROR("Failed to create the pipe");
         le_mem_Release(dtmfParamsPtr);
+        le_mem_Release(mediaCtxPtr);
+        streamPtr->mediaThreadContextPtr = NULL;
         return LE_FAULT;
     }
 
@@ -1635,11 +1657,11 @@ le_result_t le_media_PlayDtmf
     {
         res=le_media_PlaySamples(streamPtr, &streamPtr->samplePcmConfig);
     }
-
-    if (res != LE_OK)
+    else
     {
         le_mem_Release(dtmfParamsPtr);
         le_mem_Release(mediaCtxPtr);
+        streamPtr->mediaThreadContextPtr = NULL;
         LE_ERROR("Cannot spawn DTMF thread!");
     }
 
@@ -1849,7 +1871,7 @@ le_result_t le_media_PlaySamples
 
     char threadName[30]="\0";
 
-    snprintf(threadName, 30, "AudioPlayback-%p", streamPtr->streamRef);
+    snprintf(threadName, 30, "Playback-%p", streamPtr->streamRef);
 
     streamPtr->pcmThreadRef = le_thread_Create(threadName,
                                                 PlaybackThread,

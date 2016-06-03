@@ -170,6 +170,30 @@ static le_cellnet_State_t TranslateToCellNetState
     switch(state)
     {
         case LE_MRC_REG_NONE:
+        {
+            le_onoff_t  radioState;
+            le_result_t result;
+
+            // In this state, the radio should be OFF.
+            if ((result = le_mrc_GetRadioPower(&radioState)) != LE_OK)
+            {
+                LE_WARN("Failed to get the radio power. Result: %d", result);
+                return LE_CELLNET_REG_UNKNOWN;
+            }
+            else
+            {
+                if (radioState == LE_OFF)
+                {
+                    // The radio is OFF
+                    return LE_CELLNET_RADIO_OFF;
+                }
+                else
+                {
+                    // The radio is ON
+                    return LE_CELLNET_REG_EMERGENCY;
+                }
+            }
+        }
         case LE_MRC_REG_SEARCHING:
         case LE_MRC_REG_DENIED:
             return LE_CELLNET_REG_EMERGENCY;
@@ -600,6 +624,187 @@ void le_cellnet_Release
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the PIN code in the config tree.
+ *
+ * @return
+ *    LE_OUT_OF_RANGE    Invalid simId
+ *  - LE_FORMAT_ERROR    PIN code is not in string format.
+ *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
+ *  - LE_OK              The function succeeded.
+ *  - LE_FAULT           The function failed on any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_cellnet_SetSimPinCode
+(
+    le_sim_Id_t simId,
+        ///< [IN]
+        ///< SIM identifier.
+
+    const char* pinCodePtr
+        ///< [IN]
+        ///< PIN code to insert in the config tree.
+)
+{
+
+    le_result_t result=LE_OK;
+    size_t pinCodeLength = strlen(pinCodePtr);
+
+    LE_DEBUG("simId= %d, pinCode= %s",simId,pinCodePtr);
+
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        LE_ERROR("Invalid simId (%d) provided!", simId);
+        result = LE_OUT_OF_RANGE;
+    }
+    else
+    {
+        //void entry is taken into account
+        if (strncmp(pinCodePtr,"",LE_SIM_PIN_MAX_LEN)!=0)
+        {
+            if (pinCodeLength > LE_SIM_PIN_MAX_LEN)
+            {
+                LE_KILL_CLIENT("PIN code exceeds %d", LE_SIM_PIN_MAX_LEN);
+                return LE_FAULT;
+            }
+            else if (pinCodeLength < LE_SIM_PIN_MIN_LEN)
+            {
+                LE_ERROR("SIM PIN code is not long enough (min 4 digits)");
+                result = LE_UNDERFLOW;
+            }
+            else
+            {
+                // test SIM pincode format
+                int i;
+                bool test_ok = true;
+                for (i=0; ((i<pinCodeLength) && test_ok); i++)
+                {
+                    if ((pinCodePtr[i] < 0x30) || (pinCodePtr[i] > 0x39))
+                    {
+                        test_ok = false;
+                        break;
+                    }
+                }
+                if (false == test_ok)
+                {
+                    LE_ERROR("SIM PIN code format error");
+                    result = LE_FORMAT_ERROR;
+                }
+            }
+        }
+    }
+    if (LE_OK == result)
+    {
+        // Set the configuration path for the SIM.
+        char configPath[LIMIT_MAX_PATH_BYTES];
+        snprintf(configPath, sizeof(configPath), "%s/%d",
+                 CFG_MODEMSERVICE_SIM_PATH,
+                 simId);
+
+        le_cfg_IteratorRef_t simCfgRef = le_cfg_CreateWriteTxn(configPath);
+        le_cfg_SetString(simCfgRef, CFG_NODE_PIN, pinCodePtr);
+        le_cfg_CommitTxn(simCfgRef);
+
+        LE_DEBUG("SIM PIN code (%s) inserted OK in config Tree",pinCodePtr);
+
+        // New SIM pincode is taken into account
+        LoadSimFromConfigDb(simId);
+        SendCellNetStateEvent();
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retreive the PIN code from the config tree.
+ *
+ * @return
+ *    LE_OUT_OF_RANGE    Invalid simId
+ *  - LE_NOT_FOUND       SIM PIN node isn't found in the config tree.
+ *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
+ *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
+ *  - LE_OK              The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_cellnet_GetSimPinCode
+(
+    le_sim_Id_t simId,
+        ///< [IN]
+        ///< SIM identifier.
+
+    char* pinCodePtr,
+        ///< [OUT]
+        ///< Read the PIN code from the config tree.
+
+    size_t pinCodeNumElements
+        ///< [IN]
+
+)
+{
+    le_result_t result=LE_OK;
+
+    LE_DEBUG("simId= %d",simId);
+
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        LE_ERROR("Invalid simId (%d) provided!", simId);
+        result = LE_OUT_OF_RANGE;
+    }
+    else
+    {
+        // Set the configuration path for the SIM.
+        char configPath[LIMIT_MAX_PATH_BYTES];
+        char simPin[LE_SIM_PIN_MAX_BYTES] = {0};
+        le_cfg_IteratorRef_t simCfgRef;
+
+        snprintf(configPath,
+                 sizeof(configPath),
+                 "%s/%d",
+                 CFG_MODEMSERVICE_SIM_PATH, simId);
+
+        // Check that the app has a configuration value.
+        simCfgRef = le_cfg_CreateReadTxn(configPath);
+
+        // test if the node exists
+        if (!le_cfg_NodeExists(simCfgRef, CFG_NODE_PIN))
+        {
+            LE_ERROR("SIM PIN node isn't found in the config tree");
+            result = LE_NOT_FOUND;
+        }
+        else
+        {
+            //read config tree
+            result = le_cfg_GetString(simCfgRef,CFG_NODE_PIN,simPin,sizeof(simPin),"");
+            if (result != LE_OK)
+            {
+                LE_ERROR("retrieved SIM PIN code exceeds the supplied buffer");
+                result = LE_OVERFLOW;
+            }
+            else
+            {
+                 //void entry is taken into account
+                 if ((strncmp(simPin,"",LE_SIM_PIN_MAX_LEN)!=0) &&
+                     (strlen(simPin) < LE_SIM_PIN_MIN_LEN))
+                {
+                    LE_ERROR("retrieved SIM PIN code is not long enough (min 4 digits) ");
+                    result = LE_UNDERFLOW;
+                }
+                else
+                {
+                    //copy pincode
+                    strncpy ( pinCodePtr, simPin, sizeof(simPin) );
+                    LE_DEBUG("SIM PIN code= %s retrieved OK",pinCodePtr);
+                }
+            }
+        }
+        le_cfg_CancelTxn(simCfgRef);
+    }
+    return result;
+}
 
 
 //--------------------------------------------------------------------------------------------------

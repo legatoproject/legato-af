@@ -9,19 +9,11 @@
  * This API provides definitions for reading ADC inputs.
  *
  * le_adc_ReadValue() returns the value read from an ADC channel. It takes two arguments:
- *    - The first is the number of the ADC channel to read.
+ *    - The first is the name of the ADC channel to read.
  *    - The second is used to return the value read.
  *
- * The ADC channels are multiplexed to a single Analog to Digital Converter.
- * A call to le_adc_ReadValue() will cause the associated channel to be connected to the input
- * of the ADC, trigger a conversion and return the value read.
- *
- * At this time it is not possible to change the scaling factor, sample time or reference voltage.
- * Channels EXT_ADC1 and EXT_ADC2 are externally available for general use and by default
- * use 1.8V reference and return results in mV.
- *
  * @warning Ensure to check the list of supported ADC channels on your specific platform before
- * calling the le_adc_ReadValue() function.
+ * calling the le_adc_ReadValue() function. Please refer to  @subpage platformConstraintsAdc page.
  *
  * <HR>
  *
@@ -39,22 +31,20 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum ADC's name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE ADC_NAME_MAX_LEN   = (30);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Available ADC channels
- *
- * @warning Ensure to check the list of supported ADC channels on your specific platform before
- * calling the le_adc_ReadValue() function.
+ * Maximum ADC's name string length.
+ * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-ENUM AdcChannelInput
-{
-    EXT_ADC1,
-    EXT_ADC2,
-    MAX
-};
-
+DEFINE ADC_NAME_MAX_BYTES = (ADC_NAME_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -67,6 +57,6 @@ ENUM AdcChannelInput
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ReadValue
 (
-    AdcChannelInput adcChannel IN,  ///< The adc channel to read (as per Inputs)
+    string  adcName[ADC_NAME_MAX_LEN]  IN, ///< Name of the ADC to read.
     int32           adcValue OUT    ///< The adc value
 );

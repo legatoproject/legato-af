@@ -1,0 +1,19 @@
+executables:
+{
+    mccCallWaitingTest = ( mccCallWaitingTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    mccCallWaitingTest.mccCallWaitingTest.le_mcc -> modemService.le_mcc
+}

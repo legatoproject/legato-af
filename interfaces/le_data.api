@@ -143,7 +143,7 @@ HANDLER ConnectionStateHandler
 //--------------------------------------------------------------------------------------------------
 EVENT ConnectionState
 (
-    handler ConnectionStateHandler
+    ConnectionStateHandler handler
 );
 
 

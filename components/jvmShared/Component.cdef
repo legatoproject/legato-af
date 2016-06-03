@@ -1,0 +1,16 @@
+
+requires:
+{
+    dir:
+    {
+        // This is needed by the JVM so that it can inspect it's own process.
+        "/proc"                                       "/"
+    }
+
+    file:
+    {
+        // Map in the Legato JNI interface.
+        "/legato/systems/current/lib/legato.jar"      "/lib/"
+        "/legato/systems/current/lib/liblegatoJni.so" "/lib/"
+    }
+}

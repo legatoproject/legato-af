@@ -32,6 +32,8 @@ static const char* MainAudioSoundPath;
 static const char* AudioFilePath;
 static int   AudioFileFd = -1;
 
+#define GAIN_VALUE  0x3000
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -90,6 +92,8 @@ static void ConnectAudioToFileRemotePlay
     FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
+    LE_ERROR_IF((le_audio_SetGain(FileAudioRef, GAIN_VALUE) != LE_OK), "Cannot set multimedia gain");
+
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
     LE_ERROR_IF((MediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
 
@@ -141,6 +145,8 @@ static void ConnectAudioToFileRemoteRec
     FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
 
+    LE_ERROR_IF((le_audio_SetGain(FileAudioRef, GAIN_VALUE) != LE_OK), "Cannot set multimedia gain");
+
     if (FileAudioRef && AudioOutputConnectorRef)
     {
         res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
@@ -188,6 +194,8 @@ static void ConnectAudioToFileLocalPlay
     // Play local on output connector.
     FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
+
+    LE_ERROR_IF((le_audio_SetGain(FileAudioRef, GAIN_VALUE) != LE_OK), "Cannot set multimedia gain");
 
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
     LE_ERROR_IF((MediaHandlerRef==NULL), "AddMediaHandler returns NULL!");
@@ -239,6 +247,8 @@ static void ConnectAudioToFileLocalRec
     // Capture local on input connector.
     FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+
+    LE_ERROR_IF((le_audio_SetGain(FileAudioRef, GAIN_VALUE) != LE_OK), "Cannot set multimedia gain");
 
     if (FileAudioRef && AudioInputConnectorRef)
     {
@@ -504,33 +514,6 @@ static void ConnectAudio
         {
             LE_INFO("Bad test case");
         }
-
-        // Connect SW-PCM
-        if (strcmp(AudioTestCase,"R-PB")==0)
-        {
-            LE_INFO("Connect Remote Play");
-            ConnectAudioToFileRemotePlay();
-        }
-        else
-        if (strcmp(AudioTestCase,"R-REC")==0)
-        {
-            LE_INFO("Connect Remote Rec ");
-            ConnectAudioToFileRemoteRec();
-        }
-        else if (strcmp(AudioTestCase,"L-PB")==0)
-        {
-            LE_INFO("Connect Local Play");
-            ConnectAudioToFileLocalPlay();
-        }
-        else if (strcmp(AudioTestCase,"L-REC")==0)
-        {
-            LE_INFO("Connect Local Rec ");
-            ConnectAudioToFileLocalRec();
-        }
-        else
-        {
-            LE_INFO("Bad test case");
-        }
     }
     else
     {
@@ -654,6 +637,33 @@ static void MyCallEventHandler
     else if (callEvent == LE_MCC_EVENT_CONNECTED)
     {
         LE_INFO("Call event is LE_MCC_EVENT_CONNECTED.");
+
+        // Connect SW-PCM
+        if (strcmp(AudioTestCase,"R-PB")==0)
+        {
+            LE_INFO("Connect Remote Play");
+            ConnectAudioToFileRemotePlay();
+        }
+        else
+        if (strcmp(AudioTestCase,"R-REC")==0)
+        {
+            LE_INFO("Connect Remote Rec ");
+            ConnectAudioToFileRemoteRec();
+        }
+        else if (strcmp(AudioTestCase,"L-PB")==0)
+        {
+            LE_INFO("Connect Local Play");
+            ConnectAudioToFileLocalPlay();
+        }
+        else if (strcmp(AudioTestCase,"L-REC")==0)
+        {
+            LE_INFO("Connect Local Rec ");
+            ConnectAudioToFileLocalRec();
+        }
+        else
+        {
+            LE_INFO("Bad test case");
+        }
     }
     else if (callEvent == LE_MCC_EVENT_TERMINATED)
     {

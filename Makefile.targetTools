@@ -116,6 +116,8 @@ straceCfg:
 inspect:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/inspect/inspect.c \
+			--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
+			--cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="$(LE_SVCDIR_CLIENT_SOCKET_NAME)" \
 			-i $(FRAMEWORK_SRC_DIR) \
 			$(MKEXE_FLAGS)
 

@@ -33,7 +33,6 @@
 
 #include "legato.h"
 #include "thread.h"
-#include "spy.h"
 
 
 /// Expected number of threads in the process.
@@ -51,20 +50,20 @@ static le_ref_MapRef_t ThreadRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * List of thread objects for the purpose of the Inspect tool ONLY. For accessing thread objects in
+ * Thread object list for the purpose of the Inspect tool ONLY. For accessing thread objects in
  * this module, the safe reference map should be used.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t ListOfThreadObjs = LE_DLS_LIST_INIT;
+static le_dls_List_t ThreadObjList = LE_DLS_LIST_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * A counter that increments every time a change is made to ListOfThreadObjs.
+ * A counter that increments every time a change is made to ThreadObjList.
  */
 //--------------------------------------------------------------------------------------------------
-static size_t ListOfThreadObjsChgCnt = 0;
-static size_t* ListOfThreadObjsChgCntRef = &ListOfThreadObjsChgCnt;
+static size_t ThreadObjListChangeCount = 0;
+static size_t* ThreadObjListChangeCountRef = &ThreadObjListChangeCount;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -243,8 +242,8 @@ static void CleanupThread
     {
         Lock();
         le_ref_DeleteRef(ThreadRefMap, threadObjPtr->safeRef);
-        ListOfThreadObjsChgCnt++;
-        le_dls_Remove(&ListOfThreadObjs, &(threadObjPtr->link));
+        ThreadObjListChangeCount++;
+        le_dls_Remove(&ThreadObjList, &(threadObjPtr->link));
         Unlock();
 
         DeleteThread(threadObjPtr);
@@ -309,6 +308,22 @@ static void* PThreadStartRoutine
     // Push the default destructor onto the thread's cleanup stack.
     pthread_cleanup_push(CleanupThread, threadPtr);
 
+    // If the thread is supposed to run in the background (at IDLE priority), then
+    // switch to that scheduling policy now.
+    if (threadPtr->priority == LE_THREAD_PRIORITY_IDLE)
+    {
+        struct sched_param param;
+        memset(&param, 0, sizeof(param));
+        if (sched_setscheduler(0, SCHED_IDLE, &param) != 0)
+        {
+            LE_CRIT("Failed to set scheduling policy to SCHED_IDLE (%m).");
+        }
+        else
+        {
+            LE_DEBUG("Set scheduling policy to SCHED_IDLE.");
+        }
+    }
+
     // Perform thread specific init
     thread_InitThread();
 
@@ -365,6 +380,7 @@ static thread_Obj_t* CreateThread
         LE_CRIT("Could not set the detached state for thread '%s'.", name);
     }
 
+    threadPtr->priority = LE_THREAD_PRIORITY_NORMAL;
     threadPtr->isJoinable = false;
     threadPtr->state = THREAD_STATE_NEW;
     threadPtr->mainFunc = mainFunc;
@@ -381,8 +397,8 @@ static thread_Obj_t* CreateThread
     // the Inpsect tool).
     Lock();
     threadPtr->safeRef = le_ref_CreateRef(ThreadRefMap, threadPtr);
-    ListOfThreadObjsChgCnt++;
-    le_dls_Queue(&ListOfThreadObjs, &(threadPtr->link));
+    ThreadObjListChangeCount++;
+    le_dls_Queue(&ThreadObjList, &(threadPtr->link));
     Unlock();
 
     return threadPtr;
@@ -409,9 +425,78 @@ static thread_Obj_t* GetCurrentThreadPtr
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the scheduling policy attribute for a thread that has not yet been started.
+ *
+ * See 'man pthread_attr_setschedpolicy'.
+ *
+ * @return true if successful, false if failed.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool SetSchedPolicyAttr
+(
+    thread_Obj_t* threadPtr,
+    int policy, ///< SCHED_OTHER, SCHED_RR or SCHED_FIFO.
+    const char* policyName  ///< Name to use in error/debug messages.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
+                "Attempt to set scheduling policy on running thread '%s'.",
+                threadPtr->name);
+
+    int result = pthread_attr_setschedpolicy(&(threadPtr->attr), policy);
+    if (result != 0)
+    {
+        LE_CRIT("Failed to set scheduling policy to %s for thread '%s' (%d: %s).",
+                policyName,
+                threadPtr->name,
+                result,
+                strerror(result));
+
+        return false;
+    }
+    else
+    {
+        LE_DEBUG("Set scheduling policy to %s for thread '%s'.", policyName, threadPtr->name);
+
+        return true;
+    }
+}
+
+
 // ===================================
 //  INTER-MODULE FUNCTIONS
 // ===================================
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the thread obj list; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+le_dls_List_t* thread_GetThreadObjList
+(
+    void
+)
+{
+    return (&ThreadObjList);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the thread obj list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** thread_GetThreadObjListChgCntRef
+(
+    void
+)
+{
+    return (&ThreadObjListChangeCountRef);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -435,12 +520,6 @@ void thread_Init
     Lock();
     ThreadRefMap = le_ref_CreateMap("ThreadRef", THREAD_POOL_SIZE);
     Unlock();
-
-    // Pass the list of thread objects to the Inspect tool.
-    spy_SetListOfThreadObj(&ListOfThreadObjs);
-
-    // Pass the change counter of list of thread objects to the Inspect tool.
-    spy_SetListOfThreadObjsChgCntRef(&ListOfThreadObjsChgCntRef);
 
     // Create the destructor object pool.
     DestructorPool = le_mem_CreatePool("DestructorObjs", sizeof(Destructor_t));
@@ -516,7 +595,7 @@ event_PerThreadRec_t* thread_GetOtherEventRecPtr
 
     Unlock();
 
-    LE_ASSERT(threadPtr != NULL);
+    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", threadRef);
 
     return &(threadPtr->eventRec);
 }
@@ -568,8 +647,6 @@ le_thread_Ref_t le_thread_Create
  *
  * @return
  *      - LE_OK if successful.
- *      - LE_NOT_PERMITTED if the calling thread doesn't have the necessary permission levels to
- *                          use the requested priority level.
  *      - LE_OUT_OF_RANGE if the priority level requested is out of range.
  */
 //--------------------------------------------------------------------------------------------------
@@ -585,48 +662,39 @@ le_result_t le_thread_SetPriority
 
     Unlock();
 
-    LE_ASSERT(threadPtr != NULL);
+    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
 
-    if (priority == LE_THREAD_PRIORITY_NORMAL)
+    if (   (priority == LE_THREAD_PRIORITY_NORMAL)
+        || (priority == LE_THREAD_PRIORITY_IDLE) )  // IDLE can't be set until the thread starts.
     {
-        // Set the policy to Normal.
-        if (pthread_attr_setschedpolicy(&(threadPtr->attr), SCHED_OTHER) == 0)
-        {
-            LE_CRIT("Failed to set scheduling policy to SCHED_OTHER for thread '%s'.",
-                    threadPtr->name);
-        }
-    }
-    else if (priority <= LE_THREAD_PRIORITY_IDLE)
-    {
-        // Set the policy to Idle.
-        if (pthread_attr_setschedpolicy(&(threadPtr->attr), SCHED_IDLE) == 0)
-        {
-            LE_CRIT("Failed to set scheduling policy to SCHED_IDLE for thread '%s'.",
-                    threadPtr->name);
-        }
+        (void)SetSchedPolicyAttr(threadPtr, SCHED_OTHER, "SCHED_OTHER");
     }
     else if (   (priority >= LE_THREAD_PRIORITY_RT_LOWEST)
              && (priority <= LE_THREAD_PRIORITY_RT_HIGHEST) )
     {
-        struct sched_param param = {.sched_priority = priority};
-
         // Set the policy to a real-time policy.  Set the priority level.
-        if (pthread_attr_setschedpolicy(&(threadPtr->attr), SCHED_RR) != 0)
+        if (SetSchedPolicyAttr(threadPtr, SCHED_RR, "SCHED_RR"))
         {
-            LE_CRIT("Failed to set scheduling policy to SCHED_RR for thread '%s'.",
-                    threadPtr->name);
-        }
-        else if (pthread_attr_setschedparam(&(threadPtr->attr), &param) != 0)
-        {
-            LE_CRIT("Failed to set real-time priority to %d for thread '%s'.",
-                    priority,
-                    threadPtr->name);
+            struct sched_param param = {.sched_priority = priority};
+
+            int result = pthread_attr_setschedparam(&(threadPtr->attr), &param);
+
+            if (result != 0)
+            {
+                LE_CRIT("Failed to set real-time priority to %d for thread '%s' (%d: %s).",
+                        priority,
+                        threadPtr->name,
+                        result,
+                        strerror(result));
+            }
         }
     }
     else
     {
         return LE_OUT_OF_RANGE;
     }
+
+    threadPtr->priority = priority;
 
     return LE_OK;
 }
@@ -663,7 +731,11 @@ le_result_t le_thread_SetStackSize
 
     Unlock();
 
-    LE_ASSERT(threadPtr != NULL);
+    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
+
+    LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
+                "Attempt to set stack size of running thread '%s'.",
+                threadPtr->name);
 
     if (pthread_attr_setstacksize(&(threadPtr->attr), size) == 0)
     {
@@ -698,7 +770,11 @@ void le_thread_SetJoinable
 
     Unlock();
 
-    LE_ASSERT(threadPtr != NULL);
+    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
+
+    LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
+                "Attempt to make running thread '%s' joinable.",
+                threadPtr->name);
 
     threadPtr->isJoinable = true;
     LE_ASSERT(pthread_attr_setdetachstate(&(threadPtr->attr), PTHREAD_CREATE_JOINABLE) == 0);
@@ -722,7 +798,7 @@ void le_thread_Start
 
     Unlock();
 
-    LE_ASSERT(threadPtr != NULL);
+    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
 
     LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
                 "Attempt to start an already started thread (%s).",
@@ -794,6 +870,8 @@ le_result_t le_thread_Join
     {
         Unlock();
 
+        LE_CRIT("Attempt to join with non-existent thread (ref = %p).", thread);
+
         return LE_NOT_FOUND;
     }
     else
@@ -805,6 +883,8 @@ le_result_t le_thread_Join
 
         if (!isJoinable)
         {
+            LE_CRIT("Attempt to join with non-joinable thread '%s'.", threadPtr->name);
+
             return LE_NOT_POSSIBLE;
         }
         else
@@ -818,8 +898,8 @@ le_result_t le_thread_Join
                     // it from the list of thread objects, and release the Thread Object.
                     Lock();
                     le_ref_DeleteRef(ThreadRefMap, threadPtr->safeRef);
-                    ListOfThreadObjsChgCnt++;
-                    le_dls_Remove(&ListOfThreadObjs, &(threadPtr->link));
+                    ThreadObjListChangeCount++;
+                    le_dls_Remove(&ThreadObjList, &(threadPtr->link));
                     Unlock();
                     DeleteThread(threadPtr);
 
@@ -1021,7 +1101,7 @@ void le_thread_AddChildDestructor
     thread_Obj_t* threadPtr = le_ref_Lookup(ThreadRefMap, thread);
     Unlock();
 
-    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p provided!.", thread);
+    LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
 
     LE_FATAL_IF(threadPtr->state != THREAD_STATE_NEW,
                 "Thread '%s' attempted to add destructor to other running thread '%s'!",
@@ -1082,7 +1162,7 @@ void le_thread_InitLegatoThreadData
     // Create a Thread object for the calling thread.
     thread_Obj_t* threadPtr = CreateThread(name, NULL, NULL);
 
-    // Initialize the members of the Thread object according to the current pthreads attributes.
+    // This thread is already running.
     threadPtr->state = THREAD_STATE_RUNNING;
 
     // Store the Thread Object pointer in thread-specific storage so GetCurrentThreadPtr() can

@@ -244,18 +244,6 @@ testInspectMutexesDelAllMutexesInMidThread()
     ./testInspectDeleteThread.sh mutexes 2 $mutexNum $threadNum || Fail
 }
 
-testInspectMutexesDel1stThread()
-{
-    runInspectMutexes "1stThread" 0 23 4
-    ./testInspectDeleteThread.sh mutexes 0 $mutexNum $threadNum || Fail
-}
-
-testInspectMutexesDelMidThread()
-{
-    runInspectMutexes "MidThread" 0 23 4
-    ./testInspectDeleteThread.sh mutexes 2 $mutexNum $threadNum || Fail
-}
-
 testInspectMutexesWaitingList()
 {
     runInspectMutexes "TestWaitingList"
@@ -266,13 +254,6 @@ testInspectMutexesRecursive()
 {
     runInspectMutexes "TestRecursive"
     ./testInspectMutexColumns.sh "RecursiveMutex1" "recursive" 3 || Fail
-}
-
-testInspectMutexesTraceableRecursive()
-{
-    runInspectMutexes "TestTraceableRecursive"
-    ./testInspectMutexColumns.sh "TracRecurMutex1" "recursive" 3 || Fail
-    ./testInspectMutexColumns.sh "TracRecurMutex1" "traceable" 1 || Fail
 }
 
 
@@ -359,12 +340,6 @@ testInspectSemaphoresWaitingList()
     ./testInspectSemaWaitingList.sh || Fail
 }
 
-testInspectSemaphoresTraceable()
-{
-    runInspectSemaphores "TestTraceable"
-    ./testInspectSemaColumns.sh "TracSema1" "traceable" 1 || Fail
-}
-
 
 #######################
 # script body #########
@@ -413,12 +388,9 @@ testInspectMutexesComplete
 
 testInspectMutexesDelAllMutexesIn1stThread
 testInspectMutexesDelAllMutexesInMidThread
-testInspectMutexesDel1stThread
-testInspectMutexesDelMidThread
 
 testInspectMutexesWaitingList
 testInspectMutexesRecursive
-testInspectMutexesTraceableRecursive
 
 # clean up
 app stop MutexFlux
@@ -435,7 +407,6 @@ testInspectSemaphoresDel1stThread
 testInspectSemaphoresDelMidThread
 
 testInspectSemaphoresWaitingList
-testInspectSemaphoresTraceable
 
 # clean up
 app stop SemaphoreFlux

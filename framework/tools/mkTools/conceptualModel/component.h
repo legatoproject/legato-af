@@ -31,6 +31,7 @@ struct Component_t
 
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
     std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
+    std::list<JavaPackage_t*> javaPackages; ///< List of packages of Java code.
 
     std::set<std::string> staticLibs;   ///< Static library files to be linked with the exe.
 
@@ -66,6 +67,36 @@ struct Component_t
     // @return Pointer to the object.
     // @throw model::Exception_t if already exists.
     static Component_t* CreateComponent(const parseTree::CdefFile_t* filePtr);
+
+    // Does the component have C code?
+    bool HasCCode() const
+    {
+        return cObjectFiles.empty() != true;
+    }
+
+    // Does the component have C++ code?
+    bool HasCppCode() const
+    {
+        return cxxObjectFiles.empty() != true;
+    }
+
+    // Does the component have C or C++ code?
+    bool HasCOrCppCode() const
+    {
+        return HasCCode() || HasCppCode();
+    }
+
+    // Does the component have Java code?
+    bool HasJavaCode() const
+    {
+        return javaPackages.empty() != true;
+    }
+
+    // Does the component have code in multiple languages that are incompatible?
+    bool HasIncompatibleLanguageCode() const
+    {
+        return (HasJavaCode()) && (HasCOrCppCode());
+    }
 
 protected:
 

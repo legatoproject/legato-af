@@ -132,35 +132,3 @@ void supCtrl_RestartLegato
         LE_INFO("Legato restart request accepted.");
     }
 }
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the application's SMACK label.
- *
- * @note
- *      The app doesn't need to be installed for this function to succeed.
- *
- * @warning
- *      This function will kill the client if there is an error.
- */
-//--------------------------------------------------------------------------------------------------
-void supCtrl_GetLabel
-(
-    const char* appName,  ///< [IN]  Application name.
-    char* label,          ///< [OUT] SMACK label for the application.
-    size_t labelSize      ///< [IN]  Size of the SMACK label string.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    static bool connectedToSmack = false;
-
-    if (!connectedToSmack)
-    {
-        appSmack_ConnectService();
-        connectedToSmack = true;
-    }
-
-    appSmack_GetLabel(appName, label, labelSize);
-}

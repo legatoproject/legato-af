@@ -14,7 +14,7 @@
 
 #include "legato.h"
 
-#define PROTOCOL_ID_STR "5da51ba81a37315315194fd557f8ac83"
+#define PROTOCOL_ID_STR "a63fd0536b5b0b6c1f52232b68471db7"
 
 #ifdef MK_TOOLS_BUILD
     extern const char** ServiceInstanceNamePtr;

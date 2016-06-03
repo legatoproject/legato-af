@@ -27,8 +27,6 @@ namespace cli
 
 
 /// Object that stores build parameters that we gather.
-/// This is passed to the Component Builder and the Executable Builder objects
-/// when they are created.
 static mk::BuildParams_t BuildParams;
 
 /// Path to the directory into which the final, built application file should be placed.
@@ -226,6 +224,12 @@ static void GetCommandLineArgs
     {
         BuildParams.workingDir = "./_build_" + AppName + "/" + BuildParams.target;
     }
+    else if (BuildParams.workingDir.back() == '/')
+    {
+        // Strip the trailing slash from the workingDir so the generated app will be exactly the
+        // same if the only difference is whether or not the working dir path has a trailing slash.
+        BuildParams.workingDir.erase(--BuildParams.workingDir.end());
+    }
 
     // Generated libraries should be put under '/read-only/lib' under the staging directory.
     BuildParams.libOutputDir = path::Combine(BuildParams.workingDir, "staging/read-only/lib");
@@ -268,6 +272,22 @@ void MakeApp
         RunNinja(BuildParams);
         // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
     }
+    // If we have not been asked to ignore any already existing build.ninja and there has
+    // been a change in either the argument list or the environment variables,
+    // save the command-line arguments and environment variables for future comparison.
+    // Note: we don't need to do this if we have been asked not to run ninja, because
+    // that only happens when ninja is already running and asking us to regenerate its
+    // script for us, and that only happens if the args and env vars have already been saved.
+    else
+    {
+        // Save the command line arguments.
+        args::Save(BuildParams, argc, argv);
+
+        // Save the environment variables.
+        // Note: we must do this before we parse the definition file, because parsing the file
+        // will result in the CURDIR environment variable being set.
+        envVars::Save(BuildParams);
+    }
 
     // Construct a model of the application.
     model::App_t* appPtr = modeller::GetApp(AdefFilePath, BuildParams);
@@ -302,17 +322,9 @@ void MakeApp
     // Generate the build script for the application.
     ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);
 
-    // If we haven't been asked not to run ninja,
+    // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)
     {
-        // Save the command-line arguments and environment variables for future comparison.
-        // Note: we don't need to do this if we have been asked not to run ninja, because
-        // that only happens when ninja is already running and asking us to regenerate its
-        // script for us, and that only happens if we just saved the args and env vars and
-        // ran ninja.
-        args::Save(BuildParams, argc, argv);
-        envVars::Save(BuildParams);
-
         RunNinja(BuildParams);
     }
 }

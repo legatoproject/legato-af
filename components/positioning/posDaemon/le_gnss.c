@@ -42,6 +42,24 @@ typedef enum
 }
 le_gnss_State_t;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Satellite Vehicle information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t                satId;          ///< Satellite in View ID number [PRN].
+    le_gnss_Constellation_t satConst;       ///< GNSS constellation type.
+    bool                    satUsed;        ///< TRUE if satellite in View Used for Navigation.
+    uint8_t                 satSnr;         ///< Satellite in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;        ///< Satellite in View Azimuth [degrees].
+                                            ///< Range: 0 to 360
+    uint8_t                 satElev;        ///< Satellite in View Elevation [degrees].
+                                            ///< Range: 0 to 90
+}
+le_gnss_SvInfo_t;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Position Sample structure.
@@ -82,12 +100,27 @@ typedef struct le_gnss_PositionSample
     uint16_t        minutes;            ///< UTC Minutes into the hour [range 0..59].
     uint16_t        seconds;            ///< UTC Seconds into the minute [range 0..59].
     uint16_t        milliseconds;       ///< UTC Milliseconds into the second [range 0..999].
+    bool            gpsTimeValid;       ///< if true, GPS time is set
+    uint32_t        gpsWeek;            ///< GPS week number from midnight, Jan. 6, 1980.
+    uint32_t        gpsTimeOfWeek;      ///< Amount of time in milliseconds into the GPS week.
+    bool            timeAccuracyValid;  ///< if true, timeAccuracy is set
+    uint32_t        timeAccuracy;       ///< Estimated Accuracy for time in milliseconds
     bool            hdopValid;          ///< if true, horizontal dilution is set
     uint16_t        hdop;               ///< The horizontal Dilution of Precision (DOP)
     bool            vdopValid;          ///< if true, vertical dilition is set
     uint16_t        vdop;               ///< The vertical Dilution of Precision (DOP)
     bool            pdopValid;          ///< if true, position dilution is set
     uint16_t        pdop;               ///< The Position dilution of precision (DOP)
+    // Satellite Vehicles information
+    bool                satsInViewCountValid;    ///< if true, satsInViewCount is set
+    uint8_t             satsInViewCount;         ///< Satellites in View count.
+    bool                satsTrackingCountValid;  ///< if true, satsTrackingCount is set
+    uint8_t             satsTrackingCount;       ///< Tracking satellites in View count.
+    bool                satsUsedCountValid;      ///< if true, satsUsedCount is set
+    uint8_t             satsUsedCount;           ///< Satellites in View used for Navigation.
+    bool                satInfoValid;       ///< if true, satInfo is set
+    le_gnss_SvInfo_t    satInfo[LE_GNSS_SV_INFO_MAX_LEN];
+                                            ///< Satellite Vehicle information.
     le_dls_Link_t   link;               ///< Object node link
 }
 le_gnss_PositionSample_t;
@@ -380,15 +413,25 @@ static void PaPositionHandler
         positionSampleNodePtr->direction = positionPtr->heading;
         positionSampleNodePtr->directionAccuracyValid = positionPtr->headingUncertaintyValid;
         positionSampleNodePtr->directionAccuracy = positionPtr->directionUncertainty;
+        // Date
         positionSampleNodePtr->dateValid = positionPtr->dateValid;
         positionSampleNodePtr->year = positionPtr->date.year;
         positionSampleNodePtr->month = positionPtr->date.month;
         positionSampleNodePtr->day = positionPtr->date.day;
+        // UTC time
         positionSampleNodePtr->timeValid = positionPtr->timeValid;
         positionSampleNodePtr->hours = positionPtr->time.hours;
         positionSampleNodePtr->minutes = positionPtr->time.minutes;
         positionSampleNodePtr->seconds = positionPtr->time.seconds;
         positionSampleNodePtr->milliseconds = positionPtr->time.milliseconds;
+        // GPS time
+        positionSampleNodePtr->gpsTimeValid = positionPtr->gpsTimeValid;
+        positionSampleNodePtr->gpsWeek = positionPtr->gpsWeek;
+        positionSampleNodePtr->gpsTimeOfWeek = positionPtr->gpsTimeOfWeek;
+        // Time accuracy
+        positionSampleNodePtr->timeAccuracyValid = positionPtr->timeAccuracyValid;
+        positionSampleNodePtr->timeAccuracy = positionPtr->timeAccuracy;
+
         // DOP parameters
         positionSampleNodePtr->hdopValid = positionPtr->hdopValid;
         positionSampleNodePtr->hdop = positionPtr->hdop;
@@ -396,6 +439,24 @@ static void PaPositionHandler
         positionSampleNodePtr->vdop = positionPtr->vdop;
         positionSampleNodePtr->pdopValid = positionPtr->pdopValid;
         positionSampleNodePtr->pdop = positionPtr->pdop;
+        // Satellites information
+        positionSampleNodePtr->satsInViewCountValid = positionPtr->satsInViewCountValid;
+        positionSampleNodePtr->satsInViewCount = positionPtr->satsInViewCount;
+        positionSampleNodePtr->satsTrackingCountValid = positionPtr->satsTrackingCountValid;
+        positionSampleNodePtr->satsTrackingCount = positionPtr->satsTrackingCount;
+        positionSampleNodePtr->satsUsedCountValid = positionPtr->satsUsedCountValid;
+        positionSampleNodePtr->satsUsedCount = positionPtr->satsUsedCount;
+        positionSampleNodePtr->satInfoValid = positionPtr->satInfoValid;
+        for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
+        {
+            positionSampleNodePtr->satInfo[i].satId = positionPtr->satInfo[i].satId;
+            positionSampleNodePtr->satInfo[i].satConst = positionPtr->satInfo[i].satConst;
+            positionSampleNodePtr->satInfo[i].satUsed = positionPtr->satInfo[i].satUsed;
+            positionSampleNodePtr->satInfo[i].satSnr = positionPtr->satInfo[i].satSnr;
+            positionSampleNodePtr->satInfo[i].satAzim = positionPtr->satInfo[i].satAzim;
+            positionSampleNodePtr->satInfo[i].satElev = positionPtr->satInfo[i].satElev;
+        }
+
         // Node Link
         positionSampleNodePtr->link = LE_DLS_LINK_INIT;
 
@@ -693,7 +754,7 @@ le_result_t le_gnss_GetAltitude
 
     int32_t* altitudePtr,
         ///< [OUT]
-        ///< Altitude in metres, above Mean Sea Level [resolution 1e-3].
+        ///< Altitude in meters, above Mean Sea Level [resolution 1e-3].
 
     int32_t* vAccuracyPtr
         ///< [OUT]
@@ -833,6 +894,140 @@ le_result_t le_gnss_GetTime
         if (millisecondsPtr)
         {
             *millisecondsPtr = 0;
+        }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's GPS time.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the time.
+ *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetGpsTime
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint32_t* gpsWeekPtr,
+        ///< [OUT] GPS week number from midnight, Jan. 6, 1980.
+
+    uint32_t* gpsTimeOfWeekPtr
+        ///< [OUT] Amount of time in milliseconds into the GPS week.
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Check input pointers
+    if ((gpsWeekPtr == NULL)
+        || (gpsTimeOfWeekPtr == NULL))
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    // Get the position sample's GPS time
+    if (positionSamplePtr->timeValid)
+    {
+        result = LE_OK;
+        if (gpsWeekPtr)
+        {
+            *gpsWeekPtr = positionSamplePtr->gpsWeek;
+        }
+        if (gpsTimeOfWeekPtr)
+        {
+            *gpsTimeOfWeekPtr = positionSamplePtr->gpsTimeOfWeek;
+        }
+    }
+    else
+    {
+        result = LE_OUT_OF_RANGE;
+        if (gpsWeekPtr)
+        {
+            *gpsWeekPtr = 0;
+        }
+        if (gpsTimeOfWeekPtr)
+        {
+            *gpsTimeOfWeekPtr = 0;
+        }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's time accurary.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the time.
+ *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT16_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetTimeAccuracy
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint32_t* timeAccuracyPtr
+        ///< [OUT] Estimated time accuracy in milliseconds
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Check input pointers
+    if (timeAccuracyPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    // Get the position sample's time accuracy
+    if (positionSamplePtr->timeAccuracyValid)
+    {
+        result = LE_OK;
+        if (timeAccuracyPtr)
+        {
+            *timeAccuracyPtr = positionSamplePtr->timeAccuracy;
+        }
+    }
+    else
+    {
+        result = LE_OUT_OF_RANGE;
+        if (timeAccuracyPtr)
+        {
+            *timeAccuracyPtr = UINT16_MAX;
         }
     }
 
@@ -1146,6 +1341,304 @@ le_result_t le_gnss_GetDirection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the Satellites Vehicle information.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid.
+ *  - LE_OK            Function succeeded.
+ *
+ * @note satId[] can be set to 0 if that information list index is not configured, so
+ * all satellite parameters (satConst[], satSnr[],satAzim[], satElev[]) are fixed to 0.
+ *
+ * @note For LE_OUT_OF_RANGE returned code, invalid value depends on field type:
+ * UINT16_MAX for satId, LE_GNSS_SV_CONSTELLATION_UNDEFINED for satConst, false for satUsed,
+ * UINT8_MAX for satSnr, UINT16_MAX for satAzim, UINT8_MAX for satElev.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetSatellitesInfo
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN]
+        ///< Position sample's reference.
+
+    uint16_t* satIdPtr,
+        ///< [OUT]
+        ///< Satellites in View ID number, referring
+        ///< to NMEA standard.
+
+    size_t* satIdNumElementsPtr,
+        ///< [INOUT]
+
+    le_gnss_Constellation_t* satConstPtr,
+        ///< [OUT]
+        ///< GNSS constellation type.
+
+    size_t* satConstNumElementsPtr,
+        ///< [INOUT]
+
+    bool* satUsedPtr,
+        ///< [OUT]
+        ///< TRUE if satellite in View Used
+        ///< for Navigation.
+
+    size_t* satUsedNumElementsPtr,
+        ///< [INOUT]
+
+    uint8_t* satSnrPtr,
+        ///< [OUT]
+        ///< Satellites in View Signal To Noise Ratio
+        ///< [dBHz].
+
+    size_t* satSnrNumElementsPtr,
+        ///< [INOUT]
+
+    uint16_t* satAzimPtr,
+        ///< [OUT]
+        ///< Satellites in View Azimuth [degrees].
+        ///< Range: 0 to 360
+        ///< If Azimuth angle
+        ///< is currently unknown, the value is
+        ///< set to UINT16_MAX.
+
+    size_t* satAzimNumElementsPtr,
+        ///< [INOUT]
+
+    uint8_t* satElevPtr,
+        ///< [OUT]
+        ///< Satellites in View Elevation [degrees].
+        ///< Range: 0 to 90
+        ///< If Elevation angle
+        ///< is currently unknown, the value is
+        ///< set to UINT8_MAX.
+
+    size_t* satElevNumElementsPtr
+        ///< [INOUT]
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+    int i;
+
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    if (satIdPtr)
+    {
+        if (positionSamplePtr->satInfoValid)
+        {
+            for(i=0; i<*satIdNumElementsPtr; i++)
+            {
+                satIdPtr[i] = positionSamplePtr->satInfo[i].satId;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satIdNumElementsPtr; i++)
+            {
+                satIdPtr[i] = UINT16_MAX;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    if (satConstPtr)
+    {
+        if (positionSamplePtr->satInfoValid)
+        {
+            for(i=0; i<*satConstNumElementsPtr; i++)
+            {
+                satConstPtr[i] = positionSamplePtr->satInfo[i].satConst;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satConstNumElementsPtr; i++)
+            {
+                satConstPtr[i] = LE_GNSS_SV_CONSTELLATION_UNDEFINED;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    if (satUsedPtr)
+    {
+        if (positionSamplePtr->satInfoValid)
+        {
+            for(i=0; i<*satUsedNumElementsPtr; i++)
+            {
+                satUsedPtr[i] = positionSamplePtr->satInfo[i].satUsed;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satUsedNumElementsPtr; i++)
+            {
+                satUsedPtr[i] = false;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    if (satSnrPtr)
+    {
+        if (positionSamplePtr->satInfoValid)
+        {
+            for(i=0; i<*satSnrNumElementsPtr; i++)
+            {
+                satSnrPtr[i] = positionSamplePtr->satInfo[i].satSnr;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satSnrNumElementsPtr; i++)
+            {
+                satSnrPtr[i] = UINT8_MAX;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    if (satAzimPtr)
+    {
+        if (positionSamplePtr->satInfoValid)
+        {
+            for(i=0; i<*satAzimNumElementsPtr; i++)
+            {
+                satAzimPtr[i] = positionSamplePtr->satInfo[i].satAzim;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satAzimNumElementsPtr; i++)
+            {
+                satAzimPtr[i] = UINT16_MAX;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    if (satElevPtr)
+    {
+        if (positionSamplePtr->satInfoValid)
+        {
+            for(i=0; i<*satElevNumElementsPtr; i++)
+            {
+                satElevPtr[i] = positionSamplePtr->satInfo[i].satElev;
+            }
+        }
+        else
+        {
+            for(i=0; i<*satElevNumElementsPtr; i++)
+            {
+                satElevPtr[i] = UINT8_MAX;
+            }
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Satellites Vehicle status.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid.
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetSatellitesStatus
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN]
+        ///< Position sample's reference.
+
+    uint8_t* satsInViewCountPtr,
+        ///< [OUT]
+        ///< Number of satellites expected to be in view.
+
+    uint8_t* satsTrackingCountPtr,
+        ///< [OUT]
+        ///< Number of satellites in view, when tracking.
+
+    uint8_t* satsUsedCountPtr
+        ///< [OUT]
+        ///< Number of satellites in view used for Navigation.
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Satellites in View count
+    if (satsInViewCountPtr)
+    {
+        if (positionSamplePtr->satsInViewCountValid)
+        {
+            *satsInViewCountPtr = positionSamplePtr->satsInViewCount;
+        }
+        else
+        {
+            *satsInViewCountPtr = UINT8_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    // Tracking satellites in View count
+    if (satsTrackingCountPtr)
+    {
+        if (positionSamplePtr->satsTrackingCountValid)
+        {
+            *satsTrackingCountPtr = positionSamplePtr->satsTrackingCount;
+        }
+        else
+        {
+            *satsTrackingCountPtr = UINT8_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    // Number of satellites in View used for Navigation
+    if (satsUsedCountPtr)
+    {
+        if (positionSamplePtr->satsUsedCountValid)
+        {
+            *satsUsedCountPtr = positionSamplePtr->satsUsedCount;
+        }
+        else
+        {
+            *satsUsedCountPtr = UINT8_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the DOP parameters (Dilution Of Precision) for the fixed position
  *
  * @return
@@ -1330,7 +1823,7 @@ le_result_t le_gnss_GetConstellation
     {
         case LE_GNSS_STATE_READY:
         {
-            // Set GNSS constellation
+            // Get GNSS constellation
             result = pa_gnss_GetConstellation(constellationMaskPtr);
         }
         break;
@@ -1424,8 +1917,8 @@ le_result_t le_gnss_LoadExtendedEphemerisFile
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetExtendedEphemerisValidity
 (
-    le_clk_Time_t *startTimePtr,    ///< [OUT] Start time
-    le_clk_Time_t *stopTimePtr      ///< [OUT] Stop time
+    uint64_t *startTimePtr,    ///< [OUT] Start time in seconds (since Jan. 1, 1970)
+    uint64_t *stopTimePtr      ///< [OUT] Stop time in seconds (since Jan. 1, 1970)
 )
 {
     if (!startTimePtr)
@@ -1440,7 +1933,7 @@ le_result_t le_gnss_GetExtendedEphemerisValidity
         return LE_FAULT;
     }
 
-    return pa_gnss_GetExtendedEphemerisValidityTimes(startTimePtr,stopTimePtr);
+    return pa_gnss_GetExtendedEphemerisValidity(startTimePtr,stopTimePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2111,7 +2604,7 @@ le_result_t le_gnss_SetSuplServerUrl
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_InjectSuplCertificate
 (
-    uint8_t  suplCertificateId,      ///< [IN] Certificate ID of the SUPL certificate.
+    uint8_t  suplCertificateId,      ///< [IN] ID of the SUPL certificate.
                                      ///< Certificate ID range is 0 to 9
     uint16_t suplCertificateLen,     ///< [IN] SUPL certificate size in Bytes.
     const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
@@ -2141,7 +2634,7 @@ le_result_t le_gnss_InjectSuplCertificate
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_DeleteSuplCertificate
 (
-    uint8_t  suplCertificateId  ///< [IN]  Certificate ID of the SUPL certificate.
+    uint8_t  suplCertificateId  ///< [IN]  ID of the SUPL certificate.
                                 ///< Certificate ID range is 0 to 9
 )
 {

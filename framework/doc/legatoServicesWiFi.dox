@@ -1,0 +1,14 @@
+/** @page legatoServicesWiFi WiFi
+
+| Service                            | Description                                        | multi-app safe            |
+| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
+| @subpage c_le_wifi_ap              | Create an access point that clients can connect to.|                           |
+| @subpage c_le_wifi_client          | Connect to a WiFi access point.                    |                           |
+
+ <br>
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

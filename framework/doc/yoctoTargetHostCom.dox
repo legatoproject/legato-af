@@ -1,0 +1,20 @@
+/** @page yoctoTargetHostCom Target/Host Communications
+
+Legato uses a serial communication program like Minicom to access the target through the UART port to
+for console communications.
+
+The USB or Ethernet ports are used for development.
+
+If you're using Minicom, you access the config and initialize menus through the @c CTRL+A Z command.
+
+You'll need to @ref yoctoConfigIP.
+
+Always remember to run the target as <b>root</b> user, so no password will be required.
+
+
+@note Use the @ref toolsTarget_setNet tool to set your MAC address so you don't have to go through @c ifconfig every time
+you reboot the target.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

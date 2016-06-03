@@ -1286,7 +1286,7 @@ static le_result_t CreateMsgEntry
 
     GetSMSInboxMessagePath(NextMessageId, path, pathLen);
 
-    *fdPtr = open( path, O_CREAT | O_RDWR );
+    *fdPtr = open( path, O_CREAT | O_RDWR | O_SYNC, S_IRUSR | S_IWUSR );
 
     if (*fdPtr < 0)
     {

@@ -24,7 +24,7 @@ requires:
 cflags:
 {
     -std=c99
-    -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
+    -I$CURDIR/../platformAdaptor/inc
     -I${LEGATO_ROOT}/framework/c/src    // TODO: Remove this encapsulation breakage.
     -I${LEGATO_ROOT}/framework/c/src/appCfg    // TODO: Remove this encapsulation breakage.
 }

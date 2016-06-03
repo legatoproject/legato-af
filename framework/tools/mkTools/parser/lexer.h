@@ -51,6 +51,7 @@ class Lexer_t
         size_t line;                    ///< File line number.
         size_t column;                  ///< Char index on line (treat tab & return same as space).
 
+        bool IsMatchBoolean();
         void PullConstString(parseTree::Token_t* tokenPtr, const char* tokenString);
         void PullWhitespace(parseTree::Token_t* tokenPtr);
         void PullComment(parseTree::Token_t* tokenPtr);
@@ -67,10 +68,13 @@ class Lexer_t
         void PullFilePath(parseTree::Token_t* tokenPtr);
         void PullFileName(parseTree::Token_t* tokenPtr);
         void PullName(parseTree::Token_t* tokenPtr);
+        void PullDottedName(parseTree::Token_t* tokenPtr);
         void PullGroupName(parseTree::Token_t* tokenPtr);
         void PullIpcAgentName(parseTree::Token_t* tokenPtr);
         void PullQuoted(parseTree::Token_t* tokenPtr, char quoteChar);
         void PullEnvVar(parseTree::Token_t* tokenPtr);
+        void PullMd5(parseTree::Token_t* tokenPtr);
+        size_t Lookahead(char* buffPtr, size_t n);
         void AdvanceOneCharacter(parseTree::Token_t* tokenPtr);
         void AdvanceOneCharacter(std::string& string);
         std::string UnexpectedCharErrorMsg(char unexpectedChar,

@@ -49,3 +49,12 @@ SetTargetIP $2
 # Pipe the update pack to the on-target "update" program through ssh.
 echo "Applying update from file '$UPDATE_FILE' to device at address '$TARGET_IP'."
 cat $UPDATE_FILE | SshToTarget "/legato/systems/current/bin/update"
+
+result=$?
+if [ "$result" = 0 ]; then
+    echo "Done"
+else
+    echo "Update failed"
+    SshToTarget "/legato/systems/current/bin/legato status"
+    exit $result
+fi

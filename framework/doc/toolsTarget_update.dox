@@ -10,12 +10,19 @@ and the @ref toolsHost_update-pack host tool. See @ref legatoServicesUpdate for 
 
 <h1>Usage</h1>
 
-@verbatim
+<b>@verbatim
 update [FILE_NAME]
 update -r APP_NAME
 update --remove APP_NAME
+update --mark-good
+update -g
+update --mark-bad
+update -b
+update --defer
+update -d
 update --help
 @endverbatim
+</b>
 
 When run without any command-line arguments, or when run with @c FILE_NAME set to a dash -
 character, it takes an update pack file through standard in, and forwards it to the Update Daemon
@@ -24,9 +31,7 @@ for processing.
 @verbatim update [FILE_NAME]@endverbatim
 > Opens the update pack and feeds it to the Update Daemon for processing.
 
-@verbatim
---remove or -r
-@endverbatim
+@verbatim --remove or -r @endverbatim
 > Removes the app specified in the @c APP_NAME argument.
 
 Here's a code sample:
@@ -36,13 +41,28 @@ Here's a code sample:
 Be careful not to accidentally remove system services apps you might need (e.g., modemService
 app).
 
-@verbatim
---help
-@endverbatim
- 
-> Prints help text to standard out and exits.
+Updated or modified systems enter a probationary period (default 30 minutes) during which time an
+app or framework daemon failure will result in a roll-back to the previous "good" system.
+For development and testing, you can mark a system good (pass), bad (fail) or defer.
 
-<HR>
+@verbatim update --mark-good or update -g@endverbatim
+Ends the new system probation period and marks the current system @c good.
+Ignored if the current system is already marked good.
+
+@verbatim update --mark-bad or update -b@endverbatim
+Marks the current system bad and reboots to rollback to the previous good system.
+The command has no effect if the current system has already been marked good.
+The restart waits for any deferral in effect.
+
+@verbatim update --defer or update -d@endverbatim
+Defers all updates as long as the program is left running.
+To release the deferral, use Ctrl-C or kill to exit.
+More than one deferral can be in effect at any time. All of them must be cleared
+before an update can take place.
+
+@verbatim --help@endverbatim
+
+> Prints help text to standard out and exits.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

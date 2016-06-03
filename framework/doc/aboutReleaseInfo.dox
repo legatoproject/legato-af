@@ -1,0 +1,10 @@
+/** @page aboutReleaseInfo Release Info
+
+This section contains release-specific info about Legato:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage legatoRelNotes          | release notes - current and previous versions       |
+| @subpage legatoUpgrade           | upgrade notes - current and previous versions       |
+| <a href="http://mangoh.io/getting-started.html">Get Started</a>  | install and build Legato on mangOH green |
+
+**/

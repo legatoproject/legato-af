@@ -1,0 +1,13 @@
+sources:
+{
+    player.c
+}
+
+
+provides:
+{
+    api:
+    {
+        songs.api
+    }
+}

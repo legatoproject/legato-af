@@ -4,6 +4,8 @@
 # Messages that start with other strings can be used for tests that are either informational
 # or test features not yet implemented.
 
+LoadTestLib
+
 app_file_list=""
 app_installed_list=""
 bin_path="/legato/systems/current/bin/"
@@ -34,12 +36,14 @@ echo "Running watchdog tests on target ${TARGET_TYPE} at ${TARGET_ADDR}"
 function build_apps
 {
     echo "Building watchdog test apps"
-# this makes all the apps we need at the moment.
+
+    # this makes all the apps we need at the moment.
     make targ=${TARGET_TYPE}
     on_fail "One or more watchdog test apps could not be built"
-# build the apps_list from the ls *.${TARGET_TYPE} results and check future tests against people trying to
-# call apps that aren't made
-    app_file_list=*.${TARGET_TYPE};
+
+    # build the apps_list from the ls *.${TARGET_TYPE} results and check future tests against people trying to
+    # call apps that aren't made
+    app_file_list=*.${TARGET_TYPE}.update
 }
 
 function install_apps
@@ -73,7 +77,7 @@ function launch
     for app in $app_installed_list
     do
         if [[ $1 == $app ]]; then
-            bash test_launcher.sh $1 $2 $3 &
+            bash -x test_launcher.sh $1 $2 $3 &
             app_pids[$app]=$!
             return
         fi
@@ -167,6 +171,7 @@ install_apps
 
 # Test if dogTest has a watchdogTimeout: s/b added by mkapp
 wdog_timeout_value=$(ssh root@${TARGET_ADDR} "${bin_path}config get apps/dogTest/watchdogTimeout")
+ssh root@${TARGET_ADDR} "${bin_path}config get apps/dogTest/watchdogTimeout"
 if [[ $wdog_timeout_value == "" ]]; then
     log_result "FAIL: mkapp didn't pass the watchdogTimeout: config from dogTest.adef"
 else

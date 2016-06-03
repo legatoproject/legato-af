@@ -9,11 +9,11 @@
 | @subpage c_mcc                     | Control voice calls                                |                           |
 | @subpage c_mdc                     | Control modem data connections                     |                           |
 | @subpage c_info                    | Retrieve modem data information                    |                           |
-| @subpage c_mrc                     | Modem radio controls                               |                           |
+| @subpage c_mrc                     | Modem radio controls                               | @image html yellow_dot.png|
 | @subpage c_riPin                   | Ring indicator for host wakeup                     |                           |
-| @subpage c_rtc                   | Set user timebase for RTC                     |                           |
+| @subpage c_rtc                     | Set user timebase for RTC                          |                           |
 | @subpage c_sim                     | SIM access                                         |                           |
-| @subpage c_temp                    | Platform/radio temperature data                    |                           |
+| @subpage c_temp                    | Temperature monitoring                             |                           |
 
  <br>
 

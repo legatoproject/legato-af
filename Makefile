@@ -37,11 +37,11 @@
 
 # List of target devices needed by the release process:
 ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar86 wp85
+  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85
 endif
 
 # List of target devices supported:
-TARGETS := localhost $(RELEASE_TARGETS) virt
+TARGETS := localhost $(RELEASE_TARGETS) raspi virt
 
 # By default, build for the localhost and build the documentation.
 .PHONY: default
@@ -62,23 +62,36 @@ export LE_SVCDIR_SERVER_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryServer
 export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 
 # Define paths to various platform adaptors' directories.
-AT_MANAGER_DIR := $(LEGATO_ROOT)/components/atManager
-AUDIO_PA_DIR := $(LEGATO_ROOT)/components/audio/platformAdaptor
-MODEM_PA_DIR := $(LEGATO_ROOT)/components/modemServices/platformAdaptor
-GNSS_PA_DIR := $(LEGATO_ROOT)/components/positioning/platformAdaptor
-AVC_PA_DIR := $(LEGATO_ROOT)/components/airVantage/platformAdaptor
-SECSTORE_PA_DIR := $(LEGATO_ROOT)/components/secStore/platformAdaptor
-FWUPDATE_PA_DIR := $(LEGATO_ROOT)/components/fwupdate/platformAdaptor
+export AT_MANAGER_DIR := $(LEGATO_ROOT)/components/at
+export AUDIO_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
+export MODEM_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
+export GNSS_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
+export AVC_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
+export SECSTORE_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
+export FWUPDATE_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
 
 # Define the default platform adaptors to use if not otherwise specified for a given target.
-export LEGATO_AUDIO_PA = $(AUDIO_PA_DIR)/stub/le_pa_audio
-export LEGATO_UTIL_PA = $(AT_MANAGER_DIR)
-export LEGATO_MODEM_PA = $(MODEM_PA_DIR)/at/le_pa
-export LEGATO_MODEM_PA_ECALL = $(MODEM_PA_DIR)/stub/le_pa_ecall
-export LEGATO_GNSS_PA = $(GNSS_PA_DIR)/at/le_pa_gnss
-export LEGATO_AVC_PA = $(AVC_PA_DIR)/at/le_pa_avc
-export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/at/le_pa_secStore
-export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/at/le_pa_fwupdate
+
+export LEGATO_UTIL_PA =
+export LEGATO_AUDIO_PA =
+export LEGATO_AUDIO_PA_AMR =
+export LEGATO_AUDIO_PA_PCM =
+export LEGATO_AVC_PA =
+export LEGATO_GNSS_PA =
+export LEGATO_MODEM_PA =
+export LEGATO_MODEM_PA_ECALL =
+export LEGATO_SECSTORE_PA =
+export LEGATO_FWUPDATE_PA =
+
+export LEGATO_AUDIO_PA_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_audio_default
+export LEGATO_AUDIO_PA_AMR_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_amr_default
+export LEGATO_AUDIO_PA_PCM_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_pcm_default
+export LEGATO_AVC_PA_DEFAULT = $(LEGATO_ROOT)/components/airVantage/platformAdaptor/default/le_pa_avc_default
+export LEGATO_GNSS_PA_DEFAULT = $(LEGATO_ROOT)/components/positioning/platformAdaptor/default/le_pa_gnss_default
+export LEGATO_MODEM_PA_DEFAULT = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/default/le_pa_default
+export LEGATO_MODEM_PA_ECALL_DEFAULT = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/default/le_pa_ecall_default
+export LEGATO_SECSTORE_PA_DEFAULT = $(LEGATO_ROOT)/components/secStore/platformAdaptor/default/le_pa_secStore_default
+export LEGATO_FWUPDATE_PA_DEFAULT = $(LEGATO_ROOT)/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
 
 # Do not use clang by default.
 USE_CLANG ?= 0
@@ -96,6 +109,8 @@ ifeq ($(MAKECMDGOALS),release)
 endif
 
 # ========== TARGET-SPECIFIC VARIABLES ============
+
+include $(wildcard modules/*/moduleDefs)
 
 # If the user specified a goal other than "clean", ensure that all required target-specific vars
 # are defined.
@@ -179,7 +194,13 @@ docs: user_docs implementation_docs
 # Docs for people who don't want to be distracted by the internal implementation details.
 user_docs: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_docs
-	ln -sf build/doc/user/html Documentation
+	rm -f Documentation
+	@if [ -e "docManagement/Makefile" ] ; then \
+		$(MAKE) -C docManagement ; \
+		ln -sf build/doc/user/html_converted Documentation ; \
+	else \
+		ln -sf build/doc/user/html Documentation ; \
+	fi
 
 user_pdf: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_pdf
@@ -227,6 +248,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 		cmake ../.. \
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
+			-DMODEM_PA_DIR=$(MODEM_PA_DIR) \
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
 			-DUSE_CLANG=$(USE_CLANG) \
@@ -265,6 +287,8 @@ stage_embedded:
 	# Print some diagnostic messages.
 	@echo "== built system's info.properties: =="
 	cat build/$(TARGET)/staging/system/info.properties
+	# Check PA libraries.
+	checkpa $(TARGET) || true
 
 .PHONY: stage_mklegatoimg
 stage_mklegatoimg:
@@ -279,11 +303,28 @@ stage_localhost:
 
 .PHONY: stage_9x15
 stage_9x15:
-	install targetFiles/mdm9x15/startup/start build/$(TARGET)/staging
-	install targetFiles/mdm9x15/startup/startupScript build/$(TARGET)/staging
+	install targetFiles/shared/bin/start build/$(TARGET)/staging
 
 .PHONY: stage_ar7 stage_ar86 stage_wp85
 stage_ar7 stage_ar86 stage_wp85: stage_embedded stage_9x15 stage_mklegatoimg
+
+# ==== AR758X (9x28-based Sierra Wireless modules) ====
+
+.PHONY: stage_9x28
+stage_9x28:
+	install targetFiles/shared/bin/start build/$(TARGET)/staging
+
+.PHONY: stage_ar758x
+stage_ar758x: stage_embedded stage_9x28 stage_mklegatoimg
+
+# ==== AR759X (9x40-based Sierra Wireless modules) ====
+
+.PHONY: stage_9x40
+stage_9x40:
+	install targetFiles/shared/bin/start build/$(TARGET)/staging
+
+.PHONY: stage_ar759x
+stage_ar759x: stage_embedded stage_9x40 stage_mklegatoimg
 
 # ==== Virtual ====
 
@@ -292,6 +333,17 @@ stage_virt: stage_embedded
 	# Install default startup scripts.
 	install -d build/$(TARGET)/staging/mnt/flash/startupDefaults
 	install targetFiles/virt/startup/* -t build/$(TARGET)/staging/mnt/flash/startupDefaults
+
+# ==== Raspberry Pi ====
+
+.PHONY: stage_raspi_startup
+stage_raspi_startup:
+	# Install default startup scripts.
+	install -d build/$(TARGET)/staging/
+	install targetFiles/shared/bin/start build/$(TARGET)/staging
+
+.PHONY: stage_raspi
+stage_raspi: stage_embedded stage_raspi_startup stage_mklegatoimg
 
 # ========== RELEASE ============
 
@@ -304,8 +356,6 @@ release: clean
 	releaselegato -t "$(shell echo ${RELEASE_TARGETS} | tr ' ' ',')"
 
 # ========== PROTOTYPICAL SYSTEM ============
-
-MKSYS_FLAGS =
 
 ifeq ($(VERBOSE),1)
   MKSYS_FLAGS += -v
@@ -320,6 +370,5 @@ $(SYSTEM_TARGETS):system_%: framework_%
 	rm -f system.sdef
 	ln -s $(SDEF_TO_USE) system.sdef
 	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) system.sdef \
-			-i interfaces/modemServices \
-			-i interfaces/positioning \
 			$(MKSYS_FLAGS)
+

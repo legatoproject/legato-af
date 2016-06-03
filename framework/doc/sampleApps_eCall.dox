@@ -2,6 +2,9 @@
 
 This sample app demonstrates how to test an eCall session.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/eCallDemo">sample app code</a>.
+
 Also see the @ref c_ecall Service
 
 <HR>
@@ -42,10 +45,10 @@ $ config set eCallDemo:/settings/hMinAccuracy <minimum horizontal accuracy value
 $ config set eCallDemo:/settings/dirMinAccuracy <minimum direction accuracy value> int
 @endverbatim
 
-These are the config tree settings needed for the eCall sample app:
+These are the config tree settings needed for the eCall sample app (values given as an example):
 
 @verbatim
-config set eCallDemo:/settings/psap 0141081040
+config set eCallDemo:/settings/psap 0102030405
 config set eCallDemo:/settings/hMinAccuracy 100 int
 config set eCallDemo:/settings/dirMinAccuracy 100 int
 @endverbatim
@@ -68,13 +71,13 @@ This is the config tree database path for the sample app:
                 ...
 @endverbatim
 
-This is a config tree path setting example:
+This is a config tree path setting example (values given as an example):
 
 @verbatim
 config set /modemServices/eCall/systemStandard PAN-EUROPEAN
 config set /modemServices/eCall/msdVersion 1 int
 config set /modemServices/eCall/vehicleType Commercial-N1
-config set /modemServices/eCall/vin WM9VDSVDSYA123456
+config set /modemServices/eCall/vin WWWWWWWWWWW123456
 config set /modemServices/eCall/propulsionType/0 Diesel
 @endverbatim
 

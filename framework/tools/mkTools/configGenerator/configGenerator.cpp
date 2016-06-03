@@ -191,7 +191,14 @@ static void GenerateBundledObjectMappingConfig
 
     // The first step of constructing the source path from the dest path is to remove the
     // leading '/'.
-    bindMountMapping.srcPath = mappingPtr->destPath.substr(1);
+    if (mappingPtr->destPath[0] == '/')
+    {
+        bindMountMapping.srcPath = mappingPtr->destPath.substr(1);
+    }
+    else
+    {
+        bindMountMapping.srcPath = mappingPtr->destPath;
+    }
 
     // If the on-target source path we created doesn't yet include a name on the end, then copy
     // the source name from the orginal object in the build host file system.
@@ -381,6 +388,60 @@ static void GenerateProcessEnvVarsConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Search for an executable definition of the given name.
+ *
+ * @return: The executable definition from the application if found, null if not.
+ **/
+//--------------------------------------------------------------------------------------------------
+static const model::Exe_t* FindExecutable
+(
+    const model::App_t* appPtr,
+    const std::string& executablePath
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto iter = appPtr->executables.find(executablePath);
+
+    if (iter != appPtr->executables.end())
+    {
+        return iter->second;
+    }
+
+    return nullptr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a Java class path for the given executable definition.
+ **/
+//--------------------------------------------------------------------------------------------------
+static std::string GenerateClassPath
+(
+    const model::Exe_t* exePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string classPath = "lib/legato.jar";
+
+    for (auto componentInstPtr : exePtr->componentInstances)
+    {
+        auto componentPtr = componentInstPtr->componentPtr;
+
+        if (componentPtr->HasJavaCode())
+        {
+            classPath += ":lib/" + path::GetLastNode(componentPtr->lib);
+        }
+    }
+
+    classPath += ":bin/" + exePtr->name + ".jar";
+
+    return classPath;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate the configuration for all the processes that the Supervisor should start when the
  * application is started.
  **/
@@ -407,9 +468,33 @@ static void GenerateProcessConfig
             // "args", where the first argument (0) must be the executable to run.
             cfgStream << "      \"args\"" << std::endl;
             cfgStream << "      {" << std::endl;
-            cfgStream << "        \"0\" \"" << path::EscapeQuotes(procPtr->exePath) << "\""
-                      << std::endl;
-            int argIndex = 1;
+
+
+            // Look try to find a matching executable definition in the model.  If it is found then
+            // check to see if it's a Java executable.  If it is a Java executable, then modify the
+            // run parameters to properly invoke the JVM.  Note that it is possible to run an
+            // executable that is not defined in the model, like for instance you might want to
+            // bind in a web server to serve web pages from your app.
+            int argIndex;
+            auto exePtr = FindExecutable(appPtr, procPtr->exePath);
+
+            if (   (exePtr != nullptr)
+                && (exePtr->hasJavaCode))
+            {
+                cfgStream << "        \"0\" \"java\"" << std::endl
+                          << "        \"1\" \"-cp\"" << std::endl
+                          << "        \"2\" \"" << GenerateClassPath(exePtr) << "\"" << std::endl
+                          << "        \"3\" \"io.legato.generated.exe."
+                          << procPtr->exePath << ".Main" << "\"" << std::endl;
+                argIndex = 4;
+            }
+            else
+            {
+                cfgStream << "        \"0\" \"" << path::EscapeQuotes(procPtr->exePath) << "\""
+                          << std::endl;
+                argIndex = 1;
+            }
+
             for (const auto& arg : procPtr->commandLineArgs)
             {
                 cfgStream << "        \"" << argIndex << "\" \"" << path::EscapeQuotes(arg) << "\""
@@ -575,8 +660,10 @@ static void GenerateBindingsConfig
     }
 
     // Add all the binds that were specified in the .adef file or .sdef file for this app.
-    for (const auto exePtr : appPtr->executables)
+    for (const auto mapItem : appPtr->executables)
     {
+        const auto exePtr = mapItem.second;
+
         for (const auto componentInstancePtr : exePtr->componentInstances)
         {
             for (const auto interfacePtr : componentInstancePtr->clientApis)
@@ -850,11 +937,9 @@ void Generate
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string dirPath = path::Combine(buildParams.workingDir, appPtr->workingDir) + "/staging";
+    std::string filePath = path::Combine(buildParams.workingDir, appPtr->ConfigFilePath());
 
-    file::MakeDir(dirPath);
-
-    std::string filePath = dirPath + "/root.cfg";
+    file::MakeDir(path::GetContainingDir(filePath));
 
     if (buildParams.beVerbose)
     {
@@ -891,6 +976,63 @@ void Generate
 
     cfgStream << "}" << std::endl;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate kernel module configuration in a file called config/modules.cfg under
+ * the system's staging directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateModulesConfig
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string filePath = path::Combine(buildParams.workingDir, "staging/config/modules.cfg");
+
+    if (buildParams.beVerbose)
+    {
+        std::cout << "Generating module configuration data in file "
+                     "'" << filePath << "'." << std::endl;
+    }
+
+    std::ofstream cfgStream(filePath, std::ofstream::trunc);
+
+    if (cfgStream.is_open() == false)
+    {
+        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+    }
+
+    cfgStream << "{\n";
+
+    // For each module in the system's list of modules,
+    for (auto& mapEntry : systemPtr->modules)
+    {
+        auto modulePtr = mapEntry.second;
+
+        cfgStream << "  \"" << path::GetLastNode(modulePtr->path) << "\"\n";
+        cfgStream << "  {\n";
+        cfgStream << "    \"params\"\n";
+        cfgStream << "    {\n";
+
+        // For each parameter in module parameter list
+        for (auto mapEntry : modulePtr->params)
+        {
+            cfgStream << "       \"" << mapEntry.first << "\" \""
+                      << mapEntry.second << "\"\n";
+        }
+
+        cfgStream << "    }\n";
+        cfgStream << "  }\n";
+    }
+
+    cfgStream << "}\n";
+}
+
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -962,8 +1104,7 @@ static void AddAppConfig
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string filePath = path::Combine(buildParams.workingDir, appPtr->workingDir)
-                         + "/staging/root.cfg";
+    std::string filePath = path::Combine(buildParams.workingDir, appPtr->ConfigFilePath());
 
     std::ifstream appCfgStream(filePath);
 
@@ -1044,6 +1185,8 @@ void Generate
 //--------------------------------------------------------------------------------------------------
 {
     file::MakeDir(path::Combine(buildParams.workingDir, "staging/config"));
+
+    GenerateModulesConfig(systemPtr, buildParams);
 
     GenerateUsersConfig(systemPtr, buildParams);
 

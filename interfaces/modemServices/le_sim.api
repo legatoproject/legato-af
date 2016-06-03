@@ -221,6 +221,26 @@
  * A sample code can be seen in the following page:
  * - @subpage c_simTestSimToolkit
  *
+ * Information related to SIM Toolkit platform constraints can be seen in the
+ * @subpage platformConstraintsStk page.
+ *
+ * @section le_sim_access SIM access
+ *
+ * The application can send an APDU (Application Protocol Data Unit) to the SIM using
+ * le_sim_SendApdu() API. The user must encode the APDU as specified by in recommendation 3GPP 11.11,
+ * 3GPP 51.011, 3GPP 31.102, 3GPP 31.103 or ETSI TS 102 221.
+ * @note Between two successive call to le_sim_SendApdu() API, there is no locking
+ * protection. In this situation, some command types and parameters can modify SIM files incorrectly.
+ *
+ * Using le_sim_SendSimCommand() API, the application has easier but more limited access to the
+ * SIM database. The command is transmitted to the SIM, which gives information through swi1 and
+ * swi2 about the execution of the command (see 3GPP recommendation previously mentioned for
+ * their coding).
+ * Some parameters are platform dependent, see @subpage platformConstraintsSim for their coding.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_simTestApdu
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -276,6 +296,11 @@
  * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Display
  * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" State handler
  * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" State
+ */
+
+/**
+ * @page c_simTestApdu Sample code for SIM access
+ * @snippet "apps/test/modemServices/sim/simIntegrationTest/simTestComp/simTest.c" Apdu
  */
 
 USETYPES le_mdmDefs.api;
@@ -350,6 +375,58 @@ DEFINE  IMSI_BYTES  = (IMSI_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * APDU length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  APDU_MAX_BYTES  = (255);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM response length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  RESPONSE_MAX_BYTES  = (256);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM file identifier length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  FILE_ID_LEN  = (4);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM file identifier length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  FILE_ID_BYTES  = (FILE_ID_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM data command length
+
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  DATA_MAX_BYTES = (100);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM file path length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  PATH_MAX_LEN  = (100);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM file path length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  PATH_MAX_BYTES  = (PATH_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * SIM states.
  *
  */
@@ -396,6 +473,20 @@ ENUM Manufacturer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * SIM commands.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Command
+{
+    READ_RECORD,    ///< Read a file record.
+    READ_BINARY,    ///< Read a transparent elementary file.
+    UPDATE_RECORD,  ///< Update a file record.
+    UPDATE_BINARY,  ///< Update a transparent elementary file.
+    COMMAND_MAX     ///< Max value
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * SIM Toolkit events.
  */
 //--------------------------------------------------------------------------------------------------
@@ -427,7 +518,7 @@ HANDLER NewStateHandler
 //--------------------------------------------------------------------------------------------------
 EVENT NewState
 (
-    handler NewStateHandler
+    NewStateHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -450,7 +541,7 @@ HANDLER SimToolkitEventHandler
 //--------------------------------------------------------------------------------------------------
 EVENT SimToolkitEvent
 (
-    handler SimToolkitEventHandler
+    SimToolkitEventHandler handler
 );
 
 
@@ -693,7 +784,7 @@ FUNCTION le_result_t Unblock
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sim_States_t GetState
+FUNCTION States GetState
 (
     Id      simId IN             ///< The SIM identifier.
 );
@@ -852,4 +943,50 @@ FUNCTION le_result_t AcceptSimToolkitCommand
 FUNCTION le_result_t RejectSimToolkitCommand
 (
     Id           simId IN                ///< The SIM identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send APDU command to the SIM.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      The function failed to select the SIM card for this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendApdu
+(
+    Id           simId IN,                          ///< The SIM identifier.
+    uint8        commandApdu[APDU_MAX_BYTES] IN,      ///< APDU command.
+    uint8        responseApdu[RESPONSE_MAX_BYTES] OUT ///< SIM response.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a command to the SIM.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_NOT_FOUND      - The function failed to select the SIM card for this operation
+ *                          - The requested SIM file is not found
+ *      - LE_OVERFLOW       Response buffer is too small to copy the SIM answer.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendCommand
+(
+    Id             simId IN,                                ///< The SIM identifier.
+    Command        command IN,                              ///< The SIM command.
+    string         fileIdentifier[FILE_ID_LEN] IN,          ///< File identifier
+    uint8          p1 IN,                                   ///< Parameter P1 passed to the SIM
+    uint8          p2 IN,                                   ///< Parameter P2 passed to the SIM
+    uint8          p3 IN,                                   ///< Parameter P3 passed to the SIM
+    uint8          data[DATA_MAX_BYTES] IN,                   ///< data command.
+    string         path[PATH_MAX_LEN] IN,                   ///< path of the elementary file
+    uint8          sw1 OUT,                                 ///< Status Word 1 received from the SIM
+    uint8          sw2 OUT,                                 ///< Status Word 2 received from the SIM
+    uint8          response[RESPONSE_MAX_BYTES] OUT           ///< SIM response.
 );

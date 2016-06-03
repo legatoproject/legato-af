@@ -13,16 +13,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function convert the hexadecimal value
- * Should be between 0 and 16.
+ * Convert a numeric value into a uppercase character representing the hexidecimal value of the
+ * input.
  *
- * @return
- *      \return the character code if exist, 0 instead.
+ * @return Hexidecimal character in the range [0-9A-F] or 0 if the input value was too large
  */
 //--------------------------------------------------------------------------------------------------
 static char DecToHex(uint8_t hex)
 {
-    if ( hex < 10) {
+    if (hex < 10) {
         return (char)('0'+hex);  // for number
     }
     else if (hex < 16) {
@@ -36,26 +35,41 @@ static char DecToHex(uint8_t hex)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function converts hex string to binary format.
+ * Convert a string of valid hexadecimal characters [0-9a-fA-F] into a byte array where each
+ * element of the byte array holds the value corresponding to a pair of hexadecimal characters.
  *
- * @return size of binary, if < 0 it has failed
+ * @return
+ *      - number of bytes written into binaryPtr
+ *      - -1 if the binarySize is too small or stringLength is odd or stringPtr contains an invalid
+ *        character
+ *
+ * @note The input string is not required to be NULL terminated.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_hex_StringToBinary
 (
-    const char *stringPtr,     ///< [IN] string to convert, terminated with '\0'.
+    const char *stringPtr,     ///< [IN] string to convert
     uint32_t    stringLength,  ///< [IN] string length
     uint8_t    *binaryPtr,     ///< [OUT] binary result
-    uint32_t    binarySize     ///< [IN] size of the binary table
+    uint32_t    binarySize     ///< [IN] size of the binary table.  Must be >= stringLength / 2
 )
 {
     uint32_t idxString;
     uint32_t idxBinary;
     char*    refStrPtr = "0123456789ABCDEF";
 
-    if (2*binarySize+1 < stringLength)
+    if (stringLength % 2 != 0)
     {
-        LE_DEBUG("binary array (%u) is too small (%u)", binarySize, stringLength);
+        LE_DEBUG("The input stringLength=%u is not a multiple of 2", stringLength);
+        return -1;
+    }
+
+    if (stringLength / 2 > binarySize)
+    {
+        LE_DEBUG(
+            "The stringLength (%u) is too long to convert into a byte array of length (%u)",
+            stringLength,
+            binarySize);
         return -1;
     }
 
@@ -83,9 +97,12 @@ int32_t le_hex_StringToBinary
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function converts binary to hex string format.
+ * Convert a byte array into a string of uppercase hexadecimal characters.
  *
- * @return size of hex string, if < 0 it has failed
+ * @return number of characters written to stringPtr or -1 if stringSize is too small for
+ *         binarySize
+ *
+ * @note the string written to stringPtr will be NULL terminated.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_hex_BinaryToString
@@ -93,14 +110,17 @@ int32_t le_hex_BinaryToString
     const uint8_t *binaryPtr,  ///< [IN] binary array to convert
     uint32_t       binarySize, ///< [IN] size of binary array
     char          *stringPtr,  ///< [OUT] hex string array, terminated with '\0'.
-    uint32_t       stringSize  ///< [IN] size of string array
+    uint32_t       stringSize  ///< [IN] size of string array.  Must be >= (2 * binarySize) + 1
 )
 {
     int32_t idxString,idxBinary;
 
-    if (stringSize < 2*binarySize+1)
+    if (stringSize < (2 * binarySize) + 1)
     {
-        LE_DEBUG("Hex string array (%u) is too small (%u)",stringSize, binarySize);
+        LE_DEBUG(
+            "Hex string array (%u) is too small to convert (%u) bytes",
+            stringSize,
+            binarySize);
         return -1;
     }
 
@@ -118,40 +138,49 @@ int32_t le_hex_BinaryToString
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function convert hexa string into integer
+ * Convert a NULL terminated string of valid hexadecimal characters [0-9a-fA-F] into an integer.
  *
  * @return
- *      \return return the value or -1 if not possible.
+ *      - Positive integer corresponding to the hexadecimal input string
+ *      - -1 if the input contains an invalid character or the value will not fit in an integer
  */
 //--------------------------------------------------------------------------------------------------
-int le_hex_HexaToInteger(char s[])
+int le_hex_HexaToInteger
+(
+    const char *stringPtr ///< [IN] string of hex chars to convert into an int
+)
 {
-  int   i;
-  int n=0;
+    int result = 0;
+    while (*stringPtr != '\0')
+    {
+        if (result > (INT_MAX / 16))
+        {
+            // Consuming more input data may overflow the integer value
+            return -1;
+        }
 
-  if(s == NULL)
-  {
-    return (-1);
-  }
+        char base;
+        if (*stringPtr >= '0' && *stringPtr <='9')
+        {
+            base = '0';
+        }
+        else if (*stringPtr >= 'a' && *stringPtr <= 'f')
+        {
+            base = 'a' - 10;
+        }
+        else if (*stringPtr >= 'A' && *stringPtr <= 'F')
+        {
+            base = 'A' - 10;
+        }
+        else
+        {
+            // Invalid input character
+            return -1;
+        }
 
-  for(i=0; s[i]!= '\0'; i++)
-  {
-    if(s[i] <= '9' && s[i] >= '0' )
-    {
-      n=n*16+s[i]- '0';
+        result = (result << 4) | (*stringPtr - base);
+        stringPtr++;
     }
-    else if (s[i]>= 'a' && s[i]<= 'f')
-    {
-      n=n*16+ (int)s[i] - 'a' + 10;
-    }
-    else if (s[i]>= 'A' && s[i]<= 'F')
-    {
-      n=n*16+ (int)s[i] - 'A' + 10;
-    }
-    else
-    {
-      return (-1);
-    }
-  }
-  return (n);
+
+    return result;
 }

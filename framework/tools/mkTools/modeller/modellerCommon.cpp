@@ -99,8 +99,10 @@ void EnsureClientInterfacesBound
     {
         auto appPtr = appMapEntry.second;
 
-        for (auto exePtr : appPtr->executables)
+        for (auto mapItem : appPtr->executables)
         {
+            auto exePtr = mapItem.second;
+
             for (auto componentInstancePtr : exePtr->componentInstances)
             {
                 for (auto ifInstancePtr : componentInstancePtr->clientApis)
@@ -166,8 +168,10 @@ void EnsureClientInterfacesSatisfied
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto exePtr : appPtr->executables)
+    for (auto mapItem : appPtr->executables)
     {
+        auto exePtr = mapItem.second;
+
         for (auto componentInstancePtr : exePtr->componentInstances)
         {
             for (auto ifInstancePtr : componentInstancePtr->clientApis)

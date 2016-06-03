@@ -16,6 +16,52 @@ namespace modeller
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get environment variable settings from a "buildVars:" section and set them in the process
+ * environment.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetBuildEnvVars
+(
+    const parseTree::CompoundItem_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto buildVarsSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+    for (const auto contentItemPtr : buildVarsSectionPtr->Contents())
+    {
+        auto buildVarPtr = dynamic_cast<const parseTree::EnvVar_t*>(contentItemPtr);
+
+        // Make sure they're not trying to redefine one of the reserved environment variables
+        // like LEGATO_ROOT.
+        const auto& name = buildVarPtr->firstTokenPtr->text;
+        if (envVars::IsReserved(name))
+        {
+            buildVarPtr->firstTokenPtr->ThrowException(name
+                                                     + " is a reserved environment variable name.");
+        }
+
+        // If the string starts with a single quote ('), just unquote it.  Otherwise, unquote it
+        // and do environment variable substitution.
+        auto valueTokenPtr = buildVarPtr->Contents()[0];
+        std::string value = path::Unquote(valueTokenPtr->text);
+        if (valueTokenPtr->text[0] != '\'')
+        {
+            value = envVars::DoSubstitution(value);
+        }
+
+        // Update the process environment.
+        if (setenv(name.c_str(), value.c_str(), true /* overwrite existing */) != 0)
+        {
+            throw mk::Exception_t("Failed to set '" + name + "' environment variable to '"
+                                   + value + "'.");
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Updates an App_t object with the overrides specified for that app in the .sdef file.
  */
 //--------------------------------------------------------------------------------------------------
@@ -133,7 +179,12 @@ static void ModelAppOverrides
         }
         else if (subsectionName == "preloaded")
         {
-            appPtr->isPreloaded = (ToSimpleSectionPtr(subsectionPtr)->Text() != "false");
+            const auto& tokenText = ToSimpleSectionPtr(subsectionPtr)->Text();
+            appPtr->isPreloaded = (tokenText != "false");
+            if ((tokenText != "true") && (tokenText != "false"))
+            {
+                appPtr->preloadedMd5 = tokenText;
+            }
         }
         else
         {
@@ -235,6 +286,115 @@ static void ModelAppsSection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Creates a Module_t object for a given kernel module within "kernelModules:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelKernelModule
+(
+    model::System_t* systemPtr,
+    const parseTree::Module_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string moduleName;
+    std::string modulePath;
+
+    // Tokens in the module subsection are paths to their .mdef file
+    // Assume that modules are built outside of Legato
+    const auto& moduleSpec = sectionPtr->firstTokenPtr->text;
+    if (path::HasSuffix(moduleSpec, ".mdef"))
+    {
+        moduleName = path::RemoveSuffix(path::GetLastNode(moduleSpec), ".mdef");
+        modulePath = file::FindFile(moduleSpec, buildParams.sourceDirs);
+    }
+    else
+    {
+        // Try by appending ".mdef" to path
+        moduleName = path::GetLastNode(moduleSpec);
+        modulePath = file::FindFile(moduleSpec + ".mdef", buildParams.sourceDirs);
+    }
+
+    if (modulePath.empty())
+    {
+        std::cerr << "Looked in the following places:" << std::endl;
+        for (auto& dir : buildParams.sourceDirs)
+        {
+            std::cerr << "  '" << dir << "'" << std::endl;
+        }
+        sectionPtr->ThrowException("Can't find definition (.mdef) file for module specification "
+                                   "'" + moduleSpec + "'.");
+    }
+
+    // Check for duplicates.
+    auto modulesIter = systemPtr->modules.find(moduleName);
+    if (modulesIter != systemPtr->modules.end())
+    {
+        std::stringstream msg;
+        msg << "Module '" << moduleName << "' added to the system more than once.  Previously added at"
+            "line " << modulesIter->second->parseTreePtr->firstTokenPtr->line << ".";
+        sectionPtr->ThrowException(msg.str());
+    }
+
+    // Model this module.
+    auto modulePtr = GetModule(modulePath, buildParams);
+    modulePtr->parseTreePtr = sectionPtr;
+
+    systemPtr->modules[moduleName] = modulePtr;
+
+    if (buildParams.beVerbose)
+    {
+        std::cout << "System contains module '" << moduleName << "'." << std::endl;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a Module_t object for each kernel module listed in "kernelModules:" section.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelKernelModulesSection
+(
+    model::System_t* systemPtr,
+    const parseTree::CompoundItem_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto moduleSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+    for (auto itemPtr : moduleSectionPtr->Contents())
+    {
+        ModelKernelModule(systemPtr,
+                          dynamic_cast<const parseTree::Module_t*>(itemPtr),
+                          buildParams);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Model all the kernel modules from all the "kernelModules:" sections and add them to a system.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelKernelModules
+(
+    model::System_t* systemPtr,
+    const std::list<const parseTree::CompoundItem_t*>& kernelModulesSections,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto sectionPtr : kernelModulesSections)
+    {
+        ModelKernelModulesSection(systemPtr, sectionPtr, buildParams);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Exract the server side details from a bindings section in the parse tree.
  */
 //--------------------------------------------------------------------------------------------------
@@ -284,7 +444,7 @@ static void AddNonAppUserBinding
 //--------------------------------------------------------------------------------------------------
 {
     auto& userName = bindingPtr->clientAgentName;
-    auto& interfaceName = bindingPtr->clientAgentName;
+    auto& interfaceName = bindingPtr->clientIfName;
     model::User_t* userPtr = NULL;
 
     // Get a pointer to the user object, creating a new one if one doesn't exist for this user yet.
@@ -442,13 +602,33 @@ static void ModelBindingsSection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Model all the apps from all the "apps:" sections and add them to a system.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelApps
+(
+    model::System_t* systemPtr,
+    const std::list<const parseTree::CompoundItem_t*>& appsSections,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto sectionPtr : appsSections)
+    {
+        ModelAppsSection(systemPtr, sectionPtr, buildParams);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add all the IPC bindings from a list of bindings sections to a given system object.
  */
 //--------------------------------------------------------------------------------------------------
 static void ModelBindings
 (
     model::System_t* systemPtr,
-    std::list<const parseTree::CompoundItem_t*> bindingsSections,
+    const std::list<const parseTree::CompoundItem_t*>& bindingsSections,
     bool beVerbose
 )
 //--------------------------------------------------------------------------------------------------
@@ -529,13 +709,65 @@ static void ModelCommandsSection
 static void ModelCommands
 (
     model::System_t* systemPtr,
-    std::list<const parseTree::CompoundItem_t*> commandsSections
+    const std::list<const parseTree::CompoundItem_t*>& commandsSections
 )
 //--------------------------------------------------------------------------------------------------
 {
     for (auto commandsSectionPtr : commandsSections)
     {
         ModelCommandsSection(systemPtr, commandsSectionPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get interface search directory paths from an "interfaceSearch:" section and add them to the
+ * list in the buildParams object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetInterfaceSearchDirs
+(
+    mk::BuildParams_t& buildParams, ///< Object to add interface search dir paths to.
+    const parseTree::TokenList_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // An interfaceSearch section is a list of FILE_PATH tokens.
+    for (const auto contentItemPtr : sectionPtr->Contents())
+    {
+        auto tokenPtr = dynamic_cast<const parseTree::Token_t*>(contentItemPtr);
+
+        auto dirPath = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+
+        // If the environment variable substitution resulted in an empty string, just ignore this.
+        if (!dirPath.empty())
+        {
+            buildParams.interfaceDirs.push_back(dirPath);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add all the interface search dir paths from all "interfaceSearch:" sections to a given
+ * BuildParams_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetInterfaceSearchDirs
+(
+    mk::BuildParams_t& buildParams, ///< Object to add interface search dir paths to.
+    const std::list<const parseTree::CompoundItem_t*>& sectionPtrList
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto sectionPtr : sectionPtrList)
+    {
+        // Each interfaceSearch section is a list of FILE_PATH tokens.
+        auto tokenListPtr = dynamic_cast<const parseTree::TokenList_t*>(sectionPtr);
+
+        GetInterfaceSearchDirs(buildParams, tokenListPtr);
     }
 }
 
@@ -550,10 +782,14 @@ static void ModelCommands
 model::System_t* GetSystem
 (
     const std::string& sdefPath,    ///< Path to the system's .sdef file.
-    const mk::BuildParams_t& buildParams
+    mk::BuildParams_t& buildParams  ///< [in,out]
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Save the old CURDIR environment variable value and set it to the dir containing this file.
+    auto oldDir = envVars::Get("CURDIR");
+    envVars::Set("CURDIR", path::GetContainingDir(sdefPath));
+
     // Parse the .sdef file.
     const auto sdefFilePtr = parser::sdef::Parse(sdefPath, buildParams.beVerbose);
 
@@ -567,8 +803,11 @@ model::System_t* GetSystem
     }
 
     // Lists of things that need to be modelled near the end.
+    std::list<const parseTree::CompoundItem_t*> appsSections;
     std::list<const parseTree::CompoundItem_t*> bindingsSections;
     std::list<const parseTree::CompoundItem_t*> commandsSections;
+    std::list<const parseTree::CompoundItem_t*> kernelModulesSections;
+    std::list<const parseTree::CompoundItem_t*> interfaceSearchSections;
 
     // Iterate over the .sdef file's list of sections, processing content items.
     for (auto sectionPtr : sdefFilePtr->sections)
@@ -577,7 +816,9 @@ model::System_t* GetSystem
 
         if (sectionName == "apps")
         {
-            ModelAppsSection(systemPtr, sectionPtr, buildParams);
+            // Remember for later, when we know all build variables have been added to the
+            // environment.
+            appsSections.push_back(sectionPtr);
         }
         else if (sectionName == "bindings")
         {
@@ -585,10 +826,23 @@ model::System_t* GetSystem
             // executables.
             bindingsSections.push_back(sectionPtr);
         }
+        else if (sectionName == "buildVars")
+        {
+            // Add each build environment variable to the mksys process's environment.
+            GetBuildEnvVars(sectionPtr);
+        }
         else if (sectionName == "commands")
         {
             // Remember for later, when we know all apps have been instantiated.
             commandsSections.push_back(sectionPtr);
+        }
+        else if (sectionName == "kernelModules")
+        {
+            kernelModulesSections.push_back(sectionPtr);
+        }
+        else if (sectionName == "interfaceSearch")
+        {
+            interfaceSearchSections.push_back(sectionPtr);
         }
         else
         {
@@ -596,6 +850,14 @@ model::System_t* GetSystem
                                        + "'.");
         }
     }
+
+    // Process all the "interfaceSearch:" sections.  This must be done after all the build
+    // environment variable settings have been parsed.
+    GetInterfaceSearchDirs(buildParams, interfaceSearchSections);
+
+    // Process all the "apps:" sections.  This must be done after all the build environment
+    // variable settings have been parsed.
+    ModelApps(systemPtr, appsSections, buildParams);
 
     // Process bindings.  This must be done after all the components and executables have been
     // modelled and all the external API interfaces have been processed.
@@ -606,6 +868,13 @@ model::System_t* GetSystem
 
     // Model commands.  This must be done after all apps have been modelled.
     ModelCommands(systemPtr, commandsSections);
+
+    // Model kernel modules.  This must be done after all the build environment variable settings
+    // have been parsed.
+    ModelKernelModules(systemPtr, kernelModulesSections, buildParams);
+
+    // Restore the previous contents of the CURDIR environment variable.
+    envVars::Set("CURDIR", oldDir);
 
     return systemPtr;
 }

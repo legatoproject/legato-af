@@ -13,6 +13,7 @@
 #include "killProc.h"
 #include "smack.h"
 #include "sysPaths.h"
+#include "wait.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -100,26 +101,57 @@ static void LoadIpcBindingConfig
     void
 )
 {
-    int result = system("sdir load");
 
-    if (result == -1)
+    // Fork a process.
+    pid_t pid = fork();
+    LE_FATAL_IF(pid < 0, "Failed to fork child process.  %m.");
+
+    if (pid == 0)
     {
-        LE_FATAL("Failed to fork child process. (%m)");
+        // Launch the child program.  This should not return unless there was an error.
+        execlp("sdir", "sdir", "load", (char*)NULL);
+        // The program could not be started.
+        LE_FATAL("'sdir' could not be started: %m");
     }
-    else if (WIFEXITED(result))
-    {
-        int exitCode = WEXITSTATUS(result);
 
-        if (exitCode != 0)
+    int status;
+    pid_t p;
+
+    do
+    {
+        p = waitpid(pid, &status, 0);
+    }
+    while((p == -1) && (errno == EINTR));
+
+    if (p != pid)
+    {
+        if (p == -1)
         {
-            LE_FATAL("Couldn't load IPC binding config. `sdir load` exit code: %d.", exitCode);
+            LE_FATAL("waitpid() failed: %m");
+        }
+        else
+        {
+            LE_FATAL("waitpid() returned unexpected result %d", p);
         }
     }
-    else if (WIFSIGNALED(result))
-    {
-        int sigNum = WTERMSIG(result);
 
-        LE_FATAL("Couldn't load IPC binding config. `sdir load` received signal: %d.", sigNum);
+    if (WIFSIGNALED(status))
+    {
+        LE_FATAL("Couldn't load IPC binding config. `sdir load` received signal: %d.",
+            WTERMSIG(status));
+    }
+    else if (WIFEXITED(status))
+    {
+        if (WEXITSTATUS(status) != EXIT_SUCCESS)
+        {
+            LE_FATAL("Couldn't load IPC binding config. `sdir load` exited with code: %d.",
+                WEXITSTATUS(status));
+        }
+    }
+    else
+    {
+        LE_FATAL("Couldn't load IPC binding config. `sdir load` failed for an unknown reason (status = %d).",
+            status);
     }
 }
 
@@ -352,18 +384,22 @@ void fwDaemons_SetIntermediateShutdownHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The SIGCHLD handler for the framework daemons.
+ * The SIGCHLD handler for the framework daemons.  This should be called from the Supervisor's
+ * SIGCHILD handler.
+ *
+ * @note
+ *      This function will reap the child if the child is a framework daemon, otherwise the child
+ *      will remain unreaped.
  *
  * @return
  *      LE_OK if the signal was handled without incident.
- *      LE_NOT_FOUND if the pid is not a framework daemon.
+ *      LE_NOT_FOUND if the pid is not a framework daemon.  The child will not be reaped.
  *      LE_FAULT if the signal indicates the failure of one of the framework daemons.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t fwDaemons_SigChildHandler
 (
-    pid_t pid,              ///< [IN] Pid of the process that produced the SIGCHLD.
-    int status              ///< [IN] Status of the process.
+    pid_t pid               ///< [IN] Pid of the process that produced the SIGCHLD.
 )
 {
     // See which daemon produced this signal.
@@ -375,17 +411,6 @@ le_result_t fwDaemons_SigChildHandler
         if (FrameworkDaemons[i].pid == pid)
         {
             daemonObjPtr = &(FrameworkDaemons[i]);
-
-            // Check status of process and handle SIGCONT and SIGSTOP signals.
-            if ( WIFSTOPPED(status) || WIFCONTINUED(status) )
-            {
-                // The framework daemon was either stopped or continued which should not happen kill
-                // the process now.
-                kill_Hard(pid);
-
-                // Return LE_OK here, when the process actually dies we'll get another SIGCHLD.
-                return LE_OK;
-            }
 
             // Mark this daemon as dead.
             daemonObjPtr->pid = -1;
@@ -399,6 +424,10 @@ le_result_t fwDaemons_SigChildHandler
     {
         return LE_NOT_FOUND;
     }
+
+    // This child process is a framework daemon.
+    // Reap the child now.
+    int status = wait_ReapChild(pid);
 
     if (ShutdownIndex >= 0)
     {

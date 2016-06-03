@@ -65,7 +65,7 @@ typedef struct le_log_Session
     le_sls_List_t keywordList;          ///< The list of keywords for this component.
     le_sls_Link_t link;                 ///< The link used for linking with the SessionList.
 }
-Session_t;
+LogSession_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ static le_mem_PoolRef_t SessionMemPool;
  * sequence or that didn't execute the proper component start-up sequence.
  **/
 //--------------------------------------------------------------------------------------------------
-static Session_t DefaultLogSession =    {
+static LogSession_t DefaultLogSession =    {
                                             .componentNamePtr="<invalid>",
                                             .level=LOG_DEFAULT_LOG_FILTER,
                                             .keywordList=LE_SLS_LIST_INIT,
@@ -191,7 +191,7 @@ static inline void Unlock
 //--------------------------------------------------------------------------------------------------
 static KeywordObj_t* CreateKeyword
 (
-    Session_t* logSessionPtr,
+    LogSession_t* logSessionPtr,
     const char* keyword
 )
 //--------------------------------------------------------------------------------------------------
@@ -263,7 +263,7 @@ static KeywordObj_t* GetKeywordObj
  * @warning Assumes that the mutex is held by the caller.
  */
 //--------------------------------------------------------------------------------------------------
-static Session_t* GetSession
+static LogSession_t* GetSession
 (
     const char* componentNamePtr
 )
@@ -274,7 +274,7 @@ static Session_t* GetSession
     while (sessionLinkPtr != NULL)
     {
         // Get the session.
-        Session_t* sessionPtr = CONTAINER_OF(sessionLinkPtr, Session_t, link);
+        LogSession_t* sessionPtr = CONTAINER_OF(sessionLinkPtr, LogSession_t, link);
 
         if (strcmp(componentNamePtr, sessionPtr->componentNamePtr) == 0)
         {
@@ -303,7 +303,7 @@ static void EnableTrace
     Lock();
 
     // Find the session for this component.
-    Session_t* sessionPtr = GetSession(componentNamePtr);
+    LogSession_t* sessionPtr = GetSession(componentNamePtr);
 
     if (sessionPtr)
     {
@@ -338,7 +338,7 @@ static void DisableTrace
     Lock();
 
     // Find the session for this component.
-    Session_t* sessionPtr = GetSession(componentNamePtr);
+    LogSession_t* sessionPtr = GetSession(componentNamePtr);
 
     if (sessionPtr)
     {
@@ -370,7 +370,7 @@ static void SetLogLevelFilter
     Lock();
 
     // Find the session to apply the filter to.
-    Session_t* sessionPtr = GetSession(componentNamePtr);
+    LogSession_t* sessionPtr = GetSession(componentNamePtr);
 
     if (sessionPtr)
     {
@@ -389,13 +389,13 @@ static void SetLogLevelFilter
  * @return  Pointer to the new log session object.
  **/
 //--------------------------------------------------------------------------------------------------
-static Session_t* CreateSession
+static LogSession_t* CreateSession
 (
     const char* componentNamePtr    // A pointer to the component's name.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Session_t* logSessionPtr = le_mem_ForceAlloc(SessionMemPool);
+    LogSession_t* logSessionPtr = le_mem_ForceAlloc(SessionMemPool);
 
     // Initialize the log session.
     logSessionPtr->componentNamePtr = componentNamePtr;
@@ -682,7 +682,7 @@ static void ProcessLogCmd
 //--------------------------------------------------------------------------------------------------
 static void RegisterWithLogControlDaemon
 (
-    Session_t* logSessionPtr
+    LogSession_t* logSessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -757,7 +757,7 @@ void log_Init
     le_mem_ExpandPool(KeywordMemPool, 10);   /// @todo Make this configurable.
 
     // Create the session memory pool.
-    SessionMemPool = le_mem_CreatePool("LogSession", sizeof(Session_t));
+    SessionMemPool = le_mem_CreatePool("LogSession", sizeof(LogSession_t));
     le_mem_ExpandPool(SessionMemPool, 10);  /// @todo Make this configurable.
 
     // Register the framework as a component.
@@ -853,7 +853,7 @@ void log_ConnectToControlDaemon
         le_sls_Link_t* linkPtr = le_sls_Peek(&SessionList);
         while (linkPtr != NULL)
         {
-            Session_t* logSessionPtr = CONTAINER_OF(linkPtr, Session_t, link);
+            LogSession_t* logSessionPtr = CONTAINER_OF(linkPtr, LogSession_t, link);
 
             RegisterWithLogControlDaemon(logSessionPtr);
 
@@ -879,7 +879,7 @@ le_log_SessionRef_t log_RegComponent
 )
 {
     // Create a log session.
-    Session_t* logSessionPtr = CreateSession(componentNamePtr);
+    LogSession_t* logSessionPtr = CreateSession(componentNamePtr);
 
     // If this is not the Log Control Daemon itself, try to register the calling component with
     // the Log Control Daemon.

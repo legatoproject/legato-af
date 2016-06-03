@@ -50,6 +50,17 @@ sem_ThreadRec_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the semaphore list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** sem_GetSemaphoreListChgCntRef
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the Semaphore module.
  *
  * This function must be called exactly once at process start-up before any other semaphore

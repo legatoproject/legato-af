@@ -1,0 +1,40 @@
+requires:
+{
+    api:
+    {
+        le_sms.api      [types-only]
+        le_mrc.api      [types-only]
+        le_mdc.api      [types-only]
+        le_sim.api      [types-only]
+        le_mcc.api      [types-only]
+        le_info.api     [types-only]
+        le_temp.api     [types-only]
+        le_ips.api      [types-only]
+        le_antenna.api  [types-only]
+        le_adc.api      [types-only]
+        le_rtc.api      [types-only]
+    }
+}
+
+sources:
+{
+    pa_info_default.c
+    pa_mcc_default.c
+    pa_mdc_default.c
+    pa_mrc_default.c
+    pa_default.c
+    pa_sim_default.c
+    pa_sms_default.c
+    pa_ips_default.c
+    pa_temp_default.c
+    pa_antenna_default.c
+    pa_adc_default.c
+    pa_rtc_default.c
+    pa_riPin_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+    -I$CURDIR/../../../modemDaemon
+}

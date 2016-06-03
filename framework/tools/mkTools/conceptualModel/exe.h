@@ -26,6 +26,8 @@ struct Exe_t
 
     App_t* appPtr;      ///< Pointer to the app that this exe is part of. NULL if created by mkexe.
 
+    std::string workingDir;   ///< mk tool working directory path.
+
     const parseTree::Executable_t* exeDefPtr;   ///< Pointer to exe definition in the parse tree.
                                                 ///< NULL if created by mkexe.
 
@@ -36,7 +38,29 @@ struct Exe_t
     std::list<ObjectFile_t*> cObjectFiles;  ///< .o files to build into exe from C sources.
     std::list<ObjectFile_t*> cxxObjectFiles;///< .o files to build into exe from C++ sources.
 
-    ObjectFile_t mainObjectFile;     ///< _main.c.o file.
+    bool hasCCode;
+    bool hasCppCode;
+    bool hasCOrCppCode;
+    bool hasJavaCode;
+    bool hasIncompatibleLanguageCode;
+
+    void AddComponentInstance(ComponentInstance_t* componentInstancePtr);
+
+    void AddCObjectFile(ObjectFile_t* object)
+    {
+        cObjectFiles.push_back(object);
+        hasCCode = true;
+        hasCOrCppCode = true;
+    }
+
+    void AddCppObjectFile(ObjectFile_t* object)
+    {
+        cxxObjectFiles.push_back(object);
+        hasCppCode = true;
+        hasCOrCppCode = true;
+    }
+
+    ObjectFile_t MainObjectFile() const;
 };
 
 

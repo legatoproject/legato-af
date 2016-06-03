@@ -1,0 +1,42 @@
+/** @page yoctoBuildLegato Build Legato
+
+After you've installed the source files, ensure your PC @subpage yoctoPrepDevHost "host" is prepared
+correctly.
+
+Then you're ready to build the Legato framework for your host and target.
+
+@section yoctoBuildLegato_makeLegato Make Legato on localhost
+
+@b cd to your Legato directory
+
+@b Run @c make
+
+These are @subpage yoctoLegatoHostDirs installed.
+
+This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under
+the build directory for your target (e.g., build/localhost/system.localhost.update).
+
+@section yoctoBuildLegato_binlegs bin/legs
+
+To set up your shell environment to use the Legato command-line tools, run @c bin/legs @a every
+time you open a new shell:
+
+@b Run <c>$ bin/legs</c>
+
+(You can run @c exit at any time to terminate @c legs and restore your shell's environment.)
+
+@section yoctoBuildLegato_makeTarget Make for Target
+
+@b Run @c make to build the framework for the target:
+@code $ make wp85 @endcode
+
+Substitute @c wp85 for other target names : @c ar7, @c ar86 or @c raspi.
+
+This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under the build
+directory for your target  (e.g., build/wp85/system.wp85.update).
+
+Ensure you run @c bin/legs every time you open a new shell.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

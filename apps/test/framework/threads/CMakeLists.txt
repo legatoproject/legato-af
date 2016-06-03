@@ -8,6 +8,7 @@ set(APP_SOURCES
     main.c
     forkJoinMutex.c
     externalThreadApi.c
+    priority.c
 )
 
 set_legato_component(${APP_COMPONENT})

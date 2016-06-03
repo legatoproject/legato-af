@@ -171,11 +171,17 @@ TokenList_t* CreateTokenList
         case Content_t::ENV_VAR:
             return new EnvVar_t(firstTokenPtr);
 
+        case Content_t::MODULE_PARAM:
+            return new ModuleParam_t(firstTokenPtr);
+
         case Content_t::POOL:
             return new Pool_t(firstTokenPtr);
 
         case Content_t::APP:
             throw mk::Exception_t("Internal error: APP is not a TokenList_t type.");
+
+        case Content_t::MODULE:
+            throw mk::Exception_t("Internal error: MODULE is not a TokenList_t type.");
 
         case Content_t::ASSET:
             throw mk::Exception_t("Internal error: ASSET is not a TokenList_t type.");
@@ -325,6 +331,7 @@ const TokenList_t* ToTokenListPtr
         case Content_t::EXECUTABLE:
         case Content_t::RUN_PROCESS:
         case Content_t::ENV_VAR:
+        case Content_t::MODULE_PARAM:
         case Content_t::POOL:
         case Content_t::ASSET_SETTING:
         case Content_t::ASSET_VARIABLE:
@@ -334,6 +341,7 @@ const TokenList_t* ToTokenListPtr
         case Content_t::TOKEN:
         case Content_t::COMPLEX_SECTION:
         case Content_t::APP:
+        case Content_t::MODULE:
         case Content_t::ASSET:
             throw mk::Exception_t("Internal error: " + contentItemPtr->TypeName()
                                   + " is not a TokenList_t.");
@@ -369,6 +377,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
     {
         case Content_t::COMPLEX_SECTION:
         case Content_t::APP:
+        case Content_t::MODULE:
         case Content_t::ASSET:
             return static_cast<const CompoundItemList_t*>(contentItemPtr);
 
@@ -394,6 +403,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::EXECUTABLE:
         case Content_t::RUN_PROCESS:
         case Content_t::ENV_VAR:
+        case Content_t::MODULE_PARAM:
         case Content_t::POOL:
         case Content_t::ASSET_SETTING:
         case Content_t::ASSET_VARIABLE:

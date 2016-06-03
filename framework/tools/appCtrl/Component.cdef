@@ -5,6 +5,7 @@ requires:
         le_sup_ctrl.api     [manual-start]
         le_appInfo.api      [manual-start]
         le_cfg.api          [manual-start]
+        le_appProc.api      [manual-start]
     }
 }
 

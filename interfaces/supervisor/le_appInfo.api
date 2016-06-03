@@ -56,8 +56,7 @@ ENUM State
 ENUM ProcState
 {
     PROC_STOPPED,       ///< Process has been stopped or never started.
-    PROC_RUNNING,       ///< Process is running.
-    PROC_PAUSED         ///< Process has been paused.
+    PROC_RUNNING        ///< Process is running.
 };
 
 

@@ -76,11 +76,6 @@ function(clear_legato_component APP_COMPONENT)
     remove_definitions(-DLE_LOG_LEVEL_FILTER_PTR=${APP_COMPONENT}_LogLevelFilterPtr)
 endfunction()
 
-
-if(AUTOMOTIVE_TARGET)
-    set (LEGATO_AUTOMOTIVE_TARGET_OPTION --cflags=-DAUTOMOTIVE_TARGET)
-endif()
-
 # Function to build a Legato executable using mkexe.
 # The executable will be put in the appropriate target's bin directory.
 # Supporting libraries will be put in the target's lib directory.
@@ -106,7 +101,6 @@ function(mkexe EXE_NAME)
                           -i ${CMAKE_CURRENT_SOURCE_DIR}
                           -l ${LIBRARY_OUTPUT_PATH}
                           -t ${LEGATO_TARGET}
-                          ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
                           ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkexe '${EXE_NAME}': ${EXECUTABLE_OUTPUT_PATH}/${EXE_NAME}"
@@ -140,7 +134,6 @@ function(mkapp ADEF)
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -o ${APP_OUTPUT_PATH}
-                        ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
                         ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkapp '${APP_NAME}': ${APP_PKG}"
@@ -175,7 +168,6 @@ function(mkcomp COMP_PATH)
                         -i ${CMAKE_CURRENT_SOURCE_DIR}
                         -c ${CMAKE_CURRENT_SOURCE_DIR}
                         -l ${LIBRARY_OUTPUT_PATH}
-                        ${LEGATO_AUTOMOTIVE_TARGET_OPTION}
                         ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMENT "mkcomp '${COMP_NAME}': ${COMPONENT_LIB}"
@@ -228,6 +220,33 @@ function(generate_header API_FILE)
     get_filename_component(API_NAME ${API_FILE} NAME_WE)
 
     set(API_PATH    "${CMAKE_CURRENT_SOURCE_DIR}/${API_FILE}")
+    set(HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_interface.h")
+
+    add_custom_command( OUTPUT ${HEADER_PATH}
+                        COMMAND ${LEGATO_TOOL_IFGEN} --gen-interface ${API_PATH}
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
+                        ${ARGN}
+                        COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
+                        DEPENDS ${API_FILE}
+                        )
+
+    add_custom_target(  ${API_NAME}_if
+                        DEPENDS ${HEADER_PATH}
+                        )
+
+    add_dependencies( api_headers ${API_NAME}_if)
+endfunction()
+
+# Function to generate the interface header from an API file that resides outside the framework
+# source tree to make it  available for documentation.
+# API_FILE is with full path
+function(generate_header_extern API_FILE)
+
+    get_filename_component(API_NAME ${API_FILE} NAME_WE)
+
+    set(API_PATH    "${API_FILE}")
     set(HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_interface.h")
 
     add_custom_command( OUTPUT ${HEADER_PATH}

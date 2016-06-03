@@ -14,13 +14,21 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/audio
-    -I$LEGATO_ROOT/components/audio/platformAdaptor/inc
+    -I$CURDIR
+    -I$CURDIR/platformAdaptor/inc
 }
 
 requires:
 {
-    component: { $LEGATO_AUDIO_PA }
-    component: { $LEGATO_AUDIO_PA_PCM }
-    component: { $LEGATO_AUDIO_PA_AMR }
+    component:
+    {
+        $LEGATO_AUDIO_PA_DEFAULT
+        $LEGATO_AUDIO_PA
+
+        $LEGATO_AUDIO_PA_PCM_DEFAULT
+        $LEGATO_AUDIO_PA_PCM
+
+        $LEGATO_AUDIO_PA_AMR_DEFAULT
+        $LEGATO_AUDIO_PA_AMR
+    }
 }

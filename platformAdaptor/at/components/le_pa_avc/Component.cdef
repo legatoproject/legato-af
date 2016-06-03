@@ -1,0 +1,9 @@
+sources:
+{
+    pa_avc.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
+}

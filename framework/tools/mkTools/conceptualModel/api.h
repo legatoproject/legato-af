@@ -69,6 +69,32 @@ protected:
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Structure to hold paths to the C code for a generated interface.
+ */
+//--------------------------------------------------------------------------------------------------
+struct InterfaceCFiles_t
+{
+    std::string interfaceFile;  ///< .h file that gets included by interfaces.h.
+    std::string internalHFile;  ///< local.h file that gets included by generated .c code.
+    std::string sourceFile;     ///< Generated .c file.
+    std::string objectFile;     ///< Path to the .o file for this interface.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure to hold paths to the Java code for a generated interface.
+ */
+//--------------------------------------------------------------------------------------------------
+struct InterfaceJavaFiles_t
+{
+    std::string interfaceSourceFile;
+    std::string implementationSourceFile;
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Represents a component's reference to an API file.
  */
 //--------------------------------------------------------------------------------------------------
@@ -80,11 +106,14 @@ struct ApiRef_t
 
     const std::string internalName;   ///< Name used inside the component to refer to the interface.
 
-    std::string interfaceFile;  ///< .h file that gets included by interfaces.h.
-
 protected:
 
     ApiRef_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
+
+public:
+
+    virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const = 0;
+    virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const = 0;
 };
 
 
@@ -96,6 +125,9 @@ protected:
 struct ApiTypesOnlyInterface_t : public ApiRef_t
 {
     ApiTypesOnlyInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
+
+    virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
+    virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
 };
 
 
@@ -106,13 +138,12 @@ struct ApiTypesOnlyInterface_t : public ApiRef_t
 //--------------------------------------------------------------------------------------------------
 struct ApiClientInterface_t : public ApiRef_t
 {
-    std::string internalHFile;  ///< local.h file that gets included by generated .c code.
-    std::string sourceFile;     ///< Generated .c file.
-    std::string objectFile;     ///< Path to the .o file for this interface.
-
     bool manualStart;   ///< true = generated main() should not call the ConnectService() function.
 
     ApiClientInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
+
+    virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
+    virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
 };
 
 
@@ -123,14 +154,13 @@ struct ApiClientInterface_t : public ApiRef_t
 //--------------------------------------------------------------------------------------------------
 struct ApiServerInterface_t : public ApiRef_t
 {
-    std::string internalHFile;  ///< local.h file that gets included by generated .c code.
-    std::string sourceFile;     ///< Generated .c file.
-    std::string objectFile;     ///< Path to the .o file for this interface.
-
     const bool async;         ///< true = component wants to use asynchronous mode of operation.
     bool manualStart;   ///< true = generated main() should not call AdvertiseService() function.
 
     ApiServerInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName, bool async);
+
+    virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
+    virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
 };
 
 

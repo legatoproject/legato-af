@@ -108,7 +108,7 @@ HANDLER ThresholdEventHandler
 //--------------------------------------------------------------------------------------------------
 EVENT ThresholdEvent
 (
-    handler ThresholdEventHandler
+    ThresholdEventHandler handler
 );
 
 

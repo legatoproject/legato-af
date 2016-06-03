@@ -330,7 +330,7 @@ typedef enum
     CDMAPDU_ENCODING_EXTENDED_PROTOCOL_MESSAGE  = 1,    ///< Extended Protocol Message ‘00001’
     CDMAPDU_ENCODING_7BIT_ASCII                 = 2,    ///< 7-bit ASCII '00010'
     CDMAPDU_ENCODING_IA5                        = 3,    ///< IA5 '00011'
-    CDMAPDU_ENCODING_UNICODE                    = 4,    ///< UNICODE '00100'
+    CDMAPDU_ENCODING_UNICODE                    = 4,    ///< UNICODE '00100' 16-bit encoding
     CDMAPDU_ENCODING_SHIFT_JIS                  = 5,    ///< Shift-JIS '00101'
     CDMAPDU_ENCODING_KOREAN                     = 6,    ///< Korean '00110'
     CDMAPDU_ENCODING_LATIN_HEBREW               = 7,    ///< Latin/Hebrew '00111'

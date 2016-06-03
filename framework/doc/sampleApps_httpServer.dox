@@ -1,0 +1,35 @@
+/** @page sampleApps_httpServer HTTP Server
+
+This sample app demonstrates how to use Legato to create an HTTP Server.
+
+It has a Legato @adef file with a @c bundles: section that provides the file: and dir: paths. The
+@c requires section lists file: path and dir: details.
+
+There are also sample website folders containing the sample site pages, css, etc.
+
+See the README for details on the website configuration.
+
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/httpServer">sample app code</a>.
+
+Run this to install the sample app:
+
+@verbatim
+$ cd apps/sample/httpServer
+$ make wp85
+$ instapp httpServer.wp85.update <ip address>
+@endverbatim
+
+If you're using an AR7 module in your target, substitute @c ar7 for wp85.
+
+
+@ref sampleApps_startApp
+
+<HR>
+
+See <br>
+@ref basicAppsCreate
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -199,10 +199,10 @@ server:
 }
 @endcode
 
-@section basicAppsIPC_createIPCadef Declare IPC Bindings
+@section basicAppsIPC_createIPCadef Declare IPC Availability
 
 You can create an @ref defFilesAdef file with an @ref defFilesAdef_extern
-section to declare it's available for binding:
+section to declare the app is available for @ref defFilesAdef_bindings "binding":
 
 @code
 
@@ -213,7 +213,7 @@ extern:
 @endcode
 
 You only need to do this if you want to leave your interface unbound, and bind it later in the
-@ref defFilesSdef file @ref defFilesSdef_bindings section.
+ @ref defFilesSdef_bindings ".sdef file bindings" section.
 
 <HR>
 

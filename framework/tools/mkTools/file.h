@@ -114,6 +114,17 @@ std::string FindComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a list of files in the specified directory.  Symlinks are returned, but not sub-directories.
+ */
+//--------------------------------------------------------------------------------------------------
+std::list<std::string> ListFiles
+(
+    const std::string& path   ///< Path to the directory to iterate.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a directory in the file system if it doesn't already exist.  Will create any missing
  * parent directories too.  (Equivalent to 'mkdir -P'.)
  *

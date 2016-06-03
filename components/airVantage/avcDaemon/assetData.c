@@ -62,7 +62,8 @@ typedef enum
     DATA_TYPE_NONE,    ///< Some fields do not have a data type, i.e. EXEC only fields
     DATA_TYPE_INT,
     DATA_TYPE_BOOL,
-    DATA_TYPE_STRING
+    DATA_TYPE_STRING,
+    DATA_TYPE_FLOAT     ///< 64 bit floating point value
 }
 DataTypes_t;
 
@@ -97,6 +98,9 @@ typedef struct assetData_AssetData
     le_dls_List_t instanceList;         ///< List of instances for this asset
     le_dls_List_t fieldActionList;      ///< List of registered fieldAction handlers
     le_dls_List_t assetActionList;      ///< List of registered assetAction handlers
+    bool isObjectObserve;               ///< Is Observe enabled on this object?
+    uint8_t tokenLength;                ///< Token length of the lwm2m observe request.
+    uint8_t token[8];                   ///< Token or request ID of the lwm2m observe request.
 }
 AssetData_t;
 
@@ -127,10 +131,14 @@ typedef struct
     char name[100];
     DataTypes_t type;
     AccessBitMask_t access;
-
+    bool isObserve;
+    pa_avc_LWM2MOperationDataRef_t readCallBackOpRef;
+    uint8_t tokenLength;
+    uint8_t token[8];
     union
     {
         int intValue;
+        double floatValue;
         bool boolValue;
         char* strValuePtr;
     };
@@ -248,6 +256,7 @@ static le_hashmap_Ref_t AssetMap = NULL;
 static le_hashmap_Ref_t AssetMapByName = NULL;
 
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Table mapping data type strings to DataType_t values
@@ -258,7 +267,8 @@ static DataTypeTableEntry_t DataTypeTable[] =
     { "none",   DATA_TYPE_NONE },
     { "int",    DATA_TYPE_INT },
     { "bool",   DATA_TYPE_BOOL },
-    { "string", DATA_TYPE_STRING }
+    { "string", DATA_TYPE_STRING },
+    { "float",  DATA_TYPE_FLOAT }
 };
 
 
@@ -269,6 +279,21 @@ static DataTypeTableEntry_t DataTypeTable[] =
 //--------------------------------------------------------------------------------------------------
 static ActionHandlerData_t AllAssetActionHandlerData = { .assetActionHandlerPtr = NULL };
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Declare this function here, until the QMI functions are moved out of this file.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteNotifyObjectToTLV
+(
+    assetData_AssetDataRef_t assetRef,          ///< [IN] Asset to use
+    int instanceId,                             ///< [IN] Instance that has a changed resource
+    int fieldId,                                ///< [IN] The resource which changed
+    uint8_t* bufPtr,                            ///< [OUT] Buffer for writing the TLV list
+    size_t bufNumBytes,                         ///< [IN] Size of buffer
+    size_t* numBytesWrittenPtr                  ///< [OUT] # bytes written to buffer.
+);
 
 //--------------------------------------------------------------------------------------------------
 // Local functions
@@ -422,11 +447,14 @@ static le_result_t ConvertAccessModeStr
  * Initialize the value field of a field data block to a default, depending on the 'type' field.
  */
 //--------------------------------------------------------------------------------------------------
-static void InitDefaultFieldValue
+static void InitDefaultFieldData
 (
     FieldData_t* fieldDataPtr   ///< Init the value of this field data block
 )
 {
+    fieldDataPtr->isObserve = false;
+    fieldDataPtr->readCallBackOpRef = NULL;
+
     switch ( fieldDataPtr->type )
     {
         case DATA_TYPE_INT:
@@ -440,6 +468,10 @@ static void InitDefaultFieldValue
         case DATA_TYPE_STRING:
             fieldDataPtr->strValuePtr = le_mem_ForceAlloc(StringValuePoolRef);
             fieldDataPtr->strValuePtr[0] = '\0';
+            break;
+
+        case DATA_TYPE_FLOAT:
+            fieldDataPtr->floatValue = 0.0;
             break;
 
         case DATA_TYPE_NONE:
@@ -480,7 +512,7 @@ static le_result_t CreateFieldFromModel
     nodeType=le_cfg_GetNodeType(assetCfg, "default");
 
     // Init with hard-coded defaults, which could get overwritten below.
-    InitDefaultFieldValue(fieldDataPtr);
+    InitDefaultFieldData(fieldDataPtr);
 
     if ( nodeType==LE_CFG_TYPE_EMPTY || nodeType==LE_CFG_TYPE_DOESNT_EXIST )
     {
@@ -499,6 +531,11 @@ static le_result_t CreateFieldFromModel
         case DATA_TYPE_STRING:
             le_cfg_GetString(assetCfg, "default", strBuf, sizeof(strBuf), "");
             le_utf8_Copy(fieldDataPtr->strValuePtr, strBuf, STRING_VALUE_NUMBYTES, NULL);
+            break;
+
+        case DATA_TYPE_FLOAT:
+            fieldDataPtr->floatValue = le_cfg_GetFloat(assetCfg, "default", 0.0);
+
             break;
 
         case DATA_TYPE_NONE:
@@ -649,7 +686,7 @@ static void AddFieldFromData
     LE_ASSERT( le_utf8_Copy(fieldDataPtr->name, namePtr, sizeof(fieldDataPtr->name), NULL) == LE_OK );
     fieldDataPtr->type = type;
     fieldDataPtr->access = access;
-    InitDefaultFieldValue(fieldDataPtr);
+    InitDefaultFieldData(fieldDataPtr);
 
     le_dls_Queue(&assetInstPtr->fieldList, &fieldDataPtr->link);
 }
@@ -711,6 +748,7 @@ static le_result_t AddAssetData
     assetDataPtr->instanceList = LE_DLS_LIST_INIT;
     assetDataPtr->fieldActionList = LE_DLS_LIST_INIT;
     assetDataPtr->assetActionList = LE_DLS_LIST_INIT;
+    assetDataPtr->isObjectObserve = false;
     le_utf8_Copy(assetDataPtr->assetName, assetNamePtr, sizeof(assetDataPtr->assetName), NULL);
     le_utf8_Copy(assetDataPtr->appName, appNamePtr, sizeof(assetDataPtr->appName), NULL);
 
@@ -1140,6 +1178,54 @@ static le_result_t GetField
 #endif
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if a registered handler exists for a field read action.
+ *
+ * @return:
+ *      - true if field read action handler exists
+ *      - false if field read action handler doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsFieldReadCallBackExist
+(
+    InstanceData_t* instanceDataPtr,        ///< [IN] Asset instance that action occurred on.
+    FieldData_t* fieldDataPtr               ///< [IN] Field data ptr
+)
+{
+    ActionHandlerData_t* handlerDataPtr;
+    le_dls_Link_t* linkPtr;
+
+    LE_PRINT_VALUE("%d", fieldDataPtr->access);
+
+    // Verify that the field is writeable by the client.
+    if (!(fieldDataPtr->access & ACCESS_WRITE))
+    {
+        return false;
+    }
+
+    // Get the start of the handler list
+    linkPtr = le_dls_Peek(&instanceDataPtr->assetDataPtr->fieldActionList);
+
+    // Loop through the list looking for a handler.
+    while ( linkPtr != NULL )
+    {
+        handlerDataPtr = CONTAINER_OF(linkPtr, ActionHandlerData_t, link);
+
+        // Return true if we find a handler.
+        if ( fieldDataPtr->fieldId == handlerDataPtr->fieldId )
+        {
+           return true;
+        }
+
+        linkPtr = le_dls_PeekNext(&instanceDataPtr->assetDataPtr->fieldActionList, linkPtr);
+    }
+
+    return false;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Call any registered handlers to be notified on field actions, such as write or execute
@@ -1282,6 +1368,10 @@ static void PrintInstanceData
                 PRINT_VALUE(8, "'%s'", fieldDataPtr->strValuePtr);
                 break;
 
+            case DATA_TYPE_FLOAT:
+                PRINT_VALUE(8, "%lf", fieldDataPtr->floatValue);
+                break;
+
             case DATA_TYPE_NONE:
                 LE_DEBUG( "%*s<no value>", 8, "" );
                 break;
@@ -1367,7 +1457,7 @@ le_result_t static GetInt
 
     if ( fieldDataPtr->type != DATA_TYPE_INT )
     {
-        LE_ERROR("Field type mistmatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        LE_ERROR("Field type mismatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
         return LE_FAULT;
     }
 
@@ -1379,6 +1469,47 @@ le_result_t static GetInt
     return LE_OK;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the float value for the specified field
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t static GetFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to read
+    double* valuePtr,                           ///< [OUT] The value read
+    bool isClient                               ///< [IN] Is it client or server access
+)
+{
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+
+    if ( fieldDataPtr->type != DATA_TYPE_FLOAT )
+    {
+        LE_ERROR("Field type mismatch: expected 'float', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        return LE_FAULT;
+    }
+
+    // Call any registered handlers to be notified of read
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, isClient );
+
+    // Get the value and return it
+    *valuePtr = fieldDataPtr->floatValue;
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1400,6 +1531,115 @@ le_result_t static SetInt
 {
     le_result_t result;
     FieldData_t* fieldDataPtr;
+    uint8_t valueData[256+1];  // +1 for null byte, if storing a string
+    size_t bytesWritten;
+    int prevValue;
+    pa_avc_LWM2MOperationDataRef_t opRef;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+
+    if ( fieldDataPtr->type != DATA_TYPE_INT )
+    {
+        LE_ERROR("Field type mismatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        return LE_FAULT;
+    }
+
+    // Remember current value and set new value.
+    prevValue = fieldDataPtr->intValue;
+    fieldDataPtr->intValue = value;
+
+    // Call any registered handlers to be notified of write.
+    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
+
+    // Send a read response for read call back operation.
+    if (fieldDataPtr->readCallBackOpRef != NULL && isClient == true)
+    {
+        // Format the response string.
+        result = FormatString((char*)valueData, sizeof(valueData), "%i", fieldDataPtr->intValue);
+        bytesWritten = strlen((char*)valueData);
+
+        if ( result != LE_OK )
+        {
+            LE_ERROR("Failed to send read response.");
+            return LE_FAULT;
+        }
+
+        pa_avc_ReadCallBackReport(fieldDataPtr->readCallBackOpRef, valueData, bytesWritten);
+        fieldDataPtr->readCallBackOpRef = NULL;
+    }
+
+    //LE_PRINT_VALUE("%d", prevValue);
+    //LE_PRINT_VALUE("%d", value);
+
+    // Notify the server if observe is enabled and the value is changed.
+    // The server sends notify on entire object, so we need to send the TLV of entire
+    // object but include only the resource that changed.
+    if (fieldDataPtr->isObserve && prevValue != value && isClient == true)
+    {
+        assetData_AssetDataRef_t assetRef;
+        result = assetData_GetAssetRefById(instanceRef->assetDataPtr->appName,
+                                           instanceRef->assetDataPtr->assetId,
+                                           &assetRef);
+
+        if ( result == LE_OK)
+        {
+            result = WriteNotifyObjectToTLV(assetRef,
+                                            instanceRef->instanceId,
+                                            fieldId,
+                                            valueData,
+                                            sizeof(valueData),
+                                            &bytesWritten);
+            if ( result != LE_OK )
+            {
+                LE_ERROR("Failed to send lwm2m notification.");
+                return LE_FAULT;
+            }
+
+            opRef = pa_avc_CreateOpData(instanceRef->assetDataPtr->appName,
+                                        instanceRef->assetDataPtr->assetId,
+                                        -1,
+                                        -1,
+                                        PA_AVC_OPTYPE_NOTIFY,
+                                        fieldDataPtr->token,
+                                        fieldDataPtr->tokenLength);
+
+            pa_avc_NotifyChange(opRef, valueData, bytesWritten);
+        }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the float value for the specified field
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t static SetFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    double value,                               ///< [IN] The value to write
+    bool isClient                               ///< [IN] Is it client or server access
+)
+{
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+    uint8_t valueData[256+1];  // +1 for null byte, if storing a string
+    size_t bytesWritten;
+    float prevValue;
+    pa_avc_LWM2MOperationDataRef_t opRef;
 
     result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
     if ( result != LE_OK )
@@ -1407,24 +1647,77 @@ le_result_t static SetInt
         return result;
     }
 
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
-    if ( fieldDataPtr->type != DATA_TYPE_INT )
+    if ( fieldDataPtr->type != DATA_TYPE_FLOAT )
     {
-        LE_ERROR("Field type mistmatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        LE_ERROR("Field type mismatch: expected 'float', got '%s'", GetDataTypeStr(fieldDataPtr->type));
         return LE_FAULT;
     }
 
-    // Set the new value
-    fieldDataPtr->intValue = value;
+    // Remember current value and set new value.
+    prevValue = fieldDataPtr->floatValue;
+    fieldDataPtr->floatValue = value;
 
     // Call any registered handlers to be notified of write.
     CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
 
+    // Send a read response for read call back operation.
+    if (fieldDataPtr->readCallBackOpRef !=NULL && isClient == true)
+    {
+        // Format the response string.
+        result = FormatString((char*)valueData, sizeof(valueData), "%lf", fieldDataPtr->floatValue);
+        bytesWritten = strlen((char*)valueData);
+
+        if ( result != LE_OK )
+        {
+            LE_ERROR("Failed to send read response.");
+            return LE_FAULT;
+        }
+
+        pa_avc_ReadCallBackReport(fieldDataPtr->readCallBackOpRef, valueData, bytesWritten);
+        fieldDataPtr->readCallBackOpRef = NULL;
+    }
+
+    //LE_PRINT_VALUE("%lf", prevValue);
+    //LE_PRINT_VALUE("%lf", value);
+
+    // Notify the server if observe is enabled and the value is changed.
+    // The server sends notify on entire object, so we need to send the TLV of entire
+    // object but include only the resource that changed.
+    if (fieldDataPtr->isObserve && prevValue != value && isClient == true)
+    {
+        assetData_AssetDataRef_t assetRef;
+        result = assetData_GetAssetRefById(instanceRef->assetDataPtr->appName,
+                                           instanceRef->assetDataPtr->assetId,
+                                           &assetRef);
+
+        if ( result == LE_OK)
+        {
+            result = WriteNotifyObjectToTLV(assetRef,
+                                            instanceRef->instanceId,
+                                            fieldId,
+                                            valueData,
+                                            sizeof(valueData),
+                                            &bytesWritten);
+            if ( result != LE_OK )
+            {
+                LE_ERROR("Failed to send lwm2m notification.");
+                return LE_FAULT;
+            }
+
+            opRef = pa_avc_CreateOpData(instanceRef->assetDataPtr->appName,
+                                        instanceRef->assetDataPtr->assetId,
+                                        -1,
+                                        -1,
+                                        PA_AVC_OPTYPE_NOTIFY,
+                                        fieldDataPtr->token,
+                                        fieldDataPtr->tokenLength);
+
+            pa_avc_NotifyChange(opRef, valueData, bytesWritten);
+        }
+    }
+
     return LE_OK;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1453,12 +1746,9 @@ le_result_t static GetBool
         return result;
     }
 
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
     if ( fieldDataPtr->type != DATA_TYPE_BOOL )
     {
-        LE_ERROR("Field type mistmatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        LE_ERROR("Field type mismatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
         return LE_FAULT;
     }
 
@@ -1491,6 +1781,10 @@ le_result_t static SetBool
 {
     le_result_t result;
     FieldData_t* fieldDataPtr;
+    uint8_t valueData[256+1];  // +1 for null byte, if storing a string
+    size_t bytesWritten;
+    bool prevValue;
+    pa_avc_LWM2MOperationDataRef_t opRef;
 
     result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
     if ( result != LE_OK )
@@ -1498,20 +1792,71 @@ le_result_t static SetBool
         return result;
     }
 
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
     if ( fieldDataPtr->type != DATA_TYPE_BOOL )
     {
-        LE_ERROR("Field type mistmatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        LE_ERROR("Field type mismatch: expected 'int', got '%s'", GetDataTypeStr(fieldDataPtr->type));
         return LE_FAULT;
     }
 
-    // Set the new value
+    // Remember current value and set new value.
+    prevValue = fieldDataPtr->boolValue;
     fieldDataPtr->boolValue = value;
 
     // Call any registered handlers to be notified of write.
     CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
+
+    // Send a read response for read call back operation.
+    if (fieldDataPtr->readCallBackOpRef != NULL && isClient == true)
+    {
+        // Format the response string.
+        result = FormatString((char*)valueData, sizeof(valueData), "%i", fieldDataPtr->boolValue);
+        bytesWritten = strlen((char*)valueData);
+
+        if ( result != LE_OK )
+        {
+            LE_ERROR("Failed to send read response.");
+            return LE_FAULT;
+        }
+
+        pa_avc_ReadCallBackReport(fieldDataPtr->readCallBackOpRef, valueData, bytesWritten);
+        fieldDataPtr->readCallBackOpRef = NULL;
+    }
+
+    // Notify the server if observe is enabled and the value is changed.
+    // The server sends notify on entire object, so we need to send the TLV of entire
+    // object but include only the resource that changed.
+    if (fieldDataPtr->isObserve && prevValue != value && isClient == true)
+    {
+        assetData_AssetDataRef_t assetRef;
+        result = assetData_GetAssetRefById(instanceRef->assetDataPtr->appName,
+                                           instanceRef->assetDataPtr->assetId,
+                                           &assetRef);
+
+        if ( result == LE_OK)
+        {
+            result = WriteNotifyObjectToTLV(assetRef,
+                                            instanceRef->instanceId,
+                                            fieldId,
+                                            valueData,
+                                            sizeof(valueData),
+                                            &bytesWritten);
+            if ( result != LE_OK )
+            {
+                LE_ERROR("Failed to send lwm2m notification.");
+                return LE_FAULT;
+            }
+
+            opRef = pa_avc_CreateOpData(instanceRef->assetDataPtr->appName,
+                                        instanceRef->assetDataPtr->assetId,
+                                        -1,
+                                        -1,
+                                        PA_AVC_OPTYPE_NOTIFY,
+                                        fieldDataPtr->token,
+                                        fieldDataPtr->tokenLength);
+
+            pa_avc_NotifyChange(opRef, valueData, bytesWritten);
+        }
+    }
 
     return LE_OK;
 }
@@ -1546,12 +1891,9 @@ le_result_t static GetString
         return result;
     }
 
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
     if ( fieldDataPtr->type != DATA_TYPE_STRING )
     {
-        LE_ERROR("Field type mistmatch: expected 'string', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        LE_ERROR("Field type mismatch: expected 'string', got '%s'", GetDataTypeStr(fieldDataPtr->type));
         return LE_FAULT;
     }
 
@@ -1584,6 +1926,10 @@ le_result_t static SetString
 {
     le_result_t result;
     FieldData_t* fieldDataPtr;
+    uint8_t valueData[256+1];  // +1 for null byte, if storing a string
+    size_t bytesWritten;
+    char prevStr[STRING_VALUE_NUMBYTES];
+    pa_avc_LWM2MOperationDataRef_t opRef;
 
     result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
     if ( result != LE_OK )
@@ -1591,22 +1937,71 @@ le_result_t static SetString
         return result;
     }
 
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
     if ( fieldDataPtr->type != DATA_TYPE_STRING )
     {
-        LE_ERROR("Field type mistmatch: expected 'string', got '%s'", GetDataTypeStr(fieldDataPtr->type));
+        LE_ERROR("Field type mismatch: expected 'string', got '%s'", GetDataTypeStr(fieldDataPtr->type));
         return LE_FAULT;
     }
 
-    // Set the new value
+    // Remember current value and set new value.
+    result = le_utf8_Copy(prevStr, fieldDataPtr->strValuePtr, STRING_VALUE_NUMBYTES, NULL);
     result = le_utf8_Copy(fieldDataPtr->strValuePtr, strPtr, STRING_VALUE_NUMBYTES, NULL);
 
     // Call any registered handlers to be notified of write.
-    // todo: If result is LE_OVERFLOW here, should we still call the registered handlers?
-    //       They have no way of knowing that the stored value has overflowed.
     CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, isClient );
+
+    // Send a read response for read call back operation.
+    if (fieldDataPtr->readCallBackOpRef != NULL && isClient == true)
+    {
+        // Format the response string.
+        le_utf8_Copy((char*)valueData, fieldDataPtr->strValuePtr, sizeof(valueData), NULL);
+        bytesWritten = strlen((char*)valueData);
+
+        if ( result != LE_OK )
+        {
+            LE_ERROR("Failed to send read response.");
+            return LE_FAULT;
+        }
+
+        pa_avc_ReadCallBackReport(fieldDataPtr->readCallBackOpRef, valueData, bytesWritten);
+        fieldDataPtr->readCallBackOpRef = NULL;
+    }
+
+    // Notify the server if observe is enabled and the value is changed.
+    // The server sends notify on entire object, so we need to send the TLV of entire
+    // object but include only the resource that changed.
+    if (fieldDataPtr->isObserve && strcmp(prevStr, strPtr) != 0 && isClient == true)
+    {
+        assetData_AssetDataRef_t assetRef;
+        result = assetData_GetAssetRefById(instanceRef->assetDataPtr->appName,
+                                           instanceRef->assetDataPtr->assetId,
+                                           &assetRef);
+
+        if ( result == LE_OK)
+        {
+            result = WriteNotifyObjectToTLV(assetRef,
+                                            instanceRef->instanceId,
+                                            fieldId,
+                                            valueData,
+                                            sizeof(valueData),
+                                            &bytesWritten);
+            if ( result != LE_OK )
+            {
+                LE_ERROR("Failed to send lwm2m notification.");
+                return LE_FAULT;
+            }
+
+            opRef = pa_avc_CreateOpData(instanceRef->assetDataPtr->appName,
+                                        instanceRef->assetDataPtr->assetId,
+                                        -1,
+                                        -1,
+                                        PA_AVC_OPTYPE_NOTIFY,
+                                        fieldDataPtr->token,
+                                        fieldDataPtr->tokenLength);
+
+            pa_avc_NotifyChange(opRef, valueData, bytesWritten);
+        }
+    }
 
     return result;
 }
@@ -1790,6 +2185,12 @@ le_result_t assetData_CreateInstanceById
 
     // Add back reference from instance data to the asset containing the instance
     assetInstPtr->assetDataPtr = assetDataPtr;
+
+    // If the object is already getting observed, setup the new instance for observe as well.
+    if (assetDataPtr->isObjectObserve)
+    {
+        assetData_SetObserve(assetInstPtr, true, assetDataPtr->token, assetDataPtr->tokenLength);
+    }
 
     le_dls_Queue(&assetDataPtr->instanceList, &assetInstPtr->link);
 
@@ -2330,6 +2731,27 @@ le_result_t assetData_client_GetInt
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the float value for the specified field
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_GetFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to read
+    double* valuePtr                            ///< [OUT] The value read
+)
+{
+    return GetFloat(instanceRef, fieldId, valuePtr, true);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the integer value for the specified field
  *
  * @return:
@@ -2348,6 +2770,26 @@ le_result_t assetData_client_SetInt
     return SetInt(instanceRef, fieldId, value, true);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the float value for the specified field
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_SetFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    double value                                ///< [IN] The value to write
+)
+{
+    return SetFloat(instanceRef, fieldId, value, true);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2636,18 +3078,22 @@ le_result_t assetData_server_SetString
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value for the specified field as a string
+ * Get the value for the specified field as a string. This function will return LE_UNAVAILABLE, if
+ * a callback function is registered for this operation. A response will be sent to the server
+ * after the callback function finishes.
  *
  * If the field is not a string field, then the value will be converted to a string.
  *
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_UNAVAILABLE if a read call back function is registered
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t assetData_server_GetValue
 (
+    pa_avc_LWM2MOperationDataRef_t opRef,       ///< [IN] Reference to LWM2M operation
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
     char* strBufPtr,                            ///< [OUT] The value read
@@ -2666,8 +3112,21 @@ le_result_t assetData_server_GetValue
     //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
     //LE_PRINT_VALUE("%s", fieldDataPtr->name);
 
-    // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, false );
+    // If the app has registered a field action handler, the app has to do the work and will send
+    // the result later.
+    if (IsFieldReadCallBackExist(instanceRef, fieldDataPtr))
+    {
+        LE_DEBUG("Read call back exists.");
+
+        // Save the operation reference.
+        le_mem_AddRef(opRef);
+        fieldDataPtr->readCallBackOpRef = opRef;
+
+        // Call any registered handlers to be notified of read.
+        CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, false );
+
+        return LE_UNAVAILABLE;
+    }
 
     switch ( fieldDataPtr->type )
     {
@@ -2681,6 +3140,10 @@ le_result_t assetData_server_GetValue
 
         case DATA_TYPE_STRING:
             result = le_utf8_Copy(strBufPtr, fieldDataPtr->strValuePtr, strBufNumBytes, NULL);
+            break;
+
+        case DATA_TYPE_FLOAT:
+            result = FormatString(strBufPtr, strBufNumBytes, "%lf", fieldDataPtr->floatValue);
             break;
 
         case DATA_TYPE_NONE:
@@ -2722,22 +3185,38 @@ le_result_t assetData_server_SetValue
         return result;
     }
 
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
     result = LE_OK;   // result could be changed in the switch statement
     switch ( fieldDataPtr->type )
     {
         case DATA_TYPE_INT:
-            fieldDataPtr->intValue = atoi(strPtr);
+            errno = 0;
+            fieldDataPtr->intValue = strtol(strPtr, NULL, 10);
+            if ((errno == ERANGE) || (errno == EINVAL))
+            {
+                result = LE_FAULT;
+            }
             break;
 
         case DATA_TYPE_BOOL:
-            fieldDataPtr->boolValue = atoi(strPtr);
+            errno = 0;
+            fieldDataPtr->boolValue = strtol(strPtr, NULL, 2);
+            if ((errno == ERANGE) || (errno == EINVAL))
+            {
+                result = LE_FAULT;
+            }
             break;
 
         case DATA_TYPE_STRING:
             result = le_utf8_Copy(fieldDataPtr->strValuePtr, strPtr, STRING_VALUE_NUMBYTES, NULL);
+            break;
+
+        case DATA_TYPE_FLOAT:
+            errno = 0;
+            fieldDataPtr->floatValue = strtod(strPtr, NULL);
+            if ((errno == ERANGE) || (errno == EINVAL))
+            {
+                result = LE_FAULT;
+            }
             break;
 
         case DATA_TYPE_NONE:
@@ -2754,81 +3233,6 @@ le_result_t assetData_server_SetValue
     return result;
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the value for the specified field as binary data
- *
- * If the field is a string field, then the binary data is the string
- *
- * @return:
- *      - LE_OK on success
- *      - LE_NOT_FOUND if field not found
- *      - LE_FAULT on any other error
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t assetData_server_GetValueAsBinary
-(
-    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
-    int fieldId,                                ///< [IN] Field to read
-    uint8_t* bufPtr,                            ///< [OUT] The buffer for writing the data
-    size_t bufNumBytes,                         ///< [IN] Size of buffer
-    size_t* bytesWrittenPtr                     ///< [OUT] # of bytes written to buffer
-)
-{
-    le_result_t result;
-    FieldData_t* fieldDataPtr;
-
-    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
-    if ( result != LE_OK )
-    {
-        return result;
-    }
-
-    //LE_PRINT_VALUE("%i", fieldDataPtr->fieldId);
-    //LE_PRINT_VALUE("%s", fieldDataPtr->name);
-
-    // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_READ, false );
-
-    switch ( fieldDataPtr->type )
-    {
-        case DATA_TYPE_INT:
-            // TODO: Add 'CopyData' function to do the size check and then copy
-            if ( bufNumBytes< 4 )
-                result = LE_FAULT;
-            else
-            {
-                // TODO: Do we need to put this into Network Byte Order?  Apparently yes.
-                uint32_t networkValue = htonl(fieldDataPtr->intValue);
-                memcpy(bufPtr, &networkValue, 4);
-                *bytesWrittenPtr = 4;
-            }
-            break;
-
-        case DATA_TYPE_BOOL:
-            if ( bufNumBytes< 1 )
-                result = LE_FAULT;
-            else
-            {
-                memcpy(bufPtr, &fieldDataPtr->boolValue, 1);
-                *bytesWrittenPtr = 1;
-            }
-            break;
-
-        case DATA_TYPE_STRING:
-            if ( le_utf8_Copy((char*)bufPtr, fieldDataPtr->strValuePtr, bufNumBytes, bytesWrittenPtr) != LE_OK )
-                result = LE_FAULT;
-            break;
-
-        case DATA_TYPE_NONE:
-            LE_ERROR("Field is not readable");
-            result = LE_FAULT;
-            break;
-    }
-
-    return result;
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -3054,6 +3458,63 @@ static void WriteUint(uint8_t* dataPtr, uint32_t value, int numBytes)
 }
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write an double value in network byte order.
+ *
+ * It is up to the caller to ensure the buffer is large enough.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WriteDouble(uint8_t* dataPtr, double value)
+{
+    int i;
+
+    double networkValue = value;
+    uint8_t* networkValuePtr = ((uint8_t*)&networkValue) + 7;
+
+    for (i=0; i<8; i++)
+    {
+        *dataPtr++ = *networkValuePtr--;
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read an double in network byte order from the buffer.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReadDouble(uint8_t* dataPtr, double* valuePtr, uint32_t numBytes)
+{
+    int i;
+    float fValue = 0.0f;
+    double dValue = 0.0;
+
+    if (numBytes == 4)
+    {
+        uint8_t* networkValuePtr = ((uint8_t*)&fValue) + 3;
+        for (i=0; i<4; i++)
+        {
+            *networkValuePtr-- = *dataPtr++;
+        }
+
+        dValue = (double)fValue;
+    }
+    else
+    {
+        uint8_t* networkValuePtr = ((uint8_t*)&dValue) + 7;
+
+        for (i=0; i<8; i++)
+        {
+            *networkValuePtr-- = *dataPtr++;
+        }
+    }
+
+    *valuePtr = dValue;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Write a LWM2M TLV header to the given buffer.
@@ -3155,9 +3616,6 @@ static le_result_t WriteFieldTLV
     uint8_t tmpBuffer[256+6];
     uint8_t* tmpBufferPtr = tmpBuffer;
 
-    // Call any registered handlers to be notified of read
-    CallFieldActionHandlers( instRef, fieldDataPtr->fieldId, ASSET_DATA_ACTION_READ, false );
-
     switch ( fieldDataPtr->type )
     {
         case DATA_TYPE_INT:
@@ -3205,6 +3663,20 @@ static le_result_t WriteFieldTLV
 
             // Assumes no overflow; that will be checked below
             numBytesWritten += strLength;
+            break;
+
+        case DATA_TYPE_FLOAT:
+            WriteTLVHeader(TLV_TYPE_RESOURCE,
+                           fieldDataPtr->fieldId,
+                           8,
+                           tmpBufferPtr,
+                           sizeof(tmpBuffer),
+                           &numBytesWritten);
+            tmpBufferPtr += numBytesWritten;
+
+            WriteDouble(tmpBufferPtr, fieldDataPtr->floatValue);
+
+            numBytesWritten += 8;
             break;
 
         case DATA_TYPE_NONE:
@@ -3273,7 +3745,6 @@ le_result_t assetData_WriteFieldListToTLV
         // the client can write.
         if ( fieldDataPtr->access & ACCESS_WRITE )
         {
-            LE_PRINT_VALUE("%i read", fieldDataPtr->fieldId);
             result = WriteFieldTLV(instanceRef,
                                    fieldDataPtr,
                                    startBufPtr,
@@ -3436,6 +3907,56 @@ le_result_t assetData_WriteObjectToTLV
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Write TLV for an object but include only the instance/resource which changed. This type of
+ *  response is needed as the server sends notify on entire object, but we need to notify changes
+ *  at resource level.
+ *
+ *  @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteNotifyObjectToTLV
+(
+    assetData_AssetDataRef_t assetRef,          ///< [IN] Asset to use
+    int instanceId,                             ///< [IN] Instance that has a changed resource
+    int fieldId,                                ///< [IN] The resource which changed
+    uint8_t* bufPtr,                            ///< [OUT] Buffer for writing the TLV list
+    size_t bufNumBytes,                         ///< [IN] Size of buffer
+    size_t* numBytesWrittenPtr                  ///< [OUT] # bytes written to buffer.
+)
+{
+    le_result_t result = LE_OK;
+    InstanceData_t* instancePtr;
+
+    LE_DEBUG("instanceId = %d", instanceId);
+    LE_DEBUG("fieldId = %d", fieldId);
+
+    result = GetInstanceFromAssetData(assetRef, instanceId, &instancePtr);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Error reading instance reference result = %d.", result);
+        return LE_FAULT;
+    }
+
+    result = WriteInstanceToTLV(instancePtr,
+                                fieldId,
+                                bufPtr,
+                                bufNumBytes,
+                                numBytesWrittenPtr);
+    if (result != LE_OK)
+    {
+        LE_ERROR("Error while setting asset instance result = %d.", result);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Read an integer of the given size and in network byte order from the buffer
  */
 //--------------------------------------------------------------------------------------------------
@@ -3449,8 +3970,7 @@ static void ReadUint(uint8_t* dataPtr, uint32_t* valuePtr, int numBytes)
     for (i=0; i<numBytes; i++)
     {
         *networkValuePtr++ = *dataPtr++;
-
-   }
+    }
 
    *valuePtr = ntohl(networkValue);
 }
@@ -3581,14 +4101,23 @@ static le_result_t ReadFieldValueFromTLV
             }
             break;
 
+        case DATA_TYPE_FLOAT:
+            if ( valueNumBytes != 4 && valueNumBytes != 8 )
+            {
+                LE_ERROR("Invalid value length = %i", valueNumBytes);
+                result = LE_FAULT;
+            }
+            else
+            {
+                ReadDouble(bufPtr, &fieldDataPtr->floatValue, valueNumBytes);
+            }
+            break;
+
         case DATA_TYPE_NONE:
             LE_ERROR("Write not allowed for fieldId = %i", fieldId);
             result = LE_FAULT;
             break;
     }
-
-    // Call any registered handlers to be notified of write.
-    CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, false );
 
     return result;
 }
@@ -3608,7 +4137,8 @@ le_result_t assetData_ReadFieldListFromTLV
 (
     uint8_t* bufPtr,                            ///< [IN] Buffer for reading the TLV list
     size_t bufNumBytes,                         ///< [IN] # bytes in the buffer
-    assetData_InstanceDataRef_t instanceRef     ///< [IN] Asset instance to write the fields
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to write the fields
+    bool isCallHandlers                         ///< [IN] Call field callback handlers?
 )
 {
     le_result_t result = LE_OK;
@@ -3636,6 +4166,12 @@ le_result_t assetData_ReadFieldListFromTLV
             result = ReadFieldValueFromTLV(bufPtr, valueNumBytes, instanceRef, fieldId);
             if (result != LE_OK)
                 break;
+
+            if (isCallHandlers)
+            {
+                // Call any registered handlers to be notified of write.
+                CallFieldActionHandlers( instanceRef, fieldId, ASSET_DATA_ACTION_WRITE, false );
+            }
 
             // Skip over the value just read, and point to next TLV
             bufPtr += valueNumBytes;
@@ -3767,4 +4303,189 @@ le_result_t assetData_GetAssetList
     return LE_OK;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables or Disables a field for observe.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_SetObserve
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    bool isObserve,                             ///< [IN] Start or stop observing?
+    uint8_t *tokenPtr,                          ///< [IN] Token i.e, request id of the observe request
+    uint8_t tokenLength                         ///< [IN] Token Length
+)
+{
+    le_result_t result = LE_NOT_FOUND;
+    le_dls_Link_t* linkPtr;
+    FieldData_t* fieldDataPtr;
+
+    // Get the start of the field list
+    linkPtr = le_dls_Peek(&instanceRef->fieldList);
+
+    // Loop through the fields
+    while ( linkPtr != NULL )
+    {
+        fieldDataPtr = CONTAINER_OF(linkPtr, FieldData_t, link);
+
+        // Set the observe field to true for write fields.
+        // The write attribute is from the clients perspective.
+        if ( fieldDataPtr->access & ACCESS_WRITE )
+        {
+            LE_DEBUG("Setting observe on resource %d", fieldDataPtr->fieldId);
+
+            fieldDataPtr->isObserve = isObserve;
+
+            if (isObserve && (tokenLength > 0))
+            {
+                fieldDataPtr->tokenLength = tokenLength;
+                memcpy(fieldDataPtr->token, tokenPtr, tokenLength);
+            }
+            result = LE_OK;
+        }
+
+        linkPtr = le_dls_PeekNext(&instanceRef->fieldList, linkPtr);
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is Observe flag set for object9 state and result fields.
+ *
+ * @return:
+ *      - true if the flags are set
+ *      - false if the flag is able to read the flags or if the flags are not set
+ */
+//--------------------------------------------------------------------------------------------------
+bool assetData_IsObject9Observed
+(
+    assetData_InstanceDataRef_t obj9InstRef
+)
+{
+    le_result_t result = LE_NOT_FOUND;
+    FieldData_t* fieldDataPtr;
+
+    bool stateObserve;
+    bool resultObserve;
+
+    result = GetFieldFromInstance(obj9InstRef, 7, &fieldDataPtr);
+
+    if (result != LE_OK)
+        return false;
+
+    stateObserve = fieldDataPtr->isObserve;
+
+    result = GetFieldFromInstance(obj9InstRef, 9, &fieldDataPtr);
+
+    if (result != LE_OK)
+        return false;
+
+    resultObserve = fieldDataPtr->isObserve;
+
+    return (stateObserve && resultObserve);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cancels observe on entire asset map.
+ */
+//--------------------------------------------------------------------------------------------------
+void assetData_CancelAllObserve
+(
+    void
+)
+{
+    const char* nameIdPtr;
+    AssetData_t* assetDataPtr;
+    InstanceData_t* assetInstancePtr;
+    le_dls_Link_t* linkPtr;
+
+    le_hashmap_It_Ref_t iterRef = le_hashmap_GetIterator(AssetMap);
+
+    while ( le_hashmap_NextNode(iterRef) == LE_OK )
+    {
+        nameIdPtr = le_hashmap_GetKey(iterRef);
+        assetDataPtr = (AssetData_t*) le_hashmap_GetValue(iterRef);
+
+        // Turn off observe on this object.
+        assetDataPtr->isObjectObserve = false;
+
+        // Print out asset data block, and all its instances.
+        PRINT_VALUE(0, "%s", nameIdPtr);
+        PRINT_VALUE(0, "%i", assetDataPtr->assetId);
+        PRINT_VALUE(0, "'%s'", assetDataPtr->assetName);
+
+        // Get the start of the instance list
+        linkPtr = le_dls_Peek(&assetDataPtr->instanceList);
+
+        // Loop through the asset instances
+        while ( linkPtr != NULL )
+        {
+            assetInstancePtr = CONTAINER_OF(linkPtr, InstanceData_t, link);
+
+            LE_DEBUG("Cancel observe on instance = %d.", assetInstancePtr->instanceId);
+
+            // Cancel observe in an asset instance.
+            assetData_SetObserve(assetInstancePtr, false, NULL, 0);
+
+            linkPtr = le_dls_PeekNext(&assetDataPtr->instanceList, linkPtr);
+        }
+    }
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set Observe on all instances.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_SetObserveAllInstances
+(
+    assetData_AssetDataRef_t assetRef,          ///< [IN] Asset to use
+    bool isObserve,                             ///< [IN] true = Observe; false = Cancel Observe
+    uint8_t *tokenPtr,                          ///< [IN] Token
+    uint8_t tokenLength                         ///< [IN] Token Length
+)
+{
+    le_result_t result;
+    le_dls_Link_t* linkPtr;
+    InstanceData_t* instancePtr;
+
+    // Get the start of the instance list
+    linkPtr = le_dls_Peek(&assetRef->instanceList);
+
+    // Loop through the asset instances
+    while ( linkPtr != NULL )
+    {
+        instancePtr = CONTAINER_OF(linkPtr, InstanceData_t, link);
+
+        LE_DEBUG("Set Observe on instance %d", instancePtr->instanceId);
+
+        result = assetData_SetObserve(instancePtr, isObserve, (uint8_t*)tokenPtr, tokenLength);
+
+        if ( result != LE_OK )
+            return LE_FAULT;
+
+        linkPtr = le_dls_PeekNext(&assetRef->instanceList, linkPtr);
+    }
+
+    // This object has at least one observable resource. Set a global flag to indicate this Object
+    // is getting Observed and copy the token. This token will be used by new instances.
+    assetRef->isObjectObserve = isObserve;
+    assetRef->tokenLength = tokenLength;
+    memcpy(assetRef->token, tokenPtr, tokenLength);
+
+    return LE_OK;
+}
 

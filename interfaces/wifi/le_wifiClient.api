@@ -1,0 +1,510 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_wifi_client WiFi Client Service
+ *
+ * @ref le_wifiClient_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This API provides WiFi Client setup.
+ * Please note that the WiFi Client cannot be used at the same time as the WiFi Access Points
+ * service, due to the sharing of same wifi hardware.
+ *
+ * @section le_wifi_binding IPC interfaces binding
+ *
+ *
+ * Here's a code sample binding to WiFi service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_wifiClient -> wifiService.le_wifiClient
+   }
+   @endverbatim
+ *
+ * @section le_wifiClient_Start Starting the WiFi Client
+ *
+ * First of all the function le_wifiClient_Start() must be called to start the WiFi Service.
+ * - le_wifiClient_Start(): returns LE_OK if the call went ok.
+ *   If WiFi Access Point is active, this will fail.
+ *
+ *
+ * To subscribe to wifi events le_wifiClient_AddNewEventHandler() is to be called.
+ * - le_wifiClient_AddNewEventHandler(): returns the handler reference if the call went ok.
+ *
+ * @code
+ *
+ * static void EventHandler
+ * (
+ *     le_wifiClient_Event_t clientEvent,
+ *     void *contextPtr
+ * )
+ * {
+ *     switch( clientEvent )
+ *     {
+ *          case LE_WIFICLIENT_EVENT_CONNECTED:
+ *          {
+ *              LE_INFO("WiFi Client Connected.");
+ *          }
+ *          break;
+ *          case LE_WIFICLIENT_EVENT_DISCONNECTED:
+ *          {
+ *              LE_INFO("WiFi Client Disconnected.");
+ *          }
+ *          break;
+ *          case LE_WIFICLIENT_EVENT_SCAN_DONE:
+ *          {
+ *              LE_INFO("WiFi Client Scan is done.");
+ *              MyHandleScanResult();
+ *          }
+ *          break;
+ *     }
+ * }
+ *
+ * le_wifiClient_NewEventHandler WiFiEventHandlerRef = NULL;
+ *
+ * static void MyInit
+ * (
+ *     void
+ * )
+ * {
+ *     le_result_t result = le_wifiClient_start();
+ *
+ *     if ( LE_OK == result )
+ *     {
+ *         LE_INFO("WiFi Client started.");
+ *         WiFiEventHandlerRef = le_wifiClient_AddNewEventHandler( EventHandler, NULL );
+ *     }
+ *     else if ( LE_BUSY == result )
+ *     {
+ *         LE_INFO("ERROR: WiFi Client already started.");
+ *     }
+ *     else
+ *     {
+ *         LE_INFO("ERROR: WiFi Client not started.");
+ *     }
+ *
+ * }
+ *
+ * @endcode
+ *
+ *
+ * @section le_wifiClient_scan Scanning Access Points with WiFi Client
+ *
+ * To start a scan for Access Points, the le_wifiClient_Scan() should be called.
+ * - le_wifiClient_Scan(): returns the LE_OK if the call went ok.
+ *
+ *
+ * @section le_wifiClient_scan_result Processing the WiFi scan results
+ *
+ * Once the scan results are available, the event LE_WIFICLIENT_EVENT_SCAN_DONE is received.
+ * The found Access Points can then be gotten with
+ * - le_wifiClient_GetFirstAccessPoint():  returns the Access Point if found. Else NULL.
+ * - le_wifiClient_GetNextAccessPoint(): returns the next Access Point if found. Else NULL.
+ *
+ * The Access Points SSID, Service Set Identifier, is not a string.
+ * It does however often contain human readable ASCII values.
+ * It can be read with the following function:
+ * - le_wifiClient_GetSsid() : returns the LE_OK if the SSID was read ok.
+ *
+ * The Access Points signal strength can be read with the following function:
+ * - le_wifiClient_GetSignalStrength() : returns the signal strength in dBm of the AccessPoint
+ *
+ * @code
+ *
+ * static void MyHandleScanResult
+ * (
+ *     void
+ * )
+ * {
+ *     uint8 ssid[MAX_SSID_BYTES];
+ *     le_wifiClient_AccessPointRef_t accessPointRef = le_wifiClient_GetFirstAccessPoint();
+ *
+ *     while( NULL != accessPointRef )
+ *     {
+ *          result = le_wifiClient_GetSsid( accessPointRef, ssid, MAX_SSID_BYTES );
+ *          if (( result == LE_OK ) && ( memcmp( ssid, "MySSID", 6) == 0 ))
+ *          {
+ *               LE_INFO("WiFi Client found.");
+ *               break;
+ *          }
+ *          accessPointRef = le_wifiClient_GetNextAccessPoint();
+ *     }
+ * }
+ *
+ * @endcode
+ *
+ * @section le_wifiClient_connect_to_ap Connecting to Access Point
+ *
+ * To connect to an Access Point use the function:
+ * - le_wifiClient_Connect() : returns the LE_OK if the function was called ok.
+ *
+ * To set the pass phrase prior for the Access Point use the function:
+ * - le_wifiClient_SetPassphrase() : returns the LE_OK if the function was called ok.
+ *
+ * WPA-Enterprise requires a username and password to authenticate.
+ * To set them use the function :
+ * - le_wifiClient_SetUserCredentials() : returns the LE_OK if the function was called ok.
+ *
+ * If an Access Point is hidden, it does not announce it's presence,
+ * it will not show up in the scan.
+ * To be able to connect to it, the SSID must be known.
+ * Use the following function to get an Access Point that can be used to connect to:
+ * - le_wifiClient_Create()  : returns Access Point.
+ *
+ * @code
+ *
+ * static void MyConnectTo
+ * (
+ *     le_wifiClient_AccessPointRef_t accessPointRef
+ * )
+ * {
+ *     le_result_t result;
+ *     le_wifiClient_SetPassphrase ( accessPointRef, "Secret1" );
+ *     result = le_wifiClient_Connect( accessPointRef );
+ *     if (result == LE_OK)
+ *     {
+ *          LE_INFO("Connecting to AP.");
+ *     }
+ * }
+ *
+ * @endcode
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_wifiClient_interface.h
+ *
+ * Legato @ref c_le_wifiClient include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_wifiDefs.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for AccessPoint that is returned by the WiFi Scan.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE AccessPoint;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * WiFi Client Events.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Event
+{
+    EVENT_CONNECTED,     ///< WiFi Client Connected
+    EVENT_DISCONNECTED,  ///< WiFi Client Disconnected
+    EVENT_SCAN_DONE      ///< WiFi Scan result for available Access Points available
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * WiFi Client Security Protocol for connection
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SecurityProtocol
+{
+    SECURITY_NONE,                      ///< no security.
+    SECURITY_WEP,                       ///< Using WEP.
+    SECURITY_WPA_PSK_PERSONAL,          ///< Using WPA
+    SECURITY_WPA2_PSK_PERSONAL,         ///< Using WPA2
+    SECURITY_WPA_EAP_PEAP0_ENTERPRISE,  ///< Using WPA Enterprise
+    SECURITY_WPA2_EAP_PEAP0_ENTERPRISE  ///< Using WPA2 Enterprise
+};
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for WiFi Client changes
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER NewEventHandler
+(
+    Event event IN       ///< Handles the wifi events
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provide information on WiFi Client event changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT NewEvent
+(
+    NewEventHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function starts the WIFI device.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BUSY if the WIFI device is already started.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function stops the WIFI device.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_DUPLICATE if the WIFI device is already stopped.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start Scanning for WiFi Access points
+ * Will result in event LE_WIFICLIENT_EVENT_SCAN_DONE when the scan results are available.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_OK if the function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Scan
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the first WiFi Access Point found.
+ * Will return the Access Points in the order of found.
+ *
+ * @return
+ *      - WiFi Access Point reference if ok.
+ *      - NULL if no Access Point reference available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION AccessPoint GetFirstAccessPoint
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the next WiFi Access Point.
+ * Will return the Access Points in the order of found.
+ * This function must be called in the same context as the GetFirstAccessPoint
+ *
+ * @return
+ *      - WiFi Access Point reference if ok.
+ *      - NULL if no Access Point reference available.
+*/
+//--------------------------------------------------------------------------------------------------
+FUNCTION AccessPoint GetNextAccessPoint
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the signal strength of the AccessPoint
+ *
+ * @return
+ *      - signal strength in dBm. Example -30 = -30dBm
+ *      - if no signal available it will return OxFFFF
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int16 GetSignalStrength
+(
+    AccessPoint accessPointRef IN ///< WiFi Access Point reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Service set identification (SSID) of the AccessPoint
+ * @note that the SSID does not have to be human readable ASCII values, but often has.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BAD_PARAMETER if some parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSsid
+(
+    AccessPoint accessPointRef IN,  ///< WiFi Access Point reference.
+    uint8 Ssid[le_wifiDefs.MAX_SSID_BYTES] OUT ///< The SSID returned as a octet array.
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the passphrase used to generate the PSK.
+ *
+ * @note the difference between le_wifiClient_SetPreSharedKey() and this function
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BAD_PARAMETER if parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPassphrase
+(
+    AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
+    string PassPhrase[le_wifiDefs.MAX_PASSPHRASE_BYTES] IN ///< pass-phrase for PSK
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Pre Shared Key, PSK.
+ * @note the difference between le_wifiClient_SetPassphrase() and this function
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BAD_PARAMETER if parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPreSharedKey
+(
+    AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
+    string PreSharedKey[le_wifiDefs.MAX_PSK_BYTES] IN ///< PSK. Note the difference between PSK and Pass Phrase.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the security protocol for connection
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BAD_PARAMETER if parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSecurityProtocol
+(
+    AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
+    SecurityProtocol securityProtocol IN ///< Security Mode
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * WPA-Enterprise requires a username and password to authenticate.
+ * This function sets these parameters.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_BAD_PARAMETER if parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetUserCredentials
+(
+    AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
+    string userName[le_wifiDefs.MAX_USERNAME_BYTES] IN, ///< UserName used for WPA-Enterprise.
+    string password[le_wifiDefs.MAX_PASSWORD_BYTES] IN   ///< Password used for WPA-Enterprise.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the WEP key (WEP)
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_OK if the function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetWepKey
+(
+    AccessPoint accessPointRef IN, ///< WiFi Access Point reference.
+    string wepKey[le_wifiDefs.MAX_WEPKEY_BYTES] IN ///< The WEP key
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * If an AccessPoint is not announcing it's precense, it will not show up in the scan.
+ * But if the SSID is known, a connnection can be tried using this create function.
+ * First create the AccessPoint, then le_wifiClient_Connect() to connect to it.
+ * Will fail if called while scan is running.
+ *
+ * @return AccessPoint reference to the current
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION AccessPoint Create
+(
+    uint8 Ssid[le_wifiDefs.MAX_SSID_BYTES] IN ///< The SSID as a octet array.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an accessPointRef.
+ *
+ * @note The handle becomes invalid after it has been deleted.
+ * @return
+ *      - LE_BAD_PARAMETER if accessPointRef was not found.
+ *      - LE_BUSY if the function was called during a scan.
+ *      - LE_OK if the function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+     AccessPoint accessPointRef IN  ///< WiFi Access Point reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect to the WiFi Access Point.
+ * All authentication must be set prior to calling this function.
+ *
+ * @return
+ *      - LE_BAD_PARAMETER if parameter is invalid.
+ *      - LE_OK if the function succeeded.
+ *
+ * @note For PSK credentials see le_wifiClient_SetPassphrase() or le_wifiClient_SetPreSharedKey() .
+ * @note For WPA-Enterprise credentials see le_wifiClient_SetUserCredentials()
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Connect
+(
+    AccessPoint accessPointRef IN ///< WiFi Access Point reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disconnect from the current connected WiFi Access Point.
+ *
+ * @return
+ *      - LE_FAULT if the function failed.
+ *      - LE_OK if the function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Disconnect
+(
+);

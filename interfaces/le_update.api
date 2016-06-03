@@ -238,7 +238,7 @@ HANDLER ProgressHandler
 //--------------------------------------------------------------------------------------------------
 EVENT Progress
 (
-    handler ProgressHandler       ///< Progress handler
+    ProgressHandler handler       ///< Progress handler
 );
 
 
@@ -265,7 +265,7 @@ FUNCTION le_result_t Start
  * Ends an update session.  If the update isn't finished yet, cancels it.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void End();
+FUNCTION End();
 
 
 //--------------------------------------------------------------------------------------------------

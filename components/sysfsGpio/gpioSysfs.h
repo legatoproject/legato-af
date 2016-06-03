@@ -395,7 +395,7 @@ void gpioSysfs_InputMonitorHandlerFunc
 /**
  * Function to be called when the client-server session opens. This allows the relationship
  * between the session and the GPIO reference to be created.
- * A service using this module to interact with the sysfs should register this function 
+ * A service using this module to interact with the sysfs should register this function
  * with the low-level messaging API using le_msg_AddServiceOpenHandler.
  */
 //--------------------------------------------------------------------------------------------------
@@ -408,7 +408,7 @@ void gpioSysfs_SessionOpenHandlerFunc
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to be called when the client-server session closes.
- * A service using this module to interact with the sysfs should register this function 
+ * A service using this module to interact with the sysfs should register this function
  * with the low-level messaging API using le_msg_AddServiceCloseHandler.
  */
 //--------------------------------------------------------------------------------------------------
@@ -422,7 +422,7 @@ void gpioSysfs_SessionCloseHandlerFunc
 /**
  * Determine if a GPIO PIn is available for use. This is done by reading the value of
  * /sys/class/gpio/gpiochip1 (on our platforms). The sysfs doc describes this file as follows...
- * 
+ *
  * GPIO controllers have paths like /sys/class/gpio/gpiochip42/ (for the
  * controller implementing GPIOs starting at #42) and have the following
  * read-only attributes:

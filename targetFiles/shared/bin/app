@@ -30,12 +30,46 @@ PrintUsage()
     echo "USAGE: `basename $0` [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ]"
     echo "   or: `basename $0` [start|stop|restart|remove|status|version|info] '*'"
     echo "   or: `basename $0` [list|status|info]"
+    echo "   or: `basename $0` runProc APP_NAME [PROC_NAME] [options]"
     echo
     echo "In the first form, names of one or more applications are given."
     echo
     echo "In the second form, all installed applications will be acted upon."
     echo
     echo "In the third form, no application names are given."
+    echo
+    echo "There are two main usages of the forth form (runProc):"
+    echo
+    echo "`basename $0` runProc <appName> <procName> [options]"
+    echo "   Runs a configured process inside an app using the process settings from the"
+    echo "   configuration database.  If an exePath is provided as an option then the specified"
+    echo "   executable is used instead of the configured executable."
+    echo
+    echo "`basename $0` runProc <appName> [<procName>] --exe=<exePath> [options]"
+    echo "   Runs an executable inside an app.  The exePath must be provided and the optional"
+    echo "   process name must not match any configured processes for the app.  Unless specified"
+    echo "   using the options below the executable will be run with default settings."
+    echo
+    echo "`basename $0` runProc takes the following options that can be used to modify the process"
+    echo " settings:"
+    echo
+    echo "   --exe=<exePath>"
+    echo "       Use the executable at <exePath>.  <exePath> is from the perspective of the app"
+    echo "       (ie. /exe would be at the sandbox root if the app is sandboxed)."
+    echo
+    echo "   --priority=<priorityStr>"
+    echo "       Sets the priority of the process.  <priorityStr> can be either 'idle', 'low',"
+    echo "       'medium', 'high', 'rt1', 'rt2', ... 'rt32'."
+    echo
+    echo "   --faultAction=<action>"
+    echo "       Sets the fault action for the process.  <action> can be either 'ignore',"
+    echo "       'restartProc', 'restartApp', 'stopApp'."
+    echo
+    echo "   -- [<args> ...]"
+    echo "       The -- option is used to specify comamnd line arguments to the process."
+    echo "       Everything following the -- option is taken as arguments to the process to be"
+    echo "       started.  Therefore the -- option must be the last option to appCtrl runProc."
+    echo "       If the -- option is not used then the configured arguments are used if available."
     echo
 }
 
@@ -155,6 +189,14 @@ RemoveApp()
     # preserve any non-zero exit code
     while [ $# -ge 1 ]
     do
+        GetAppStatus $1
+        if [ "$appStatus" == "not_installed" ]
+        then
+            echo "App '$1' is not installed."
+            shift
+            continue
+        fi
+
         echo "Removing app '$1'..."
 
         # NOTE: update --remove will make sure the app is stopped first.
@@ -176,6 +218,11 @@ RemoveApp()
         exitCode=1
         echo "Couldn't update Service Directory's IPC bindings."
     fi
+}
+
+RunProc()
+{
+    appCtrl "runProc" $ARGS_LIST
 }
 
 
@@ -225,23 +272,40 @@ then
     exit 0
 fi
 
-# Build the list of applications to operate on.
-APP_LIST=
-if [ "$APP_NAME" = "*" ]
+if [ "$ACTION" = "runProc" ]
 then
-    APP_LIST=`appCtrl list`
-    if [ "$APP_LIST" = "" ]
+    # Get the full list of arguments.
+    if [ "$APP_NAME" = "*" ]
     then
-        echo "There are no applications currently installed."
-        exit 0
+        echo "Only one application can be specified with the runProc command."
+        exit 1
+    else
+        shift
+
+        for arg in "$@"
+        do
+            ARGS_LIST="$ARGS_LIST $arg"
+        done
     fi
 else
-    shift
+    # Build the list of applications to operate on.
+    APP_LIST=
+    if [ "$APP_NAME" = "*" ]
+    then
+        APP_LIST=`appCtrl list`
+        if [ "$APP_LIST" = "" ]
+        then
+            echo "There are no applications currently installed."
+            exit 0
+        fi
+    else
+        shift
 
-    for arg in "$@"
-    do
-        APP_LIST="$APP_LIST $(basename $arg | sed 's/\.[^.]*$//')"
-    done
+        for arg in "$@"
+        do
+            APP_LIST="$APP_LIST $(basename $arg | sed 's/\.[^.]*$//')"
+        done
+    fi
 fi
 
 case "$ACTION" in
@@ -284,6 +348,11 @@ list)
 
 info)
     AppInfo $APP_LIST
+    ;;
+
+runProc)
+    CheckAppNameAvail
+    RunProc
     ;;
 
 *)

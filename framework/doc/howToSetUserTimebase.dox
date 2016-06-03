@@ -28,7 +28,7 @@ The user timebase is provided to synchronize with the RTC.
 @subsection howToSetUserTimebase_gpsUnixTime GPS and Unix Time
 
 The RTC counts milliseconds since the GPS Epoch, which is Jan 6, 1980; it increments on each count
-so that each second in GPS time has a unique number. 
+so that each second in GPS time has a unique number.
 
 Unix time starts Jan 1, 1970 and has a fixed number of seconds per day. For days with an extra
 second in them (i.e., leap second) Unix uses the same second twice. This means that over the years
@@ -42,19 +42,19 @@ or GPS). If you are synchronizing with cellular network time only, the time-serv
 automatically provides this: call le_clk_GetAbsoluteTime() or linux 'date' command.
 
 For most purposes, it's not necessary to convert time to real GPS time; it will suffice to use Unix epoch
-time. 
+time.
 
 The time stored is incremented by the millisecond and Unix time is incremented by the second.
 This means an arbitrary time stored needs to increment on a millisecond basis to be retrieved later
-(assuming a battery VCOIN keeps the RTC running). 
+(assuming a battery VCOIN keeps the RTC running).
 
 When storing Unix time in the user time base, it must be multiplied by 1000 and divided by 1000 when
 retrieved.
- 
+
 @section howToSetUserTimebase_getSet Get/Set User Timebase
 
 If you need to set the user timebase, you need to:
-- @ref c_rtc_disableDaemon 
+- @ref c_rtc_disableDaemon
 - @ref c_rtc_getSet.
 
 See @ref c_rtc  and @ref c_clock reference docs for complete API details.

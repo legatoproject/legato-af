@@ -355,6 +355,21 @@ LE_SHARED le_result_t pa_mrc_GetNetworkRegConfig
     pa_mrc_NetworkRegSetting_t*  settingPtr   ///< [OUT] The selected Network registration setting.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be call to get the platform specific network registration error code.
+ *
+ * @return the platform specific registration error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int32_t pa_mrc_GetPlatformSpecificRegistrationErrorCode
+(
+    void
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function gets the Network registration state.
@@ -454,64 +469,36 @@ LE_SHARED le_result_t pa_mrc_GetScanInformationName
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the current preferred operators list.
+ * This function must be called to get the number of preferred operators present in the list.
  *
  * @return
- *   - A positive value on success (number of Preferred operator found).
- *   - LE_NOT_FOUND if preferred operator list is not available.
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED int32_t pa_mrc_GetPreferredOperatorsList
+LE_SHARED le_result_t pa_mrc_CountPreferredOperators
 (
-    le_dls_List_t*   preferredOperatorListPtr,    ///< [IN/OUT] The preferred operators list.
-    bool  plmnStatic,   ///< [IN] Include Static preferred Operators.
-    bool  plmnUser      ///< [IN] Include Users preferred Operators.
+    bool      plmnStatic,   ///< [IN] Include Static preferred Operators.
+    bool      plmnUser,     ///< [IN] Include Users preferred Operators.
+    int32_t*  nbItemPtr     ///< [OUT] number of Preferred operator found if success.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to add a new mobile country/network code in the list
+ * This function must be called to get the current preferred operators.
  *
  * @return
- *  - LE_FAULT         Function failed.
- *  - LE_OK            Function succeeded.
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if Preferred operator list is not available
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_mrc_AddPreferredOperators
+LE_SHARED le_result_t pa_mrc_GetPreferredOperators
 (
-    le_dls_List_t      *preferredOperatorsListPtr,   ///< [IN] List of preferred network operator
-    const char*         mccPtr,                      ///< [IN] Mobile Country Code
-    const char*         mncPtr,                      ///< [IN] Mobile Network Code
-    le_mrc_RatBitMask_t ratMask                      ///< [IN] Radio Access Technology mask
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to remove a mobile country/network code in the list
- *
- * @return
- *      - LE_OK             On success
- *      - LE_NOT_FOUND      Not present in preferred PLMN list
- *      - LE_FAULT          For all other errors
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_mrc_RemovePreferredOperators
-(
-    le_dls_List_t      *preferredOperatorsListPtr,   ///< [IN] List of preferred network operator
-    const char*         mccPtr,                      ///< [IN] Mobile Country Code
-    const char*         mncPtr                       ///< [IN] Mobile Network Code
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to clear the preferred list.
- *
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_mrc_DeletePreferredOperatorsList
-(
-    le_dls_List_t      *preferredOperatorsListPtr ///< [IN] List of preferred network operator
+    pa_mrc_PreferredNetworkOperator_t*   preferredOperatorPtr,
+                       ///< [IN/OUT] The preferred operators pointer.
+    bool  plmnStatic,  ///< [IN] Include Static preferred Operators.
+    bool  plmnUser,    ///< [IN] Include Users preferred Operators.
+    int32_t* nbItemPtr ///< [IN/OUT] number of Preferred operator to find (in) and written (out).
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -801,7 +788,6 @@ LE_SHARED le_result_t pa_mrc_SetSignalStrengthIndThresholds
     int32_t      upperRangeThreshold  ///< [IN] upper-range strength threshold in dBm
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the serving cell Identifier.
@@ -818,6 +804,20 @@ LE_SHARED le_result_t pa_mrc_GetServingCellId
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to get the Tracking Area Code of the serving cell.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetServingCellLteTracAreaCode
+(
+    uint16_t* tacPtr ///< [OUT] Tracking Area Code of the serving cell.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to get the Location Area Code of the serving cell.
  *
  * @return
@@ -829,6 +829,7 @@ LE_SHARED le_result_t pa_mrc_GetServingCellLocAreaCode
 (
     uint32_t* lacPtr ///< [OUT] Location Area Code of the serving cell.
 );
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -871,6 +872,5 @@ LE_SHARED le_result_t pa_mrc_GetTdScdmaBandCapabilities
 (
     le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] Bit mask to get the TD-SCDMA Band capabilities.
 );
-
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

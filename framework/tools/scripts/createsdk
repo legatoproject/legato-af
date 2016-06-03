@@ -6,14 +6,14 @@ Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 if ! [ $LEGATO_ROOT ]; then echo "Run bin/legs first" >&2; exit 1; fi
 . "$(dirname "${BASH_SOURCE[0]}")/shlib"
 
-help_short_desc="release legato project"
+help_short_desc="creates a toolkit enabling Legato software development"
 
 help_usage=(
 ""
 )
 
 help_long_description=(
-"Once Legato tools have been built this script stages files and produces a tarball."
+"Once Legato tools have been built, this script stages files and produces a tarball."
 )
 
 CheckForHelp $@
@@ -21,15 +21,19 @@ CheckForHelp $@
 # Default SDK prefix
 RELEASE_DIR=$LEGATO_ROOT/releases
 LEGATO_VERSION=$(cat $LEGATO_ROOT/version)
-SDK_PREFIX=${SDK_PREFIX:-"."}
-STAGING_DIR="build/tools/staging/$SDK_PREFIX"
+SDK_PREFIX=${SDK_PREFIX:-""}
+STAGING_DIR="$LEGATO_ROOT/build/tools/staging"
 ARCH=$(uname -m)
 TOOLS_ARCH=${TOOLS_ARCH:-$ARCH}
+
+if [ -n "$SDK_PREFIX" ]; then
+    STAGING_DIR="$STAGING_DIR/$SDK_PREFIX"
+fi
 
 set -xe
 
 echo "Cleaning ..."
-rm -rf ${STAGING_DIR}/bin
+rm -rf ${STAGING_DIR}
 
 echo "Staging ..."
 install -d ${STAGING_DIR}/bin/
@@ -47,11 +51,13 @@ for script in $(ls -1 framework/tools/scripts); do
 done
 
 # ifgen
-install framework/tools/ifgen/ifgen ${STAGING_DIR}/bin/
-install framework/tools/ifgen/*.py ${STAGING_DIR}/bin/
+cd framework/tools/ifgen
+for tool in $(find -type f -and -not -name "*.pyc" | sed 's/^\.\///' | grep -v "langSample"); do
+    install -D $tool ${STAGING_DIR}/bin/$tool
+done
 
 echo "Releasing ..."
 mkdir -p $RELEASE_DIR
-cd build/tools/staging
+cd $STAGING_DIR
 tar jcvf $RELEASE_DIR/legato-tools-${TOOLS_ARCH}-${LEGATO_VERSION}.tar.bz2 *
 ln -sf legato-tools-${TOOLS_ARCH}-${LEGATO_VERSION}.tar.bz2 $RELEASE_DIR/legato-tools-${TOOLS_ARCH}.tar.bz2

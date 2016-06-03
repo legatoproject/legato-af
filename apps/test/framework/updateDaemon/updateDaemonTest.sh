@@ -15,15 +15,13 @@ appsList="updateFaultApp updateRestartApp updateStopApp updateNonSandboxedFaultA
 echo "******** UpdateDaemon Test Starting ***********"
 
 echo "Pack all the apps."
-appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 cd "$appDir"
 CheckRet
 for app in $appsList
 do
-    echo "  Packing '$appDir/$app.$targetType'"
-    update-pack $targetType -ai $app.$targetType -o $app.update
-    echo "  Encrypting '$appDir/$app.$targetType.sec'"
-    security-pack $app.update
+    echo "  Encrypting '$appDir/$app.$targetType.update.sec'"
+    security-pack ${app}.${targetType}.update
     CheckRet
 done
 
@@ -34,8 +32,8 @@ CheckRet
 echo "Install all the apps."
 for app in $appsList
 do
-    echo "  Installing '$appDir/$app.update.sec'"
-    cat $app.update.sec| ssh root@$targetAddr "$BIN_PATH/update"
+    echo "  Installing '$appDir/${app}.${targetType}.update.sec'"
+    cat ${app}.${targetType}.update.sec| ssh root@$targetAddr "$BIN_PATH/update"
     CheckRet
 done
 
@@ -43,12 +41,7 @@ echo "Stop all other apps."
 ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
-echo "Clear the logs."
-ssh root@$targetAddr "killall syslogd"
-CheckRet
-
-# Must restart syslog this way so that it gets the proper SMACK label.
-ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
+ClearLogs
 
 echo "Run the apps."
 for app in $appsList

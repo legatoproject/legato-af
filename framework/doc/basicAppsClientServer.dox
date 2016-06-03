@@ -1,4 +1,4 @@
-/** @page basicAppsClientServer Client/Server
+/** @page basicAppsClientServer Add Client/Server
 
 After you've created your client and server programs with their interfaces
 bound to each other, this is how you create the app.

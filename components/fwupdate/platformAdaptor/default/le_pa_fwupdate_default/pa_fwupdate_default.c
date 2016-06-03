@@ -27,8 +27,7 @@ le_result_t pa_fwupdate_Download
     int fd   ///< [IN] File descriptor of the image, opened to the start of the image.
 )
 {
-    LE_INFO("Called ...");
-
+    LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
 
@@ -47,6 +46,7 @@ le_result_t pa_fwupdate_Read
     int* fdPtr         ///< [OUT] File descriptor for the image, ready for reading.
 )
 {
+    LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
 
@@ -68,6 +68,7 @@ le_result_t pa_fwupdate_GetFirmwareVersion
     size_t versionSize       ///< [IN] Size of version buffer
 )
 {
+    LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
 
@@ -89,6 +90,7 @@ le_result_t pa_fwupdate_GetBootloaderVersion
     size_t versionSize       ///< [IN] Size of version buffer
 )
 {
+    LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
 

@@ -50,14 +50,14 @@ nmea
 
 The full list of supported modes is:
 
-| Name     | Interface Type | Description                              | Target endpoint | Sample host endpoint   |
-| -------- | -------------- | ---------------------------------------- | --------------- | ---------------------- |
-| ecm      | CDC-ECM        | Providing an IP connection over USB      | NIC usb0        | NIC (eg enp0s20u6i22)  |
-| eem      | CDC-EEM        | Providing an IP connection over USB      | NIC usb0        | NIC (eg enp0s20u6i22)  |
-| acm      | CDC-ACM        | Providing an AT command port             | N/A             | /dev/ttyACM0           |
-| nmea     | serial         | NMEA strings when positioning is enabled | N/A             | /dev/ttyUSB0           |
-| audio    | USB audio      | Expose the target as a sound card        | N/A             | pcmC2D0c <br> pcmC2D0p |
-| serial   | serial         | A serial interface to the embedded Linux | /dev/ttyGS0     | /dev/ttyUSB0           |
+| Name     | Interface Type | Description                              |  Target endpoint  | Sample host endpoint   |
+| -------- | -------------- | ---------------------------------------- | ----------------- | ---------------------- |
+| ecm      | CDC-ECM        | Providing an IP connection over USB      | NIC usb0 or ecm0  | NIC (eg enp0s20u6i22)  |
+| eem      | CDC-EEM        | Providing an IP connection over USB      | NIC usb0 or ecm0  | NIC (eg enp0s20u6i22)  |
+| acm      | CDC-ACM        | Providing an AT command port             | N/A               | /dev/ttyACM0           |
+| nmea     | serial         | NMEA strings when positioning is enabled | N/A               | /dev/ttyUSB0           |
+| audio    | USB audio      | Expose the target as a sound card        | N/A               | pcmC2D0c <br> pcmC2D0p |
+| serial   | serial         | A serial interface to the embedded Linux | /dev/ttyGS0       | /dev/ttyUSB0           |
 | usb_mbim | CDC-MBIM       | Mobile Broadband Interface Model <br> (an extension of CDC-NCM) | N/A | NIC (eg wwp0s20u6i12) <br> + cdc-wdm0 |
 
 <HR>

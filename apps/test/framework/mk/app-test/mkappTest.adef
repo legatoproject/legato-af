@@ -65,3 +65,8 @@ start: manual
 processes:
 {
 }
+
+components:
+{
+    scripts
+}

@@ -13,5 +13,5 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
+    -I$CURDIR/../../inc
 }

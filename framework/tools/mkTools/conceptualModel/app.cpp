@@ -63,8 +63,10 @@ ComponentInstance_t* App_t::FindComponentInstance
     const std::string& componentName = componentTokenPtr->text;
 
     // Find the executable in the app,
-    for (auto exePtr : executables)
+    for (auto mapItem : executables)
     {
+        auto exePtr = mapItem.second;
+
         if (exePtr->name == exeName)
         {
             // Find the component instance in the executable,
@@ -212,8 +214,10 @@ ApiInterfaceInstance_t* App_t::FindInterface
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto exePtr : executables)
+    for (auto mapItem : executables)
     {
+        auto exePtr = mapItem.second;
+
         if (exePtr->name == exeTokenPtr->text)
         {
             for (auto componentInstancePtr : exePtr->componentInstances)
@@ -251,6 +255,22 @@ ApiInterfaceInstance_t* App_t::FindInterface
     return NULL;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the path to the app's root.cfg file relative to the build's working directory.
+ *
+ * @return the file path.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string App_t::ConfigFilePath
+(
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    return workingDir + "/staging/root.cfg";
+}
 
 
 } // namespace modeller

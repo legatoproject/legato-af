@@ -7,10 +7,14 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "pa_temp.h"
 #include "pa_temp_simu.h"
 #include "le_temp_local.h"
 
 #define NB_CLIENT 2
+
+#define SIMU_THRESHOLD_CRITICAL "SIMU_THRESHOLD_CRITICAL"
+
 
 // Task context
 typedef struct
@@ -18,13 +22,13 @@ typedef struct
     uint32_t appId;
     le_thread_Ref_t                     appThreadRef;
     le_temp_ThresholdEventHandlerRef_t  eventHandler;
-    le_temp_ThresholdStatus_t           expectedStatus;
+    char                                expectedThreshold[LE_TEMP_THRESHOLD_NAME_MAX_BYTES];
 } AppContext_t;
 
 static le_sem_Ref_t    ThreadSemaphore;
 static AppContext_t AppCtx[NB_CLIENT];
 static le_clk_Time_t TimeToWait ={ 0, 1000000 };
-static le_temp_ThresholdStatus_t ExpectedStatus;
+static char ExpectedThreshold[LE_TEMP_THRESHOLD_NAME_MAX_BYTES];
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -42,21 +46,28 @@ static void SynchTest( void )
     }
 }
 
-//--------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
 /**
- * Temperature event handler
- *
+ * Threshold handler.
  */
-//--------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
 static void ThresholdEventHandler
 (
-    le_temp_ThresholdStatus_t event,
-    void* contextPtr
+    le_temp_SensorRef_t  sensorRef,
+    const char*          thresholdPtr,
+    void*                contextPtr
 )
 {
-    le_temp_ThresholdStatus_t* expectedStatusPtr = contextPtr;
+    char sensorName[LE_TEMP_SENSOR_NAME_MAX_BYTES] = {0};
+    char expectedThreshold[LE_TEMP_THRESHOLD_NAME_MAX_BYTES] = {0};
 
-    LE_ASSERT( *expectedStatusPtr == event );
+    strncpy(expectedThreshold, contextPtr, sizeof(expectedThreshold));
+
+    LE_ASSERT(le_temp_GetSensorName(sensorRef, sensorName, sizeof(sensorName)) == LE_OK);
+
+    LE_ASSERT(!strncmp(expectedThreshold, thresholdPtr, LE_TEMP_THRESHOLD_NAME_MAX_LEN));
+    LE_INFO("%s threshold event for %s sensor", thresholdPtr, sensorName);
 
     le_sem_Post(ThreadSemaphore);
 }
@@ -76,17 +87,192 @@ static void* AppHandler
 
     LE_DEBUG("App id: %d", appCtxPtr->appId);
 
-    // Subscribe to temperature event handler
-    appCtxPtr->eventHandler = le_temp_AddThresholdEventHandler(NULL, &ExpectedStatus);
+    // Check bad parameter
+    appCtxPtr->eventHandler = le_temp_AddThresholdEventHandler(NULL, &ExpectedThreshold);
     LE_ASSERT(appCtxPtr->eventHandler == NULL);
 
-    appCtxPtr->eventHandler=le_temp_AddThresholdEventHandler(ThresholdEventHandler,&ExpectedStatus);
+    // Subscribe to temperature event handler
+    appCtxPtr->eventHandler=le_temp_AddThresholdEventHandler(ThresholdEventHandler,&ExpectedThreshold);
     LE_ASSERT(appCtxPtr->eventHandler != NULL);
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
 
     le_event_RunLoop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove temperature event handlers
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
+
+    le_temp_RemoveThresholdEventHandler( appCtxPtr->eventHandler );
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread running an event loop for le_temp and pa_temp_simu (useful for event report)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* TempThread
+(
+    void* ctxPtr
+)
+{
+    pa_temp_Init();
+
+    le_temp_Init();
+
+    le_sem_Post(ThreadSemaphore);
+
+    le_event_RunLoop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create and start a thread to run le_temp and pa_temp_simu (useful for event report)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_Temp_Init
+(
+    void
+)
+{
+    // Create a semaphore to coordinate the test
+    ThreadSemaphore = le_sem_Create("HandlerSem", 0);
+
+    le_thread_Start(le_thread_Create("PaTempThread", TempThread, NULL));
+
+    le_sem_Wait(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test APIs with bad parameters
+ *
+ * Tested API:
+ *  - le_temp_GetPlatformTemperature
+ *  - le_temp_GetPlatformThresholds
+ *  - le_temp_GetRadioTemperature
+ *  - le_temp_GetRadioThresholds
+ *  - le_temp_SetPlatformThresholds
+ *  - le_temp_SetRadioThresholds
+ *
+ * exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_Temp_TestBadParameters
+(
+    void
+)
+{
+    le_temp_SensorRef_t simuSensorRef = (le_temp_SensorRef_t)0xdeadbeef;
+    char sensorName[LE_TEMP_SENSOR_NAME_MAX_BYTES] = {0};
+    int32_t temp = 0;
+
+    pa_tempSimu_SetReturnCode(LE_OK);
+
+    LE_ASSERT(le_temp_GetSensorName(simuSensorRef, sensorName, sizeof(sensorName)) == LE_FAULT);
+    LE_ASSERT(le_temp_GetTemperature(simuSensorRef, &temp) == LE_FAULT);
+    LE_ASSERT(le_temp_SetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, temp) == LE_FAULT);
+    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, &temp) == LE_FAULT);
+
+    simuSensorRef = le_temp_Request(PA_SIMU_TEMP_SENSOR);
+    LE_ASSERT(le_temp_GetSensorName(simuSensorRef, NULL, sizeof(sensorName)) == LE_FAULT);
+    LE_ASSERT(le_temp_GetTemperature(simuSensorRef, NULL) == LE_FAULT);
+    LE_ASSERT(le_temp_SetThreshold(simuSensorRef, NULL, temp) == LE_FAULT);
+    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, NULL) == LE_FAULT);
+    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, NULL, &temp) == LE_FAULT);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test APIs with bad return code
+ *
+ * Tested API:
+ *  - le_temp_GetPlatformTemperature
+ *  - le_temp_GetPlatformThresholds
+ *  - le_temp_GetRadioTemperature
+ *  - le_temp_GetRadioThresholds
+ *  - le_temp_SetPlatformThresholds
+ *  - le_temp_SetRadioThresholds
+ *
+ * exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_Temp_TestBadReturnCode
+(
+    void
+)
+{
+    char sensorName[LE_TEMP_SENSOR_NAME_MAX_BYTES] = {0};
+    int32_t temp = 0;
+
+    le_temp_SensorRef_t simuSensorRef = le_temp_Request(PA_SIMU_TEMP_SENSOR);
+
+    pa_tempSimu_SetReturnCode(LE_FAULT);
+    LE_ASSERT(le_temp_GetSensorName(simuSensorRef, sensorName, sizeof(sensorName)) == LE_FAULT);
+    LE_ASSERT(le_temp_GetTemperature(simuSensorRef, &temp) == LE_FAULT);
+    LE_ASSERT(le_temp_SetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, temp) == LE_FAULT);
+    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, &temp) == LE_FAULT);
+    LE_ASSERT(le_temp_StartMonitoring() == LE_FAULT);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test APIs with correct parameters
+ *
+ * Tested API:
+ *  - le_temp_GetPlatformTemperature
+ *  - le_temp_GetPlatformThresholds
+ *  - le_temp_GetRadioTemperature
+ *  - le_temp_GetRadioThresholds
+ *  - le_temp_SetPlatformThresholds
+ *  - le_temp_SetRadioThresholds
+ *
+ * exit if failed
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_Temp_TestCorrectUsage
+(
+    void
+)
+{
+    char sensorName[LE_TEMP_SENSOR_NAME_MAX_BYTES] = {0};
+    int32_t temp = 0;
+
+    pa_tempSimu_SetReturnCode(LE_OK);
+
+    le_temp_SensorRef_t simuSensorRef = le_temp_Request(PA_SIMU_TEMP_SENSOR);
+
+    LE_ASSERT(le_temp_GetSensorName(simuSensorRef, sensorName, sizeof(sensorName)) == LE_OK);
+    LE_ASSERT(le_temp_GetTemperature(simuSensorRef, &temp) == LE_OK);
+    LE_ASSERT(temp == PA_SIMU_TEMP_DEFAULT_TEMPERATURE);
+
+    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, &temp) == LE_OK);
+    LE_ASSERT(temp == PA_SIMU_TEMP_DEFAULT_HI_CRIT);
+
+    LE_ASSERT(le_temp_SetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, 0) == LE_OK);
+    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, &temp) == LE_OK);
+    LE_ASSERT(temp == 0);
+
+    LE_ASSERT(le_temp_StartMonitoring() == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -123,39 +309,15 @@ static void Testle_Temp_AddHandlers
     // Wait that the tasks have started before continuing the test
     SynchTest();
 
-    ExpectedStatus = 0;
+    strncpy(ExpectedThreshold, SIMU_THRESHOLD_CRITICAL, sizeof(ExpectedThreshold)-1);
 
-    for (; ExpectedStatus <= LE_TEMP_PLATFORM_LOW_CRITICAL; ExpectedStatus++)
-    {
-        pa_tempSimu_TriggerEventReport(ExpectedStatus);
+    pa_tempSimu_TriggerEventReport(SIMU_THRESHOLD_CRITICAL);
 
-        // wait the handlers' calls
-        SynchTest();
-    }
+    // wait the handlers' calls
+    SynchTest();
 
     // Check that no more call of the semaphore
     LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove temperature event handlers
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void RemoveHandler
-(
-    void* param1Ptr,
-    void* param2Ptr
-)
-{
-    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
-
-    le_temp_RemoveThresholdEventHandler( NULL );
-    le_temp_RemoveThresholdEventHandler( appCtxPtr->eventHandler );
-
-    // Semaphore is used to synchronize the task execution with the core test
-    le_sem_Post(ThreadSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -187,197 +349,12 @@ static void Testle_Temp_RemoveHandlers
     SynchTest();
 
     // trigger an event report
-    ExpectedStatus = 0;
-    pa_tempSimu_TriggerEventReport(ExpectedStatus);
+    strncpy(ExpectedThreshold, SIMU_THRESHOLD_CRITICAL, sizeof(ExpectedThreshold)-1);
+
+    pa_tempSimu_TriggerEventReport(SIMU_THRESHOLD_CRITICAL);
 
     // Wait for the semaphore timeout to check that handlers are not called
-    LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT );
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Thread running an event loop for le_temp and pa_temp_simu (useful for event report)
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void* TempThread
-(
-    void* ctxPtr
-)
-{
-    pa_temp_Init();
-
-    le_temp_Init();
-
-    le_sem_Post(ThreadSemaphore);
-
-    le_event_RunLoop();
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Create and start a thread to run le_temp and pa_temp_simu (useful for event report)
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Testle_Temp_Init
-(
-    void
-)
-{
-    // Create a semaphore to coordinate the test
-    ThreadSemaphore = le_sem_Create("HandlerSem",0);
-
-    le_thread_Start(le_thread_Create("PaTempThread", TempThread, NULL));
-
-    le_sem_Wait(ThreadSemaphore);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test APIs with bad parameters
- *
- * Tested API:
- *  - le_temp_GetPlatformTemperature
- *  - le_temp_GetPlatformThresholds
- *  - le_temp_GetRadioTemperature
- *  - le_temp_GetRadioThresholds
- *  - le_temp_SetPlatformThresholds
- *  - le_temp_SetRadioThresholds
- *
- * exit if failed
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Testle_Temp_TestBadParameters
-(
-    void
-)
-{
-    pa_tempSimu_SetReturnCode(LE_OK);
-    LE_ASSERT(le_temp_GetPlatformTemperature(NULL) == LE_FAULT);
-    LE_ASSERT(le_temp_GetPlatformThresholds(NULL,NULL,NULL,NULL) == LE_FAULT);
-    LE_ASSERT(le_temp_GetRadioTemperature(NULL) == LE_FAULT);
-    LE_ASSERT(le_temp_GetRadioThresholds(NULL,NULL) == LE_FAULT);
-    LE_ASSERT(le_temp_SetPlatformThresholds(2,2,3,5) == LE_BAD_PARAMETER);
-    LE_ASSERT(le_temp_SetPlatformThresholds(1,0,3,5) == LE_BAD_PARAMETER);
-    LE_ASSERT(le_temp_SetPlatformThresholds(1,2,0,5) == LE_BAD_PARAMETER);
-    LE_ASSERT(le_temp_SetPlatformThresholds(1,2,3,4) == LE_BAD_PARAMETER);
-    LE_ASSERT(le_temp_SetRadioThresholds(3,4) == LE_BAD_PARAMETER);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test APIs with bad return code
- *
- * Tested API:
- *  - le_temp_GetPlatformTemperature
- *  - le_temp_GetPlatformThresholds
- *  - le_temp_GetRadioTemperature
- *  - le_temp_GetRadioThresholds
- *  - le_temp_SetPlatformThresholds
- *  - le_temp_SetRadioThresholds
- *
- * exit if failed
- *
- */
-//--------------------------------------------------------------------------------------------------
-void Testle_Temp_TestBadReturnCode
-(
-    void
-)
-{
-    int32_t platformTemp=0;
-    int32_t lowCriticalTemp=1, lowCriticalTempTmp=0;;
-    int32_t lowWarningTemp=3, lowWarningTempTmp=0;
-    int32_t hiWarningTemp=5, hiWarningTempTmp=0;
-    int32_t hiCriticalTemp=7, hiCriticalTempTmp=0;
-    int32_t radioTemp=0;
-
-    pa_tempSimu_SetReturnCode(LE_FAULT);
-    LE_ASSERT(le_temp_GetPlatformTemperature(&platformTemp) == LE_FAULT);
-    LE_ASSERT(le_temp_GetPlatformThresholds(&lowCriticalTempTmp,
-                                            &lowWarningTempTmp,
-                                            &hiWarningTempTmp,
-                                            &hiCriticalTempTmp) == LE_FAULT);
-    LE_ASSERT(le_temp_GetRadioTemperature(&radioTemp) == LE_FAULT);
-    LE_ASSERT(le_temp_GetRadioThresholds(&hiWarningTempTmp, &hiCriticalTempTmp) == LE_FAULT);
-    LE_ASSERT(le_temp_SetPlatformThresholds(lowCriticalTemp,
-                                            lowWarningTemp,
-                                            hiWarningTemp,
-                                            hiCriticalTemp) == LE_FAULT);
-    LE_ASSERT(le_temp_SetRadioThresholds(hiWarningTemp, hiCriticalTemp) == LE_FAULT);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test APIs with correct parameters
- *
- * Tested API:
- *  - le_temp_GetPlatformTemperature
- *  - le_temp_GetPlatformThresholds
- *  - le_temp_GetRadioTemperature
- *  - le_temp_GetRadioThresholds
- *  - le_temp_SetPlatformThresholds
- *  - le_temp_SetRadioThresholds
- *
- * exit if failed
- */
-//--------------------------------------------------------------------------------------------------
-void Testle_Temp_TestCorrectUsage
-(
-    void
-)
-{
-    int32_t platformTemp=0;
-    int32_t lowCriticalTemp=1, lowCriticalTempTmp=0;;
-    int32_t lowWarningTemp=3, lowWarningTempTmp=0;
-    int32_t hiWarningTemp=5, hiWarningTempTmp=0;
-    int32_t hiCriticalTemp=7, hiCriticalTempTmp=0;
-    int32_t radioTemp=0;
-
-    pa_tempSimu_SetReturnCode(LE_OK);
-
-    LE_ASSERT(le_temp_GetPlatformTemperature(&platformTemp) == LE_OK);
-    LE_ASSERT(platformTemp==PA_SIMU_TEMP_DEFAULT_PLATFORM_TEMP);
-
-    LE_ASSERT(le_temp_GetPlatformThresholds(&lowCriticalTempTmp,
-                                            &lowWarningTempTmp,
-                                            &hiWarningTempTmp,
-                                            &hiCriticalTempTmp) == LE_OK);
-    LE_ASSERT(lowCriticalTempTmp == PA_SIMU_TEMP_DEFAULT_PLATFORM_LOW_CRIT);
-    LE_ASSERT(lowWarningTempTmp == PA_SIMU_TEMP_DEFAULT_PLATFORM_LOW_WARN);
-    LE_ASSERT(hiWarningTempTmp == PA_SIMU_TEMP_DEFAULT_PLATFORM_HIGH_WARN);
-    LE_ASSERT(hiCriticalTempTmp == PA_SIMU_TEMP_DEFAULT_PLATFORM_HIGH_CRIT);
-
-    LE_ASSERT(le_temp_GetRadioTemperature(&radioTemp) == LE_OK);
-    LE_ASSERT(radioTemp == PA_SIMU_TEMP_DEFAULT_RADIO_TEMP);
-
-    LE_ASSERT(le_temp_GetRadioThresholds(&hiWarningTempTmp, &hiCriticalTempTmp) == LE_OK);
-    LE_ASSERT(hiWarningTempTmp == PA_SIMU_TEMP_DEFAULT_RADIO_HIGH_WARN);
-    LE_ASSERT(hiCriticalTempTmp == PA_SIMU_TEMP_DEFAULT_RADIO_HIGH_CRIT);
-
-    LE_ASSERT(le_temp_SetPlatformThresholds(lowCriticalTemp,
-                                            lowWarningTemp,
-                                            hiWarningTemp,
-                                            hiCriticalTemp) == LE_OK);
-
-    // Check if the values are correctly set in the PA
-    lowCriticalTempTmp = lowWarningTempTmp = hiWarningTempTmp = hiCriticalTempTmp = 0;
-    pa_temp_GetPlatformThresholds(&lowCriticalTempTmp,
-                                  &lowWarningTempTmp,
-                                  &hiWarningTempTmp,
-                                  &hiCriticalTempTmp);
-    LE_ASSERT(lowCriticalTemp == lowCriticalTempTmp);
-    LE_ASSERT(lowWarningTemp == lowWarningTempTmp);
-    LE_ASSERT(hiWarningTemp == hiWarningTempTmp);
-    LE_ASSERT(hiCriticalTemp == hiCriticalTempTmp);
-
-    LE_ASSERT(le_temp_SetRadioThresholds(hiWarningTemp, hiCriticalTemp) == LE_OK);
-    hiWarningTempTmp = hiCriticalTempTmp = 0;
-    pa_temp_GetRadioThresholds(&hiWarningTempTmp, &hiCriticalTempTmp);
-    LE_ASSERT(hiWarningTemp == hiWarningTempTmp);
-    LE_ASSERT(hiCriticalTemp == hiCriticalTempTmp);
+    LE_ASSERT(le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -386,8 +363,15 @@ void Testle_Temp_TestCorrectUsage
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[])
+int main
+(
+    int argc,
+    char *argv[]
+)
 {
+    // To reactivate for all DEBUG logs
+   le_log_SetFilterLevel(LE_LOG_DEBUG);
+
     Testle_Temp_Init();
 
     LE_INFO("======== Start UnitTest of TEMP API ========");
@@ -401,8 +385,10 @@ int main(int argc, char *argv[])
     LE_INFO("======== Test correct usage ========");
     Testle_Temp_TestCorrectUsage();
 
-    LE_INFO("======== Test temperature event report ========");
+    LE_INFO("======== Test AddHandlers ========");
     Testle_Temp_AddHandlers();
+
+    LE_INFO("======== Test RemoveHandlers ========");
     Testle_Temp_RemoveHandlers();
 
     LE_INFO("======== UnitTest of TEMP API ends with SUCCESS ========");

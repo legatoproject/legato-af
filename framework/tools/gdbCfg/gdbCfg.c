@@ -444,6 +444,29 @@ static void HandleProcessName
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the application is sandboxed.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsSandboxed
+(
+    const char* appNamePtr
+)
+{
+    le_cfg_ConnectService();
+
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
+    le_cfg_GoToNode(cfgIter, appNamePtr);
+
+    bool sandboxed = le_cfg_GetBool(cfgIter, "sandboxed", true);
+
+    le_cfg_CancelTxn(cfgIter);
+
+    return sandboxed;
+}
+
+
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     void (*helpFn)(void) = PrintHelp;
@@ -469,6 +492,12 @@ COMPONENT_INIT
     le_arg_SetFlagCallback(helpFn, NULL, "help");
 
     le_arg_Scan();
+
+    if (!IsSandboxed(AppName))
+    {
+        // Do nothing for non-sandboxed apps.
+        exit(EXIT_SUCCESS);
+    }
 
     if (DoReset)
     {

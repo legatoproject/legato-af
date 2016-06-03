@@ -24,11 +24,15 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/positioning/platformAdaptor/inc
-    -I$LEGATO_ROOT/components/cfgEntries
+    -I$CURDIR/../platformAdaptor/inc
+    -I$CURDIR/../../cfgEntries
 }
 
 requires:
 {
-    component: { $LEGATO_GNSS_PA }
+    component:
+    {
+        $LEGATO_GNSS_PA_DEFAULT
+        $LEGATO_GNSS_PA
+    }
 }

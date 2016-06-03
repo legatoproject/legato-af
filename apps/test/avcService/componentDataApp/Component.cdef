@@ -4,6 +4,7 @@ requires:
     api:
     {
         le_avdata.api
+        le_avc.api
     }
 }
 
@@ -23,6 +24,8 @@ assets:
             int settingIntOne = 1
             int settingIntTwo = 2
             bool settingBoolOne = true
+            float settingFloatOne = 123.456
+            float settingFloatTwo = 456.789
         }
 
         variables:
@@ -32,6 +35,8 @@ assets:
             int variableIntOne = 100
             int variableIntTwo = 200
             bool variableBoolOne = false
+            float variableFloatOne = 789.012
+            float variableFloatTwo = 012.345
         }
 
         commands:

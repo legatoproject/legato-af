@@ -5,83 +5,87 @@
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #
 
+# Python libraries
 import os
 import sys
 import argparse
 import collections
 import hashlib
+import importlib
 
-import codeTypes
+# Need to init logging settings here, before any ifgen specific libraries are imported, in case
+# they call logging functions in their module level code.  Prefix the message with 'IFGEN' so that
+# it is easier to filter these messages, if ifgen is called during a build.
+import logging
+logging.basicConfig(format="IFGEN_%(levelname)s:%(module)s/%(funcName)s/%(lineno)s: %(message)s")
+
+# This could probably be determined by calling the appropriate logging functions, but since
+# this info is published in the documentation, no harm defining it explicitly.
+LogLevelMapping = dict( DEBUG=10,
+                        INFO=20,
+                        WARNING=30,
+                        ERROR=40,
+                        CRITICAL=50 )
+
+
+# ifgen specific libraries
+import common
 import interfaceParser
-import codeGen
 
 
-def GetArguments():
+def GetInitialArguments(argList):
+    # Define a parser for the '--lang' argument. Also include the logging/tracing arguments here,
+    # so that they can be used as early as possible.
+    #
+    # Note that if there is an error in specifying the value for any of these args, then the error
+    # output will only mention these args, and not the full list, e.g. incorrect level given for
+    # --log-level. I don't see this as a significant issue that would need to be addressed.
+
+    parser = argparse.ArgumentParser(add_help=False)
+
+    parser.add_argument('--lang',
+                        dest="language",
+                        default='C',
+                        help='specify target language; defaults to C')
+
+    parser.add_argument('--log-level',
+                        dest="logLevel",
+                        action="store",
+                        choices = LogLevelMapping,
+                        default='',
+                        help='set logging level')
+
+    parser.add_argument('--trace',
+                        dest="traceList",
+                        action="append",
+                        default=[],
+                        help='enable tracing for given name')
+
+    # Parse the command lines arguments for the initial args only.
+    args, leftOver = parser.parse_known_args(argList)
+
+    # Return the value of the initial arguments.
+    # Also need to return the parser to add it to the main argument parser.  This is mainly
+    # so it gets included in the --help output.
+    return args, parser
+
+
+
+def CreateArgumentParser(parentParser):
     # Define the command line arguments/options
-    parser = argparse.ArgumentParser(description='Interface Code Generator')
+    parser = argparse.ArgumentParser(description='Interface Code Generator', parents=[parentParser])
 
     parser.add_argument('interfaceFile',
                         metavar='FILE',
                         help='name of interface file')
 
-    parser.add_argument('--gen-all',
-                        dest="genAll",
-                        action='store_true',
-                        default=False,
-                        help='generate all files; overrides individual file options')
-
-    parser.add_argument('--gen-interface',
-                        dest="genInterface",
-                        action='store_true',
-                        default=False,
-                        help='generate interface header file')
-
-    parser.add_argument('--gen-local',
-                        dest="genLocal",
-                        action='store_true',
-                        default=False,
-                        help='generate local header file')
-
-    parser.add_argument('--gen-client',
-                        dest="genClient",
-                        action='store_true',
-                        default=False,
-                        help='generate client IPC implementation file')
-
-    parser.add_argument('--gen-server-interface',
-                        dest="genServerInterface",
-                        action='store_true',
-                        default=False,
-                        help='generate server interface header file')
-
-    parser.add_argument('--gen-server',
-                        dest="genServer",
-                        action='store_true',
-                        default=False,
-                        help='generate server IPC implementation file')
-
-    parser.add_argument('--async-server',
-                        dest="async",
-                        action='store_true',
-                        default=False,
-                        help='generate asynchronous-style server functions')
-
-    parser.add_argument('--name-prefix',
-                        dest="namePrefix",
-                        default='',
-                        help='''optional prefix for generated functions/types; defaults to input
-                        filename''')
-
-    parser.add_argument('--file-prefix',
-                        dest="filePrefix",
-                        default='',
-                        help='optional prefix for generated files; defaults to input file name')
-
+    # TODO: This may actually be a C specific option
     parser.add_argument('--service-name',
                         dest="serviceName",
                         default='',
                         help='optional service instance name; defaults to input file name')
 
+    # TODO: This may actually be a C specific option
     parser.add_argument('--output-dir',
                         dest="outputDir",
                         default='',
@@ -99,17 +103,11 @@ def GetArguments():
                         default=[],
                         help='optional directory for imported files; may be given multiple times')
 
-    parser.add_argument('--no-default-prefix',
-                        dest="noDefaultPrefix",
-                        action='store_true',
-                        default=False,
-                        help='do not use default file or name prefix if none is specified')
-
     parser.add_argument('--hash',
                         dest="hash",
                         action='store_true',
                         default=False,
-                        help='print SHA256 hash for interface; NO files are generated')
+                        help='print md5 hash for interface; NO files are generated')
 
     parser.add_argument('--dump',
                         dest="dump",
@@ -117,41 +115,22 @@ def GetArguments():
                         default=False,
                         help='print info on parsed functions; NO files are generated')
 
-    # Parse the command lines arguments
-    args = parser.parse_args()
+    return parser
 
-    # If --gen-all is specified, it forces all files to be generated
-    if args.genAll:
-        args.genInterface=True
-        args.genLocal=True
-        args.genClient=True
-        args.genServerInterface=True
-        args.genServer=True
+
+
+def ParseArguments(parser, argList):
+    # Parse the command lines arguments
+    args = parser.parse_args(argList)
 
     # Get the base file name, without any extensions.
     apiFileName = os.path.splitext( os.path.basename(args.interfaceFile) )[0]
-
-    # If appropriate, use the default name or file prefixes
-    if not args.noDefaultPrefix:
-        if not args.namePrefix:
-            args.namePrefix = apiFileName
-        if not args.filePrefix:
-            args.filePrefix = apiFileName
 
     # Use the default service instance name, if none is given.
     if not args.serviceName:
         args.serviceName = apiFileName
 
-    # todo: Remove this once all callers are updated.
-    #       The usage has changed slightly, so the trailing '_' will be added when necessary.
-    #       Until all callers have been updated, strip off the trailing underscore, if given.
-    if args.namePrefix and args.namePrefix[-1] == '_':
-        args.namePrefix = args.namePrefix[:-1]
-
-    if args.filePrefix and args.filePrefix[-1] == '_':
-        args.filePrefix = args.filePrefix[:-1]
-
-   # fix relative paths for all paths that aren't ''
+    # fix relative paths for all paths that aren't ''
     args.importDirs = [ os.path.abspath(path) if path else path for path in args.importDirs ]
     if args.outputDir:
         args.outputDir = os.path.abspath(args.outputDir)
@@ -202,27 +181,23 @@ def MakeImportList(data, importDirs):
 
 
 
-def ProcessImportList(importList):
-    #print importList
-    importedCodeList = []
+def ImportLangPkg(lang):
 
-    for path in importList:
-        fullname = os.path.basename(path)
-        name = os.path.splitext(fullname)[0]
+    # The name of the package directory has 'lang' prepended to the selected language name
+    langDir = 'lang' + lang
 
-        data = open(path, 'r').read()
+    # Import the language package, and get the language specific libraries.
+    try:
+        langPkg = importlib.import_module(langDir)
+    except ImportError:
+        # Can't find the package to import
+        print >> sys.stderr, "ERROR: language package '%s' not available" % langDir
+        sys.exit(1)
 
-        # In the current .api file, the imported types will be referenced using "name.",
-        # whereas in the generated C code, the prefix will be "name_".
-        codeTypes.SetImportName(name)
-        codeTypes.SetNamePrefix(name)
+    logging.info("Using language package '%s'" % langDir)
 
-        # Parse the imported file, which implicitly populates the type translation data
-        parsedCode = interfaceParser.ParseCode(data, path)
-        codeList = parsedCode['codeList']
-        importedCodeList += codeList
-
-    return importedCodeList
+    commandLib = langPkg.GetCommandLib()
+    return commandLib
 
 
 
@@ -235,11 +210,11 @@ def CalcHash(codeText, importList):
     hashTextList += interfaceParser.GetHashText(codeText)
 
     hashText = ''.join(hashTextList)
-    
+
     h = hashlib.md5()
     h.update( hashText )
     hashValue = h.hexdigest()
-    
+
     return hashValue, hashText
 
 
@@ -248,9 +223,35 @@ def CalcHash(codeText, importList):
 # Main
 #
 def Main():
-    args = GetArguments()
+    # Allow arguments to be specified through an environment variable. For example, this may be
+    # useful to set a specific logging level, especially if ifgen is executed from a build.
+    envOptions = os.environ.get('IFGEN_OPTIONS', '').split()
+    argList = sys.argv[1:] + envOptions
+
+    # Get the initial args, i.e. language choice, and logging/tracing
+    initialArgs, langParser = GetInitialArguments(argList)
+
+    # First handle logging/tracing args before anything else.
+    # Note that this will not affect the logging level or tracing for any module level code
+    # in this file or any other imported file, or any of the code above in this function.
+    if initialArgs.logLevel:
+        logging.getLogger().setLevel(LogLevelMapping[initialArgs.logLevel])
+
+    if initialArgs.traceList:
+        common.EnableTrace(initialArgs.traceList)
+
+    # Init the package for the chosen language
+    commandLib = ImportLangPkg(initialArgs.language)
+
+    # Create a parser with both language independent and language specific arguments,
+    # and parse the remaining arguments
+    parser = CreateArgumentParser(langParser)
+    commandLib.AddLangArgumentGroup(parser)
+
+    args = ParseArguments(parser, argList)
     #print args
 
+    # Read in the api file
     data = open(args.interfaceFile, 'r').read()
 
     # Create a list of all the imported files.
@@ -274,30 +275,8 @@ def Main():
             print hashValue
         sys.exit(0)
 
-    # Process all the imported files first.
-    importedCodeList = ProcessImportList(importList)
-
-    # Set the name prefix first.  This has to be done before the interface is actually
-    # parsed, since the resulting parsedCode will use the prefix.  Also, reset the
-    # import name, since this is the main file.
-    codeTypes.SetNamePrefix(args.namePrefix)
-    codeTypes.SetImportName("")
-
-    parsedCode = interfaceParser.ParseCode(data, args.interfaceFile)
-    allCodeList = importedCodeList + parsedCode['codeList']
-
-    # Dump info on the parsed file.  No need to generate any code.
-    if args.dump:
-        # Print out info on all the types, functions and handlers
-        codeTypes.PrintCode(allCodeList)
-
-        # Print out the type dictionary.
-        print '='*40 + '\n'
-        codeTypes.PrintDefinedTypes()
-        sys.exit(0)
-
-    # Pass 'args' so that the function can determine what needs to be output
-    codeGen.WriteAllCode(args, parsedCode, hashValue)
+    # Run the target language specific version of this command
+    commandLib.RunCommand(args, data, importList, hashValue)
 
 
 

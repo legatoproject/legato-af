@@ -2,13 +2,15 @@ sources:
 {
     supervisor.c
     resourceLimits.c
-    sandbox.c
+    apps.c
     app.c
     proc.c
     watchdogAction.c
     frameworkDaemons.c
+    kernelModules.c
     devSmack.c
     system.c
+    wait.c
 }
 
 provides:
@@ -18,6 +20,7 @@ provides:
         le_sup_ctrl.api [async] [manual-start]
         le_sup_wdog.api [async] [manual-start]
         le_appInfo.api          [manual-start]
+        le_appProc.api          [manual-start]
         appSmack.api            [manual-start]
     }
 }
@@ -28,6 +31,7 @@ requires:
     {
         le_cfg.api              [manual-start]
         logDaemon/logFd.api     [manual-start]
+        le_instStat.api         [manual-start]
     }
 }
 

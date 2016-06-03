@@ -1,0 +1,11 @@
+/** @page yoctoConfigIP Configure IP Address
+
+There are a few ways to configure a target IP address:
+
+@subpage yoctoConfigIPusb <br>
+@subpage yoctoConfigIPeth
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

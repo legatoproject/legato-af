@@ -2,7 +2,8 @@
 /**
  * @page c_le_avdata AirVantage Data
  *
- * @ref le_avdata_interface.h "API Reference"
+ * @ref le_avdata_interface.h "API Reference" <br>
+ * @ref howToAVData "How To Manage Data"
  *
  * <HR>
  *
@@ -28,8 +29,8 @@
  * - boolean (false)
  * - binary (zero-length block).
  *
- * Default values can be overwritten in the asset definition. Currently, only string, integer
- * and boolean fields are supported; float and binary fields will be supported in the future.
+ * Default values can be overwritten in the asset definition. Currently, string, integer, float
+ * and boolean fields are supported; binary fields will be supported in the future.
  *
  *
  * @section le_avdata_instance Asset Data Instances
@@ -55,15 +56,26 @@
  * - @c setting called when the field has been updated by the AV server
  * with a new value. The app can use the appropriate get function to retrieve the new value.
  * - @c command called when the AV server wants to invoke a command. The
- * app should perform an appropriate action or call a function to execute this command. 
- * 
- * Currently, registering a handler is only supported for setting and command fields; 
- * variable fields will be added in the future.
+ * app should perform an appropriate action or call a function to execute this command.
+ *
+ * Registered handlers are only called when the server performs the associated activity on
+ * a specific field of an asset instance. For example, a handler registered on a variable field will
+ * be called if the server reads only that field of an instance; it will not be called if the
+ * server reads the whole instance of an asset.
  *
  * Leaving it optional to register handlers for variable and setting fields allows an
  * app to decide how it wants to access variable and setting fields. It can decide to
  * only do something in response to the AV server, or it can work independently of the AV server
  * updating variables when it has a new value, and reading settings only when it needs the value.
+ *
+ * @section le_avdata_observe Observe
+ *
+ * If the @ref howToAVData_enableObserve "Observe" is enabled, the AirVantage Server will send
+ * observe requests on all user-defined assets of an app.
+ *
+ * Whenever an app (asset) changes a field value by using le_avdata_Set*(), it'll trigger a
+ * notify if Observe is enabled on that asset. The notify contains only the value of the changed
+ * field.
  *
  * @section le_avdata_fatal Fatal Behavior
  *
@@ -148,7 +160,7 @@ EVENT FieldEvent
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
-    handler FieldHandler
+    FieldHandler handler
 );
 
 
@@ -220,7 +232,7 @@ FUNCTION GetFloat
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
-    float value OUT
+    double value OUT
 );
 
 
@@ -235,7 +247,7 @@ FUNCTION SetFloat
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
-    float value IN
+    double value IN
 );
 
 

@@ -235,11 +235,33 @@ static void CallDestructor
 static le_mcc_Call_t* GetCallObject
 (
     const char*                     destinationPtr,
-    int16_t                         id,
-    bool                            getInProgess
+    int16_t                         id
 )
 {
-    le_dls_Link_t* linkPtr = le_dls_Peek(&CallList);
+    le_dls_Link_t* linkPtr = NULL;
+
+    if (id != -1)
+    {
+        linkPtr = le_dls_Peek(&CallList);
+
+        while ( linkPtr )
+        {
+            le_mcc_Call_t* callPtr = CONTAINER_OF( linkPtr,
+                                                   le_mcc_Call_t,
+                                                   link);
+
+            linkPtr = le_dls_PeekNext(&CallList, linkPtr);
+
+            // Check callId
+            if ( (callPtr->callId == id) && callPtr->inProgress )
+            {
+                LE_DEBUG("callId found in callPtr %p", callPtr);
+                return callPtr;
+            }
+        }
+    }
+
+    linkPtr = le_dls_Peek(&CallList);
 
     while ( linkPtr )
     {
@@ -249,17 +271,10 @@ static le_mcc_Call_t* GetCallObject
 
         linkPtr = le_dls_PeekNext(&CallList, linkPtr);
 
-        // Check callId
-        if ( (id != (-1)) && (callPtr->callId == id) &&
-             ( (getInProgess && callPtr->inProgress) || !getInProgess ) )
-        {
-            return callPtr;
-        }
-
         // check phone number
-        if ( (strncmp(destinationPtr, callPtr->telNumber, sizeof(callPtr->telNumber)) == 0) &&
-             ( (getInProgess && callPtr->inProgress) || !getInProgess ) )
+        if ( strncmp(destinationPtr, callPtr->telNumber, sizeof(callPtr->telNumber)) == 0 )
         {
+            LE_DEBUG("telNumber found in callPtr %p", callPtr);
             return callPtr;
         }
     }
@@ -730,13 +745,13 @@ static void NewCallEventHandler
     }
 
     // Check if we have already an ongoing callPtr for this call
-    callPtr = GetCallObject("", dataPtr->callId, true);
+    callPtr = GetCallObject("", dataPtr->callId);
 
     if (callPtr == NULL)
     {
         // Call not in progress
         // check if a callPtr exists with the same number
-        callPtr = GetCallObject(dataPtr->phoneNumber, -1, false);
+        callPtr = GetCallObject(dataPtr->phoneNumber, -1);
 
         if (callPtr == NULL)
         {
@@ -750,6 +765,7 @@ static void NewCallEventHandler
         }
 
         callPtr->inProgress = true;
+        callPtr->event = dataPtr->event;
     }
     else
     {
@@ -788,6 +804,7 @@ static void NewCallEventHandler
         break;
     }
 
+    LE_DEBUG("callId %d event %d", callPtr->callId, callPtr->event);
     // Call the clients' handlers
     CallHandlers(callPtr, newCall);
 }
@@ -906,20 +923,20 @@ le_result_t le_mcc_Init
     SessionCtxList = LE_DLS_LIST_INIT;
     CallList = LE_DLS_LIST_INIT;
 
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler(le_mcc_GetServiceRef(),
+                                  CloseSessionEventHandler,
+                                  NULL);
+
+    // Add an internal call handler
+    le_mcc_AddCallEventHandler(MyCallEventHandler, NULL);
+
     // Register a handler function for Call Event indications
     if(pa_mcc_SetCallEventHandler(NewCallEventHandler) != LE_OK)
     {
         LE_CRIT("Add pa_mcc_SetCallEventHandler failed");
         return LE_FAULT;
     }
-
-    // Subscribe to its own service to
-    le_mcc_AddCallEventHandler( MyCallEventHandler, NULL );
-
-    // Add a handler to the close session service
-    le_msg_AddServiceCloseHandler( le_mcc_GetServiceRef(),
-                                   CloseSessionEventHandler,
-                                   NULL );
 
     return LE_OK;
 }
@@ -956,7 +973,7 @@ le_mcc_CallRef_t le_mcc_Create
     }
 
     // Get the Call object.
-    le_mcc_Call_t* mccCallPtr = GetCallObject(phoneNumPtr, -1, false);
+    le_mcc_Call_t* mccCallPtr = GetCallObject(phoneNumPtr, -1);
     SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_mcc_GetClientSessionRef());
 
     if (!sessionCtxPtr)
@@ -1088,7 +1105,9 @@ le_result_t le_mcc_Delete
  *
  * As the call attempt proceeds, the profile's registered call event handler receives events.
  *
- * @return LE_OK            Function succeed.
+ * @return
+ *      - LE_OK            Function succeed.
+ *      - LE_BUSY          The call is already in progress
  *
  * * @note As this is an asynchronous call, a successful only confirms a call has been
  *       started. Don't assume a call has been successful yet.
@@ -1118,14 +1137,23 @@ le_result_t le_mcc_Start
         return LE_NOT_FOUND;
     }
 
+    if ( callPtr->inProgress )
+    {
+        LE_INFO("Call already in progress");
+        return LE_BUSY;
+    }
+
     res = pa_mcc_VoiceDial(callPtr->telNumber,
                           callPtr->clirStatus,
                           PA_MCC_ACTIVATE_CUG,
                           &callId,
                           &callPtr->termination);
 
-    callPtr->callId = (int16_t)callId;
-    callPtr->inProgress = true;
+    if ( res == LE_OK )
+    {
+        callPtr->callId = (int16_t)callId;
+        callPtr->inProgress = true;
+    }
 
     return res;
 
@@ -1153,6 +1181,8 @@ bool le_mcc_IsConnected
         LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
         return false;
     }
+
+    LE_DEBUG("callRef %p, callId %d, event %d", callRef, callPtr->callId, callPtr->event);
 
     if (callPtr->event == LE_MCC_EVENT_CONNECTED)
     {
@@ -1584,4 +1614,75 @@ le_result_t le_mcc_GetCallIdentifier
     *callIdPtr = callPtr->callId;
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates or deactivates the call waiting service.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_SetCallWaitingService
+(
+    bool active
+        ///< [IN] The call waiting activation.
+)
+{
+    return pa_mcc_SetCallWaitingService(active);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the call waiting service status.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_GetCallWaitingService
+(
+    bool* activePtr
+        ///< [OUT] The call waiting activation.
+)
+{
+    return pa_mcc_GetCallWaitingService(activePtr);
+}
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates the specified call. Other calls are placed on hold.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mcc_ActivateCall
+(
+    le_mcc_CallRef_t callRef
+        ///< [IN] The call reference.
+)
+{
+    le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, callRef);
+
+    if (callPtr == NULL)
+    {
+        LE_ERROR("Invalid reference (%p) provided!", callRef);
+        return LE_NOT_FOUND;
+    }
+
+    if ((callPtr->event != LE_MCC_EVENT_WAITING) &&
+        (callPtr->event != LE_MCC_EVENT_ON_HOLD))
+    {
+        return LE_FAULT;
+    }
+
+    return pa_mcc_ActivateCall(callPtr->callId);
 }

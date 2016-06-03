@@ -3,6 +3,9 @@
 This sample app demonstrates target and host are communicating with a helloWorld app that uses IPC.
 It has @c .adef bindings and related @ .cdef requires and provides sections.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/helloIpc">sample app code</a>.
+
 Run this to install the sample app:
 @verbatim
 $ cd apps/sample/helloIpc

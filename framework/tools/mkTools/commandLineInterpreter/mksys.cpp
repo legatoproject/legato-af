@@ -27,7 +27,6 @@ namespace cli
 
 
 /// Object that stores build parameters that we gather.
-/// This is passed to the Builder objects when they are created.
 static mk::BuildParams_t BuildParams;
 
 /// Path to the directory into which the final, built system file should be placed.
@@ -64,6 +63,14 @@ static void GetCommandLineArgs
         {
             BuildParams.cFlags += " ";
             BuildParams.cFlags += arg;
+        };
+
+    // Lambda function that gets called for each occurence of the --cxxflags, (or -X) argument on
+    // the command line.
+    auto cxxFlagsPush = [&](const char* arg)
+        {
+            BuildParams.cxxFlags += " ";
+            BuildParams.cxxFlags += arg;
         };
 
     // Lambda function that gets called once for each occurence of the --ldflags (or -L)
@@ -139,6 +146,11 @@ static void GetCommandLineArgs
                             "Specify extra flags to be passed to the C compiler.",
                             cFlagsPush);
 
+    args::AddMultipleString('X',
+                            "cxxflags",
+                            "Specify extra flags to be passed to the C++ compiler.",
+                            cxxFlagsPush);
+
     args::AddMultipleString('L',
                             "ldflags",
                             "Specify extra flags to be passed to the linker when linking "
@@ -185,6 +197,12 @@ static void GetCommandLineArgs
     {
         BuildParams.workingDir = "./_build_" + SystemName + "/" + BuildParams.target;
     }
+    else if (BuildParams.workingDir.back() == '/')
+    {
+        // Strip the trailing slash from the workingDir so the generated system will be exactly the
+        // same if the only difference is whether or not the working dir path has a trailing slash.
+        BuildParams.workingDir.erase(--BuildParams.workingDir.end());
+    }
 
     // Add the directory containing the .sdef file to the list of source search directories
     // and the list of interface search directories.
@@ -227,6 +245,23 @@ void MakeSystem
         RunNinja(BuildParams);
         // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
     }
+    // If we have not been asked to ignore any already existing build.ninja and there has
+    // been a change in either the argument list or the environment variables,
+    // save the command-line arguments and environment variables for future comparison.
+    // Note: we don't need to do this if we have been asked not to run ninja, because
+    // that only happens when ninja is already running and asking us to regenerate its
+    // script for us, and that only happens if the args and env vars have already been saved.
+    else
+    {
+        // Save the command line arguments.
+        args::Save(BuildParams, argc, argv);
+
+        // Save the environment variables.
+        // Note: we must do this before we parse the definition file, because parsing the file
+        // will result in the CURDIR environment variable being set.
+        // Also, the .sdef file can contain environment variable settings.
+        envVars::Save(BuildParams);
+    }
 
     // Construct a model of the system.
     model::System_t* systemPtr = modeller::GetSystem(SdefFilePath, BuildParams);
@@ -255,17 +290,9 @@ void MakeSystem
     // Generate the build script for the system.
     ninja::Generate(systemPtr, BuildParams, OutputDir, argc, argv);
 
-    // If we haven't been asked not to run ninja,
+    // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)
     {
-        // Save the command-line arguments and environment variables for future comparison.
-        // Note: we don't need to do this if we have been asked not to run ninja, because
-        // that only happens when ninja is already running and asking us to regenerate its
-        // script for us, and that only happens if we just saved the args and env vars and
-        // ran ninja.
-        args::Save(BuildParams, argc, argv);
-        envVars::Save(BuildParams);
-
         RunNinja(BuildParams);
     }
 }

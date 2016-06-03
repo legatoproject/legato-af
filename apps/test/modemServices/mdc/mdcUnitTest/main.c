@@ -18,6 +18,8 @@
 #define NB_PROFILE  5
 #define IP_STR_SIZE     16
 
+typedef void (*StartStopAsyncFunc_t) (le_mdc_ProfileRef_t,le_mdc_SessionHandlerFunc_t,void*);
+
 static le_sem_Ref_t    ThreadSemaphore;
 static le_mdc_ProfileRef_t ProfileRef[NB_PROFILE];
 static le_mdc_SessionStateHandlerRef_t SessionStateHandler[NB_PROFILE];
@@ -247,7 +249,7 @@ static void DisconnectedProfile
                                             dns1AddrStr,
                                             IP_STR_SIZE,
                                             dns2AddrStr,
-                                            IP_STR_SIZE) == LE_FAULT);
+                                            IP_STR_SIZE) == LE_OVERFLOW);
     LE_ASSERT(le_mdc_GetIPv4GatewayAddress( profileRef, gatewayAddrStr, IP_STR_SIZE )
                                                                                     == LE_FAULT);
     LE_ASSERT(le_mdc_GetIPv6GatewayAddress( profileRef, gatewayAddrStr, IP_STR_SIZE )
@@ -355,12 +357,32 @@ static void TestMdc_Connection ( void )
                                                                     sizeof(addr),
                                                                     addr2,
                                                                     sizeof(addr) ) == LE_OK);
+                LE_ASSERT(le_mdc_GetIPv4DNSAddresses(ProfileRef[0], addr,
+                                                                    3,
+                                                                    addr2,
+                                                                    sizeof(addr) ) == LE_OVERFLOW);
+                LE_ASSERT(le_mdc_GetIPv4DNSAddresses(ProfileRef[0], addr,
+                                                                    sizeof(addr),
+                                                                    addr2,
+                                                                    3 ) == LE_OVERFLOW);
+
                 LE_ASSERT( strcmp(addr,dns1AddrStrIpv4)==0 );
                 LE_ASSERT( strcmp(addr2,dns2AddrStrIpv4)==0 );
                 LE_ASSERT(le_mdc_GetIPv6DNSAddresses(ProfileRef[0], addr,
                                                                     sizeof(addr),
                                                                     addr2,
-                                                                    sizeof(addr2) ) == LE_FAULT);
+                                                                    sizeof(addr2) ) == LE_OVERFLOW);
+
+                LE_ASSERT(le_mdc_GetIPv6DNSAddresses(ProfileRef[0], addr,
+                                                                    5,
+                                                                    addr2,
+                                                                    sizeof(addr2) ) == LE_OVERFLOW);
+
+                LE_ASSERT(le_mdc_GetIPv6DNSAddresses(ProfileRef[0], addr,
+                                                                    sizeof(addr),
+                                                                    addr2,
+                                                                    5 ) == LE_OVERFLOW);
+
                 LE_ASSERT(le_mdc_GetIPv4GatewayAddress(ProfileRef[0], addr, sizeof(addr)) == LE_OK);
                 LE_ASSERT( strcmp(addr,gatewayAddrStrIpv4)==0 );
                 LE_ASSERT(le_mdc_GetIPv6GatewayAddress(ProfileRef[0], addr, sizeof(addr)) ==
@@ -496,7 +518,7 @@ static void RemoveHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-void* ThreadTestHandler( void* ctxPtr )
+static void* ThreadTestHandler( void* ctxPtr )
 {
 
     int i;
@@ -517,6 +539,43 @@ void* ThreadTestHandler( void* ctxPtr )
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler subscribed for start and stop session status
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionHandlerFunc
+(
+    le_mdc_ProfileRef_t profileRef,
+    le_result_t result,
+    void* contextPtr
+)
+{
+    LE_ASSERT(result == LE_OK);
+
+    le_sem_Post(ThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread used to test asynchronous start and stop session APIs
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* AsyncStartStopSessionThread
+(
+    void* contextPtr
+)
+{
+    StartStopAsyncFunc_t startStopAsyncFunc = contextPtr;
+
+    startStopAsyncFunc(ProfileRef[0], SessionHandlerFunc, NULL);
+
+    // Run the event loop
+    le_event_RunLoop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test the connection handler calls.
  * API tested:
  * - le_mdc_AddSessionStateHandler / le_mdc_RemoveSessionStateHandler
@@ -524,7 +583,7 @@ void* ThreadTestHandler( void* ctxPtr )
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestMdc_Handler ( void )
+static void TestMdc_Handler ( void )
 {
     le_result_t res;
 
@@ -592,7 +651,7 @@ void TestMdc_Handler ( void )
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestMdc_DefaultProfile
+static void TestMdc_DefaultProfile
 (
     void
 )
@@ -623,7 +682,7 @@ void TestMdc_DefaultProfile
  *
  */
 //--------------------------------------------------------------------------------------------------
-void TestMdc_Stat
+static void TestMdc_Stat
 (
     void
 )
@@ -652,6 +711,50 @@ void TestMdc_Stat
     LE_ASSERT(res == LE_OK);
     LE_ASSERT(rxBytes == 0);
     LE_ASSERT(txBytes == 0);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test the start and stop asynchrnous API
+ *
+ * API tested:
+ * - le_mdc_StartSessionAsync
+ * - le_mdc_StopSessionAsync
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestMdc_StartStopAsync
+(
+    void
+)
+{
+    le_clk_Time_t   timeToWait;
+    timeToWait.sec = 0;
+    timeToWait.usec = 1000000;
+
+    const StartStopAsyncFunc_t testFunc[] = { le_mdc_StartSessionAsync,
+                                              le_mdc_StopSessionAsync,
+                                              NULL
+                                            };
+    int i=0;
+
+    while (testFunc[i])
+    {
+        le_thread_Ref_t testThread = le_thread_Create("AsyncStartStopSessionThread",
+                                                      AsyncStartStopSessionThread,
+                                                      testFunc[i]);
+
+        // Start the thread
+        le_thread_Start(testThread);
+
+        LE_ASSERT(le_sem_WaitWithTimeOut(ThreadSemaphore, timeToWait) != LE_TIMEOUT);
+
+        le_thread_Cancel(testThread);
+
+        i++;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -687,6 +790,9 @@ COMPONENT_INIT
 
     /* Test default profile */
     TestMdc_DefaultProfile();
+
+    /* Test asynchronous start and stop session */
+    TestMdc_StartStopAsync();
 
     /* Test statistics */
     TestMdc_Stat();

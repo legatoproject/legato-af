@@ -10,11 +10,13 @@ Legato has these sample apps:
 @subpage sampleApps_gpioCf3 <br>
 @subpage sampleApps_helloIpc <br>
 @subpage sampleApps_helloWorld <br>
+@subpage sampleApps_httpServer
 @subpage sampleApps_legacy <br>
 @subpage sampleApps_lowPower <br>
 @subpage sampleApps_modemDemo <br>
 @subpage sampleApps_shellPiping <br>
 @subpage sampleApps_sms <br>
+
 
 All sample apps are located in @c apps/sample/. The built apps are located in
 <code>build/\<target\>/bin/samples</code>.

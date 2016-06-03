@@ -26,7 +26,7 @@ echo "Make sure Legato is running."
 ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
-appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 cd "$appDir"
 CheckRet
 
@@ -34,25 +34,22 @@ echo "Stop all other apps."
 ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
+ClearLogs
+
 echo "Install all the installStatusTest app."
-instapp installStatusTest.$targetType $targetAddr
-CheckRet
+InstallApp installStatusTest
 
 ssh root@$targetAddr  "$BIN_PATH/app start installStatusTest"
 CheckRet
 
 echo "Installing and uninstalling small test apps multiple times."
-instapp testApp1.$targetType $targetAddr
-CheckRet
-
-instapp testApp2.$targetType $targetAddr
-CheckRet
+InstallApp testApp1
+InstallApp testApp2
 
 ssh root@$targetAddr  "$BIN_PATH/app remove testApp1"
 CheckRet
 
-instapp testApp1.$targetType $targetAddr
-CheckRet
+InstallApp testApp1
 
 ssh root@$targetAddr  "$BIN_PATH/app remove testApp2"
 CheckRet
@@ -71,3 +68,4 @@ CheckLogStr "==" 1 "========== App testApp2 uninstalled."
 
 echo "Install Status Test Passed!"
 exit 0
+

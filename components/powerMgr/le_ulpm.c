@@ -32,6 +32,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sysfs interface to read mcu version.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MCU_VERSION_FILE       "/sys/module/swimcu_pm/firmware/version"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Value need to be written in sysfs to enter ultra low power mode.
  */
 //--------------------------------------------------------------------------------------------------
@@ -143,8 +151,32 @@ le_result_t le_ulpm_BootOnGpio
     // Build gpio boot source path, i.e. "/sys/module/swimcu_pm/boot_source/gpio<gpio-num>/edge"
     snprintf(gpioFilePath, sizeof(gpioFilePath), GPIO_CFG_FILE, gpioNum);
 
-    // Only two gpio state, so this approach is fine.
-    const char* gpioStateStr = (state == LE_ULPM_GPIO_HIGH) ? "high" : "low";
+    const char* gpioStateStr;
+
+    switch(state)
+    {
+        case LE_ULPM_GPIO_LOW:
+            gpioStateStr = "low";
+            break;
+        case LE_ULPM_GPIO_HIGH:
+            gpioStateStr = "high";
+            break;
+        case LE_ULPM_GPIO_RISING:
+            gpioStateStr = "rising";
+            break;
+        case LE_ULPM_GPIO_FALLING:
+            gpioStateStr = "falling";
+            break;
+        case LE_ULPM_GPIO_BOTH:
+            gpioStateStr = "both";
+            break;
+        case LE_ULPM_GPIO_OFF:
+            gpioStateStr = "off";
+            break;
+        default:
+            LE_KILL_CLIENT("Unknown gpio state: %d", state);
+            return LE_FAULT;
+    }
 
     //Write to sysfs config file.
     return  WriteToSysfs(gpioFilePath, gpioStateStr);
@@ -168,19 +200,96 @@ le_result_t le_ulpm_BootOnTimer
                                 ///< MDM shutdown.
 )
 {
-    if (expiryVal > LE_ULPM_MAX_TIMEOUT_VAL)
-    {
-        LE_ERROR("Timer expiry value exceeds it max limit. Provided %u, Max Allowed: %u",
-                expiryVal,
-                LE_ULPM_MAX_TIMEOUT_VAL);
-        return LE_FAULT;
-    }
 
     char expiryValStr[11] = "";
     snprintf(expiryValStr, sizeof(expiryValStr), "%u", expiryVal);
 
     //Write to sysfs config file.
     return WriteToSysfs(TIMER_CFG_FILE, expiryValStr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ultra low power manager firmware version.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ulpm_GetFirmwareVersion
+(
+    char* version,              ///< [OUT] Firmware version string
+    size_t versionNumElements   ///< [IN] Size of version buffer
+)
+{
+    if (version == NULL || versionNumElements <= 1)
+    {
+        LE_KILL_CLIENT("Client supplied bad parameter (version: %p, versionNumElements: %zd)",
+                        version,
+                        versionNumElements);
+        return LE_FAULT;
+    }
+
+    int fd = open(MCU_VERSION_FILE, O_RDONLY);
+
+    // Failed to open boot source file, there should be something wrong.
+    if (fd == -1)
+    {
+        LE_ERROR("Unable to open file %s for reading (%m). Wrong platform/mcu-firmware",
+                  MCU_VERSION_FILE);
+        return LE_FAULT;
+    }
+
+    le_result_t result = LE_OK;
+    int index = 0;
+
+    for (; index < versionNumElements; index++)
+    {
+          // read one byte at a time.
+          char c;
+          int readCnt;
+
+          do
+          {
+              readCnt = read(fd, &c, 1);
+          }
+          while ( (readCnt == -1) && (errno == EINTR) );
+
+          if (readCnt == 1)
+          {
+
+              if (index == versionNumElements - 1)
+              {
+                  // There is still data but we've run out of buffer space.
+                  version[index] = '\0';
+                  result = LE_OVERFLOW;
+                  break;
+              }
+
+              // Store char.
+              version[index] = c;
+          }
+          else if (readCnt == 0)
+          {
+              // End of file nothing else to read.  Terminate the string and return.
+              version[index] = '\0';
+              result = LE_OK;
+              break;
+          }
+          else
+          {
+              LE_ERROR("Could not read file: %s.  %m.", MCU_VERSION_FILE);
+              result = LE_FAULT;
+              break;
+          }
+    }
+
+    CloseFd(fd);
+
+    return result;
 }
 
 

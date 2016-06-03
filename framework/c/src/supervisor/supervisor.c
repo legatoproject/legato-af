@@ -1,9 +1,11 @@
+//--------------------------------------------------------------------------------------------------
 /** @file supervisor.c
  *
- * The Legato Supervisor is a daemonized process that has root privileges. It's the first Legato
- * process to start, and is responsible for starting and monitoring the rest of the Legato runtime
- * system.
+ * The Legato Supervisor is the first Legato framework process to start and is responsible for
+ * starting and monitoring all other framework processes as well as applications.  The Supervisor
+ * has root privileges and administrative MAC rights.
  *
+ *  - @ref c_sup_kernelModules
  *  - @ref c_sup_frameworkDaemons
  *  - @ref c_sup_appStarts
  *  - @ref c_sup_sandboxedApps
@@ -15,6 +17,13 @@
  *  - @ref c_sup_configLayout
  *  - @ref c_sup_smack
  *
+ * @section c_sup_kernelModules Kernel Modules
+ *
+ * Prior to starting any executables, Supervisor inserts kernel modules bundled with Legato app.
+ * Legato-supplied modules are considered to be self-contained and independent from each-other.
+ * They are inserted in alphabetical order, i.e. in the order in which they are listed in Legato's
+ * system/modules directory.
+ *
  * @section c_sup_frameworkDaemons Framework Daemons
  *
  * Besides the Supervisor, the Legato runtime system consists of a number of framework daemons that
@@ -25,8 +34,7 @@
  *
  * After starting each framework daemon, the Supervisor waits for the daemon to signal that it's
  * ready before continuing to the next daemon. Only after all framework daemons have been started
- * and initialized, will apps be started.  The assumption is made that framework daemons are trusted
- * and reliable.
+ * and initialized, will apps be started.
  *
  * @section c_sup_appStarts Starting Applications
  *
@@ -41,37 +49,12 @@
  *
  * An app can be configured to be either sandboxed or non-sandboxed.
  *
- * Sandboxed apps run in a chrooted environment and have no visiblity to the rest of the
- * system.  The procedure the Supervisor uses for starting a sandboxed app is:
- *
- *      - Create the directory /tmp/Legato/sandboxes/appName. This is the root of the sandbox.
- *      - Mount a ramfs with a fixed size at the root of the sandbox.
- *      - Create standard directories in the sandbox, /tmp, /dev, etc.
- *      - Bind mount in standard files and devices into the sandbox, like /dev/null, the Service
- *         Directory sockets, etc.
- *      - Bind mount in all other required files into the sandbox specific to the app.
- *      - Start all the app processes chrooted to the sandbox root and chdir to the sandbox root.
- *
- * @Note All sandboxes are created in /tmp so that nothing is persistent.
- *
- * When a sandboxed app is stopped:
- *
- *      - All app processes are killed.
- *      - All mounts are undone.
- *      - Created directories are deleted.
- *
- * @todo Allow some way for sandboxed apps to write/read persistent information.
- *
+ * Sandboxed apps run in a chrooted environment and have no visibility to the rest of the
+ * system.  Sandboxed apps also have strict resource limits.
  *
  * @section c_sup_nonSandboxedApps Non-Sandboxed Applications
  *
- * A non-sandboxed app is one that runs in the main file system.  The current working directory will
- * be "/".
- *
- * When a non-sandboxed app is stopped:
- *
- *      - All app processes are killed.
-
+ * A non-sandboxed app is one that runs in the main file system.
  *
  * @todo Add capabilities to non-sandboxed apps.
  *
@@ -92,25 +75,11 @@
  * When an app starts, all the app's processes are given the app's user ID,
  * primary group ID and, if applicable, supplementary groups ID.
  *
- * @Note Currently an app's user and group(s) aren't deleted when an app is
- *       uninstalled. This is a security issue with non-sandboxed apps because if a different
- *       app is installed with the same name as a previously installed app, the
- *       new app will inherit all the file permissions of the previous app. On the
- *       other hand if the user and group(s) are deleted, a new app may reclaim the same UID
- *       and inherit permissions to files not intended for it. We must give a warning if an
- *       app is installed with a user name that already exists.
- *
- *
  * @section c_sup_faultRecovery Fault Recovery
  *
  * The Supervisor monitors all running app processes for faults. A fault is when a process
  * terminates without returning EXIT_SUCCESS.  When the Supervisor detects a fault, it will perform
  * the configured fault recovery action.
- *
- * The Supervisor doesn't monitor processes that it doesn't start.  Parent processes are
- * responsible for monitoring their children.  However, when the Supervisor terminates an
- * app, the Supervisor will kill off all processes in the app whether it is a child
- * of the Supervisor or not.
  *
  *
  * @section c_sup_faultLimits Fault Limits
@@ -118,8 +87,7 @@
  * To prevent a process that is continually faulting from continually consuming resources, the
  * Supervisor imposes a fault limit on all processes in the system.  The fault limit is the minimum
  * time interval between two faults; if more than one fault occurs within the fault limit time
- * interval, the fault limit is reached. The fault limit may be different for each fault
- * action, but they are applied to all app processes.
+ * interval, the fault limit is reached.
  *
  * If a process reaches the fault limit, a critical message is logged, the app the process
  * belongs to is shutdown, and no further fault recovery action is taken.
@@ -199,72 +167,50 @@
  * @section c_sup_smack_limitations SMACK Limitations
  *
  * Extended attributes used to store the SMACK label are available on
- * all file systems we currently use with one key feature is missing: when a new file is created, the
+ * all file systems we currently use with one key feature missing: when a new file is created, the
  * file should inherit the SMACK label of the creator. Because this feature is missing, our
  * current implementation of SMACK has the following limitations:
  *
  * - Mqueue file system will always set new files to "_" label.  This means we can't control
- *    access between apps that use MQueues.
+ *   access between apps that use MQueues.
  *
  * - Tmpfs always sets new files to "*" label. This means we can't totally control access to files
- *    created in sandboxes because sandboxes use tmpfs. It's only an issue when file descriptors
- *    for the created files are passed over IPC to another app. The other app can then pass that
- *    fd onto a third app and so on.
+ *   created in sandboxes because sandboxes use tmpfs. It's only an issue when file descriptors
+ *   for the created files are passed over IPC to another app. The other app can then pass that
+ *   fd onto a third app and so on.
  *
- * - Yaffs2/UBIFS do not set any label for newly created files. This causes an issue with the
- *    config daemon that has the label "framework", but its created files don't have any labels. To
- *    work around this, the config daemon must run as root and the 'onlycap' SMACK file must
- *    not be set. This means there is limited protection because all root processes have the
- *    ability to change SMACK labels on files.
+ * - Yaffs2 does not set any label for newly created files. This causes an issue with the
+ *   config daemon that has the label "framework", but its created files don't have any labels. To
+ *   work around this, the config daemon must run as root and the 'onlycap' SMACK file must
+ *   not be set. This means there is limited protection because all root processes have the
+ *   ability to change SMACK labels on files.
+ *   Note that UBIFS no longer has this issue.
  *
  * - QMI sockets are currently set to "*" because some apps need to write to them.
- *    Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
- *    to only allow access to the app that requires it.  However, there currently isn't a
- *    way to specify this in the xdef file.
- *
+ *   Ideally, the QMI socket file would be given a label such as "qmi" and a rule would be created
+ *   to only allow access to the app that requires it.  However, there currently isn't a
+ *   way to specify this in the xdef file.  This is not a limitation of SMACK or the file system but
+ *   the xdef files.
  *
  * <hr>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
+//--------------------------------------------------------------------------------------------------
+
 #include "legato.h"
 #include "interfaces.h"
 #include "limit.h"
 #include "user.h"
-#include "app.h"
-#include "fileDescriptor.h"
+#include "kernelModules.h"
 #include "frameworkDaemons.h"
 #include "cgroups.h"
 #include "smack.h"
-#include "appSmack/appSmack.h"
-#include "properties.h"
 #include "sysPaths.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The name of the node in the config tree that contains the list of all apps.
- *
- * If this entry in the config tree is missing or empty then no apps will be launched.
- */
-//--------------------------------------------------------------------------------------------------
-#define CFG_NODE_APPS_LIST                  "apps"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The name of the node in the config tree that contains the apps startManual value, used
- * to determine whether the app should be launched on system startup or if it should be
- * deferred for manual launch later.
- *
- * The startManual value is either true or false.  If true the app will not be launched on
- * startup.
- *
- * If this entry in the config tree is missing or is empty, automatic start will be used as the
- * default.
- */
-//--------------------------------------------------------------------------------------------------
-#define CFG_NODE_START_MANUAL               "startManual"
+#include "daemon.h"
+#include "apps.h"
+#include "wait.h"
+#include "fileSystem.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -273,15 +219,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define SUPERVISOR_INSTANCE_FILE            STRINGIZE(LE_RUNTIME_DIR) "supervisorInst"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * app object reference.  Incomplete type so that we can have the app object
- * reference the AppStopHandler_t.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct _appObjRef* AppObjRef_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -295,50 +232,6 @@ static enum
     APP_START_NONE      ///< Don't start any apps until told to do so through the App Control API.
 }
 AppStartMode = APP_START_AUTO;   // Default is to start apps.
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Prototype for app stopped handler.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void (*AppStopHandler_t)
-(
-    AppObjRef_t appObjRef               // The app that stopped.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * App object.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct _appObjRef
-{
-    app_Ref_t              appRef;         // Reference to the app.
-    AppStopHandler_t       stopHandler;    // Handler function that gets called when the app stops.
-    le_sup_ctrl_ServerCmdRef_t  stopCmdRef;// Stores the reference to the command that requested
-                                           // this app be stopped.  This reference must be sent in
-                                           // the response to the stop app command.
-    le_dls_Link_t          link;           // Link in the list of apps.
-}
-AppObj_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Memory pool for app objects.
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t AppObjPool;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * List of all apps.
- */
-//--------------------------------------------------------------------------------------------------
-static le_dls_List_t AppsList = LE_DLS_LIST_INIT;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -367,10 +260,11 @@ State = STATE_STARTING;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Local function Prototypes.
- */
+ * true if the process should NOT daemonize itself (i.e., it should remain attached to its
+ * controlling terminal and parent process)
+ **/
 //--------------------------------------------------------------------------------------------------
-static void StopFramework(void);
+static bool ShouldNotDaemonize = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -403,6 +297,9 @@ static void PrintHelp
             "                (this is the default).  If MODE is 'none', don't start\n"
             "                any apps until told to do so through the App Control API.\n"
             "\n"
+            "        -n, --no-daemonize\n"
+            "                The Supervisor does not daemonize itself.\n"
+            "\n"
             "        -h --help\n"
             "                Print this help text to standard output stream and exit.\n",
             programName,
@@ -423,14 +320,10 @@ static void ParseCommandLine
 {
     bool printHelp = false;
     const char* appStartModeArgPtr = NULL;
-    bool noDaemonFlag = false;
 
     le_arg_SetStringVar(&appStartModeArgPtr, "a", "start-apps");
     le_arg_SetFlagVar(&printHelp, "h", "help");
-    // The following will set the given value but it's basically
-    // useless - it just prevents an error message on the parse.
-    // The flag will be "get" at a later time.
-    le_arg_SetFlagVar(&noDaemonFlag, "n", "no-daemonize");
+    le_arg_SetFlagVar(&ShouldNotDaemonize, "n", "no-daemonize");
 
     // Run the argument scanner.
     le_arg_Scan();
@@ -459,424 +352,50 @@ static void ParseCommandLine
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Sets up the supervisor process as session leader.
- * Changes to / dir
- * Closes stdout and redirects stderr
- */
-//--------------------------------------------------------------------------------------------------
-void SetupSupervisorProcess
-(
-    void
-)
-{
-    // Start a new session and become the session leader, the process group leader which will free
-    // us from any controlling terminals.
-    LE_FATAL_IF(setsid() == -1, "Could not start a new session.  %m.");
-
-    // Reset the file mode mask.
-    umask(0);
-
-    // Change the current working directory to the root filesystem, to ensure that it doesn't tie
-    // up another filesystem and prevent it from being unmounted.
-    LE_FATAL_IF(chdir("/") < 0, "Failed to set supervisor's working directory to root.  %m.");
-
-    // Redirect standard fds to /dev/null except for stderr which goes to /dev/console.
-    if (freopen("/dev/console", "w", stderr) == NULL)
-    {
-        LE_WARN("Could not redirect stderr to /dev/console, redirecting it to /dev/null instead.");
-
-        LE_FATAL_IF(freopen("/dev/null", "w", stderr) == NULL,
-                    "Failed to redirect stderr to /dev/null.  %m.");
-    }
-
-    LE_FATAL_IF( (freopen("/dev/null", "w", stdout) == NULL) ||
-                 (freopen("/dev/null", "r", stdin) == NULL),
-                "Failed to redirect stdout and stdin to /dev/null.  %m.");
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Daemonizes the calling process.
+ * Starts all framework daemons and apps.
  *
- * @note    This function only returns in the child process. In the parent, it waits until the
- *          child process closes the pipe between the processes, then terminates itself with
- *          a 0 (EXIT_SUCCESS) exit code.
- *
- * @return  File descriptor for pipe to be closed when the framework is ready to use.
- */
-//--------------------------------------------------------------------------------------------------
-static int Daemonize(void)
-{
-    // Create a pipe to use to synchronize the parent and the child.
-    int syncPipeFd[2];
-    LE_FATAL_IF(pipe(syncPipeFd) != 0, "Could not create synchronization pipe.  %m.");
-
-    if (getppid() == 1)
-    {
-        // Already a daemon.
-
-        // Close the read end of the pipe and return the write end to be closed later.
-        fd_Close(syncPipeFd[0]);
-
-        return syncPipeFd[1];
-    }
-
-    // Fork off the parent process.
-    pid_t pid = fork();
-
-    LE_FATAL_IF(pid < 0, "Failed to fork when daemonizing the supervisor.  %m.");
-
-    // If we got a good PID, are the parent process.
-    if (pid > 0)
-    {
-        // The parent does not need the write end of the pipe so close it.
-        fd_Close(syncPipeFd[1]);
-
-        // Do a blocking read on the read end of the pipe.
-        int readResult;
-        do
-        {
-            int junk;
-            readResult = read(syncPipeFd[0], &junk, sizeof(junk));
-
-        } while ((readResult == -1) && (errno == EINTR));
-
-        exit(EXIT_SUCCESS);
-    }
-
-    // Only the child gets here.
-
-    // The child does not need the read end of the pipe so close it.
-    fd_Close(syncPipeFd[0]);
-
-    // Return the write end of the pipe to be closed when the framework is ready for use.
-    return syncPipeFd[1];
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Delete the app object from our list and free the memory.
- */
-//--------------------------------------------------------------------------------------------------
-static void DeleteAppObj
-(
-    AppObjRef_t appObjRef               // App to delete.
-)
-{
-    app_Delete(appObjRef->appRef);
-
-    le_dls_Remove(&AppsList, &(appObjRef->link));
-    le_mem_Release(appObjRef);
-
-    LE_INFO("Application '%s' has stopped.", app_GetName(appObjRef->appRef));
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Restarts the application.
- */
-//--------------------------------------------------------------------------------------------------
-static void RestartApp
-(
-    AppObjRef_t appObjRef               // App to restart.
-)
-{
-    // Always re-initialize the stop handler to just delete the app so that when a process dies in
-    // the app that does not require a restart it will be handled properly.
-    appObjRef->stopHandler = DeleteAppObj;
-
-    // Restart the app.
-    if (app_Start(appObjRef->appRef) == LE_OK)
-    {
-        LE_INFO("Application '%s' restarted.", app_GetName(appObjRef->appRef));
-    }
-    else
-    {
-        LE_CRIT("Could not restart application '%s'.", app_GetName(appObjRef->appRef));
-
-        DeleteAppObj(appObjRef);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Responds to the stop app command. Also deletes the app object for the app that
- * just stopped.
- */
-//--------------------------------------------------------------------------------------------------
-static void RespondToStopAppCmd
-(
-    AppObjRef_t appObjRef               // The app that stopped.
-)
-{
-    // Save command reference for later use.
-    void* cmdRef = appObjRef->stopCmdRef;
-
-    // Perform the deletion.
-    DeleteAppObj(appObjRef);
-
-    // Respond to the requesting process.
-    le_sup_ctrl_StopAppRespond(cmdRef, LE_OK);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stops the next running app.
- *
- * Deletes the current app object. If no other apps are running stop the first
- * system process.
- */
-//--------------------------------------------------------------------------------------------------
-static void StopNextApp
-(
-    AppObjRef_t appObjRef               // App that just stopped.
-)
-{
-    // Perform the deletion.
-    DeleteAppObj(appObjRef);
-
-    // Continue the shutdown process.
-    StopFramework();
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets an app object by name.
- *
- * @return
- *      A pointer to the app object if successful.
- *      NULL if the app is not found.
- */
-//--------------------------------------------------------------------------------------------------
-static AppObj_t* GetApp
-(
-    const char* appName     // Name of the application to get.
-)
-{
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
-
-    while (appLinkPtr != NULL)
-    {
-        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
-
-        if (strcmp(app_GetName(appPtr->appRef), appName) == 0)
-        {
-            return appPtr;
-        }
-
-        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
-    }
-
-    return NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets a pointer to the app object for the app that has a process with a given PID.
- *
- * @return
- *      A pointer to the app object, if successful.
- *      NULL if the PID is not found.
- */
-//--------------------------------------------------------------------------------------------------
-static AppObj_t* GetAppWithProc
-(
-    pid_t pid
-)
-{
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
-
-    while (appLinkPtr != NULL)
-    {
-        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
-
-        if (app_HasTopLevelProc(appPtr->appRef, pid))
-        {
-            return appPtr;
-        }
-
-        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
-    }
-
-    return NULL;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Launch an app. Create the app object and starts all its processes.
- *
- * @return
- *      LE_OK if successfully launched the app.
- *      LE_DUPLICATE if the app is already running.
- *      LE_NOT_FOUND if the app is not installed.
- *      LE_FAULT if the app could not be launched.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t LaunchApp
-(
-    const char* appNamePtr      // Name of the application to launch.
-)
-{
-    // Check if the app already exists.
-    if (GetApp(appNamePtr) != NULL)
-    {
-        LE_ERROR("Application '%s' is already running.", appNamePtr);
-        return LE_DUPLICATE;
-    }
-
-    // Get the configuration path for this app.
-    char configPath[LIMIT_MAX_PATH_BYTES] = { 0 };
-
-    if (le_path_Concat("/", configPath, LIMIT_MAX_PATH_BYTES,
-                       CFG_NODE_APPS_LIST, appNamePtr, (char*)NULL) == LE_OVERFLOW)
-    {
-        LE_ERROR("App name configuration path '%s/%s' too large for internal buffers!  "
-                 "Application '%s' is not installed and cannot run.",
-                 CFG_NODE_APPS_LIST, appNamePtr, appNamePtr);
-        return LE_FAULT;
-    }
-
-    // Check that the app has a configuration value.
-    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(configPath);
-
-    if (le_cfg_IsEmpty(appCfg, ""))
-    {
-        LE_ERROR("Application '%s' is not installed and cannot run.", appNamePtr);
-        le_cfg_CancelTxn(appCfg);
-        return LE_NOT_FOUND;
-    }
-
-    // Create the app object.
-    app_Ref_t appRef = app_Create(configPath);
-
-    if (appRef == NULL)
-    {
-        le_cfg_CancelTxn(appCfg);
-        return LE_FAULT;
-    }
-
-    AppObj_t* appPtr = le_mem_ForceAlloc(AppObjPool);
-
-    appPtr->appRef = appRef;
-    appPtr->link = LE_DLS_LINK_INIT;
-    appPtr->stopHandler = DeleteAppObj;
-
-    // Start the app.
-    if (app_Start(appPtr->appRef) != LE_OK)
-    {
-        app_Delete(appPtr->appRef);
-        le_mem_Release(appPtr);
-        le_cfg_CancelTxn(appCfg);
-
-        return LE_FAULT;
-    }
-
-    // @Note: We hang on to the the application config iterator till here to ensure the application
-    // configuration does not change during the creation and starting of the application.
-    le_cfg_CancelTxn(appCfg);
-
-    // Add the app to the list.
-    le_dls_Queue(&AppsList, &(appPtr->link));
-
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Called on system startup to launch all the apps found in the config tree that don't
- * specify the Supervisor should defer their launch.
- */
-//--------------------------------------------------------------------------------------------------
-static void LaunchAllStartupApps
-(
-    void
-)
-{
-    // Read the list of applications from the config tree.
-    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
-
-    if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
-    {
-        LE_WARN("No applications installed.");
-
-        le_cfg_CancelTxn(appCfg);
-
-        return;
-    }
-
-    do
-    {
-        // Check the defer launch for this application.
-        if (!le_cfg_GetBool(appCfg, CFG_NODE_START_MANUAL, false))
-        {
-            // Get the app name.
-            char appName[LIMIT_MAX_APP_NAME_BYTES];
-
-            if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
-            {
-                LE_ERROR("AppName buffer was too small, name truncated to '%s'.  "
-                         "Max app name in bytes, %d.  Application not launched.",
-                         appName, LIMIT_MAX_APP_NAME_BYTES);
-            }
-            else
-            {
-                // Launch the application now.  No need to check the return code because there is
-                // nothing we can do about errors.
-                LaunchApp(appName);
-            }
-        }
-    }
-    while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
-
-    le_cfg_CancelTxn(appCfg);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Starts all framework daemons and user apps.
+ * Closes stdin (reopens to /dev/null) when finished to signal any parent process that cares that
+ * the framework is started.
  */
 //--------------------------------------------------------------------------------------------------
 static void StartFramework
 (
-    int syncFd ///< File descriptor for pipe to be closed when the framework is ready to use.
+    void
 )
 {
+    // Start a daemon start-up watchdog timer.
+    // If we don't cancel this timer within 30 seconds, a SIGALRM will be generated, which will
+    // kill the Supervisor.
+    alarm(30);
+
     // Start all framework daemons.
     fwDaemons_Start();
 
-    LE_DEBUG("---- Initializing the configuration API ----");
+    // Connect to the services we need from the framework daemons.
+    LE_DEBUG("---- Connecting to services ----");
     le_cfg_ConnectService();
     logFd_ConnectService();
+    le_instStat_ConnectService();
 
-    LE_DEBUG("---- Initializing the Supervisor's APIs ----");
+    // Cancel the start-up watchdog timer.
+    alarm(0);
+
+    // Insert kernel modules
+    kernelModules_Insert();
+
+    // Advertise services.
+    LE_DEBUG("---- Advertising the Supervisor's APIs ----");
     le_sup_ctrl_AdvertiseService();
     le_sup_wdog_AdvertiseService();
     le_appInfo_AdvertiseService();
-
-    // Close the synchronization pipe that is connected to the parent process.
-    // This signals to the parent process that it is now safe to start using the framework.
-    // NOTE: Do this after advertising services in case anyone uses a "Try" version of an
-    //       IPC connection function to connect to one of these services (which would report
-    //       that the service is unavailable if it is not yet advertised).
-    if (syncFd > 0)
-    {
-        fd_Close(syncFd);
-    }
-
-    // Initialize sub-components that require other services.
+    le_appProc_AdvertiseService();
     appSmack_AdvertiseService();
+
+    // Initialize the apps sub system.
+    apps_Init();
 
     State = STATE_NORMAL;
 
@@ -884,7 +403,7 @@ static void StartFramework
     {
         // Launch all user apps in the config tree that should be launched on system startup.
         LE_INFO("Auto-starting apps.");
-        LaunchAllStartupApps();
+        apps_AutoStart();
     }
     else
     {
@@ -904,6 +423,9 @@ static void StopSupervisor
     void
 )
 {
+    // Older start programs need us to do this as they cannot do it for themselves!
+    fs_TryLazyUmount(CURRENT_SYSTEM_PATH);
+
     if (State == STATE_RESTARTING)
     {
         LE_INFO("Legato framework shut down complete. Restarting...");
@@ -967,58 +489,56 @@ static void PrepareFullShutdown
     le_msg_HideService(le_sup_ctrl_GetServiceRef());
     le_msg_HideService(le_sup_wdog_GetServiceRef());
     le_msg_HideService(le_appInfo_GetServiceRef());
+    le_msg_HideService(le_appProc_GetServiceRef());
     le_msg_HideService(appSmack_GetServiceRef());
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stops all user apps and all framework daemons.  This function kicks off the chain of handlers
- * that will stop all user apps and framework daemons.
+ * Stops framework daemons.  This function kicks off the chain of handlers that will stop all
+ * framework daemons.
  */
 //--------------------------------------------------------------------------------------------------
-static void StopFramework
+static void ShutdownFramework
 (
     void
 )
 {
-    // Get the first app to stop.
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
+    // Disconnect ourselves from services we use so when we kill the servers it does not cause us
+    // to die too.
+    le_cfg_DisconnectService();
+    logFd_DisconnectService();
+    le_instStat_DisconnectService();
 
-    if (appLinkPtr != NULL)
-    {
-        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
+    // Set the framework daemon shutdown handlers.
+    fwDaemons_SetIntermediateShutdownHandler(PrepareFullShutdown);
+    fwDaemons_SetShutdownHandler(StopSupervisor);
 
-        // Set the stop handler that will continue to stop all apps and the framework.
-        appPtr->stopHandler = StopNextApp;
+    // Stop the framework daemons.
+    fwDaemons_Shutdown();
 
-        // Stop the first app.  This will kick off the chain of callback handlers that will stop
-        // all apps and then the framework.
-        app_Stop(appPtr->appRef);
+    // Remove kernel modules.
+    kernelModules_Remove();
+}
 
-        // If the application has already stopped then call its stop handler here.  Otherwise the
-        // stop handler will be called from the SigChildHandler() when the app actually stops.
-        if (app_GetState(appPtr->appRef) == APP_STATE_STOPPED)
-        {
-            appPtr->stopHandler(appPtr);
-        }
-    }
-    else
-    {
-        // There are no apps running.
 
-        // Disconnect ourselves from services we use so when we kill the servers it does cause us
-        // to die too.
-        le_cfg_DisconnectService();
-        logFd_DisconnectService();
+//--------------------------------------------------------------------------------------------------
+/**
+ * Shuts down all apps and all framework daemons.  The shutdown process is asynchronous  and this
+ * function kicks off the chain of handlers that will shutdown all apps and framework daemons.
+ */
+//--------------------------------------------------------------------------------------------------
+static void BeginShutdown
+(
+    void
+)
+{
+    // Begin the shutdown process by shutting down all the apps.  When the apps finish shutting
+    // down the apps shutdown handler will trigger the shutdown of the framework itself.
+    apps_SetShutdownHandler(ShutdownFramework);
 
-        // Set the framework daemon shutdown handlers.
-        fwDaemons_SetIntermediateShutdownHandler(PrepareFullShutdown);
-        fwDaemons_SetShutdownHandler(StopSupervisor);
-
-        // Stop the framework daemons.
-        fwDaemons_Shutdown();
-    }
+    apps_Shutdown();
 }
 
 
@@ -1033,129 +553,6 @@ static void Reboot
 )
 {
     LE_FATAL("Supervisor going down to trigger reboot.");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the pid of any child that is in a waitable state without reaping the child process.
- *
- * @return
- *      The pid of the waitable process if successful.
- *      0 if there are currently no waitable children.
- */
-//--------------------------------------------------------------------------------------------------
-static pid_t WaitPeek
-(
-    void
-)
-{
-    siginfo_t childInfo = {.si_pid = 0};
-
-    int result;
-
-    do
-    {
-        result = waitid(P_ALL, 0, &childInfo, WEXITED | WSTOPPED | WCONTINUED | WNOHANG | WNOWAIT);
-    }
-    while ( (result == -1) && (errno == EINTR) );
-
-    LE_FATAL_IF(result == -1, "%m.")
-
-    return childInfo.si_pid;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Reap a specific child.  The child must be in a waitable state.
- *
- * @note This function does not return on error.
- *
- * @return
- *      The status of the reaped child.
- */
-//--------------------------------------------------------------------------------------------------
-static int WaitReapChild
-(
-    pid_t pid                       ///< [IN] Pid of the child to reap.
-)
-{
-    pid_t resultPid;
-    int status;
-
-    do
-    {
-        resultPid = waitpid(pid, &status, WNOHANG | WUNTRACED | WCONTINUED);
-    }
-    while ( (resultPid == -1) && (errno == EINTR) );
-
-    LE_FATAL_IF(resultPid == -1, "%m.");
-
-    LE_FATAL_IF(resultPid == 0, "Could not reap child %d.", pid);
-
-    return status;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handle application fault.  Gets the application fault action for the process that terminated
- * and handle the fault.
- */
-//--------------------------------------------------------------------------------------------------
-static void HandleAppFault
-(
-    AppObj_t* appObjPtr,            ///< [IN] Application object reference.
-    pid_t procPid,                  ///< [IN] The pid of the process that changed state.
-    int procExitStatus              ///< [IN] The return status of the process given by wait().
-)
-{
-    // Get the fault action.
-    app_FaultAction_t faultAction = APP_FAULT_ACTION_IGNORE;
-
-    app_SigChildHandler(appObjPtr->appRef, procPid, procExitStatus, &faultAction);
-
-    // Handle the fault.
-    switch (faultAction)
-    {
-        case APP_FAULT_ACTION_IGNORE:
-            // Do nothing.
-            break;
-
-        case APP_FAULT_ACTION_RESTART_APP:
-            if (app_GetState(appObjPtr->appRef) != APP_STATE_STOPPED)
-            {
-                // Stop the app if it hasn't already stopped.
-                app_Stop(appObjPtr->appRef);
-            }
-
-            // Set the handler to restart the app when the app stops.
-            appObjPtr->stopHandler = RestartApp;
-            break;
-
-        case APP_FAULT_ACTION_STOP_APP:
-            if (app_GetState(appObjPtr->appRef) != APP_STATE_STOPPED)
-            {
-                // Stop the app if it hasn't already stopped.
-                app_Stop(appObjPtr->appRef);
-            }
-            break;
-
-        case APP_FAULT_ACTION_REBOOT:
-            Reboot();
-
-        default:
-            LE_FATAL("Unknown fault action %d.", faultAction);
-    }
-
-    // Check if the app has stopped.
-    if ( (app_GetState(appObjPtr->appRef) == APP_STATE_STOPPED) &&
-         (appObjPtr->stopHandler != NULL) )
-    {
-        // The application has stopped.  Call the app stop handler.
-        appObjPtr->stopHandler(appObjPtr);
-    }
 }
 
 
@@ -1185,6 +582,21 @@ static void CaptureDebugData
 //--------------------------------------------------------------------------------------------------
 /**
  * The signal event handler function for SIGCHLD called from the Legato event loop.
+ *
+ * This is called for all framework daemon processes as well as most application processes.
+ * Application processes that were started by the Supervisor are children of the Supervisor and
+ * naturally generate a SIGCHILD to the Supervisor when they die.  Application processes
+ * that were started by other processes in the same app would generate SIGCHILDs to their parent not
+ * the Supervisor.  However, these lower level processes are still descendents of the Supervisor and
+ * if their parent were to die they would be reparented to the Supervisor.  This is because the
+ * Supervisor is a sub-reaper.
+ *
+ * Because SIGCHILD signals may come from either apps or framework daemons they are caught here
+ * first.  In this function we do a wait_Peek() to get the PID of the process that generated the
+ * SIGCHILD without reaping the child.  The PID is passed down to the apps SIGCHILD handler and
+ * framework daemon SIGCHILD handler for identification and processing.  The lower layer handlers
+ * are assumed to reap the child only if it is going to handle the process death.  If neither the
+ * apps or framework daemons recognize the child then we must reap it here.
  */
 //--------------------------------------------------------------------------------------------------
 static void SigChildHandler
@@ -1197,7 +609,7 @@ static void SigChildHandler
     {
         // Get the pid of the child process that changed state but do not reap the child so that we
         // can look at the child process's info.
-        pid_t pid = WaitPeek();
+        pid_t pid = wait_Peek();
 
         if (pid == 0)
         {
@@ -1205,149 +617,34 @@ static void SigChildHandler
             break;
         }
 
-        // Get the name of the application this process belongs to from the dead process's SMACK
-        // label.  Must do this before we reap the process, or the SMACK label will be unavailable.
-        char appName[LIMIT_MAX_APP_NAME_BYTES];
-        le_result_t result = appSmack_GetName(pid, appName, sizeof(appName));
+        // Send the pid to the apps SIGCHILD handler for processing.
+        le_result_t result = apps_SigChildHandler(pid);
 
-        // Reap the child now.
-        int status = WaitReapChild(pid);
-
-        // Branch based on the result of fetching the app name from the SMACK label.
-        switch (result)
+        if (result == LE_FAULT)
         {
-            case LE_OK:
-            {
-                // Got the app name for the process.  Now get the app object by name.
-                AppObj_t* appObjPtr = GetApp(appName);
-
-                if (appObjPtr != NULL)
-                {
-                    // Handle any faults that the child process state change my have caused.
-                    HandleAppFault(appObjPtr, pid, status);
-                }
-                else
-                {
-                    LE_CRIT("Could not find running app %s.", appName);
-                }
-
-                break;
-            }
-
-            case LE_NOT_FOUND:
-            {
-                // Not an app process.  See if it is a framework daemon.
-                le_result_t r = fwDaemons_SigChildHandler(pid, status);
-
-                if (r == LE_FAULT)
-                {
-                    CaptureDebugData();
-                    Reboot();
-                }
-                else if (r == LE_NOT_FOUND)
-                {
-                    // It's possible that we killed an app process before it had a chance to set
-                    // its own SMACK label.  So, search the apps for the PID.
-                    AppObj_t* appObjPtr = GetAppWithProc(pid);
-                    if (appObjPtr == NULL)
-                    {
-                        LE_CRIT("Unknown child process %d.", pid);
-                    }
-                    else
-                    {
-                        HandleAppFault(appObjPtr, pid, status);
-                    }
-                }
-
-                break;
-            }
-
-            case LE_OVERFLOW:
-                LE_FATAL("App name '%s...' is too long.", appName);
-
-            default:
-                LE_CRIT("Could not get app name for child process %d.", pid);
+            // There was an app fault that could not be handled so restart the framework.
+            Reboot();
         }
-    }
-}
 
+        if (result == LE_NOT_FOUND)
+        {
+            // Send the pid to the framework daemon's SIGCHILD handler for processing.
+            le_result_t r = fwDaemons_SigChildHandler(pid);
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Starts an app.  This function is called automatically by the event loop when a separate
- * process requests to start an app.
- *
- * @note
- *   The result code for this command should be sent back to the requesting process via
- *   le_sup_ctrl_StartAppRespond().  The possible result codes are:
- *
- *      LE_OK if the app is successfully started.
- *      LE_DUPLICATE if the app is already running.
- *      LE_NOT_FOUND if the app is not installed.
- *      LE_FAULT if there was an error and the app could not be launched.
- */
-//--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_StartApp
-(
-    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
-                                        ///       command's response function.
-    const char* appName                 ///< [IN] Name of the application to start.
-)
-{
-    LE_DEBUG("Received request to start application '%s'.", appName);
+            if (r == LE_FAULT)
+            {
+                CaptureDebugData();
+                Reboot();
+            }
+            else if (r == LE_NOT_FOUND)
+            {
+                // The child is neither an application process nor a framework daemon.
+                // Reap the child now.
+                wait_ReapChild(pid);
 
-    le_sup_ctrl_StartAppRespond(cmdRef, LaunchApp(appName));
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Stops an app. This function is called automatically by the event loop when a separate
- * process requests to stop an app.
- *
- * @note
- *   The result code for this command should be sent back to the requesting process via
- *   le_sup_ctrl_StopAppRespond(). The possible result codes are:
- *
- *      LE_OK if successful.
- *      LE_NOT_FOUND if the app could not be found.
- */
-//--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_StopApp
-(
-    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
-                                        ///       command's response function.
-    const char* appName                 ///< [IN] Name of the application to stop.
-)
-{
-    LE_DEBUG("Received request to stop application '%s'.", appName);
-
-    // Get the app object.
-    AppObj_t* appPtr = GetApp(appName);
-
-    if (appPtr == NULL)
-    {
-        LE_WARN("Application '%s' is not running and cannot be stopped.", appName);
-
-        le_sup_ctrl_StopAppRespond(cmdRef, LE_NOT_FOUND);
-        return;
-    }
-
-    // Save this commands reference in this app.
-    appPtr->stopCmdRef = cmdRef;
-
-    // Set the handler to be called when this app stops.  This handler will also respond to the
-    // process that requested this app be stopped.
-    appPtr->stopHandler = RespondToStopAppCmd;
-
-    // Stop the process.  This is an asynchronous call that returns right away.
-    app_Stop(appPtr->appRef);
-
-    // If the application has already stopped then call its stop handler here.  Otherwise the stop
-    // handler will be called from the SigChildHandler() when the app actually stops.
-    if (app_GetState(appPtr->appRef) == APP_STATE_STOPPED)
-    {
-        appPtr->stopHandler(appPtr);
+                LE_CRIT("Unknown child process %d.", pid);
+            }
+        }
     }
 }
 
@@ -1378,7 +675,7 @@ void le_sup_ctrl_StopLegato
         State = STATE_STOPPING;
 
         // Start the process of shutting down the framework.
-        StopFramework();
+        BeginShutdown();
     }
 }
 
@@ -1413,304 +710,13 @@ void le_sup_ctrl_RestartLegato
         }
 
         // Start the process of shutting down the framework.
-        StopFramework();
+        BeginShutdown();
     }
     else
     {
         LE_DEBUG("Ignoring request to restart Legato in state %d.", State);
 
         le_sup_ctrl_RestartLegatoRespond(cmdRef, LE_DUPLICATE);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * A watchdog has timed out. This function determines the watchdogAction to take and applies it.
- * The action to take is first delegated to the app (and proc layers) and actions not handled by
- * or not appropriate for lower layers are handled here.
- */
-//--------------------------------------------------------------------------------------------------
-void le_sup_wdog_WatchdogTimedOut
-(
-    le_sup_wdog_ServerCmdRef_t cmdRef,
-    uint32_t userId,
-    uint32_t procId
-)
-{
-    le_sup_wdog_WatchdogTimedOutRespond(cmdRef);
-    LE_INFO("Handling watchdog expiry for: userId %d, procId %d", userId, procId);
-
-    // Search for the process in the list of apps.
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
-
-    while (appLinkPtr != NULL)
-    {
-        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
-        wdog_action_WatchdogAction_t watchdogAction;
-        LE_FATAL_IF(appPtr==NULL,"I got a NULL AppPtr from CONTAINER_OF");
-        if (app_WatchdogTimeoutHandler(appPtr->appRef, procId, &watchdogAction) == LE_OK)
-        {
-            // Handle the fault.
-            switch (watchdogAction)
-            {
-                case WATCHDOG_ACTION_NOT_FOUND:
-                    // This case should already have been dealt with in lower layers, should never
-                    // get here.
-                    LE_FATAL("Unhandled watchdog action not found caught by supervisor.");
-                case WATCHDOG_ACTION_IGNORE:
-                case WATCHDOG_ACTION_HANDLED:
-                    // Do nothing.
-                    break;
-
-                case WATCHDOG_ACTION_RESTART_APP:
-                    if (app_GetState(appPtr->appRef) != APP_STATE_STOPPED)
-                    {
-                        // Stop the app if it hasn't already stopped.
-                        app_Stop(appPtr->appRef);
-                    }
-
-                    // Set the handler to restart the app when the app stops.
-                    appPtr->stopHandler = RestartApp;
-                    break;
-
-                case WATCHDOG_ACTION_STOP_APP:
-                    if (app_GetState(appPtr->appRef) != APP_STATE_STOPPED)
-                    {
-                        // Stop the app if it hasn't already stopped.
-                        app_Stop(appPtr->appRef);
-                    }
-                    break;
-
-                case WATCHDOG_ACTION_REBOOT:
-                    Reboot();
-
-                // This should never happen
-                case WATCHDOG_ACTION_ERROR:
-                    LE_FATAL("Unhandled watchdog action error caught by supervisor.");
-                    break;
-
-                // this should never happen
-                default:
-                    LE_FATAL("Unknown watchdog action %d.", watchdogAction);
-            }
-
-            // Check if the app has stopped.
-            if ( (app_GetState(appPtr->appRef) == APP_STATE_STOPPED) &&
-                    (appPtr->stopHandler != NULL) )
-            {
-                // The application has stopped.  Call the app stop handler.
-                appPtr->stopHandler(appPtr);
-            }
-
-            // Stop searching the other apps.
-            break;
-        }
-
-        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
-    }
-
-    if (appLinkPtr == NULL)
-    {
-        // We exhausted the app list without taking any action for this process
-        LE_CRIT("Process pid:%d was not started by the framework. No watchdog action can be taken", procId);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the state of the specified application.  The state of unknown applications is STOPPED.
- *
- * @return
- *      The state of the specified application.
- */
-//--------------------------------------------------------------------------------------------------
-le_appInfo_State_t le_appInfo_GetState
-(
-    const char* appName
-        ///< [IN]
-        ///< Name of the application.
-)
-{
-    // Search the list of apps.
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
-
-    while (appLinkPtr != NULL)
-    {
-        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
-
-        if (strcmp(app_GetName(appPtr->appRef), appName) == 0)
-        {
-            switch (app_GetState(appPtr->appRef))
-            {
-                case APP_STATE_STOPPED:
-                    return LE_APPINFO_STOPPED;
-
-                case APP_STATE_RUNNING:
-                    return LE_APPINFO_RUNNING;
-
-                default:
-                    LE_FATAL("Unrecognized app state.");
-            }
-        }
-
-        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
-    }
-
-    return LE_APPINFO_STOPPED;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the state of the specified process in an application.  This function only works for
- * configured processes that the Supervisor starts directly.
- *
- * @return
- *      The state of the specified process.
- */
-//--------------------------------------------------------------------------------------------------
-le_appInfo_ProcState_t le_appInfo_GetProcState
-(
-    const char* appName,
-        ///< [IN]
-        ///< Name of the application.
-
-    const char* procName
-        ///< [IN]
-        ///< Name of the process.
-)
-{
-    // Search the list of apps.
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&AppsList);
-
-    while (appLinkPtr != NULL)
-    {
-        AppObj_t* appPtr = CONTAINER_OF(appLinkPtr, AppObj_t, link);
-
-        if (strcmp(app_GetName(appPtr->appRef), appName) == 0)
-        {
-            switch (app_GetProcState(appPtr->appRef, procName))
-            {
-                case APP_PROC_STATE_STOPPED:
-                    return LE_APPINFO_PROC_STOPPED;
-
-                case APP_PROC_STATE_RUNNING:
-                    return LE_APPINFO_PROC_RUNNING;
-
-                case APP_PROC_STATE_PAUSED:
-                    return LE_APPINFO_PROC_PAUSED;
-
-                default:
-                    LE_FATAL("Unrecognized proc state.");
-            }
-        }
-
-        appLinkPtr = le_dls_PeekNext(&AppsList, appLinkPtr);
-    }
-
-    return LE_APPINFO_PROC_STOPPED;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the application name of the process with the specified PID.
- *
- * @return
- *      LE_OK if the application name was successfully found.
- *      LE_OVERFLOW if the application name could not fit in the provided buffer.
- *      LE_NOT_FOUND if the process is not part of an application.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_appInfo_GetName
-(
-    int32_t pid,
-        ///< [IN]
-        ///< PID of the process.
-
-    char* appName,
-        ///< [OUT]
-        ///< Application name
-
-    size_t appNameNumElements
-        ///< [IN]
-)
-{
-    return appSmack_GetName(pid, appName, appNameNumElements);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the application hash as a hexidecimal string.  The application hash is a unique hash of the
- * current version of the application.
- *
- * @return
- *      LE_OK if the application has was successfully retrieved.
- *      LE_OVERFLOW if the application hash could not fit in the provided buffer.
- *      LE_NOT_FOUND if the application is not installed.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_appInfo_GetHash
-(
-    const char* appName,
-        ///< [IN]
-        ///< Application name.
-
-    char* hashStr,
-        ///< [OUT]
-        ///< Hash string.
-
-    size_t hashStrNumElements
-        ///< [IN]
-)
-{
-#define APP_INFO_FILE                       "info.properties"
-#define KEY_STR_MD5                         "app.md5"
-
-
-    // Get the path to the app's info file.
-    char infoFilePath[LIMIT_MAX_PATH_BYTES] = APPS_INSTALL_DIR;
-    LE_ERROR_IF(le_path_Concat("/",
-                               infoFilePath,
-                               sizeof(infoFilePath),
-                               appName,
-                               APP_INFO_FILE,
-                               NULL) != LE_OK,
-                "Path to app %s's %s is too long.", appName, APP_INFO_FILE);
-
-    // Check if the file exists.
-    struct stat statBuf;
-
-    if (stat(infoFilePath, &statBuf) == -1)
-    {
-        if (errno == ENOENT)
-        {
-            return LE_NOT_FOUND;
-        }
-
-        LE_ERROR("Could not stat file '%s'.  %m.", infoFilePath);
-        return LE_FAULT;
-    }
-
-    // Get the md5 hash for the app's info.properties file.
-    le_result_t result = properties_GetValueForKey(infoFilePath,
-                                                   KEY_STR_MD5,
-                                                   hashStr,
-                                                   hashStrNumElements);
-
-    switch(result)
-    {
-        case LE_OK:
-        case LE_OVERFLOW:
-            return result;
-
-        default:
-            return LE_FAULT;
     }
 }
 
@@ -1733,15 +739,17 @@ COMPONENT_INIT
     LE_FATAL_IF( (nice(LEGATO_FRAMEWORK_NICE_LEVEL) == -1) && (errno != 0),
                 "Could not set the nice level.  %m.");
 
-    int syncFd = -1;
-
-    // Check args to see if we should not daemonize
-    if (le_arg_GetFlagOption("n", "no-daemonize") != LE_OK)
+    // Unless we have been asked not to, daemonize ourself.
+    if (!ShouldNotDaemonize)
     {
-        // Daemonize ourself.
-        syncFd = Daemonize();
+        daemon_Daemonize(-1);   /// -1 = Never timeout.
     }
-    SetupSupervisorProcess();
+    else
+    {
+        // Make sure our umask is always cleared so that the framework created files are given
+        // proper permissions.
+        umask(0);
+    }
 
     // Create the Legato runtime directory if it doesn't already exist.
     LE_ASSERT(le_dir_Make(STRINGIZE(LE_RUNTIME_DIR), S_IRWXU | S_IXOTH) != LE_FAULT);
@@ -1760,22 +768,45 @@ COMPONENT_INIT
     // to the Supervisor when their parent dies.
     prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0);
 #else
-    LE_WARN("Set Child Subreaper not supported. Applications with forked processes may not shutdown properly.");
+    LE_CRIT("Set Child Subreaper not supported. Applications with forked processes may not shutdown properly.");
 #endif
 
 
     // Initialize sub systems.
     user_Init();
     user_RestoreBackup();
-    app_Init();
+    kernelModules_Init();
     smack_Init();
-    cgrp_Init();
 
-    // Create memory pools.
-    AppObjPool = le_mem_CreatePool("apps", sizeof(AppObj_t));
+    // Set correct smack permissions for syslog
+    smack_SetRule("_", "rw", "syslog");
+    smack_SetRule("admin", "rw", "syslog");
+    smack_SetRule("framework", "rw", "syslog");
+
+    cgrp_Init();
 
     // Register a signal event handler for SIGCHLD so we know when processes die.
     le_sig_SetEventHandler(SIGCHLD, SigChildHandler);
 
-    StartFramework(syncFd);
+    if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH))
+    {
+        // Bind mount the root of the system unto itself so that we just lazy umount this when we
+        // need to clean up.
+        LE_CRIT_IF(mount(CURRENT_SYSTEM_PATH, CURRENT_SYSTEM_PATH, NULL, MS_BIND, NULL) != 0,
+                    "Couldn't bind mount '%s' unto itself. %m", CURRENT_SYSTEM_PATH);
+    }
+
+    StartFramework();
+
+    // Close stdin (and reopen to /dev/null to be safe).
+    // This signals to the parent process that all apps have been started.
+    // The parent process will then exit, allowing whatever launched it to continue if it is
+    // blocked.
+    // We do this after advertising services in case anyone uses a "Try" version of an
+    // IPC connection function to connect to one of these services (which would report
+    // that the service is unavailable if it is not yet advertised).
+    // We do it after app launch to improve start-up time by preventing other boot time activities
+    // from contending with us for resources like CPU and flash memory bandwidth.
+    LE_FATAL_IF(freopen("/dev/null", "r", stdin) == NULL,
+                "Failed to redirect stdin to /dev/null.  %m.");
 }

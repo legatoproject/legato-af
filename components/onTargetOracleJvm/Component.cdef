@@ -1,0 +1,14 @@
+
+requires:
+{
+    dir:
+    {
+        "$EJDK_DIR/bin"  "/"
+        "$EJDK_DIR/lib"  "/"
+    }
+
+    component:
+    {
+        jvmShared
+    }
+}

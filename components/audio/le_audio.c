@@ -489,7 +489,7 @@ static le_hashmap_Ref_t GetHashMapElement
     void
 )
 {
-    struct hashMapList* currentPtr=NULL;;
+    struct hashMapList* currentPtr=NULL;
     le_dls_Link_t* linkPtr = le_dls_Peek(&AudioHashMapList);
 
     while (linkPtr!=NULL)
@@ -507,10 +507,13 @@ static le_hashmap_Ref_t GetHashMapElement
         linkPtr = le_dls_PeekNext(&AudioHashMapList,linkPtr);
     }
 
-
     currentPtr = le_mem_ForceAlloc(AudioHashMapPool);
 
-    currentPtr->hashMapRef = le_hashmap_Create("ConnectorMap",
+    char ConnectorMapName[20];
+
+    snprintf( ConnectorMapName,20,"ConnMap%d", (int) (le_dls_NumLinks(&AudioHashMapList)+1) );
+
+    currentPtr->hashMapRef = le_hashmap_Create(ConnectorMapName,
                                                AUDIO_HASHMAP_SIZE,
                                                HashAudioRef,
                                                EqualsAudioRef);
@@ -1004,9 +1007,17 @@ static void DtmfStreamEventHandler
 
     streamEventPtr->streamPtr = streamPtr;
 
-    le_event_Report(streamPtr->streamEventId,
-                    streamEventPtr,
-                    sizeof(le_audio_StreamEvent_t));
+    if (streamPtr->streamEventId)
+    {
+        le_event_Report(streamPtr->streamEventId,
+                        streamEventPtr,
+                        sizeof(le_audio_StreamEvent_t));
+    }
+    else
+    {
+        LE_ERROR("Unitialized streamEventId for streamPtr %p interface %d",
+                                                            streamPtr, streamPtr->audioInterface);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1054,15 +1065,6 @@ static le_audio_StreamRef_t OpenAudioStream
         // Specifc treatment of the asked audio interface
         switch ( streamPtr->audioInterface )
         {
-            case LE_AUDIO_IF_CODEC_MIC:
-            case LE_AUDIO_IF_CODEC_SPEAKER:
-                if ( !pa_audio_IsCodecPresent() )
-                {
-                    LE_WARN("This device does not provide an in-built Codec");
-                    le_mem_Release(audioStreamPtr);
-                    return NULL;
-                }
-            break;
             case LE_AUDIO_IF_DSP_FRONTEND_PCM_RX:
             case LE_AUDIO_IF_DSP_FRONTEND_PCM_TX:
                 if ( pa_audio_SetPcmTimeSlot(audioStreamPtr, streamPtr->param.timeslot)
@@ -1106,6 +1108,8 @@ static le_audio_StreamRef_t OpenAudioStream
             case LE_AUDIO_IF_DSP_BACKEND_MODEM_VOICE_RX:
                 // streamEventId needed for DTMF detection
                 audioStreamPtr->streamEventId = GetEventId();
+            case LE_AUDIO_IF_CODEC_MIC:
+            case LE_AUDIO_IF_CODEC_SPEAKER:
             default:
             break;
         }
@@ -1138,19 +1142,21 @@ static le_audio_StreamRef_t OpenAudioStream
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Remove the client sessionRef from the audio stream, and release the audio stream if asked
+ * Remove the client sessionRef from the audio stream, and release the audio stream
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void RemoveSessionRefFromAudioStream
+static void ReleaseAudioStream
 (
     le_audio_Stream_t*  streamPtr,
     le_msg_SessionRef_t sessionRef,
-    bool                releaseAudioStream
+    bool                releaseAllReferences
 )
 {
     SessionRefNode_t* sessionRefNodePtr;
     le_dls_Link_t* linkPtr;
+
+    LE_DEBUG("audioItf %d, sessionRef %p", streamPtr->audioInterface, sessionRef);
 
     // Remove corresponding node from the sessionRefList
     linkPtr = le_dls_Peek(&(streamPtr->sessionRefList));
@@ -1160,6 +1166,8 @@ static void RemoveSessionRefFromAudioStream
 
         linkPtr = le_dls_PeekNext(&(streamPtr->sessionRefList), linkPtr);
 
+        LE_DEBUG("sessionRefNodePtr->sessionRef %p", sessionRefNodePtr->sessionRef);
+
         // Remove corresponding node from the sessionRefList
         if ( sessionRefNodePtr->sessionRef == sessionRef )
         {
@@ -1168,10 +1176,12 @@ static void RemoveSessionRefFromAudioStream
 
             le_mem_Release(sessionRefNodePtr);
 
-            if (releaseAudioStream)
+            LE_DEBUG("Release stream %d", streamPtr->audioInterface);
+            le_mem_Release(streamPtr);
+
+            if (!releaseAllReferences)
             {
-                LE_DEBUG("Release stream %d", streamPtr->audioInterface);
-                le_mem_Release(streamPtr);
+                return;
             }
         }
     }
@@ -1217,7 +1227,7 @@ static void CloseSessionEventHandler
     while (le_ref_NextNode(iterRef) == LE_OK)
     {
         le_audio_Stream_t* audioStreamPtr = (le_audio_Stream_t*) le_ref_GetValue(iterRef);
-        RemoveSessionRefFromAudioStream(audioStreamPtr, sessionRef, true);
+        ReleaseAudioStream(audioStreamPtr, sessionRef, true);
     }
 }
 
@@ -1551,9 +1561,7 @@ void le_audio_Close
         return;
     }
 
-    RemoveSessionRefFromAudioStream(streamPtr, le_audio_GetClientSessionRef(), false);
-
-    le_mem_Release(streamPtr);
+    ReleaseAudioStream(streamPtr, le_audio_GetClientSessionRef(), false);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2292,7 +2300,7 @@ le_result_t le_audio_DisableAutomaticGainControl
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_SetProfile
 (
-    le_audio_Profile_t profile   ///< [IN] The audio profile.
+    uint32_t profile   ///< [IN] The audio profile.
 )
 {
     return pa_audio_SetProfile(profile);
@@ -2308,7 +2316,7 @@ le_result_t le_audio_SetProfile
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_GetProfile
 (
-    le_audio_Profile_t* profilePtr  ///< [OUT] The audio profile.
+    uint32_t* profilePtr  ///< [OUT] The audio profile.
 )
 {
     return pa_audio_GetProfile(profilePtr);

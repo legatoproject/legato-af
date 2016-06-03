@@ -45,37 +45,38 @@ __attribute__((unused)) static void* PackString(void* msgBufPtr, const char* dat
     // todo: should check for buffer overflow, but not sure what to do if it happens
     //       i.e. is it a fatal error, or just return a result
 
-    // Add one for the null character
-    size_t dataSize = strlen(dataStr) + 1;
+    // Get the sizes
+    uint32_t strSize = strlen(dataStr);
+    const uint32_t sizeOfStrSize = sizeof(strSize);
 
-    memcpy( msgBufPtr, dataStr, dataSize );
-    return ( msgBufPtr + dataSize );
+    // Always pack the string size first, and then the string itself
+    memcpy( msgBufPtr, &strSize, sizeOfStrSize );
+    msgBufPtr += sizeOfStrSize;
+    memcpy( msgBufPtr, dataStr, strSize );
+
+    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
+    return ( msgBufPtr + strSize );
 }
 
 // Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackString(void* msgBufPtr, const char** dataStrPtr)
+__attribute__((unused)) static void* UnpackString(void* msgBufPtr, char* dataStr, size_t dataSize)
 {
-    // Add one for the null character
-    size_t dataSize = strlen(msgBufPtr) + 1;
+    // todo: should check for buffer overflow, but not sure what to do if it happens
+    //       i.e. is it a fatal error, or just return a result
 
-    // Strings do not have to be word aligned, so just return a pointer
-    // into the message buffer
-    *dataStrPtr = msgBufPtr;
-    return ( msgBufPtr + dataSize );
-}
+    uint32_t strSize;
+    const uint32_t sizeOfStrSize = sizeof(strSize);
 
-// todo: This function may eventually replace all usage of UnpackString() above.
-//       Maybe there should also be a PackDataString() function as well?
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackDataString(void* msgBufPtr, void* dataPtr, size_t dataSize)
-{
-    // Number of bytes copied from msg buffer, not including null terminator
-    size_t numBytes = strlen(msgBufPtr);
+    // Get the string size first, and then the actual string
+    memcpy( &strSize, msgBufPtr, sizeOfStrSize );
+    msgBufPtr += sizeOfStrSize;
 
-    // todo: For now, assume the string will always fit in the buffer. This may not always be true.
-    memcpy(dataPtr, msgBufPtr, dataSize);
-    ((char*)dataPtr)[dataSize-1] = 0;
-    return ( msgBufPtr + (numBytes + 1) );
+    // Copy the string, and make sure it is null-terminated
+    memcpy( dataStr, msgBufPtr, strSize );
+    dataStr[strSize] = 0;
+
+    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
+    return ( msgBufPtr + strSize );
 }
 
 
@@ -194,7 +195,7 @@ static pthread_mutex_t InitMutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Forward declaration needed by InitClientThreadData
+ * Forward declaration needed by InitClientForThread
  */
 //--------------------------------------------------------------------------------------------------
 static void ClientIndicationRecvHandler
@@ -206,12 +207,18 @@ static void ClientIndicationRecvHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Init thread specific data
+ * Initialize thread specific data, and connect to the service for the current thread.
+ *
+ * @return
+ *  - LE_OK if the client connected successfully to the service.
+ *  - LE_UNAVAILABLE if the server is not currently offering the service to which the client is bound.
+ *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
+ *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  */
 //--------------------------------------------------------------------------------------------------
-static void InitClientThreadData
+static le_result_t InitClientForThread
 (
-    void
+    bool isBlocking
 )
 {
     // Open a session.
@@ -221,7 +228,47 @@ static void InitClientThreadData
     protocolRef = le_msg_GetProtocolRef(PROTOCOL_ID_STR, sizeof(_Message_t));
     sessionRef = le_msg_CreateSession(protocolRef, SERVICE_INSTANCE_NAME);
     le_msg_SetSessionRecvHandler(sessionRef, ClientIndicationRecvHandler, NULL);
-    le_msg_OpenSessionSync(sessionRef);
+
+    if ( isBlocking )
+    {
+        le_msg_OpenSessionSync(sessionRef);
+    }
+    else
+    {
+        le_result_t result;
+
+        result = le_msg_TryOpenSessionSync(sessionRef);
+        if ( result != LE_OK )
+        {
+            LE_DEBUG("Could not connect to '%s' service", SERVICE_INSTANCE_NAME);
+
+            // TODO: This should be le_msg_DeleteSession(), but there's a bug in it.
+            le_msg_CloseSession(sessionRef);
+
+            switch (result)
+            {
+                case LE_UNAVAILABLE:
+                    LE_DEBUG("Service not offered");
+                    break;
+
+                case LE_NOT_PERMITTED:
+                    LE_DEBUG("Missing binding");
+                    break;
+
+                case LE_COMM_ERROR:
+                    LE_DEBUG("Can't reach ServiceDirectory");
+                    break;
+
+                default:
+                    LE_CRIT("le_msg_TryOpenSessionSync() returned unexpected result code %d (%s)",
+                            result,
+                            LE_RESULT_TXT(result));
+                    break;
+            }
+
+            return result;
+        }
+    }
 
     // Store the client sessionRef in thread-local storage, since each thread requires
     // its own sessionRef.
@@ -234,6 +281,8 @@ static void InitClientThreadData
 
     // This is the first client for the current thread
     clientThreadPtr->clientCount = 1;
+
+    return LE_OK;
 }
 
 
@@ -301,19 +350,20 @@ static void InitCommonData(void)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Connect to the service, using either blocking or non-blocking calls.
  *
- * Connect the current client thread to the service providing this API.
+ * This function implements the details of the public ConnectService functions.
  *
- * This function must be called before any other functions in this API. Normally, it's automatically
- * called for the main thread, but must be explicitly called for other threads. For details, see
- * @ref apiFilesC_client.
- *
- * This function is created automatically.
+ * @return
+ *  - LE_OK if the client connected successfully to the service.
+ *  - LE_UNAVAILABLE if the server is not currently offering the service to which the client is bound.
+ *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
+ *  - LE_COMM_ERROR if the Service Directory cannot be reached.
  */
 //--------------------------------------------------------------------------------------------------
-void ConnectService
+static le_result_t DoConnectService
 (
-    void
+    bool isBlocking
 )
 {
     // If this is the first time the function is called, init the client common data.
@@ -330,7 +380,15 @@ void ConnectService
     // If the thread specific data is NULL, then there is no current client session.
     if (clientThreadPtr == NULL)
     {
-        InitClientThreadData();
+        le_result_t result;
+
+        result = InitClientForThread(isBlocking);
+        if ( result != LE_OK )
+        {
+            // Note that the blocking call will always return LE_OK
+            return result;
+        }
+
         LE_DEBUG("======= Starting client for '%s' service ========", SERVICE_INSTANCE_NAME);
     }
     else
@@ -340,6 +398,59 @@ void ConnectService
         clientThreadPtr->clientCount++;
         LE_DEBUG("======= Starting another client for '%s' service ========", SERVICE_INSTANCE_NAME);
     }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Connect the current client thread to the service providing this API. Block until the service is
+ * available.
+ *
+ * For each thread that wants to use this API, either ConnectService or TryConnectService must be
+ * called before any other functions in this API.  Normally, ConnectService is automatically called
+ * for the main thread, but not for any other thread. For details, see @ref apiFilesC_client.
+ *
+ * This function is created automatically.
+ */
+//--------------------------------------------------------------------------------------------------
+void ConnectService
+(
+    void
+)
+{
+    // Conect to the service; block until connected.
+    DoConnectService(true);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *
+ * Try to connect the current client thread to the service providing this API. Return with an error
+ * if the service is not available.
+ *
+ * For each thread that wants to use this API, either ConnectService or TryConnectService must be
+ * called before any other functions in this API.  Normally, ConnectService is automatically called
+ * for the main thread, but not for any other thread. For details, see @ref apiFilesC_client.
+ *
+ * This function is created automatically.
+ *
+ * @return
+ *  - LE_OK if the client connected successfully to the service.
+ *  - LE_UNAVAILABLE if the server is not currently offering the service to which the client is bound.
+ *  - LE_NOT_PERMITTED if the client interface is not bound to any service (doesn't have a binding).
+ *  - LE_COMM_ERROR if the Service Directory cannot be reached.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t TryConnectService
+(
+    void
+)
+{
+    // Conect to the service; return with an error if not connected.
+    return DoConnectService(false);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -372,6 +483,7 @@ void DisconnectService
         // This is the last client for this thread, so close the session.
         if ( clientThreadPtr->clientCount == 1 )
         {
+            // TODO: This should be le_msg_DeleteSession(), but there's a bug in it.
             le_msg_CloseSession( clientThreadPtr->sessionRef );
 
             // Need to delete the thread specific data, since it is no longer valid.  If a new
@@ -457,7 +569,7 @@ static void _Handle_AddTestAHandler
 //--------------------------------------------------------------------------------------------------
 TestAHandlerRef_t AddTestAHandler
 (
-    TestAHandlerFunc_t handlerPtr,
+    TestAHandlerFunc_t myHandlerPtr,
         ///< [IN]
 
     void* contextPtr
@@ -488,7 +600,7 @@ TestAHandlerRef_t AddTestAHandler
     // not passed down.
     // Create a new client data object and fill it in
     _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
-    _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)handlerPtr;
+    _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t)myHandlerPtr;
     _clientDataPtr->contextPtr = contextPtr;
     _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
     // Create a safeRef to be passed down as the contextPtr
@@ -597,9 +709,8 @@ void RemoveTestAHandler
 void allParameters
 (
     common_EnumExample_t a,
-        ///< [IN]
-        ///< first one-line comment
-        ///< second one-line comment
+        ///< [IN] first one-line comment
+        ///<      second one-line comment
 
     uint32_t* bPtr,
         ///< [OUT]
@@ -611,9 +722,8 @@ void allParameters
         ///< [IN]
 
     uint32_t* outputPtr,
-        ///< [OUT]
-        ///< some more comments here
-        ///< and some comments here as well
+        ///< [OUT] some more comments here
+        ///<       and some comments here as well
 
     size_t* outputNumElementsPtr,
         ///< [INOUT]
@@ -622,16 +732,14 @@ void allParameters
         ///< [IN]
 
     char* response,
-        ///< [OUT]
-        ///< comments on final parameter, first line
-        ///< and more comments
+        ///< [OUT] comments on final parameter, first line
+        ///<       and more comments
 
     size_t responseNumElements,
         ///< [IN]
 
     char* more,
-        ///< [OUT]
-        ///< This parameter tests a bug fix
+        ///< [OUT] This parameter tests a bug fix
 
     size_t moreNumElements
         ///< [IN]
@@ -682,8 +790,8 @@ void allParameters
     _msgBufPtr = UnpackData( _msgBufPtr, bPtr, sizeof(uint32_t) );
     _msgBufPtr = UnpackData( _msgBufPtr, outputNumElementsPtr, sizeof(size_t) );
     _msgBufPtr = UnpackData( _msgBufPtr, outputPtr, *outputNumElementsPtr*sizeof(uint32_t) );
-    _msgBufPtr = UnpackDataString( _msgBufPtr, response, responseNumElements*sizeof(char) );
-    _msgBufPtr = UnpackDataString( _msgBufPtr, more, moreNumElements*sizeof(char) );
+    _msgBufPtr = UnpackString( _msgBufPtr, response, responseNumElements*sizeof(char) );
+    _msgBufPtr = UnpackString( _msgBufPtr, more, moreNumElements*sizeof(char) );
 
     // Release the message object, now that all results/output has been copied.
     le_msg_ReleaseMsg(_responseMsgRef);
@@ -698,12 +806,10 @@ void allParameters
 void FileTest
 (
     int dataFile,
-        ///< [IN]
-        ///< file descriptor as IN parameter
+        ///< [IN] file descriptor as IN parameter
 
     int* dataOutPtr
-        ///< [OUT]
-        ///< file descriptor as OUT parameter
+        ///< [OUT] file descriptor as OUT parameter
 )
 {
     le_msg_MessageRef_t _msgRef;
@@ -852,6 +958,8 @@ static void _Handle_AddBugTestHandler
  * is used for
  *     testing
  * a specific bug, as well as event comment strings.
+ *
+ * Uses old-style handler, for backwards compatibility testing
  */
 //--------------------------------------------------------------------------------------------------
 BugTestHandlerRef_t AddBugTestHandler
@@ -1023,8 +1131,8 @@ static void _Handle_TestCallback
     uint32_t data;
     _msgBufPtr = UnpackData( _msgBufPtr, &data, sizeof(uint32_t) );
 
-    const char* name;
-    _msgBufPtr = UnpackString( _msgBufPtr, &name );
+    char name[51];
+    _msgBufPtr = UnpackString( _msgBufPtr, name, 51 );
 
     int dataFile;
     dataFile = le_msg_GetFd(_msgRef);

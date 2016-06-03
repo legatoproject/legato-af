@@ -38,6 +38,38 @@ le_result_t pa_avc_StartSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Start a timer to watch the activity from the modem.
+ */
+//--------------------------------------------------------------------------------------------------
+void  pa_avc_StartModemActivityTimer
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable user agreement for download and install
+ *
+ * @return
+ *     void
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_avc_EnableUserAgreement
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Stop a session with the AirVantage server
  *
  * @return
@@ -96,6 +128,21 @@ pa_avc_OpType_t pa_avc_GetOpType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Is this a request for reading the first block?
+ */
+//--------------------------------------------------------------------------------------------------
+bool pa_avc_IsFirstBlock
+(
+    pa_avc_LWM2MOperationDataRef_t opRef   ///< [IN] Reference to LWM2M operation
+)
+{
+    LE_ERROR("Unsupported function called");
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the operation address for the give LWM2M Operation
  */
 //--------------------------------------------------------------------------------------------------
@@ -127,6 +174,24 @@ void pa_avc_GetOpPayload
 {
     LE_ERROR("Unsupported function called");
 }
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the token for the given LWM2M Operation
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_avc_GetOpToken
+(
+    pa_avc_LWM2MOperationDataRef_t opRef,   ///< [IN] Reference to LWM2M operation
+    const uint8_t** tokenPtrPtr,            ///< [OUT] Pointer to token, or NULL if no token
+    uint8_t* tokenLengthPtr                 ///< [OUT] Token Length bytes, or 0 if no token
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -325,6 +390,225 @@ void pa_avc_SetModemActivityTimeout
     LE_ERROR("Unsupported function called.");
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the last http status.
+ *
+ * @return
+ *      - HttpStatus as defined in RFC 7231, Section 6.
+ */
+//--------------------------------------------------------------------------------------------------
+uint16_t pa_avc_GetHttpStatus
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the session type.
+ *
+ * @return
+ *      - Session Type.
+ */
+//--------------------------------------------------------------------------------------------------
+le_avc_SessionType_t pa_avc_GetSessionType
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the retry timers.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to read the timers.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_GetRetryTimers
+(
+    uint16_t* timerValuePtr,
+    size_t* numTimers
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the retry timers.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to write the timers.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_SetRetryTimers
+(
+    const uint16_t* timerValuePtr,
+    size_t timerValue
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read the polling timer.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if not available
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_GetPollingTimer
+(
+    uint32_t* pollingTimerPtr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the polling timer.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to read the timers.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_SetPollingTimer
+(
+    uint32_t pollingTimerPtr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to read APN configuration.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if there is any error while reading.
+ *      - LE_OVERFLOW if the buffer provided is too small.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_GetApnConfig
+(
+    char* apnName,
+    size_t apnNameNumElements,
+    char* userName,
+    size_t uNameNumElements,
+    char* userPwd,
+    size_t userPwdNumElements
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to write APN configuration.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to write the APN configuration.
+ *      - LE_OVERFLOW if one of the input strings is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_avc_SetApnConfig
+(
+    const char* apnName,
+    const char* userName,
+    const char* userPwd
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Notify the server when the asset value changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_avc_NotifyChange
+(
+    pa_avc_LWM2MOperationDataRef_t notifyOpRef, ///< [IN] Reference to LWM2M operation
+    uint8_t* respPayloadPtr,                    ///< [IN] Payload, or NULL if no payload
+    size_t respPayloadNumBytes                  ///< [IN] Payload size in bytes, or 0 if no payload.
+                                                ///       If payload is a string, this is strlen()
+)
+{
+    LE_ERROR("Unsupported function called.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Respond to the read call back operation.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_avc_ReadCallBackReport
+(
+    pa_avc_LWM2MOperationDataRef_t opRef,       ///< [IN] Reference to LWM2M operation
+    uint8_t* respPayloadPtr,                    ///< [IN] Payload, or NULL if no payload
+    size_t respPayloadNumBytes                  ///< [IN] Payload size in bytes, or 0 if no payload.
+                                                ///       If payload is a string, this is strlen()
+)
+{
+    LE_ERROR("Unsupported function called.");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fill in the data structure required for lwm2m operation.
+ *
+ * @return
+ *      - Reference to lwm2m operation
+ */
+//--------------------------------------------------------------------------------------------------
+pa_avc_LWM2MOperationDataRef_t pa_avc_CreateOpData
+(
+    char* prefixPtr,
+    int objId,
+    int objInstId,
+    int resourceId,
+    pa_avc_OpType_t opType,
+    uint8_t* tokenPtr,
+    uint8_t tokenLength
+)
+{
+    LE_ERROR("Unsupported function called.");
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

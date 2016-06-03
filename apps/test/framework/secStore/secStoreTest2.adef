@@ -2,14 +2,14 @@ start: manual
 
 executables:
 {
-    secStoreTest2 = (secStoreTest2)
+    secStoreTest2 = ( secStoreTest2 )
 }
 
 processes:
 {
     run:
     {
-        (secStoreTest2)
+        ( secStoreTest2 )
     }
 }
 

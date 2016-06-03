@@ -14,10 +14,14 @@
 #include "interfaces.h"
 #include "limit.h"
 #include "fileDescriptor.h"
+#include "fileSystem.h"
 #include "properties.h"
 #include "supCtrl.h"
 #include "file.h"
 #include "system.h"
+#include "installer.h"
+#include "sysPaths.h"
+#include "smack.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -59,14 +63,6 @@ static const char* SystemPath = SYSTEM_PATH;
  */
 //--------------------------------------------------------------------------------------------------
 static const char* NumberedSystemPath = SYSTEM_PATH "/%d";
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Absolute file system path to where systems are installed.
- */
-//--------------------------------------------------------------------------------------------------
-static const char* CurrentSystemPath = CURRENT_BASE_PATH;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -150,14 +146,6 @@ const char* system_CurrentAppsDir = CURRENT_BASE_PATH "/apps";
 static const char* CurrentAppsWriteableDir = CURRENT_BASE_PATH "/appsWriteable";
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Absolute file system path to directory containing writeable app files in system unpack area.
- **/
-//--------------------------------------------------------------------------------------------------
-static const char* UnpackAppsWriteableDir = UNPACK_BASE_PATH "/appsWriteable";
-
-
 // People should really use the const variables, so undefine the macros.
 #undef SYSTEM_PATH
 #undef CURRENT_BASE_PATH
@@ -217,7 +205,7 @@ static void SetIndex
     char numBuffer[12] = "";
     LE_ASSERT(snprintf(numBuffer, sizeof(numBuffer), "%d", newIndex) < sizeof(numBuffer));
 
-    file_WriteStrAtomic(pathBuffer, numBuffer);
+    file_WriteStrAtomic(pathBuffer, numBuffer, 0644 /* rw-r--r-- */);
 
     LE_DEBUG("System index set to %d", newIndex);
 }
@@ -234,9 +222,60 @@ static void SetVersion
 )
 //--------------------------------------------------------------------------------------------------
 {
-    file_WriteStrAtomic(CurrentVersionFilePath, newVersion);
+    file_WriteStrAtomic(CurrentVersionFilePath, newVersion, 0644 /* rw-r--r-- */);
 
     LE_DEBUG("System version set to '%s'", newVersion);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively sets the permissions for all files in new installed system 'lib' directory. All files
+ * are set to SMACK label '_'.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetSystemFilesPermissions
+(
+    const char * newSystemPath         ///< [IN] Path to new system.
+)
+{
+
+    // Get the smack labels to use.
+    char *fileLabel = "_";
+
+    char systemLibPath[LIMIT_MAX_PATH_BYTES] = "";
+
+    int n = snprintf(systemLibPath, sizeof(systemLibPath), "%s/%s", newSystemPath, "lib");
+    LE_ASSERT(n < sizeof(systemLibPath));
+
+    char* pathArrayPtr[] = {(char *)systemLibPath, NULL};
+
+    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_LOGICAL | FTS_NOSTAT, NULL);
+
+    LE_FATAL_IF(ftsPtr == NULL, "Could not access dir '%s'.  %m.", pathArrayPtr[0]);
+
+    // Clear the errno
+    errno = 0;
+
+    // Step through the directory tree.
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_F:
+            case FTS_NSOK:
+                // These are files. Set the SMACK label.
+                LE_DEBUG("Setting smack label: '%s' for file: '%s'", fileLabel,
+                         entPtr->fts_accpath);
+                smack_SetLabel(entPtr->fts_accpath, fileLabel);
+                break;
+
+        }
+    }
+
+    LE_CRIT_IF(errno != 0, "Could not traverse directory '%s'.  %m", pathArrayPtr[0]);
+
+    fts_close(ftsPtr);
 }
 
 
@@ -579,8 +618,11 @@ void system_IncrementTryCount
 
     ++tryCount;
 
-    snprintf(statusBuffer, sizeof(statusBuffer), "tried %d", tryCount);
-    file_WriteStrAtomic(CurrentStatusPath, statusBuffer);
+    int len = snprintf(statusBuffer, sizeof(statusBuffer), "tried %d", tryCount);
+
+    LE_ASSERT(len < sizeof(statusBuffer));
+
+    file_WriteStrAtomic(CurrentStatusPath, statusBuffer, 0644 /* rw-r--r-- */);
 }
 
 
@@ -703,159 +745,6 @@ void system_SymlinkApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Install a given app's writeable files in the "unpack" system from either the app's install
- * directory (/legato/apps/<hash>) or the current running system, as appropriate for each file.
- *
- * @warning Assumes the app identified by the hash is installed in /legato/apps/<hash>.
- *
- * @return LE_OK if successful.
- **/
-//--------------------------------------------------------------------------------------------------
-le_result_t system_InstallAppWriteableFiles
-(
-    const char* appMd5Ptr,
-    const char* appNamePtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    le_result_t result = LE_OK;
-
-    char freshWriteablesDir[PATH_MAX];
-
-    char appLabel[APPSMACK_MAX_LABEL_LEN + 1];
-    supCtrl_GetLabel(appNamePtr, appLabel, sizeof(appLabel));
-
-    int baseDirPathLen = snprintf(freshWriteablesDir,
-                     sizeof(freshWriteablesDir),
-                     "/legato/apps/%s/writeable",
-                     appMd5Ptr);
-    LE_ASSERT(baseDirPathLen < sizeof(freshWriteablesDir));
-
-    char* pathArrayPtr[] = { freshWriteablesDir, NULL };
-    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
-
-    FTSENT* entPtr;
-    while ((entPtr = fts_read(ftsPtr)) != NULL)
-    {
-        // Compute the destination path in the unpack area.
-        char destPath[PATH_MAX];
-        int n = snprintf(destPath,
-                         sizeof(destPath),
-                         "%s/%s%s",
-                         UnpackAppsWriteableDir,
-                         appNamePtr,
-                         entPtr->fts_path + baseDirPathLen);
-        if (n >= sizeof(destPath))
-        {
-            LE_CRIT("Path to writeable file in app '%s' <%s> is too long.",
-                    appNamePtr,
-                    appMd5Ptr);
-
-            result = LE_FAULT;
-            goto cleanup;
-        }
-
-        // Act differently depending on whether we are looking at a file or a directory.
-        switch (entPtr->fts_info)
-        {
-            case FTS_D: // Directory visited in pre-order.
-
-                // If this is not the top level directory, create it.
-                if (entPtr->fts_level > 0)
-                {
-                    if (le_dir_MakePath(destPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH ) != LE_OK)
-                    {
-                        LE_CRIT("Failed to create directory '%s'.", destPath);
-                        result = LE_FAULT;
-                        goto cleanup;
-                    }
-                }
-                break;
-
-            case FTS_SL:
-
-                LE_CRIT("Ignoring symlink in writeable files for app '%s' <%s>.",
-                        appNamePtr,
-                        appMd5Ptr);
-                result = LE_FAULT;
-
-                goto cleanup;
-
-                break;
-
-            case FTS_F:
-            {
-                // Compute the path the file would appear at in the current running system.
-                char oldVersionPath[PATH_MAX];
-                int n = snprintf(oldVersionPath,
-                                 sizeof(oldVersionPath),
-                                 "%s/%s%s",
-                                 CurrentAppsWriteableDir,
-                                 appNamePtr,
-                                 entPtr->fts_path + baseDirPathLen);
-                if (n >= sizeof(oldVersionPath))
-                {
-                    LE_CRIT("Path to writeable file in app '%s' <%s> is too long.",
-                            appNamePtr,
-                            appMd5Ptr);
-                    result = LE_FAULT;
-                    goto cleanup;
-                }
-
-                // If the file exists in the current running system, copy that.
-                if (file_Exists(oldVersionPath))
-                {
-                    if (file_Copy(oldVersionPath, destPath, appLabel) != LE_OK)
-                    {
-                        result = LE_FAULT;
-                        goto cleanup;
-                    }
-                }
-                // If the file does not exist in the current running system, install the fresh one.
-                else
-                {
-                    if (file_Copy(entPtr->fts_path, destPath, appLabel) != LE_OK)
-                    {
-                        result = LE_FAULT;
-                        goto cleanup;
-                    }
-                }
-                break;
-            }
-
-            case FTS_NS:    // stat() failed
-
-                // We expect stat() to fail at level 0 if there are no writeables in the app.
-                if (entPtr->fts_level != 0)
-                {
-                    LE_CRIT("Stat failed for '%s' (app '%s' <%s>).",
-                            entPtr->fts_path,
-                            appNamePtr,
-                            appMd5Ptr);
-                }
-                break;
-
-            default:
-
-                LE_CRIT("Ignoring unexpected file type %d at '%s' (app '%s' <%s>).",
-                        entPtr->fts_info,
-                        entPtr->fts_path,
-                        appNamePtr,
-                        appMd5Ptr);
-                break;
-        }
-    }
-
-cleanup:
-
-    fts_close(ftsPtr);
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Update a given app's writeable files in the "current" system to match what's in the app's install
  * directory (/legato/apps/<hash>).  Deletes from the current system files that are not in the app's
  * install directory.  Adds to the current system files from the apps' install directory that are
@@ -872,167 +761,8 @@ void system_UpdateCurrentAppWriteableFiles
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char freshWriteablesDir[PATH_MAX];
-
-    int baseDirPathLen = snprintf(freshWriteablesDir,
-                     sizeof(freshWriteablesDir),
-                     "/legato/apps/%s/writeable",
-                     appMd5Ptr);
-    LE_ASSERT(baseDirPathLen < sizeof(freshWriteablesDir));
-
-    char* pathArrayPtr[] = { freshWriteablesDir, NULL };
-    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_LOGICAL, NULL);
-
-    char appLabel[APPSMACK_MAX_LABEL_LEN + 1];
-    supCtrl_GetLabel(appNamePtr, appLabel, sizeof(appLabel));
-
-    FTSENT* entPtr;
-    while ((entPtr = fts_read(ftsPtr)) != NULL)
-    {
-        // Compute the destination path in the current system.
-        char destPath[PATH_MAX];
-        int n = snprintf(destPath,
-                         sizeof(destPath),
-                         "%s/%s%s",
-                         CurrentAppsWriteableDir,
-                         appNamePtr,
-                         entPtr->fts_path + baseDirPathLen);
-        if (n >= sizeof(destPath))
-        {
-            LE_FATAL("Path to writeable file in app '%s' <%s> in current system is too long.",
-                    appNamePtr,
-                    appMd5Ptr);
-        }
-
-        // Act differently depending on whether we are looking at a file or a directory.
-        switch (entPtr->fts_info)
-        {
-            case FTS_D: // Directory visited in pre-order.
-
-                // If this is not the top level directory, create it.
-                if (entPtr->fts_level > 0)
-                {
-                    if (le_dir_MakePath(destPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH ) != LE_OK)
-                    {
-                        LE_FATAL("Failed to create directory '%s'.", destPath);
-                    }
-                }
-                break;
-
-            case FTS_SL:
-
-                LE_FATAL("Symlink in writeable files for app '%s' <%s> (%s).",
-                         appNamePtr,
-                         appMd5Ptr,
-                         entPtr->fts_path);
-                break;
-
-            case FTS_F:
-            {
-                // If the file does not exist in the current running system, add it.
-                if (!file_Exists(destPath))
-                {
-                    if (file_Copy(entPtr->fts_path, destPath, appLabel) != LE_OK)
-                    {
-                        LE_FATAL("Failed to copy");
-                    }
-                }
-
-                break;
-            }
-
-            case FTS_DP: // Directory visited in post-order (ignore).
-            case FTS_NS: // Path doesn't exist (ignore).
-
-                break;
-
-            default:
-
-                LE_EMERG("Unexpected file type %d in app '%s' <%s>.",
-                         entPtr->fts_info,
-                         appNamePtr,
-                         appMd5Ptr);
-                LE_FATAL("Offending path: '%s'.", entPtr->fts_path);
-                break;
-        }
-    }
-
-    fts_close(ftsPtr);
-
-    // Delete files from current app that are not in the app's install dir's writeable files.
-    char appWriteableDirPath[PATH_MAX];
-    baseDirPathLen = snprintf(appWriteableDirPath,
-                              sizeof(appWriteableDirPath),
-                              "%s/%s",
-                              CurrentAppsWriteableDir,
-                              appNamePtr);
-    LE_ASSERT(baseDirPathLen < sizeof(appWriteableDirPath));
-    pathArrayPtr[0] = appWriteableDirPath;
-    ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
-
-    while ((entPtr = fts_read(ftsPtr)) != NULL)
-    {
-        // Compute the equivalent path in the app install directory.
-        char appInstallPath[PATH_MAX];
-        int n = snprintf(appInstallPath,
-                         sizeof(appInstallPath),
-                         "/legato/apps/%s%s",
-                         appMd5Ptr,
-                         entPtr->fts_path + baseDirPathLen);
-        if (n >= sizeof(appInstallPath))
-        {
-            LE_FATAL("Path to writeable file in app '%s' <%s> in app install dir is too long.",
-                     appNamePtr,
-                     appMd5Ptr);
-        }
-
-        // Act differently depending on whether we are looking at a file or a directory.
-        switch (entPtr->fts_info)
-        {
-            case FTS_D: // Directory visited in pre-order.
-
-                // If this does not exist in the new app, delete it.
-                if ((entPtr->fts_level > 0) && (!le_dir_IsDir(appInstallPath)))
-                {
-                    if (le_dir_RemoveRecursive(entPtr->fts_path) != LE_OK)
-                    {
-                        LE_FATAL("Failed to delete directory '%s'.", entPtr->fts_path);
-                    }
-                }
-                break;
-
-            case FTS_DP: // Directory visited in post-order.
-            case FTS_NS: // appsWriteable dir doesn't even exist for this app.
-
-                // Ignore.
-                break;
-
-            case FTS_F:
-            {
-                // If the file does not exist in the new app, delete the file from the current.
-                if (!file_Exists(appInstallPath))
-                {
-                    if (unlink(entPtr->fts_path) != 0)
-                    {
-                        LE_FATAL("Failed to delete file '%s'. (%m)", entPtr->fts_path);
-                    }
-                }
-
-                break;
-            }
-
-            default:
-
-                LE_EMERG("Unexpected file type %d in app '%s' <%s> in current system.",
-                         entPtr->fts_info,
-                         appNamePtr,
-                         appMd5Ptr);
-                LE_FATAL("Offending path: '%s'.", entPtr->fts_path);
-                break;
-        }
-    }
-
-    fts_close(ftsPtr);
+    LE_FATAL_IF(installer_UpdateAppWriteableFiles("current", appMd5Ptr, appNamePtr) != LE_OK,
+                "Failed to update app writeable files in current system.");
 }
 
 
@@ -1052,6 +782,9 @@ void system_RemoveApp
     int n = snprintf(path, sizeof(path), "%s/%s", CurrentAppsWriteableDir, appNamePtr);
 
     LE_ASSERT(n < sizeof(path));
+
+    // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
+    fs_TryLazyUmount(path);
 
     LE_FATAL_IF(le_dir_RemoveRecursive(path) != LE_OK,
                 "Failed to recursively delete '%s'.",
@@ -1133,6 +866,9 @@ le_result_t system_FinishUpdate
     snprintf(newSystemPath, sizeof(newSystemPath), "%s/%d", SystemPath, currentIndex);
     file_Rename(system_UnpackPath, newSystemPath);
 
+    // Set the smackfs permission for new system.
+    SetSystemFilesPermissions(newSystemPath);
+
     return LE_OK;
 }
 
@@ -1163,9 +899,72 @@ le_result_t system_Snapshot
     int currentIndex = system_Index();
 
     system_PrepUnpackDir();
-    if (file_CopyRecursive(CurrentSystemPath, system_UnpackPath, NULL) != LE_OK)
+
+    if (file_CopyRecursive(CURRENT_SYSTEM_PATH, system_UnpackPath, NULL) != LE_OK)
     {
         return LE_FAULT;
+    }
+
+    // Make sure everything under appsWriteable is copied too.  This is necessary because sandboxed
+    // apps under appsWriteable may have been bind mounted unto itself.
+    DIR* appsWriteableDir = opendir(APPS_WRITEABLE_DIR);
+
+    if (appsWriteableDir == NULL)
+    {
+        LE_ERROR("Error opening directory %s.  %m.", APPS_WRITEABLE_DIR);
+        return LE_FAULT;
+    }
+
+
+    while (1)
+    {
+        errno = 0;
+
+        struct dirent* dirPtr = readdir(appsWriteableDir);
+
+        if (dirPtr == NULL)
+        {
+            if (errno != 0)
+            {
+                LE_ERROR("Error reading directory %s.  %m.", APPS_WRITEABLE_DIR);
+                return LE_FAULT;
+            }
+
+            break;
+        }
+
+        if ( (dirPtr->d_type == DT_DIR) &&
+             (strcmp(dirPtr->d_name, ".") != 0) &&
+             (strcmp(dirPtr->d_name, "..") != 0) )
+        {
+            // Get a path name to the source directory.
+            char sourceDir[LIMIT_MAX_PATH_BYTES] = APPS_WRITEABLE_DIR;
+
+            if (le_path_Concat("/", sourceDir, sizeof(sourceDir), dirPtr->d_name, NULL) != LE_OK)
+            {
+                LE_ERROR("Directory name '%s...' is too long.", sourceDir);
+                return LE_FAULT;
+            }
+
+            if (fs_IsMountPoint(sourceDir))
+            {
+                // Get a path name to the destination directory.
+                char destDir[LIMIT_MAX_PATH_BYTES] = "";
+
+                if (le_path_Concat("/", destDir, sizeof(destDir), system_UnpackPath,
+                                   "appsWriteable", dirPtr->d_name, NULL) != LE_OK)
+                {
+                    LE_ERROR("Directory name '%s...' is too long.", destDir);
+                    return LE_FAULT;
+                }
+
+                // Copy directories.
+                if (file_CopyRecursive(sourceDir, destDir, NULL) != LE_OK)
+                {
+                    return LE_FAULT;
+                }
+            }
+        }
     }
 
     // Atomically rename the work dir to the proper index
@@ -1211,7 +1010,7 @@ void system_MarkModified
     {
         fd = open(CurrentModifiedFilePath,
                   O_CREAT | O_WRONLY | O_TRUNC,
-                  S_IRUSR | S_IWUSR);
+                  0644 /* rw-r--r-- */);
     }
     while (   (fd == -1)
            && (errno == EINTR));
@@ -1288,7 +1087,7 @@ void system_MarkBad
 )
 //--------------------------------------------------------------------------------------------------
 {
-    file_WriteStrAtomic(CurrentStatusPath, "bad");
+    file_WriteStrAtomic(CurrentStatusPath, "bad", 0644 /* rw-r--r-- */);
 }
 
 
@@ -1303,7 +1102,7 @@ void system_MarkTried
 )
 //--------------------------------------------------------------------------------------------------
 {
-    file_WriteStrAtomic(CurrentStatusPath, "tried 1");
+    file_WriteStrAtomic(CurrentStatusPath, "tried 1", 0644 /* rw-r--r-- */);
 
     LE_INFO("Current system has been marked \"tried 1\".");
 }
@@ -1320,7 +1119,7 @@ void system_MarkGood
 )
 //--------------------------------------------------------------------------------------------------
 {
-    file_WriteStrAtomic(CurrentStatusPath, "good");
+    file_WriteStrAtomic(CurrentStatusPath, "good", 0644 /* rw-r--r-- */);
 }
 
 
@@ -1501,6 +1300,10 @@ void system_RemoveUnneeded
                     // but the "good" system.
                     if ((status == SYS_GOOD) || (GetStatus(foundSystemPtr) != SYS_GOOD))
                     {
+                        // Attempt to umount the system because it may have been mounted when
+                        // sandboxed apps were created.
+                        fs_TryLazyUmount(entPtr->fts_path);
+
                         if (le_dir_RemoveRecursive(entPtr->fts_path) != LE_OK)
                         {
                             LE_ERROR("Unable to remove '%s'.", entPtr->fts_path);

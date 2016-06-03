@@ -37,7 +37,13 @@ void test_le_hex_StringToBinary(void)
     res = le_hex_StringToBinary("010X02",strlen("010X02"),binResult,sizeof(binResult));
     CU_ASSERT_EQUAL(res,-1);
 
-    res = le_hex_StringToBinary("01002",strlen("01002")+2,binResult,sizeof(binResult));
+    // Test should give -1 because the function will be unable to parse the null terminator as a
+    // hex digit
+    res = le_hex_StringToBinary("0102",strlen("0102")+2,binResult,sizeof(binResult));
+    CU_ASSERT_EQUAL(res,-1);
+
+    // Test should give -1 because of odd input string length
+    res = le_hex_StringToBinary("01023",strlen("01023"),binResult,sizeof(binResult));
     CU_ASSERT_EQUAL(res,-1);
 
     res = le_hex_StringToBinary(hexString,strlen(hexString),binResult,sizeof(binResult));
@@ -67,11 +73,33 @@ void test_le_hex_BinaryToString(void)
     CU_PASS("le_hex_BinaryToString");
 }
 
+void test_le_hex_HexaToInteger(void)
+{
+    int result;
+
+    result = le_hex_HexaToInteger("0x12Ab");
+    CU_ASSERT_EQUAL(result, -1);
+
+    result = le_hex_HexaToInteger("-12Ab");
+    CU_ASSERT_EQUAL(result, -1);
+
+    result = le_hex_HexaToInteger("1G2Ab");
+    CU_ASSERT_EQUAL(result, -1);
+
+    // This test is valid as long as sizeof(int) <= 8
+    result = le_hex_HexaToInteger("1234567890ABCDEF1");
+    CU_ASSERT_EQUAL(result, -1);
+
+    result = le_hex_HexaToInteger("12Ab");
+    CU_ASSERT_EQUAL(result, 0x12AB);
+}
+
 COMPONENT_INIT
 {
     CU_TestInfo test_array[] = {
-    { "Convert HexString to binary" , test_le_hex_StringToBinary },
-    { "Convert Binary to HexString" , test_le_hex_BinaryToString },
+    { "Convert HexString to binary", test_le_hex_StringToBinary },
+    { "Convert Binary to HexString", test_le_hex_BinaryToString },
+    { "Convert hex string to int",   test_le_hex_HexaToInteger },
     CU_TEST_INFO_NULL,
     };
 

@@ -52,6 +52,9 @@
  * - Binary content with le_sms_SetBinary(), total length is set with this API, maximum 140 bytes.
  * - PDU content with le_sms_SetPDU(), total length is set with this API, max 36 (header) + 140
  *  (payload) bytes long.
+ * - UCS2 content (16-bit format) with le_sms_SetUCS2(), total length is set with this API, maximum
+ *  70 characters (140 bytes).
+ *
  * - A specific timeout value can be used with le_sms_SetTimeout() API.
  *
  * After the Msg object is ready, call @c le_sms_Send().
@@ -68,7 +71,7 @@
  *
  * Please refer to @ref c_smsSampleMO page to get an example of SMS message sending.
  *
- * @section le_sms_ops_async_sending Sending asynchronously a message.
+ * @section le_sms_ops_async_sending Sending asynchronously a message
 
  * To send an asynchronous message, le_sms_SendAsync() API can be called instead of le_sms_Send()
  *  and a specific timeout value can be used with le_sms_SetTimeout() API.
@@ -112,9 +115,10 @@
  * - le_sms_GetFormat() - determine if it is a binary or a text message.
  * - le_sms_GetSenderTel() - get the sender's Telephone number.
  * - le_sms_GetTimeStamp() - get the timestamp sets by the Service Center.
- * - le_sms_GetUserdataLen() - get the message content (text or binary) length.
- * - le_sms_GetPDULen() - get the PDU message .
+ * - le_sms_GetUserdataLen() - get the message content (text, binary or UCS2) length.
+ * - le_sms_GetPDULen() - get the PDU message length.
  * - le_sms_GetText() - get the message text.
+ * - le_sms_GetUCS2() - get the UCS2 message content (16-bit format).
  * - le_sms_GetBinary() - get the message binary content.
  * - le_sms_GetPDU() - get the message PDU data.
  * - le_sms_GetType() - get the message type.
@@ -123,8 +127,6 @@
  * all called and get a different message object reference.
  *
  * @note - For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
- *
- * @note - 16 bit UCS2 format is not supported.
  *
  * If a succession of messages is received, a new Message object is created for each, and
  * the handler is called for each new message.
@@ -188,16 +190,16 @@
  * can't be used but the message reference shall be delete with le_sms_Delete().
  *
  * - le_sms_GetFormat() - determine if it is a binary or a text message.
- * - le_sms_GetUserdataLen() - get the message content (text or binary) length.
- * - le_sms_GetPDULen() - get the PDU message received.
+ * - le_sms_GetUserdataLen() - get the message content (text, binary or UCS2) length.
+ * - le_sms_GetPDULen() - get the PDU message received length.
  * - le_sms_GetText() - get the message text.
  * - le_sms_GetBinary() - get the message binary content.
+ * - le_sms_GetUCS2() - get the UCS2 message content (16-bit format).
  * - le_sms_GetPDU() - get the message PDU data received length.
  * - le_sms_GetCellBroadcastId() - get the message identifier received (3GPP 23.41).
  * - le_sms_GetCellBroadcastSerialNumber() get the message Serial Number received (3GPP 23.41).
  *
  * @note - Format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
- * @note - 16 bit UCS2 format is not supported
  *
  * A sample code that implements a function for SMS Cell Broadcast reception can be found in
  * \b smsCBTest.c file (please refer to @ref c_smsCbSample page).
@@ -355,6 +357,20 @@ DEFINE  BINARY_MAX_BYTES  = (140);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The UCS2 message can be up to 140 bytes long (70 characters).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  UCS2_MAX_BYTES  = (140);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The UCS2 message can be up to 70 characters (140 bytes long).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  UCS2_MAX_CHARS  = (70);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The PDU payload bytes long.
  */
 //--------------------------------------------------------------------------------------------------
@@ -377,6 +393,7 @@ ENUM Format
     FORMAT_PDU,       ///< PDU message format.
     FORMAT_TEXT,      ///< Text message format.
     FORMAT_BINARY,    ///< Binary message format.
+    FORMAT_UCS2,      ///< UCS2 message format.
     FORMAT_UNKNOWN    ///< Unknown message format.
 };
 
@@ -664,7 +681,7 @@ HANDLER RxMessageHandler
 //--------------------------------------------------------------------------------------------------
 EVENT RxMessage
 (
-    handler RxMessageHandler
+    RxMessageHandler handler
 );
 
 
@@ -773,6 +790,30 @@ FUNCTION le_result_t SetBinary
     uint8   bin[BINARY_MAX_BYTES] IN  ///< Binary data.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the UCS2 message content (16-bit format).
+ *
+ * @return
+ *  - LE_NOT_PERMITTED Message is Read-Only.
+ *  - LE_BAD_PARAMETER Length of the data is equal to zero.
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If length of the data is too long (max LE_SMS_UCS2_MAX_CHARS), it is a fatal
+ *       error, the function will not return.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetUCS2
+(
+    Msg     msgRef,                  ///< Reference to the message object.
+    uint16  ucs2[UCS2_MAX_CHARS] IN  ///< UCS2 message.
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the PDU message content.
@@ -834,7 +875,7 @@ FUNCTION le_result_t Send
 FUNCTION le_result_t SendAsync
 (
     Msg msgRef IN,                         ///< Reference to the message object.
-    handler  CallbackResult                ///< CallBack for sending result.
+    CallbackResult handler                 ///< CallBack for sending result.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -867,7 +908,7 @@ FUNCTION ErrorCode3GPP2 Get3GPP2ErrorCode
  *       LE_SMS_ERROR_3GPP_MAX is returned.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void GetErrorCode
+FUNCTION GetErrorCode
 (
     Msg msgRef IN,            ///< Reference to the message object.
     ErrorCode  rpCause OUT,   ///< Radio Protocol cause code.
@@ -905,9 +946,9 @@ FUNCTION int32 GetPlatformSpecificErrorCode
 //--------------------------------------------------------------------------------------------------
 FUNCTION Msg SendText
 (
-    string   destStr[le_mdmDefs.PHONE_NUM_MAX_LEN] IN, ///< Telephone number string.
-    string   textStr[TEXT_MAX_LEN] IN,                 ///< SMS text.
-    handler  CallbackResult                            ///< CallBack for sending result.
+    string         destStr[le_mdmDefs.PHONE_NUM_MAX_LEN] IN, ///< Telephone number string.
+    string         textStr[TEXT_MAX_LEN] IN,                 ///< SMS text.
+    CallbackResult handler                                   ///< CallBack for sending result.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -922,8 +963,8 @@ FUNCTION Msg SendText
 //--------------------------------------------------------------------------------------------------
 FUNCTION Msg SendPdu
 (
-    uint8    pdu[PDU_MAX_BYTES] IN,                   ///< PDU message.
-    handler  CallbackResult                           ///< CallBack for sending result.
+    uint8          pdu[PDU_MAX_BYTES] IN,           ///< PDU message.
+    CallbackResult handler                          ///< CallBack for sending result.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -956,7 +997,7 @@ FUNCTION Delete
  * @note For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_Format_t GetFormat
+FUNCTION Format GetFormat
 (
     Msg msgRef ///< Reference to the message object.
 );
@@ -991,8 +1032,8 @@ FUNCTION Type GetType
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCellBroadcastId
 (
-    Msg msgRef IN,          ///< Reference to the message object.
-    uint16_t messageId OUT  ///< Cell Broadcast Message Identifier.
+    Msg    msgRef IN,     ///< Reference to the message object.
+    uint16 messageId OUT  ///< Cell Broadcast Message Identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1009,8 +1050,8 @@ FUNCTION le_result_t GetCellBroadcastId
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCellBroadcastSerialNumber
 (
-    Msg msgRef IN,             ///< Reference to the message object.
-    uint16_t serialNumber OUT  ///< Cell Broadcast Serial Number.
+    Msg    msgRef IN,        ///< Reference to the message object.
+    uint16 serialNumber OUT  ///< Cell Broadcast Serial Number.
 );
 
 
@@ -1067,14 +1108,14 @@ FUNCTION le_result_t GetTimeStamp
 /**
  * Get the message Length value.
  *
- * @return Number of characters for text messages, or the length of the data in bytes for raw
- *         binary messages.
+ * @return Number of characters for text and UCS2 messages, or the length of the data in bytes for
+ *  raw binary messages.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION size_t GetUserdataLen
+FUNCTION size GetUserdataLen
 (
     Msg msgRef ///< Reference to the message object.
 );
@@ -1124,6 +1165,27 @@ FUNCTION le_result_t GetBinary
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the UCS2 Message (16-bit format).
+ *
+ * Output parameters are updated with the UCS2 message content and the number of characters. If
+ * the UCS2 data exceed the value of the length input parameter, a LE_OVERFLOW error
+ * code is returned and 'ucs2Ptr' is filled until of the number of chars specified.
+ *
+ * @return
+ *  - LE_FORMAT_ERROR  Message is not in binary format
+ *  - LE_OVERFLOW      Message length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUCS2
+(
+    Msg     msgRef,                  ///< Reference to the message object.
+    uint16  ucs2[UCS2_MAX_CHARS] OUT ///< UCS2 message.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the PDU message.
  *
  * Output parameters are updated with the PDU message content and the length of the PDU message
@@ -1154,7 +1216,7 @@ FUNCTION le_result_t GetPDU
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION size_t GetPDULen
+FUNCTION size GetPDULen
 (
     Msg msgRef ///< Reference to the message object.
 );
@@ -1202,7 +1264,7 @@ FUNCTION MsgList CreateRxMsgList
  *      reference for validity.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void DeleteList
+FUNCTION DeleteList
 (
     MsgList msgListRef ///< Messages list.
 );
@@ -1252,7 +1314,7 @@ FUNCTION Msg GetNext
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_sms_Status_t GetStatus
+FUNCTION Status GetStatus
 (
     Msg msgRef ///< Messages list.
 );
@@ -1265,7 +1327,7 @@ FUNCTION le_sms_Status_t GetStatus
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void MarkRead
+FUNCTION MarkRead
 (
     Msg msgRef ///< Messages list.
 );
@@ -1278,7 +1340,7 @@ FUNCTION void MarkRead
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION void MarkUnread
+FUNCTION MarkUnread
 (
     Msg msgRef ///< Messages list.
 );

@@ -1,10 +1,10 @@
 /** @page legatoServicesUpdatePack Update Pack Format
 
-This page describes the format of update pack files. 
+This page describes the format of update pack files.
 
 See @ref legatoServicesUpdate for more info on tools available for creating update packs.
 
-The Update Daemon accepts <b>update pack</b> files that contain software/firmware update 
+The Update Daemon accepts <b>update pack</b> files that contain software/firmware update
 instructions and associated data (e.g., libraries, executables, resource files).
 
 Update packs can have multiple @b sections. Each @b section starts with a JSON @b description.

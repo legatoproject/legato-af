@@ -65,6 +65,43 @@ TestMatches () {
 }
 
 #---------------------------------------------------------------------------------------------------
+# Install the provided app on the target.
+#
+# params:
+#       app             Either an app name (and it will find the update file) or an update file
+#---------------------------------------------------------------------------------------------------
+InstallApp () {
+    app=$1
+    file=$app
+
+    if ! [ -e $file ]; then
+        if [ -z "$targetType" ]; then
+            echo "Unable to install '$app', $$targetType unset"
+            exit 1
+        fi
+
+        file="${file}.${targetType}.update"
+        if ! [ -e $file ]; then
+            echo "Unable to install '$app': no update file found"
+            exit 1
+        fi
+    fi
+
+    echo "Installing '$app' (instapp $file $targetAddr)"
+    instapp $file $targetAddr
+    CheckRet
+}
+
+#---------------------------------------------------------------------------------------------------
+# Clear logs on target.
+#---------------------------------------------------------------------------------------------------
+ClearLogs () {
+    echo "Clear the logs."
+    ssh root@$targetAddr 'export PATH=/sbin:$PATH && ( /etc/init.d/syslog stop || true ) && /etc/init.d/syslog start'
+    CheckRet
+}
+
+#---------------------------------------------------------------------------------------------------
 # Checks if the logStr is in the logs.
 #
 # params:
@@ -78,6 +115,7 @@ CheckLogStr () {
     expectedMatches=$2
     logStr=$3
 
+    echo "Looking for $logStr"
     numMatches=$(ssh root@$targetAddr "/sbin/logread | grep -c \"$logStr\"")
 
     echo "$numMatches matches for '$logStr' "

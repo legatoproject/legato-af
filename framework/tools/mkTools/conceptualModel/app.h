@@ -38,10 +38,11 @@ struct App_t
     enum {AUTO, MANUAL} startTrigger;    ///< Start automatically or only when asked?
 
     bool isPreloaded;   ///< true = exclude app update from system update (app pre-loaded on target)
+    std::string preloadedMd5; ///< MD5 hash of preloaded app (empty if not specified).
 
     std::set<Component_t*> components;  ///< Set of components used in this app.
 
-    std::list<Exe_t*> executables;  ///< List of executables defined in this app.
+    std::map<std::string, Exe_t*> executables;  ///< Collection of executables defined in this app.
 
     std::list<FileSystemObject_t*> bundledFiles; ///< List of files to be bundled in the app.
     std::list<FileSystemObject_t*> bundledDirs;  ///< List of directories to be bundled in the app.
@@ -95,6 +96,9 @@ struct App_t
     ApiInterfaceInstance_t* FindInterface(const parseTree::Token_t* exeTokenPtr,
                                           const parseTree::Token_t* componentTokenPtr,
                                           const parseTree::Token_t* interfaceTokenPtr);
+
+    // Get the path to the app's root.cfg file relative to the build's working directory.
+    std::string ConfigFilePath() const;
 };
 
 

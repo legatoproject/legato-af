@@ -123,13 +123,13 @@ le_gpioPin1_ChangeEventHandlerRef_t le_gpioPin1_AddChangeEventHandler
 )
 {
     return (le_gpioPin1_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin1, gpioPin1_InputMonitorHandlerFunc, 
+                gpioRefPin1, gpioPin1_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin1_RemoveChangeEventHandler(le_gpioPin1_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin1, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin1, addHandlerRef);
 }
 
 le_result_t le_gpioPin1_SetEdgeSense (le_gpioPin1_Edge_t trigger)
@@ -144,7 +144,7 @@ le_result_t le_gpioPin1_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin1 boilerplate functions. 
+ * End of Pin1 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -257,13 +257,13 @@ le_gpioPin2_ChangeEventHandlerRef_t le_gpioPin2_AddChangeEventHandler
 )
 {
     return (le_gpioPin2_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin2, gpioPin2_InputMonitorHandlerFunc, 
+                gpioRefPin2, gpioPin2_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin2_RemoveChangeEventHandler(le_gpioPin2_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin2, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin2, addHandlerRef);
 }
 
 le_result_t le_gpioPin2_SetEdgeSense (le_gpioPin2_Edge_t trigger)
@@ -278,7 +278,7 @@ le_result_t le_gpioPin2_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin2 boilerplate functions. 
+ * End of Pin2 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -391,13 +391,13 @@ le_gpioPin3_ChangeEventHandlerRef_t le_gpioPin3_AddChangeEventHandler
 )
 {
     return (le_gpioPin3_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin3, gpioPin3_InputMonitorHandlerFunc, 
+                gpioRefPin3, gpioPin3_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin3_RemoveChangeEventHandler(le_gpioPin3_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin3, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin3, addHandlerRef);
 }
 
 le_result_t le_gpioPin3_SetEdgeSense (le_gpioPin3_Edge_t trigger)
@@ -412,7 +412,7 @@ le_result_t le_gpioPin3_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin3 boilerplate functions. 
+ * End of Pin3 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -525,13 +525,13 @@ le_gpioPin4_ChangeEventHandlerRef_t le_gpioPin4_AddChangeEventHandler
 )
 {
     return (le_gpioPin4_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin4, gpioPin4_InputMonitorHandlerFunc, 
+                gpioRefPin4, gpioPin4_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin4_RemoveChangeEventHandler(le_gpioPin4_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin4, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin4, addHandlerRef);
 }
 
 le_result_t le_gpioPin4_SetEdgeSense (le_gpioPin4_Edge_t trigger)
@@ -546,7 +546,7 @@ le_result_t le_gpioPin4_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin4 boilerplate functions. 
+ * End of Pin4 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -659,13 +659,13 @@ le_gpioPin5_ChangeEventHandlerRef_t le_gpioPin5_AddChangeEventHandler
 )
 {
     return (le_gpioPin5_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin5, gpioPin5_InputMonitorHandlerFunc, 
+                gpioRefPin5, gpioPin5_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin5_RemoveChangeEventHandler(le_gpioPin5_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin5, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin5, addHandlerRef);
 }
 
 le_result_t le_gpioPin5_SetEdgeSense (le_gpioPin5_Edge_t trigger)
@@ -680,7 +680,7 @@ le_result_t le_gpioPin5_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin5 boilerplate functions. 
+ * End of Pin5 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -793,13 +793,13 @@ le_gpioPin6_ChangeEventHandlerRef_t le_gpioPin6_AddChangeEventHandler
 )
 {
     return (le_gpioPin6_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin6, gpioPin6_InputMonitorHandlerFunc, 
+                gpioRefPin6, gpioPin6_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin6_RemoveChangeEventHandler(le_gpioPin6_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin6, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin6, addHandlerRef);
 }
 
 le_result_t le_gpioPin6_SetEdgeSense (le_gpioPin6_Edge_t trigger)
@@ -814,7 +814,7 @@ le_result_t le_gpioPin6_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin6 boilerplate functions. 
+ * End of Pin6 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -927,13 +927,13 @@ le_gpioPin7_ChangeEventHandlerRef_t le_gpioPin7_AddChangeEventHandler
 )
 {
     return (le_gpioPin7_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin7, gpioPin7_InputMonitorHandlerFunc, 
+                gpioRefPin7, gpioPin7_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin7_RemoveChangeEventHandler(le_gpioPin7_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin7, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin7, addHandlerRef);
 }
 
 le_result_t le_gpioPin7_SetEdgeSense (le_gpioPin7_Edge_t trigger)
@@ -948,7 +948,7 @@ le_result_t le_gpioPin7_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin7 boilerplate functions. 
+ * End of Pin7 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1061,13 +1061,13 @@ le_gpioPin8_ChangeEventHandlerRef_t le_gpioPin8_AddChangeEventHandler
 )
 {
     return (le_gpioPin8_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin8, gpioPin8_InputMonitorHandlerFunc, 
+                gpioRefPin8, gpioPin8_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin8_RemoveChangeEventHandler(le_gpioPin8_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin8, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin8, addHandlerRef);
 }
 
 le_result_t le_gpioPin8_SetEdgeSense (le_gpioPin8_Edge_t trigger)
@@ -1082,7 +1082,7 @@ le_result_t le_gpioPin8_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin8 boilerplate functions. 
+ * End of Pin8 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1195,13 +1195,13 @@ le_gpioPin9_ChangeEventHandlerRef_t le_gpioPin9_AddChangeEventHandler
 )
 {
     return (le_gpioPin9_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin9, gpioPin9_InputMonitorHandlerFunc, 
+                gpioRefPin9, gpioPin9_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin9_RemoveChangeEventHandler(le_gpioPin9_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin9, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin9, addHandlerRef);
 }
 
 le_result_t le_gpioPin9_SetEdgeSense (le_gpioPin9_Edge_t trigger)
@@ -1216,7 +1216,7 @@ le_result_t le_gpioPin9_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin9 boilerplate functions. 
+ * End of Pin9 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1329,13 +1329,13 @@ le_gpioPin10_ChangeEventHandlerRef_t le_gpioPin10_AddChangeEventHandler
 )
 {
     return (le_gpioPin10_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin10, gpioPin10_InputMonitorHandlerFunc, 
+                gpioRefPin10, gpioPin10_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin10_RemoveChangeEventHandler(le_gpioPin10_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin10, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin10, addHandlerRef);
 }
 
 le_result_t le_gpioPin10_SetEdgeSense (le_gpioPin10_Edge_t trigger)
@@ -1350,7 +1350,7 @@ le_result_t le_gpioPin10_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin10 boilerplate functions. 
+ * End of Pin10 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1463,13 +1463,13 @@ le_gpioPin11_ChangeEventHandlerRef_t le_gpioPin11_AddChangeEventHandler
 )
 {
     return (le_gpioPin11_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin11, gpioPin11_InputMonitorHandlerFunc, 
+                gpioRefPin11, gpioPin11_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin11_RemoveChangeEventHandler(le_gpioPin11_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin11, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin11, addHandlerRef);
 }
 
 le_result_t le_gpioPin11_SetEdgeSense (le_gpioPin11_Edge_t trigger)
@@ -1484,7 +1484,7 @@ le_result_t le_gpioPin11_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin11 boilerplate functions. 
+ * End of Pin11 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1597,13 +1597,13 @@ le_gpioPin12_ChangeEventHandlerRef_t le_gpioPin12_AddChangeEventHandler
 )
 {
     return (le_gpioPin12_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin12, gpioPin12_InputMonitorHandlerFunc, 
+                gpioRefPin12, gpioPin12_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin12_RemoveChangeEventHandler(le_gpioPin12_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin12, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin12, addHandlerRef);
 }
 
 le_result_t le_gpioPin12_SetEdgeSense (le_gpioPin12_Edge_t trigger)
@@ -1618,7 +1618,7 @@ le_result_t le_gpioPin12_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin12 boilerplate functions. 
+ * End of Pin12 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1731,13 +1731,13 @@ le_gpioPin13_ChangeEventHandlerRef_t le_gpioPin13_AddChangeEventHandler
 )
 {
     return (le_gpioPin13_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin13, gpioPin13_InputMonitorHandlerFunc, 
+                gpioRefPin13, gpioPin13_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin13_RemoveChangeEventHandler(le_gpioPin13_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin13, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin13, addHandlerRef);
 }
 
 le_result_t le_gpioPin13_SetEdgeSense (le_gpioPin13_Edge_t trigger)
@@ -1752,7 +1752,7 @@ le_result_t le_gpioPin13_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin13 boilerplate functions. 
+ * End of Pin13 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1865,13 +1865,13 @@ le_gpioPin14_ChangeEventHandlerRef_t le_gpioPin14_AddChangeEventHandler
 )
 {
     return (le_gpioPin14_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin14, gpioPin14_InputMonitorHandlerFunc, 
+                gpioRefPin14, gpioPin14_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin14_RemoveChangeEventHandler(le_gpioPin14_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin14, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin14, addHandlerRef);
 }
 
 le_result_t le_gpioPin14_SetEdgeSense (le_gpioPin14_Edge_t trigger)
@@ -1886,7 +1886,7 @@ le_result_t le_gpioPin14_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin14 boilerplate functions. 
+ * End of Pin14 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -1999,13 +1999,13 @@ le_gpioPin15_ChangeEventHandlerRef_t le_gpioPin15_AddChangeEventHandler
 )
 {
     return (le_gpioPin15_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin15, gpioPin15_InputMonitorHandlerFunc, 
+                gpioRefPin15, gpioPin15_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin15_RemoveChangeEventHandler(le_gpioPin15_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin15, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin15, addHandlerRef);
 }
 
 le_result_t le_gpioPin15_SetEdgeSense (le_gpioPin15_Edge_t trigger)
@@ -2020,7 +2020,7 @@ le_result_t le_gpioPin15_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin15 boilerplate functions. 
+ * End of Pin15 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2133,13 +2133,13 @@ le_gpioPin16_ChangeEventHandlerRef_t le_gpioPin16_AddChangeEventHandler
 )
 {
     return (le_gpioPin16_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin16, gpioPin16_InputMonitorHandlerFunc, 
+                gpioRefPin16, gpioPin16_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin16_RemoveChangeEventHandler(le_gpioPin16_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin16, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin16, addHandlerRef);
 }
 
 le_result_t le_gpioPin16_SetEdgeSense (le_gpioPin16_Edge_t trigger)
@@ -2154,7 +2154,7 @@ le_result_t le_gpioPin16_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin16 boilerplate functions. 
+ * End of Pin16 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2267,13 +2267,13 @@ le_gpioPin17_ChangeEventHandlerRef_t le_gpioPin17_AddChangeEventHandler
 )
 {
     return (le_gpioPin17_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin17, gpioPin17_InputMonitorHandlerFunc, 
+                gpioRefPin17, gpioPin17_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin17_RemoveChangeEventHandler(le_gpioPin17_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin17, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin17, addHandlerRef);
 }
 
 le_result_t le_gpioPin17_SetEdgeSense (le_gpioPin17_Edge_t trigger)
@@ -2288,7 +2288,7 @@ le_result_t le_gpioPin17_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin17 boilerplate functions. 
+ * End of Pin17 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2401,13 +2401,13 @@ le_gpioPin18_ChangeEventHandlerRef_t le_gpioPin18_AddChangeEventHandler
 )
 {
     return (le_gpioPin18_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin18, gpioPin18_InputMonitorHandlerFunc, 
+                gpioRefPin18, gpioPin18_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin18_RemoveChangeEventHandler(le_gpioPin18_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin18, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin18, addHandlerRef);
 }
 
 le_result_t le_gpioPin18_SetEdgeSense (le_gpioPin18_Edge_t trigger)
@@ -2422,7 +2422,7 @@ le_result_t le_gpioPin18_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin18 boilerplate functions. 
+ * End of Pin18 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2535,13 +2535,13 @@ le_gpioPin19_ChangeEventHandlerRef_t le_gpioPin19_AddChangeEventHandler
 )
 {
     return (le_gpioPin19_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin19, gpioPin19_InputMonitorHandlerFunc, 
+                gpioRefPin19, gpioPin19_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin19_RemoveChangeEventHandler(le_gpioPin19_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin19, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin19, addHandlerRef);
 }
 
 le_result_t le_gpioPin19_SetEdgeSense (le_gpioPin19_Edge_t trigger)
@@ -2556,7 +2556,7 @@ le_result_t le_gpioPin19_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin19 boilerplate functions. 
+ * End of Pin19 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2669,13 +2669,13 @@ le_gpioPin20_ChangeEventHandlerRef_t le_gpioPin20_AddChangeEventHandler
 )
 {
     return (le_gpioPin20_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin20, gpioPin20_InputMonitorHandlerFunc, 
+                gpioRefPin20, gpioPin20_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin20_RemoveChangeEventHandler(le_gpioPin20_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin20, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin20, addHandlerRef);
 }
 
 le_result_t le_gpioPin20_SetEdgeSense (le_gpioPin20_Edge_t trigger)
@@ -2690,7 +2690,7 @@ le_result_t le_gpioPin20_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin20 boilerplate functions. 
+ * End of Pin20 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2803,13 +2803,13 @@ le_gpioPin21_ChangeEventHandlerRef_t le_gpioPin21_AddChangeEventHandler
 )
 {
     return (le_gpioPin21_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin21, gpioPin21_InputMonitorHandlerFunc, 
+                gpioRefPin21, gpioPin21_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin21_RemoveChangeEventHandler(le_gpioPin21_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin21, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin21, addHandlerRef);
 }
 
 le_result_t le_gpioPin21_SetEdgeSense (le_gpioPin21_Edge_t trigger)
@@ -2824,7 +2824,7 @@ le_result_t le_gpioPin21_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin21 boilerplate functions. 
+ * End of Pin21 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -2937,13 +2937,13 @@ le_gpioPin22_ChangeEventHandlerRef_t le_gpioPin22_AddChangeEventHandler
 )
 {
     return (le_gpioPin22_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin22, gpioPin22_InputMonitorHandlerFunc, 
+                gpioRefPin22, gpioPin22_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin22_RemoveChangeEventHandler(le_gpioPin22_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin22, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin22, addHandlerRef);
 }
 
 le_result_t le_gpioPin22_SetEdgeSense (le_gpioPin22_Edge_t trigger)
@@ -2958,7 +2958,7 @@ le_result_t le_gpioPin22_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin22 boilerplate functions. 
+ * End of Pin22 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3071,13 +3071,13 @@ le_gpioPin23_ChangeEventHandlerRef_t le_gpioPin23_AddChangeEventHandler
 )
 {
     return (le_gpioPin23_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin23, gpioPin23_InputMonitorHandlerFunc, 
+                gpioRefPin23, gpioPin23_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin23_RemoveChangeEventHandler(le_gpioPin23_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin23, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin23, addHandlerRef);
 }
 
 le_result_t le_gpioPin23_SetEdgeSense (le_gpioPin23_Edge_t trigger)
@@ -3092,7 +3092,7 @@ le_result_t le_gpioPin23_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin23 boilerplate functions. 
+ * End of Pin23 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3205,13 +3205,13 @@ le_gpioPin24_ChangeEventHandlerRef_t le_gpioPin24_AddChangeEventHandler
 )
 {
     return (le_gpioPin24_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin24, gpioPin24_InputMonitorHandlerFunc, 
+                gpioRefPin24, gpioPin24_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin24_RemoveChangeEventHandler(le_gpioPin24_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin24, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin24, addHandlerRef);
 }
 
 le_result_t le_gpioPin24_SetEdgeSense (le_gpioPin24_Edge_t trigger)
@@ -3226,7 +3226,7 @@ le_result_t le_gpioPin24_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin24 boilerplate functions. 
+ * End of Pin24 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3339,13 +3339,13 @@ le_gpioPin25_ChangeEventHandlerRef_t le_gpioPin25_AddChangeEventHandler
 )
 {
     return (le_gpioPin25_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin25, gpioPin25_InputMonitorHandlerFunc, 
+                gpioRefPin25, gpioPin25_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin25_RemoveChangeEventHandler(le_gpioPin25_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin25, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin25, addHandlerRef);
 }
 
 le_result_t le_gpioPin25_SetEdgeSense (le_gpioPin25_Edge_t trigger)
@@ -3360,7 +3360,7 @@ le_result_t le_gpioPin25_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin25 boilerplate functions. 
+ * End of Pin25 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3473,13 +3473,13 @@ le_gpioPin26_ChangeEventHandlerRef_t le_gpioPin26_AddChangeEventHandler
 )
 {
     return (le_gpioPin26_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin26, gpioPin26_InputMonitorHandlerFunc, 
+                gpioRefPin26, gpioPin26_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin26_RemoveChangeEventHandler(le_gpioPin26_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin26, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin26, addHandlerRef);
 }
 
 le_result_t le_gpioPin26_SetEdgeSense (le_gpioPin26_Edge_t trigger)
@@ -3494,7 +3494,7 @@ le_result_t le_gpioPin26_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin26 boilerplate functions. 
+ * End of Pin26 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3607,13 +3607,13 @@ le_gpioPin27_ChangeEventHandlerRef_t le_gpioPin27_AddChangeEventHandler
 )
 {
     return (le_gpioPin27_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin27, gpioPin27_InputMonitorHandlerFunc, 
+                gpioRefPin27, gpioPin27_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin27_RemoveChangeEventHandler(le_gpioPin27_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin27, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin27, addHandlerRef);
 }
 
 le_result_t le_gpioPin27_SetEdgeSense (le_gpioPin27_Edge_t trigger)
@@ -3628,7 +3628,7 @@ le_result_t le_gpioPin27_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin27 boilerplate functions. 
+ * End of Pin27 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3741,13 +3741,13 @@ le_gpioPin28_ChangeEventHandlerRef_t le_gpioPin28_AddChangeEventHandler
 )
 {
     return (le_gpioPin28_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin28, gpioPin28_InputMonitorHandlerFunc, 
+                gpioRefPin28, gpioPin28_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin28_RemoveChangeEventHandler(le_gpioPin28_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin28, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin28, addHandlerRef);
 }
 
 le_result_t le_gpioPin28_SetEdgeSense (le_gpioPin28_Edge_t trigger)
@@ -3762,7 +3762,7 @@ le_result_t le_gpioPin28_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin28 boilerplate functions. 
+ * End of Pin28 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -3875,13 +3875,13 @@ le_gpioPin29_ChangeEventHandlerRef_t le_gpioPin29_AddChangeEventHandler
 )
 {
     return (le_gpioPin29_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin29, gpioPin29_InputMonitorHandlerFunc, 
+                gpioRefPin29, gpioPin29_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin29_RemoveChangeEventHandler(le_gpioPin29_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin29, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin29, addHandlerRef);
 }
 
 le_result_t le_gpioPin29_SetEdgeSense (le_gpioPin29_Edge_t trigger)
@@ -3896,7 +3896,7 @@ le_result_t le_gpioPin29_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin29 boilerplate functions. 
+ * End of Pin29 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4009,13 +4009,13 @@ le_gpioPin30_ChangeEventHandlerRef_t le_gpioPin30_AddChangeEventHandler
 )
 {
     return (le_gpioPin30_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin30, gpioPin30_InputMonitorHandlerFunc, 
+                gpioRefPin30, gpioPin30_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin30_RemoveChangeEventHandler(le_gpioPin30_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin30, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin30, addHandlerRef);
 }
 
 le_result_t le_gpioPin30_SetEdgeSense (le_gpioPin30_Edge_t trigger)
@@ -4030,7 +4030,7 @@ le_result_t le_gpioPin30_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin30 boilerplate functions. 
+ * End of Pin30 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4143,13 +4143,13 @@ le_gpioPin31_ChangeEventHandlerRef_t le_gpioPin31_AddChangeEventHandler
 )
 {
     return (le_gpioPin31_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin31, gpioPin31_InputMonitorHandlerFunc, 
+                gpioRefPin31, gpioPin31_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin31_RemoveChangeEventHandler(le_gpioPin31_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin31, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin31, addHandlerRef);
 }
 
 le_result_t le_gpioPin31_SetEdgeSense (le_gpioPin31_Edge_t trigger)
@@ -4164,7 +4164,7 @@ le_result_t le_gpioPin31_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin31 boilerplate functions. 
+ * End of Pin31 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4277,13 +4277,13 @@ le_gpioPin32_ChangeEventHandlerRef_t le_gpioPin32_AddChangeEventHandler
 )
 {
     return (le_gpioPin32_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin32, gpioPin32_InputMonitorHandlerFunc, 
+                gpioRefPin32, gpioPin32_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin32_RemoveChangeEventHandler(le_gpioPin32_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin32, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin32, addHandlerRef);
 }
 
 le_result_t le_gpioPin32_SetEdgeSense (le_gpioPin32_Edge_t trigger)
@@ -4298,7 +4298,7 @@ le_result_t le_gpioPin32_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin32 boilerplate functions. 
+ * End of Pin32 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4411,13 +4411,13 @@ le_gpioPin33_ChangeEventHandlerRef_t le_gpioPin33_AddChangeEventHandler
 )
 {
     return (le_gpioPin33_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin33, gpioPin33_InputMonitorHandlerFunc, 
+                gpioRefPin33, gpioPin33_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin33_RemoveChangeEventHandler(le_gpioPin33_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin33, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin33, addHandlerRef);
 }
 
 le_result_t le_gpioPin33_SetEdgeSense (le_gpioPin33_Edge_t trigger)
@@ -4432,7 +4432,7 @@ le_result_t le_gpioPin33_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin33 boilerplate functions. 
+ * End of Pin33 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4545,13 +4545,13 @@ le_gpioPin34_ChangeEventHandlerRef_t le_gpioPin34_AddChangeEventHandler
 )
 {
     return (le_gpioPin34_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin34, gpioPin34_InputMonitorHandlerFunc, 
+                gpioRefPin34, gpioPin34_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin34_RemoveChangeEventHandler(le_gpioPin34_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin34, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin34, addHandlerRef);
 }
 
 le_result_t le_gpioPin34_SetEdgeSense (le_gpioPin34_Edge_t trigger)
@@ -4566,7 +4566,7 @@ le_result_t le_gpioPin34_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin34 boilerplate functions. 
+ * End of Pin34 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4679,13 +4679,13 @@ le_gpioPin35_ChangeEventHandlerRef_t le_gpioPin35_AddChangeEventHandler
 )
 {
     return (le_gpioPin35_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin35, gpioPin35_InputMonitorHandlerFunc, 
+                gpioRefPin35, gpioPin35_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin35_RemoveChangeEventHandler(le_gpioPin35_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin35, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin35, addHandlerRef);
 }
 
 le_result_t le_gpioPin35_SetEdgeSense (le_gpioPin35_Edge_t trigger)
@@ -4700,7 +4700,7 @@ le_result_t le_gpioPin35_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin35 boilerplate functions. 
+ * End of Pin35 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4813,13 +4813,13 @@ le_gpioPin36_ChangeEventHandlerRef_t le_gpioPin36_AddChangeEventHandler
 )
 {
     return (le_gpioPin36_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin36, gpioPin36_InputMonitorHandlerFunc, 
+                gpioRefPin36, gpioPin36_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin36_RemoveChangeEventHandler(le_gpioPin36_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin36, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin36, addHandlerRef);
 }
 
 le_result_t le_gpioPin36_SetEdgeSense (le_gpioPin36_Edge_t trigger)
@@ -4834,7 +4834,7 @@ le_result_t le_gpioPin36_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin36 boilerplate functions. 
+ * End of Pin36 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -4947,13 +4947,13 @@ le_gpioPin37_ChangeEventHandlerRef_t le_gpioPin37_AddChangeEventHandler
 )
 {
     return (le_gpioPin37_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin37, gpioPin37_InputMonitorHandlerFunc, 
+                gpioRefPin37, gpioPin37_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin37_RemoveChangeEventHandler(le_gpioPin37_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin37, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin37, addHandlerRef);
 }
 
 le_result_t le_gpioPin37_SetEdgeSense (le_gpioPin37_Edge_t trigger)
@@ -4968,7 +4968,7 @@ le_result_t le_gpioPin37_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin37 boilerplate functions. 
+ * End of Pin37 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5081,13 +5081,13 @@ le_gpioPin38_ChangeEventHandlerRef_t le_gpioPin38_AddChangeEventHandler
 )
 {
     return (le_gpioPin38_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin38, gpioPin38_InputMonitorHandlerFunc, 
+                gpioRefPin38, gpioPin38_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin38_RemoveChangeEventHandler(le_gpioPin38_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin38, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin38, addHandlerRef);
 }
 
 le_result_t le_gpioPin38_SetEdgeSense (le_gpioPin38_Edge_t trigger)
@@ -5102,7 +5102,7 @@ le_result_t le_gpioPin38_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin38 boilerplate functions. 
+ * End of Pin38 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5215,13 +5215,13 @@ le_gpioPin39_ChangeEventHandlerRef_t le_gpioPin39_AddChangeEventHandler
 )
 {
     return (le_gpioPin39_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin39, gpioPin39_InputMonitorHandlerFunc, 
+                gpioRefPin39, gpioPin39_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin39_RemoveChangeEventHandler(le_gpioPin39_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin39, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin39, addHandlerRef);
 }
 
 le_result_t le_gpioPin39_SetEdgeSense (le_gpioPin39_Edge_t trigger)
@@ -5236,7 +5236,7 @@ le_result_t le_gpioPin39_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin39 boilerplate functions. 
+ * End of Pin39 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5349,13 +5349,13 @@ le_gpioPin40_ChangeEventHandlerRef_t le_gpioPin40_AddChangeEventHandler
 )
 {
     return (le_gpioPin40_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin40, gpioPin40_InputMonitorHandlerFunc, 
+                gpioRefPin40, gpioPin40_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin40_RemoveChangeEventHandler(le_gpioPin40_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin40, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin40, addHandlerRef);
 }
 
 le_result_t le_gpioPin40_SetEdgeSense (le_gpioPin40_Edge_t trigger)
@@ -5370,7 +5370,7 @@ le_result_t le_gpioPin40_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin40 boilerplate functions. 
+ * End of Pin40 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5483,13 +5483,13 @@ le_gpioPin41_ChangeEventHandlerRef_t le_gpioPin41_AddChangeEventHandler
 )
 {
     return (le_gpioPin41_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin41, gpioPin41_InputMonitorHandlerFunc, 
+                gpioRefPin41, gpioPin41_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin41_RemoveChangeEventHandler(le_gpioPin41_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin41, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin41, addHandlerRef);
 }
 
 le_result_t le_gpioPin41_SetEdgeSense (le_gpioPin41_Edge_t trigger)
@@ -5504,7 +5504,7 @@ le_result_t le_gpioPin41_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin41 boilerplate functions. 
+ * End of Pin41 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5617,13 +5617,13 @@ le_gpioPin42_ChangeEventHandlerRef_t le_gpioPin42_AddChangeEventHandler
 )
 {
     return (le_gpioPin42_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin42, gpioPin42_InputMonitorHandlerFunc, 
+                gpioRefPin42, gpioPin42_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin42_RemoveChangeEventHandler(le_gpioPin42_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin42, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin42, addHandlerRef);
 }
 
 le_result_t le_gpioPin42_SetEdgeSense (le_gpioPin42_Edge_t trigger)
@@ -5638,7 +5638,7 @@ le_result_t le_gpioPin42_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin42 boilerplate functions. 
+ * End of Pin42 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5751,13 +5751,13 @@ le_gpioPin43_ChangeEventHandlerRef_t le_gpioPin43_AddChangeEventHandler
 )
 {
     return (le_gpioPin43_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin43, gpioPin43_InputMonitorHandlerFunc, 
+                gpioRefPin43, gpioPin43_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin43_RemoveChangeEventHandler(le_gpioPin43_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin43, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin43, addHandlerRef);
 }
 
 le_result_t le_gpioPin43_SetEdgeSense (le_gpioPin43_Edge_t trigger)
@@ -5772,7 +5772,7 @@ le_result_t le_gpioPin43_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin43 boilerplate functions. 
+ * End of Pin43 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -5885,13 +5885,13 @@ le_gpioPin44_ChangeEventHandlerRef_t le_gpioPin44_AddChangeEventHandler
 )
 {
     return (le_gpioPin44_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin44, gpioPin44_InputMonitorHandlerFunc, 
+                gpioRefPin44, gpioPin44_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin44_RemoveChangeEventHandler(le_gpioPin44_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin44, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin44, addHandlerRef);
 }
 
 le_result_t le_gpioPin44_SetEdgeSense (le_gpioPin44_Edge_t trigger)
@@ -5906,7 +5906,7 @@ le_result_t le_gpioPin44_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin44 boilerplate functions. 
+ * End of Pin44 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6019,13 +6019,13 @@ le_gpioPin45_ChangeEventHandlerRef_t le_gpioPin45_AddChangeEventHandler
 )
 {
     return (le_gpioPin45_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin45, gpioPin45_InputMonitorHandlerFunc, 
+                gpioRefPin45, gpioPin45_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin45_RemoveChangeEventHandler(le_gpioPin45_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin45, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin45, addHandlerRef);
 }
 
 le_result_t le_gpioPin45_SetEdgeSense (le_gpioPin45_Edge_t trigger)
@@ -6040,7 +6040,7 @@ le_result_t le_gpioPin45_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin45 boilerplate functions. 
+ * End of Pin45 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6153,13 +6153,13 @@ le_gpioPin46_ChangeEventHandlerRef_t le_gpioPin46_AddChangeEventHandler
 )
 {
     return (le_gpioPin46_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin46, gpioPin46_InputMonitorHandlerFunc, 
+                gpioRefPin46, gpioPin46_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin46_RemoveChangeEventHandler(le_gpioPin46_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin46, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin46, addHandlerRef);
 }
 
 le_result_t le_gpioPin46_SetEdgeSense (le_gpioPin46_Edge_t trigger)
@@ -6174,7 +6174,7 @@ le_result_t le_gpioPin46_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin46 boilerplate functions. 
+ * End of Pin46 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6287,13 +6287,13 @@ le_gpioPin47_ChangeEventHandlerRef_t le_gpioPin47_AddChangeEventHandler
 )
 {
     return (le_gpioPin47_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin47, gpioPin47_InputMonitorHandlerFunc, 
+                gpioRefPin47, gpioPin47_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin47_RemoveChangeEventHandler(le_gpioPin47_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin47, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin47, addHandlerRef);
 }
 
 le_result_t le_gpioPin47_SetEdgeSense (le_gpioPin47_Edge_t trigger)
@@ -6308,7 +6308,7 @@ le_result_t le_gpioPin47_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin47 boilerplate functions. 
+ * End of Pin47 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6421,13 +6421,13 @@ le_gpioPin48_ChangeEventHandlerRef_t le_gpioPin48_AddChangeEventHandler
 )
 {
     return (le_gpioPin48_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin48, gpioPin48_InputMonitorHandlerFunc, 
+                gpioRefPin48, gpioPin48_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin48_RemoveChangeEventHandler(le_gpioPin48_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin48, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin48, addHandlerRef);
 }
 
 le_result_t le_gpioPin48_SetEdgeSense (le_gpioPin48_Edge_t trigger)
@@ -6442,7 +6442,7 @@ le_result_t le_gpioPin48_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin48 boilerplate functions. 
+ * End of Pin48 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6555,13 +6555,13 @@ le_gpioPin49_ChangeEventHandlerRef_t le_gpioPin49_AddChangeEventHandler
 )
 {
     return (le_gpioPin49_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin49, gpioPin49_InputMonitorHandlerFunc, 
+                gpioRefPin49, gpioPin49_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin49_RemoveChangeEventHandler(le_gpioPin49_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin49, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin49, addHandlerRef);
 }
 
 le_result_t le_gpioPin49_SetEdgeSense (le_gpioPin49_Edge_t trigger)
@@ -6576,7 +6576,7 @@ le_result_t le_gpioPin49_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin49 boilerplate functions. 
+ * End of Pin49 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6689,13 +6689,13 @@ le_gpioPin50_ChangeEventHandlerRef_t le_gpioPin50_AddChangeEventHandler
 )
 {
     return (le_gpioPin50_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin50, gpioPin50_InputMonitorHandlerFunc, 
+                gpioRefPin50, gpioPin50_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin50_RemoveChangeEventHandler(le_gpioPin50_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin50, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin50, addHandlerRef);
 }
 
 le_result_t le_gpioPin50_SetEdgeSense (le_gpioPin50_Edge_t trigger)
@@ -6710,7 +6710,7 @@ le_result_t le_gpioPin50_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin50 boilerplate functions. 
+ * End of Pin50 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6823,13 +6823,13 @@ le_gpioPin51_ChangeEventHandlerRef_t le_gpioPin51_AddChangeEventHandler
 )
 {
     return (le_gpioPin51_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin51, gpioPin51_InputMonitorHandlerFunc, 
+                gpioRefPin51, gpioPin51_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin51_RemoveChangeEventHandler(le_gpioPin51_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin51, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin51, addHandlerRef);
 }
 
 le_result_t le_gpioPin51_SetEdgeSense (le_gpioPin51_Edge_t trigger)
@@ -6844,7 +6844,7 @@ le_result_t le_gpioPin51_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin51 boilerplate functions. 
+ * End of Pin51 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -6957,13 +6957,13 @@ le_gpioPin52_ChangeEventHandlerRef_t le_gpioPin52_AddChangeEventHandler
 )
 {
     return (le_gpioPin52_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin52, gpioPin52_InputMonitorHandlerFunc, 
+                gpioRefPin52, gpioPin52_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin52_RemoveChangeEventHandler(le_gpioPin52_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin52, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin52, addHandlerRef);
 }
 
 le_result_t le_gpioPin52_SetEdgeSense (le_gpioPin52_Edge_t trigger)
@@ -6978,7 +6978,7 @@ le_result_t le_gpioPin52_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin52 boilerplate functions. 
+ * End of Pin52 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7091,13 +7091,13 @@ le_gpioPin53_ChangeEventHandlerRef_t le_gpioPin53_AddChangeEventHandler
 )
 {
     return (le_gpioPin53_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin53, gpioPin53_InputMonitorHandlerFunc, 
+                gpioRefPin53, gpioPin53_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin53_RemoveChangeEventHandler(le_gpioPin53_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin53, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin53, addHandlerRef);
 }
 
 le_result_t le_gpioPin53_SetEdgeSense (le_gpioPin53_Edge_t trigger)
@@ -7112,7 +7112,7 @@ le_result_t le_gpioPin53_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin53 boilerplate functions. 
+ * End of Pin53 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7225,13 +7225,13 @@ le_gpioPin54_ChangeEventHandlerRef_t le_gpioPin54_AddChangeEventHandler
 )
 {
     return (le_gpioPin54_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin54, gpioPin54_InputMonitorHandlerFunc, 
+                gpioRefPin54, gpioPin54_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin54_RemoveChangeEventHandler(le_gpioPin54_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin54, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin54, addHandlerRef);
 }
 
 le_result_t le_gpioPin54_SetEdgeSense (le_gpioPin54_Edge_t trigger)
@@ -7246,7 +7246,7 @@ le_result_t le_gpioPin54_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin54 boilerplate functions. 
+ * End of Pin54 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7359,13 +7359,13 @@ le_gpioPin55_ChangeEventHandlerRef_t le_gpioPin55_AddChangeEventHandler
 )
 {
     return (le_gpioPin55_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin55, gpioPin55_InputMonitorHandlerFunc, 
+                gpioRefPin55, gpioPin55_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin55_RemoveChangeEventHandler(le_gpioPin55_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin55, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin55, addHandlerRef);
 }
 
 le_result_t le_gpioPin55_SetEdgeSense (le_gpioPin55_Edge_t trigger)
@@ -7380,7 +7380,7 @@ le_result_t le_gpioPin55_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin55 boilerplate functions. 
+ * End of Pin55 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7493,13 +7493,13 @@ le_gpioPin56_ChangeEventHandlerRef_t le_gpioPin56_AddChangeEventHandler
 )
 {
     return (le_gpioPin56_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin56, gpioPin56_InputMonitorHandlerFunc, 
+                gpioRefPin56, gpioPin56_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin56_RemoveChangeEventHandler(le_gpioPin56_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin56, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin56, addHandlerRef);
 }
 
 le_result_t le_gpioPin56_SetEdgeSense (le_gpioPin56_Edge_t trigger)
@@ -7514,7 +7514,7 @@ le_result_t le_gpioPin56_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin56 boilerplate functions. 
+ * End of Pin56 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7627,13 +7627,13 @@ le_gpioPin57_ChangeEventHandlerRef_t le_gpioPin57_AddChangeEventHandler
 )
 {
     return (le_gpioPin57_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin57, gpioPin57_InputMonitorHandlerFunc, 
+                gpioRefPin57, gpioPin57_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin57_RemoveChangeEventHandler(le_gpioPin57_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin57, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin57, addHandlerRef);
 }
 
 le_result_t le_gpioPin57_SetEdgeSense (le_gpioPin57_Edge_t trigger)
@@ -7648,7 +7648,7 @@ le_result_t le_gpioPin57_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin57 boilerplate functions. 
+ * End of Pin57 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7761,13 +7761,13 @@ le_gpioPin58_ChangeEventHandlerRef_t le_gpioPin58_AddChangeEventHandler
 )
 {
     return (le_gpioPin58_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin58, gpioPin58_InputMonitorHandlerFunc, 
+                gpioRefPin58, gpioPin58_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin58_RemoveChangeEventHandler(le_gpioPin58_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin58, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin58, addHandlerRef);
 }
 
 le_result_t le_gpioPin58_SetEdgeSense (le_gpioPin58_Edge_t trigger)
@@ -7782,7 +7782,7 @@ le_result_t le_gpioPin58_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin58 boilerplate functions. 
+ * End of Pin58 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -7895,13 +7895,13 @@ le_gpioPin59_ChangeEventHandlerRef_t le_gpioPin59_AddChangeEventHandler
 )
 {
     return (le_gpioPin59_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin59, gpioPin59_InputMonitorHandlerFunc, 
+                gpioRefPin59, gpioPin59_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin59_RemoveChangeEventHandler(le_gpioPin59_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin59, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin59, addHandlerRef);
 }
 
 le_result_t le_gpioPin59_SetEdgeSense (le_gpioPin59_Edge_t trigger)
@@ -7916,7 +7916,7 @@ le_result_t le_gpioPin59_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin59 boilerplate functions. 
+ * End of Pin59 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -8029,13 +8029,13 @@ le_gpioPin60_ChangeEventHandlerRef_t le_gpioPin60_AddChangeEventHandler
 )
 {
     return (le_gpioPin60_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin60, gpioPin60_InputMonitorHandlerFunc, 
+                gpioRefPin60, gpioPin60_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin60_RemoveChangeEventHandler(le_gpioPin60_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin60, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin60, addHandlerRef);
 }
 
 le_result_t le_gpioPin60_SetEdgeSense (le_gpioPin60_Edge_t trigger)
@@ -8050,7 +8050,7 @@ le_result_t le_gpioPin60_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin60 boilerplate functions. 
+ * End of Pin60 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -8163,13 +8163,13 @@ le_gpioPin61_ChangeEventHandlerRef_t le_gpioPin61_AddChangeEventHandler
 )
 {
     return (le_gpioPin61_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin61, gpioPin61_InputMonitorHandlerFunc, 
+                gpioRefPin61, gpioPin61_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin61_RemoveChangeEventHandler(le_gpioPin61_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin61, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin61, addHandlerRef);
 }
 
 le_result_t le_gpioPin61_SetEdgeSense (le_gpioPin61_Edge_t trigger)
@@ -8184,7 +8184,7 @@ le_result_t le_gpioPin61_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin61 boilerplate functions. 
+ * End of Pin61 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -8297,13 +8297,13 @@ le_gpioPin62_ChangeEventHandlerRef_t le_gpioPin62_AddChangeEventHandler
 )
 {
     return (le_gpioPin62_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin62, gpioPin62_InputMonitorHandlerFunc, 
+                gpioRefPin62, gpioPin62_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin62_RemoveChangeEventHandler(le_gpioPin62_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin62, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin62, addHandlerRef);
 }
 
 le_result_t le_gpioPin62_SetEdgeSense (le_gpioPin62_Edge_t trigger)
@@ -8318,7 +8318,7 @@ le_result_t le_gpioPin62_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin62 boilerplate functions. 
+ * End of Pin62 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -8431,13 +8431,13 @@ le_gpioPin63_ChangeEventHandlerRef_t le_gpioPin63_AddChangeEventHandler
 )
 {
     return (le_gpioPin63_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin63, gpioPin63_InputMonitorHandlerFunc, 
+                gpioRefPin63, gpioPin63_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin63_RemoveChangeEventHandler(le_gpioPin63_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin63, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin63, addHandlerRef);
 }
 
 le_result_t le_gpioPin63_SetEdgeSense (le_gpioPin63_Edge_t trigger)
@@ -8452,7 +8452,7 @@ le_result_t le_gpioPin63_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin63 boilerplate functions. 
+ * End of Pin63 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -8565,13 +8565,13 @@ le_gpioPin64_ChangeEventHandlerRef_t le_gpioPin64_AddChangeEventHandler
 )
 {
     return (le_gpioPin64_ChangeEventHandlerRef_t)gpioSysfs_SetChangeCallback(
-                gpioRefPin64, gpioPin64_InputMonitorHandlerFunc, 
+                gpioRefPin64, gpioPin64_InputMonitorHandlerFunc,
                 (gpioSysfs_EdgeSensivityMode_t)trigger, handlerPtr, contextPtr, sampleMs);
 }
 
 void le_gpioPin64_RemoveChangeEventHandler(le_gpioPin64_ChangeEventHandlerRef_t addHandlerRef)
-{ 
-    gpioSysfs_RemoveChangeCallback(gpioRefPin64, addHandlerRef); 
+{
+    gpioSysfs_RemoveChangeCallback(gpioRefPin64, addHandlerRef);
 }
 
 le_result_t le_gpioPin64_SetEdgeSense (le_gpioPin64_Edge_t trigger)
@@ -8586,7 +8586,7 @@ le_result_t le_gpioPin64_DisableEdgeSense (void)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * End of Pin64 boilerplate functions. 
+ * End of Pin64 boilerplate functions.
  */
 //--------------------------------------------------------------------------------------------------
 

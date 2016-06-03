@@ -15,6 +15,69 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Enumerates all the possible states that a Session object can be in.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_MSG_SESSION_STATE_CLOSED,    ///< Session is closed.
+
+    LE_MSG_SESSION_STATE_OPENING,   ///< Client is trying to open the session. Waiting for the
+                                    ///  server's response. (Note: This is a client-only state.)
+
+    LE_MSG_SESSION_STATE_OPEN,      ///< Session is open.
+}
+msgSession_SessionState_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a client-server session.
+ *
+ * This same object is used to track the session on both the server side and the client side.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct le_msg_Session
+{
+    le_dls_Link_t                   link;           ///< Used to link into the Session List.
+    msgSession_SessionState_t       state;          ///< The state that the session is in.
+    int                             socketFd;       ///< File descriptor for the connected socket.
+    le_thread_Ref_t                 threadRef;      ///< The thread that handles this session.
+    le_fdMonitor_Ref_t              fdMonitorRef;   ///< File descriptor monitor for the socket.
+    le_msg_InterfaceRef_t           interfaceRef;   ///< The interface being accessed.
+
+    le_dls_List_t                   txnList;        ///< List of request messages that have been
+                                                    ///  sent and are waiting for their response.
+
+    le_dls_List_t                   transmitQueue;  ///< Queue of messages waiting to be sent.
+
+    le_dls_List_t                   receiveQueue;   ///< Queue of received messages waiting to be
+                                                    /// processed.
+
+    void*                           contextPtr;     ///< The session's context pointer.
+    le_msg_ReceiveHandler_t         rxHandler;      ///< Receive handler function.
+    void*                           rxContextPtr;   ///< Receive handler's context pointer.
+    le_msg_SessionEventHandler_t    openHandler;    ///< Open handler function.
+    void*                           openContextPtr; ///< Open handler's context pointer.
+    le_msg_SessionEventHandler_t    closeHandler;   ///< Close handler function.
+    void*                           closeContextPtr;///< Close handler's context pointer.
+}
+msgSession_Session_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Exposing the session object list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** msgSession_GetSessionObjListChgCntRef
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the messagingSession module.  This must be called only once at start-up, before
  * any other functions in that module are called.
  */

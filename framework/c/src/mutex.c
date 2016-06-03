@@ -35,7 +35,6 @@
 #include "limit.h"
 #include "mutex.h"
 #include "thread.h"
-#include "spy.h"
 
 
 // ==============================
@@ -52,8 +51,8 @@
  * A counter that increments every time a change is made to the mutex list.
  */
 //--------------------------------------------------------------------------------------------------
-static size_t ListOfMutexesChgCnt = 0;
-static size_t* ListOfMutexesChgCntRef = &ListOfMutexesChgCnt;
+static size_t MutexListChangeCount = 0;
+static size_t* MutexListChangeCountRef = &MutexListChangeCount;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -228,7 +227,7 @@ static void MarkLocked
 )
 //--------------------------------------------------------------------------------------------------
 {
-    ListOfMutexesChgCnt++;
+    MutexListChangeCount++;
     // Push it onto the calling thread's list of locked mutexes.
     // NOTE: Mutexes tend to be locked and unlocked in a nested manner, so treat this like a stack.
     le_dls_Stack(&perThreadRecPtr->lockedMutexList, &mutexPtr->lockedByThreadLink);
@@ -258,7 +257,7 @@ static void MarkUnlocked
 {
     mutex_ThreadRec_t* perThreadRecPtr = thread_GetMutexRecPtr();
 
-    ListOfMutexesChgCnt++;
+    MutexListChangeCount++;
     // Remove it the calling thread's list of locked mutexes.
     le_dls_Remove(&perThreadRecPtr->lockedMutexList, &mutexPtr->lockedByThreadLink);
 
@@ -307,6 +306,20 @@ static void ThreadDeathCleanUp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the mutex list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** mutex_GetMutexListChgCntRef
+(
+    void
+)
+{
+    return (&MutexListChangeCountRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the Mutex module.
  *
  * This function must be called exactly once at process start-up before any other mutex module
@@ -321,9 +334,6 @@ void mutex_Init
 {
     MutexPoolRef = le_mem_CreatePool("mutex", sizeof(Mutex_t));
     le_mem_ExpandPool(MutexPoolRef, DEFAULT_POOL_SIZE);
-
-    // Pass the change counter of list of mutexes to the Inspect tool.
-    spy_SetListOfMutexesChgCntRef(&ListOfMutexesChgCntRef);
 }
 
 
@@ -358,7 +368,7 @@ void mutex_ThreadInit
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a Normal, Recursive mutex
+ * Create a Recursive mutex
  *
  * @return  Returns a reference to the mutex.
  *
@@ -377,7 +387,7 @@ le_mutex_Ref_t le_mutex_CreateRecursive
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a Normal, Non-Recursive mutex
+ * Create a Non-Recursive mutex
  *
  * @return  Returns a reference to the mutex.
  *

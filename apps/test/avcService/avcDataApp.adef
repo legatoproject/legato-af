@@ -15,6 +15,7 @@ processes:
 bindings:
 {
     avcDataApp.componentDataApp.le_avdata -> avcService.le_avdata
+    avcDataApp.componentDataApp.le_avc -> avcService.le_avc
 }
 
-version: 2.2
+version: 4.4.4

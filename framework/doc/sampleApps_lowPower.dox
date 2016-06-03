@@ -9,6 +9,9 @@ This app expects a destination cell number to be specified in the @c envVars sub
 of the processes section in the @c .adef file. If a value isn't specified in envVars,
 a message will be sent to a non-existent phone number.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/textLoc">sample app code</a>.
+
 Run this to install the sample app:
 
 @verbatim
@@ -20,7 +23,7 @@ $ instapp textLoc.wp85.update <ip address>
 If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
 
 @ref sampleApps_startApp
- 
+
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

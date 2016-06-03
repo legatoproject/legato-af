@@ -46,24 +46,33 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Converts hex string to binary format.
+ * Convert a string of valid hexadecimal characters [0-9a-fA-F] into a byte array where each
+ * element of the byte array holds the value corresponding to a pair of hexadecimal characters.
  *
- * @return size of binary, if < 0 it has failed
+ * @return
+ *      - number of bytes written into binaryPtr
+ *      - -1 if the binarySize is too small or stringLength is odd or stringPtr contains an invalid
+ *        character
+ *
+ * @note The input string is not required to be NULL terminated.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_hex_StringToBinary
 (
-    const char *stringPtr,     ///< [IN] string to convert, terminated with '\0'.
+    const char *stringPtr,     ///< [IN] string to convert
     uint32_t    stringLength,  ///< [IN] string length
     uint8_t    *binaryPtr,     ///< [OUT] binary result
-    uint32_t    binarySize     ///< [IN] size of the binary table
+    uint32_t    binarySize     ///< [IN] size of the binary table.  Must be >= stringLength / 2
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Converts binary to hex string format.
+ * Convert a byte array into a string of uppercase hexadecimal characters.
  *
- * @return size of hex string, if < 0 it has failed
+ * @return number of characters written to stringPtr or -1 if stringSize is too small for
+ *         binarySize
+ *
+ * @note the string written to stringPtr will be NULL terminated.
  */
 //--------------------------------------------------------------------------------------------------
 int32_t le_hex_BinaryToString
@@ -71,17 +80,21 @@ int32_t le_hex_BinaryToString
     const uint8_t *binaryPtr,  ///< [IN] binary array to convert
     uint32_t       binarySize, ///< [IN] size of binary array
     char          *stringPtr,  ///< [OUT] hex string array, terminated with '\0'.
-    uint32_t       stringSize  ///< [IN] size of string array
+    uint32_t       stringSize  ///< [IN] size of string array.  Must be >= (2 * binarySize) + 1
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function convert hexa string into integer
+ * Convert a NULL terminated string of valid hexadecimal characters [0-9a-fA-F] into an integer.
  *
  * @return
- *      \return return the value or -1 if not possible.
+ *      - Positive integer corresponding to the hexadecimal input string
+ *      - -1 if the input contains an invalid character or the value will not fit in an integer
  */
 //--------------------------------------------------------------------------------------------------
-int le_hex_HexaToInteger(char s[]);
+int le_hex_HexaToInteger
+(
+    const char *stringPtr ///< [IN] string of hex chars to convert into an int
+);
 
 #endif // LEGATO_HEX_INCLUDE_GUARD

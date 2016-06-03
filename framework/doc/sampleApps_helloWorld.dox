@@ -3,6 +3,9 @@
 This sample app demonstrates target and host are communicating using a helloWorld app.
 It has an @c .adef with executables and processes sections.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/helloWorld">sample app code</a>.
+
 Run this to install the sample app:
 
 @verbatim

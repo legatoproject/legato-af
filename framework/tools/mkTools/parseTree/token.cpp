@@ -116,6 +116,9 @@ std::string Token_t::TypeName
         case NAME:
             return "name";
 
+        case DOTTED_NAME:
+            return "dotted name";
+
         case GROUP_NAME:
             return "group name";
 
@@ -136,6 +139,9 @@ std::string Token_t::TypeName
 
         case STRING:
             return "string";
+
+        case MD5_HASH:
+            return "MD5 hash";
 
         default:
         {

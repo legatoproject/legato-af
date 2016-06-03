@@ -65,6 +65,9 @@
  * degrees (where 0 is True North) and its associated accuracy value. Direction of movement is the
  * direction that the vehicle/person is actually moving.
  *
+ * A sample code can be seen in the following page:
+ * - @subpage c_posSampleCodeFixOnDemand
+ *
  * @section le_pos_navigation Navigation
  * To be notified when the device is in motion, you must register an handler function
  * to get the new position's data. The @c le_pos_AddMovementHandler() API registers
@@ -91,67 +94,8 @@
  * @note The le_pos_RemoveMovementHandler() API does not delete the Position Object. The caller has
  *       to delete it by calling the le_pos_sample_Release() function.
  *
- *
- * In the following code sample, the function InstallGeoFenceHandler() installs an handler function
- * that triggers an alarm if the device leaves a designated location.
- *
- * @code
- *
- * #define GEOFENCE_CENTRE_LATITUDE            +48070380  // Latitude 48.070380 degrees North
- * #define GEOFENCE_CENTRE_LONGITUDE           -11310000  // Longitude 11.310000 degrees West
- * #define MAX_METRES_FROM_GEOFENCE_CENTRE     150
- *
- * static le_event_HandlerRef_t GeoFenceHandlerRef;
- *
- * void InstallGeoFenceHandler()
- * {
- *     // I set my home latitude and longitude where my device is located
- *     SetHomeLocation(HOME_LATITUDE, HOME_LONGITUDE);
- *
- *     MyPositionUpdateHandlerRef = le_pos_AddMovementHandler(50, // 50 metres
- *                                                            0,  // I don't care about changes of altitude.
- *                                                            MyPositionUpdateHandler,
- *                                                            NULL);
- * }
- *
- *
- * static void MyPositionUpdateHandler
- * (
- *     le_pos_SampleRef_t     positionSampleRef,
- *     void*                  contextPtr
- * )
- * {
- *     int32_t metresFromCentre;
- *
- *     int32_t accuracyMetres;
- *     int32_t latitude;
- *     int32_t longitude;
- *
- *     le_pos_sample_Get2DLocation(positionSampleRef, &latitude, &longitude, &accuracyMetres);
- *
- *     metresFromCentre = le_pos_ComputeDistance(GEOFENCE_CENTRE_LATITUDE, GEOFENCE_CENTRE_LONGITUDE
- *                                               latitude, longitude);
- *
- *     if (metresFromCentre > MAX_METRES_FROM_GEOFENCE_CENTRE)
- *     {
- *         // Check it doesn't just look like we are outside the fence because of bad accuracy.
- *         if (  (accuracyMetres > metresFromCentre) ||
- *               ((metresFromCentre - accuracyMetres) < MAX_METRES_FROM_GEOFENCE_CENTRE)  )
- *         {
- *             // Could be outside the fence, but we also could be inside the fence.
- *         }
- *         else
- *         {
- *             // Definitely outside the fence!
- *             RaiseAlarm(positionSampleRef);
- *         }
- *     }
- *
- *     le_pos_sample_Release(positionSampleRef);
- * }
- *
- * @endcode
- *
+ * A sample code can be seen in the following page:
+ * - @subpage c_posSampleCodeNavigation
  *
  * @section le_pos_configdb Positioning configuration tree
  * @copydoc le_pos_configdbPage_Hide
@@ -161,6 +105,18 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_posSampleCodeFixOnDemand Sample code for Fix On Demand
+ *
+ * @include "apps/test/positioning/positioningTest/positioningTest/positioningTest.c"
+ */
+
+/**
+ * @page c_posSampleCodeNavigation Sample code for Navigation
+ *
+ * @include "apps/test/positioning/posDaemonTest/le_posTest.c"
+ */
 
 /**
  * @interface le_pos_configdbPage_Hide
@@ -220,7 +176,7 @@ EVENT Movement
     uint32 verticalMagnitude IN,   ///< Vertical magnitude in metres.
                                    ///<       0 means that I don't care about
                                    ///<       changes in the altitude.
-    handler MovementHandler
+    MovementHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -260,7 +216,7 @@ FUNCTION le_result_t Get3DLocation
     int32 latitude OUT,     ///< Latitude in degrees, positive North.
     int32 longitude OUT,    ///< Longitude in degrees, positive East.
     int32 hAccuracy OUT,    ///< Horizontal position's accuracy in metres.
-    int32 altitude OUT,     ///< Altitude in metres, above Mean Sea Level.
+    int32 altitude OUT,     ///< Altitude in meters, above Mean Sea Level.
     int32 vAccuracy OUT     ///< Vertical position's accuracy in metres.
 );
 
@@ -432,7 +388,7 @@ FUNCTION le_result_t sample_GetDate
 FUNCTION le_result_t sample_GetAltitude
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    int32 altitude OUT,                 ///< Altitude in metres.
+    int32 altitude OUT,                 ///< Altitude in meters.
     int32 altitudeAccuracy OUT          ///< Altitude's accuracy estimate in metres.
 );
 

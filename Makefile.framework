@@ -39,6 +39,11 @@ endif
 export LEGATO_ROOT ?= $(CURDIR)
 export LEGATO_TARGET := $(TARGET)
 
+ifdef LEGATO_SYSROOT
+  export TARGET_CC_SYSROOT := --sysroot=$(LEGATO_SYSROOT)
+  export TARGET_SYSROOT=$(LEGATO_SYSROOT)
+endif
+
 VERSION := $(shell cat $(LEGATO_ROOT)/version)
 
 BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
@@ -62,8 +67,16 @@ ifeq ($(VERBOSE),1)
   MKEXE_FLAGS += -v
 endif
 
+
+# If Java builds are to be enabled, make sure JDK_INCLUDE_DIR is set to your JDK include
+# directory, typically something like: /usr/lib/jvm/java-7-openjdk-amd64/include
+ifdef JDK_INCLUDE_DIR
+LEGATO_JAVA=$(LIB_DIR)/liblegatoJni.so
+endif
+
+
 .PHONY: all
-all: liblegato daemons targetTools
+all: liblegato daemons targetTools startScripts $(LEGATO_JAVA)
 	# Computing MD5 hash for contents of framework bin and lib directories.
 	md5=` ( find $(BIN_DIR) && \
 			find $(BIN_DIR) -type f | xargs cat && \
@@ -79,16 +92,66 @@ all: liblegato daemons targetTools
 targetTools: $(LIBJANSSON) liblegato
 	$(MAKE) -f Makefile.targetTools
 
+.PHONY: startScripts
+startScripts: $(BIN_DIR)
+	install $(SRC_DIR)/start/startupScript $(BIN_DIR)
+
 .PHONY: liblegato
 liblegato: $(LIB_DIR) $(NINJA_SCRIPT)
 	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
+
+
+ifdef JDK_INCLUDE_DIR
+
+$(BUILD_DIR)/java/:
+	mkdir -p $(BUILD_DIR)/java/
+
+$(BUILD_DIR)/java/io/legato/*.class: $(LEGATO_ROOT)/framework/java/io/legato/*.java $(BUILD_DIR)/java/
+	javac $(LEGATO_ROOT)/framework/java/io/legato/*.java -d $(BUILD_DIR)/java/
+
+$(LIB_DIR)/legato.jar: $(BUILD_DIR)/java/io/legato/*.class
+	jar -cf $(LIB_DIR)/legato.jar -C $(BUILD_DIR)/java .
+
+$(BUILD_DIR)/legatoJni.h: $(LIB_DIR)/legato.jar
+	javah -o $(BUILD_DIR)/legatoJni.h -jni -cp $(LIB_DIR)/legato.jar io.legato.LegatoJni
+
+$(BUILD_DIR)/legatoJni.o: $(BUILD_DIR)/legatoJni.h $(LEGATO_ROOT)/framework/java/legatoJni/legatoJni.c
+	$(TARGET_CC) $(TARGET_CC_SYSROOT) \
+		-DLEGATO_DEBUG \
+		-DLEGATO_EMBEDDED \
+		-fPIC \
+		-I$(LEGATO_ROOT)/framework/c/inc \
+		-I$(LEGATO_ROOT)/framework/c/src \
+		-I$(BUILD_DIR) \
+		-I$(JDK_INCLUDE_DIR) \
+		-I$(JDK_INCLUDE_DIR)/linux \
+		-g \
+		-O0 \
+		-Wall \
+		-Werror \
+		-o $(BUILD_DIR)/legatoJni.o \
+		-c $(LEGATO_ROOT)/framework/java/legatoJni/legatoJni.c
+
+$(LIB_DIR)/liblegatoJni.so: $(LIB_DIR) $(BUILD_DIR)/legatoJni.o
+	$(TARGET_CC) $(TARGET_CC_SYSROOT) \
+		-fPIC \
+		-shared \
+		-o $(LIB_DIR)/liblegatoJni.so \
+		$(BUILD_DIR)/legatoJni.o \
+		-L$(LIB_DIR) \
+		-llegato \
+		-lpthread \
+		-lrt
+
+endif
+
 
 .PHONY: daemons
 daemons: start supervisor serviceDirectory logCtrlDaemon configTree watchdog updateDaemon
 
 .PHONY: start
 start: liblegato $(BIN_DIR)
-	$(TARGET_CC) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
+	$(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
 		-Wall -Werror \
 		-I$(LEGATO_ROOT)/framework/c/inc \
 		-DVERSION=\"$(VERSION)\" \

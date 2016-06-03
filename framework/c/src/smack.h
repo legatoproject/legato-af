@@ -74,6 +74,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Application prefix for SMACK labels.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SMACK_APP_PREFIX          "app."
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the SMACK system.  Mounts the SMACK file system.
  *
  * @note Should be called once for the entire system, subsequent calls to this function will have no
@@ -191,6 +199,22 @@ bool smack_HasAccess
 void smack_RevokeSubject
 (
     const char* subjectLabelPtr     ///< [IN] Subject label.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets an application's SMACK label.
+ *
+ * @warning
+ *      This function will call LE_KILL_CLIENT() if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetAppLabel
+(
+    const char* appName, ///< [IN] The name of the application.
+    char* label,         ///< [OUT] Ptr to the buffer the label will be written into.
+    size_t labelSize     ///< [IN] Size (in bytes) of the label buffer.
 );
 
 

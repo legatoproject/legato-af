@@ -5,13 +5,11 @@
  * @ref le_ulpm_interface.h "API Reference"
  *
  * <HR>
- * Some Sierra Wireless modules can use ultra low power mode by shutting down major components
- * (e.g. app processor, modem, etc.) while keeping an ultra low power component alive. This ultra low
- * power component is used to monitor boot (or wakeup) sources that are set before switching to ultra
- * low power mode. 
  *
- * This API is used to set the boot sources and switch the device to ultra low
- * power state.
+ * This API is used to set the boot sources and switch the device to ultra-low power state. Ultra-
+ * low power mode is achieved by shutting down major components (e.g. app processor, modem, etc.)
+ * while keeping an ultra-low power component alive. This ultra-low power component is used to
+ * monitor boot (or wakeup) sources that are set before switching to ultra-low power mode.
  *
  * @section API_Usage_usage Typical Usage
  *
@@ -34,14 +32,22 @@
  *      void
  *  )
  *  {
+ *      char version[LE_ULPM_MAX_VERS_LEN+1];
+ *
+ *      // Get ultra low power manager firmware version
+ *      LE_FATAL_IF(le_ulpm_GetFirmwareVersion(version, sizeof(version)) != LE_OK,
+ *          "Failed to get ultra low power firmware version");
+ *
+ *       LE_INFO("Ultra Low Power Manager Firmware version: %s", version);
+ *
  *      // Boot after 1000 second of shutdown.
  *      LE_ERROR_IF(le_ulpm_BootOnTimer(1000) != LE_OK, "Can't set timer as boot source");
  *
  *      // Boot if GPIO36 voltage level is high.
- *      LE_ERROR_IF(le_ulpm_BootOnGpio(36, LE_LPM_GPIO_HIGH) != LE_OK, "Can't set gpio36 as boot source");
+ *      LE_ERROR_IF(le_ulpm_BootOnGpio(36, LE_ULPM_GPIO_HIGH) != LE_OK, "Can't set gpio36 as boot source");
  *
  *      // Boot if GPIO38 voltage level is low.
- *      LE_ERROR_IF(le_ulpm_BootOnGpio(38, LE_LPM_GPIO_LOW) != LE_OK, "Can't set gpio38 as boot source");
+ *      LE_ERROR_IF(le_ulpm_BootOnGpio(38, LE_ULPM_GPIO_LOW) != LE_OK, "Can't set gpio38 as boot source");
  *
  *      // Initiate shutdown.
  *      LE_ERROR_IF(le_ulpm_ShutDown() != LE_OK, "Can't initiate shutdown");
@@ -69,10 +75,10 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum timeout value to stay in ultra low power mode.
+ * Maximum version length of mcu firmware.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_TIMEOUT_VAL = 2*24*3600;
+DEFINE MAX_VERS_LEN = 8;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -82,8 +88,12 @@ DEFINE MAX_TIMEOUT_VAL = 2*24*3600;
 //--------------------------------------------------------------------------------------------------
 ENUM GpioState
 {
-    GPIO_HIGH,             ///< Gpio voltage level high.
     GPIO_LOW,              ///< Gpio voltage level low.
+    GPIO_HIGH,             ///< Gpio voltage level high.
+    GPIO_RISING,           ///< Gpio edge rising.
+    GPIO_FALLING,          ///< Gpio edge falling.
+    GPIO_BOTH,             ///< Gpio edge either rising or falling.
+    GPIO_OFF,              ///< Gpio off.
 };
 
 
@@ -122,6 +132,21 @@ FUNCTION le_result_t BootOnTimer
                               ///< modem/app processor shutdown.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ultra low power manager firmware version.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirmwareVersion
+(
+    string version[MAX_VERS_LEN] OUT     ///< Firmware version string
+);
 
 
 //--------------------------------------------------------------------------------------------------

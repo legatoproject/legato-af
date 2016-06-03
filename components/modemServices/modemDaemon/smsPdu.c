@@ -1089,8 +1089,9 @@ static le_result_t DecodeGsmPdu
     {
         case SMSPDU_7_BITS:
         case SMSPDU_8_BITS:
+        case SMSPDU_UCS2_16_BITS:
             break;
-        case SMSPDU_UCS_2:
+
         case SMSPDU_ENCODING_UNKNOWN:
         default:
             LE_ERROR("Message format not supported.");
@@ -1163,8 +1164,8 @@ static le_result_t DecodeGsmPdu
     switch(encoding)
     {
         case SMSPDU_8_BITS:
+        {
             messageLen = tpUdl-tpUdhl;
-
             *formatPtr = LE_SMS_FORMAT_BINARY;
             if (messageLen<destDataSize)
             {
@@ -1174,12 +1175,14 @@ static le_result_t DecodeGsmPdu
             else
             {
                 LE_ERROR("Overflow occurs when converting 8bits to 8bits %d>%zd",
-                         messageLen,destDataSize);
+                    messageLen,destDataSize);
                 return LE_OVERFLOW;
             }
-            break;
+        }
+        break;
 
         case SMSPDU_7_BITS:
+        {
             messageLen = (tpUdl*7 - tpUdhl*8) /7;
             if (messageLen <= 0) {
                 LE_ERROR("the message length %d is <0 ",messageLen);
@@ -1188,8 +1191,8 @@ static le_result_t DecodeGsmPdu
             pos -= (tpUdhl*8+6)/7; // translate the pos in 7bits char unit
             *formatPtr = LE_SMS_FORMAT_TEXT;
             int size = Convert7BitsTo8Bits(&dataPtr[pos],
-                                            0,messageLen,
-                                            destDataPtr,destDataSize);
+                0,messageLen,
+                destDataPtr,destDataSize);
             if (size == LE_OVERFLOW)
             {
                 LE_ERROR("Overflow occurs when converting 7bits to 8bits ");
@@ -1197,7 +1200,26 @@ static le_result_t DecodeGsmPdu
             }
             *destDataLenPtr = size;
             LE_INFO(" messageLen %d, pos %d, size %d ", messageLen, pos, size);
-            break;
+        }
+        break;
+
+        case SMSPDU_UCS2_16_BITS:
+        {
+            messageLen = tpUdl-tpUdhl;
+            *formatPtr = LE_SMS_FORMAT_UCS2;
+            if (messageLen < destDataSize)
+            {
+                memcpy(destDataPtr, &dataPtr[pos], messageLen);
+                *destDataLenPtr = messageLen;
+            }
+            else
+            {
+                LE_ERROR("Overflow occurs when copying UCS2 to UCS2 %d > %zd",
+                    messageLen, destDataSize);
+                return LE_OVERFLOW;
+            }
+        }
+        break;
 
         default:
             LE_ERROR("Decoding error");
@@ -1285,18 +1307,20 @@ static le_result_t EncodeGsmPdu
         addressToa = 0x81;
     }
 
-    /* Prepare DCS */
+    /*
+     * Prepare DCS
+     */
     switch(encoding)
     {
         case SMSPDU_7_BITS: // GSM 7 bits encoding (GSM 03.38)
             tpDcs = 0x00;
             break;
-        case SMSPDU_8_BITS:
+        case SMSPDU_8_BITS: // GSM 8 bits encoding (GSM 03.38)
             tpDcs = 0x04;
             break;
-        case SMSPDU_UCS_2:
-            LE_ERROR("UCS-2 encoding is not supported.");
-            return LE_UNSUPPORTED;
+        case SMSPDU_UCS2_16_BITS: // GSM UCS2 (16 bits) encoding (GSM 03.38)
+            tpDcs = 0x08;
+            break;
         default:
             LE_ERROR("Invalid encoding %d.", encoding);
             return LE_FAULT;
@@ -1404,14 +1428,26 @@ static le_result_t EncodeGsmPdu
                 }
                 else
                 {
-                    LE_ERROR("Overflow occurs when converting 8bits to 8bits");
+                    LE_ERROR("Overflow occurs when copying 8bits PDU");
                     return LE_OVERFLOW;
                 }
                 break;
             }
-            case SMSPDU_UCS_2:
-                LE_ERROR("UCS-2 encoding is not supported.");
-                /* no break */
+            case SMSPDU_UCS2_16_BITS:
+            {
+                if (messageLen <= LE_SMS_PDU_MAX_PAYLOAD)
+                {
+                    memcpy(&pduPtr->data[pos], messagePtr, messageLen);
+                    pos += messageLen;
+                }
+                else
+                {
+                    LE_ERROR("Overflow occurs when copying UCS2 PDU");
+                    return LE_OVERFLOW;
+                }
+            }
+            break;
+
             default:
                 return LE_UNSUPPORTED;
         }
@@ -1491,8 +1527,8 @@ static le_result_t DecodeMessageGWCB
     {
         case SMSPDU_7_BITS:
         case SMSPDU_8_BITS:
+        case SMSPDU_UCS2_16_BITS:
             break;
-        case SMSPDU_UCS_2:
         case SMSPDU_ENCODING_UNKNOWN:
         default:
             LE_ERROR("Message format not supported.");
@@ -1517,7 +1553,25 @@ static le_result_t DecodeMessageGWCB
             }
             else
             {
-                LE_ERROR("Overflow occurs when converting 8bits to 8bits %d>%d",
+                LE_ERROR("Overflow occurs when copying binary PDU %d>%d",
+                                (int) dataSize, (int)destDataSize);
+                return LE_OVERFLOW;
+            }
+        }
+        break;
+
+        case SMSPDU_UCS2_16_BITS:
+        {
+            *formatPtr = LE_SMS_FORMAT_UCS2;
+            if (dataSize < destDataSize)
+            {
+                /* Content of message started dataPtr + 6 */
+                memcpy(destDataPtr,&dataPtr[6],dataSize);
+                *destDataLenPtr = dataSize;
+            }
+            else
+            {
+                LE_ERROR("Overflow occurs when copying UCS2 PDU %d>%d",
                                 (int) dataSize, (int)destDataSize);
                 return LE_OVERFLOW;
             }
@@ -2106,6 +2160,26 @@ static le_result_t GetCdmaMessageData
             *format = LE_SMS_FORMAT_BINARY;
             break;
         }
+
+        case CDMAPDU_ENCODING_UNICODE:
+        {
+            LE_DEBUG("fieldsNumber %d/%d",
+                cdmaMessage->message.bearerData.userData.fieldsNumber,
+                (int) dataSize);
+
+            if ((cdmaMessage->message.bearerData.userData.fieldsNumber *2) > (dataSize-1))
+            {
+                LE_WARN("Overflow occurs when decoding user data");
+                return LE_OVERFLOW;
+            }
+            memcpy(data,
+                cdmaMessage->message.bearerData.userData.chari,
+                cdmaMessage->message.bearerData.userData.fieldsNumber*2);
+            *dataLen = (cdmaMessage->message.bearerData.userData.fieldsNumber*2);
+            *format = LE_SMS_FORMAT_UCS2;
+        }
+        break;
+
         default:
         {
             LE_WARN("Do not support %d encoding",encoding);
@@ -2258,6 +2332,7 @@ static le_result_t SetCdmaMessageData
             messagePtr->message.bearerData.userData.messageEncoding = CDMAPDU_ENCODING_7BIT_ASCII;
             break;
         }
+
         case SMSPDU_8_BITS:
         {
             if (dataSize>sizeof(messagePtr->message.bearerData.userData.chari))
@@ -2271,6 +2346,22 @@ static le_result_t SetCdmaMessageData
             messagePtr->message.bearerData.userData.messageEncoding = CDMAPDU_ENCODING_OCTET;
             break;
         }
+
+        case SMSPDU_UCS2_16_BITS: // 16 bit UCS2 bits encoding
+        {
+            if (dataSize > sizeof(messagePtr->message.bearerData.userData.chari))
+            {
+                LE_WARN("Overflow occurs when encoding user data %zd>%zd",
+                    dataSize,sizeof(messagePtr->message.bearerData.userData.chari));
+                return LE_OVERFLOW;
+            }
+            memcpy(messagePtr->message.bearerData.userData.chari,dataPtr,dataSize);
+            // Number of elements.
+            messagePtr->message.bearerData.userData.fieldsNumber = (dataSize / 2);
+            messagePtr->message.bearerData.userData.messageEncoding = CDMAPDU_ENCODING_UNICODE;
+        }
+        break;
+
         default:
         {
             LE_WARN("Do not support %d encoding",encoding);

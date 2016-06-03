@@ -23,7 +23,7 @@ namespace modeller
 model::System_t* GetSystem
 (
     const std::string& sdefPath,    ///< Path to the application's .sdef file.
-    const mk::BuildParams_t& buildParams
+    mk::BuildParams_t& buildParams  ///< [in,out]
 );
 
 
@@ -37,6 +37,20 @@ model::System_t* GetSystem
 model::App_t* GetApp
 (
     const std::string& adefPath,    ///< Path to the application's .adef file.
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a conceptual model for a module whose .mdef file can be found at a given path.
+ *
+ * @return Pointer to the module object.
+ */
+//--------------------------------------------------------------------------------------------------
+model::Module_t* GetModule
+(
+    const std::string& mdefPath,    ///< Path to the model's .mdef file.
     const mk::BuildParams_t& buildParams
 );
 

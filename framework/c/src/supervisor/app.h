@@ -21,17 +21,39 @@ typedef struct app_Ref* app_Ref_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Fault action.
+ * The application process object reference.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct app_ProcRef* app_Proc_Ref_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for a handler that is called when an application process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*app_Proc_StopHandlerFunc_t)
+(
+    int exitCode,               ///< [IN] Exit code of the process.
+    void* contextPtr            ///< [IN] Context pointer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fault actions to take when a process experiences a fault (terminated abnormally).
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum
 {
-    APP_FAULT_ACTION_IGNORE = 0,        ///< Just ignore the fault.
-    APP_FAULT_ACTION_RESTART_APP,       ///< The application should be restarted.
-    APP_FAULT_ACTION_STOP_APP,          ///< The application should be stopped.
-    APP_FAULT_ACTION_REBOOT             ///< The system should be rebooted.
+    FAULT_ACTION_NONE = 0,          ///< No fault action.
+    FAULT_ACTION_IGNORE,            ///< Just ignore the fault.
+    FAULT_ACTION_RESTART_PROC,      ///< The application should be restarted.
+    FAULT_ACTION_RESTART_APP,       ///< The application should be restarted.
+    FAULT_ACTION_STOP_APP,          ///< The application should be stopped.
+    FAULT_ACTION_REBOOT             ///< The system should be rebooted.
 }
-app_FaultAction_t;
+FaultAction_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -57,8 +79,7 @@ app_State_t;
 typedef enum
 {
     APP_PROC_STATE_STOPPED, ///< The application process is not running.
-    APP_PROC_STATE_RUNNING, ///< The application process is running.
-    APP_PROC_STATE_PAUSED   ///< The application process has been paused.
+    APP_PROC_STATE_RUNNING  ///< The application process is running.
 }
 app_ProcState_t;
 
@@ -253,27 +274,13 @@ const char* app_GetInstallDirPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the directory path for an app's writeable files in the current running system.
+ * Gets an application's working directory.
  *
  * @return
- *      The absolute directory path.
+ *      The application's sandbox path.
  */
 //--------------------------------------------------------------------------------------------------
-const char* app_GetWriteableFilesDirPath
-(
-    app_Ref_t appRef                    ///< [IN] The application reference.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets an application's sandbox path.
- *
- * @return
- *      The path.
- */
-//--------------------------------------------------------------------------------------------------
-const char* app_GetSandboxPath
+const char* app_GetWorkingDir
 (
     app_Ref_t appRef                    ///< [IN] The application reference.
 );
@@ -295,6 +302,24 @@ const char* app_GetConfigPath
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets an application's supplementary groups list.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer was too small to hold all the gids.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_GetSupplementaryGroups
+(
+    app_Ref_t appRef,                   ///< [IN] The application reference.
+    gid_t* groupsPtr,                   ///< [OUT] List of group IDs.
+    size_t* numGroupsPtr                ///< [IN/OUT] Size of groupsPtr buffer on input.  Number of
+                                        ///           groups in groupsPtr on output.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This handler must be called when a SIGCHILD is received for a process that belongs to the
  * specified application.
  */
@@ -304,7 +329,7 @@ void app_SigChildHandler
     app_Ref_t appRef,                   ///< [IN] The application reference.
     pid_t procPid,                      ///< [IN] The pid of the process that changed state.
     int procExitStatus,                 ///< [IN] The return status of the process given by wait().
-    app_FaultAction_t* faultActionPtr   ///< [OUT] The fault action that should be taken.
+    FaultAction_t* faultActionPtr       ///< [OUT] The fault action that should be taken.
 );
 
 
@@ -332,5 +357,187 @@ le_result_t app_WatchdogTimeoutHandler
     wdog_action_WatchdogAction_t* watchdogActionPtr  ///< [OUT] The watchdog action that should be
                                                      ///< taken.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a reference to an application process.
+ *
+ * If the process name refers to an existing configured application process then a reference to that
+ * process is simply returned.  In this case an executable path may be specified to override the
+ * configured executable.
+ *
+ * If the process name does not match any configured application processes then a new process
+ * is created.  In this case an executable path must be specified.
+ *
+ * Configured processes take their runtime parameters, such as environment variables, priority, etc.
+ * from the configuration database while non-configured processes use default parameters.
+ *
+ * Parameters can be overridden by the other functions in this API such as app_AddProcArg(),
+ * app_SetProcPriority(), etc.
+ *
+ * It is an error to call this function on a configured process that is already running.
+ *
+ * @return
+ *      Reference to the application process if successful.
+ *      NULL if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+app_Proc_Ref_t app_CreateProc
+(
+    app_Ref_t appRef,                   ///< [IN] The application reference.
+    const char* procNamePtr,            ///< [IN] Name of the process.
+    const char* execPathPtr             ///< [IN] Path to the executable file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the standard in of an application process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetProcStdIn
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    int stdInFd                 ///< [IN] File descriptor to use as the app proc's standard in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the standard out of an application process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetProcStdOut
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    int stdOutFd                ///< [IN] File descriptor to use as the app proc's standard out.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the standard error of an application process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetProcStdErr
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    int stdErrFd                ///< [IN] File descriptor to use as the app proc's standard error.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets a stop handler to be called when the specified process stops.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetProcStopHandler
+(
+    app_Proc_Ref_t appProcRef,                  ///< [IN] Process reference.
+    app_Proc_StopHandlerFunc_t stopHandler,     ///< [IN] Handler to call when the process exits.
+    void* stopHandlerContextPtr                 ///< [IN] Context data for the stop handler.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a cmd-line argument to a process.  Adding a NULL argPtr is valid and can be used to validate
+ * the args list without actually adding an argument.  This is useful for overriding the configured
+ * arguments with an empty list.
+ *
+ * This overrides the configured arguments if available.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the argument string is too long.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_AddArgs
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    const char* argPtr          ///< [IN] Argument string.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes and invalidates the cmd-line arguments to a process.  This means the process will only
+ * use arguments from the config if available.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_ClearArgs
+(
+    app_Proc_Ref_t appProcRef   ///< [IN] Process reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the process's priority.
+ *
+ * This overrides the configured priority if available.
+ *
+ * The priority level string can be either "idle", "low", "medium", "high", "rt1" ... "rt32".
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the priority string is too long.
+ *      LE_FAULT if the priority string is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_SetProcPriority
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    const char* priorityPtr     ///< [IN] Priority string.  NULL to clear the priority.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets fault action for a process.
+ *
+ * This overrides the configured fault action if available.
+ *
+ * The fault action can be set to FAULT_ACTION_NONE to indicate that the configured fault action
+ * should be used if available.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetFaultAction
+(
+    app_Proc_Ref_t appProcRef,          ///< [IN] Process reference.
+    FaultAction_t faultAction           ///< [IN] Fault action.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts an application process.  This function assumes that the app has already started.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_StartProc
+(
+    app_Proc_Ref_t appProcRef                   ///< [IN] Process reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an application process from an app.
+ *
+ * If the process is a configured process the overriden parameters are cleared but the process is
+ * not actually deleted.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_DeleteProc
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    app_Proc_Ref_t appProcRef                   ///< [IN] Process reference.
+);
+
 
 #endif  // LEGATO_SRC_APP_INCLUDE_GUARD

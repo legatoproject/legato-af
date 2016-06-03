@@ -273,7 +273,7 @@ LE_SHARED le_result_t pa_audio_AutomaticGainControlSwitch
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_audio_SetProfile
 (
-    le_audio_Profile_t profile   ///< [IN] The audio profile.
+    uint32_t profile   ///< [IN] The audio profile.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -287,7 +287,7 @@ LE_SHARED le_result_t pa_audio_SetProfile
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_audio_GetProfile
 (
-    le_audio_Profile_t* profilePtr  ///< [OUT] The audio profile.
+    uint32_t* profilePtr  ///< [OUT] The audio profile.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -433,18 +433,6 @@ LE_SHARED le_result_t pa_audio_PlaySignallingDtmf
     const char*          dtmfPtr,   ///< [IN] The DTMFs to play.
     uint32_t             duration,  ///< [IN] The DTMF duration in milliseconds.
     uint32_t             pause      ///< [IN] The pause duration between tones in milliseconds.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Return true if an in-built Codec is present.
- *
- * @return true  if an in-built Codec is present, false otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED bool pa_audio_IsCodecPresent
-(
-    void
 );
 
 //--------------------------------------------------------------------------------------------------

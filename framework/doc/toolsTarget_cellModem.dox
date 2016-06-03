@@ -8,9 +8,6 @@ Use the Cellular Modem tool to control modem functions.
 
 @section toolsTarget_cm_adc ADC
 
-@verbatim cm adc list @endverbatim
-> Print known @c adc channels.
-
 @verbatim cm adc read channel @endverbatim
 > Read and print the value from an adc channel (where @c channel is one of the names returned).
 

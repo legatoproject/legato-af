@@ -60,12 +60,24 @@ target devices in the field.  Each <c>.sdef</c> file lists:
  - apps are to be installed on the device
  - IPC connections permitted between apps
  - overrides for limits, configuration settings, and IPC bindings within apps
+ - environment variables that can be used inside the .sdef file and .adef, .cdef, and .mdef files
+ - directories to search for interface files (e.g., .api files)
+ - programs that should be made available as command-line tools on the target device
+
+@section defFilesOverview_mdef .mdef Files
+
+Kernel Module Definition @c .mdef files are used to declare kernel modules to be bundled with Legato
+and installed on the target system. Each kernel module has a @c .mdef file that specifies the
+path to the pre-built kernel module binary file, and lists module parameters to be passed to the
+module's @c insmod command.
 
 @section defFilesOverview_searchPaths Build Tool Search Paths
 
 Two are used:
- - @b source search path - lists file system directories where the build tools look for source code files and components.
- - @b interface search path - lists file system directories where the build tools look for interface definition files (.h files and .api files).
+ - @b source search path - lists file system directories where the build tools look for source code
+ files and components.
+ - @b interface search path - lists file system directories where the build tools look for
+ interface definition files (.h files and .api files).
 
 The default search path “.” is the current working directory where the build tool ran.
 
@@ -79,10 +91,10 @@ $ mksys packageTracker.sdef -i ~/work/interfaces -s ~/work/components
 
 @section defFilesOverview_overriding Precedence and Overriding
 
-Settings in a <c>.sdef</c> file override settings from @e both the <c>.adef</c> and <c>Component.cdef</c>,
-while the <c>.adef</c> overrides settings in the <c>Component.cdef</c>.
-This increases reusability by allowing an integrator to override a component's or app's settings
-without having to change that component or app.
+Settings in a <c>.sdef</c> file override settings from @e both the <c>.adef</c> and
+<c>Component.cdef</c>, while the <c>.adef</c> overrides settings in the
+<c>Component.cdef</c>. This increases reusability by allowing an integrator to override a
+component's or app's settings without having to change that component or app.
 
 Most configuration settings can be overridden on the target device at runtime (although, some
 won't take effect until the app is restarted).
@@ -92,10 +104,9 @@ won't take effect until the app is restarted).
 Although it's better for apps to be sandboxed, apps aren't limited to running inside a
 sandbox. We call these @e unsandboxed apps.
 
-Even though unsanboxed apps aren't constrained the same way sandboxed apps are constrained, the Supervisor will
-still enforce @ref defFilesAdef_cpuShare and @ref defFilesAdef_processMaxFileBytes limits.
-
-<HR>
+Even though unsanboxed apps aren't constrained the same way sandboxed apps are constrained, the
+Supervisor will still enforce @ref defFilesAdef_cpuShare and @ref defFilesAdef_processMaxFileBytes
+limits.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <fts.h>
 #include <stdlib.h>
 
 #include "mkTools.h"
@@ -188,6 +189,45 @@ std::string FindDirectory
     }
 
     return "";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a list of files in the specified directory.  Symlinks are returned, but not sub-directories.
+ */
+//--------------------------------------------------------------------------------------------------
+std::list<std::string> ListFiles
+(
+    const std::string& path   ///< Path to the directory to iterate.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::list<std::string> files;
+
+    char* pathArrayPtr[] = { const_cast<char*>(path.c_str()), NULL };
+    FTS* ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+                if (entPtr->fts_level == 1)
+                {
+                    fts_set(ftsPtr, entPtr, FTS_SKIP);
+                }
+                break;
+
+            case FTS_F:
+            case FTS_SL:
+                files.push_back(path::GetLastNode(entPtr->fts_path));
+                break;
+        }
+    }
+
+    return files;
 }
 
 

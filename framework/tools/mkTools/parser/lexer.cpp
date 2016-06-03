@@ -238,6 +238,7 @@ bool Lexer_t::IsMatch
 
         case parseTree::Token_t::NAME:
         case parseTree::Token_t::GROUP_NAME:
+        case parseTree::Token_t::DOTTED_NAME:
             return (   islower(nextChar)
                     || isupper(nextChar)
                     || (nextChar == '_') );
@@ -251,13 +252,16 @@ bool Lexer_t::IsMatch
                     || isdigit(nextChar));
 
         case parseTree::Token_t::BOOLEAN:
-            throw mk::Exception_t("Internal bug: BOOLEAN lookahead not implemented.");
+            return IsMatchBoolean();
 
         case parseTree::Token_t::FLOAT:
             throw mk::Exception_t("Internal bug: FLOAT lookahead not implemented.");
 
         case parseTree::Token_t::STRING:
             throw mk::Exception_t("Internal bug: STRING lookahead not implemented.");
+
+        case parseTree::Token_t::MD5_HASH:
+            return isxdigit(nextChar);
     }
 
     throw mk::Exception_t("Internal bug: IsMatch(): Invalid token type requested.");
@@ -378,6 +382,11 @@ parseTree::Token_t* Lexer_t::Pull
             PullName(tokenPtr);
             break;
 
+        case parseTree::Token_t::DOTTED_NAME:
+
+            PullDottedName(tokenPtr);
+            break;
+
         case parseTree::Token_t::GROUP_NAME:
 
             PullGroupName(tokenPtr);
@@ -412,11 +421,73 @@ parseTree::Token_t* Lexer_t::Pull
 
             PullString(tokenPtr);
             break;
+
+        case parseTree::Token_t::MD5_HASH:
+
+            PullMd5(tokenPtr);
+            break;
     }
 
     return tokenPtr;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if a valid boolean value (true, false, on, or off) is waiting in the input stream.
+ *
+ * @return true if a valid boolean is waiting.  false otherwise.
+ **/
+//--------------------------------------------------------------------------------------------------
+bool Lexer_t::IsMatchBoolean
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char lookaheadBuff[6]; // Longest boolean value is "false" (5 chars, plus one after).
+    size_t n = 0;
+
+    bool result = false;
+
+    switch (nextChar)
+    {
+        case 't':
+
+            n = Lookahead(lookaheadBuff, 4);
+
+            if (   (n == 4)
+                && (strncmp(lookaheadBuff, "true", 4) == 0))
+            {
+                result = true;
+            }
+            break;
+
+        case 'f':
+
+            n = Lookahead(lookaheadBuff, 5);
+
+            if (   (n == 5)
+                && (strncmp(lookaheadBuff, "false", 5) == 0))
+            {
+                result = true;
+            }
+            break;
+
+        case 'o':
+
+            n = Lookahead(lookaheadBuff, 3); // "off" is 3 bytes long.
+
+            if (   ((n >= 2) && (strncmp(lookaheadBuff, "on", 2) == 0))
+                || ((n == 3) && (strncmp(lookaheadBuff, "off", 3) == 0))  )
+            {
+                result = true;
+            }
+            break;
+    }
+
+    return result;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1077,6 +1148,32 @@ void Lexer_t::PullName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Pull a dotted name from the input file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullDottedName
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    do
+    {
+        PullName(tokenPtr);
+
+        if (nextChar == '.')
+        {
+            AdvanceOneCharacter(tokenPtr);
+        }
+    }
+    while (   islower(nextChar)
+           || isupper(nextChar)
+           || (nextChar == '_'));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pull a group name from the input file and store it in the token.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1274,6 +1371,53 @@ void Lexer_t::PullEnvVar
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Pull an MD5 hash from the input file and store it in the token.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::PullMd5
+(
+    parseTree::Token_t* tokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // There are always exactly 32 hexadecimal digits in an md5 sum.
+    for (int i = 0; i < 32; i++)
+    {
+        if (   (!isdigit(nextChar))
+            && (nextChar != 'a')
+            && (nextChar != 'b')
+            && (nextChar != 'c')
+            && (nextChar != 'd')
+            && (nextChar != 'e')
+            && (nextChar != 'f')  )
+        {
+            if (IsWhitespace(nextChar))
+            {
+                ThrowException("MD5 hash too short.");
+            }
+
+            UnexpectedChar("in MD5 hash.");
+        }
+
+        AdvanceOneCharacter(tokenPtr);
+    }
+
+    // Make sure it isn't too long.
+    if (   isdigit(nextChar)
+        || (nextChar == 'a')
+        || (nextChar == 'b')
+        || (nextChar == 'c')
+        || (nextChar == 'd')
+        || (nextChar == 'e')
+        || (nextChar == 'f')  )
+    {
+        ThrowException("MD5 hash too long.");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Advance the current file position by one character, appending the character into a given token's
  * text value and updating the line and column numbers.
  *
@@ -1375,6 +1519,55 @@ void Lexer_t::ConvertToName
 
     // Everything looks fine.  Convert token type now.
     tokenPtr->type = parseTree::Token_t::NAME;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Lookahead n bytes in the input stream, copying those bytes into a buffer provided.
+ *
+ * This does not remove the bytes from the input stream.  It just "peeks" ahead at what's waiting.
+ *
+ * The first byte copied into the buffer will be 'nextChar'.
+ *
+ * If the end of the file is reached before the buffer is full, the EOF character will be copied
+ * into the buffer as the last byte.
+ *
+ * @return the number of bytes copied into the buffer.  Could be less than the number requested
+ *         if the end of file is reached.  Will never be more than the number requested.
+ **/
+//--------------------------------------------------------------------------------------------------
+size_t Lexer_t::Lookahead
+(
+    char* buffPtr,  ///< Buffer to copy bytes into.
+    size_t n        ///< Number of bytes to copy into the buffer.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (n > 0)
+    {
+        size_t i = 1;
+        *buffPtr = nextChar;
+
+        while ((*buffPtr != EOF) && (i < n))
+        {
+            buffPtr++;
+            *buffPtr = inputStream.get();
+            i++;
+        }
+
+        n = i;
+
+        // Push back everything we pulled out of the input stream.
+        while (i > 1)
+        {
+            i--;
+            inputStream.putback(*buffPtr);
+            buffPtr--;
+        }
+    }
+
+    return n;
 }
 
 

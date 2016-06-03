@@ -26,6 +26,7 @@
 #define LEGATO_ASSET_DATA_INCLUDE_GUARD
 
 #include "legato.h"
+#include "pa_avc.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -412,6 +413,24 @@ LE_SHARED le_result_t assetData_client_GetInt
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the float value for the specified field
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t assetData_client_GetFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to read
+    double* valuePtr                            ///< [OUT] The value read
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the integer value for the specified field
  *
  * @return:
@@ -425,6 +444,24 @@ LE_SHARED le_result_t assetData_client_SetInt
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
     int value                                   ///< [IN] The value to write
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the float value for the specified field
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t assetData_client_SetFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    double value                                ///< [IN] The value to write
 );
 
 
@@ -673,18 +710,22 @@ LE_SHARED le_result_t assetData_server_SetString
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value for the specified field as a string
+ * Get the value for the specified field as a string. This function will return LE_UNAVAILABLE, if
+ * a callback function is registered for this operation. A response will be sent to the server
+ * after the callback function finishes.
  *
  * If the field is not a string field, then the value will be converted to a string.
  *
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_UNAVAILABLE if a read call back function is registered
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t assetData_server_GetValue
 (
+    pa_avc_LWM2MOperationDataRef_t opRef,       ///< [IN] Reference to LWM2M operation
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
     char* strBufPtr,                            ///< [OUT] The value read
@@ -710,28 +751,6 @@ LE_SHARED le_result_t assetData_server_SetValue
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
     const char* strPtr                          ///< [IN] The value to write
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the value for the specified field as binary data
- *
- * If the field is a string field, then the binary data is the string
- *
- * @return:
- *      - LE_OK on success
- *      - LE_NOT_FOUND if field not found
- *      - LE_FAULT on any other error
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t assetData_server_GetValueAsBinary
-(
-    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
-    int fieldId,                                ///< [IN] Field to read
-    uint8_t* bufPtr,                            ///< [OUT] The buffer for writing the data
-    size_t bufNumBytes,                         ///< [IN] Size of buffer
-    size_t* bytesWrittenPtr                     ///< [OUT] # of bytes written to buffer
 );
 
 
@@ -900,7 +919,8 @@ le_result_t assetData_ReadFieldListFromTLV
 (
     uint8_t* bufPtr,                            ///< [IN] Buffer for reading the TLV list
     size_t bufNumBytes,                         ///< [IN] # bytes in the buffer
-    assetData_InstanceDataRef_t instanceRef     ///< [IN] Asset instance to write the fields
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to write the fields
+    bool isCallHandlers                         ///< [IN] Call field callback handlers?
 );
 
 
@@ -924,6 +944,66 @@ le_result_t assetData_GetAssetList
     int* numAssetsPtr                           ///< [OUT] Number of assets + instances
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enables or Disables a field for observe.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if the object instance is not available
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_SetObserve
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    bool isObserve,                             ///< [IN] Start or stop observing?
+    uint8_t *tokenPtr,                          ///< [IN] Token i.e, request id of the observe request
+    uint8_t tokenLength                         ///< [IN] Token Length
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set Observe on all instances.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_SetObserveAllInstances
+(
+    assetData_AssetDataRef_t assetRef,          ///< [IN] Asset to use
+    bool isObserve,                             ///< [IN] true = Observe; false = Cancel Observe
+    uint8_t *tokenPtr,                          ///< [IN] Token
+    uint8_t tokenLength                         ///< [IN] Token Length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is Observe flag set for object9 state and result fields.
+ *
+ * @return:
+ *      - true if the flags are set
+ *      - false if not able to read the flags or if the flags are not set
+ */
+//--------------------------------------------------------------------------------------------------
+bool assetData_IsObject9Observed
+(
+    assetData_InstanceDataRef_t obj9InstRef
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cancels observe on entire asset map.
+ */
+//--------------------------------------------------------------------------------------------------
+void assetData_CancelAllObserve
+(
+    void
+);
 
 #endif // LEGATO_ASSET_DATA_INCLUDE_GUARD
 

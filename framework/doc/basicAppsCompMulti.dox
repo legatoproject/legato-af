@@ -11,21 +11,23 @@ executable. This is a simple change to helloWorld.adef like this:
 @verbatim
 executables:
 {
-    helloWorld = ( greetServer greetClient )
+    helloServer = ( greetServer )
+    helloClient = ( greetClient )
 }
 
 processes:
 {
     run:
     {
-        (helloWorld)
+        (helloClient)
+        (helloServer)
     }
 }
 
 bindings:
 {
-     helloWorld.greetClient.hello -> helloWorld.greetServer.hello
- }
+     helloClient.greetClient.hello -> helloServer.greetServer.hello
+}
 @endverbatim
 
 
@@ -36,8 +38,6 @@ Now we can run @c mkapp to build the application.
 @code
 $ mkapp helloWorld.adef -t wp85
 @endcode
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

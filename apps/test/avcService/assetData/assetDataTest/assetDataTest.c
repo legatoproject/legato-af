@@ -19,6 +19,7 @@ le_sem_Ref_t SemCreateOne;
 le_sem_Ref_t SemCreateTwo;
 
 
+
 void banner(char *testName)
 {
     int i;
@@ -235,8 +236,8 @@ void RunTest(void)
 
 
     banner("Test Asset list after creating instances");
-    char listTestTwo[] = "</lwm2m/9/3>,</lwm2m/9/4>,"
-                         "</testOne/1000/0>,</testOne/1000/1>,";
+    char listTestTwo[] = "</le_testOne/1000/0>,</le_testOne/1000/1>,"
+                         "</lwm2m/9/3>,</lwm2m/9/4>,";
     assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
     LE_TEST( memcmp(assetList, listTestTwo, sizeof(listTestTwo)) == 0 );
     LE_TEST( listSize == strlen(listTestTwo) );
@@ -268,13 +269,38 @@ void RunTest(void)
     banner("Read/Write integer fields as values");
     char valueStr[100];
 
-    LE_TEST( assetData_server_GetValue(testOneRefZero, 4, valueStr, sizeof(valueStr)) == LE_OK );
+    LE_TEST( assetData_server_GetValue(NULL, testOneRefZero, 4, valueStr, sizeof(valueStr)) == LE_OK );
     LE_TEST( strcmp( valueStr, "199" ) == 0 );
 
     LE_TEST( assetData_server_SetValue(testOneRefZero, 4, "123") == LE_OK );
     LE_TEST( assetData_client_GetInt(testOneRefZero, 4, &value) == LE_OK );
     LE_TEST( value == 123 );
 
+    banner("Read/Write float fields");
+    double float_value;
+
+    LE_TEST( assetData_client_GetFloat(testOneRefZero, 12, &float_value) == LE_OK );
+    LE_PRINT_VALUE("%lf",float_value);
+    LE_TEST( float_value == 123.456 );
+
+    LE_TEST( assetData_client_SetFloat(testOneRefZero, 12, 789.012) == LE_OK );
+    LE_TEST( assetData_client_GetFloat(testOneRefZero, 12, &float_value) == LE_OK );
+    LE_TEST( float_value == 789.012 );
+
+    LE_TEST( assetData_client_GetFloat(testOneRefOne, 12, &float_value) == LE_OK );
+    LE_TEST( float_value == 123.456 );
+
+    LE_TEST( assetData_client_GetFloat(testOneRefZero, 50, &float_value) == LE_NOT_FOUND );
+
+
+    banner("Read/Write float as values");
+
+    LE_TEST( assetData_server_GetValue(NULL, testOneRefZero, 12, valueStr, sizeof(valueStr)) == LE_OK );
+    LE_TEST( strcmp( valueStr, "789.012000" ) == 0 );
+
+    LE_TEST( assetData_server_SetValue(testOneRefZero, 12, "345.678") == LE_OK );
+    LE_TEST( assetData_client_GetFloat(testOneRefZero, 12, &float_value) == LE_OK );
+    LE_TEST( float_value == 345.678 );
 
     banner("Read/Write string fields");
     char strBuf[100];
@@ -290,7 +316,7 @@ void RunTest(void)
 
     banner("Read/Write string fields as values");
 
-    LE_TEST( assetData_server_GetValue(lwm2mRefZero, 0, valueStr, sizeof(valueStr)) == LE_OK );
+    LE_TEST( assetData_server_GetValue(NULL, lwm2mRefZero, 0, valueStr, sizeof(valueStr)) == LE_OK );
     LE_TEST( strcmp( valueStr, "a different value" ) == 0 );
 
     LE_TEST( assetData_server_SetValue(lwm2mRefZero, 0, "123") == LE_OK );
@@ -309,8 +335,8 @@ void RunTest(void)
 
     banner("Field write int handlers");
 
-    LE_TEST( assetData_client_AddFieldActionHandler(testOneAssetRef, 4, FieldWriteIntHandler, SemWriteOne) != NULL);
-    LE_TEST( assetData_client_AddFieldActionHandler(testOneAssetRef, 4, FieldWriteIntHandler, SemWriteTwo) != NULL);
+    LE_TEST( assetData_server_AddFieldActionHandler(testOneAssetRef, 4, FieldWriteIntHandler, SemWriteOne) != NULL);
+    LE_TEST( assetData_server_AddFieldActionHandler(testOneAssetRef, 4, FieldWriteIntHandler, SemWriteTwo) != NULL);
 
     LE_TEST( assetData_client_SetInt(testOneRefZero, 4, 399) == LE_OK );
     LE_TEST( assetData_client_GetInt(testOneRefZero, 4, &value) == LE_OK );
@@ -370,7 +396,7 @@ void RunTest(void)
     WriteDataToLog(tlvBufferOne, bytesWrittenOne);
 
     // Read from the TLV and write back to assetData
-    LE_TEST( assetData_ReadFieldListFromTLV(tlvBufferOne, bytesWrittenOne, lwm2mRefZero) == LE_OK );
+    LE_TEST( assetData_ReadFieldListFromTLV(tlvBufferOne, bytesWrittenOne, lwm2mRefZero, false) == LE_OK );
 
     // Write assetData to different TLV and compare
     LE_TEST( assetData_WriteFieldListToTLV(lwm2mRefZero, tlvBufferTwo, sizeof(tlvBufferTwo), &bytesWrittenTwo) == LE_OK );
@@ -383,8 +409,8 @@ void RunTest(void)
     banner("Test Asset list after deleting instances");
     assetData_DeleteInstance(testOneRefZero);
     char listTestThree[] = "</legato/0/0>,"
-                           "</lwm2m/9/3>,</lwm2m/9/4>,"
-                           "</testOne/1000/1>,";
+                            "</le_testOne/1000/1>,"
+                            "</lwm2m/9/3>,</lwm2m/9/4>,";
     assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
     LE_TEST( memcmp(assetList, listTestThree, sizeof(listTestThree)) == 0 );
     LE_TEST( listSize == strlen(listTestThree) );
@@ -392,8 +418,8 @@ void RunTest(void)
 
     assetData_DeleteInstance(testOneRefOne);
     char listTestFour[] = "</legato/0/0>,"
-                          "</lwm2m/9/3>,</lwm2m/9/4>,"
-                          "</testOne/1000>,";
+                          "</le_testOne/1000>,"
+                          "</lwm2m/9/3>,</lwm2m/9/4>,";
     assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
     LE_TEST( memcmp(assetList, listTestFour, sizeof(listTestFour)) == 0 );
     LE_TEST( listSize == strlen(listTestFour) );
@@ -401,8 +427,8 @@ void RunTest(void)
 
     assetData_DeleteInstance(frameworkRefZero);
     char listTestFive[] = "</legato/0>,"
-                          "</lwm2m/9/3>,</lwm2m/9/4>,"
-                          "</testOne/1000>,";
+                          "</le_testOne/1000>,"
+                          "</lwm2m/9/3>,</lwm2m/9/4>,";
     assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
     LE_TEST( memcmp(assetList, listTestFive, sizeof(listTestFive)) == 0 );
     LE_TEST( listSize == strlen(listTestFive) );
@@ -410,8 +436,8 @@ void RunTest(void)
 
     assetData_DeleteInstance(lwm2mRefZero);
     char listTestSix[] = "</legato/0>,"
-                         "</lwm2m/9/4>,"
-                         "</testOne/1000>,";
+                         "</le_testOne/1000>,"
+                         "</lwm2m/9/4>,";
     assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
     LE_TEST( memcmp(assetList, listTestSix, sizeof(listTestSix)) == 0 );
     LE_TEST( listSize == strlen(listTestSix) );

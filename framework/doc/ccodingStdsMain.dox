@@ -14,9 +14,10 @@ If it's not completely obvious what's going on, it must be documented clearly us
 Comments should also be used to improve readability, wherever appropriate.
 
 However, there's no point in commenting the obvious, like this:
-@verbatim
+@code
 // Set the flag
-isReady = TRUE; @endverbatim
+isReady = TRUE;
+@endcode
 
 Comments should focus mainly on describing why something is happening, rather than  what or how. Code should be written so that what it's doing, and how it's doing it,
 is obvious (because of the well named identifiers and cleanly structured code). If not, your should probably rewrite the code.
@@ -31,7 +32,7 @@ C++ style comments are permitted in C code.  All modern compilers support them.
 
 Each module should contain a comment block at the top of the file that describes the module's purpose.  The header comment block should be formatted like this:
 
-@verbatim
+@code
 /**
  * @file le_basics.h
  *
@@ -44,12 +45,12 @@ Each module should contain a comment block at the top of the file that describes
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-@endverbatim
+@endcode
 
 Each function should be preceded by a comment block that describes the purpose of the function, its possible return values, and any side effects it may have.
 The function blocks should be formatted like this:
 
-@verbatim
+@code
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a sub-pool.
@@ -67,7 +68,7 @@ le_mem_PoolRef_t le_mem_CreateSubPool
                                     ///   sub-pool).
     size_t              numObjects  ///< [IN] Number of objects to take from the super-pool.
 );
-@endverbatim
+@endcode
 
 Function parameters should be documented with comments after the parameter like above.
 Placing the comments after the parameters (instead of in the function comment block) keeps the comments and parameters together
@@ -75,7 +76,7 @@ Placing the comments after the parameters (instead of in the function comment bl
 
 A struct should be documented in a similar manner where each field has comments proceeding it like this:
 
-@verbatim
+@code
 //--------------------------------------------------------------------------------------------------
 /**
  * List of memory pool statistics.
@@ -88,11 +89,11 @@ typedef struct
     size_t      numOverflows;   ///< Number of times le_mem_ForceAlloc() had to expand the pool.
 }
 le_mem_PoolStats_t;
-@endverbatim
+@endcode
 
 Enumerated types should be documented similarly.
 
-@verbatim
+@code
 //--------------------------------------------------------------------------------------------------
 /**
  * Example return codes.
@@ -109,12 +110,12 @@ typedef enum
     EG_WARP_CORE_BREACH = -99   ///< Dilithium crystals defocused the anti-matter beam. Should never happen.
 }
 eg_code_t;
-@endverbatim
+@endcode
 
 
 If the meaning of the constants in an enumerated type are obvious based on their names, comments could be omitted like this:
 
-@verbatim
+@code
 //--------------------------------------------------------------------------------------------------
 /**
  * Boolean type.
@@ -129,7 +130,7 @@ typedef enum
     TRUE = 1
 }
 bool;
-@endverbatim
+@endcode
 
 @section cstdsConstPointers  Const Pointers
 
@@ -146,7 +147,7 @@ Each function gets a starting value of 1, and 1 is added for every "if" (or "?")
 
 The following code has a cyclomatic complexity of 3:
 
-@verbatim
+@code
 int main(int argc, char** argv)
 {
     int i;
@@ -168,7 +169,7 @@ int main(int argc, char** argv)
     }
     return result;
 }
-@endverbatim
+@endcode
 
 Higher levels of cyclomatic complexity are correlated with higher defect density.
 
@@ -192,7 +193,7 @@ Fan-out measures the number of different functions called by a function includin
 High levels of fan-out indicate insufficient abstraction and results in higher defect density.
 
 The following function has a fan-out of 5:
-@verbatim
+@code
 static int Log(int value)
 {
     if (IsAboveThreshold(value))
@@ -222,7 +223,7 @@ static int Log(int value)
     }
 }
 
-@endverbatim
+@endcode
 
 The functions IsAboveThreshold(), AllocEntry(), ReportError(), and GetTimestamp() are called by the Log() function.
 The "Log" data structure (consisting of the variables LogEntryList, NextEntryIndex, and LastEntryIndex) is updated by the Log() function.
@@ -251,7 +252,7 @@ NOTE: file-scope static variables are fine.
 
 @c goto statements should not be used. If it's absolutely essential, use them sparingly only as a jump-to-exception-handling mechanism:
 
-@verbatim
+@code
 {
     Rec_t* recPtr = CreateRec();
 
@@ -273,7 +274,7 @@ fault:
     return FAILED;
 }
 
-@endverbatim
+@endcode
 
 @section cstdsHeap Heap
 

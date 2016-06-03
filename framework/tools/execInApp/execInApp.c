@@ -21,7 +21,7 @@
 #include "user.h"
 #include "app.h"
 #include "proc.h"
-#include "sandbox.h"
+//#include "sandbox.h"
 #include "smack.h"
 
 
@@ -86,8 +86,14 @@ static void PrintHelp
         "    The appName is the name of the running application that the process should start in.\n"
         "    The appName cannot start with a '-'.\n"
         "\n"
-        "    The execPath is the path in the sandbox to the executable file that will be executed.\n"
         "    The execPath cannot start with a '-'.\n"
+        "\n"
+        "    The execPath in a sandboxed app is a path inside of the sandbox so /bin/myExe will\n"
+        "    refer to /bin inside of the sandbox.\n"
+        "\n"
+        "    The execPath when used with unsandboxed applications refers to a path in the host\n"
+        "    Linux system.  To easily refer to a bundled executable you can use a relative path\n"
+        "    like, bin/myExe.\n"
         "\n"
         "    The excutable and all required libraries, resources, etc. must exist in the\n"
         "    application's sandbox.\n"
@@ -167,67 +173,12 @@ static void GetAppIds
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prepend specified env variable with the given value.
+ * Create a new ref for the named application.
  *
- * @note This function kills the calling process if there is an error.
+ * @return
+ *      The app reference.
  */
 //--------------------------------------------------------------------------------------------------
-static void PrependToEnvVariable
-(
-    const char* envNamePtr,         ///< [IN] Env variable name to change
-    const char* valuePtr            ///< [IN] Value to prepend
-)
-{
-    const char * oldValuePtr;
-    LE_DEBUG("Var: %s", envNamePtr);
-
-    oldValuePtr = getenv(envNamePtr);
-
-    LE_DEBUG("Old: %s", oldValuePtr);
-
-    if(oldValuePtr != NULL)
-    {
-        char newValue[LIMIT_MAX_PATH_BYTES] = "";
-
-        INTERNAL_ERR_IF(le_path_Concat(":", newValue, sizeof(newValue), valuePtr, oldValuePtr, NULL) != LE_OK,
-                "Buffer size too small.");
-        LE_DEBUG("Var %s: %s", envNamePtr, newValue);
-
-        INTERNAL_ERR_IF(setenv(envNamePtr, newValue, true) < 0, "Unable to set env");
-    }
-    else
-    {
-        INTERNAL_ERR_IF(setenv(envNamePtr, valuePtr, true) < 0, "Unable to set env");
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Prepend specified env variable with the given directory, relative to a sandbox directory.
- *
- * If the directory doesn't exist, env. variable isn't changed.
- *
- * @note This function kills the calling process if there is an error.
- */
-//--------------------------------------------------------------------------------------------------
-static void PrependRelativeDirToEnvVariable
-(
-    const char* envNamePtr,         ///< [IN] Env variable name to change
-    const char* baseDirPtr,      ///< [IN] Sandbox directory
-    const char* relativeDirPtr      ///< [IN] Relative path
-)
-{
-    // Adding $sandboxDir/bin to PATH
-    char absoluteDir[LIMIT_MAX_PATH_BYTES] = "";
-    INTERNAL_ERR_IF(le_path_Concat("/", absoluteDir, sizeof(absoluteDir), baseDirPtr, relativeDirPtr, NULL) != LE_OK,
-        "Buffer size too small.");
-
-    if(le_dir_IsDir(absoluteDir))
-    {
-        PrependToEnvVariable(envNamePtr, absoluteDir);
-    }
-}
-
 static app_Ref_t GetAppRef
 (
     const char * appNamePtr     ///< [IN] App name
@@ -236,8 +187,13 @@ static app_Ref_t GetAppRef
     app_Ref_t appRef;
 
     char configPath[LIMIT_MAX_PATH_BYTES] = "";
-    INTERNAL_ERR_IF(le_path_Concat("/", configPath, LIMIT_MAX_PATH_BYTES,
-            "apps", appNamePtr, (char*)NULL) != LE_OK, "Buffer size too small.");
+    INTERNAL_ERR_IF(le_path_Concat("/",
+                                  configPath,
+                                  LIMIT_MAX_PATH_BYTES,
+                                  "apps",
+                                  appNamePtr,
+                                  (char*)NULL) != LE_OK,
+                    "Buffer size too small.");
 
     app_Init();
 
@@ -433,8 +389,8 @@ COMPONENT_INIT
     // Get the executable path.
     size_t execIndex;
     const char* execPathPtr = GetExecPath(&execIndex);
-
     // Check options.
+
     size_t lastOptionIndex = execIndex - 1;
     size_t firstOptionIndex = 1;
     if ( GetFlagArg("--help", firstOptionIndex, lastOptionIndex) ||
@@ -496,13 +452,13 @@ COMPONENT_INIT
     GetAppIds(appRef, appNamePtr, &uid, &gid, userName, sizeof(userName));
     LE_DEBUG("App: %s uid[%u] gid[%u] user[%s]\n", appNamePtr, uid, gid, userName);
 
-    const char * sandboxDirPtr;
-    sandboxDirPtr = app_GetSandboxPath(appRef);
+    const char * workingDir;
+    workingDir = app_GetWorkingDir(appRef);
 
     // Is application sandboxed ?
-    if(sandboxDirPtr[0] != '\0')
+    if(app_GetIsSandboxed(appRef))
     {
-        LE_DEBUG("Application '%s' is sandboxed in %s", appNamePtr, sandboxDirPtr);
+        LE_DEBUG("Application '%s' is sandboxed in %s", appNamePtr, workingDir);
 
         // Set the umask so that files are not accidentally created with global permissions.
         umask(S_IRWXG | S_IRWXO);
@@ -522,25 +478,16 @@ COMPONENT_INIT
         smack_SetMyLabel(smackLabel);
 
         // Sandbox the process.
-        sandbox_ConfineProc(sandboxDirPtr, uid, gid, NULL, 0, "/");
+        proc_ConfineProcInSandbox(workingDir, uid, gid, NULL, 0);
     }
     else
     {
         LE_WARN("Application '%s' is unsandboxed", appNamePtr);
 
-        const char * installDirPtr = app_GetInstallDirPath(appRef);
-        INTERNAL_ERR_IF(installDirPtr == NULL, "Unable to get install directory.");
-
-        // Adding $sandboxDir/bin to PATH
-        PrependRelativeDirToEnvVariable("PATH", installDirPtr, "/bin");
-
-        // Adding $sandboxDir/bin to LD_LIBRARY_PATH
-        PrependRelativeDirToEnvVariable("LD_LIBRARY_PATH", installDirPtr, "/lib");
-
-        if( (uid != 0) || (gid != 0) )
+        // Set the working directory for this process.
+        if (chdir(workingDir) != 0)
         {
-            // Sandbox the process as to use proper uid & gid
-            sandbox_ConfineProc("/", uid, gid, NULL, 0, "/");
+            LE_FATAL("Could not change working directory to '%s'.  %m", workingDir);
         }
     }
 

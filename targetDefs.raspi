@@ -1,0 +1,29 @@
+# --------------------------------------------------------------------------------------------------
+# make definitions specific to the Raspberry Pi target.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+export TARGET := raspi
+
+ifndef RASPI_TOOLCHAIN_DIR
+  $(warning RASPI_TOOLCHAIN_DIR not defined.  Using default.)
+  export RASPI_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) raspi)
+endif
+
+export RASPI_TOOLCHAIN_PREFIX := arm-linux-gnueabihf-
+export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_RASPI
+ifeq (,$(wildcard $(RASPI_TOOLCHAIN_DIR)/$(RASPI_TOOLCHAIN_PREFIX)gcc))
+  export RASPI_TOOLCHAIN_PREFIX := arm-poky-linux-gnueabi-
+  export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV6
+endif
+
+export TOOLCHAIN_PREFIX = $(RASPI_TOOLCHAIN_PREFIX)
+export COMPILER_DIR = $(RASPI_TOOLCHAIN_DIR)
+
+export LEGATO_UTIL_PA = $(AT_MANAGER_DIR)
+export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/at/components/le_pa
+export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/at/components/le_pa_gnss
+export LEGATO_AVC_PA = $(AVC_PA_DIR)/at/components/le_pa_avc
+export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/at/components/le_pa_secStore
+export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/at/components/le_pa_fwupdate

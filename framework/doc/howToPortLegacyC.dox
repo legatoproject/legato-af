@@ -9,9 +9,12 @@ installed.
 @code
 $ path/to/LegatoFramework/bin/legs
 @endcode
+ <br>
+The examples also use a Sierra Wireless WP85xx device. If your device
+is different, substitute that device wherever you see WP85. <br>
+<br>
+The examples use IP address 192.168.2.2. Change it if your target IP uses a different address.
 
-@note These examples assume you are using a Sierra Wireless WP85xx device.  If you're using
-another device, substitute that device wherever you see "WP85" or "wp85".
 
 @section howtoPortingLegacyC_CrossBuild Cross-Build
 
@@ -28,7 +31,7 @@ $ $WP85_TOOLCHAIN_DIR/arm-poky-linux-gnueabi-gcc -o legacyProgram main.c
 @c 2. Copy the legacy app executable onto the target using a tool like @c scp:
 
 @code
-$ scp legacyProgram 192.168.1.2:
+$ scp legacyProgram 192.168.2.2:
 
 legacyProgram                100% 9366     9.2KB/s   00:00
 @endcode
@@ -96,7 +99,7 @@ DONE
 @c 4. From the target's command line, use <code>app start</code> to run the program:
 
 @code
-$ ssh root@192.168.1.2
+$ ssh root@192.168.2.2
 Linux swi-mdm9x15 3.4.91-8fcd3d08ac_7e84772e18 #1 PREEMPT Wed Jun 3 23:59:46 PDT 2015 armv7l GNU/Linux
 root@swi-mdm9x15:~# app start legacyProgram
 Starting app 'legacyProgram'...
@@ -195,7 +198,14 @@ $ $CC -c le_info_client.c -I$LEGATO_ROOT/framework/c/inc
 $ $CC -o legacyProgram main.o le_info_client.o -L${LEGATO_ROOT}/build/${TARGET}/bin/lib -llegato -lpthread -lrt
 @endcode
 
-@c 7. Specify which instance of the @c le_info service your app should use by creating
+@c 7. Build app:
+
+@code
+$ mkdir _build
+$ $CC -o _build/legacyProgram main.o le_info_client.o -L$LEGATO_ROOT/build/$TARGET/framework/lib -llegato -lpthread -lr
+@endcode
+
+@c 8. Specify which instance of the @c le_info service your app should use by creating
 a binding in the <c> .adef </c> file:
 
 @code
@@ -213,14 +223,14 @@ to explicitly grant access permission so access is never unknowingly granted.
 
 @code
 $ mkapp -t wp85 legacyProgram.adef
-$ instapp legacyProgram.update.wp85 192.168.1.2
+$ instapp legacyProgram.update.wp85 192.168.2.2
 Installing application 'legacyProgram' from file 'legacyProgram.wp85'.
 Removing app 'legacyProgram'...
 Deleted user 'applegacyProgram'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
-$ startapp legacyProgram 192.168.1.2
+$ startapp legacyProgram 192.168.2.2
 @endcode
 
 @section howtoPortingLegacyC_handlers Callbacks from Legato APIs

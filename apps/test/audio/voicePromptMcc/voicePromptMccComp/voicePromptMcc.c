@@ -594,7 +594,7 @@ static void ConnectAudio
     LE_ERROR_IF((PlayerRef==NULL), "OpenFilePlayback returns NULL!");
 
     // Set profile and specific gains for AR7/AR8 (won't work on other platforms)
-    LE_ERROR_IF((le_audio_SetProfile(LE_AUDIO_HANDSET) != LE_OK), "Cannot set HandSet profile");
+    LE_ERROR_IF((le_audio_SetProfile(1) != LE_OK), "Cannot set profile 1");
     LE_ERROR_IF((le_audio_SetGain(PlayerRef, 0x300) != LE_OK), "Cannot set multimedia gain");
     LE_ERROR_IF((le_audio_SetGain(MdmRxAudioRef, 5) != LE_OK), "Cannot set MdmRxAudioRef gain");
 

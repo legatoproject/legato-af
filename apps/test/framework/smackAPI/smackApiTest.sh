@@ -10,12 +10,16 @@ OnFail() {
 }
 
 # Copy the test executable to the target.
-scp $LEGATO_ROOT/build/$targetType/bin/tests/smackApiTest root@$targetAddr:/tmp/smackApiTest
+scp $LEGATO_ROOT/build/$targetType/tests/bin/smackApiTest root@$targetAddr:/tmp
+CheckRet
+
+scp $LEGATO_ROOT/build/$targetType/tests/lib/libComponent_smackAPI.so root@$targetAddr:/tmp
+CheckRet
 
 echo "******** SMACK API Test Starting ***********"
 
 # Run the test.
-ssh root@$targetAddr "/tmp/smackApiTest"
+ssh root@$targetAddr "LD_LIBRARY_PATH=/tmp /tmp/smackApiTest"
 CheckRet
 
 echo "SMACK API Test Passed!"

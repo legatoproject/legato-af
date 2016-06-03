@@ -51,7 +51,7 @@ void DumpPdu
                 index = 0;
             }
         }
-        LE_INFO("%s",output);
+        LE_DEBUG("%s",output);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -62,12 +62,13 @@ void DumpPdu
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_log_TraceRef_t traceRef = le_log_GetTraceRef( "smsPdu" );
-
+    // le_log_TraceRef_t traceRef = le_log_GetTraceRef( "smsPdu" );
+    // le_log_TraceRef_t traceRef2 = le_log_GetTraceRef( "sms" );
     // To reactivate for all DEBUG logs
-  //  le_log_SetFilterLevel(LE_LOG_DEBUG);
+    // le_log_SetFilterLevel(LE_LOG_DEBUG);
 
-    le_log_EnableTrace(traceRef);
+    // le_log_EnableTrace(traceRef);
+    // le_log_EnableTrace(traceRef2);
 
     // Init the test case / test suite data structures
     smsPdu_Initialize();

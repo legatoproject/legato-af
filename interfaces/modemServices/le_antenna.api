@@ -295,8 +295,8 @@ HANDLER StatusHandler
 //--------------------------------------------------------------------------------------------------
 EVENT StatusEvent
 (
-    Obj     antennaRef     IN,              ///< antenna reference
-    handler StatusHandler
+    Obj           antennaRef     IN,              ///< antenna reference
+    StatusHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -306,6 +306,7 @@ EVENT StatusEvent
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_UNSUPPORTED if the antenna detection is not supported
  *      - LE_FAULT on other failure
  *
  */

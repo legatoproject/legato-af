@@ -65,6 +65,7 @@ static void TestRxHandler
     char                  timestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
     char                  text[LE_SMS_TEXT_MAX_BYTES] = {0};
     uint8_t               pdu[LE_SMS_PDU_MAX_BYTES] = {0};
+    uint16_t              ucs2[LE_SMS_UCS2_MAX_CHARS] = {0};
     uint8_t               bin[50] = {0};
 
     LE_INFO("-TEST- New SMS message received ! msg.%p", msg);
@@ -93,7 +94,7 @@ static void TestRxHandler
     else
     {
         LE_INFO("-TEST  2- Check le_sms_GetMessageIdCellBroadcast OK Message Id 0x%04X (%d)",
-                        myMessageId, myMessageId);
+            myMessageId, myMessageId);
     }
 
     res = le_sms_GetCellBroadcastSerialNumber(msg, &myMessageSerialNumber);
@@ -105,11 +106,12 @@ static void TestRxHandler
     else
     {
         LE_INFO("-TEST  3- Check le_sms_GetCellBroadcastSerialNumber OK Message Id 0x%04X (%d)",
-                        myMessageSerialNumber, myMessageSerialNumber);
+            myMessageSerialNumber, myMessageSerialNumber);
     }
 
     if (myformat == LE_SMS_FORMAT_TEXT)
     {
+        LE_INFO("SMS Cell Broadcast in text format");
         res = le_sms_GetTimeStamp(msg, timestamp, sizeof(timestamp));
         if(res != LE_NOT_PERMITTED)
         {
@@ -340,6 +342,124 @@ static void TestRxHandler
             LE_INFO("-TEST  12 Check le_sms_GetBinary OK.");
         }
     }
+    else if (myformat == LE_SMS_FORMAT_UCS2)
+    {
+        const uint16_t ucs2Pattern[]= { 0x3100, 0x3200, 0x3300 };
+
+        LE_INFO("SMS Cell Broadcast in UCS2 format");
+        res = le_sms_GetTimeStamp(msg, timestamp, sizeof(timestamp));
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  4- Check le_sms_GetTimeStamp failure! %d", res);
+            return;
+        }
+        else
+        {
+            LE_INFO("-TEST  4- Check le_sms_GetTimeStamp LE_NOT_PERMITTED");
+        }
+
+        res = le_sms_GetText(msg, text, sizeof(text));
+        if(res != LE_FORMAT_ERROR)
+        {
+            LE_ERROR("-TEST  5- Check le_sms_GetUCS2 failure! %d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            LE_INFO("SMS CB text=> '%s'",text);
+            LE_INFO("-TEST  5- Check le_sms_GetUCS2 LE_FORMAT_ERROR.");
+        }
+
+        pduLen = le_sms_GetPDULen(msg);
+        if( (pduLen <= 0) || (pduLen > LE_SMS_UCS2_MAX_CHARS))
+        {
+            LE_ERROR("-TEST  6 Check le_sms_GetPDULen failure!");
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            LE_INFO("SMS CB Pdu len %d", (int) pduLen);
+            LE_INFO("-TEST  6- Check le_sms_GetPDULen OK.");
+        }
+
+        res = le_sms_GetPDU(msg, pdu, &pduLen);
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST  7 Check le_sms_GetPDU failure! %d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            Dump("SMS CB PDU", pdu, pduLen);
+            LE_INFO("-TEST  7 Check le_sms_GetPDU OK.");
+        }
+
+        res = le_sms_DeleteFromStorage(msg);
+        if(res != LE_NO_MEMORY)
+        {
+            LE_ERROR("-TEST  8 Check le_sms_DeleteFromStorage failure! %d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            Dump("SMS CB PDU", pdu, pduLen);
+            LE_INFO("-TEST  8 Check le_sms_DeleteFromStorage LE_NO_MEMORY.");
+        }
+
+        res = le_sms_SetUCS2(msg, ucs2Pattern, sizeof(ucs2Pattern) / 2);
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  9 Check le_sms_SetUCS2 failure !%d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            LE_INFO("-TEST  9 Check le_sms_SetUCS2 LE_NOT_PERMITTED.");
+        }
+
+        res = le_sms_SetDestination(msg, "0123456789");
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  10 Check le_sms_SetDestination failure! %d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            LE_INFO("-TEST  10 Check le_sms_SetDestination LE_NOT_PERMITTED.");
+        }
+
+        res = le_sms_SetBinary(msg, bin, sizeof(bin));
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  11 Check le_sms_SetBinary failure! %d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            LE_INFO("-TEST  11 Check le_sms_SetBinary LE_NOT_PERMITTED.");
+        }
+
+        size_t binLen = LE_SMS_UCS2_MAX_CHARS;
+        res = le_sms_GetUCS2(msg, ucs2, &binLen);
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST  12 Check le_sms_GetUCS2 failure !%d", res);
+            LE_ERROR("FAILED !!");
+            return;
+        }
+        else
+        {
+            Dump("UCS2 Dump: ", (uint8_t *) ucs2, binLen * 2);
+            LE_INFO("-TEST  12 Check le_sms_GetUCS2 LE_OK");
+        }
+    }
     else
     {
         LE_INFO("SMS Cell Broadcast not in test format");
@@ -398,6 +518,13 @@ static le_result_t TestAddRemoveCellBroadcastIds
     if (res != LE_FAULT)
     {
         LE_ERROR("TestAddRemoveCellBroadcastIds FAILED");
+        return LE_FAULT;
+    }
+
+    res = le_sms_AddCellBroadcastIds(60,110);
+    if (res != LE_OK)
+    {
+        LE_ERROR("le_sms_AddCellBroadcastIds FAILED");
         return LE_FAULT;
     }
 
@@ -506,6 +633,17 @@ static void SigHandler
 
     if (GsmTest)
     {
+        res = le_sms_ClearCellBroadcastIds();
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_ClearCellBroadcastIds FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_ClearCellBroadcastIds PASSED");
+        }
+
         res = le_sms_DeactivateCellBroadcast();
         if (res != LE_OK)
         {
@@ -520,6 +658,17 @@ static void SigHandler
 
     if (CdmaTest)
     {
+        res = le_sms_ClearCdmaCellBroadcastServices();
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_ClearCdmaCellBroadcastServices FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_ClearCdmaCellBroadcastServices PASSED");
+        }
+
         res = le_sms_DeactivateCdmaCellBroadcast();
         if (res != LE_OK)
         {
@@ -532,12 +681,15 @@ static void SigHandler
         }
     }
 
+
     if (statusPassed)
     {
+        LE_INFO("smsCBTest sequence PASSED");
         exit(EXIT_SUCCESS);
     }
     else
     {
+        LE_ERROR("smsCBTest sequence FAILED");
         exit(EXIT_FAILURE);
     }
 }
@@ -611,6 +763,28 @@ COMPONENT_INIT
             LE_INFO("le_sms_ClearCellBroadcastIds PASSED");
         }
 
+        res = le_sms_ActivateCellBroadcast();
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_ActivateCellBroadcast FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_ActivateCellBroadcast PASSED");
+        }
+
+        res = le_sms_DeactivateCellBroadcast();
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_DeactivateCellBroadcast FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_DeactivateCellBroadcast PASSED");
+        }
+
         res = TestAddRemoveCellBroadcastIds();
         if (res != LE_OK)
         {
@@ -622,17 +796,6 @@ COMPONENT_INIT
             LE_INFO("TestAddRemoveCellBroadcastIds PASSED");
         }
 
-        res = le_sms_AddCellBroadcastIds(0,0xFFFF);
-        if (res != LE_OK)
-        {
-            LE_ERROR("le_sms_AddCellBroadcastIds FAILED");
-            statusPassed = false;
-        }
-        else
-        {
-            LE_INFO("le_sms_AddCellBroadcastIds PASSED");
-        }
-
         res = le_sms_ActivateCellBroadcast();
         if (res != LE_OK)
         {
@@ -642,6 +805,17 @@ COMPONENT_INIT
         else
         {
             LE_INFO("le_sms_ActivateCellBroadcast PASSED");
+        }
+
+        res = le_sms_AddCellBroadcastIds(1,100);
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_AddCellBroadcastIds FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_AddCellBroadcastIds PASSED");
         }
 
         res = le_sms_DeactivateCellBroadcast();
@@ -679,6 +853,29 @@ COMPONENT_INIT
         {
             LE_INFO("le_sms_ClearCdmaCellBroadcastServices PASSED");
         }
+
+        res = le_sms_ActivateCdmaCellBroadcast();
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_ActivateCdmaCellBroadcast FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_ActivateCdmaCellBroadcast PASSED");
+        }
+
+        res = le_sms_DeactivateCdmaCellBroadcast();
+        if (res != LE_OK)
+        {
+            LE_ERROR("le_sms_DeactivateCdmaCellBroadcast FAILED");
+            statusPassed = false;
+        }
+        else
+        {
+            LE_INFO("le_sms_DeactivateCdmaCellBroadcast PASSED");
+        }
+
         res = TestAddRemoveCDMACellBroadcastIds();
         if (res != LE_OK)
         {
@@ -691,7 +888,7 @@ COMPONENT_INIT
         }
 
         res = le_sms_AddCdmaCellBroadcastServices(LE_SMS_CDMA_SVC_CAT_UNKNOWN,
-                        LE_SMS_LANGUAGE_UNKNOWN);
+            LE_SMS_LANGUAGE_UNKNOWN);
         if (res != LE_OK)
         {
             LE_ERROR("le_sms_AddCdmaCellBroadcastServices FAILED");

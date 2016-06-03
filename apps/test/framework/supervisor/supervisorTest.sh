@@ -30,18 +30,16 @@ ssh root@$targetAddr "$BIN_PATH/legato start"
 CheckRet
 
 echo "Install all the apps."
-appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 cd "$appDir"
 CheckRet
 for app in $appsList
 do
-    echo "  Installing '$appDir/$app.$targetType' (instapp $app.$targetType $targetAddr)"
-    instapp $app.$targetType $targetAddr
-    CheckRet
+    InstallApp ${app}
 done
 
-instapp ForkChildApp.$targetType $targetAddr
-instapp NonSandboxedForkChildApp.$targetType $targetAddr
+InstallApp ForkChildApp
+InstallApp NonSandboxedForkChildApp
 
 echo "Stop all other apps."
 ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
@@ -75,13 +73,7 @@ CheckRet
 ssh root@$targetAddr  "$BIN_PATH/app stop NonSandboxedForkChildApp"
 CheckRet
 
-echo "Clear the logs."
-ssh root@$targetAddr "killall syslogd"
-CheckRet
-
-# Must restart syslog this way so that it gets the proper SMACK label.
-ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
-CheckRet
+ClearLogs
 
 echo "Run the apps."
 for app in $appsList

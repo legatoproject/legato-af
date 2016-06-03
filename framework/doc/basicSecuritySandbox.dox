@@ -1,6 +1,6 @@
 /** @page basicSecuritySandbox Sandboxes
 
-Also see @ref howToSecuritySandbox
+Also see @ref howToSecuritySandboxOverview and @ref howToSecuritySandboxUse.
 
 Legato uses sandboxes to provide a security layer against untrusted apps running in the same
 system. Legato sandboxes isolate apps from the rest of the system. This allows both original

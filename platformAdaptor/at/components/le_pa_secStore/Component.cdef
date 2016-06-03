@@ -1,0 +1,9 @@
+sources:
+{
+    pa_secStore.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/secStore/platformAdaptor/inc
+}

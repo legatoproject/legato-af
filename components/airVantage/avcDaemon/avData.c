@@ -448,12 +448,25 @@ void le_avdata_GetFloat
     const char* fieldName,
         ///< [IN]
 
-    float* valuePtr
+    double* valuePtr
         ///< [OUT]
 )
 {
-    LE_ERROR("Not implemented yet");
-    *valuePtr = 0.0;
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_GetFloat(instRef, fieldId, valuePtr) != LE_OK )
+    {
+        LE_ERROR("Error getting field=%i", fieldId);
+        *valuePtr=0;
+    }
 }
 
 
@@ -472,11 +485,24 @@ void le_avdata_SetFloat
     const char* fieldName,
         ///< [IN]
 
-    float value
+    double value
         ///< [IN]
 )
 {
-    LE_ERROR("Not implemented yet");
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_SetFloat(instRef, fieldId, value) != LE_OK )
+    {
+        LE_ERROR("Error setting field=%i", fieldId);
+    }
 }
 
 

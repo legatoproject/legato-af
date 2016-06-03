@@ -55,6 +55,17 @@ mutex_ThreadRec_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the mutex list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** mutex_GetMutexListChgCntRef
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the Mutex module.
  *
  * This function must be called exactly once at process start-up before any other mutex module

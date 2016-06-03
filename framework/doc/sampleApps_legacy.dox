@@ -8,6 +8,9 @@ The @c apps/sample/legacy folder contains sample apps that demonstrate:
 - using Legato APIs from a legacy C program bundled as a Legato app.
 - receiving callbacks from Legato APIs in a legacy C program.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/legacy">sample app code</a>.
+
 See <br>
 @ref howToPortLegacyC <br>
 @ref defFiles

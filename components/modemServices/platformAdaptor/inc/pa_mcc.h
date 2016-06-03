@@ -37,8 +37,8 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-#ifndef LEGATO_PAMCC_INCLUDE_GUARD
-#define LEGATO_PAMCC_INCLUDE_GUARD
+#ifndef LEGATO_PA_MCC_INCLUDE_GUARD
+#define LEGATO_PA_MCC_INCLUDE_GUARD
 
 
 #include "legato.h"
@@ -144,7 +144,7 @@ LE_SHARED void pa_mcc_ClearCallEventHandler
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mcc_VoiceDial
 (
-    const char*    pn,                      ///< [IN] The phone number.
+    const char*    phoneNumberPtr,          ///< [IN] The phone number.
     pa_mcc_clir_t  clir,                    ///< [IN] The CLIR supplementary service subscription.
     pa_mcc_cug_t   cug,                     ///< [IN] The CUG supplementary service information.
     uint8_t*       callIdPtr,               ///< [OUT] The outgoing call ID.
@@ -193,4 +193,52 @@ LE_SHARED LE_SHARED le_result_t pa_mcc_HangUpAll
     void
 );
 
-#endif // LEGATO_PAMCC_INCLUDE_GUARD
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates or deactivates the call waiting service.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mcc_SetCallWaitingService
+(
+    bool active
+        ///< [IN] The call waiting activation.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the call waiting service status.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mcc_GetCallWaitingService
+(
+    bool* activePtr
+        ///< [OUT] The call waiting activation.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates the specified call. Other calls are placed on hold.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mcc_ActivateCall
+(
+    uint8_t  callId     ///< [IN] The active call ID
+);
+
+
+#endif // LEGATO_PA_MCC_INCLUDE_GUARD

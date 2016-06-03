@@ -62,13 +62,16 @@ ssize_t file_ReadStr
  * The null terminator will not be written.
  * The file will be opened, the string will be written and the file will be closed.
  * If the file does not exist, it will be created.
- * If the file did previously exist, its previous contents will be discarded.
+ * If the file did previously exist, its previous contents will be discarded, but its previous
+ * DAC permissions will be kept.  To replace the existing file completely, use
+ * file_WriteStrAtomic().
  */
 //--------------------------------------------------------------------------------------------------
 void file_WriteStr
 (
-    const char* filePath,  ///< [IN] Path to the file to write.
-    const char* string     ///< [IN] A string to write to this file.
+    const char* filePath,   ///< [IN] Path to the file to write.
+    const char* string,     ///< [IN] A string to write to this file.
+    mode_t mode             ///< [IN] DAC permission bits (see man 2 open). E.g., 0644 = rw-r--r--
 );
 
 
@@ -83,8 +86,9 @@ void file_WriteStr
 //--------------------------------------------------------------------------------------------------
 void file_WriteStrAtomic
 (
-    const char* filePath,  ///< [IN] Path to the file to write.
-    const char* string     ///< [IN] A string to write to this file.
+    const char* filePath,      ///< [IN] Path to the file to write.
+    const char* string,        ///< [IN] A string to write to this file.
+    mode_t mode                ///< [IN] DAC permission bits (see man 2 open). E.g., 0644 = rw-r--r--
 );
 
 
@@ -110,6 +114,9 @@ le_result_t file_Copy
 //--------------------------------------------------------------------------------------------------
 /**
  * Copy a batch of files recursively from one directory into another.
+ *
+ * @note Does not copy mounted files or any files under mounted directories.  Does not copy anything
+ *       if the source path directory is empty.
  *
  * @return - LE_OK if the copy was successful.
  *         - LE_NOT_PERMITTED if either the source or destination paths are not files or could not

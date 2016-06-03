@@ -1,0 +1,12 @@
+sources:
+{
+    mccCallWaitingTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_mcc.api
+    }
+}

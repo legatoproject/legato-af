@@ -18,6 +18,8 @@ enum ProgramLang_t
 {
     LANG_C,     ///< C
     LANG_CXX,   ///< C++
+    LANG_BIN,   ///< Binary, language unknown/irrelevant
+    LANG_JAVA
 };
 
 #endif // LEGATO_MKTOOLS_PROGRAMMING_LANGUAGE_H_INCLUDE_GUARD

@@ -64,58 +64,6 @@ static le_mem_PoolRef_t SessionPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumerates all the possible states that a Session object can be in.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_MSG_SESSION_STATE_CLOSED,    ///< Session is closed.
-
-    LE_MSG_SESSION_STATE_OPENING,   ///< Client is trying to open the session. Waiting for the
-                                    ///  server's response. (Note: This is a client-only state.)
-
-    LE_MSG_SESSION_STATE_OPEN,      ///< Session is open.
-}
-SessionState_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Represents a client-server session.
- *
- * This same object is used to track the session on both the server side and the client side.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct le_msg_Session
-{
-    le_dls_Link_t                   link;           ///< Used to link into the Session List.
-    SessionState_t                  state;          ///< The state that the session is in.
-    int                             socketFd;       ///< File descriptor for the connected socket.
-    le_thread_Ref_t                 threadRef;      ///< The thread that handles this session.
-    le_fdMonitor_Ref_t              fdMonitorRef;   ///< File descriptor monitor for the socket.
-    le_msg_InterfaceRef_t           interfaceRef;   ///< The interface being accessed.
-
-    le_dls_List_t                   txnList;        ///< List of request messages that have been
-                                                    ///  sent and are waiting for their response.
-
-    le_dls_List_t                   transmitQueue;  ///< Queue of messages waiting to be sent.
-
-    le_dls_List_t                   receiveQueue;   ///< Queue of received messages waiting to be
-                                                    /// processed.
-
-    void*                           contextPtr;     ///< The session's context pointer.
-    le_msg_ReceiveHandler_t         rxHandler;      ///< Receive handler function.
-    void*                           rxContextPtr;   ///< Receive handler's context pointer.
-    le_msg_SessionEventHandler_t    openHandler;    ///< Open handler function.
-    void*                           openContextPtr; ///< Open handler's context pointer.
-    le_msg_SessionEventHandler_t    closeHandler;   ///< Close handler function.
-    void*                           closeContextPtr;///< Close handler's context pointer.
-}
-Session_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Transaction Map.  This is a Safe Reference Map used to generate and match up
  * transaction IDs for request-response transactions.
  *
@@ -125,11 +73,20 @@ Session_t;
 static le_ref_MapRef_t TxnMapRef;
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * A counter that increments every time a change is made to a session list in ANY interface obj.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t SessionObjListChangeCount = 0;
+static size_t* SessionObjListChangeCountRef = &SessionObjListChangeCount;
+
+
 // =======================================
 //  PRIVATE FUNCTIONS
 // =======================================
 
-static void AttemptOpen(Session_t* sessionPtr);
+static void AttemptOpen(msgSession_Session_t* sessionPtr);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -141,7 +98,7 @@ static void AttemptOpen(Session_t* sessionPtr);
 //--------------------------------------------------------------------------------------------------
 static void PushTransmitQueue
 (
-    Session_t*              sessionPtr,
+    msgSession_Session_t*   sessionPtr,
     le_msg_MessageRef_t     msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -166,7 +123,7 @@ static void PushTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static le_msg_MessageRef_t PopTransmitQueue
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -194,7 +151,7 @@ static le_msg_MessageRef_t PopTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void UnPopTransmitQueue
 (
-    Session_t* sessionPtr,
+    msgSession_Session_t* sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -214,7 +171,7 @@ static void UnPopTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static inline void PushReceiveQueue
 (
-    Session_t*              sessionPtr,
+    msgSession_Session_t*   sessionPtr,
     le_msg_MessageRef_t     msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -233,7 +190,7 @@ static inline void PushReceiveQueue
 //--------------------------------------------------------------------------------------------------
 static le_msg_MessageRef_t PopReceiveQueue
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -324,7 +281,7 @@ static void DeleteTxnId
 //--------------------------------------------------------------------------------------------------
 static void AddToTxnList
 (
-    Session_t* sessionPtr,
+    msgSession_Session_t* sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -344,7 +301,7 @@ static void AddToTxnList
 //--------------------------------------------------------------------------------------------------
 static void RemoveFromTxnList
 (
-    Session_t* sessionPtr,
+    msgSession_Session_t* sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -367,7 +324,7 @@ static void RemoveFromTxnList
 //--------------------------------------------------------------------------------------------------
 static void PurgeTxnList
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -406,7 +363,7 @@ static void PurgeTxnList
 //--------------------------------------------------------------------------------------------------
 static void PurgeTransmitQueue
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -443,7 +400,7 @@ static void PurgeTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void PurgeReceiveQueue
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -465,13 +422,13 @@ static void PurgeReceiveQueue
  * @note    This is used on both the client side and the server side.
  */
 //--------------------------------------------------------------------------------------------------
-static Session_t* CreateSession
+static msgSession_Session_t* CreateSession
 (
     le_msg_InterfaceRef_t       interfaceRef ///< [in] Reference to the session's interface.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Session_t* sessionPtr = le_mem_ForceAlloc(SessionPoolRef);
+    msgSession_Session_t* sessionPtr = le_mem_ForceAlloc(SessionPoolRef);
 
     sessionPtr->link = LE_DLS_LINK_INIT;
     sessionPtr->state = LE_MSG_SESSION_STATE_CLOSED;
@@ -493,6 +450,7 @@ static Session_t* CreateSession
 
     sessionPtr->interfaceRef = interfaceRef;
 
+    SessionObjListChangeCount++;
     msgInterface_AddSession(interfaceRef, sessionPtr);
 
     return sessionPtr;
@@ -508,7 +466,7 @@ static Session_t* CreateSession
 //--------------------------------------------------------------------------------------------------
 static void CloseSession
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -551,7 +509,7 @@ static void CloseSession
 //--------------------------------------------------------------------------------------------------
 static void DeleteSession
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -562,6 +520,7 @@ static void DeleteSession
     }
 
     // Remove the Session from the Interface's Session List.
+    SessionObjListChangeCount++;
     msgInterface_RemoveSession(sessionPtr->interfaceRef, sessionPtr);
 
     // Release the Session object itself.
@@ -630,7 +589,7 @@ static le_result_t ConnectToServiceDirectory
 //--------------------------------------------------------------------------------------------------
 static void EnableWriteabilityNotification
 (
-    Session_t*  sessionPtr
+    msgSession_Session_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -646,7 +605,7 @@ static void EnableWriteabilityNotification
 //--------------------------------------------------------------------------------------------------
 static inline void DisableWriteabilityNotification
 (
-    Session_t*  sessionPtr
+    msgSession_Session_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -663,7 +622,7 @@ static inline void DisableWriteabilityNotification
 //--------------------------------------------------------------------------------------------------
 static void RetryOpen
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -693,7 +652,7 @@ static void RetryOpen
 //--------------------------------------------------------------------------------------------------
 static le_result_t ReceiveSessionOpenResponse
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -781,7 +740,7 @@ static le_result_t SendSessionOpenResponse
 //--------------------------------------------------------------------------------------------------
 static void ProcessMessageFromServer
 (
-    Session_t*          sessionPtr,
+    msgSession_Session_t*          sessionPtr,
     le_msg_MessageRef_t msgRef
 )
 //--------------------------------------------------------------------------------------------------
@@ -830,7 +789,7 @@ static void ProcessMessageFromServer
 //--------------------------------------------------------------------------------------------------
 static void ProcessReceivedMessages
 (
-    Session_t*  sessionPtr
+    msgSession_Session_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -860,7 +819,7 @@ static void ProcessReceivedMessages
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketHangUp
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -910,7 +869,7 @@ static void ClientSocketHangUp
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketError
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -948,7 +907,7 @@ static void ClientSocketError
 //--------------------------------------------------------------------------------------------------
 static void ReceiveMessages
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -982,7 +941,7 @@ static void ReceiveMessages
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketHangUp
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1005,7 +964,7 @@ static void ServerSocketHangUp
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketError
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1029,7 +988,7 @@ static void ServerSocketError
 //--------------------------------------------------------------------------------------------------
 static void SendFromTransmitQueue
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1118,7 +1077,7 @@ static void SendFromTransmitQueue
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketReadable
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1168,7 +1127,7 @@ static void ClientSocketReadable
 //--------------------------------------------------------------------------------------------------
 static void ClientSocketWriteable
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1204,7 +1163,7 @@ static void ClientSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 {
     // Get the Session object.
-    Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
+    msgSession_Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
 
     if (events & POLLIN)
     {
@@ -1234,7 +1193,7 @@ static void ClientSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketReadable
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1257,7 +1216,7 @@ static void ServerSocketReadable
 //--------------------------------------------------------------------------------------------------
 static void ServerSocketWriteable
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1282,7 +1241,7 @@ static void ServerSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 {
     // Get the Session object.
-    Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
+    msgSession_Session_t* sessionPtr = le_fdMonitor_GetContextPtr();
 
     if (events & POLLIN)
     {
@@ -1313,7 +1272,7 @@ static void ServerSocketEventHandler
 //--------------------------------------------------------------------------------------------------
 static void StartSocketMonitoring
 (
-    Session_t*                  sessionPtr,
+    msgSession_Session_t*                  sessionPtr,
     le_fdMonitor_HandlerFunc_t  handlerFunc
 )
 //--------------------------------------------------------------------------------------------------
@@ -1346,7 +1305,7 @@ static void StartSocketMonitoring
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartSessionOpenAttempt
 (
-    Session_t* sessionPtr,
+    msgSession_Session_t* sessionPtr,
 
     bool shouldWait         ///< true = ask the Service Directory to hold onto the request until
                             ///         the binding or advertisement happens if the client
@@ -1407,7 +1366,7 @@ static le_result_t StartSessionOpenAttempt
 //--------------------------------------------------------------------------------------------------
 static void AttemptOpen
 (
-    Session_t* sessionPtr
+    msgSession_Session_t* sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1445,7 +1404,7 @@ static void AttemptOpen
 //--------------------------------------------------------------------------------------------------
 static le_result_t AttemptOpenSync
 (
-    Session_t* sessionPtr,
+    msgSession_Session_t* sessionPtr,
     bool shouldWait         ///< true = if the client interface is not bound or the server is
                             ///         not advertising the service at this time, then wait
                             ///         until the binding or advertisement happens.
@@ -1514,7 +1473,7 @@ static void ProcessDeferredMessages
 )
 //--------------------------------------------------------------------------------------------------
 {
-    Session_t* sessionPtr = param1Ptr;
+    msgSession_Session_t* sessionPtr = param1Ptr;
 
     ProcessReceivedMessages(sessionPtr);
 
@@ -1531,7 +1490,7 @@ static void ProcessDeferredMessages
 //--------------------------------------------------------------------------------------------------
 static void TriggerDeferredProcessing
 (
-    Session_t*  sessionPtr
+    msgSession_Session_t*  sessionPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1548,6 +1507,20 @@ static void TriggerDeferredProcessing
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Exposing the session object list change counter; mainly for the Inspect tool.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t** msgSession_GetSessionObjListChgCntRef
+(
+    void
+)
+{
+    return (&SessionObjListChangeCountRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the messagingSession module.  This must be called only once at start-up, before
  * any other functions in that module are called.
  */
@@ -1558,7 +1531,7 @@ void msgSession_Init
 )
 //--------------------------------------------------------------------------------------------------
 {
-    SessionPoolRef = le_mem_CreatePool("Session", sizeof(Session_t));
+    SessionPoolRef = le_mem_CreatePool("Session", sizeof(msgSession_Session_t));
     le_mem_ExpandPool(SessionPoolRef, 10); /// @todo Make this configurable.
 
     TxnMapRef = le_ref_CreateMap("MsgTxnIDs", MAX_EXPECTED_TXNS);
@@ -1800,7 +1773,7 @@ le_msg_SessionRef_t msgSession_GetSessionContainingLink
 )
 //--------------------------------------------------------------------------------------------------
 {
-    return CONTAINER_OF(linkPtr, Session_t, link);
+    return CONTAINER_OF(linkPtr, msgSession_Session_t, link);
 }
 
 
@@ -1833,7 +1806,7 @@ le_msg_SessionRef_t msgSession_CreateServerSideSession
     fd_SetNonBlocking(fd);
 
     // Create the Session object (adding it to the Service's list of sessions)
-    Session_t* sessionPtr = CreateSession((le_msg_InterfaceRef_t)serviceRef);
+    msgSession_Session_t* sessionPtr = CreateSession((le_msg_InterfaceRef_t)serviceRef);
 
     // Record the client connection file descriptor.
     sessionPtr->socketFd = fd;
@@ -1873,7 +1846,7 @@ le_msg_SessionRef_t le_msg_CreateSession
 {
     le_msg_ClientInterfaceRef_t clientRef = msgInterface_GetClient(protocolRef, interfaceName);
 
-    Session_t* sessionPtr = CreateSession((le_msg_InterfaceRef_t)clientRef);
+    msgSession_Session_t* sessionPtr = CreateSession((le_msg_InterfaceRef_t)clientRef);
 
     msgInterface_Release((le_msg_InterfaceRef_t)clientRef);
 

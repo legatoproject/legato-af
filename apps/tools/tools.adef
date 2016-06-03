@@ -11,6 +11,7 @@ executables:
     cm = (cm)
     fwupdate = (fwupdate)
     secstore = (secstore)
+    pmtool = (pmtool)
 }
 
 bindings:
@@ -29,4 +30,8 @@ bindings:
     fwupdate.fwupdate.le_fwupdate -> fwupdateService.le_fwupdate
 
     secstore.secstore.secStoreAdmin -> secStore.secStoreAdmin
+
+    pmtool.pmtool.le_pm -> powerMgr.le_pm
+    pmtool.pmtool.le_ulpm -> powerMgr.le_ulpm
+    pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
 }

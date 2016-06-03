@@ -2,60 +2,94 @@
 
 Audio functions are constrained by the following platform limitations for AR755x, AR8652, and WP8548.
 
-This table lists possible audio connections:
+<b>Possible audio connections:</b>
 
-| Input\Output stream | Spkr | USB Tx | PCM Tx | I2S Tx | Mdm Tx | Rec |
-|                                    |:         :|:             :|:               :|:            :|:              :|:        :|
-| Mic                             |           |               |                 |              |   X(*)      |  X(*)  |
-| USB Rx                     |           |              |                  |              |   X   |    |
-| PCM Rx                    |           |              |                  |               |   X   |    |
-| I2S Rx                      |            |              |                  |               |          | X |
-| Mdm Rx                   |  X(*)    |    X       |      X        |          X   |          | X  |
-| Pb                           |     X(*)  |    X        |    X          |   X         |   X     |    |
+| Input stream \ Output stream | Spkr | USB Tx | PCM Tx | I2S Tx | MdmVoice Tx | Recorder |
+|                              |:    :|:      :|:      :|:      :|:           :|:        :|
+| Mic                          |      |        |        |        |      X      |    X     |
+| USB Rx                       |      |        |        |        |      X      |    X     |
+| PCM Rx                       |      |        |        |        |      X      |    X     |
+| I2S Rx                       |      |        |        |        |      X      |    X     |
+| MdmVoice Rx                  |  X   |   X    |   X    |   X    |             |    X     |
+| Player                       |  X   |   X    |   X    |   X    |      X      |          |
 
-(*) AR platform only
 
-Pb = file playback <br>
-Rec = file recording
+Player = file playback and samples insertion<br>
+Recorder = file recording and samples extraction
 
-Only 1 point to 1 point connection is possible except for Pb and Rec.
-Pb and Rec can be added to any active 1 point to 1 point connections or simply tied to 1 single stream.
+@note Only 1 point to 1 point connection is possible except for Player and Recorder.
+      Player and Recorder can be added to any active 1 point to 1 point connections, or tied
+      to 1 single stream.
 
-| Function \ IF      | I2S | PCM | USB | Analog (Mic / Spkr) | Mdm Tx  | Mdm Rx  | Pb  | Rec |
-|                             |:      :|:         :|:          :|:                                 :|:               :|:                :|:      :|:       :|
-| Gain (Set / Get) |       |             |           |            X(*)                |     X           |   X          |   X   |         |
-| Mute / Unmute  |       |             |           |              X(*)                |     X           |   X          |   X   |         |
-| NS                       |      |             |           |                                    |  X     |                |    |   |
-| EC                      |      |              |           |                                    |  X        |                |    |   |
-| IIR                       |      |             |            |                                    |  X        |   X          |    |   |
-| FIR                      |      |            |            |                                     |  X        |   X         |    |   |
-| AGC                    |  Only Tx | Only Tx | Only Tx | Only Spkr(*)   |   X   |    X          |   |    |
+<HR>
 
-(*) AR platform only
+<b>Available functions for the different audio streams:</b>
+
+| Function \ Stream | I2S Tx | I2S Rx | PCM Tx | PCM Rx | USB Tx | USB Rx | Spkr | Mic | MdmVoice Tx | MdmVoice Rx | Player | Recorder |
+|                   |:      :|:      :|:      :|:      :|:      :|:      :|:    :|:   :|:           :|:           :|:      :|:        :|
+| Gain (Set / Get)  |        |        |        |        |        |        |      |  X  |      X      |      X      |   X    |          |
+| Mute / Unmute     |        |        |        |        |        |        |  X   |  X  |      X      |             |   X    |          |
+| NS                |        |        |        |        |        |        |      |     |      X      |             |        |          |
+| EC                |        |        |        |        |        |        |      |     |      X      |             |        |          |
+| IIR               |        |        |        |        |        |        |      |     |      X      |      X      |        |          |
+| FIR               |        |        |        |        |        |        |      |     |      X      |      X      |        |          |
+| AGC               |   X    |        |   X    |        |   X    |        |  X   |     |      X      |      X      |        |          |
+
 
 NS = Noise Suppressor <br>
-EC = Echo Canceller  <br>
+EC = Echo Canceller <br>
 IIR = Infinite Impulse Response filter <br>
 FIR = Finite Impulse Response filter <br>
 AGC = Automatic Gain Control
 
-<b>Playback and recording</b>
+<b>The following diagram shows where the functions are applied in a voice call audio path:</b>
 
-File playback supports these file types:
-- .wav
-- .amr
-- .awb
+@image html AR755x_Ext_AudioBlockDiagram_Legato.jpg
 
-File recording is only supported for @b .wav file types.
 
-One single file playback and one single file recording can be activated simultaneously.
+<b>Gains value's for AR7x series (also applicable for AR8652):</b>
 
-Continuous playback of one file doesn't work well.
+<b>Mic:</b>
+ - range: 0x0000 – 0xFFFF;
+ - value (in dB) = 20*Log(\<value\>/0x0100)
 
-<b>PCM insertion/extraction</b>
+<b>MdmVoiceRx:</b>
+ - range: 0 - 8 (integer);
+ - the value is not in dB, '0' means lowest volume value (not muted) and '8' means the
+   highest volume value.
 
-Only supports 16-bit sampling resolution on the AR7
-platform.
+<b>MdmVoiceTx:</b>
+ - range: 0x0000 – 0xFFFF;
+ - value (in dB) = 20*Log(\<value\>/0x2000)
+
+<b>Player:</b>
+ - range: 0x0000 – 0xFFFF;
+ - value (in dB) = 20*Log(\<value\>/0x2000)
+
+@note AR specific gains can use the le_audio_SetPlatformSpecificGain() function with
+      \b "D_AFE_GAIN_RX" and \b "D_AFE_GAIN_TX" parameters.
+
+ <b>"D_AFE_GAIN_RX":</b>
+ - range: 0x0000 – 0xFFFF;
+ - value (in dB) = 20*Log(\<value\>/0x2000)
+
+<b>"D_AFE_GAIN_TX":</b>
+ - range: 0x0000 – 0xFFFF;
+ - value (in dB) = 20*Log(\<value\>/0x2000)
+
+<HR>
+
+<b>Other audio features and constraints:</b>
+- DTMF decoding works only on MdmVoice Rx stream. DTMF's reception handler must be installed before
+  call initiation.
+
+- File Playback/Recording: WAVE, AMR Narrowband and AMR Wideband formats are supported.
+
+- Samples insertion/extraction: PCM samples using configuration of channel number, sampling rate and
+  sampling resolution.
+
+- Several file playbacks can be activated simultaneously but not several file recordings. Playback
+  and recording can’t be performed simultaneously. This also applies to samples insertion/extraction.
 
 <HR>
 

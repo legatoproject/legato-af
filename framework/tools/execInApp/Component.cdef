@@ -10,8 +10,8 @@ requires:
 
 sources:
 {
-    execInApp.c
     app.c
+    devSmack.c
     proc.c
-    sandbox.c
+    execInApp.c
 }

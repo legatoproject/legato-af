@@ -551,6 +551,7 @@ static void ReadSubParameterUserData
     {
         case CDMAPDU_ENCODING_7BIT_ASCII: charBitSize = 7; break;
         case CDMAPDU_ENCODING_OCTET: charBitSize = 8; break;
+        case CDMAPDU_ENCODING_UNICODE: charBitSize = 16; break;
         default :
         {
             LE_WARN("encoding %d not supported",encoding);
@@ -1736,7 +1737,7 @@ static void WriteSubParameterUserData
     uint32_t lengthPosition = encoderPtr->index;
     WriteBits(encoderPtr,0,8);
 
-    // Read the encoding value
+    // Write the encoding value
     WriteBits(encoderPtr,cdmaSmsPtr->message.bearerData.userData.messageEncoding,5);
 
     cdmaPdu_Encoding_t encoding = cdmaSmsPtr->message.bearerData.userData.messageEncoding;
@@ -1759,6 +1760,7 @@ static void WriteSubParameterUserData
     {
         case CDMAPDU_ENCODING_7BIT_ASCII: charBitSize = 7; break;
         case CDMAPDU_ENCODING_OCTET: charBitSize = 8; break;
+        case CDMAPDU_ENCODING_UNICODE: charBitSize = 16; break;
         default :
         {
             LE_WARN("encoding %d not supported",encoding);

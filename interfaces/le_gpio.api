@@ -16,8 +16,8 @@
  * - if an input, can trigger an @e interrupt (asynchronous notification of state change).
  *
  * Output pins can be driven in three modes:
- * - <b>push-pull</b> one transistor connects to the supply and another transistor connects to ground
- *   (only one is operated at a time)
+ * - <b>push-pull</b> one transistor connects to the supply and another transistor connects to
+ * ground (only one is operated at a time).
  * - <b>tri-state</b> same as push-pull with an added high-impedance (high Z) state to disconnect
  *    pin from both ground and supply.
  * - <b>open drain</b> transistor connects only to ground. Can only be used to pull low.
@@ -36,7 +36,7 @@
  * - EnablePullUp() - Enables the internal pull-up resistor (and disables the pull-down).
  * - EnablePullDown() - Enables the internal pull-down resistor (and disables the pull-up).
  * - DisableResistors() - Disables the internal pull-up/down resistors.
- * - SetEdgeSense() - Set the edge sensing on an input pin (only works if you have an EventHandler)
+ * - SetEdgeSense() - Set the edge sensing on an input pin (only works if you have an EventHandler).
  *
  * To set the level of an output pin, call Activate(), Deactivate(), or SetHighZ().
  *
@@ -54,16 +54,19 @@
  * - IsOutput() - Is the pin currently an output?
  * - IsInput() - Is the pin currently an input?
  * - IsActive() - Is an output pin currently being driven? (corresponds to the value file in sysfs)
- * - GetPolarity() - Retrieve the current polarity i.e. active-low or active-high
+ * - GetPolarity() - Retrieve the current polarity (active-low or active-high)
  * - GetEdgeSense() - What edge sensing has been enabled on an input pin?
  * - GetPullUpDown() - What pull-up or pull-down has been enabled?
  *
  * Each GPIO pin is accessed through a single IPC service.  This makes it possible to use bindings
  * to control which GPIO pins each app is allowed to access.  It also simplifies the API by removing
  * the need to specify which pin is desired and allows the pins to be named differently in the
- * client and the server, so the client can be more portable. Only one client can connect to pin.
+ * client and the server, so the client can be more portable. Only one client can connect to each pin.
  *
- * Binding example:
+ * @section bindings Using Bindings
+ *
+ * To create a binding from your app to pin 22 of the GPIO service,
+ * add something like this to your @c .adef binding section:
  *
  * @verbatim
 bindings:
@@ -72,22 +75,37 @@ bindings:
 }
 @endverbatim
  *
+ * This connects your component called @c frontPanel to the instance
+ * of this API that can be used to drive GPIO 22. Setting the pin high looks like this:
+ * @code
+ {
+     // Configure the output type
+     powerLed_SetPushPullOutput(LE_GPIOPIN22_ACTIVE_HIGH, false);
+
+     // Some time later ... set the GPIO high
+     powerLed_Activate();
+ }
+ @endcode
+ *
+ * For details on how the GPIOs exposed by this service map to a CF3 module
+ * (like the WP85), see @ref sampleApps_gpioCf3 "GPIO sample app".
+ *
  * @section gpioConfig Configuring available GPIOs
  *
- * The GPIOs which are available for use are advertised in the sysfs at
+ * The GPIOs that are available for use are advertised in the sysfs at
  * @verbatim /sys/class/gpio/gpiochip1/mask @endverbatim
  * For each entry in this bitmask, a service will be advertised to allow use of the pin.
- * However, if a pin needs to be disabled form being accessed, e.g. it carries out some system function
- * that should not be available to apps, then it can be disabled by adding an entry to the config tree.
+ * However, if a pin needs to be disabled form being accessed, e.g. it carries out some system
+ * function that should not be available to apps, then it can be disabled by adding an entry to the
+ * config tree.
  *
  * For example, to disable pin 6 from being used, add the entry
  * @verbatim gpioService:/pins/disabled/n @endverbatim
- * where n is the GPIO number. The value should be set to true to disable that service. If the value is
- * either false or absent then the service will run. Entries can be added using the config tool, for example
- * @verbatim config set gpioService:/pins/disabled/13 true bool@endverbatim
- * will disable the service for pin 13. Note that specifying the type as bool is vital as the config tool
- * defaults to the string type, and hence any value set will default to false.
- * <HR>
+ * where n is the GPIO number. The value should be set to true to disable that service. If the value
+ * is either false or absent then the service will run. Entries can be added using the config tool,
+ * for example  * @verbatim config set gpioService:/pins/disabled/13 true bool@endverbatim
+ * will disable the service for pin 13. Note that specifying the type as bool is vital as the config
+ * tool defaults to the string type, and hence any value set will default to false.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -270,7 +288,7 @@ ENUM Edge
 EVENT ChangeEvent
 (
     Edge trigger IN,        ///< Change(s) that should trigger the callback to be called.
-    handler ChangeCallback, ///< The callback function.
+    ChangeCallback handler, ///< The callback function.
     int32 sampleMs          ///< If not interrupt capable, sample the input this often (ms).
 );
 

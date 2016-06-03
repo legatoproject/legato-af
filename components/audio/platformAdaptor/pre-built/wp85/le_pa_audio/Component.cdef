@@ -6,15 +6,6 @@ bundles:
     }
 }
 
-ldflags:
-{
-    -lqmi_cci
-    -lqmiservices
-    ${LEGATO_SYSROOT}/usr/lib/libsierra_qcsi.a
-    ${LEGATO_SYSROOT}/usr/lib/libsierra_sd_client.a
-
-}
-
 requires:
 {
     component:

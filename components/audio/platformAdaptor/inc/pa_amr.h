@@ -17,7 +17,7 @@
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_amr_StartDecoder
 (
-    le_audio_Stream_t*               streamPtr,    ///< [IN] Decoding format
+    le_audio_Stream_t*               streamPtr,    ///< [IN] Stream object
     le_audio_MediaThreadContext_t*   mediaCtxPtr   ///< [IN] Media thread context
 );
 
@@ -62,7 +62,7 @@ LE_SHARED le_result_t pa_amr_StopDecoder
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_amr_StartEncoder
 (
-    le_audio_Stream_t*               streamPtr,     ///< [IN] Stream object
+    le_audio_Stream_t*               streamPtr,      ///< [IN] Stream object
     le_audio_MediaThreadContext_t*   mediaCtxPtr     ///< [IN] Media thread context
 );
 

@@ -1,0 +1,70 @@
+/** @page defFilesMdef Kernel Module Definition .mdef
+
+The @c .mdef files supports declaring pre-built kernel modules to use Legato.
+
+@c .mdef files contain the following sections:
+
+@section defFilesMdef_preBuilt preBuilt
+
+The mandatory @c preBuilt: section specifies the path to the pre-built kernel module binary file.
+This binary file will be bundled with Legato and installed on the target using @ insmod Linux
+command.
+
+The module binary file specified must have an extension @c .ko to indicate the
+kernel module binary.
+
+This code sample shows how the kernel module binary file @c /path/to/module/hello.ko
+is bundled with Legato:
+
+@code
+{
+    preBuilt: /path/to/kernel/module/hello.ko
+}
+@endcode
+
+@section defFilesMdef_params params
+
+The optional @c params: section lists all module parameters that must be provided to the module’s
+@c insmod command.
+
+The following code sample will execute this command
+<code>insmod <module> param1=value1 param2=value2 …</code>:
+@code
+params:
+{
+    param1 = “value1”
+    param2 = “value2”
+    …
+}
+@endcode
+
+The mandatory quotes (“ ”) around each parameter value indicate a string type.
+
+@section defFilesMdef_preBuilt_buildKernal Build Kernel Modules
+
+For info on how to build Linux kernel modules, see the
+<a href="http://www.yoctoproject.org/docs/1.6.1/kernel-dev/kernel-dev.html">Yoco kernel dev docs</a>
+and
+@code
+$(KERNEL_SRC)/Documentation/kbuild/modules.txt file@endcode
+
+@subsection defFilesMdef_preBuilt_binaries Build Directory
+
+Kernel module binares are built in the Yocto Linux kernel build environment,
+preferably with Yocto cross-build tools.
+
+Modules have to be built from the Yocto kernel’s build directory.
+
+From the Yocto tree root, this is the path to kernel build directory:
+@verbatim
+<Yocto-root>/build_bin/tmp/work/swi_mdm9x15-poky-linux-gnueabi/linux-yocto/<kernel-version>/linux-swi_mdm9x15-standard-build
+@endverbatim
+
+From the Legato directory, this is the path to kernel build directory:
+@verbatim
+../build_bin/tmp/work/swi_mdm9x15-poky-linux-gnueabi/linux-yocto/<kernel-version>/linux-swi_mdm9x15-standard-build
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

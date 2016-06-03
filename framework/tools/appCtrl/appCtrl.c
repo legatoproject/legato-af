@@ -19,9 +19,28 @@
 /// Pointer to application name argument from command line.
 static const char* AppNamePtr = NULL;
 
+/// Pointer to process name argument from command line.
+static const char* ProcNamePtr = NULL;
 
 /// Address of the command function to be executed.
 static void (*CommandFunc)(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Minimum and maximum realtime priority levels.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MIN_RT_PRIORITY                         1
+#define MAX_RT_PRIORITY                         32
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Index of the application name on the command line if applicable.
+ */
+//--------------------------------------------------------------------------------------------------
+#define APP_NAME_INDEX          1
 
 
 //--------------------------------------------------------------------------------------------------
@@ -144,23 +163,25 @@ static void PrintHelp
         "\n"
         "SYNOPSIS:\n"
         "    appCtrl --help\n"
-        "    appCtrl start APP_NAME\n"
-        "    appCtrl stop APP_NAME\n"
+        "    appCtrl start <appName>\n"
+        "    appCtrl stop <appName>\n"
         "    appCtrl stopLegato\n"
         "    appCtrl restartLegato\n"
         "    appCtrl list\n"
-        "    appCtrl status [APP_NAME]\n"
-        "    appCtrl version APP_NAME\n"
-        "    appCtrl info [APP_NAME]\n"
+        "    appCtrl status [<appName>]\n"
+        "    appCtrl version <appName>\n"
+        "    appCtrl info [<appName>]\n"
+        "    appCtrl runProc <appName> <procName> [options]\n"
+        "    appCtrl runProc <appName> [<procName>] --exe=<exePath> [options]\n"
         "\n"
         "DESCRIPTION:\n"
         "    appCtrl --help\n"
         "       Display this help and exit.\n"
         "\n"
-        "    appCtrl start APP_NAME\n"
+        "    appCtrl start <appName>\n"
         "       Starts the specified application.\n"
         "\n"
-        "    appCtrl stop APP_NAME\n"
+        "    appCtrl stop <appName>\n"
         "       Stops the specified application.\n"
         "\n"
         "    appCtrl stopLegato\n"
@@ -172,17 +193,48 @@ static void PrintHelp
         "    appCtrl list\n"
         "       List all installed applications.\n"
         "\n"
-        "    appCtrl status [APP_NAME]\n"
+        "    appCtrl status [<appName>]\n"
         "       If no name is given, prints the status of all installed applications.\n"
         "       If a name is given, prints the status of the specified application.\n"
         "       The status of the application can be 'stopped', 'running', 'paused' or 'not installed'.\n"
         "\n"
-        "    appCtrl version APP_NAME\n"
+        "    appCtrl version <appName>\n"
         "       Prints the version of the specified application.\n"
         "\n"
-        "    appCtrl info [APP_NAME]\n"
+        "    appCtrl info [<appName>]\n"
         "       If no name is given, prints the information of all installed applications.\n"
         "       If a name is given, prints the information of the specified application.\n"
+        "\n"
+        "    appCtrl runProc <appName> <procName> [options]\n"
+        "       Runs a configured process inside an app using the process settings from the\n"
+        "       configuration database.  If an exePath is provided as an option then the specified\n"
+        "       executable is used instead of the configured executable.\n"
+        "\n"
+        "    appCtrl runProc <appName> [<procName>] --exe=<exePath> [options]\n"
+        "       Runs an executable inside an app.  The exePath must be provided and the optional\n"
+        "       process name must not match any configured processes for the app.  Unless specified\n"
+        "       using the options below the executable will be run with default settings.\n"
+        "\n"
+        "    appCtrl runProc takes the following options that can be used to modify the process\n"
+        "    settings:\n"
+        "\n"
+        "       --exe=<exePath>\n"
+        "           Use the executable at <exePath>.  <exePath> is from the perspective of the app\n"
+        "           (ie. /exe would be at the sandbox root if the app is sandboxed).\n"
+        "\n"
+        "       --priority=<priorityStr>\n"
+        "           Sets the priority of the process.  <priorityStr> can be either 'idle', 'low',\n"
+        "           'medium', 'high', 'rt1', 'rt2', ... 'rt32'.\n"
+        "\n"
+        "       --faultAction=<action>\n"
+        "           Sets the fault action for the process.  <action> can be either 'ignore',\n"
+        "           'restartProc', 'restartApp', 'stopApp'.\n"
+        "\n"
+        "       -- [<args> ...]\n"
+        "           The -- option is used to specify comamnd line arguments to the process.\n"
+        "           Everything following the -- option is taken as arguments to the process to be\n"
+        "           started.  Therefore the -- option must be the last option to appCtrl runProc.\n"
+        "           If the -- option is not used then the configured arguments are used if available.\n"
         );
 
     exit(EXIT_SUCCESS);
@@ -334,7 +386,7 @@ static void ListInstalledApps
         le_appInfo_ConnectService();
     }
 
-    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("system:/apps");
 
     if (le_cfg_GoToFirstChild(cfgIter) == LE_NOT_FOUND)
     {
@@ -365,10 +417,14 @@ static void ListInstalledApps
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prints an installed application's state.
+ * Checks whether an installed application is running.
+ *
+ * @return
+ *      true if running.
+ *      false if stopped.
  */
 //--------------------------------------------------------------------------------------------------
-static const char* GetAppState
+static bool IsAppRunning
 (
     const char* appNamePtr          ///< [IN] App name to get the state for.
 )
@@ -380,10 +436,10 @@ static const char* GetAppState
     switch (appState)
     {
         case LE_APPINFO_STOPPED:
-            return "stopped";
+            return false;
 
         case LE_APPINFO_RUNNING:
-            return "running";
+            return true;
 
         default:
             INTERNAL_ERR("Supervisor returned an unknown state for app '%s'.", appNamePtr);
@@ -404,15 +460,19 @@ static void PrintAppState
     le_appInfo_ConnectService();
     le_cfg_ConnectService();
 
-    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("system:/apps");
 
     if (!le_cfg_NodeExists(cfgIter, appNamePtr))
     {
         printf("[not installed] %s\n", appNamePtr);
     }
+    else if (IsAppRunning(appNamePtr))
+    {
+        printf("[running] %s\n", appNamePtr);
+    }
     else
     {
-        printf("[%s] %s\n", GetAppState(appNamePtr), appNamePtr);
+        printf("[stopped] %s\n", appNamePtr);
     }
 }
 
@@ -909,9 +969,17 @@ static void PrintInstalledAppInfo
 )
 {
     printf("%s\n", appNamePtr);
-    printf("  status: %s\n", GetAppState(appNamePtr));
 
-    PrintAppProcs(appNamePtr, "  ");
+    if (IsAppRunning(appNamePtr))
+    {
+        printf("  status: running\n");
+        PrintAppProcs(appNamePtr, "  ");
+    }
+    else
+    {
+        printf("  status: stopped\n");
+    }
+
     PrintedAppInfoFile(appNamePtr, "  ");
 
     printf("\n");
@@ -931,7 +999,7 @@ static void PrintAppInfo
     le_appInfo_ConnectService();
     le_cfg_ConnectService();
 
-    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("system:/apps");
 
     if (!le_cfg_NodeExists(cfgIter, appNamePtr))
     {
@@ -1002,7 +1070,7 @@ static void PrintAppVersion
 {
     le_cfg_ConnectService();
 
-    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("/apps");
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("system:/apps");
     le_cfg_GoToNode(cfgIter, AppNamePtr);
 
     if (!le_cfg_NodeExists(cfgIter, ""))
@@ -1031,6 +1099,489 @@ static void PrintAppVersion
     }
 
     exit(EXIT_SUCCESS);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A handler that is called when the application process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AppProcStopped
+(
+    int32_t exitCode,           ///< [IN] Exit code of the process.
+    void* contextPtr            ///< [IN] Context of the process.
+)
+{
+    if (WIFEXITED(exitCode))
+    {
+        exit(WEXITSTATUS(exitCode));
+    }
+
+    if (WIFSIGNALED(exitCode))
+    {
+        fprintf(stderr, "Proc terminated by signal %s.\n", strsignal(WTERMSIG(exitCode)));
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(stderr, "Proc exited for unknown reason, exit code: %d.\n", exitCode);
+    exit(EXIT_FAILURE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the app name from the command line.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ *
+ * @return
+ *      Pointer to the app name.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetCmdLineAppName
+(
+    void
+)
+{
+    const char* appNamePtr = le_arg_GetArg(APP_NAME_INDEX);
+
+    if (appNamePtr == NULL)
+    {
+        fprintf(stderr, "Please provide application name.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ( (appNamePtr[0] == '-') || (strstr(appNamePtr, "/") != NULL) )
+    {
+        fprintf(stderr, "Invalid application name.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return appNamePtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the process name from the command line.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ *
+ * @return
+ *      Pointer to the process name if available.
+ *      An empty string if the process name is not provided.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetCmdLineProcName
+(
+    int* incrementalArgsUsedPtr         ///< [OUT] Increments this value by the number of args found
+                                        ///        in this function.
+)
+{
+    const char* procNamePtr = le_arg_GetArg(APP_NAME_INDEX + 1);
+
+    if ( (procNamePtr == NULL) || (procNamePtr[0] == '-') )
+    {
+        return "";
+    }
+
+    if (strstr(procNamePtr, "/") != NULL)
+    {
+        fprintf(stderr, "Invalid process name.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    (*incrementalArgsUsedPtr)++;
+
+    return procNamePtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the arguments list (from the command line) for the process we are going to start in an
+ * runProc command.  This list of arguments is anything following the '--' option.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ *
+ * @return
+ *      The number of process arguments.
+ *      -1 if the '--' option is not provided.
+ */
+//--------------------------------------------------------------------------------------------------
+static int GetProcessArgs
+(
+    const char* argsPtr[LIMIT_MAX_NUM_CMD_LINE_ARGS],   ///< [OUT] An array of pointers that will
+                                                        ///        point to process arguments.
+    int* argsStartIndexPtr,             ///< [OUT] Index of the '--' option on our command line.
+    int* incrementalArgsUsedPtr         ///< [OUT] Increments this value by the number of args found
+                                        ///        in this function.
+)
+{
+    // Search for the first '--' option starting after the app name.
+    *argsStartIndexPtr = -1;
+    int i = APP_NAME_INDEX + 1;
+    for (; i < le_arg_NumArgs(); i++)
+    {
+        if (strcmp(le_arg_GetArg(i), "--") == 0)
+        {
+            *argsStartIndexPtr = i;
+            break;
+        }
+    }
+
+    if (*argsStartIndexPtr == -1)
+    {
+        // No process args.
+        return -1;
+    }
+
+    // Get the process args.
+    i = *argsStartIndexPtr + 1;
+    int j = 0;
+    while (j < LIMIT_MAX_NUM_CMD_LINE_ARGS)
+    {
+        argsPtr[j] = le_arg_GetArg(i);
+
+        if (argsPtr[j] == NULL)
+        {
+            break;
+        }
+
+        j++;
+        i++;
+    }
+
+    if (j >= LIMIT_MAX_NUM_CMD_LINE_ARGS)
+    {
+        fprintf(stderr, "Too many process arguments.");
+        exit(EXIT_FAILURE);
+    }
+
+    *incrementalArgsUsedPtr += j + 1; // Include the '--'.
+
+    return j;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a string option value from the command line searching only up to lastValidIndex.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ *
+ * @return
+ *      Pointer to the value string if successful.
+ *      NULL if the option was not found.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetStringOption
+(
+    const char* optionStr,              ///< [IN] Option string to get the value for.
+    int lastValidIndex,                 ///< [IN] Index of last argument to search.
+    int* incrementalArgsUsedPtr         ///< [OUT] Increments this value by the number of args found
+                                        ///        in this function.
+)
+{
+    int optionLen = strlen(optionStr);
+
+    // Start searching after the app name.
+    int i = APP_NAME_INDEX + 1;
+
+    while (1)
+    {
+        if ( (lastValidIndex >= 0) && (i > lastValidIndex) )
+        {
+            // Reached the end of the list of valid args.
+            break;
+        }
+
+        const char* argPtr = le_arg_GetArg(i);
+
+        if (argPtr == NULL)
+        {
+            // No more args.
+            break;
+        }
+
+        if ( (strncmp(argPtr, optionStr, optionLen) == 0) && (argPtr[optionLen] == '=') )
+        {
+            // Found option.
+            const char* valuePtr = &(argPtr[optionLen + 1]);
+
+            if (valuePtr[0] == '\0')
+            {
+                // Empty value.
+                fprintf(stderr, "Missing value for %s.\n", optionStr);
+                exit(EXIT_FAILURE);
+            }
+
+            (*incrementalArgsUsedPtr)++;
+
+            return valuePtr;
+        }
+
+        i++;
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the executable from the command line.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ *
+ * @return
+ *      The executable path if successful.
+ *      An empty string if an executable was not specified on the command line.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetCmdLineExe
+(
+    int lastValidIndex,                 ///< [IN] Index of last argument to search.
+    int* incrementalArgsUsedPtr         ///< [OUT] Increments this value by the number of args found
+                                        ///        in this function.
+)
+{
+    const char* exePathPtr = GetStringOption("--exe", lastValidIndex, incrementalArgsUsedPtr);
+
+    if (exePathPtr == NULL)
+    {
+        return "";
+    }
+
+    return exePathPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the priority from the command line.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetCmdLinePriority
+(
+    int lastValidIndex,                 ///< [IN] Index of last argument to search.
+    int* incrementalArgsUsedPtr         ///< [OUT] Increments this value by the number of args found
+                                        ///        in this function.
+)
+{
+    const char* priorityPtr = GetStringOption("--priority", lastValidIndex, incrementalArgsUsedPtr);
+
+    if (priorityPtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Check if the priority string is valid.
+    if ( (strcmp(priorityPtr, "idle") == 0) ||
+         (strcmp(priorityPtr, "low") == 0) ||
+         (strcmp(priorityPtr, "medium") == 0) ||
+         (strcmp(priorityPtr, "high") == 0) )
+    {
+        return priorityPtr;
+    }
+
+    if ( (priorityPtr[0] == 'r') && (priorityPtr[1] == 't') )
+    {
+        int rtLevel;
+
+        if ( (le_utf8_ParseInt(&rtLevel, &(priorityPtr[2])) == LE_OK) &&
+             (rtLevel >= MIN_RT_PRIORITY) &&
+             (rtLevel <= MAX_RT_PRIORITY) )
+        {
+            return priorityPtr;
+        }
+    }
+
+    fprintf(stderr, "Invalid priority.  Try --help.\n");
+    exit(EXIT_FAILURE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the fault action from the command line.
+ *
+ * @note
+ *      Kills the calling process if there is an error.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if no fault action specified.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetCmdLineFaultAction
+(
+    int lastValidIndex,                 ///< [IN] Index of last argument to search.
+    le_appProc_FaultAction_t* faultPtr, ///< [OUT] The fault action.
+    int* incrementalArgsUsedPtr         ///< [OUT] Increments this value by the number of args found
+                                        ///        in this function.
+)
+{
+    const char* faultActionPtr = GetStringOption("--faultAction", lastValidIndex, incrementalArgsUsedPtr);
+
+    if (faultActionPtr == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    if (strcmp(faultActionPtr, "ignore") == 0)
+    {
+        *faultPtr = LE_APPPROC_FAULT_ACTION_IGNORE;
+        return LE_OK;
+    }
+
+    if (strcmp(faultActionPtr, "restartProc") == 0)
+    {
+        *faultPtr = LE_APPPROC_FAULT_ACTION_RESTART_PROC;
+        return LE_OK;
+    }
+
+    if (strcmp(faultActionPtr, "restartApp") == 0)
+    {
+        *faultPtr = LE_APPPROC_FAULT_ACTION_RESTART_APP;
+        return LE_OK;
+    }
+
+    if (strcmp(faultActionPtr, "stopApp") == 0)
+    {
+        *faultPtr = LE_APPPROC_FAULT_ACTION_STOP_APP;
+        return LE_OK;
+    }
+
+    fprintf(stderr, "Invalid fault action.  Try --help.\n");
+    exit(EXIT_FAILURE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Runs a process in an application.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RunProc
+(
+    void
+)
+{
+    // Keep a counter of the number of useful arguments so we can do a check at the end.  Start off
+    // with the runProc command and the app name as these are mandatory.
+    int numUsefulArgs = 2;
+
+    // Get app name.
+    AppNamePtr = GetCmdLineAppName();
+
+    // Get proc name (optional).
+    ProcNamePtr = GetCmdLineProcName(&numUsefulArgs);
+
+    // Get arguments for the process we are going to start.
+    const char* procArgs[LIMIT_MAX_NUM_CMD_LINE_ARGS];
+    int lastCmdIndex = -1;
+
+    int numProcArgs = GetProcessArgs(procArgs, &lastCmdIndex, &numUsefulArgs);
+
+    if (lastCmdIndex > 0)
+    {
+        // This is the index of the last valid command line argument for appCtrl runProc.  All
+        // proceeding arguments belong to the process to start.
+        lastCmdIndex--;
+    }
+
+    // Get options.
+    const char* exePathPtr = GetCmdLineExe(lastCmdIndex, &numUsefulArgs);
+    const char* priorityPtr = GetCmdLinePriority(lastCmdIndex, &numUsefulArgs);
+    le_appProc_FaultAction_t faultAction;
+    le_result_t faultActionResult = GetCmdLineFaultAction(lastCmdIndex, &faultAction, &numUsefulArgs);
+
+    // Check for extra options.
+    if (numUsefulArgs != le_arg_NumArgs())
+    {
+        fprintf(stderr, "Invalid arguments.  Try --help.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Check if options are valid.
+    if ( (strcmp(ProcNamePtr, "") == 0) && (strcmp(exePathPtr, "") == 0) )
+    {
+        fprintf(stderr, "Please provide a process name or an executable path or both.  Try --help.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Connect to the app proc service.
+    le_appProc_ConnectService();
+
+    // Create and configure our application process.
+    le_appProc_RefRef_t appProcRef = le_appProc_Create(AppNamePtr, ProcNamePtr, exePathPtr);
+
+    if (appProcRef == NULL)
+    {
+        fprintf(stderr, "Failed to create proc %s in app %s.\n", ProcNamePtr, AppNamePtr);
+        fprintf(stderr, "Check logs for details.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Setup the standard streams.
+    le_appProc_SetStdIn(appProcRef, STDIN_FILENO);
+
+    // Close local stdin
+    close(STDIN_FILENO);
+
+    le_appProc_SetStdOut(appProcRef, STDOUT_FILENO);
+    le_appProc_SetStdErr(appProcRef, STDERR_FILENO);
+
+    // Set args.
+    if (numProcArgs == 0)
+    {
+        le_appProc_AddArg(appProcRef, "");
+    }
+    else if (numProcArgs > 0)
+    {
+        int i = 0;
+        for (; i < numProcArgs; i++)
+        {
+            le_appProc_AddArg(appProcRef, procArgs[i]);
+        }
+    }
+
+    // Set priority.
+    if (priorityPtr != NULL)
+    {
+        le_appProc_SetPriority(appProcRef, priorityPtr);
+    }
+
+    // Set fault action.
+    if (faultActionResult == LE_OK)
+    {
+        le_appProc_SetFaultAction(appProcRef, faultAction);
+    }
+
+    // Add our process stop handler.
+    // NOTE: To hold the standard in we must not exit and continue to run in the foreground.
+    //       program execution will be handled in the stop handler.
+    le_appProc_AddStopHandler(appProcRef, AppProcStopped, NULL);
+
+    // Start the process.
+    le_result_t result = le_appProc_Start(appProcRef);
+
+    if (result != LE_OK)
+    {
+        fprintf(stderr, "Failed to start proc %s in app %s.\n", ProcNamePtr, AppNamePtr);
+        fprintf(stderr, "Check logs for details.\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -1130,11 +1681,22 @@ COMPONENT_INIT
                                    le_hashmap_HashUInt32,
                                    le_hashmap_EqualsUInt32);
 
-    le_arg_SetFlagCallback(PrintHelp, "h", "help");
+    // Parse arguments.
+    if ( (le_arg_NumArgs() >= 2) && (strcmp(le_arg_GetArg(0), "runProc") == 0) )
+    {
+        // For the runProc parse the options manually because the automatic parser does not handle
+        // all the options we need.
 
-    le_arg_AddPositionalCallback(CommandArgHandler);
+        RunProc();
+    }
+    else
+    {
+        le_arg_SetFlagCallback(PrintHelp, "h", "help");
 
-    le_arg_Scan();
+        le_arg_AddPositionalCallback(CommandArgHandler);
 
-    CommandFunc();
+        le_arg_Scan();
+
+        CommandFunc();
+    }
 }

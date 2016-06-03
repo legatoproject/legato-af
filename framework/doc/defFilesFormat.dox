@@ -122,6 +122,7 @@ Some useful environment variables:
  - @c LEGATO_TARGET = build target (e.g., wp85, localhost)
  - @c LEGATO_BUILD = shorthand for <c>$LEGATO_ROOT/build/$TARGET</c>
  - @c LEGATO_SYSROOT = path of the directory containing the target device's system files
+ - @c CURDIR = path of the directory containing the definition file being parsed
 
 
 @section defFileFormatWhitespace Whitespace
@@ -165,9 +166,6 @@ provides :     // Note that space is allowed between the section name and the co
 
 sources: {httpd.c}
 @endcode
-
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

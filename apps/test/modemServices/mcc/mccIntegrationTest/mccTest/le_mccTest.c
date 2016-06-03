@@ -259,6 +259,12 @@ static le_result_t Testle_mcc_Call
        }
        return LE_FAULT;
     }
+    else
+    {
+        res = le_mcc_Start(TestCallRef);
+        LE_ASSERT(res == LE_BUSY);
+        LE_INFO("le_mcc_Start() LE_BUSY test OK");
+    }
 
     return LE_OK;
 }

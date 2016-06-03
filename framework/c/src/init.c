@@ -39,13 +39,9 @@
 //--------------------------------------------------------------------------------------------------
 __attribute__((constructor)) void _legato_InitFramework
 (
-    int argc,       ///< Number of command-line arguments (including command name)
-    char* argv[]    ///< List of command-line arguments (argv[0] is the name of the command).
+    void
 )
 {
-    // Gather the program arguments for later processing.
-    arg_SetArgs((size_t)argc, (char**)argv);
-
     // The order of initialization is important.  Ideally, logging would be initialized first,
     // because before that, any logging calls will report the wrong component, and pretty much
     // everything uses logging.  However, the logging uses memory pools, so memory pools must be

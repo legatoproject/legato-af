@@ -1,0 +1,108 @@
+#!/bin/sh
+# Copyright 2013 Sierra Wireless
+#
+# Provides a hook for legato into the init scripts
+# Is called by the start program just before starting the supervisor
+
+SMACK_PATH=/legato/smack
+SYSTEM_BIN_PATH=/legato/systems/current/bin
+
+export PATH=$SYSTEM_BIN_PATH:$PATH
+
+
+fg_01_SetSmackLabels()
+{
+    # Set the SMACK label for /dev/null and /dev/zero to "*" so that any everyone can have access to them.
+    xattr set security.SMACK64 "*" /dev/null
+    xattr set security.SMACK64 "*" /dev/zero
+
+    # TODO: This section of code should be done earlier in the boot sequence so that syslogd will start
+    # earlier with the proper label.  Leaving it here for now until we have a hook into earlier stages
+    # of the boot system.  Another option is for Legato to build a log forwarding daemon that has the
+    # proper permissions.  In that case this code is not needed at all.
+
+    # Only allow the "framework" label to access the Legato directory.
+    xattr set security.SMACK64 "framework" /legato
+
+    # Give subjects with "_", "admin" and "framework" rw access to "syslog".
+    if [ -e "$SMACK_PATH/load2" ]
+    then
+        echo "_ syslog rw---" > $SMACK_PATH/load2
+        echo "admin syslog rw---" >$SMACK_PATH/load2
+        echo "framework syslog rw---" > $SMACK_PATH/load2
+    fi
+}
+
+fg_02_RestartSyslogd()
+{
+    # Restarting syslogd with the proper options and label.
+    /usr/bin/killall syslogd
+    local oldlabel=$(cat /proc/self/attr/current)
+    echo syslog >/proc/self/attr/current
+    /sbin/syslogd -C2000 &
+    echo $oldlabel >/proc/self/attr/current
+}
+
+bg_05_BringUpDeveloperInterface_get_param()
+{
+    local line=$( grep "$1" $ecm_conf 2>/dev/null )
+    echo ${line#*:}
+}
+
+bg_05_BringUpDeveloperInterface()
+{
+    gadget_mode=/sys/class/android_usb/android0/functions
+    ecm_conf=/etc/legato/ecm.conf
+    ecm_if=$(ls -1 /sys/class/net/ | egrep '(e[ec]m|usb)0')
+
+    if [ -z "$ecm_if" ]; then
+        return
+    fi
+
+    set -- $ecm_if
+    if [ $# -gt 1 ]; then
+        echo "ecm: warning, more than one ECM interface detected ($ecm_if)"
+    fi
+    ecm_if=$1
+
+    # If the PCONFIG flag is set then change the default IP address
+    if [ -f /mnt/userrw/PCONFIG ]
+    then
+        ecm_default_ip=192.168.200.1
+    else
+        ecm_default_ip=192.168.2.2
+    fi
+
+    # only do this if ecm or eem are part of usb composition
+    if [ -f $gadget_mode ]; then
+        ecm=$(egrep "e[ce]m" ${gadget_mode})
+        if [ ! -z "$ecm" ]; then
+            # If the configuration file doesn't exists, create a default one
+            if [ ! -f /mnt/userrw/PCONFIG ] && [ ! -f $ecm_conf ]; then
+                $SYSTEM_BIN_PATH/configEcm default
+            fi
+            if [ -f $ecm_conf ]; then
+                # Read configuration from the (now created) config file
+                ecm_netmask=$( bg_05_BringUpDeveloperInterface_get_param netmask.ipV4 )
+                ecm_target_ip4=$( bg_05_BringUpDeveloperInterface_get_param target.ipV4 )
+            else
+                # Config file doesn't exist.  Use defaults.
+                ecm_netmask=255.255.255.0
+                ecm_target_ip4=$ecm_default_ip
+            fi
+
+            ifconfig $ecm_if $ecm_target_ip4 netmask $ecm_netmask up
+
+        fi
+    fi
+}
+
+# Create home folder for root user. This is needed for blank flash
+mkdir -p /home/root
+
+fg_01_SetSmackLabels
+fg_02_RestartSyslogd
+bg_05_BringUpDeveloperInterface &
+
+echo Finished Legato Start/Stop Sequence
+

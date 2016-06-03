@@ -8,7 +8,6 @@
 
 
 #include "legato.h"
-#include "pa.h"
 #include "interfaces.h"
 #include "le_mrc_local.h"
 #include "le_sim_local.h"
@@ -29,8 +28,6 @@
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_pa_Init();   // Initialize the platform adaptor first.
-
     le_mrc_Init();
     le_sim_Init();
     le_sms_Init();

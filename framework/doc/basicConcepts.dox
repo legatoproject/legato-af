@@ -1,4 +1,4 @@
-/** @page basicConcepts Concepts
+/** @page basicConcepts Overview
 
 @subpage basicRuntimeArch <br>
 @subpage basicSecurity <br>
@@ -6,14 +6,14 @@
 @subpage basicInterfaces <br>
 @subpage basicConfig <br>
 @subpage basicEvents <br>
+@subpage basicJava <br>
 @subpage basicPwrMgmt <br>
 @subpage basicIPC <br>
 @subpage basicInternationalization <br>
 @subpage basicLog <br>
 @subpage basicLWM2MData <br>
-@subpage basicUpdate
-
-@ref aboutDocsGlossary <br>
+@subpage basicUpdate <br>
+@subpage aboutDocsGlossary
 
 <h2>Overview</h2>
 
@@ -22,9 +22,6 @@ Internet-of-things (IoT) easier, faster, and less expensive.
 
 @image html LegatoPlatform.png
 
-<HR>
-
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
-

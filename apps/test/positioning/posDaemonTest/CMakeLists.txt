@@ -17,7 +17,7 @@ if(${LEGATO_TARGET} STREQUAL "localhost")
             message("Positioning test uses simulator.")
 
             set(SCRIPT_PATH       ${CMAKE_CURRENT_SOURCE_DIR}/gnssSimulator.sh)
-            set(STUB_PATH         ${LEGATO_ROOT}/apps/stub/modem/stub_gnss_nmea.pl)
+            set(STUB_PATH         ${CMAKE_CURRENT_SOURCE_DIR}/stub_gnss_nmea.pl)
             set(TEST_XML          ${CMAKE_CURRENT_SOURCE_DIR}/modem_gnss.xml)
             set(TEST_GNSS         ${CMAKE_CURRENT_SOURCE_DIR}/gnss_nmea.txt)
             set(TEST_GNSS_BLOCK   5)

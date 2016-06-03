@@ -17,7 +17,7 @@ OnFail()
     printBanner "Inspect Test Failed"
 }
 
-appDir="$LEGATO_ROOT/build/$targetType/bin/tests"
+appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 
 targetTestApps=(
     SubpoolFlux
@@ -55,7 +55,7 @@ printBanner "Installing All Test Apps"
 for app in ${targetTestApps[@]}
 do
 #    echo "Installing the test app [$app]"
-    instapp $appDir/$app.$targetType $targetAddr
+    instapp $appDir/$app.${targetType}.update $targetAddr
     CheckRet
 done
 

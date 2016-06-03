@@ -1,0 +1,12 @@
+sources:
+{
+    xtraTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_gnss.api
+    }
+}

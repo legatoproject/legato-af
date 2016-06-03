@@ -2,7 +2,7 @@
 
 <c>.adef</c> files can contain these sections:
 
-@section defFilesAdef_bindings Bindings
+@section defFilesAdef_bindings bindings
 
 Bindings allow client-side IPC API interfaces (listed in the @a requires sections of
 Component.cdef files) to be bound to server-side interfaces (listed in the @a provides sections
@@ -24,55 +24,55 @@ the client interface from the server interface.
 Here's a code sample binding @c clientExe.clientComponent.clientInterface to
 @c serverExe.serverComponent.serverInterface:
 
-@verbatim
+@code
 bindings:
 {
     clientExe.clientComponent.clientInterface -> serverExe.serverComponent.serverInterface
 }
-@endverbatim
+@endcode
 
 External services provided by other apps use the app name and the service name,
 separated by a period ('.'):
 
-@verbatim
+@code
 bindings:
 {
     clientExe.clientComponent.clientInterface -> otherApp.serverInterface
 }
-@endverbatim
+@endcode
 
 To bind to a service provided by a non-app user, the app name is replaced by a user name inside
 angle brackets:
 
-@verbatim
+@code
 bindings:
 {
     clientExe.clientComponent.clientInterface -> <root>.serverInterface
 }
-@endverbatim
+@endcode
 
 If client-side code was built using the @c ifgen tool or
 @ref buildToolsmkcomp or @ref buildToolsmkexe with requires or bundles sections,
 the tool reading your .adef file won't know about the client-side interface. Use a special
 work-around to bind those interfaces:
 
-@verbatim
+@code
 bindings:
 {
     *.le_data -> dataConnectionService.le_data
 }
-@endverbatim
+@endcode
 
 This would bind any unknown client-side @c le_data interfaces in the current app to the @c le_data
 server-side interface on the @c dataConnectionService app.
 
-@section defFilesAdef_bundles Bundles
+@section defFilesAdef_bundles bundles
 
 Lists additional files or directories to be copied from the build host into the app
 so they’re available to the app at runtime (e.g., audio files, web pages, executable scripts
 or programs built using some external build system).
 
-@verbatim
+@code
 bundles:
 {
     file:
@@ -97,7 +97,7 @@ bundles:
         audio   /usr/share/sounds
     }
 }
-@endverbatim
+@endcode
 
 Three things need to be specified for each file or directory:
 - access permissions
@@ -147,9 +147,9 @@ could have a different name than the source object.
 
 File paths can be enclosed in quotation marks (either single ' or double ").
 This is required when the file path contains spaces or comment start sequences
-@verbatim
+@code
 "//" or  "/*"
-@endverbatim
+@endcode
 
 <b>File Ownership and Set-UID Bits</b>
 
@@ -166,7 +166,40 @@ If a directory is bundled by a component's .cdef file and another directory is b
 same target path by the .adef, then the two directories will be merged into the bundle, where
 conflicts are resolved by omitting the file from the directory specified by the .cdef.
 
-@section defFilesAdef_cpuShare CPU Share
+@section defFilesAdef_components components
+
+Allows components to be included in an app without being built into an executable
+(see @ref defFilesAdef_executables).  This can be useful if:
+- the component doesn't contain any source code files
+- the component's source files are run using an interpreter (such as shell scripts)
+- the component contains executables that are built using a different build system prior to
+  building the app
+
+The @c components section contains a list of file system paths to component directories.
+
+For example,
+
+@code
+components:
+{
+    $SOURCE_ROOT/audioFiles  // <-- component containing just audio files.
+
+    path/to/audioPlayer // <-- component that bundles audioExe built using another build system.
+}
+
+processes:
+{
+    run:
+    {
+        (audioExe)
+    }
+}
+@endcode
+
+@note If a component is included in an @ref defFilesAdef_executables "executable", then
+it is not necessary to include that component in a @c components: section.
+
+@section defFilesAdef_cpuShare cpuShare
 
 Specifies the relative cpu share for an app.
 
@@ -196,26 +229,26 @@ The two processes in cgroupB will share 512/4608 = 11% of the cpu, each process 
 The process in cgroupC will get 2048/4608 = 44% of the cpu.
 The system process will get 1024/4608 = 22% of the cpu.
 
-@verbatim
+@code
 cpuShare: 512
-@endverbatim
+@endcode
 
 Although apps aren't limited to running inside a sandbox (i.e., unsandboxed apps), the
 Supervisor still enforces limits. Ensure @c cpuShare values are set high enough for unsanboxed apps.
 Also see @ref defFilesAdef_processMaxFileBytes.
 
-@section defFilesAdef_executables Executables
+@section defFilesAdef_executables executables
 
 Lists executables to be constructed and moved to the @c bin directory inside the app.
 
 An executable’s content is specified as a list of components.
 
-@verbatim
+@code
 executables:
 {
     myExe = ( myComponent otherComponent )
 }
-@endverbatim
+@endcode
 
 Each component included in an executable will be built and linked into
 the executable and its @c COMPONENT_INIT function will be run at process start-up.
@@ -235,52 +268,52 @@ code will be simply copied into the app.
 prevent them from being included in the same executable (e.g., Java component and C components
 in the same executable together). The build tools will advise if there's a problem.
 
-@section defFilesAdef_groups Groups
+@section defFilesAdef_groups groups
 
 Add an app's user to groups on the target system.
 
-@verbatim
+@code
 groups:
 {
     www-data
     modem
 }
-@endverbatim
+@endcode
 
 
-@section defFilesAdef_maxFileSystemBytes Max File System Bytes
+@section defFilesAdef_maxFileSystemBytes maxFileSystemBytes
 
 Specifies the maximum amount of RAM that can be consumed by an app's temporary (volatile) file
 system at runtime.
 
 Default is @b 128K
 
-@verbatim
+@code
 maxFileSystemBytes: 120K
-@endverbatim
+@endcode
 
 @note The file system size will also be limited by the @c maxMemoryBytes limit.
 
-@section defFilesAdef_maxMemoryBytes Max Memory Bytes
+@section defFilesAdef_maxMemoryBytes maxMemoryBytes
 
 Specifies the maximum amount of memory (in bytes) that all processes in an app can share.
 Default is @b 40960K (40MB).
 
-@verbatim
+@code
 maxMemoryBytes: 1000K
-@endverbatim
+@endcode
 
 @note Will be rounded to the nearest memory page boundary.
 
-@section defFilesAdef_maxMQueueBytes Max MQueue Bytes
+@section defFilesAdef_maxMQueueBytes maxMQueueBytes
 
 Specifies the maximum number of bytes that can be allocated for POSIX MQueues. Default is @b 512.
 
-@verbatim
+@code
 maxMQueueBytes: 16K
-@endverbatim
+@endcode
 
-@section defFilesAdef_maxQueuedSignals Max Queued Signals
+@section defFilesAdef_maxQueuedSignals maxQueuedSignals
 
 Specifies the maximum number of signals that can be waiting for delivery to processes in the app.
 
@@ -289,11 +322,11 @@ Signals sent using @c kill() are limited to at most one of each type of signal a
 
 Default is @b 100.
 
-@verbatim
+@code
 maxQueuedSignals: 200
-@endverbatim
+@endcode
 
-@section defFilesAdef_maxThreads Max Threads
+@section defFilesAdef_maxThreads maxThreads
 
 Specifies the maximum number of threads allowed to run at one time: an integer number.
 
@@ -305,22 +338,22 @@ output as @c clone() system calls), then you are probably running into this limi
 
 Default is @b 20.
 
-@verbatim
+@code
 maxThreads: 4
-@endverbatim
+@endcode
 
-@section defFilesAdef_maxSecureStorageBytes Max Secure Storage Bytes
+@section defFilesAdef_maxSecureStorageBytes maxSecureStorage Bytes
 
 Specifies the maximum number of bytes that can be stored in Secure Storage.
 
 Default is @b 8K.
 
-@verbatim
+@code
 maxSecureStorageBytes: 4K
-@endverbatim
+@endcode
 
 
-@section defFilesAdef_pools Pools
+@section defFilesAdef_pools pools
 
 @warning This feature not yet implemented.
 
@@ -338,7 +371,7 @@ pools:
 @endcode
 
 
-@section defFilesAdef_process Processes
+@section defFilesAdef_process processes
 
 A @c processes section specifies processes to run when the app is started including
 environment variables, command-line arguments, limits, and fault handling actions.
@@ -347,7 +380,7 @@ The @c processes section is divided into subsections.
 
 If different processes have different variables, they must be in separate @c processes: sections.
 
-@verbatim
+@code
 processes:
 {
     // Start up these processes when the app starts
@@ -385,10 +418,10 @@ processes:
     /*-- Exception handling policy for processes in this section. --*/
     faultAction: restart   // Restart the process if it fails.
 }
-@endverbatim
+@endcode
 
 
-@subsection defFilesAdef_processRun Run
+@subsection defFilesAdef_processRun run
 
 Names a process to be started by the Supervisor when the app is started. Also specifies executable
 and command-line arguments.
@@ -445,7 +478,7 @@ Quotation marks (either single @b ' or double @b ") can be used if white-space
 (spaces, tabs, @c //, etc.) is needed inside a command-line argument, or if an empty argument is
 needed ("").
 
-@subsection defFilesAdef_processEnvVars Env Vars
+@subsection defFilesAdef_processEnvVars envVars
 
 Environment variables appear as name = value pairs. First is the environment variable
 name and second is the variable value.
@@ -460,7 +493,7 @@ envVars:
 }
 @endcode
 
-@subsection defFilesAdef_processFaultAction Fault Action
+@subsection defFilesAdef_processFaultAction faultAction
 
 Specifies the action the Supervisor should take when the process terminates
 with a non-zero exit code or because of an un-caught signal (e.g., SIGSEGV, SIGBUS, SIGKILL).
@@ -480,7 +513,7 @@ Default is @b ignore.
 faultAction: restart
 @endcode
 
-@subsection defFilesAdef_processPriority Priority
+@subsection defFilesAdef_processPriority priority
 
 Specifies the starting (and maximum) scheduling priority. A running app process can only lower
 its priority from this point. Once it has lowered its priority, it can't raise it again (e.g., if
@@ -504,7 +537,7 @@ idle priorities.
 priority: medium
 @endcode
 
-@subsection defFilesAdef_processMaxCoreDumpFileBytes Max Core Dump File Bytes
+@subsection defFilesAdef_processMaxCoreDumpFileBytes maxCoreDumpFileBytes
 
 Specifies the maximum size (in bytes) of core dump files that can be generated by processes.
 
@@ -520,7 +553,7 @@ maxFileBytes: 100K
 maxFileSystemBytes: 200K
 @endcode
 
-@subsection defFilesAdef_processMaxFileBytes Max File Bytes
+@subsection defFilesAdef_processMaxFileBytes maxFileBytes
 
 Specifies the maximum size processes can make files. The @a K suffix permits specifying in
 kilobytes (multiples of 1024 bytes).
@@ -543,7 +576,7 @@ enforces limits. Ensure @c maxFileBytes values are set high enough for unsanboxe
         be limited by @ref defFilesAdef_maxFileSystemBytes and
         @ref defFilesAdef_maxMemoryBytes. <br>
 
-@subsection defFilesAdef_processMaxFileDescriptors Max File Descriptors
+@subsection defFilesAdef_processMaxFileDescriptors maxFileDescriptors
 
 Specifies the maximum number of file descriptors a process can have open at one time.
 
@@ -553,7 +586,7 @@ Default is @b 256
 maxFileDescriptors: 100
 @endcode
 
-@subsection defFilesAdef_processMaxLockedMemoryBytes Max Locked Memory Bytes
+@subsection defFilesAdef_processMaxLockedMemoryBytes maxLockedMemoryBytes
 
 Specifies the maximum bytes of memory the process can lock into physical RAM
 (e.g., using @c mlock() ).
@@ -569,7 +602,7 @@ maxLockedMemoryBytes: 100K
 @note   Also limits the maximum number of bytes of shared memory the app can lock into
         memory using @c shmctl().
 
-@subsection defFilesAdef_processWatchdogAction Watchdog Action
+@subsection defFilesAdef_processWatchdogAction watchdogAction
 
 Specifies the action the Supervisor should take when a process subscribed
 to the watchdog service fails to kick the watchdog before it expires. Possible values are the same
@@ -578,7 +611,7 @@ as in @ref defFilesAdef_processFaultAction as well as:
 @c stop -  Supervisor terminates the process if it's still running.
 If a watchdog action has not been supplied, the default action will restart the process.
 
-@subsection defFilesAdef_processWatchdogTimeout Watchdog Timeout
+@subsection defFilesAdef_processWatchdogTimeout watchdogTimeout
 
 Specifies the timeout length (in milliseconds) for watchdogs called by processes
 in the enclosing processes section.
@@ -587,28 +620,28 @@ Once a process has called @c le_wdog_Kick(),  it's registered with
 the software watchdog service. If it then fails to call @c le_wdog_Kick() within the given timeout,
 the Supervisor is notified will take the action specified in @ref defFilesAdef_processWatchdogAction
 
-@verbatim
+@code
 watchdogTimeout: 10000 // Must call le_wdog_Kick() at least every 10 seconds.
-@endverbatim
+@endcode
 
 A special value "never" is permitted for this section.  If used, the watchdog will never time out.
 
-@verbatim
+@code
 watchdogTimeout: never  // Disable watchdog for these processes.
-@endverbatim
+@endcode
 
-@section defFilesAdef_extern Extern
+@section defFilesAdef_extern extern
 
 Declares that an IPC API interface is available for binding via
 @ref defFilesSdef_bindings ".sdef file's bindings section"
 or @ref defFilesAdef_bindings ".adef file's bindings section".
 
-@verbatim
+@code
 extern:
 {
     exeName.componentName.interfaceName
 }
-@endverbatim
+@endcode
 
 Internal interface instances are identified by the executable, component, and
 interface names.  The different interface instance identifier parts are
@@ -621,54 +654,54 @@ and component within the app implements the interface.
 To have other apps see an interface with a different name,
 add <c> differentName = </c> in front of the interface specification:
 
-@verbatim
+@code
 extern:
 {
     differentName = exeName.componentName.interfaceName
 }
-@endverbatim
+@endcode
 
 The interface will then appear outside the app as <c>appName.differentName</c>.
 
-@subsection defFilesAdef_externServer Server-Side Example
+@subsection defFilesAdef_externServer Server-side Example
 
 This code sample declares the @c temperature interface on the @c thermistor
 component in the @c sensor executable should be made into a bindable external server-side interface
 (service) called @c spaceTemp:
 
-@verbatim
+@code
 extern:
 {
     spaceTemp = sensor.thermistor.temperature
 }
-@endverbatim
+@endcode
 
 If the app was called @a thermometer, then other apps could bind their client-side
 interfaces to <c>thermometer.spaceTemp</c> to receive temperature readings from this sensor app.
 
-@subsection defFilesAdef_externClient Client-Side Example
+@subsection defFilesAdef_externClient Client-side Example
 
 This code sample declares that the @c temperature interface on the @c tempInput
 component in the @c controller executable should be made into a bindable external interface:
 
-@verbatim
+@code
 extern:
 {
     controller.tempInput.temperature
 }
-@endverbatim
+@endcode
 
 If this app were called thermostat, then to outsiders (e.g., in a @c .sdef file or another app's
 @c .adef file), the interface would be called <c>thermostat.temperature</c>.
 
-@section defFilesAdef_requires Requires
+@section defFilesAdef_requires requires
 
 The @c requires: section specifies things the app needs from its runtime
 environment.
 
 It can contain various subsections.
 
-@subsection defFilesAdef_requiresConfigTree Config Tree
+@subsection defFilesAdef_requiresConfigTree configTree
 
 Declares the app requires access to a specified configuration tree.
 Each app has its own configuration tree named after the app.
@@ -687,7 +720,7 @@ If access is granted to a tree, but the access mode ([r] or [w]) is not specifie
 
 A special tree name "." can be used to refer to the app's own configuration data tree.
 
-@verbatim
+@code
 requires:
 {
     configTree:
@@ -696,7 +729,7 @@ requires:
         otherApp    // I need read access to another app's configuration data.
     }
 }
-@endverbatim
+@endcode
 
 @warning    Because config data can be saved to flash storage, granting write access to a config
 tree can make it possible for the app to wear out your flash device. Granting an untrusted app write
@@ -706,7 +739,7 @@ to the system tree, because it's possible to completely compromise the target de
 may be dangerous if any kind of security key, including PIN and PUK codes, are kept in the system
 tree. Don't give apps direct access to the <code>system tree</code>.
 
-@subsection defFilesAdef_requiresDir Dir
+@subsection defFilesAdef_requiresDir dir
 
 Used to declare directories located on the target outside of the
 app that are to be made accessible to the app.
@@ -733,7 +766,7 @@ If the destination path ends in a "/", the name from the source is appended to i
 the destination path is used. That means @c /foo/bar /baz will appear as @c /baz inside the sandbox,
 and @c /foo/bar /baz/ will appear as @c /baz/bar inside the sandbox.
 
-@verbatim
+@code
 requires:
 {
     dir:
@@ -750,7 +783,7 @@ requires:
         /lib    /usr/lib
     }
 }
-@endverbatim
+@endcode
 
 @note   Even though the directory appears in the app's sandbox
         doesn't mean the app can access it. The directory permissions settings
@@ -770,7 +803,7 @@ requires:
         in @c /usr/bin; that would have an effect on the contents of the /bin directory outside
         of the app.
 
-@subsection defFilesAdef_requiresFile File
+@subsection defFilesAdef_requiresFile file
 
 Declares:
 - specific files located on the target outside of the app,
@@ -797,7 +830,7 @@ The first path can't end in a '/'.
 If the second path ends in a '/', then it's specifying the directory where the object
 appears, and the object has the same name inside the sandbox as it has outside the sandbox.
 
-@verbatim
+@code
 requires:
 {
     file:
@@ -810,7 +843,7 @@ requires:
         '/usr/local/share/audio/success message.wav' /usr/share/audio/
     }
 }
-@endverbatim
+@endcode
 
 @note   Even though the file system object appears in the app's sandbox it still needs
          permissions settings on the file.  File permissions (both DAC and MAC) and ownership
@@ -820,7 +853,7 @@ requires:
 It's also possible to give the object a different names inside and outside of the sandbox by
  adding a name to the end of the second path.
 
-@verbatim
+@code
 requires:
 {
     file:
@@ -829,14 +862,14 @@ requires:
         /var/run/someNamedPipe  /var/run/externalPipe
     }
 }
-@endverbatim
+@endcode
 
 @warning  When something is accessible from inside an app sandbox, there are potential security
             risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
             information or launch a denial-of-service attack on other apps within the target
             device or other devices connected to the target device).
 
-@subsection defFilesAdef_requiresDevice Device
+@subsection defFilesAdef_requiresDevice device
 
 Declares:
 - device files that reside on the target outside of the app, but made accessible to the app.
@@ -867,7 +900,7 @@ The first path can't end in a '/'.
 If the second path ends in a '/', then it's specifying the directory where the object
 appears, and the object has the same name inside the sandbox as it has outside the sandbox.
 
-@verbatim
+@code
 requires:
 {
     device:
@@ -882,7 +915,7 @@ requires:
         [rw]    /dev/sierra_i2c   /dev/
     }
 }
-@endverbatim
+@endcode
 
 Note that if a hot-plug device is unplugged and plugged back in, the app must be restarted before it
 can access the device.
@@ -890,7 +923,7 @@ can access the device.
 It's also possible to give the object a different names inside and outside of the sandbox by
  adding a name to the end of the second path.
 
-@verbatim
+@code
 requires:
 {
     device:
@@ -898,7 +931,7 @@ requires:
         /dev/ttyS0  /dev/port1     // Program uses /dev/port1, but UART0 is called /dev/ttyS0.
     }
 }
-@endverbatim
+@endcode
 
 @warning  When something is accessible from inside an app sandbox, there are potential security
             risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
@@ -908,7 +941,7 @@ requires:
 @warning  This section is experimental.  Future releases of may not support this section.
 
 
-@section defFilesAdef_sandboxed Sandboxed
+@section defFilesAdef_sandboxed sandboxed
 
 Specifies if the app will be launched inside a sandbox.
 
@@ -930,41 +963,41 @@ User and/or group will be automatically created if missing for the specified app
 only users and groups of sandboxed apps will automatically be deleted when those apps are
 uninstalled.
 
-@verbatim
+@code
 sandboxed: false
-@endverbatim
+@endcode
 
-@section defFilesAdef_start Start
+@section defFilesAdef_start start
 
 Specifies if the app should start automatically at start-up:
 - @b auto starts automatically by the Supervisor.
 - @b manual" starts through manual prompt to the Supervisor.
 Default is @b auto.
 
-@verbatim
+@code
 start: auto
-@endverbatim
+@endcode
 
-@section defFilesAdef_version Version
+@section defFilesAdef_version version
 
 Optional field that specifies a string to use as the app's version string.
 
-@verbatim
+@code
 version: 0.3a
-@endverbatim
+@endcode
 
 @note
  - The @b <c>--append-to-version</c> option to @c mkapp can be used to add to the app's
    version string.
  - <b><c>app foo version</c></b> can be run on-target to get the version string of the app called "foo".
 
-@section defFilesAdef_watchdogAction Watchdog Action
+@section defFilesAdef_watchdogAction watchdogAction
 
 The @c watchdogAction section sets the recovery action to take if a process in this app
 expires its watchdog. This value will be used if there is no value set in the processes section
 for a given process. See @ref defFilesAdef_processWatchdogAction in the processes section.
 
-@section defFilesAdef_watchdogTimeout Watchdog Timeout
+@section defFilesAdef_watchdogTimeout watchdogTimeout
 
 The @c watchdogTimeout section sets the default timeout in milliseconds for processes in this
 app. Will be used if there's no value set in the processes section for

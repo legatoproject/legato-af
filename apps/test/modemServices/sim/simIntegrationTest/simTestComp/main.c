@@ -79,7 +79,8 @@ static void PrintUsage
             "No SIM test: simTest nosim <ext/emb>",
             "SIM select: simTest select",
             "SIM lock test: simTest lock <emb/ext1/ext2/rem> <pin>",
-            "SIM GetICCID test: simTest iccid <emb/ext1/ext2/rem>"
+            "SIM GetICCID test: simTest iccid <emb/ext1/ext2/rem>",
+            "SIM send apdu test: simTest access <emb/ext1/ext2/rem>",
             "",
     };
 
@@ -238,6 +239,12 @@ COMPONENT_INIT
     {
         // Call the test function
         simTest_SimGetIccid(cardId);
+    }
+    // Test: send apdu
+    else if (strcmp(testString, "access") == 0)
+    {
+        // Call the test function
+        simTest_SimAccess(cardId);
     }
     else
     {

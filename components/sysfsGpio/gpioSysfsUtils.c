@@ -92,7 +92,7 @@ le_result_t ExportGpio
     while ((fp == NULL) && (errno == EINTR));
 
     if(!fp) {
-        LE_ERROR("Error opening file %s for writing.\n", export);
+        LE_WARN("Error opening file %s for writing.\n", export);
         return LE_IO_ERROR;
     }
 
@@ -103,13 +103,13 @@ le_result_t ExportGpio
     fclose(fp);
     if (file_err != 0)
     {
-        LE_EMERG("Failed to export GPIO %s. Error %s", gpioStr, strerror(file_err));
+        LE_WARN("Failed to export GPIO %s. Error %s", gpioStr, strerror(file_err));
         return LE_IO_ERROR;
     }
 
     if (written < strlen(gpioStr))
     {
-        LE_EMERG("Data truncated while exporting GPIO %s.", gpioStr);
+        LE_WARN("Data truncated while exporting GPIO %s.", gpioStr);
         return LE_IO_ERROR;
     }
 
@@ -118,7 +118,7 @@ le_result_t ExportGpio
     {
         return LE_OK;
     }
-    LE_EMERG("Failed to export GPIO %s.", gpioStr);
+    LE_WARN("Failed to export GPIO %s.", gpioStr);
     return LE_IO_ERROR;
 }
 
@@ -292,7 +292,7 @@ static le_result_t SetEdgeSense
 )
 {
     char path[64];
-    char attr[16];
+    const char *attr;
 
     if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
     {
@@ -305,16 +305,16 @@ static le_result_t SetEdgeSense
     switch(edge)
     {
         case SYSFS_EDGE_SENSE_RISING:
-            snprintf(attr, 15, "rising");
+            attr = "rising";
             break;
         case SYSFS_EDGE_SENSE_FALLING:
-            snprintf(attr, 15, "falling");
+            attr = "falling";
             break;
         case SYSFS_EDGE_SENSE_BOTH:
-            snprintf(attr, 15, "both");
+            attr = "both";
             break;
         default:
-            snprintf(attr, 15, "none");
+            attr = "none";
             break;
     }
     LE_DEBUG("path:%s, attr:%s", path, attr);
@@ -341,7 +341,7 @@ static le_result_t SetDirection
 )
 {
     char path[64];
-    char attr[16];
+    const char *attr;
 
     if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
     {
@@ -350,7 +350,7 @@ static le_result_t SetDirection
     }
 
     snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "direction");
-    snprintf(attr, sizeof(attr), "%s", (mode == SYSFS_PIN_MODE_OUTPUT) ? "out": "in");
+    attr = (mode == SYSFS_PIN_MODE_OUTPUT) ? "out": "in";
     LE_DEBUG("path:%s, attribute:%s", path, attr);
 
     return WriteSysGpioSignalAttr(path, attr);
@@ -369,7 +369,7 @@ le_result_t gpioSysfs_SetPullUpDown
 )
 {
     char path[64];
-    char attr[16];
+    const char *attr;
 
     if (!gpioRefPtr || gpioRefPtr->pinNum == 0)
     {
@@ -385,7 +385,7 @@ le_result_t gpioSysfs_SetPullUpDown
     }
 
     snprintf(path, sizeof(path), "%s/%s/%s", SYSFS_GPIO_PATH, gpioRefPtr->gpioName, "pull");
-    snprintf(attr, sizeof(attr), "%s", (pud == SYSFS_PULLUPDOWN_TYPE_DOWN) ? "down": "up");
+    attr = (pud == SYSFS_PULLUPDOWN_TYPE_DOWN) ? "down": "up";
     LE_DEBUG("path:%s, attr:%s", path, attr);
 
     return WriteSysGpioSignalAttr(path, attr);
@@ -1043,7 +1043,9 @@ void gpioSysfs_SessionOpenHandlerFunc
     // Export the pin in sysfs to make it available for use
     if (LE_OK != ExportGpio(gpioRefPtr))
     {
-        LE_KILL_CLIENT("Unable to export GPIO for use");
+        LE_WARN("Unable to export GPIO %s for use - stopping session", gpioRefPtr->gpioName);
+        le_msg_CloseSession(sessionRef);
+
         return;
     }
 

@@ -1,0 +1,18 @@
+sources:
+{
+    gnss_at.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/positioning/platformAdaptor/inc
+    -I$LEGATO_ROOT/components
+}
+
+requires:
+{
+    api:
+    {
+        le_gnss.api    [types-only]
+    }
+}

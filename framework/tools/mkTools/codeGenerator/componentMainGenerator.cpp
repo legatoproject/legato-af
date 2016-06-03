@@ -60,7 +60,7 @@ namespace code
  * and creates a component-specific interface initialization function.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateComponentMainFile
+void GenerateCLangComponentMainFile
 (
     const model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams,

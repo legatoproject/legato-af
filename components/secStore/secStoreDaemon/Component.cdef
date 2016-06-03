@@ -5,7 +5,7 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/secStore/platformAdaptor/inc
+    -I$CURDIR/../platformAdaptor/inc
     -I$LEGATO_ROOT/framework/c/src/appCfg
     -I$LEGATO_ROOT/framework/c/src/
 }
@@ -14,8 +14,9 @@ requires:
 {
     component:
     {
+        $LEGATO_SECSTORE_PA_DEFAULT
         $LEGATO_SECSTORE_PA
-        ${LEGATO_ROOT}/framework/c/src/appCfg
+        $LEGATO_ROOT/framework/c/src/appCfg
     }
 
     api:

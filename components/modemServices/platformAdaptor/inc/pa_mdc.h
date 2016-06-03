@@ -28,7 +28,7 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-//--------------------------------------------------------------------------------------------------
+
 /** @file pa_mdc.h
  *
  * Legato @ref c_pa_mdc include file.
@@ -170,7 +170,7 @@ pa_mdc_ProfileData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Structure provided to session state handler
+ * Structure that provides the session state handler
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
@@ -180,6 +180,21 @@ typedef struct {
     int32_t  discCode;                  ///< Platform specific disconnection code
 }
 pa_mdc_SessionStateData_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure that provides the connection failure codes.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mdc_DisconnectionReason_t callEndFailure;  ///< Reason the call ended
+    int32_t callEndFailureCode;                   ///< Platform specific Reason the call ended code
+    int32_t callConnectionFailureType;            ///< Platform specific connection failure type
+    int32_t callConnectionFailureCode;            ///< Platform specific connection failure code
+}
+pa_mdc_ConnectionFailureCode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -206,6 +221,10 @@ typedef void (*pa_mdc_SessionStateHandler_t)
 (
     pa_mdc_SessionStateData_t* sessionStatePtr
 );
+
+//--------------------------------------------------------------------------------------------------
+// APIs.
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -280,6 +299,17 @@ LE_SHARED le_result_t pa_mdc_WriteProfile
     pa_mdc_ProfileData_t* profileDataPtr    ///< [IN] The profile data
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the connection failure reason
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mdc_GetConnectionFailureReason
+(
+    uint32_t profileIndex,              ///< [IN] The profile to use
+    pa_mdc_ConnectionFailureCode_t* failureCodesPtr  ///< [OUT] The specific Failure Reason codes
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -325,7 +355,6 @@ LE_SHARED LE_SHARED le_result_t pa_mdc_StartSessionIPV4V6
 (
     uint32_t profileIndex        ///< [IN] The profile to use
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -387,7 +416,6 @@ LE_SHARED le_result_t pa_mdc_GetSessionState
     le_mdc_ConState_t* sessionStatePtr      ///< [OUT] The data session state
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Register a handler for session state notifications.
@@ -405,7 +433,6 @@ LE_SHARED le_event_HandlerRef_t pa_mdc_AddSessionStateHandler
 
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the name of the network interface for the given profile, if the data session is connected.
@@ -422,7 +449,6 @@ LE_SHARED le_result_t pa_mdc_GetInterfaceName
     char*  interfaceNameStr,                ///< [OUT] The name of the network interface
     size_t interfaceNameStrSize             ///< [IN] The size in bytes of the name buffer
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**

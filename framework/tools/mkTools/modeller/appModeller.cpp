@@ -8,6 +8,8 @@
 
 #include "mkTools.h"
 #include "modellerCommon.h"
+#include "componentModeller.h"
+#include "envVars.h"
 
 
 namespace modeller
@@ -106,6 +108,42 @@ static void AddBundledItems
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds to the app the components listed in a given "components" section in the parse tree.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddComponents
+(
+    model::App_t* appPtr,
+    const parseTree::TokenListSection_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Iterate over the list of contents of the section in the parse tree and add each item
+    // as a component.
+    for (auto tokenPtr : sectionPtr->Contents())
+    {
+        // Get the component object.
+        auto componentPtr = GetComponent(tokenPtr, buildParams, { appPtr->dir });
+
+        // Skip if environment variable substitution resulted in an empty string.
+        if (componentPtr != NULL)
+        {
+            if (buildParams.beVerbose)
+            {
+                std::cout << "Application '" << appPtr->name << "' contains component '"
+                          << componentPtr->name
+                          << "' (" << componentPtr->dir << ")." << std::endl;
+            }
+
+            // Add the component to the app's list of components.
+            appPtr->components.insert(componentPtr);
+        }
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -121,27 +159,24 @@ static void AddExecutable
 //--------------------------------------------------------------------------------------------------
 {
     // Add the executable to the app.
-    appPtr->executables.push_back(exePtr);
+    auto insertion = appPtr->executables.insert({ exePtr->name, exePtr });
+
+    if (insertion.second == false)
+    {
+        throw mk::Exception_t("Duplicate executable found: " + exePtr->name);
+    }
 
     // Add all the components used in the executable to the app's list of components.
-    bool hasSources = false;
     for (auto componentInstancePtr : exePtr->componentInstances)
     {
         auto componentPtr = componentInstancePtr->componentPtr;
-
         appPtr->components.insert(componentPtr);
-
-        // Remember if this component has sources.
-        if (   (componentPtr->cObjectFiles.empty() == false)
-            || (componentPtr->cxxObjectFiles.empty() == false)  )
-        {
-            hasSources = true;
-        }
     }
 
     // If none of the components in the executable has any source code files, then the executable
     // would just sit there doing nothing, so throw an exception.
-    if (!hasSources)
+    if (   (exePtr->hasCOrCppCode == false)
+        && (exePtr->hasJavaCode == false))
     {
         exePtr->exeDefPtr->ThrowException("Executable doesn't contain any components that have"
                                           " source code files.");
@@ -182,27 +217,14 @@ static void AddExecutables
 
             // Iterate over the list of contents of the executable specification in the parse
             // tree and add each item as a component.
-            for (auto token : itemPtr->Contents())
+            for (auto tokenPtr : itemPtr->Contents())
             {
-                // Resolve the path to the component.
-                std::string componentPath = path::Unquote(envVars::DoSubstitution(token->text));
+                // Get the component object.
+                auto componentPtr = GetComponent(tokenPtr, buildParams, { appPtr->dir });
 
                 // Skip if environment variable substitution resulted in an empty string.
-                if (!componentPath.empty())
+                if (componentPtr != NULL)
                 {
-                    auto resolvedPath = file::FindComponent(componentPath, { appPtr->dir });
-                    if (resolvedPath.empty())
-                    {
-                        resolvedPath = file::FindComponent(componentPath, buildParams.sourceDirs);
-                    }
-                    if (resolvedPath.empty())
-                    {
-                        token->ThrowException("Couldn't find component '" + componentPath + "'.");
-                    }
-
-                    // Get the component object.
-                    auto componentPtr = GetComponent(path::MakeAbsolute(resolvedPath), buildParams);
-
                     if (buildParams.beVerbose)
                     {
                         std::cout << "Executable '" << exeName << "' in application '"
@@ -213,6 +235,12 @@ static void AddExecutables
                     // Add an instance of the component to the executable.
                     AddComponentInstance(exePtr, componentPtr);
                 }
+
+            }
+
+            if (exePtr->hasJavaCode)
+            {
+                exePtr->path += ".jar";
             }
 
             // Add the executable to the application.
@@ -881,8 +909,10 @@ void PrintSummary
     {
         std::cout << "  Builds executables:" << std::endl;
 
-        for (auto exePtr : appPtr->executables)
+        for (auto mapItem : appPtr->executables)
         {
+            auto exePtr = mapItem.second;
+
             std::cout << "    '" << exePtr->name << "'" << std::endl;
 
             if (!exePtr->componentInstances.empty())
@@ -1117,8 +1147,10 @@ void PrintSummary
     std::list<const model::ApiClientInterfaceInstance_t*> requiredClientIfs;
     std::list<const model::ApiClientInterfaceInstance_t*> boundClientIfs;
     std::list<const model::ApiServerInterfaceInstance_t*> serverIfs;
-    for (auto exePtr : appPtr->executables)
+    for (auto mapItem : appPtr->executables)
     {
+        auto exePtr = mapItem.second;
+
         std::cout << "  Executable '" << exePtr->name << "':" << std::endl;
 
         for (auto componentInstancePtr : exePtr->componentInstances)
@@ -1319,6 +1351,10 @@ model::App_t* GetApp
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // Save the old CURDIR environment variable value and set it to the dir containing this file.
+    auto oldDir = envVars::Get("CURDIR");
+    envVars::Set("CURDIR", path::GetContainingDir(adefPath));
+
     // Parse the .adef file.
     const auto adefFilePtr = parser::adef::Parse(adefPath, buildParams.beVerbose);
 
@@ -1350,6 +1386,10 @@ model::App_t* GetApp
         else if (sectionName == "bundles")
         {
             AddBundledItems(appPtr, sectionPtr);
+        }
+        else if (sectionName == "components")
+        {
+            AddComponents(appPtr, ToTokenListSectionPtr(sectionPtr), buildParams);
         }
         else if (sectionName == "cpuShare")
         {
@@ -1413,7 +1453,14 @@ model::App_t* GetApp
         }
         else if (sectionName == "version")
         {
+            // Get the label
             appPtr->version = ToSimpleSectionPtr(sectionPtr)->Text();
+            // Check whether it could be an environment variable
+            if (appPtr->version[0] == '$')
+            {
+                // If confirmed, process the label
+                appPtr->version = envVars::DoSubstitution(appPtr->version);
+            }
         }
         else if (sectionName == "watchdogAction")
         {
@@ -1443,6 +1490,9 @@ model::App_t* GetApp
 
     // Ensure that all processes have a PATH environment variable.
     EnsurePathIsSet(appPtr);
+
+    // Restore the previous contents of the CURDIR environment variable.
+    envVars::Set("CURDIR", oldDir);
 
     return appPtr;
 }

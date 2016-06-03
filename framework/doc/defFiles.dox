@@ -4,17 +4,15 @@ This section contains detailed info about Legato's Definition Files. The @c def 
 reusable external interfaces and internal content for system, application, and component files that
 are used as input to build tools.
 
-The Definition Files' @subpage defFilesOverview has high-level info.
+The Definition Files' @subpage defFilesOverview has a bunch of high-level info.
 
 <HR>
-
-@subpage defFilesAdef <br>
-@subpage defFilesCdef <br>
-@subpage defFilesSdef
-
-<HR>
-
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage defFilesAdef |  application definition sections options |
+| @subpage defFilesCdef |  component definition sections options |
+| @subpage defFilesSdef |  system definition sections options |
+| @subpage defFilesMdef |  kernel module definition sections options |
 
 **/
 

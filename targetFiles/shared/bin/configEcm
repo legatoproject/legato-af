@@ -1,8 +1,8 @@
 #! /bin/sh
 
 ecm_conf=/etc/legato/ecm.conf
-dhcp_conf=/etc/dnsmasq.conf
-ecm_dhcp_conf=/etc/dnsmasq.ecm.conf
+ecm_dhcp_conf=/etc/dnsmasq.d/dnsmasq.ecm.conf
+ecm_iface=$(ls -1 /sys/class/net/ | egrep '(e[ec]m|usb)0')
 
 command_name=$(basename $0)
 usage()
@@ -12,14 +12,14 @@ cat << END_HELP
         configEcm - set up the ecm interface.
 
     SYNOPSIS
-        $command_name show|off|on [target <ipV4_addr>] host <ipV4_addr> netmask <ipV4_netmansk>]
+        $command_name show|off|on [target <ipV4_addr> host <ipV4_addr> netmask <ipV4_netmansk>]
 
     DESCRIPTION
         $command_name show - shows current configuration
 
         $command_name off - deconfigures and turns off ecm
 
-        $command_name on [target <ipV4_addr>] host <ipV4_addr> netmask <ipV4_netmansk>]
+        $command_name on [target <ipV4_addr> host <ipV4_addr> netmask <ipV4_netmansk>]
             configures ecm
                 target: ipV4 address for target
                 host: ipV4 address for the host PC
@@ -107,19 +107,14 @@ get_param()
 # adds the necessary configs to the dhcp server
 config_dhcp()
 {
-    echo "interface=usb0" >$ecm_dhcp_conf
-    echo "dhcp-range=$1,$1,12h" >>$ecm_dhcp_conf
-
-    echo "conf-file=$ecm_dhcp_conf" >> $dhcp_conf
+    echo "dhcp-range=interface:$ecm_iface,$1,$1,12h" >>$ecm_dhcp_conf
+    echo "dhcp-option=$ecm_iface,3" >>$ecm_dhcp_conf
+    echo "dhcp-option=$ecm_iface,6" >>$ecm_dhcp_conf
 }
 
 # remove the link to ecm config from the dnsmasq.conf file
 unconfig_dhcp()
 {
-    local temp_file=/tmp/$(basename $dhcp_conf)
-    grep -v "$ecm_dhcp_conf" $dhcp_conf >$temp_file
-    mv -f $temp_file $dhcp_conf
-
     rm $ecm_dhcp_conf
     rm $ecm_conf
 }
@@ -170,21 +165,21 @@ check_no_conflicts()
     inet_list=$(ip -f inet addr | awk '/\d*:/,/inet/{ if (/\d*:/){a=$2}; if (/inet/){b=$2; print a b}}')
     for item in $inet_list; do
         case $item in
-            lo:*|usb0:*)
-            # loopback or usb0 we ignore
-            ;;
+            lo:*|usb0:*|ecm0:*|eem0:*)
+                # ignore loopback or ECM interfaces
+                ;;
             *)
-            iface=${item%%:*}
-            addr=${item##*:}
-            maskbits=${addr##*/}
-            addr=${addr%%/*}
-            mask=$(mask_from_bits $maskbits)
+                iface=${item%%:*}
+                addr=${item##*:}
+                maskbits=${addr##*/}
+                addr=${addr%%/*}
+                mask=$(mask_from_bits $maskbits)
 
-            if is_same_subnet $targ_addr $addr $ecm_mask || is_same_subnet $targ_addr $addr $mask; then
-                echo "$targ_addr ($ecm_mask) conflicts with subnet on $item"
-                return 1
-            fi
-            ;;
+                if is_same_subnet $targ_addr $addr $ecm_mask || is_same_subnet $targ_addr $addr $mask; then
+                    echo "$targ_addr ($ecm_mask) conflicts with subnet on $item"
+                    return 1
+                fi
+                ;;
         esac
     done
 }
@@ -266,7 +261,7 @@ create_conf()
 
 bringdown_ecm()
 {
-    ifconfig usb0 down
+    ifconfig $ecm_iface down
 }
 
 bringup_ecm()
@@ -278,7 +273,27 @@ bringup_ecm()
         netmask=255.255.255.0
     fi
 
-    ifconfig usb0 $target netmask $netmask up
+    ifconfig $ecm_iface $target netmask $netmask up
+}
+
+upgrade_ecm_conf()
+{
+    local old_ecm_dhcp_conf=/mnt/flash/ufs/etc/dnsmasq.ecm.conf
+    local old_dhcp_conf=/mnt/flash/ufs/etc/dnsmasq.conf
+    if [ -f $old_ecm_dhcp_conf ] ; then
+        # assume old-style configuration, migrate to new
+        grep -v "^interface=$ecm_iface" $old_ecm_dhcp_conf | \
+            sed -e s/^dhcp-range=/dhcp-range=interface:$ecm_iface,/ \
+                -e s/^dhcp-option=/dhcp-option=$ecm_iface,/ \
+            > $ecm_dhcp_conf
+        rm -f $old_ecm_dhcp_conf
+        if [ -f $old_dhcp_conf ] && \
+           [ ! -z `grep "^conf-file=/etc/dnsmasq.ecm.conf" $old_dhcp_conf` ]
+        then
+            rm -f $old_dhcp_conf
+        fi
+        /etc/init.d/dnsmasq reload
+    fi
 }
 
 case $1 in
@@ -307,9 +322,12 @@ case $1 in
             exit 1
         fi
         ;;
+    upgrade)
+        upgrade_ecm_conf
+        ;;
     default)
-	# configure default ecm parameters, but don't start interface
-	if create_conf ; then
+        # configure default ecm parameters, but don't start interface
+        if create_conf ; then
             local host=$(get_param host.ipV4)
             config_dhcp $host
             restart_ecm > /dev/null

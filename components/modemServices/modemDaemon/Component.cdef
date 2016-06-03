@@ -50,6 +50,7 @@ sources:
 
 cflags:
 {
+    -I$CURDIR
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
     -I$LEGATO_ROOT/components/cfgEntries
     -I$LEGATO_BUILD/framework/libjansson/include
@@ -62,6 +63,12 @@ ldflags:
 
 requires:
 {
-    component: { $LEGATO_MODEM_PA }
-    component: { $LEGATO_MODEM_PA_ECALL }
+    component:
+    {
+        $LEGATO_MODEM_PA_DEFAULT
+        $LEGATO_MODEM_PA
+
+        $LEGATO_MODEM_PA_ECALL_DEFAULT
+        $LEGATO_MODEM_PA_ECALL
+    }
 }

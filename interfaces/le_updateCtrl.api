@@ -122,10 +122,16 @@ FUNCTION UnlockProbation();
 /**
  * Marks the system "good", ending the probation period.
  *
- * @note Ignored if the probation period has already ended.
+ * @return
+ *      - LE_OK         The system was marked Good
+ *      - LE_BUSY       Someone holds a probation lock
+ *      - LE_DUPLICATE  Probation has expired - the system has already been marked
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION MarkGood();
+FUNCTION le_result_t MarkGood
+(
+    bool force     IN  ///< True to set system Good even if someone holds a probation lock
+);
 
 
 //--------------------------------------------------------------------------------------------------

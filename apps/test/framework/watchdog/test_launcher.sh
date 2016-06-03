@@ -1,3 +1,4 @@
+#!/bin/bash
 # launches an ssh session to read the output of logread -f
 # launches the log watcher for the current test.
 # hooks the stdout of the ssh logread to the stdin of the log watching script by fifo
@@ -6,6 +7,8 @@
 # report the result of the log watcher
 
 # expects TARGET_IP_ADDR to be exported and that it is the IP address of the target machine
+
+LoadTestLib
 
 target_test_name=$1
 log_watcher=$2
@@ -16,13 +19,16 @@ pipe_name="${target_test_name}_pipe"
 
 function cleanup
 {
-# Get rid of the pipe
+    # Get rid of the pipe
     if [ -p ${pipe_name} ]; then
         echo "-removing pipe ${pipe_name}"
-            rm "${pipe_name}"
+        rm "${pipe_name}"
     fi
-# Make sure the app is stopped
+
+    # Make sure the app is stopped
     ssh root@${TARGET_IP_ADDR} "$BIN_PATH/app stop ${target_test_name}"
+
+    return 0
 }
 
 function on_fail ()

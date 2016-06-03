@@ -11,7 +11,7 @@ updating software on devices that are operating in the field:
 Software updates are primarily carried out by the Update Daemon but, the Supervisor and
 start-up code also have a role to play in rolling-back when updates fail.
 
-See 
+See
 
 @ref legatoServicesUpdate <br>
 @ref legatoServicesUpdatePack <br>

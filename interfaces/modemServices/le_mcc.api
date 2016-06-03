@@ -72,15 +72,20 @@
  *
  *
  *
- * @section le_mcc_ss Supplementary service.
+ * @section le_mcc_ss Supplementary service
  *
  * Calling Line Identification Restriction (CLIR) can be activated or deactivated by
  *  le_mcc_SetCallerIdRestrict API. The status is independent for each call object reference.
  *  Status can be read with the le_mcc_GetCallerIdRestrict() API.
  * Default value is LE_OFF (Enable presentation of own phone number to remote).
  *
- * Call waiting and call hold are not yet managed. The event Le_MCC_EVENT_WAITING warns the
- * application for an incoming call, but there's no way to put the current call in hold.
+ * Call waiting supplementary service can be activated or deactivated by
+ * le_mcc_SetCallWaitingService(). Its status can be given by le_mcc_GetCallWaitingService().
+ * A call waiting can be answered using le_mcc_ActivateCall() API. This API is also used to
+ * activate an on hold call (current call is then placed on hold).
+ * An activated, waiting or on hold call can be released using le_mcc_HangUp() function.
+ * See 3GPP TS 02.83 / 22.083 for any details concerning call waiting / call hold supplementary
+ * services.
  *
  * @todo Other Supplementary services will be available in a future release. Create simpler examples.
  *
@@ -250,7 +255,9 @@ FUNCTION le_result_t Delete
  *
  * As the call attempt proceeds, the profile's registered call event handler receives events.
  *
- * @return LE_OK            Function succeed.
+ * @return
+ *      - LE_OK            Function succeed.
+ *      - LE_BUSY          The call is already in progress
  *
  * * @note As this is an asynchronous call, a successful only confirms a call has been
  *       started. Don't assume a call has been successful yet.
@@ -341,6 +348,8 @@ FUNCTION int32 GetPlatformSpecificTerminationCode
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ * @note A call waiting call must be answered using SetCallActive() API. This API doesn't manage
+ * call waiting supplementary service.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Answer
@@ -359,6 +368,7 @@ FUNCTION le_result_t Answer
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ * @note this API can also be used to disconnect a waiting or on hold call.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t HangUp
@@ -448,7 +458,51 @@ HANDLER CallEventHandler
 //--------------------------------------------------------------------------------------------------
 EVENT CallEvent
 (
-    handler CallEventHandler
+    CallEventHandler handler
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates or deactivates the call waiting service.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCallWaitingService
+(
+    bool active IN         ///< The call waiting activation.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the call waiting service status.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCallWaitingService
+(
+    bool active OUT         ///< The call waiting activation.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function activates the specified call. Other calls are placed on hold.
+ *
+ * @return
+ *     - LE_OK        The function succeed.
+ *     - LE_FAULT     The function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ActivateCall
+(
+    Call callRef IN                 ///< The call reference.
+);
 

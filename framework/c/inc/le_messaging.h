@@ -1,5 +1,5 @@
 /**
- * @page c_messaging Low-Level Messaging API
+ * @page c_messaging Low-level Messaging API
  *
  * @ref le_messaging.h "API Reference"
  *
@@ -123,9 +123,9 @@
  * open (most likely due to permissions settings).
  *
  * le_msg_TryOpenSessionSync() is like le_msg_OpenSessionSync() except that it will not wait
- * for a server session to become available if it is not already available at the time of the
+ * for a server session to become available if it's not already available at the time of the
  * call.  That is, if the client's interface is not bound to any service, or if the service that
- * it is bound to is not currently advertised by the server, then le_msg_TryOpenSessionSync()
+ * it's bound to is not currently advertised by the server, then le_msg_TryOpenSessionSync()
  * will return an error code.
  *
  * @subsection c_messagingClientSending Sending a Message
@@ -190,7 +190,7 @@
  * that will result in that receive handler being called.
  *
  * @note Some protocols don't include any messages that are not responses to client requests,
- * which is why it is optional to register a receive handler on the client side.
+ * which is why it's optional to register a receive handler on the client side.
  *
  * The payload of a received message can be accessed using le_msg_GetPayloadPtr(), and the client
  * can check what session the message arrived through by calling le_msg_GetSession().
@@ -237,7 +237,7 @@
  * @endcode
  *
  * To delete a session object, call le_msg_DeleteSession().  This will automatically close the
- * session, if it is still open (but won't automatically delete any messages).
+ * session, if it's still open (but won't automatically delete any messages).
  *
  * @code
  *     le_msg_DeleteSession(sessionRef);
@@ -566,13 +566,13 @@
  *
  * If a server wants to stop offering a service, it can hide the service by calling
  * le_msg_HideService().  This will not terminate any sessions that are already open, but it
- * will prevent clients from opening new sessions until it is advertised again.
+ * will prevent clients from opening new sessions until it's advertised again.
  *
- * @warning Watch out for race conditions here.  It's possible that a client is in the process
+ * @warning Watch out for race conditions here. It's possible that a client is in the process
  * of opening a session when you decide to hide your service.  In this case, a new session may
  * open after you hid the service.  Be prepared to handle that gracefully.
  *
- * The server also has the option to delete the service.  This hides the service and closes
+ * The server also has the option to delete the service. This hides the service and closes
  * all open sessions.
  *
  * If a server process dies, the Legato framework will automatically delete all of its services.
@@ -585,7 +585,7 @@
  * (i.e., the thread that called le_msg_CreateService()).  That thread will call any handler
  * functions registered for that service.
  *
- * Note that this implies that if the thread that creates the service does not
+ * This implies that if the thread that creates the service doesn't
  * run the Legato event loop, then no callbacks will ever be called for that service.
  * To work around this, you could move the service to another thread that that runs the Legato event
  * loop.
@@ -604,7 +604,7 @@
  *     switch (msgPtr->type)
  *     {
  *         case MYPROTO_MSG_TYPE_SET_VALUE:
- *              // Message does not require a response.
+ *              // Message doesn't require a response.
  *              Value = msgPtr->...;
  *              le_msg_ReleaseMsg(msgRef);
  *              break;
@@ -642,8 +642,8 @@
  *
  * Worthy of special mention is the fact that the low-level messaging system can be used to
  * solve the age-old problem of coordinating the start-up sequence of processes that interact with
- * each other.  Far too often, the start-up sequence of multiple interacting processes is addressed
- * using hacks like polling or sleeping for arbitrary lengths of time.  These solutions can
+ * each other. Far too often, the start-up sequence of multiple interacting processes is addressed
+ * using hacks like polling or sleeping for arbitrary lengths of time. These solutions can
  * waste a lot of CPU cycles and battery power, slow down start-up, and (in the case of arbitrary
  * sleeps) introduce race conditions that can cause failures in the field.
  *
@@ -653,7 +653,7 @@
  *
  * In this way, clients are guaranteed to wait for the servers they use, without the inefficiency
  * of polling, and without having to add code elsewhere to coordinate the start-up sequence.
- * Furthermore, if there is work that needs to be done by the client at start-up before it opens
+ * If there's work that needs to be done by the client at start-up before it opens
  * a session with the server, the client is allowed to do that work in parallel with the start-up
  * of the server, so the CPU can be more fully utilized to shorten the overall duration of the
  * start-up sequence.
@@ -666,7 +666,7 @@
  *  - provide some built-in remote troubleshooting features
  *  - encapsulate the IPC implementation, allowing for future optimization and porting.
  *
- * Each message object is allocated from a session.  The sessions' message pool sizes can
+ * Each message object is allocated from a session. The sessions' message pool sizes can
  * be tuned through component and application configuration files and device configuration
  * settings.
  *
@@ -674,7 +674,7 @@
  *
  * Generally speaking, message payload sizes are determined by the protocol that is being used.
  * Application protocols and the packing of messages into message buffers are the domain of
- * higher-layers of the software stack.  But, at this low layer, servers and clients just declare
+ * higher-layers of the software stack. But, at this low layer, servers and clients just declare
  * the name and version of the protocol, and the size of the largest message in the protocol.
  * From this, they obtain a protocol reference that they provide to sessions when they create
  * them.
@@ -696,7 +696,7 @@
  * configuration.  By default, sandboxed apps do not have any access (read or write) to the
  * "system" configuration tree.
  *
- * @section c_messagingClientUserIdChecking Client User ID Checking
+ * @section c_messagingGetClientInfo Get Client Info
  *
  * In rare cases, a server may wish to check the user ID of the remote client.  Generally,
  * this is not necessary because the IPC system enforces user-based access control restrictions
@@ -720,9 +720,33 @@
  * }
  * @endcode
  *
+ * le_msg_GetClientProcessId() can be used to fetch the process ID from the client.
+ *
+ * @code
+ * pid_t clientProcessId;
+ * if (le_msg_GetClientProcessId (sessionRef, &clientProcessId) != LE_OK)
+ * {
+ * {
+ *     // The session must have closed.
+ *     ...
+ * }
+ * else
+ * {
+ *    LE_INFO("My client has process ID %ud.", clientProcessId);
+ * }
+ * @endcode
+ *
+ * le_msg_GetClientUserCreds() can be used to fetch the user credentials from the client.
+ *
+ * @code
+ *    le_msg_SessionRef_t sessionRef,
+ *    uid_t*              userIdPtr,
+ *    pid_t*              processIdPtr
+ * @endcode
+ *
  * @section c_messagingSendingFileDescriptors Sending File Descriptors
  *
- * It is possible to send an open file descriptor through an IPC session by adding an fd to a
+ * It's possible to send an open file descriptor through an IPC session by adding an fd to a
  * message before sending it.  On the sender's side, le_msg_SetFd() is used to set the
  * file descriptor to be sent.  On the receiver's side, le_msg_GetFd() is used to get the fd
  * from the message.
@@ -740,7 +764,7 @@
  * le_msg_EnableFdReception() on their service.
  *
  * @warning DO NOT SEND DIRECTORY FILE DESCRIPTORS.  That can be exploited to break out of chroot()
- *          jails.
+ * jails.
  *
  * @section c_messagingFutureEnhancements Future Enhancements
  *
@@ -768,14 +792,13 @@
  *
  * @section c_messagingTroubleshooting Troubleshooting
  *
- * If you are running as the super-user (root), you can trace messaging traffic using @b TBD.
+ * If you're running as the super-user (root), you can trace messaging traffic using @b TBD.
  * You can also inspect message queues and view lists of outstanding message objects within
  * processes using the Process Inspector tool.
  *
- * If you are leaking messages by forgetting to release them when you are finished with them,
- * you will see warning messages in the log indicating that your message pool is growing.
- * You should be able to tell by the name of the expanding pool which messaging service it is
- * related to.
+ * If you're leaking messages by forgetting to release them when you're finished with them,
+ * you'll see warning messages in the log indicating your message pool is growing.
+ * You should be able to tell the related messaging service by the name of the expanding pool.
  *
  * @todo Finish this section later, when the diagnostic tools become available.
  *
@@ -875,7 +898,7 @@ typedef void (* le_msg_SessionEventHandler_t)
  * See le_msg_SetSessionRecvHandler() and le_msg_SetServiceRecvHandler().
  *
  * @param msgRef       [in] Reference to the received message.  Don't forget to release this using
- *                          le_msg_ReleaseMsg() when you are finished with it.
+ *                          le_msg_ReleaseMsg() when you're finished with it.
  *
  * @param contextPtr   [in] Opaque contextPtr value provided when the handler was registered.
  */
@@ -895,7 +918,7 @@ typedef void (* le_msg_ReceiveHandler_t)
  *
  * @param msgRef       [in] Reference to the received response message, or NULL if the transaction
  *                          failed and no response was received.  If not NULL, don't forget to
- *                          release it by calling le_msg_ReleaseMsg() when you are finished with it.
+ *                          release it by calling le_msg_ReleaseMsg() when you're finished with it.
  *
  * @param contextPtr   [in] Opaque contextPtr value passed to le_msg_RequestResponse().
  */
@@ -960,7 +983,7 @@ size_t le_msg_GetProtocolMaxMsgSize
  * Creates a session that will make use of a protocol to talk to a service on a given client
  * interface.
  *
- * @note    This does not actually attempt to open the session.  It just creates the session
+ * @note    This doesn't actually attempt to open the session.  It just creates the session
  *          object, allowing the client the opportunity to register handlers for the session
  *          before attempting to open it using le_msg_OpenSession().
  *
@@ -1109,9 +1132,9 @@ void le_msg_OpenSessionSync
  * if not available..
  *
  * le_msg_TryOpenSessionSync() differs from le_msg_OpenSessionSync() in that
- * le_msg_TryOpenSessionSync() will not wait for a server session to become available if it is
+ * le_msg_TryOpenSessionSync() will not wait for a server session to become available if it's
  * not already available at the time of the call.  That is, if the client's interface is not
- * bound to any service, or if the service that it is bound to is not currently advertised
+ * bound to any service, or if the service that it's bound to is not currently advertised
  * by the server, then le_msg_TryOpenSessionSync() will return an error code, while
  * le_msg_OpenSessionSync() will wait until the binding is created or the server advertises
  * the service (or both).
@@ -1275,8 +1298,8 @@ void le_msg_ReleaseMsg
  *
  * @return
  *  - TRUE if the message needs to be responded to using le_msg_Respond().
- *  - FALSE if the message does not need to be responded to, and should be disposed of using
- *    le_msg_ReleaseMsg() when it is no longer needed.
+ *  - FALSE if the message doesn't need to be responded to, and should be disposed of using
+ *    le_msg_ReleaseMsg() when it's no longer needed.
  */
 //--------------------------------------------------------------------------------------------------
 bool le_msg_NeedsResponse
@@ -1317,7 +1340,7 @@ size_t le_msg_GetMaxPayloadSize
 /**
  * Sets the file descriptor to be sent with this message.
  *
- * This file descriptor will be closed when the message is sent (or when it is deleted without
+ * This file descriptor will be closed when the message is sent (or when it's deleted without
  * being sent).
  *
  * At most one file descriptor is allowed to be sent per message.

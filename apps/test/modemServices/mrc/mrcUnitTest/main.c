@@ -288,6 +288,9 @@ void Testle_mrc_RegisterTest
 
     LE_ASSERT(le_mrc_GetRegisterMode(&isManual, mccStr, LE_MRC_MCC_BYTES,
         mncStr, LE_MRC_MNC_BYTES) == LE_OK);
+
+    LE_ASSERT(le_mrc_GetPlatformSpecificRegistrationErrorCode() == 0);
+
     LE_ASSERT(isManual == false);
 
     LE_ASSERT(le_mrc_SetManualRegisterMode(mccHomeStr, mncHomeStr) == LE_OK);
@@ -299,6 +302,8 @@ void Testle_mrc_RegisterTest
     LE_ASSERT(strcmp(mncHomeStr, mncStr) == 0);
 
     LE_ASSERT(le_mrc_SetAutomaticRegisterMode() == LE_OK);
+
+    LE_ASSERT(le_mrc_GetPlatformSpecificRegistrationErrorCode() == 0);
 
     LE_ASSERT(le_mrc_GetRegisterMode(&isManual, mccStr, LE_MRC_MCC_BYTES,
         mncStr, LE_MRC_MNC_BYTES) == LE_OK);
@@ -333,6 +338,22 @@ static void Testle_mrc_GetBandCapabilities()
     LE_INFO("Get LTE Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)lteBands);
     LE_ASSERT(le_mrc_GetTdScdmaBandCapabilities(&tdScdmaBands) == LE_OK);
     LE_INFO("Get TD-SCDMA Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)tdScdmaBands);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Get Tracking area code on LTE network.
+ *
+ * le_mrc_GetServingCellTracAreaCode() API test
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetTac()
+{
+    uint16_t tac = le_mrc_GetServingCellLteTracAreaCode();
+
+    LE_ASSERT(tac == 0xABCD);
+    LE_INFO("le_mrc_GetServingCellLteTracAreaCode returns Tac.0x%X (%d)", tac, tac);
 }
 
 
@@ -380,6 +401,8 @@ COMPONENT_INIT
     Testle_mrc_BandPreferences();
     LE_INFO("======== MRC Get Band Capabilities Test ========");
     Testle_mrc_GetBandCapabilities();
+    LE_INFO("======== MRC Get TAC Test ========");
+    Testle_mrc_GetTac();
 
     LE_INFO("======== UnitTest of MRC API ends with SUCCESS ========");
 

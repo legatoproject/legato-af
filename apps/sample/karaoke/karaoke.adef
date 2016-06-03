@@ -1,0 +1,56 @@
+// Sample app that demonstrates the use of interactive apps through an application process's
+// standard streams.
+
+executables:
+{
+    player = ( playerComponent )
+    selector = ( selectorComponent )
+}
+
+processes:
+{
+    run:
+    {
+        // Set the configured playback speed to be fast.  Unless this is overwritten on the comamnd
+        // line this fast speed should always be used.
+        selector = ( selector fast )
+    }
+}
+
+processes:
+{
+    run:
+    {
+        player = ( player )
+    }
+
+    faultAction: stopApp
+}
+
+bundles:
+{
+    file:
+    {
+        [r]     dannyBoy        /
+        [r]     jingleBells     /
+        [r]     deckTheHalls    /
+    }
+}
+
+requires:
+{
+    file:
+    {
+        // Used to demonstrate the ability to run other utilities from the command line within an
+        // app.
+        /bin/ls         /bin/ls
+        /usr/bin/id     /bin/id
+    }
+}
+
+bindings:
+{
+    selector.selectorComponent.songs -> player.playerComponent.songs
+}
+
+start: manual

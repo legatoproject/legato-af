@@ -5,5 +5,5 @@ sources:
 
 cflags:
 {
-    -I$LEGATO_ROOT/components/secStore/platformAdaptor/inc
+    -I$CURDIR/../../inc
 }

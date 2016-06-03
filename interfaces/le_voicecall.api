@@ -155,7 +155,7 @@ HANDLER StateHandler
 //--------------------------------------------------------------------------------------------------
 EVENT State
 (
-    handler StateHandler
+    StateHandler handler
 );
 
 
@@ -246,7 +246,7 @@ FUNCTION le_result_t GetTerminationReason
  * @return Transmitted audio stream reference.
   */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio_StreamRef_t GetTxAudioStream
+FUNCTION le_audio.Stream GetTxAudioStream
 (
     Call reference IN                  ///< Voice call object reference to read from.
 );
@@ -260,7 +260,7 @@ FUNCTION le_audio_StreamRef_t GetTxAudioStream
  * @return Received audio stream reference.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_audio_StreamRef_t GetRxAudioStream
+FUNCTION le_audio.Stream GetRxAudioStream
 (
     Call reference IN                  ///< Voice call object reference to read from.
 );

@@ -372,45 +372,51 @@ static le_sms_Msg_t* CreateAndPopulateMessage
     switch (newSmsMsgObjPtr->format)
     {
         case LE_SMS_FORMAT_PDU:
-            LE_CRIT_IF((pduMsgPtr->dataLen > LE_SMS_PDU_MAX_BYTES),
-                            "pduMsgPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
-                            pduMsgPtr->dataLen,
-                            LE_SMS_PDU_MAX_BYTES);
-            break;
+        {            LE_CRIT_IF((pduMsgPtr->dataLen > LE_SMS_PDU_MAX_BYTES),
+            "pduMsgPtr->dataLen.%d > LE_SMS_PDU_MAX_BYTES.%d !",
+            pduMsgPtr->dataLen,
+            LE_SMS_PDU_MAX_BYTES);
+        }
+        break;
+
         case LE_SMS_FORMAT_BINARY:
+        {
             if (decodedMsgPtr->type == PA_SMS_CELL_BROADCAST)
             {
                 LE_CRIT_IF((decodedMsgPtr->cellBroadcast.dataLen > LE_SMS_BINARY_MAX_BYTES),
-                                "cellBroadcast.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
-                                decodedMsgPtr->cellBroadcast.dataLen,
-                                LE_SMS_BINARY_MAX_BYTES);
+                    "cellBroadcast.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
+                    decodedMsgPtr->cellBroadcast.dataLen,
+                    LE_SMS_BINARY_MAX_BYTES);
                 newSmsMsgObjPtr->userdataLen = decodedMsgPtr->cellBroadcast.dataLen;
                 memcpy(newSmsMsgObjPtr->binary,
                     decodedMsgPtr->cellBroadcast.data,
                     LE_SMS_BINARY_MAX_BYTES);
                 LE_DEBUG("CB Bin data len (%d), %s",
-                                    (int) newSmsMsgObjPtr->userdataLen,
-                                    newSmsMsgObjPtr->binary);
+                    (int) newSmsMsgObjPtr->userdataLen,
+                    newSmsMsgObjPtr->binary);
             }
             else
             {
                 LE_CRIT_IF((decodedMsgPtr->smsDeliver.dataLen > LE_SMS_BINARY_MAX_BYTES),
-                                "smsDeliver.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
-                                decodedMsgPtr->smsDeliver.dataLen,
-                                LE_SMS_BINARY_MAX_BYTES);
+                    "smsDeliver.dataLen.%d > LE_SMS_BINARY_MAX_BYTES.%d !",
+                    decodedMsgPtr->smsDeliver.dataLen,
+                    LE_SMS_BINARY_MAX_BYTES);
                 newSmsMsgObjPtr->userdataLen = decodedMsgPtr->smsDeliver.dataLen;
                 memcpy(newSmsMsgObjPtr->binary,
                     decodedMsgPtr->smsDeliver.data,
                     LE_SMS_BINARY_MAX_BYTES);
             }
-            break;
+        }
+        break;
+
         case LE_SMS_FORMAT_TEXT:
+        {
             if (decodedMsgPtr->type == PA_SMS_CELL_BROADCAST)
             {
                 LE_CRIT_IF((decodedMsgPtr->cellBroadcast.dataLen >= LE_SMS_TEXT_MAX_BYTES),
-                                "cellBroadcast.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
-                                decodedMsgPtr->cellBroadcast.dataLen,
-                                LE_SMS_TEXT_MAX_BYTES);
+                    "cellBroadcast.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
+                    decodedMsgPtr->cellBroadcast.dataLen,
+                    LE_SMS_TEXT_MAX_BYTES);
 
                 if( decodedMsgPtr->cellBroadcast.dataLen >= LE_SMS_TEXT_MAX_BYTES)
                 {
@@ -432,20 +438,54 @@ static le_sms_Msg_t* CreateAndPopulateMessage
             else
             {
                 LE_CRIT_IF((decodedMsgPtr->smsDeliver.dataLen >= LE_SMS_TEXT_MAX_BYTES),
-                                "smsDeliver.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
-                                decodedMsgPtr->smsDeliver.dataLen,
-                                LE_SMS_TEXT_MAX_BYTES);
+                    "smsDeliver.dataLen.%d >= LE_SMS_TEXT_MAX_BYTES.%d !",
+                    decodedMsgPtr->smsDeliver.dataLen,
+                    LE_SMS_TEXT_MAX_BYTES);
                 newSmsMsgObjPtr->userdataLen = decodedMsgPtr->smsDeliver.dataLen;
                 memcpy(newSmsMsgObjPtr->text,
                     decodedMsgPtr->smsDeliver.data,
                     LE_SMS_TEXT_MAX_BYTES);
             }
-            break;
+        }
+        break;
+
+        case LE_SMS_FORMAT_UCS2:
+        {
+            if (decodedMsgPtr->type == PA_SMS_CELL_BROADCAST)
+            {
+                LE_CRIT_IF((decodedMsgPtr->cellBroadcast.dataLen > LE_SMS_UCS2_MAX_BYTES),
+                    "cellBroadcast.dataLen.%d > LE_SMS_UCS2_MAX_BYTES.%d !",
+                    decodedMsgPtr->cellBroadcast.dataLen,
+                    LE_SMS_UCS2_MAX_BYTES);
+                newSmsMsgObjPtr->userdataLen = decodedMsgPtr->cellBroadcast.dataLen;
+                memcpy(newSmsMsgObjPtr->binary,
+                    decodedMsgPtr->cellBroadcast.data,
+                    LE_SMS_UCS2_MAX_BYTES);
+                LE_DEBUG("CB UCS2 data len (%d), %s",
+                    (int) newSmsMsgObjPtr->userdataLen,
+                    newSmsMsgObjPtr->binary);
+            }
+            else
+            {
+                LE_CRIT_IF((decodedMsgPtr->smsDeliver.dataLen > LE_SMS_UCS2_MAX_BYTES),
+                    "smsDeliver.dataLen.%d > LE_SMS_UCS2_MAX_BYTES.%d !",
+                    decodedMsgPtr->smsDeliver.dataLen,
+                    LE_SMS_UCS2_MAX_BYTES);
+                newSmsMsgObjPtr->userdataLen = decodedMsgPtr->smsDeliver.dataLen;
+                memcpy(newSmsMsgObjPtr->binary,
+                    decodedMsgPtr->smsDeliver.data,
+                    LE_SMS_UCS2_MAX_BYTES);
+            }
+        }
+        break;
+
         default:
+        {
             LE_CRIT("Unknown SMS format %d", newSmsMsgObjPtr->format);
             le_mem_Release(newSmsMsgObjPtr);
             return NULL;
-            break;
+        }
+
     }
 
     if (newSmsMsgObjPtr->format != LE_SMS_FORMAT_PDU)
@@ -836,42 +876,63 @@ static le_result_t EncodeMessageToPdu
     switch (msgPtr->format)
     {
         case LE_SMS_FORMAT_TEXT:
+        {
             LE_DEBUG("Try to encode Text Msg %p, tel.%s, text.%s, userdataLen %zd, protocol %d",
-                            msgPtr, msgPtr->tel, msgPtr->text, msgPtr->userdataLen, msgPtr->protocol);
+                msgPtr, msgPtr->tel, msgPtr->text, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
             result = smsPdu_Encode(msgPtr->protocol,
-                            (const uint8_t*)msgPtr->text,
-                            msgPtr->userdataLen,
-                            msgPtr->tel,
-                            SMSPDU_7_BITS,
-                            PA_SMS_SUBMIT,
-                            &(msgPtr->pdu));
-
-            break;
+                (const uint8_t*)msgPtr->text,
+                msgPtr->userdataLen,
+                msgPtr->tel,
+                SMSPDU_7_BITS,
+                PA_SMS_SUBMIT,
+                &(msgPtr->pdu));
+        }
+        break;
 
         case LE_SMS_FORMAT_BINARY:
+        {
             LE_DEBUG("Try to encode Binary Msg.%p, tel.%s, binary.%p, userdataLen.%zd, protocol %d",
-                            msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
+                msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
 
             /* @todo send split messages */
             result = smsPdu_Encode(msgPtr->protocol,
-                            msgPtr->binary,
-                            msgPtr->userdataLen,
-                            msgPtr->tel,
-                            SMSPDU_8_BITS,
-                            PA_SMS_SUBMIT,
-                            &(msgPtr->pdu));
-
-            break;
+                msgPtr->binary,
+                msgPtr->userdataLen,
+                msgPtr->tel,
+                SMSPDU_8_BITS,
+                PA_SMS_SUBMIT,
+                &(msgPtr->pdu));
+        }
+        break;
 
         case LE_SMS_FORMAT_PDU:
+        {
             result = LE_OK; /* Conversion from PDU to PDU succeeded ... */
-            break;
+        }
+        break;
+
+        case LE_SMS_FORMAT_UCS2:
+        {
+            LE_DEBUG("Try to encode UCS2 Msg.%p, tel.%s, binary.%p, userdataLen.%zd, protocol %d",
+                msgPtr, msgPtr->tel, msgPtr->binary, msgPtr->userdataLen, msgPtr->protocol);
+            /* @todo send split messages */
+            result = smsPdu_Encode(msgPtr->protocol,
+                msgPtr->binary,
+                msgPtr->userdataLen,
+                msgPtr->tel,
+                SMSPDU_UCS2_16_BITS,
+                PA_SMS_SUBMIT,
+                &(msgPtr->pdu));
+        }
+        break;
 
         case LE_SMS_FORMAT_UNKNOWN:
+        {
             result = LE_FAULT; /* Unknown format */
-            break;
+        }
+        break;
     }
 
     if (result != LE_OK)
@@ -1026,6 +1087,13 @@ static le_result_t CheckAndEncodeMessage
                 return LE_FORMAT_ERROR;
             }
             break;
+        case LE_SMS_FORMAT_UCS2:
+            if (msgPtr->userdataLen == 0)
+            {
+                LE_ERROR("UCS2 content is empty for Message Object %p", msgPtr);
+                return LE_FORMAT_ERROR;
+            }
+            break;
 
         case LE_SMS_FORMAT_PDU:
             if (msgPtr->pdu.dataLen == 0)
@@ -1053,7 +1121,7 @@ static le_result_t CheckAndEncodeMessage
     le_mrc_Rat_t rat;
     if ( le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
     {
-        LE_ERROR("Could not retreive the Radio Access Technology");
+        LE_ERROR("Could not retrieve the Radio Access Technology");
         return LE_FAULT;
     }
 
@@ -1437,18 +1505,18 @@ le_result_t le_sms_Init
     // Create an event Id for new incoming SMS messages
     NewSmsEventId = le_event_CreateId("NewSms", sizeof(le_sms_Msg_t*));
 
+    SmsSem = le_sem_Create("SmsSem", 1);
+
+    // Init the SMS command Event Id
+    SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
+    le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
+
     // Register a handler function for new message indication
     if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
     {
         LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
         return LE_FAULT;
     }
-
-    SmsSem = le_sem_Create("SmsSem", 1);
-
-    // Init the SMS command Event Id
-    SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
-    le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
 
     return LE_OK;
 }
@@ -1981,6 +2049,8 @@ size_t le_sms_GetUserdataLen
         case LE_SMS_FORMAT_TEXT:
         case LE_SMS_FORMAT_BINARY:
             return msgPtr->userdataLen;
+        case LE_SMS_FORMAT_UCS2:
+            return (msgPtr->userdataLen / 2);
         default:
             return 0;
     }
@@ -2021,6 +2091,76 @@ size_t le_sms_GetPDULen
     }
 
     return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the UCS2 Message (16-bit format).
+ *
+ * Output parameters are updated with the UCS2 message content and the number of characters. If
+ * the UCS2 data exceed the value of the length input parameter, a LE_OVERFLOW error
+ * code is returned and 'ucs2Ptr' is filled until of the number of chars specified.
+ *
+ * @return
+ *  - LE_FORMAT_ERROR  Message is not in binary format
+ *  - LE_OVERFLOW      Message length exceed the maximum length.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_GetUCS2
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    uint16_t* ucs2Ptr,
+        ///< [OUT]
+        ///< UCS2 message.
+
+    size_t* ucs2NumElementsPtr
+        ///< [INOUT]
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_NOT_FOUND;
+    }
+
+    if (ucs2Ptr == NULL)
+    {
+        LE_KILL_CLIENT("ucs2Ptr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (ucs2NumElementsPtr == NULL)
+    {
+        LE_KILL_CLIENT("ucs2NumElementsPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (msgPtr->format != LE_SMS_FORMAT_UCS2)
+    {
+        LE_ERROR("Error.%d : Invalid format!", LE_FORMAT_ERROR);
+        return LE_FORMAT_ERROR;
+    }
+
+    if (msgPtr->userdataLen > (*ucs2NumElementsPtr*2))
+    {
+        memcpy((uint8_t *) ucs2Ptr, msgPtr->binary, (*ucs2NumElementsPtr*2));
+        LE_ERROR("datalen %d > Buff size %d", (int) msgPtr->userdataLen, (int) (*ucs2NumElementsPtr*2));
+        return LE_OVERFLOW;
+    }
+    else
+    {
+        memcpy ((uint8_t *) ucs2Ptr, msgPtr->binary, msgPtr->userdataLen);
+        *ucs2NumElementsPtr = msgPtr->userdataLen / 2;
+        return LE_OK;
+    }
+
+    return LE_FAULT;
 }
 
 
@@ -2358,6 +2498,81 @@ le_result_t le_sms_SetPDU
     LE_DEBUG("copy data, len.%zd @ msgPtr->pdu.%p for msgPtr.%p", len, msgPtr->pdu.data, msgPtr);
 
     msgPtr->pduReady = true;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the UCS2 message content (16 bit format).
+ *
+ * @return
+ *  - LE_NOT_PERMITTED Message is Read-Only.
+ *  - LE_BAD_PARAMETER Length of the data is equal to zero.
+ *  - LE_OK            Function succeeded.
+ *
+ * @note If length of the data is too long (max LE_SMS_UCS2_MAX_CHARS), it is a fatal
+ *       error, the function will not return.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_SetUCS2
+(
+    le_sms_MsgRef_t msgRef,
+        ///< [IN]
+        ///< Reference to the message object.
+
+    const uint16_t* ucs2Ptr,
+        ///< [IN]
+        ///< UCS2 message.
+
+    size_t ucs2NumElements
+        ///< [IN]
+)
+{
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+
+    if (msgPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_NOT_FOUND;
+    }
+    if (ucs2Ptr == NULL)
+    {
+        LE_KILL_CLIENT("ucs2Ptr is NULL !");
+        return LE_FAULT;
+    }
+
+    if(msgPtr->readonly)
+    {
+        LE_ERROR("readonly");
+        return LE_NOT_PERMITTED;
+    }
+
+    if(ucs2NumElements == 0)
+    {
+        LE_ERROR("ucs2NumElements empty");
+        return LE_BAD_PARAMETER;
+    }
+
+    if(ucs2NumElements > LE_SMS_UCS2_MAX_CHARS)
+    {
+        LE_KILL_CLIENT("ucs2NumElements > %d", LE_SMS_UCS2_MAX_CHARS);
+        return LE_FAULT;
+    }
+
+    msgPtr->format = LE_SMS_FORMAT_UCS2;
+    msgPtr->userdataLen = ucs2NumElements*2;
+
+    memcpy(msgPtr->binary, (uint8_t *) ucs2Ptr, msgPtr->userdataLen);
+
+    LE_DEBUG("copy data, ucs2NumElements.%zd @ msgPtr->userdata.%p for ucs2Ptr.%p",
+        ucs2NumElements, msgPtr->binary, ucs2Ptr);
+
+    msgPtr->pduReady = false;
 
     return LE_OK;
 }

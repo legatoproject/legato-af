@@ -28,16 +28,27 @@
  * used.  Note that these attributes can only be set if the timer is not currently running; otherwise,
  * an error will be returned.
  *
- * A timer is deleted using @ref le_timer_Delete.  If the timer is currently running, then it will be
- * stopped first, before being deleted.
+ * Timers must be explicitly deleted using @ref le_timer_Delete. If the timer is currently running,
+ * it'll be stopped before being deleted. If a timer uses @ref le_timer_SetContextPtr, and the
+ * context pointer is allocated memory, then the context pointer must be freed when deleting the timer.
+ * The following function can be used for this:
+ * @code
+ * static void DeleteTimerAndFreePtr(le_timer_Ref_t t)
+ * {
+ *     le_timer_Stop( t );
+ *     free( le_timer_GetContextPtr( t ) );
+ *     le_timer_Delete( t );  // timer ref is now invalid
+ * }
+ * @endcode
+ * You can call this function anywhere, including in the timer handler.
  *
  * @section timer_usage Using Timers
  *
- * A timer can be started using @ref le_timer_Start. If it's already running, then it won't be
- * modified; instead an error will be returned.  To restart a currently running timer, use @ref
+ * A timer is started using @ref le_timer_Start. If it's already running, then it won't be
+ * modified; instead an error will be returned. To restart a currently running timer, use @ref
  * le_timer_Restart.
  *
- * A timer can be stopped using @ref le_timer_Stop.  If it's not currently running, an error
+ * A timer is stopped using @ref le_timer_Stop.  If it's not currently running, an error
  * will be returned, and nothing more will be done.
  *
  * To determine if the timer is currently running, use @ref le_timer_IsRunning.
@@ -56,13 +67,20 @@
  * or manipulate a timer that belongs to another thread. The timer expiry handler is called by the
  * event loop of the thread that starts the timer.
  *
+ * The call to the timer expiry handler may not occur immediately after the timer expires, depending
+ * on which other functions are called from the event loop. The amount of delay is entirely
+ * dependent on other work done in the event loop. For a repeating timer, if this delay is longer
+ * than the timer period, one or more timer expiries may be dropped. To reduce the likelihood of
+ * dropped expiries, the combined execution time of all handlers called from the event loop should
+ *  ideally be less than the timer period.
+ *
  * See @ref c_eventLoop for details on running the event loop of a thread.
  *
  * @section le_timer_suspend Suspend Support
- * 
+ *
  * The timer runs even when system is suspended. <br>
  * If the timer expires while the system is suspended, it will wake up the system.
- * 
+ *
  * @section timer_errors Fatal Errors
  *
  * The process will exit under any of the following conditions:

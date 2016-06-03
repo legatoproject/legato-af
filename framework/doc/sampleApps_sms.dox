@@ -5,6 +5,9 @@ This sample app demonstrates SMS messaging. It uses @c .adef bindings and relate
 
 Before you install this sample app, register your SIM network. See @ref toolsTarget_cm_sim.
 
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/sms">sample app code</a>.
+
 Run this to install the sample app:
 @verbatim
 $ cd apps/sample/sms

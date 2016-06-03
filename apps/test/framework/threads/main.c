@@ -14,6 +14,7 @@
 
 #include "forkJoinMutex.h"
 #include "externalThreadApi.h"
+#include "priority.h"
 
 const char TestNameStr[] = "Thread Test";
 
@@ -37,6 +38,7 @@ static void FinishTest
 
     fjm_CheckResults();
     eta_CheckResults();
+    prio_CheckResults();
 
     LE_INFO("======== MULTI-THREADING TESTS PASSED ========");
     exit(EXIT_SUCCESS);
@@ -61,6 +63,8 @@ COMPONENT_INIT
     fjm_Start(objPtr);
 
     eta_Start(objPtr);
+
+    prio_Start(objPtr);
 
     le_mem_Release(objPtr);
 }

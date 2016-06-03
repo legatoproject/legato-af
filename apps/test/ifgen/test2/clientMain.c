@@ -214,9 +214,9 @@ void test1(void)
     LE_PRINT_VALUE("%s", more);
 
     // Call again with a special value, so that nothing is returned for the 'output', 'response'
-    // and 'more' output parameters. This could happen in a typical function, if an error is 
+    // and 'more' output parameters. This could happen in a typical function, if an error is
     // detected.
-    
+
     // Make 'length' larger than actually defined for the 'output' parameter to verify that
     // only the maximum defined value is used on the server.
     length = 20;
@@ -275,7 +275,22 @@ void StartTest(void)
 
 COMPONENT_INIT
 {
-    ConnectService();
+    banner("Test TryConnect");
+    le_result_t result = TryConnectService();
+    if ( result != LE_OK )
+    {
+        LE_ERROR("Could not connect to service on first try");
+
+        // Let's wait a bit and try again
+        sleep(15);
+        result = TryConnectService();
+        if ( result != LE_OK )
+        {
+            LE_FATAL("Could not connect to service on second and final try");
+        }
+    }
+    LE_INFO("TryConnect works");
+
     StartTest();
 }
 

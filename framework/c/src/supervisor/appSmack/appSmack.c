@@ -28,14 +28,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Application prefix for SMACK labels.
- */
-//--------------------------------------------------------------------------------------------------
-#define APP_PREFIX          "app."
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets the application name of the process with the specified PID.
  *
  * @return
@@ -63,9 +55,9 @@ LE_SHARED le_result_t appSmack_GetName
     }
 
     // Strip the prefix from the label.
-    if (strncmp(smackLabel, APP_PREFIX, sizeof(APP_PREFIX)-1) == 0)
+    if (strncmp(smackLabel, SMACK_APP_PREFIX, sizeof(SMACK_APP_PREFIX)-1) == 0)
     {
-        return le_utf8_Copy(bufPtr, &(smackLabel[strlen(APP_PREFIX)]), bufSize, NULL);
+        return le_utf8_Copy(bufPtr, &(smackLabel[strlen(SMACK_APP_PREFIX)]), bufSize, NULL);
     }
 
     return LE_NOT_FOUND;
@@ -97,25 +89,7 @@ LE_SHARED void appSmack_GetLabel
         ///< [IN]
 )
 {
-    if (appName[0] == '\0')
-    {
-        LE_KILL_CLIENT("App name should not be empty.");
-        return;
-    }
-
-    int n = snprintf(label, labelNumElements, "%s%s", APP_PREFIX, appName);
-
-    if (n < 0)
-    {
-        LE_KILL_CLIENT("Output error.  Could not get label for app %s.", appName);
-        return;
-    }
-
-    if (n >= labelNumElements)
-    {
-        LE_KILL_CLIENT("Buffer is too small to hold label for app %s.", appName);
-        return;
-    }
+    smack_GetAppLabel(appName, label, labelNumElements);
 }
 
 

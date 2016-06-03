@@ -364,6 +364,7 @@ static void VoiceSessionStateHandler
             }
             else
             {
+                LE_ERROR("Context for callRef not found %p", callRef);
                 le_mcc_Delete(callRef);
             }
         }
@@ -421,7 +422,18 @@ static le_result_t StopVoiceSession
     VoiceCallContext_t * ctxPtr
 )
 {
-    return le_mcc_HangUp(ctxPtr->mcc.callRef);
+    le_result_t res = LE_OK;
+
+    if (ctxPtr->lastEvent == LE_VOICECALL_EVENT_TERMINATED)
+    {
+        LE_WARN("Voice call already terminated callRef %p", ctxPtr->mcc.callRef);
+    }
+    else
+    {
+        res = le_mcc_HangUp(ctxPtr->mcc.callRef);
+    }
+
+    return res;
 }
 
 

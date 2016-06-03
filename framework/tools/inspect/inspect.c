@@ -6,17 +6,18 @@
  *
  * Must be run as root.
  *
- * @todo Only supports memory pools right now.  Add support for other timers, threads, etc.
- *
  * @todo Add inspect by process name.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
 #include "legato.h"
-#include "spy.h"
 #include "mem.h"
 #include "thread.h"
+#include "hashmap.h"
+#include "messagingInterface.h"
+#include "messagingProtocol.h"
+#include "messagingSession.h"
 #include "limit.h"
 #include "addr.h"
 #include "fileDescriptor.h"
@@ -25,15 +26,20 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * Objects of these types are used to refer to lists of memory pools, thread objects, timers,
- * mutexes, and semaphores. They can be used to iterate over those lists in a remote process.
+ * mutexes, semaphores, and service objects. They can be used to iterate over those lists in a
+ * remote process.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct MemPoolIter* MemPoolIter_Ref_t;
-typedef struct ThreadObjIter*  ThreadObjIter_Ref_t;
-typedef struct TimerIter*  TimerIter_Ref_t;
-typedef struct MutexIter* MutexIter_Ref_t;
-typedef struct SemaphoreIter* SemaphoreIter_Ref_t;
+typedef struct MemPoolIter*         MemPoolIter_Ref_t;
+typedef struct ThreadObjIter*       ThreadObjIter_Ref_t;
+typedef struct TimerIter*           TimerIter_Ref_t;
+typedef struct MutexIter*           MutexIter_Ref_t;
+typedef struct SemaphoreIter*       SemaphoreIter_Ref_t;
 typedef struct ThreadMemberObjIter* ThreadMemberObjIter_Ref_t;
+typedef struct ServiceObjIter*      ServiceObjIter_Ref_t;
+typedef struct ClientObjIter*       ClientObjIter_Ref_t;
+typedef struct SessionObjIter*      SessionObjIter_Ref_t;
+typedef struct InterfaceObjIter*    InterfaceObjIter_Ref_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -47,7 +53,11 @@ typedef enum
     INSPECT_INSP_TYPE_THREAD_OBJ,
     INSPECT_INSP_TYPE_TIMER,
     INSPECT_INSP_TYPE_MUTEX,
-    INSPECT_INSP_TYPE_SEMAPHORE
+    INSPECT_INSP_TYPE_SEMAPHORE,
+    INSPECT_INSP_TYPE_IPC_SERVERS,
+    INSPECT_INSP_TYPE_IPC_CLIENTS,
+    INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS,
+    INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS
 }
 InspType_t;
 
@@ -68,14 +78,26 @@ RemoteListAccess_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Object containing items necessary for walking a hashmap in the remote process.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_dls_List_t* bucketsPtr;  ///< Array of buckets in the hashmap in the remote process.
+    size_t bucketCount;         ///< Size of the array of buckets.
+    size_t* mapChgCntRef;       ///< Change counter for the remote map.
+}
+RemoteHashmapAccess_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Iterator objects for stepping through the list of memory pools, thread objects, timers, mutexes,
  * and semaphores in a remote process.
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct MemPoolIter
 {
-    pid_t pid;                      ///< PID of the process this iterator is for.
-    int procMemFd;                  ///< File descriptor to the remote process' /proc/pid/mem file.
     RemoteListAccess_t memPoolList; ///< Memory pool list in the remote process.
     MemPool_t currMemPool;          ///< Current memory pool from the list.
 }
@@ -83,8 +105,6 @@ MemPoolIter_t;
 
 typedef struct ThreadObjIter
 {
-    pid_t pid;
-    int procMemFd;
     RemoteListAccess_t threadObjList; ///< Thread object list in the remote process.
     thread_Obj_t currThreadObj;        ///< Current thread object from the list.
 }
@@ -92,8 +112,6 @@ ThreadObjIter_t;
 
 typedef struct TimerIter
 {
-    pid_t pid;
-    int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t timerList;     ///< Timer list for the current thread in the remote process.
     thread_Obj_t currThreadObj;
@@ -103,8 +121,6 @@ TimerIter_t;
 
 typedef struct MutexIter
 {
-    pid_t pid;
-    int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t mutexList;     ///< Mutexe list for the current thread in the remote process.
     thread_Obj_t currThreadObj;
@@ -114,8 +130,6 @@ MutexIter_t;
 
 typedef struct SemaphoreIter
 {
-    pid_t pid;
-    int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t semaphoreList; ///< This is a dummy, since there's no semaphore list.
     thread_Obj_t currThreadObj;
@@ -127,25 +141,70 @@ SemaphoreIter_t;
 // semaphore.
 typedef struct ThreadMemberObjIter
 {
-    pid_t pid;
-    int procMemFd;
     RemoteListAccess_t threadObjList;
     RemoteListAccess_t threadMemberObjList;
     thread_Obj_t currThreadObj;
 }
 ThreadMemberObjIter_t;
 
+typedef struct ServiceObjIter
+{
+    RemoteHashmapAccess_t serviceObjMap; ///< Service object map in the remote process.
+    size_t currIndex;                    ///< Current index in the bucket array.
+    RemoteListAccess_t serviceObjList;   ///< Service object list (technically a list of hashmap
+                                         ///< entries containing pointers to service objects) of the
+                                         ///< current bucket of the service object map in the remote
+                                         ///< process.
+    Entry_t currEntry;                   ///< Current entry containing the service obj.
+    msgInterface_Service_t currServiceObj; ///< Current service object from the list.
+}
+ServiceObjIter_t;
+
+typedef struct ClientObjIter
+{
+    RemoteHashmapAccess_t clientObjMap;  ///< Client object map in the remote process.
+    size_t currIndex;
+    RemoteListAccess_t clientObjList;    ///< Client object list (technically a list of hashmap
+                                         ///< entries containing pointers to client objects) of the
+                                         ///< current bucket of the client object map in the remote
+                                         ///< process.
+    Entry_t currEntry;                   ///< Current entry containing the client obj.
+    msgInterface_ClientInterface_t currClientObj; ///< Current client object from the list.
+}
+ClientObjIter_t;
+
+typedef struct SessionObjIter
+{
+    RemoteHashmapAccess_t interfaceObjMap; ///< Interface object map in the remote process.
+    size_t currIndex;
+    RemoteListAccess_t interfaceObjList; ///< Interface object list (technically a list of hashmap
+                                         ///< entries containing pointers to interface objects) of the
+                                         ///< current bucket of the interface object map in the remote
+                                         ///< process.
+    Entry_t currEntry;                   ///< Current entry containing the interface obj.
+    RemoteListAccess_t sessionList;      ///< Session list of the current interface obj.
+    msgSession_Session_t currSessionObj; ///< Current session object.
+}
+SessionObjIter_t;
+
+// Type describing the commonalities of the interface objects - namely service, client, and session
+// objects
+typedef struct InterfaceObjIter
+{
+    RemoteHashmapAccess_t interfaceObjMap;
+    size_t currIndex;
+    RemoteListAccess_t interfaceObjList;
+    Entry_t currEntry;
+}
+InterfaceObjIter_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Local memory pools that are used for allocating inspection object iterators.
+ * Local memory pool that is used for allocating an inspection object iterator.
  */
 //--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t MemPoolIteratorPool;
-static le_mem_PoolRef_t ThreadObjIteratorPool;
-static le_mem_PoolRef_t TimerIteratorPool;
-static le_mem_PoolRef_t MutexIteratorPool;
-static le_mem_PoolRef_t SemaphoreIteratorPool;
+static le_mem_PoolRef_t IteratorPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -193,8 +252,15 @@ static le_timer_Ref_t refreshTimer = NULL;
  * PID of the process to inspect.
  */
 //--------------------------------------------------------------------------------------------------
-//TODO: use this static variable for pid instead of requiring pid as function params
 static pid_t PidToInspect = -1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File descriptor of the /proc/<PID>/mem file of the process under inspection.
+ */
+//--------------------------------------------------------------------------------------------------
+static int FdProcMem = -1;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -221,6 +287,14 @@ InspType_t InspectType;
  **/
 //--------------------------------------------------------------------------------------------------
 static bool IsFollowing = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true = verbose mode (everything is printed).
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsVerbose = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -342,16 +416,28 @@ static int OpenProcMemFile
 }
 
 
-// TODO: CreateMemPoolIter and CreateThreadObjIter can probably be combined just like
-// CreateThreadMemberObjIter
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize a RemoteListAccess_t data struct.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitRemoteListAccessObj
+(
+    RemoteListAccess_t* remoteList
+)
+{
+    remoteList->List.headLinkPtr = NULL;
+    remoteList->ListChgCntRef = NULL;
+    remoteList->headLinkPtr = NULL;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates an iterator that can be used to iterate over the list of available memory pools for a
  * specific process.
  *
  * @note
- *      The specified pid must be greater than zero.
- *
  *      The calling process must be root or have appropriate capabilities for this function and all
  *      subsequent operations on the iterator to succeed.
  *
@@ -361,33 +447,30 @@ static int OpenProcMemFile
 //--------------------------------------------------------------------------------------------------
 static MemPoolIter_Ref_t CreateMemPoolIter
 (
-    pid_t pid ///< [IN] The process to get the iterator for.
+    void
 )
 {
-    int fd = OpenProcMemFile(pid);
+    // Get the address offset of the memory pool list for the process to inspect.
+    off_t listAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolList());
 
-    // Get the address offset of the list of memory pools for the process to inspect.
-    off_t listAddrOffset = GetRemoteAddress(pid, spy_GetListOfPools());
-
-    // Get the address offset of the list of memory pools change counter for the process to inspect.
-    off_t listChgCntAddrOffset = GetRemoteAddress(pid, spy_GetListOfPoolsChgCntRef());
+    // Get the address offset of the memory pool list change counter for the process to inspect.
+    off_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolListChgCntRef());
 
     // Create the iterator.
-    MemPoolIter_t* iteratorPtr = le_mem_ForceAlloc(MemPoolIteratorPool);
-    iteratorPtr->procMemFd = fd;
-    iteratorPtr->pid = pid;
-    iteratorPtr->memPoolList.headLinkPtr = NULL;
+    MemPoolIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    InitRemoteListAccessObj(&iteratorPtr->memPoolList);
 
     // Get the List for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, listAddrOffset, &(iteratorPtr->memPoolList.List),
+    if (fd_ReadFromOffset(FdProcMem, listAddrOffset, &(iteratorPtr->memPoolList.List),
                              sizeof(iteratorPtr->memPoolList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list"));
     }
 
     // Get the ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, listChgCntAddrOffset, &(iteratorPtr->memPoolList.ListChgCntRef),
-                             sizeof(iteratorPtr->memPoolList.ListChgCntRef)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, listChgCntAddrOffset,
+                          &(iteratorPtr->memPoolList.ListChgCntRef),
+                          sizeof(iteratorPtr->memPoolList.ListChgCntRef)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list change counter ref"));
     }
@@ -407,33 +490,30 @@ static MemPoolIter_Ref_t CreateMemPoolIter
 //--------------------------------------------------------------------------------------------------
 static ThreadObjIter_Ref_t CreateThreadObjIter
 (
-    pid_t pid ///< [IN] The process to get the iterator for.
+    void
 )
 {
-    int fd = OpenProcMemFile(pid);
-
-    // Get the address offset of the list of thread objs for the process to inspect.
-    off_t listAddrOffset = GetRemoteAddress(pid, spy_GetListOfThreadObj());
+    // Get the address offset of the thread obj list for the process to inspect.
+    off_t listAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
 
     // Get the address offset of the list of thread objs change counter for the process to inspect.
-    off_t listChgCntAddrOffset = GetRemoteAddress(pid, spy_GetListOfThreadObjsChgCntRef());
+    off_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjListChgCntRef());
 
     // Create the iterator.
-    ThreadObjIter_t* iteratorPtr = le_mem_ForceAlloc(ThreadObjIteratorPool);
-    iteratorPtr->procMemFd = fd;
-    iteratorPtr->pid = pid;
-    iteratorPtr->threadObjList.headLinkPtr = NULL;
+    ThreadObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    InitRemoteListAccessObj(&iteratorPtr->threadObjList);
 
     // Get the List for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, listAddrOffset, &(iteratorPtr->threadObjList.List),
+    if (fd_ReadFromOffset(FdProcMem, listAddrOffset, &(iteratorPtr->threadObjList.List),
                              sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list"));
     }
 
     // Get the ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, listChgCntAddrOffset, &(iteratorPtr->threadObjList.ListChgCntRef),
-                             sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, listChgCntAddrOffset,
+                          &(iteratorPtr->threadObjList.ListChgCntRef),
+                          sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter ref"));
     }
@@ -454,71 +534,56 @@ static ThreadObjIter_Ref_t CreateThreadObjIter
 //--------------------------------------------------------------------------------------------------
 static void* CreateThreadMemberObjIter
 (
-    InspType_t memberObjType, ///< [IN] The type of iterator to create.
-    pid_t pid                         ///< [IN] The process to get the iterator for.
+    InspType_t memberObjType ///< [IN] The type of iterator to create.
 )
 {
-    // function prototype for the spy_GetListOfXXXChgCntRef family.
-    typedef size_t** (*GetListChgCntRefFunc_t)(void);
-
-    GetListChgCntRefFunc_t getListChgCntRefFunc;
-    le_mem_PoolRef_t ThreadMemberObjIteratorPool;
+    // function prototype for the module_GetXXXChgCntRef family.
+    size_t** (*getListChgCntRefFunc)(void);
 
     switch (memberObjType)
     {
         case INSPECT_INSP_TYPE_TIMER:
-            getListChgCntRefFunc = spy_GetListOfTimersChgCntRef;
-            ThreadMemberObjIteratorPool = TimerIteratorPool;
+            getListChgCntRefFunc = timer_GetTimerListChgCntRef;
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
-            getListChgCntRefFunc = spy_GetListOfMutexesChgCntRef;
-            ThreadMemberObjIteratorPool = MutexIteratorPool;
+            getListChgCntRefFunc = mutex_GetMutexListChgCntRef;
             break;
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
-            getListChgCntRefFunc = spy_GetListOfSemaphoresChgCntRef;
-            ThreadMemberObjIteratorPool = SemaphoreIteratorPool;
+            getListChgCntRefFunc = sem_GetSemaphoreListChgCntRef;
             break;
 
         default:
             INTERNAL_ERR("unexpected thread member object type %d.", memberObjType);
     }
 
-
-    int fd = OpenProcMemFile(pid);
-
     // Get the address offset of the list of thread objs for the process to inspect.
-    off_t threadObjListAddrOffset = GetRemoteAddress(pid, spy_GetListOfThreadObj());
+    off_t threadObjListAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
 
     // Get the addr offset of the change counter of the list of thread objs for the process to
     // inspect.
-    off_t threadObjListChgCntAddrOffset = GetRemoteAddress(pid, spy_GetListOfThreadObjsChgCntRef());
+    off_t threadObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+                                                           thread_GetThreadObjListChgCntRef());
 
     // Get the address offset of the change counter of the list of thread member objs for the
     // process to inspect.
-    off_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(pid, getListChgCntRefFunc());
+    off_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect, getListChgCntRefFunc());
 
     // Create the iterator.
-    ThreadMemberObjIter_t* iteratorPtr = le_mem_ForceAlloc(ThreadMemberObjIteratorPool);
-    iteratorPtr->procMemFd = fd;
-    iteratorPtr->pid = pid;
-    iteratorPtr->threadObjList.headLinkPtr = NULL;
-    iteratorPtr->threadMemberObjList.headLinkPtr = NULL;
-    // The list of thread member objs needs to be explicitly set NULL, in order to properly trigger
-    // reading the first thread object (and hence the first thread member obj in it) in
-    // GetNextThreadMemberObjLinkPtr.
-    iteratorPtr->threadMemberObjList.List.headLinkPtr = NULL;
+    ThreadMemberObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+    InitRemoteListAccessObj(&iteratorPtr->threadObjList);
+    InitRemoteListAccessObj(&iteratorPtr->threadMemberObjList);
 
     // Get the list of thread objs for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, threadObjListAddrOffset, &(iteratorPtr->threadObjList.List),
+    if (fd_ReadFromOffset(FdProcMem, threadObjListAddrOffset, &(iteratorPtr->threadObjList.List),
                              sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list"));
     }
 
     // Get the thread obj ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, threadObjListChgCntAddrOffset,
+    if (fd_ReadFromOffset(FdProcMem, threadObjListChgCntAddrOffset,
                           &(iteratorPtr->threadObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
     {
@@ -526,7 +591,7 @@ static void* CreateThreadMemberObjIter
     }
 
     // Get the thread member obj ListChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(fd, threadMemberObjListChgCntAddrOffset,
+    if (fd_ReadFromOffset(FdProcMem, threadMemberObjListChgCntAddrOffset,
                           &(iteratorPtr->threadMemberObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadMemberObjList.ListChgCntRef)) != LE_OK)
     {
@@ -544,31 +609,205 @@ static void* CreateThreadMemberObjIter
  * See the comment block for CreateMemPoolIter for additional detail.
  *
  * @return
- *      An iterator to the list of timers for the specified process.
+ *      An iterator to the list of timers/mutexes/semaphores for the specified process.
  */
 //--------------------------------------------------------------------------------------------------
 static TimerIter_Ref_t CreateTimerIter
 (
-    pid_t pid ///< [IN] The process to get the iterator for.
+    void
 )
 {
-    return (TimerIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_TIMER, pid);
+    return (TimerIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_TIMER);
 }
 
 static MutexIter_Ref_t CreateMutexIter
 (
-    pid_t pid ///< [IN] The process to get the iterator for.
+    void
 )
 {
-    return (MutexIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_MUTEX, pid);
+    return (MutexIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_MUTEX);
 }
 
 static SemaphoreIter_Ref_t CreateSemaphoreIter
 (
-    pid_t pid ///< [IN] The process to get the iterator for.
+    void
 )
 {
-    return (SemaphoreIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_SEMAPHORE, pid);
+    return (SemaphoreIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_SEMAPHORE);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an iterator that can be used to iterate over the map of interface objects. See the
+ * comment block for CreateMemPoolIter for additional detail.
+ *
+ * @return
+ *      An iterator to the map of interface objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static InterfaceObjIter_Ref_t CreateInterfaceObjIter
+(
+    InspType_t interfaceType ///< [IN] The type of iterator to create.
+)
+{
+    // function prototype for the module_GetXXXMapChgCntRef family.
+    size_t** (*getMapChgCntRefFunc)(void);
+    // function prototype for the module_GetXXXMap family.
+    le_hashmap_Ref_t* (*getMapFunc)(void);
+
+    switch (interfaceType)
+    {
+        case INSPECT_INSP_TYPE_IPC_SERVERS:
+            getMapChgCntRefFunc = msgInterface_GetServiceObjMapChgCntRef;
+            getMapFunc          = msgInterface_GetServiceObjMap;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS:
+            getMapChgCntRefFunc = msgInterface_GetClientInterfaceMapChgCntRef;
+            getMapFunc          = msgInterface_GetClientInterfaceMap;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+            getMapChgCntRefFunc = msgInterface_GetServiceObjMapChgCntRef;
+            getMapFunc          = msgInterface_GetServiceObjMap;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            getMapChgCntRefFunc = msgInterface_GetClientInterfaceMapChgCntRef;
+            getMapFunc          = msgInterface_GetClientInterfaceMap;
+            break;
+
+        default:
+            INTERNAL_ERR("unexpected interface object type %d.", interfaceType);
+    }
+
+
+    // Get the address offset of the map of interface objs for the process to inspect.
+    off_t mapAddrOffset = GetRemoteAddress(PidToInspect, getMapFunc());
+
+    // Get the address offset of the map of interface objs change counter for the proc to inspect.
+    off_t mapChgCntAddrOffset = GetRemoteAddress(PidToInspect, getMapChgCntRefFunc());
+
+    // Create the iterator.
+    InterfaceObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
+
+    le_hashmap_Ref_t mapRef;
+    Hashmap_t map;
+
+    // Get the mapRef for the process-under-inspection.
+    if (fd_ReadFromOffset(FdProcMem, mapAddrOffset, &(mapRef), sizeof(mapRef)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("interface obj map ref"));
+    }
+
+    // Get the map for the process-under-inspection.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)mapRef, &(map), sizeof(map)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("interface obj map"));
+    }
+
+    iteratorPtr->interfaceObjMap.bucketsPtr = map.bucketsPtr;
+    iteratorPtr->interfaceObjMap.bucketCount = map.bucketCount;
+
+    // Get the mapChgCntRef for the process-under-inspection.
+    if (fd_ReadFromOffset(FdProcMem, mapChgCntAddrOffset, &(iteratorPtr->interfaceObjMap.mapChgCntRef),
+                             sizeof(iteratorPtr->interfaceObjMap.mapChgCntRef)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("interface obj map change counter ref"));
+    }
+
+    // Initialization.
+    iteratorPtr->currIndex = 0;
+
+    // Get the list of interface objects.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)iteratorPtr->interfaceObjMap.bucketsPtr,
+                          &(iteratorPtr->interfaceObjList.List),
+                          sizeof(iteratorPtr->interfaceObjList.List)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("interface obj list of bucket 0 in the interface obj map"));
+    }
+
+    InitRemoteListAccessObj(&iteratorPtr->interfaceObjList);
+
+    return iteratorPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an iterator that can be used to iterate over the map of service objects for a specific
+ * process. See the comment block for CreateMemPoolIter for additional detail.
+ *
+ * @return
+ *      An iterator to the map of service objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static ServiceObjIter_Ref_t CreateServiceObjIter
+(
+    void
+)
+{
+    return ((ServiceObjIter_Ref_t)CreateInterfaceObjIter(INSPECT_INSP_TYPE_IPC_SERVERS));
+}
+
+static ClientObjIter_Ref_t CreateClientObjIter
+(
+    void
+)
+{
+    return ((ClientObjIter_Ref_t)CreateInterfaceObjIter(INSPECT_INSP_TYPE_IPC_CLIENTS));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an iterator that can be used to iterate over the list of session objects for a specific
+ * process. See the comment block for CreateMemPoolIter for additional detail.
+ *
+ * @return
+ *      An iterator to the list of session objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static SessionObjIter_Ref_t CreateSessionObjIter
+(
+    void
+)
+{
+    SessionObjIter_Ref_t iteratorPtr;
+
+    switch (InspectType)
+    {
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+            iteratorPtr = (SessionObjIter_Ref_t)CreateInterfaceObjIter(
+                            INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            iteratorPtr = (SessionObjIter_Ref_t)CreateInterfaceObjIter(
+                            INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS);
+            break;
+
+        default:
+            INTERNAL_ERR("unexpected inspect type %d.", InspectType);
+    }
+
+    // Get the address offset of the list of session objs change counter for the proc to inspect.
+    off_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+                                                  msgSession_GetSessionObjListChgCntRef());
+
+    // Initialize the list.
+    InitRemoteListAccessObj(&iteratorPtr->sessionList);
+
+    // Get the listChgCntRef for the process-under-inspection.
+    if (fd_ReadFromOffset(FdProcMem, listChgCntAddrOffset,
+                          &(iteratorPtr->sessionList.ListChgCntRef),
+                          sizeof(iteratorPtr->sessionList.ListChgCntRef)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("session obj list change counter ref"));
+    }
+
+    return iteratorPtr;
 }
 
 
@@ -586,7 +825,7 @@ static size_t GetMemPoolListChgCnt
 )
 {
     size_t memPoolListChgCnt;
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)iterator->memPoolList.ListChgCntRef,
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->memPoolList.ListChgCntRef),
                           &memPoolListChgCnt, sizeof(memPoolListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list change counter"));
@@ -610,7 +849,7 @@ static size_t GetThreadObjListChgCnt
 )
 {
     size_t threadObjListChgCnt;
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)iterator->threadObjList.ListChgCntRef,
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->threadObjList.ListChgCntRef),
                           &threadObjListChgCnt, sizeof(threadObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter"));
@@ -638,13 +877,13 @@ static size_t GetThreadMemberObjListChgCnt
 )
 {
     size_t threadObjListChgCnt, threadMemberObjListChgCnt;
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)iterator->threadObjList.ListChgCntRef,
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->threadObjList.ListChgCntRef),
                           &threadObjListChgCnt, sizeof(threadObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter"));
     }
 
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)iterator->threadMemberObjList.ListChgCntRef,
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->threadMemberObjList.ListChgCntRef),
                           &threadMemberObjListChgCnt, sizeof(threadMemberObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread member obj list change counter"));
@@ -656,10 +895,62 @@ static size_t GetThreadMemberObjListChgCnt
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the interface object map change counter from the specified iterator.
+ *
+ * @return
+ *      Map change counter.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t GetInterfaceObjMapChgCnt
+(
+    InterfaceObjIter_Ref_t iterator ///< [IN] The iterator to get the map change counter from.
+)
+{
+    size_t interfaceObjMapChgCnt;
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->interfaceObjMap.mapChgCntRef),
+                          &interfaceObjMapChgCnt, sizeof(interfaceObjMapChgCnt)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("interface obj map change counter"));
+    }
+
+    return interfaceObjMapChgCnt;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the session list change counter from the specified iterator. The session list is also
+ * considered "changed" if the interface object has changed.
+ *
+ * @return
+ *      Map change counter.
+ */
+//--------------------------------------------------------------------------------------------------
+static size_t GetSessionListChgCnt
+(
+    SessionObjIter_Ref_t iterator ///< [IN] The iterator to get the list change counter from.
+)
+{
+    size_t sessionListChgCnt;
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)(iterator->sessionList.ListChgCntRef),
+                          &sessionListChgCnt, sizeof(sessionListChgCnt)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("session list change counter"));
+    }
+
+    return GetInterfaceObjMapChgCnt((InterfaceObjIter_Ref_t)iterator) + sessionListChgCnt;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Gets the next link of the provided link. This is for accessing a list in a remote process,
  * otherwise the doubly linked list API can simply be used. Note that "linkRef" is a ref to a
  * locally existing link obj, which is a link for a remote node. Therefore GetNextLink cannot be
  * called back-to-back.
+ *
+ * Also, if GetNextLink is called the first time for a given listInfoRef, linkRef is not used.
+ *
  * After calling GetNextLink, the returned link ptr must be used to read the associated remote node
  * into the local memory space. One would then retrieve the link object from the node, and then
  * GetNextLink can be called on the ref of that link object.
@@ -736,11 +1027,11 @@ static le_dls_Link_t* GetNextLink
 //--------------------------------------------------------------------------------------------------
 static MemPool_t* GetNextMemPool
 (
-    MemPoolIter_Ref_t iterator ///< [IN] The iterator to get the next mem pool from.
+    MemPoolIter_Ref_t memPoolIterRef ///< [IN] The iterator to get the next mem pool from.
 )
 {
-    le_dls_Link_t* linkPtr = GetNextLink(&(iterator->memPoolList),
-                                         &(iterator->currMemPool.poolLink));
+    le_dls_Link_t* linkPtr = GetNextLink(&(memPoolIterRef->memPoolList),
+                                         &(memPoolIterRef->currMemPool.poolLink));
 
     if (linkPtr == NULL)
     {
@@ -751,13 +1042,13 @@ static MemPool_t* GetNextMemPool
     MemPool_t* poolPtr = CONTAINER_OF(linkPtr, MemPool_t, poolLink);
 
     // Read the pool into our own memory.
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)poolPtr, &(iterator->currMemPool),
-                          sizeof(iterator->currMemPool)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)poolPtr, &(memPoolIterRef->currMemPool),
+                          sizeof(memPoolIterRef->currMemPool)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool object"));
     }
 
-    return &(iterator->currMemPool);
+    return &(memPoolIterRef->currMemPool);
 }
 
 
@@ -771,11 +1062,11 @@ static MemPool_t* GetNextMemPool
 //--------------------------------------------------------------------------------------------------
 static thread_Obj_t* GetNextThreadObj
 (
-    ThreadObjIter_Ref_t iterator ///< [IN] The iterator to get the next thread obj from.
+    ThreadObjIter_Ref_t threadObjIterRef ///< [IN] The iterator to get the next thread obj from.
 )
 {
-    le_dls_Link_t* linkPtr = GetNextLink(&(iterator->threadObjList),
-                                         &(iterator->currThreadObj.link));
+    le_dls_Link_t* linkPtr = GetNextLink(&(threadObjIterRef->threadObjList),
+                                         &(threadObjIterRef->currThreadObj.link));
 
     if (linkPtr == NULL)
     {
@@ -786,13 +1077,13 @@ static thread_Obj_t* GetNextThreadObj
     thread_Obj_t* threadObjPtr = CONTAINER_OF(linkPtr, thread_Obj_t, link);
 
     // Read the thread obj into our own memory.
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)threadObjPtr, &(iterator->currThreadObj),
-                          sizeof(iterator->currThreadObj)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)threadObjPtr, &(threadObjIterRef->currThreadObj),
+                          sizeof(threadObjIterRef->currThreadObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
     }
 
-    return &(iterator->currThreadObj);
+    return &(threadObjIterRef->currThreadObj);
 }
 
 
@@ -887,7 +1178,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         thread_Obj_t* remThreadObjPtr = CONTAINER_OF(remThreadObjNextLinkPtr, thread_Obj_t, link);
 
         // Read the thread obj into our own memory, and update the local reference
-        if (fd_ReadFromOffset(threadMemberObjItrRef->procMemFd, (ssize_t)remThreadObjPtr,
+        if (fd_ReadFromOffset(FdProcMem, (ssize_t)remThreadObjPtr,
                               &(threadMemberObjItrRef->currThreadObj),
                               sizeof(threadMemberObjItrRef->currThreadObj)) != LE_OK)
         {
@@ -922,11 +1213,12 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
 //--------------------------------------------------------------------------------------------------
 static Timer_t* GetNextTimer
 (
-    TimerIter_Ref_t iterator ///< [IN] The iterator to get the next timer from.
+    TimerIter_Ref_t timerIterRef ///< [IN] The iterator to get the next timer from.
 )
 {
     le_dls_Link_t* remThreadMemberObjNextLinkPtr =
-        GetNextThreadMemberObjLinkPtr(INSPECT_INSP_TYPE_TIMER, (ThreadMemberObjIter_Ref_t)iterator);
+        GetNextThreadMemberObjLinkPtr(INSPECT_INSP_TYPE_TIMER,
+                                      (ThreadMemberObjIter_Ref_t)timerIterRef);
 
     if (remThreadMemberObjNextLinkPtr == NULL)
     {
@@ -937,13 +1229,13 @@ static Timer_t* GetNextTimer
     Timer_t* remTimerPtr = CONTAINER_OF(remThreadMemberObjNextLinkPtr, Timer_t, link);
 
     // Read the timer into our own memory.
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)remTimerPtr, &(iterator->currTimer),
-                          sizeof(iterator->currTimer)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remTimerPtr, &(timerIterRef->currTimer),
+                          sizeof(timerIterRef->currTimer)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("timer object"));
     }
 
-    return &(iterator->currTimer);
+    return &(timerIterRef->currTimer);
 }
 
 
@@ -957,11 +1249,12 @@ static Timer_t* GetNextTimer
 //--------------------------------------------------------------------------------------------------
 static Mutex_t* GetNextMutex
 (
-    MutexIter_Ref_t iterator ///< [IN] The iterator to get the next mutex from.
+    MutexIter_Ref_t mutexIterRef ///< [IN] The iterator to get the next mutex from.
 )
 {
     le_dls_Link_t* remThreadMemberObjNextLinkPtr =
-        GetNextThreadMemberObjLinkPtr(INSPECT_INSP_TYPE_MUTEX, (ThreadMemberObjIter_Ref_t)iterator);
+        GetNextThreadMemberObjLinkPtr(INSPECT_INSP_TYPE_MUTEX,
+                                      (ThreadMemberObjIter_Ref_t)mutexIterRef);
 
     if (remThreadMemberObjNextLinkPtr == NULL)
     {
@@ -972,13 +1265,13 @@ static Mutex_t* GetNextMutex
     Mutex_t* remMutexPtr = CONTAINER_OF(remThreadMemberObjNextLinkPtr, Mutex_t, lockedByThreadLink);
 
     // Read the mutex into our own memory.
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)remMutexPtr, &(iterator->currMutex),
-                          sizeof(iterator->currMutex)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remMutexPtr, &(mutexIterRef->currMutex),
+                          sizeof(mutexIterRef->currMutex)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mutex object"));
     }
 
-    return &(iterator->currMutex);
+    return &(mutexIterRef->currMutex);
 }
 
 
@@ -998,7 +1291,7 @@ static Mutex_t* GetNextMutex
 //--------------------------------------------------------------------------------------------------
 static Semaphore_t* GetNextSemaphore
 (
-    SemaphoreIter_Ref_t iterator ///< [IN] The iterator to get the next sempaphore from.
+    SemaphoreIter_Ref_t semaIterRef ///< [IN] The iterator to get the next sempaphore from.
 )
 {
     Semaphore_t* remSemaphorePtr;
@@ -1006,10 +1299,8 @@ static Semaphore_t* GetNextSemaphore
 
     // Create a local thread obj iterator based on the semaphore iterator that's passed in.
     ThreadObjIter_t threadObjIter;
-    threadObjIter.pid = iterator->pid;
-    threadObjIter.procMemFd = iterator->procMemFd;
-    threadObjIter.threadObjList = iterator->threadObjList;
-    threadObjIter.currThreadObj = iterator->currThreadObj;
+    threadObjIter.threadObjList = semaIterRef->threadObjList;
+    threadObjIter.currThreadObj = semaIterRef->currThreadObj;
 
     // Access the next thread obj directly since there's no "semaphore list" and each thread obj
     // owns at most one semaphore obj, in contrast of the logic of GetNextThreadMemberObjLinkPtr.
@@ -1019,10 +1310,10 @@ static Semaphore_t* GetNextSemaphore
         currThreadObjRef = GetNextThreadObj(&threadObjIter);
 
         // Update the "current" thread object in the semaphore iterator.
-        iterator->currThreadObj = threadObjIter.currThreadObj;
+        semaIterRef->currThreadObj = threadObjIter.currThreadObj;
         // Also need to update the list (or rather the headLinkPtr in it). Otherwise next time
         // GetNextSemaphore is called, GetNextThreadObj still returns the "first" thread obj.
-        iterator->threadObjList = threadObjIter.threadObjList;
+        semaIterRef->threadObjList = threadObjIter.threadObjList;
 
         // No more thread objects, and therefore no more semaphore objects.
         if (currThreadObjRef == NULL)
@@ -1036,126 +1327,211 @@ static Semaphore_t* GetNextSemaphore
     while (remSemaphorePtr == NULL);
 
     // Read the semaphore into our own memory.
-    if (fd_ReadFromOffset(iterator->procMemFd, (ssize_t)remSemaphorePtr, &(iterator->currSemaphore),
-                          sizeof(iterator->currSemaphore)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remSemaphorePtr, &(semaIterRef->currSemaphore),
+                          sizeof(semaIterRef->currSemaphore)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("semaphore object"));
     }
 
-    return &(iterator->currSemaphore);
+    return &(semaIterRef->currSemaphore);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes a generic iterator according to the specified type.
+ * Gets the pointer to the next interface instance object. For other detail see GetNextMemPool.
+ *
+ * @return
+ *      A pointer to an interface instace object.
  */
 //--------------------------------------------------------------------------------------------------
-static void DeleteIter
+static void* GetNextInterfaceObjPtr
 (
-    InspType_t inspectType, ///< [IN] The type of the iterator.
-    void* iterator                  ///< [IN] The generic iterator to delete.
+    InterfaceObjIter_Ref_t iterator ///< [IN] The iterator to get the next interface obj from.
 )
 {
-    INTERNAL_ERR_IF(iterator == NULL, "attempting to delete a NULL iterator.");
+    // with iterator->currIndex and iterator->interfaceObjList initialized in the createIterator
+    // fcn, GetNextLink on interfaceObjList.  If the returned link is null, then upadte currIndex
+    // and interfaceObjList.
 
-    switch (inspectType)
+    le_dls_Link_t* remEntryNextLinkPtr;
+
+    // Get the link of the next item on the interface object list.
+    remEntryNextLinkPtr = GetNextLink(&(iterator->interfaceObjList),
+                                      &(iterator->currEntry.entryListLink));
+
+    // If the link is null, then update our list by accessing the next bucket, and attempt to
+    // Get the link from the updated list.
+    while (remEntryNextLinkPtr == NULL)
     {
-        case INSPECT_INSP_TYPE_MEM_POOL:
-            fd_Close(((MemPoolIter_Ref_t)iterator)->procMemFd);
-            break;
+        // Increment the bucket index. Return null if we run out of buckets.
+        if (iterator->currIndex < (iterator->interfaceObjMap.bucketCount - 1))
+        {
+            iterator->currIndex++;
+        }
+        else
+        {
+            return NULL;
+        }
 
-        case INSPECT_INSP_TYPE_THREAD_OBJ:
-            fd_Close(((ThreadObjIter_Ref_t)iterator)->procMemFd);
-            break;
+        // So we haven't run out of buckets yet. Then update our interface object list.
+        if (fd_ReadFromOffset(FdProcMem,
+                              (ssize_t)(iterator->interfaceObjMap.bucketsPtr + iterator->currIndex),
+                              &(iterator->interfaceObjList.List),
+                              sizeof(iterator->interfaceObjList.List)) != LE_OK)
+        {
+            INTERNAL_ERR(REMOTE_READ_ERR("interface obj list of bucket %zu in the interface obj map"),
+                         iterator->currIndex);
+        }
 
-        case INSPECT_INSP_TYPE_TIMER:
-            fd_Close(((TimerIter_Ref_t)iterator)->procMemFd);
-            break;
+        // With the updated interface obj list, also set the head link ptr null.
+        iterator->interfaceObjList.headLinkPtr = NULL;
 
-        case INSPECT_INSP_TYPE_MUTEX:
-            fd_Close(((MutexIter_Ref_t)iterator)->procMemFd);
-            break;
-
-        case INSPECT_INSP_TYPE_SEMAPHORE:
-            fd_Close(((SemaphoreIter_Ref_t)iterator)->procMemFd);
-            break;
-
-        default:
-            INTERNAL_ERR("Failed to delete iterator - unexpected iterator type %d.", inspectType);
+        // With the updated interface object list, get the link of the next item.
+        remEntryNextLinkPtr = GetNextLink(&(iterator->interfaceObjList), NULL);
     }
 
-    le_mem_Release(iterator);
+    // The node that the link belongs to is technically Entry_t which contains a ptr to an
+    // interface instace obj (server, client, etc.)
+    Entry_t* remEntryPtr = CONTAINER_OF(remEntryNextLinkPtr, Entry_t, entryListLink);
+
+    // Read the entry object into our own memory.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remEntryPtr,
+                          &(iterator->currEntry), sizeof(iterator->currEntry)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("entry object"));
+    }
+
+    return (void*)iterator->currEntry.valuePtr;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes a mem pool iterator.
+ * Gets the next service object from the specified iterator. For other detail see GetNextMemPool.
+ *
+ * @return
+ *      A service object from the iterator's list of service objects.
  */
 //--------------------------------------------------------------------------------------------------
-static void DeleteMemPoolIter
+static msgInterface_Service_t* GetNextServiceObj
 (
-    MemPoolIter_Ref_t iterator  ///< [IN] The iterator to delete.
+    ServiceObjIter_Ref_t serviceObjIterRef ///< [IN] The iterator to get the next service obj from.
 )
 {
-    DeleteIter(INSPECT_INSP_TYPE_MEM_POOL, iterator);
+    // Gets the pointer of the next service object.
+    msgInterface_Service_t* serviceObjPtr
+        = GetNextInterfaceObjPtr((InterfaceObjIter_Ref_t)serviceObjIterRef);
+
+    if (serviceObjPtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Read the service object into our own memory.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)serviceObjPtr, &(serviceObjIterRef->currServiceObj),
+                          sizeof(serviceObjIterRef->currServiceObj)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("service object"));
+    }
+
+    return &(serviceObjIterRef->currServiceObj);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes a thread obj iterator.
+ * Gets the next client interface object from the specified iterator. For other detail see
+ * GetNextMemPool.
+ *
+ * @return
+ *      A client interface object from the iterator's list of client interface objects.
  */
 //--------------------------------------------------------------------------------------------------
-static void DeleteThreadObjIter
+static msgInterface_ClientInterface_t* GetNextClientObj
 (
-    ThreadObjIter_Ref_t iterator    ///< [IN] The iterator to delete.
+    ClientObjIter_Ref_t clientObjIterRef ///< [IN] The iterator to get the next client interface obj from.
 )
 {
-    DeleteIter(INSPECT_INSP_TYPE_THREAD_OBJ, iterator);
+    // Gets the pointer of the next service object.
+    msgInterface_ClientInterface_t* clientObjPtr
+        = GetNextInterfaceObjPtr((InterfaceObjIter_Ref_t)clientObjIterRef);
+
+    if (clientObjPtr == NULL)
+    {
+        return NULL;
+    }
+
+    // Read the client interface object into our own memory.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)clientObjPtr, &(clientObjIterRef->currClientObj),
+                          sizeof(clientObjIterRef->currClientObj)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("client interface object"));
+    }
+
+    return &(clientObjIterRef->currClientObj);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes a timer iterator.
+ * Gets the next session object from the specified iterator. For other detail see GetNextMemPool.
+ *
+ * @return
+ *      A session object from the iterator's list of session objects.
  */
 //--------------------------------------------------------------------------------------------------
-static void DeleteTimerIter
+static msgSession_Session_t* GetNextSessionObj
 (
-    TimerIter_Ref_t iterator    ///< [IN] The iterator to delete.
+    SessionObjIter_Ref_t sessionObjIterRef ///< [IN] The iterator to get the next session obj from.
 )
 {
-    DeleteIter(INSPECT_INSP_TYPE_TIMER, iterator);
-}
+    le_dls_Link_t* remSessionNextLinkPtr;
+    void* interfaceObjPtr;
+    msgInterface_Interface_t currInterfaceObj;
 
+    // Get the link of the next item on the session list.
+    remSessionNextLinkPtr = GetNextLink(&(sessionObjIterRef->sessionList),
+                                        &(sessionObjIterRef->currSessionObj.link));
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes a mutex iterator.
- */
-//--------------------------------------------------------------------------------------------------
-static void DeleteMutexIter
-(
-    MutexIter_Ref_t iterator    ///< [IN] The iterator to delete.
-)
-{
-    DeleteIter(INSPECT_INSP_TYPE_MUTEX, iterator);
-}
+    while (remSessionNextLinkPtr == NULL)
+    {
+        interfaceObjPtr = GetNextInterfaceObjPtr((InterfaceObjIter_Ref_t)sessionObjIterRef);
 
+        // There are no more interface objects. And therefore no more session objects.
+        if (interfaceObjPtr == NULL)
+        {
+            return NULL;
+        }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Deletes a semaphore iterator.
- */
-//--------------------------------------------------------------------------------------------------
-static void DeleteSemaphoreIter
-(
-    SemaphoreIter_Ref_t iterator    ///< [IN] The iterator to delete.
-)
-{
-    DeleteIter(INSPECT_INSP_TYPE_SEMAPHORE, iterator);
+        // Read the interface object into our own memory.
+        if (fd_ReadFromOffset(FdProcMem, (ssize_t)interfaceObjPtr,
+                              &(currInterfaceObj), sizeof(currInterfaceObj)) != LE_OK)
+        {
+            INTERNAL_ERR(REMOTE_READ_ERR("interface object"));
+        }
+
+        // Update the session list in the iterator. Also reset the list head.
+        sessionObjIterRef->sessionList.List = currInterfaceObj.sessionList;
+        sessionObjIterRef->sessionList.headLinkPtr = NULL;
+
+        // Get the link of the next item on the session list.
+        remSessionNextLinkPtr = GetNextLink(&(sessionObjIterRef->sessionList), NULL);
+    }
+
+    // Get the remote address of the session object.
+    msgSession_Session_t* remSessionObjPtr = CONTAINER_OF(remSessionNextLinkPtr,
+                                                          msgSession_Session_t, link);
+
+    // Read the session object into our own memory.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)remSessionObjPtr,
+                          &(sessionObjIterRef->currSessionObj),
+                          sizeof(sessionObjIterRef->currSessionObj)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("session object"));
+    }
+
+    return &(sessionObjIterRef->currSessionObj);
 }
 
 
@@ -1176,7 +1552,8 @@ static void PrintHelp
         "              Legato process.\n"
         "\n"
         "SYNOPSIS:\n"
-        "    inspect [pools|threads|timers|mutexes|semaphores] [OPTIONS] PID\n"
+        "    inspect <pools|threads|timers|mutexes|semaphores> [OPTIONS] PID\n"
+        "    inspect ipc <servers|clients [sessions]> [OPTIONS] PID\n"
         "\n"
         "DESCRIPTION:\n"
         "    inspect pools              Prints the memory pools usage for the specified process.\n"
@@ -1184,10 +1561,14 @@ static void PrintHelp
         "    inspect timers             Prints the info of timers in all threads for the specified process.\n"
         "    inspect mutexes            Prints the info of mutexes in all threads for the specified process.\n"
         "    inspect semaphores         Prints the info of semaphores in all threads for the specified process.\n"
+        "    inspect ipc                Prints the info of ipc in all threads for the specified process.\n"
         "\n"
         "OPTIONS:\n"
         "    -f\n"
         "        Periodically prints updated information for the process.\n"
+        "\n"
+        "    -v\n"
+        "        Prints in verbose mode.\n"
         "\n"
         "    --interval=SECONDS\n"
         "        Prints updated information every SECONDS.\n"
@@ -1219,6 +1600,7 @@ typedef struct
     // TODO: can probably be figured out from format template
     bool isString;       ///< Is the field string or not.
     uint8_t colWidth;    ///< Column width in number of characters.
+    bool isPrintSimple;  ///< Print this field in non-verbose mode or not.
 }
 ColumnInfo_t;
 
@@ -1262,60 +1644,88 @@ static char SuperPoolStr[] = "";
 //--------------------------------------------------------------------------------------------------
 static ColumnInfo_t MemPoolTableInfo[] =
 {
-    {"TOTAL BLKS",  "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0},
-    {"USED BLKS",   "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0},
-    {"MAX USED",    "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0},
-    {"OVERFLOWS",   "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0},
-    {"ALLOCS",      "%*s",  NULL, "%*"PRIu64"", sizeof(uint64_t),            false, 0},
-    {"BLK BYTES",   "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0},
-    {"USED BYTES",  "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0},
-    {"MEMORY POOL", "%-*s", NULL, "%-*s",       LIMIT_MAX_MEM_POOL_NAME_LEN, true,  0},
-    {"SUB-POOL",    "%*s",  NULL, "%*s",        0,                           true,  0}
+    {"TOTAL BLKS",  "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0, true},
+    {"USED BLKS",   "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0, true},
+    {"MAX USED",    "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0, true},
+    {"OVERFLOWS",   "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0, true},
+    {"ALLOCS",      "%*s",  NULL, "%*"PRIu64"", sizeof(uint64_t),            false, 0, true},
+    {"BLK BYTES",   "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0, true},
+    {"USED BYTES",  "%*s",  NULL, "%*zu",       sizeof(size_t),              false, 0, true},
+    {"MEMORY POOL", "%-*s", NULL, "%-*s",       LIMIT_MAX_MEM_POOL_NAME_LEN, true,  0, true},
+    {"SUB-POOL",    "%*s",  NULL, "%*s",        0,                           true,  0, true}
 };
 static size_t MemPoolTableInfoSize = NUM_ARRAY_MEMBERS(MemPoolTableInfo);
 
 static ColumnInfo_t ThreadObjTableInfo[] =
 {
-    {"NAME",             "%*s", NULL, "%*s",  MAX_THREAD_NAME_SIZE, true,  0},
-    {"JOINABLE",         "%*s", NULL, "%*u",  sizeof(bool),         false, 0},
-    {"STARTED",          "%*s", NULL, "%*u",  sizeof(bool),         false, 0},
-    {"DETACHSTATE",      "%*s", NULL, "%*s",  0,                    true,  0},
-    {"SCHED POLICY",     "%*s", NULL, "%*s",  0,                    true,  0},
-    {"SCHED PARAM",      "%*s", NULL, "%*u",  sizeof(int),          false, 0},
-    {"INHERIT SCHED",    "%*s", NULL, "%*s",  0,                    true,  0},
-    {"CONTENTION SCOPE", "%*s", NULL, "%*s",  0,                    true,  0},
-    {"GUARD SIZE",       "%*s", NULL, "%*zu", sizeof(size_t),       false, 0},
-    {"STACK ADDR",       "%*s", NULL, "%*X",  sizeof(uint64_t),     false, 0},
-    {"STACK SIZE",       "%*s", NULL, "%*zu", sizeof(size_t),       false, 0}
+    {"NAME",             "%*s", NULL, "%*s",  MAX_THREAD_NAME_SIZE, true,  0, true},
+    {"JOINABLE",         "%*s", NULL, "%*u",  sizeof(bool),         false, 0, true},
+    {"STARTED",          "%*s", NULL, "%*u",  sizeof(bool),         false, 0, true},
+    {"DETACHSTATE",      "%*s", NULL, "%*s",  0,                    true,  0, true},
+    {"SCHED POLICY",     "%*s", NULL, "%*s",  0,                    true,  0, true},
+    {"SCHED PARAM",      "%*s", NULL, "%*u",  sizeof(int),          false, 0, true},
+    {"INHERIT SCHED",    "%*s", NULL, "%*s",  0,                    true,  0, true},
+    {"CONTENTION SCOPE", "%*s", NULL, "%*s",  0,                    true,  0, true},
+    {"GUARD SIZE",       "%*s", NULL, "%*zu", sizeof(size_t),       false, 0, true},
+    {"STACK ADDR",       "%*s", NULL, "%*X",  sizeof(uint64_t),     false, 0, true},
+    {"STACK SIZE",       "%*s", NULL, "%*zu", sizeof(size_t),       false, 0, true}
 };
 static size_t ThreadObjTableInfoSize = NUM_ARRAY_MEMBERS(ThreadObjTableInfo);
 
 static ColumnInfo_t TimerTableInfo[] =
 {
-    {"NAME",         "%*s", NULL, "%*s",  LIMIT_MAX_TIMER_NAME_BYTES, true,  0},
-    {"INTERVAL",     "%*s", NULL, "%*f",  sizeof(double),             false, 0},
-    {"REPEAT COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0},
-    {"ISACTIVE",     "%*s", NULL, "%*u",  sizeof(bool),               false, 0},
-    {"EXPIRY TIME",  "%*s", NULL, "%*f",  sizeof(double),             false, 0},
-    {"EXPIRY COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0}
+    {"NAME",         "%*s", NULL, "%*s",  LIMIT_MAX_TIMER_NAME_BYTES, true,  0, true},
+    {"INTERVAL",     "%*s", NULL, "%*f",  sizeof(double),             false, 0, true},
+    {"REPEAT COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0, true},
+    {"ISACTIVE",     "%*s", NULL, "%*u",  sizeof(bool),               false, 0, true},
+    {"EXPIRY TIME",  "%*s", NULL, "%*f",  sizeof(double),             false, 0, true},
+    {"EXPIRY COUNT", "%*s", NULL, "%*u",  sizeof(uint32_t),           false, 0, true}
 };
 static size_t TimerTableInfoSize = NUM_ARRAY_MEMBERS(TimerTableInfo);
 
 static ColumnInfo_t MutexTableInfo[] =
 {
-    {"NAME",         "%*s", NULL, "%*s", MAX_NAME_BYTES,       true,  0},
-    {"LOCK COUNT",   "%*s", NULL, "%*d", sizeof(int),          false, 0},
-    {"RECURSIVE",    "%*s", NULL, "%*u", sizeof(bool),         false, 0},
-    {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE, true,  0}
+    {"NAME",         "%*s", NULL, "%*s", MAX_NAME_BYTES,       true,  0, true},
+    {"LOCK COUNT",   "%*s", NULL, "%*d", sizeof(int),          false, 0, true},
+    {"RECURSIVE",    "%*s", NULL, "%*u", sizeof(bool),         false, 0, true},
+    {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE, true,  0, true}
 };
 static size_t MutexTableInfoSize = NUM_ARRAY_MEMBERS(MutexTableInfo);
 
 static ColumnInfo_t SemaphoreTableInfo[] =
 {
-    {"NAME",         "%*s", NULL, "%*s", LIMIT_MAX_SEMAPHORE_NAME_BYTES, true,  0},
-    {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE,           true,  0}
+    {"NAME",         "%*s", NULL, "%*s", LIMIT_MAX_SEMAPHORE_NAME_BYTES, true,  0, true},
+    {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE,           true,  0, true}
 };
 static size_t SemaphoreTableInfoSize = NUM_ARRAY_MEMBERS(SemaphoreTableInfo);
+
+static ColumnInfo_t ServiceObjTableInfo[] =
+{
+    {"INTERFACE NAME", "%*s", NULL, "%*s",  LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, true,  0, true},
+    {"STATE",          "%*s", NULL, "%*s",  0,                                  true,  0, true},
+    {"THREAD NAME",    "%*s", NULL, "%*s",  MAX_THREAD_NAME_SIZE,               true,  0, true},
+    {"PROTOCOL ID",    "%*s", NULL, "%*s",  LIMIT_MAX_PROTOCOL_ID_BYTES,        true,  0, false},
+    {"MAX PAYLOAD",    "%*s", NULL, "%*zu", sizeof(size_t),                     false, 0, false},
+    {"FD",             "%*s", NULL, "%*d",  sizeof(int),                        false, 0, false}
+};
+static size_t ServiceObjTableInfoSize = NUM_ARRAY_MEMBERS(ServiceObjTableInfo);
+
+static ColumnInfo_t ClientObjTableInfo[] =
+{
+    {"INTERFACE NAME", "%*s", NULL, "%*s",  LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, true,  0, true},
+    {"PROTOCOL ID",    "%*s", NULL, "%*s",  LIMIT_MAX_PROTOCOL_ID_BYTES,        true,  0, false},
+    {"MAX PAYLOAD",    "%*s", NULL, "%*zu", sizeof(size_t),                     false, 0, false},
+};
+static size_t ClientObjTableInfoSize = NUM_ARRAY_MEMBERS(ClientObjTableInfo);
+
+static ColumnInfo_t SessionObjTableInfo[] =
+{
+    {"INTERFACE NAME", "%*s", NULL, "%*s", LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, true,  0, true},
+    {"STATE",          "%*s", NULL, "%*s", 0,                                  true,  0, true},
+    {"THREAD NAME",    "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE,               true,  0, true},
+    {"FD",             "%*s", NULL, "%*d", sizeof(int),                        false, 0, false}
+};
+static size_t SessionObjTableInfoSize = NUM_ARRAY_MEMBERS(SessionObjTableInfo);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1390,6 +1800,42 @@ static DefnStrMapping_t ThreadObjContentionScopeTbl[] =
     }
 };
 static int ThreadObjContentionScopeTblSize = NUM_ARRAY_MEMBERS(ThreadObjContentionScopeTbl);
+
+// service state
+static DefnStrMapping_t ServiceStateTbl[] =
+{
+    {
+        LE_MSG_INTERFACE_SERVICE_CONNECTING,
+        "connecting"
+    },
+    {
+        LE_MSG_INTERFACE_SERVICE_ADVERTISED,
+        "advertised"
+    },
+    {
+        LE_MSG_INTERFACE_SERVICE_HIDDEN,
+        "hidden"
+    }
+};
+static int ServiceStateTblSize = NUM_ARRAY_MEMBERS(ServiceStateTbl);
+
+// session state
+static DefnStrMapping_t SessionStateTbl[] =
+{
+    {
+        LE_MSG_SESSION_STATE_CLOSED,
+        "closed"
+    },
+    {
+        LE_MSG_SESSION_STATE_OPENING,
+        "waiting"
+    },
+    {
+        LE_MSG_SESSION_STATE_OPEN,
+        "open"
+    }
+};
+static int SessionStateTblSize = NUM_ARRAY_MEMBERS(SessionStateTbl);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1493,19 +1939,19 @@ static void InitDisplayTable
     {
         InitDisplayTableMaxDataSize("DETACHSTATE", table, tableSize,
                                     FindMaxStrSizeFromTable(ThreadObjDetachStateTbl,
-                                        NUM_ARRAY_MEMBERS(ThreadObjDetachStateTbl)));
+                                                            ThreadObjDetachStateTblSize));
 
         InitDisplayTableMaxDataSize("SCHED POLICY", table, tableSize,
                                     FindMaxStrSizeFromTable(ThreadObjSchedPolTbl,
-                                        NUM_ARRAY_MEMBERS(ThreadObjSchedPolTbl)));
+                                                            ThreadObjSchedPolTblSize));
 
         InitDisplayTableMaxDataSize("INHERIT SCHED", table, tableSize,
                                     FindMaxStrSizeFromTable(ThreadObjInheritSchedTbl,
-                                        NUM_ARRAY_MEMBERS(ThreadObjInheritSchedTbl)));
+                                                            ThreadObjInheritSchedTblSize));
 
         InitDisplayTableMaxDataSize("CONTENTION SCOPE", table, tableSize,
                                     FindMaxStrSizeFromTable(ThreadObjContentionScopeTbl,
-                                        NUM_ARRAY_MEMBERS(ThreadObjContentionScopeTbl)));
+                                                            ThreadObjContentionScopeTblSize));
     }
     else if (table == MemPoolTableInfo)
     {
@@ -1515,6 +1961,18 @@ static void InitDisplayTable
                                                                        superPoolStrLen;
         InitDisplayTableMaxDataSize("SUB-POOL", table, tableSize, subPoolColumnStrLen);
     }
+    else if (table == ServiceObjTableInfo)
+    {
+        InitDisplayTableMaxDataSize("STATE", table, tableSize,
+                                    FindMaxStrSizeFromTable(ServiceStateTbl,
+                                                            ServiceStateTblSize));
+    }
+    else if (table == SessionObjTableInfo)
+    {
+        InitDisplayTableMaxDataSize("STATE", table, tableSize,
+                                    FindMaxStrSizeFromTable(SessionStateTbl,
+                                                            SessionStateTblSize));
+    }
 
     int i;
     for (i = 0; i < tableSize; i++)
@@ -1523,7 +1981,9 @@ static void InitDisplayTable
 
         if (table[i].isString == false)
         {
-            int maxDataWidth = (int)log10(exp2(table[i].maxDataSize*8))+1;
+            // uint8_t should be plenty enough to store the number of digits of even uint64_t
+            // (which is 20). casting the result of log10 could overflow but highly unlikely.
+            uint8_t maxDataWidth = (uint8_t)log10(exp2(table[i].maxDataSize*8))+1;
             table[i].colWidth = (maxDataWidth > headerTextWidth) ? maxDataWidth : headerTextWidth;
         }
         else
@@ -1563,23 +2023,36 @@ static void InitDisplay
     {
         case INSPECT_INSP_TYPE_MEM_POOL:
             // Initialize the display tables with the optimal column widths.
-            InitDisplayTable(MemPoolTableInfo, NUM_ARRAY_MEMBERS(MemPoolTableInfo));
+            InitDisplayTable(MemPoolTableInfo, MemPoolTableInfoSize);
             break;
 
         case INSPECT_INSP_TYPE_THREAD_OBJ:
-            InitDisplayTable(ThreadObjTableInfo, NUM_ARRAY_MEMBERS(ThreadObjTableInfo));
+            InitDisplayTable(ThreadObjTableInfo, ThreadObjTableInfoSize);
             break;
 
         case INSPECT_INSP_TYPE_TIMER:
-            InitDisplayTable(TimerTableInfo, NUM_ARRAY_MEMBERS(TimerTableInfo));
+            InitDisplayTable(TimerTableInfo, TimerTableInfoSize);
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
-            InitDisplayTable(MutexTableInfo, NUM_ARRAY_MEMBERS(MutexTableInfo));
+            InitDisplayTable(MutexTableInfo, MutexTableInfoSize);
             break;
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
-            InitDisplayTable(SemaphoreTableInfo, NUM_ARRAY_MEMBERS(SemaphoreTableInfo));
+            InitDisplayTable(SemaphoreTableInfo, SemaphoreTableInfoSize);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS:
+            InitDisplayTable(ServiceObjTableInfo, ServiceObjTableInfoSize);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS:
+            InitDisplayTable(ClientObjTableInfo, ClientObjTableInfoSize);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            InitDisplayTable(SessionObjTableInfo, SessionObjTableInfoSize);
             break;
 
         default:
@@ -1604,9 +2077,14 @@ static void PrintHeader
     int i = 0;
     while (i < tableSize)
     {
-        index += snprintf((TableLineBuffer + index), (TableLineBytes - index),
-                          table[i].titleFormat, table[i].colWidth, table[i].colTitle);
-        index += snprintf((TableLineBuffer + index), (TableLineBytes - index), "%s", ColumnSpacers);
+        if ((table[i].isPrintSimple == true) || (IsVerbose == true))
+        {
+            index += snprintf((TableLineBuffer + index), (TableLineBytes - index),
+                              table[i].titleFormat, table[i].colWidth, table[i].colTitle);
+            index += snprintf((TableLineBuffer + index), (TableLineBytes - index), "%s",
+                              ColumnSpacers);
+        }
+
         i++;
     }
     puts(TableLineBuffer);
@@ -1629,9 +2107,14 @@ static void PrintInfo
     int i = 0;
     while (i < tableSize)
     {
-        index += snprintf((TableLineBuffer + index), (TableLineBytes - index), "%s",
-                          table[i].colField);
-        index += snprintf((TableLineBuffer + index), (TableLineBytes - index), "%s", ColumnSpacers);
+        if ((table[i].isPrintSimple == true) || (IsVerbose == true))
+        {
+            index += snprintf((TableLineBuffer + index), (TableLineBytes - index), "%s",
+                              table[i].colField);
+            index += snprintf((TableLineBuffer + index), (TableLineBytes - index), "%s",
+                              ColumnSpacers);
+        }
+
         i++;
     }
     puts(TableLineBuffer);
@@ -1685,7 +2168,7 @@ static ColumnInfo_t* GetNextColumn
 (
     ColumnInfo_t* table, ///< [IN] Table ref.
     size_t tableSize,    ///< [IN] Table size.
-    int* indexRef        ///< [OUT] Iterator to parse the table.
+    int* indexRef        ///< [IN/OUT] Iterator to parse the table.
 )
 {
     int i = *indexRef;
@@ -1720,7 +2203,7 @@ static int PrintInspectHeader
     size_t tableSize;
 
     // The size should accomodate the longest inspectTypeString.
-    #define inspectTypeStringSize 20
+    #define inspectTypeStringSize 40
     char inspectTypeString[inspectTypeStringSize];
     switch (InspectType)
     {
@@ -1754,6 +2237,30 @@ static int PrintInspectHeader
             tableSize = SemaphoreTableInfoSize;
             break;
 
+        case INSPECT_INSP_TYPE_IPC_SERVERS:
+            strncpy(inspectTypeString, "IPC Server Interface", inspectTypeStringSize);
+            table = ServiceObjTableInfo;
+            tableSize = ServiceObjTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS:
+            strncpy(inspectTypeString, "IPC Client Interface", inspectTypeStringSize);
+            table = ClientObjTableInfo;
+            tableSize = ClientObjTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+            strncpy(inspectTypeString, "IPC Server Interface Sessions", inspectTypeStringSize);
+            table = SessionObjTableInfo;
+            tableSize = SessionObjTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            strncpy(inspectTypeString, "IPC Client Interface Sessions", inspectTypeStringSize);
+            table = SessionObjTableInfo;
+            tableSize = SessionObjTableInfoSize;
+            break;
+
         default:
             INTERNAL_ERR("unexpected inspect type %d.", InspectType);
     }
@@ -1781,14 +2288,25 @@ static int PrintInspectHeader
 
         // Print the column headers.
         int i;
+        bool printed = false;
         for (i = 0; i < tableSize; i++)
         {
-            printf("\"%s\"", table[i].colTitle);
+            if ((table[i].isPrintSimple == true) || (IsVerbose == true))
+            {
+                if (printed == true)
+                {
+                    printf(",");
+                }
+                else
+                {
+                    printed = true;
+                }
 
-            // For the last item, print the closing square bracket and comma for "Headers".
-            // Otherwise print the comma separator.
-            printf((i == (tableSize - 1)) ? "]," : ",");
+                printf("\"%s\"", table[i].colTitle);
+            }
         }
+
+        printf("],");
 
         // Print the data of "InspectType", "PID", and the beginning of "Data".
         printf("\"InspectType\":\"%s\",\"PID\":\"%d\",\"Data\":[", inspectTypeString, PidToInspect);
@@ -1798,53 +2316,379 @@ static int PrintInspectHeader
 }
 
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * The FillColField and ExportJsonData macros are meant to be used in the various PrintXXXInfo
- * functions. The macros process the data before they can be output.
+ * The ExportXXXToJson and FillXXXColField families of functions are used by the PrintXXXInfo
+ * functions to output data in json format, or to print the "colField" string in the XXXTableInfo
+ * tables (which are to be later printed to the terminal), respectively.
  *
- * Since the "field" could be of various types, macros are used instead of X number of functions
- * each for a possible type.
+ * These functions provide type checking for the data to be printed, and properly format the data
+ * according to the formatting rules defined by the XXXTableInfo tables. They also determine of the
+ * data should be output or not based on the "verbose mode" setting.
+ *
+ * For each data type used by the XXXTableInfo tables, there should be a corresponding pairs of
+ * ExportXXXToJson and FillXXXColField functions.
  */
 //--------------------------------------------------------------------------------------------------
+
 //--------------------------------------------------------------------------------------------------
 /**
- * This macro fills the "colField" (Column field) of the supplied table. This prepares the table to
- * be printed in a human-readable format by PrintInfo.
- *
- * Note that the following needs to be prepared prior to using this macro:
- * - ColumnInfo_t* columnRef;
- * - int index = 0;
+ * The ExportXXXToJson family of functions.
  */
 //--------------------------------------------------------------------------------------------------
-#define FillColField(field, table, tableSize) \
-        columnRef = GetNextColumn(table, tableSize, &index); \
-        snprintf(columnRef->colField, (columnRef->colWidth + 1), columnRef->fieldFormat, \
-                 columnRef->colWidth, field);
+
+// The "array" can contain any valid json values, represented by strings.
+// Before calling this function, the formatting should have been taken cared of for the data in the
+// array.
+static void ExportArrayToJson
+(
+    char*         array,     ///< [IN] json array.
+    ColumnInfo_t* table,     ///< [IN] XXXTableInfo ref.
+    size_t        tableSize, ///< [IN] XXXTableInfo size.
+    int*          indexRef,  ///< [IN/OUT] iterator to parse the table.
+    bool*         printed    ///< [IN/OUT] if the first entry is printed. if so, print a leading
+                             ///<          comma for the current entry.
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf("%s", array);
+    }
+}
+
+// string
+// double quotes are added per json standard.
+static void ExportStrToJson
+(
+    char*         field,     ///< [IN] the data to be exported to json.
+    ColumnInfo_t* table,     ///< [IN] XXXTableInfo ref.
+    size_t        tableSize, ///< [IN] XXXTableInfo size.
+    int*          indexRef,  ///< [IN/OUT] iterator to parse the table.
+    bool*         printed    ///< [IN/OUT] if the first entry is printed. if so, print a leading
+                             ///<          comma for the current entry.
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf("\"");
+        printf(col->fieldFormat, 0, field);
+        printf("\"");
+    }
+}
+
+// Note that json has only a "number" type, so the export functions for all numbers such as size_t,
+// int, uint32_t, etc. should have the same function content.
+// size_t
+static void ExportSizeTToJson
+(
+    size_t        field, // param comments same as ExportStrToJson
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef,
+    bool*         printed
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf(col->fieldFormat, 0, field);
+    }
+}
+
+// int
+static void ExportIntToJson
+(
+    int           field, // param comments same as ExportStrToJson
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef,
+    bool*         printed
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf(col->fieldFormat, 0, field);
+    }
+}
+
+// double
+static void ExportDoubleToJson
+(
+    double        field, // param comments same as ExportStrToJson
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef,
+    bool*         printed
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf(col->fieldFormat, 0, field);
+    }
+}
+
+// uint32_t
+static void ExportUint32ToJson
+(
+    uint32_t      field, // param comments same as ExportStrToJson
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef,
+    bool*         printed
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf(col->fieldFormat, 0, field);
+    }
+}
+
+// uint64_t
+static void ExportUint64ToJson
+(
+    uint64_t      field, // param comments same as ExportStrToJson
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef,
+    bool*         printed
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        printf(col->fieldFormat, 0, field);
+    }
+}
+
+// bool
+// "true" or "false" are outputted per json standard.
+static void ExportBoolToJson
+(
+    bool          field, // param comments same as ExportStrToJson
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef,
+    bool*         printed
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (*printed == true)
+        {
+            printf(",");
+        }
+        else
+        {
+            *printed = true;
+        }
+
+        if (field == true)
+        {
+            printf("true");
+        }
+        else
+        {
+            printf("false");
+        }
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This macro prints the inspected results ("field") in the JSON format.
- *
- * Note that the following needs to be prepared prior to using this macro:
- * - ColumnInfo_t* columnRef;
- * - int index = 0;
- * - bool isDataJsonArray = false;
- *
- * Sometimes there are multiple data in a "field". In that case, set isDataJsonArray to true and
- * replace the string pointed to by "field" with another string that has these multiple data
- * arranged in a JSON array. The thread names in the waiting lists of PrintMutexInfo and
- * PrintSemaphoreInfo are examples.
+ * The FillXXXColField family of functions.
  */
 //--------------------------------------------------------------------------------------------------
-#define ExportJsonData(field, table, tableSize) \
-        columnRef = GetNextColumn(table, tableSize, &index); \
-        if (index == 1) printf("["); \
-        if ((columnRef->isString) && (!isDataJsonArray)) printf("\""); \
-        printf(columnRef->fieldFormat, 0, field); \
-        if ((columnRef->isString) && (!isDataJsonArray)) printf("\""); \
-        if (index == (tableSize)) printf("]"); else printf(",");
+
+// string
+static void FillStrColField
+(
+    char*         field,     ///< [IN] the data to be printed to the ColField of the table.
+    ColumnInfo_t* table,     ///< [IN] XXXTableInfo ref.
+    size_t        tableSize, ///< [IN] XXXTableInfo size.
+    int*          indexRef   ///< [IN/OUT] iterator to parse the table.
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        snprintf(col->colField, (col->colWidth + 1), col->fieldFormat, col->colWidth, field);
+    }
+}
+
+// size_t
+static void FillSizeTColField
+(
+    size_t        field, // param comments same as FillStrColField
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        snprintf(col->colField, (col->colWidth + 1), col->fieldFormat, col->colWidth, field);
+    }
+}
+
+// int
+static void FillIntColField
+(
+    int           field, // param comments same as FillStrColField
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        snprintf(col->colField, (col->colWidth + 1), col->fieldFormat, col->colWidth, field);
+    }
+}
+
+// double
+static void FillDoubleColField
+(
+    double        field, // param comments same as FillStrColField
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        snprintf(col->colField, (col->colWidth + 1), col->fieldFormat, col->colWidth, field);
+    }
+}
+
+// uint32_t
+static void FillUint32ColField
+(
+    uint32_t      field, // param comments same as FillStrColField
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        snprintf(col->colField, (col->colWidth + 1), col->fieldFormat, col->colWidth, field);
+    }
+}
+
+// uint64_t
+static void FillUint64ColField
+(
+    uint64_t      field, // param comments same as FillStrColField
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        snprintf(col->colField, (col->colWidth + 1), col->fieldFormat, col->colWidth, field);
+    }
+}
+
+// bool
+// "T" or "F" are printed instead of "1" or "0".
+static void FillBoolColField
+(
+    bool          field, // param comments same as FillStrColField
+    ColumnInfo_t* table,
+    size_t        tableSize,
+    int*          indexRef
+)
+{
+    ColumnInfo_t* col = GetNextColumn(table, tableSize, indexRef);
+    if ((col->isPrintSimple == true) || (IsVerbose == true))
+    {
+        if (field == true)
+        {
+            snprintf(col->colField, (col->colWidth + 1), "%*s", col->colWidth, "T");
+        }
+        else
+        {
+            snprintf(col->colField, (col->colWidth + 1), "%*s", col->colWidth, "F");
+        }
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1882,30 +2726,32 @@ static int PrintMemPoolInfo
     INTERNAL_ERR_IF(le_mem_GetName(memPool, name, sizeof(name)) != LE_OK,
                     "Name buffer is too small.");
 
-    // Needed for the macros
-    ColumnInfo_t* columnRef;
+    // Output mem pool info
     int index = 0;
-    bool isDataJsonArray = false;
-
-    // NOTE that the order has to correspond to the column orders in the corresponding table. Since
-    // this order is "hardcoded" in a sense, one should avoid having multiple copies of these. The
-    // same applies to other PrintXXXInfo functions.
-    #define ProcessData \
-        P(le_mem_GetObjectCount(memPool),       MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(poolStats.numBlocksInUse,             MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(poolStats.maxNumBlocksUsed,           MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(poolStats.numOverflows,               MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(poolStats.numAllocs,                  MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(blockSize,                            MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(blockSize*(poolStats.numBlocksInUse), MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(name,                                 MemPoolTableInfo, MemPoolTableInfoSize); \
-        P(subPoolStr,                           MemPoolTableInfo, MemPoolTableInfoSize);
 
     if (!IsOutputJson)
     {
-        #define P FillColField
-        ProcessData
-        #undef P
+        // NOTE that the order has to correspond to the column orders in the corresponding table. Since
+        // this order is "hardcoded" in a sense, one should avoid having multiple copies of these. The
+        // same applies to other PrintXXXInfo functions.
+        FillSizeTColField (le_mem_GetObjectCount(memPool),       MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillSizeTColField (poolStats.numBlocksInUse,             MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillSizeTColField (poolStats.maxNumBlocksUsed,           MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillSizeTColField (poolStats.numOverflows,               MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillUint64ColField(poolStats.numAllocs,                  MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillSizeTColField (blockSize,                            MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillSizeTColField (blockSize*(poolStats.numBlocksInUse), MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillStrColField   (name,                                 MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
+        FillStrColField   (subPoolStr,                           MemPoolTableInfo,
+                                                                 MemPoolTableInfoSize, &index);
 
         PrintInfo(MemPoolTableInfo, MemPoolTableInfoSize);
         lineCount++;
@@ -1922,12 +2768,31 @@ static int PrintMemPoolInfo
             IsPrintedNodeFirst = false;
         }
 
-        #define P ExportJsonData
-        ProcessData
-        #undef P
-    }
+        bool printed = false;
 
-    #undef ProcessData
+        printf("[");
+
+        ExportSizeTToJson (le_mem_GetObjectCount(memPool),  MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportSizeTToJson (poolStats.numBlocksInUse,        MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportSizeTToJson (poolStats.maxNumBlocksUsed,      MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportSizeTToJson (poolStats.numOverflows,          MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportUint64ToJson(poolStats.numAllocs,             MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportSizeTToJson (blockSize,                       MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportSizeTToJson (blockSize*(poolStats.numBlocksInUse), MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportStrToJson   (name,                            MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+        ExportStrToJson   (subPoolStr,                      MemPoolTableInfo,
+                                                            MemPoolTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
 
     return lineCount;
 }
@@ -1979,7 +2844,7 @@ static int PrintThreadObjInfo
     {
         INTERNAL_ERR("pthread_attr_getscope failed.");
     }
-   char* contentionScopeStr = DefnToStr(contentionScope, ThreadObjContentionScopeTbl,
+    char* contentionScopeStr = DefnToStr(contentionScope, ThreadObjContentionScopeTbl,
                                          ThreadObjContentionScopeTblSize);
 
     size_t guardSize;
@@ -1995,29 +2860,33 @@ static int PrintThreadObjInfo
         INTERNAL_ERR("pthread_attr_getstack failed.");
     }
 
-
-    ColumnInfo_t* columnRef;
+    // Output thread object info
     int index = 0;
-    bool isDataJsonArray = false;
-
-    #define ProcessData \
-        P(threadObjRef->name,        ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(threadObjRef->isJoinable,  ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P((threadObjRef->state != THREAD_STATE_NEW), ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(detachStateStr,            ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(schedPolicyStr,            ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(schedParam.sched_priority, ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(inheritSchedStr,           ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(contentionScopeStr,        ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(guardSize,                 ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(stackAddr[0],              ThreadObjTableInfo, ThreadObjTableInfoSize); \
-        P(stackSize,                 ThreadObjTableInfo, ThreadObjTableInfoSize);
 
     if (!IsOutputJson)
     {
-        #define P FillColField
-        ProcessData
-        #undef P
+        FillStrColField   (threadObjRef->name,                      ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillBoolColField  (threadObjRef->isJoinable,                ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillBoolColField  ((threadObjRef->state != THREAD_STATE_NEW), ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillStrColField   (detachStateStr,                          ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillStrColField   (schedPolicyStr,                          ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillIntColField   (schedParam.sched_priority,               ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillStrColField   (inheritSchedStr,                         ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillStrColField   (contentionScopeStr,                      ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillSizeTColField (guardSize,                               ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillUint64ColField(stackAddr[0],                            ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
+        FillSizeTColField (stackSize,                               ThreadObjTableInfo,
+                                                                    ThreadObjTableInfoSize, &index);
 
         PrintInfo(ThreadObjTableInfo, ThreadObjTableInfoSize);
         lineCount++;
@@ -2034,12 +2903,35 @@ static int PrintThreadObjInfo
             IsPrintedNodeFirst = false;
         }
 
-        #define P ExportJsonData
-        ProcessData
-        #undef P
-    }
+        bool printed = false;
 
-    #undef ProcessData
+        printf("[");
+
+        ExportStrToJson   (threadObjRef->name,            ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportBoolToJson  (threadObjRef->isJoinable,      ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportBoolToJson  ((threadObjRef->state != THREAD_STATE_NEW), ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportStrToJson   (detachStateStr,                ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportStrToJson   (schedPolicyStr,                ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportIntToJson   (schedParam.sched_priority,     ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportStrToJson   (inheritSchedStr,               ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportStrToJson   (contentionScopeStr,            ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportSizeTToJson (guardSize,                     ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportUint64ToJson(stackAddr[0],                  ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+        ExportSizeTToJson (stackSize,                     ThreadObjTableInfo,
+                                                          ThreadObjTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
 
     return lineCount;
 }
@@ -2060,23 +2952,17 @@ static int PrintTimerInfo
     double expiryTime = (double)timerRef->expiryTime.sec +
                         ((double)timerRef->expiryTime.usec / 1000000);
 
-    ColumnInfo_t* columnRef;
+    // Output timer info
     int index = 0;
-    bool isDataJsonArray = false;
-
-    #define ProcessData \
-        P(timerRef->name,        TimerTableInfo, TimerTableInfoSize); \
-        P(interval,              TimerTableInfo, TimerTableInfoSize); \
-        P(timerRef->repeatCount, TimerTableInfo, TimerTableInfoSize); \
-        P(timerRef->isActive,    TimerTableInfo, TimerTableInfoSize); \
-        P(expiryTime,            TimerTableInfo, TimerTableInfoSize); \
-        P(timerRef->expiryCount, TimerTableInfo, TimerTableInfoSize);
 
     if (!IsOutputJson)
     {
-        #define P FillColField
-        ProcessData
-        #undef P
+        FillStrColField   (timerRef->name,        TimerTableInfo, TimerTableInfoSize, &index);
+        FillDoubleColField(interval,              TimerTableInfo, TimerTableInfoSize, &index);
+        FillUint32ColField(timerRef->repeatCount, TimerTableInfo, TimerTableInfoSize, &index);
+        FillBoolColField  (timerRef->isActive,    TimerTableInfo, TimerTableInfoSize, &index);
+        FillDoubleColField(expiryTime,            TimerTableInfo, TimerTableInfoSize, &index);
+        FillUint32ColField(timerRef->expiryCount, TimerTableInfo, TimerTableInfoSize, &index);
 
         PrintInfo(TimerTableInfo, TimerTableInfoSize);
         lineCount++;
@@ -2093,12 +2979,25 @@ static int PrintTimerInfo
             IsPrintedNodeFirst = false;
         }
 
-        #define P ExportJsonData
-        ProcessData
-        #undef P
-    }
+        bool printed = false;
 
-    #undef ProcessData
+        printf("[");
+
+        ExportStrToJson   (timerRef->name,        TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+        ExportDoubleToJson(interval,              TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+        ExportUint32ToJson(timerRef->repeatCount, TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+        ExportBoolToJson  (timerRef->isActive,    TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+        ExportDoubleToJson(expiryTime,            TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+        ExportUint32ToJson(timerRef->expiryCount, TimerTableInfo,
+                                                  TimerTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
 
     return lineCount;
 }
@@ -2110,7 +3009,7 @@ static int PrintTimerInfo
  */
 //--------------------------------------------------------------------------------------------------
 // Given a waiting list link ptr, get a ptr to the thread record
-static mutex_ThreadRec_t* GetMutexThreadRecPtr
+static void* GetMutexThreadRecPtr
 (
     le_dls_Link_t* currNodeLinkPtr  ///< [IN] waiting list link ptr.
 )
@@ -2121,14 +3020,14 @@ static mutex_ThreadRec_t* GetMutexThreadRecPtr
 // Given a thread rec ptr, get a ptr to the thread obj
 static thread_Obj_t* GetThreadPtrFromMutexLink
 (
-    mutex_ThreadRec_t* currNodePtr  ///< [IN] thread record ptr.
+    void* currNodePtr  ///< [IN] thread record ptr.
 )
 {
     return CONTAINER_OF(currNodePtr, thread_Obj_t, mutexRec);
 }
 
 // Given a waiting list link ptr, get a ptr to the thread record
-static sem_ThreadRec_t* GetSemThreadRecPtr
+static void* GetSemThreadRecPtr
 (
     le_dls_Link_t* currNodeLinkPtr  ///< [IN] waiting list link ptr.
 )
@@ -2139,7 +3038,7 @@ static sem_ThreadRec_t* GetSemThreadRecPtr
 // Given a thread rec ptr, get a ptr to the thread obj
 static thread_Obj_t* GetThreadPtrFromSemLink
 (
-    sem_ThreadRec_t* currNodePtr    ///< [IN] thread record ptr.
+    void* currNodePtr    ///< [IN] thread record ptr.
 )
 {
     return CONTAINER_OF(currNodePtr, thread_Obj_t, semaphoreRec);
@@ -2184,11 +3083,8 @@ static void GetWaitingListThreadNames
     int* threadNameNumPtr            ///< [OUT] Number of thread names written to the array.
 )
 {
-    typedef void* (*GetThreadRecPtrFunc_t)(le_dls_Link_t* currNodeLinkPtr);
-    typedef thread_Obj_t* (*GetThreadPtrFromLinkFunc_t)(void* currNodePtr);
-
-    GetThreadRecPtrFunc_t getThreadRecPtrFunc;
-    GetThreadPtrFromLinkFunc_t getThreadPtrFromLinkFunc;
+    void* (*getThreadRecPtrFunc)(le_dls_Link_t* currNodeLinkPtr);
+    thread_Obj_t* (*getThreadPtrFromLinkFunc)(void* currNodePtr);
 
     // Generalization of the thread records containing waiting lists.
     typedef union
@@ -2203,14 +3099,14 @@ static void GetWaitingListThreadNames
     switch (inspectType)
     {
         case INSPECT_INSP_TYPE_MUTEX:
-            getThreadRecPtrFunc      = (GetThreadRecPtrFunc_t)     GetMutexThreadRecPtr;
-            getThreadPtrFromLinkFunc = (GetThreadPtrFromLinkFunc_t)GetThreadPtrFromMutexLink;
+            getThreadRecPtrFunc      = GetMutexThreadRecPtr;
+            getThreadPtrFromLinkFunc = GetThreadPtrFromMutexLink;
             threadRecSize = sizeof(mutex_ThreadRec_t);
             break;
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
-            getThreadRecPtrFunc      = (GetThreadRecPtrFunc_t)     GetSemThreadRecPtr;
-            getThreadPtrFromLinkFunc = (GetThreadPtrFromLinkFunc_t)GetThreadPtrFromSemLink;
+            getThreadRecPtrFunc      = GetSemThreadRecPtr;
+            getThreadPtrFromLinkFunc = GetThreadPtrFromSemLink;
             threadRecSize = sizeof(sem_ThreadRec_t);
             break;
 
@@ -2228,8 +3124,6 @@ static void GetWaitingListThreadNames
     ThreadRec_t localThreadRecCopy;
     thread_Obj_t localThreadObjCopy;
 
-    int fd = OpenProcMemFile(PidToInspect);
-
     // Clear the thread name.
     memset(localThreadObjCopy.name, 0, sizeof(localThreadObjCopy.name));
 
@@ -2241,7 +3135,7 @@ static void GetWaitingListThreadNames
         currThreadPtr = getThreadPtrFromLinkFunc(currNodePtr);
 
         // Read the thread obj into the local memory.
-        if (fd_ReadFromOffset(fd, (ssize_t)currThreadPtr, &localThreadObjCopy,
+        if (fd_ReadFromOffset(FdProcMem, (ssize_t)currThreadPtr, &localThreadObjCopy,
                               sizeof(localThreadObjCopy)) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
@@ -2259,7 +3153,7 @@ static void GetWaitingListThreadNames
 
         // Get the ptr to the the next node link on the waiting list, by reading the thread record
         // to the local memory first. GetNextLink must operate on a ref to a locally existing link.
-        if (fd_ReadFromOffset(fd, (ssize_t)currNodePtr, &localThreadRecCopy, threadRecSize) !=
+        if (fd_ReadFromOffset(FdProcMem, (ssize_t)currNodePtr, &localThreadRecCopy, threadRecSize) !=
             LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread record with waiting list"));
@@ -2270,7 +3164,6 @@ static void GetWaitingListThreadNames
         currNodeLinkPtr = GetNextLink(&waitingList, &waitingListLink);
     }
 
-    fd_Close(fd);
     *threadNameNumPtr = i;
 }
 
@@ -2361,22 +3254,15 @@ static int PrintMutexInfo
     GetWaitingListThreadNames(INSPECT_INSP_TYPE_MUTEX, mutexRef->waitingList, waitingThreadNames,
                               MAX_THREADS, &i);
 
-    ColumnInfo_t* columnRef;
+    // Output mutex info
     int index = 0;
-    bool isDataJsonArray = false;
-
-    #define ProcessData \
-        P(mutexRef->name,        MutexTableInfo, MutexTableInfoSize); \
-        P(mutexRef->lockCount,   MutexTableInfo, MutexTableInfoSize); \
-        P(mutexRef->isRecursive, MutexTableInfo, MutexTableInfoSize); \
-        isDataJsonArray = true; \
-        P(waitingThreadNames[0], MutexTableInfo, MutexTableInfoSize);
 
     if (!IsOutputJson)
     {
-        #define P FillColField
-        ProcessData
-        #undef P
+        FillStrColField (mutexRef->name,        MutexTableInfo, MutexTableInfoSize, &index);
+        FillIntColField (mutexRef->lockCount,   MutexTableInfo, MutexTableInfoSize, &index);
+        FillBoolColField(mutexRef->isRecursive, MutexTableInfo, MutexTableInfoSize, &index);
+        FillStrColField (waitingThreadNames[0], MutexTableInfo, MutexTableInfoSize, &index);
 
         PrintInfo(MutexTableInfo, MutexTableInfoSize);
         lineCount++;
@@ -2406,14 +3292,21 @@ static int PrintMutexInfo
             IsPrintedNodeFirst = false;
         }
 
-        #define P ExportJsonData
-        #define waitingThreadNames &waitingThreadJsonArray
-        ProcessData
-        #undef waitingThreadNames
-        #undef P
-    }
+        bool printed = false;
 
-    #undef ProcessData
+        printf("[");
+
+        ExportStrToJson  (mutexRef->name,         MutexTableInfo,
+                                                  MutexTableInfoSize, &index, &printed);
+        ExportIntToJson  (mutexRef->lockCount,    MutexTableInfo,
+                                                  MutexTableInfoSize, &index, &printed);
+        ExportBoolToJson (mutexRef->isRecursive,  MutexTableInfo,
+                                                  MutexTableInfoSize, &index, &printed);
+        ExportArrayToJson(waitingThreadJsonArray, MutexTableInfo,
+                                                  MutexTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
 
     return lineCount;
 }
@@ -2437,20 +3330,13 @@ static int PrintSemaphoreInfo
     GetWaitingListThreadNames(INSPECT_INSP_TYPE_SEMAPHORE, semaphoreRef->waitingList,
                               waitingThreadNames, MAX_THREADS, &i);
 
-    ColumnInfo_t* columnRef;
+    // Output semaphore info
     int index = 0;
-    bool isDataJsonArray = false;
-
-    #define ProcessData \
-        P(semaphoreRef->nameStr,     SemaphoreTableInfo, SemaphoreTableInfoSize); \
-        isDataJsonArray = true; \
-        P(waitingThreadNames[0],     SemaphoreTableInfo, SemaphoreTableInfoSize);
 
     if (!IsOutputJson)
     {
-        #define P FillColField
-        ProcessData
-        #undef P
+        FillStrColField(semaphoreRef->nameStr, SemaphoreTableInfo, SemaphoreTableInfoSize, &index);
+        FillStrColField(waitingThreadNames[0], SemaphoreTableInfo, SemaphoreTableInfoSize, &index);
 
         PrintInfo(SemaphoreTableInfo, SemaphoreTableInfoSize);
         lineCount++;
@@ -2480,14 +3366,281 @@ static int PrintSemaphoreInfo
             IsPrintedNodeFirst = false;
         }
 
-        #define P ExportJsonData
-        #define waitingThreadNames &waitingThreadJsonArray
-        ProcessData
-        #undef waitingThreadNames
-        #undef P
+        bool printed = false;
+
+        printf("[");
+
+        ExportStrToJson  (semaphoreRef->nameStr,  SemaphoreTableInfo,
+                                                  SemaphoreTableInfoSize, &index, &printed);
+        ExportArrayToJson(waitingThreadJsonArray, SemaphoreTableInfo,
+                                                  SemaphoreTableInfoSize, &index, &printed);
+
+        printf("]");
     }
 
-    #undef ProcessData
+    return lineCount;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Look up the thread name associated with the thread object safe ref being passed in. If there's no
+ * match, the out buffer is emptied.
+ */
+//--------------------------------------------------------------------------------------------------
+static void LookupThreadName
+(
+    size_t threadObjSafeRefAddr,   ///< [IN] thread obj safe ref used to look up thread name.
+    char* threadObjNameBuffer,     ///< [OUT] out buffer to stored the thread name.
+    size_t threadObjNameBufferSize ///< [IN] size of the out buffer.
+)
+{
+    ThreadObjIter_Ref_t threadObjIterRef = CreateThreadObjIter();
+    thread_Obj_t* threadObjRef = NULL;
+
+    do
+    {
+        threadObjRef = GetNextThreadObj(threadObjIterRef);
+
+        if (threadObjSafeRefAddr == (size_t)threadObjRef->safeRef)
+        {
+            // copy thread name to the out buffer
+            strncpy(threadObjNameBuffer, threadObjRef->name, threadObjNameBufferSize);
+            return;
+        }
+    }
+    while (threadObjRef != NULL);
+
+    // thread name not found; zero-out the out buffer.
+    memset(threadObjNameBuffer, 0, threadObjNameBufferSize);
+
+    // delete the thread object iterator ref.
+    le_mem_Release(threadObjIterRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print service object information to stdout.
+ */
+//--------------------------------------------------------------------------------------------------
+static int PrintServiceObjInfo
+(
+    msgInterface_Service_t* serviceObjRef   ///< [IN] ref to service obj to be printed.
+)
+{
+    int lineCount = 0;
+
+    // Retrieve the protocol object.
+    msgProtocol_Protocol_t protocol;
+
+    // Read the protocol object into our own memory.
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)serviceObjRef->interface.id.protocolRef, &protocol,
+                          sizeof(protocol)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("protocol object"));
+    }
+
+    // Convert the service state to a meaningful string.
+    char* serviceStateStr = DefnToStr(serviceObjRef->state, ServiceStateTbl, ServiceStateTblSize);
+
+    // Retrieve the thread name
+    char threadName[MAX_THREAD_NAME_SIZE] = {0};
+    LookupThreadName((size_t)serviceObjRef->serverThread, threadName, MAX_THREAD_NAME_SIZE);
+
+    // Output service object info
+    int index = 0;
+
+    if (!IsOutputJson)
+    {
+        FillStrColField  (serviceObjRef->interface.id.name, ServiceObjTableInfo,
+                                                            ServiceObjTableInfoSize, &index);
+        FillStrColField  (serviceStateStr,                  ServiceObjTableInfo,
+                                                            ServiceObjTableInfoSize, &index);
+        FillStrColField  (threadName,                       ServiceObjTableInfo,
+                                                            ServiceObjTableInfoSize, &index);
+        FillStrColField  (protocol.id,                      ServiceObjTableInfo,
+                                                            ServiceObjTableInfoSize, &index);
+        FillSizeTColField(protocol.maxPayloadSize,          ServiceObjTableInfo,
+                                                            ServiceObjTableInfoSize, &index);
+        FillIntColField  (serviceObjRef->directorySocketFd, ServiceObjTableInfo,
+                                                            ServiceObjTableInfoSize, &index);
+
+        PrintInfo(ServiceObjTableInfo, ServiceObjTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
+
+        bool printed = false;
+
+        printf("[");
+
+        ExportStrToJson  (serviceObjRef->interface.id.name, ServiceObjTableInfo,
+                                                         ServiceObjTableInfoSize, &index, &printed);
+        ExportStrToJson  (serviceStateStr,               ServiceObjTableInfo,
+                                                         ServiceObjTableInfoSize, &index, &printed);
+        ExportStrToJson  (threadName,                    ServiceObjTableInfo,
+                                                         ServiceObjTableInfoSize, &index, &printed);
+        ExportStrToJson  (protocol.id,                   ServiceObjTableInfo,
+                                                         ServiceObjTableInfoSize, &index, &printed);
+        ExportSizeTToJson(protocol.maxPayloadSize,       ServiceObjTableInfo,
+                                                         ServiceObjTableInfoSize, &index, &printed);
+        ExportIntToJson  (serviceObjRef->directorySocketFd, ServiceObjTableInfo,
+                                                         ServiceObjTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
+
+    return lineCount;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print client interface object information to stdout.
+ */
+//--------------------------------------------------------------------------------------------------
+static int PrintClientObjInfo
+(
+    msgInterface_ClientInterface_t* clientObjRef   ///< [IN] ref to client i/f obj to be printed.
+)
+{
+    int lineCount = 0;
+
+    // Retrieve the protocol object. Read the protocol object into our own memory.
+    msgProtocol_Protocol_t protocol;
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)clientObjRef->interface.id.protocolRef, &protocol,
+                          sizeof(protocol)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("protocol object"));
+    }
+
+    // Output client object info
+    int index = 0;
+
+    if (!IsOutputJson)
+    {
+        FillStrColField  (clientObjRef->interface.id.name, ClientObjTableInfo,
+                                                           ClientObjTableInfoSize, &index);
+        FillStrColField  (protocol.id,                     ClientObjTableInfo,
+                                                           ClientObjTableInfoSize, &index);
+        FillSizeTColField(protocol.maxPayloadSize,         ClientObjTableInfo,
+                                                           ClientObjTableInfoSize, &index);
+
+        PrintInfo(ClientObjTableInfo, ClientObjTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
+
+        bool printed = false;
+
+        printf("[");
+
+        ExportStrToJson  (clientObjRef->interface.id.name, ClientObjTableInfo,
+                                                          ClientObjTableInfoSize, &index, &printed);
+        ExportStrToJson  (protocol.id,                    ClientObjTableInfo,
+                                                          ClientObjTableInfoSize, &index, &printed);
+        ExportSizeTToJson(protocol.maxPayloadSize,        ClientObjTableInfo,
+                                                          ClientObjTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
+
+    return lineCount;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print session object information to stdout.
+ */
+//--------------------------------------------------------------------------------------------------
+static int PrintSessionObjInfo
+(
+    msgSession_Session_t* sessionObjRef ///< [IN] ref to session obj to be printed.
+)
+{
+    int lineCount = 0;
+
+    // Convert the session state to a meaningful string.
+    char* sessionStateStr = DefnToStr(sessionObjRef->state, SessionStateTbl, SessionStateTblSize);
+
+    // Retrieve the interface object. Read the interface object into our own memory.
+    msgInterface_Interface_t interface;
+    if (fd_ReadFromOffset(FdProcMem, (ssize_t)sessionObjRef->interfaceRef, &interface,
+                          sizeof(interface)) != LE_OK)
+    {
+        INTERNAL_ERR(REMOTE_READ_ERR("interface object"));
+    }
+
+    // Retrieve the thread name
+    char threadName[MAX_THREAD_NAME_SIZE] = {0};
+    LookupThreadName((size_t)sessionObjRef->threadRef, threadName, MAX_THREAD_NAME_SIZE);
+
+    // Output session object info
+    int index = 0;
+
+    if (!IsOutputJson)
+    {
+        FillStrColField(interface.id.name,       SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index);
+        FillStrColField(sessionStateStr,         SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index);
+        FillStrColField(threadName,              SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index);
+        FillIntColField(sessionObjRef->socketFd, SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index);
+
+        PrintInfo(SessionObjTableInfo, SessionObjTableInfoSize);
+        lineCount++;
+    }
+    else
+    {
+        // If it's not the first time, print a comma.
+        if (!IsPrintedNodeFirst)
+        {
+            printf(",");
+        }
+        else
+        {
+            IsPrintedNodeFirst = false;
+        }
+
+        bool printed = false;
+
+        printf("[");
+
+        ExportStrToJson(interface.id.name,       SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index, &printed);
+        ExportStrToJson(sessionStateStr,         SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index, &printed);
+        ExportStrToJson(threadName,              SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index, &printed);
+        ExportIntToJson(sessionObjRef->socketFd, SessionObjTableInfo,
+                                                 SessionObjTableInfoSize, &index, &printed);
+
+        printf("]");
+    }
 
     return lineCount;
 }
@@ -2597,68 +3750,81 @@ static int InspectEndHandling
 //--------------------------------------------------------------------------------------------------
 static void InspectFunc
 (
-    InspType_t inspectType, ///< [IN] What to inspect.
-    pid_t pid                       ///< [IN] For what process is the inspection carried out.
+    InspType_t inspectType ///< [IN] What to inspect.
 )
 {
     // function prototype for the CreateXXXIter family.
-    typedef void* (*CreateIterFunc_t)(pid_t pid);
+    typedef void* (*CreateIterFunc_t)(void);
     // function prototype for the GetXXXListChgCnt family.
     typedef size_t (*GetListChgCntFunc_t)(void* iterRef);
     // function prototype for the GetNextXXX family.
     typedef void* (*GetNextNodeFunc_t)(void* iterRef);
-    // Function prototype for the DeleteXXXIter family.
-    typedef void (*DeleteIterFunc_t)(void* iterRef);
     // Function prototype for the PrintXXXInfo family.
     typedef int (*PrintNodeInfoFunc_t)(void* nodeRef);
 
     CreateIterFunc_t createIterFunc;
     GetListChgCntFunc_t getListChgCntFunc;
     GetNextNodeFunc_t getNextNodeFunc;
-    DeleteIterFunc_t deleteIterFunc;
     PrintNodeInfoFunc_t printNodeInfoFunc;
 
     // assigns the appropriate set of functions according to the inspection type.
     switch (inspectType)
     {
         case INSPECT_INSP_TYPE_MEM_POOL:
-            createIterFunc          = (CreateIterFunc_t)         CreateMemPoolIter;
-            getListChgCntFunc       = (GetListChgCntFunc_t)      GetMemPoolListChgCnt;
-            getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextMemPool;
-            deleteIterFunc          = (DeleteIterFunc_t)         DeleteMemPoolIter;
-            printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintMemPoolInfo;
+            createIterFunc    = (CreateIterFunc_t)    CreateMemPoolIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetMemPoolListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextMemPool;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintMemPoolInfo;
             break;
 
         case INSPECT_INSP_TYPE_THREAD_OBJ:
-            createIterFunc          = (CreateIterFunc_t)         CreateThreadObjIter;
-            getListChgCntFunc       = (GetListChgCntFunc_t)      GetThreadObjListChgCnt;
-            getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextThreadObj;
-            deleteIterFunc          = (DeleteIterFunc_t)         DeleteThreadObjIter;
-            printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintThreadObjInfo;
+            createIterFunc    = (CreateIterFunc_t)    CreateThreadObjIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetThreadObjListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextThreadObj;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintThreadObjInfo;
             break;
 
         case INSPECT_INSP_TYPE_TIMER:
-            createIterFunc          = (CreateIterFunc_t)         CreateTimerIter;
-            getListChgCntFunc       = (GetListChgCntFunc_t)      GetThreadMemberObjListChgCnt;
-            getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextTimer;
-            deleteIterFunc          = (DeleteIterFunc_t)         DeleteTimerIter;
-            printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintTimerInfo;
+            createIterFunc    = (CreateIterFunc_t)    CreateTimerIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetThreadMemberObjListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextTimer;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintTimerInfo;
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
-            createIterFunc          = (CreateIterFunc_t)         CreateMutexIter;
-            getListChgCntFunc       = (GetListChgCntFunc_t)      GetThreadMemberObjListChgCnt;
-            getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextMutex;
-            deleteIterFunc          = (DeleteIterFunc_t)         DeleteMutexIter;
-            printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintMutexInfo;
+            createIterFunc    = (CreateIterFunc_t)    CreateMutexIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetThreadMemberObjListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextMutex;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintMutexInfo;
             break;
 
         case INSPECT_INSP_TYPE_SEMAPHORE:
-            createIterFunc          = (CreateIterFunc_t)         CreateSemaphoreIter;
-            getListChgCntFunc       = (GetListChgCntFunc_t)      GetThreadMemberObjListChgCnt;
-            getNextNodeFunc         = (GetNextNodeFunc_t)        GetNextSemaphore;
-            deleteIterFunc          = (DeleteIterFunc_t)         DeleteSemaphoreIter;
-            printNodeInfoFunc       = (PrintNodeInfoFunc_t)      PrintSemaphoreInfo;
+            createIterFunc    = (CreateIterFunc_t)    CreateSemaphoreIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetThreadMemberObjListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextSemaphore;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintSemaphoreInfo;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS:
+            createIterFunc    = (CreateIterFunc_t)    CreateServiceObjIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetInterfaceObjMapChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextServiceObj;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintServiceObjInfo;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS:
+            createIterFunc    = (CreateIterFunc_t)    CreateClientObjIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetInterfaceObjMapChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextClientObj;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintClientObjInfo;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            createIterFunc    = (CreateIterFunc_t)    CreateSessionObjIter;
+            getListChgCntFunc = (GetListChgCntFunc_t) GetSessionListChgCnt;
+            getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextSessionObj;
+            printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintSessionObjInfo;
             break;
 
         default:
@@ -2666,7 +3832,7 @@ static void InspectFunc
     }
 
     // Create an iterator.
-    void* iterRef = createIterFunc(pid);
+    void* iterRef = createIterFunc();
 
     static int lineCount = 0;
 
@@ -2713,7 +3879,10 @@ static void InspectFunc
         lineCount += InspectEndHandling(INSPECT_INTERRUPTED);
     }
 
-    deleteIterFunc(iterRef);
+    // Note that InspectFunc is called multiple times when the "interval mode" is on, so don't
+    // close the fd "FdProcMem". Let the OS handle the cleanup.
+    le_mem_Release(iterRef);
+
     return;
 }
 
@@ -2729,7 +3898,99 @@ static void RefreshTimerHandler
 )
 {
     // Perform the inspection.
-    InspectFunc(InspectType, PidToInspect);
+    InspectFunc(InspectType);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function called by command line argument scanner when the pid argument is found.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void PidArgHandler
+(
+    const char* pidStr
+)
+{
+    int pid;
+    le_result_t result = le_utf8_ParseInt(&pid, pidStr);
+
+    if ((result == LE_OK) && (pid > 0))
+    {
+        PidToInspect = pid;
+        FdProcMem = OpenProcMemFile(PidToInspect);
+    }
+    else
+    {
+        fprintf(stderr, "Invalid PID (%s).\n", pidStr);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IPC sessions argument handler.
+ */
+//--------------------------------------------------------------------------------------------------
+static void IpcSessionArgHandler
+(
+    const char* sessionsArg
+)
+{
+    if (strcmp(sessionsArg, "sessions") == 0)
+    {
+        switch (InspectType)
+        {
+            case INSPECT_INSP_TYPE_IPC_SERVERS:
+                InspectType = INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS;
+                break;
+
+            case INSPECT_INSP_TYPE_IPC_CLIENTS:
+                InspectType = INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS;
+                break;
+
+            default:
+                INTERNAL_ERR("unexpected inspect type %d.", InspectType);
+        }
+
+        // Handle the next argument which should be PID.
+        le_arg_AddPositionalCallback(PidArgHandler);
+    }
+    else
+    {
+        // Assume this argument is PID.
+        PidArgHandler(sessionsArg);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IPC interface type handler.
+ */
+//--------------------------------------------------------------------------------------------------
+static void IpcInterfaceTypeHandler
+(
+    const char* interfaceType
+)
+{
+    if (strcmp(interfaceType, "servers") == 0)
+    {
+        InspectType = INSPECT_INSP_TYPE_IPC_SERVERS;
+    }
+    else if (strcmp(interfaceType, "clients") == 0)
+    {
+        InspectType = INSPECT_INSP_TYPE_IPC_CLIENTS;
+    }
+    else
+    {
+        fprintf(stderr, "Invalid interface type '%s'.\n", interfaceType);
+        exit(EXIT_FAILURE);
+    }
+
+    // Handle the optional "sessions" argument.
+    le_arg_AddPositionalCallback(IpcSessionArgHandler);
 }
 
 
@@ -2763,35 +4024,19 @@ static void CommandArgHandler
     {
         InspectType = INSPECT_INSP_TYPE_SEMAPHORE;
     }
+    else if (strcmp(command, "ipc") == 0)
+    {
+        le_arg_AddPositionalCallback(IpcInterfaceTypeHandler);
+    }
     else
     {
         fprintf(stderr, "Invalid command '%s'.\n", command);
         exit(EXIT_FAILURE);
     }
-}
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function called by command line argument scanner when the pid argument is found.
- **/
-//--------------------------------------------------------------------------------------------------
-static void PidArgHandler
-(
-    const char* pidStr
-)
-{
-    int pid;
-    le_result_t result = le_utf8_ParseInt(&pid, pidStr);
-
-    if ((result == LE_OK) && (pid > 0))
+    if (strcmp(command, "ipc") != 0)
     {
-        PidToInspect = pid;
-    }
-    else
-    {
-        fprintf(stderr, "Invalid PID (%s).\n", pidStr);
-        exit(EXIT_FAILURE);
+        le_arg_AddPositionalCallback(PidArgHandler);
     }
 }
 
@@ -2845,24 +4090,78 @@ static void FormatOptionCallback
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Create a memory pool for the iterators depending on the inspect type.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void InitIteratorPool
+(
+    InspType_t inspectType ///< [IN] What to inspect.
+)
+{
+    size_t size;
+
+    switch (inspectType)
+    {
+        case INSPECT_INSP_TYPE_MEM_POOL:
+            size = sizeof(MemPoolIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_THREAD_OBJ:
+            size = sizeof(ThreadObjIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_TIMER:
+            size = sizeof(TimerIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_MUTEX:
+            size = sizeof(MutexIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_SEMAPHORE:
+            size = sizeof(SemaphoreIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS:
+            // Make the block size big enough to accomodate either one.
+            // Technically a little wasteful.
+            size = sizeof(ThreadObjIter_t) > sizeof(ServiceObjIter_t) ?
+                   sizeof(ThreadObjIter_t) : sizeof(ServiceObjIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS:
+            size = sizeof(ClientObjIter_t);
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            size = sizeof(ThreadObjIter_t) > sizeof(SessionObjIter_t) ?
+                   sizeof(ThreadObjIter_t) : sizeof(SessionObjIter_t);
+            break;
+
+        default:
+            INTERNAL_ERR("unexpected inspect type %d.", inspectType);
+    }
+
+    IteratorPool = le_mem_CreatePool("Iterators", size);
+}
+
+
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Create a memory pool for iterators.
-    MemPoolIteratorPool = le_mem_CreatePool("MemPooolIterators", sizeof(MemPoolIter_t));
-    ThreadObjIteratorPool = le_mem_CreatePool("ThreadObjIterators", sizeof(ThreadObjIter_t));
-    TimerIteratorPool = le_mem_CreatePool("TimerIterators", sizeof(TimerIter_t));
-    MutexIteratorPool = le_mem_CreatePool("MutexIterators", sizeof(MutexIter_t));
-    SemaphoreIteratorPool = le_mem_CreatePool("SemaphoreIterators", sizeof(SemaphoreIter_t));
-
     // The command-line has a command string followed by a PID.
     le_arg_AddPositionalCallback(CommandArgHandler);
-    le_arg_AddPositionalCallback(PidArgHandler);
 
     // --help option causes everything else to be ignored, prints help, and exits.
     le_arg_SetFlagCallback(PrintHelp, NULL, "help");
 
     // -f option starts "following" (periodic updates until the program is terminated).
     le_arg_SetFlagVar(&IsFollowing, "f", NULL);
+
+    // -v option prints in verbose mode.
+    le_arg_SetFlagVar(&IsVerbose, "v", NULL);
 
     // --interval=N option specifies the update period (implies -f).
     le_arg_SetIntCallback(FollowOptionCallback, NULL, "interval");
@@ -2872,10 +4171,13 @@ COMPONENT_INIT
 
     le_arg_Scan();
 
+    // Create a memory pool for iterators.
+    InitIteratorPool(InspectType);
+
     InitDisplay(InspectType);
 
     // Start the inspection.
-    InspectFunc(InspectType, PidToInspect);
+    InspectFunc(InspectType);
 
     if (!IsFollowing)
     {

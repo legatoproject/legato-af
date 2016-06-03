@@ -21,7 +21,7 @@ cd $scriptDir
 echo "Build all the apps."
 for app in $appsList
 do
-    mkapp $app.adef -t $targetType
+    mkapp ${app}.adef -t $targetType
     CheckRet
 done
 
@@ -33,25 +33,17 @@ echo "Stop all other apps."
 ssh root@$targetAddr "$BIN_PATH/app stop \"*\""
 sleep 1
 
-echo "Clear the logs."
-ssh root@$targetAddr "killall syslogd"
-CheckRet
-
-# Must restart syslog this way so that it gets the proper SMACK label.
-ssh root@$targetAddr "/mnt/flash/startup/fg_02_RestartSyslogd"
-CheckRet
+ClearLogs
 
 echo "Install the fileClient app."
-instapp fileClient.$targetType $targetAddr
-CheckRet
+InstallApp fileClient
 
 echo "Run the fileClient app."
 ssh root@$targetAddr  "$BIN_PATH/app start fileClient"
 CheckRet
 
 echo "Install the fileServer app."
-instapp fileServer.$targetType $targetAddr
-CheckRet
+InstallApp fileServer
 
 echo "Run the fileServer app."
 ssh root@$targetAddr  "$BIN_PATH/app start fileServer"
@@ -61,7 +53,7 @@ CheckRet
 sleep 1
 
 echo "Copying rogue process to target."
-scp $LEGATO_ROOT/build/$targetType/bin/tests/rogue root@$targetAddr:/tmp/rogue
+scp $LEGATO_ROOT/build/$targetType/tests/bin/rogue root@$targetAddr:/tmp/rogue
 
 echo "Running rogue process"
 ssh root@$targetAddr "/tmp/rogue"

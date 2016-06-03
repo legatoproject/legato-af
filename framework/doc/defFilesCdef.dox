@@ -2,7 +2,7 @@
 
 <c>Component.cdef</c> files can contain these sections:
 
-@section defFilesCdef_assets Assets
+@section defFilesCdef_assets assets
 
 Used to describe collections of information (fields) that can be exchanged with cloud
 services like AirVantage.
@@ -24,7 +24,7 @@ log the currently configured message and one to log the default message.
 
 The @c assets definition looks like this:
 
-@verbatim
+@code
 assets:
 {
     message =
@@ -46,18 +46,18 @@ assets:
         }
     }
 }
-@endverbatim
+@endcode
 
 Once you've defined your assets, it's up to the app to instantiate instances of them at
-run-time using the @subpage c_le_avdata API. Also see @ref howToAVData.
+run-time using the @ref c_le_avdata API. Also see @ref howToAVData.
 
-@section defFilesCdef_bundles Bundles
+@section defFilesCdef_bundles bundles
 
 Lists additional files or directories to be copied from the build host into the app
 so they’re available to the app at runtime (e.g., audio files, web pages, executable scripts
 or programs built using some external build system).
 
-@verbatim
+@code
 bundles:
 {
     file:
@@ -82,7 +82,7 @@ bundles:
         audio   /usr/share/sounds
     }
 }
-@endverbatim
+@endcode
 
 Three things need to be specified for each file or directory:
 - access permissions
@@ -142,7 +142,7 @@ When the app is installed on a target: <br>
 - the @c setuid bit is cleared on everything in the app.
 
 
-@section defFilesCdef_cFlags C Flags
+@section defFilesCdef_cFlags cflags
 
 Provides a way to specify command-line arguments to pass to the compiler when compiling C source
 code files.
@@ -157,7 +157,7 @@ cflags:
 }
 @endcode
 
-@section defFilesCdef_cxxFlags C++ Flags
+@section defFilesCdef_cxxFlags cxxflags
 
 Provides a way to specify command-line arguments to pass to the compiler when compiling C++ source
 code files.
@@ -173,9 +173,9 @@ cxxflags:
 @endcode
 
 
-@section defFilesCdef_ldFlags Linker Flags
+@section defFilesCdef_ldFlags ldflags
 
-Provides a way to specify command-line arguments to pass to the compiler when linking C/C++ object
+Linker flags provide a way to specify command-line arguments to pass to the compiler when linking C/C++ object
 (.o) files together into a component shared library (.so) file.
 
 Flags are separated by whitespace.
@@ -188,7 +188,7 @@ ldflags:
 @endcode
 
 
-@section defFilesCdef_pools Pools
+@section defFilesCdef_pools pools
 
 @warning This feature not yet implemented.
 
@@ -202,7 +202,7 @@ pools:
 @endcode
 
 
-@section defFilesCdef_provides Provides
+@section defFilesCdef_provides provides
 
 Lists things this component provides (exports) to other software either inside or outside of
 the app.
@@ -210,7 +210,7 @@ the app.
 The only subsection supported today is the @c api subsection.
 
 
-@subsection defFilesCdef_providesApi API
+@subsection defFilesCdef_providesApi api
 
 Lists IPC services provided by this component to other components.
 
@@ -244,7 +244,7 @@ In C, the source code must <c>\#include “interfaces.h”</c> to get the auto-g
 definitions and type definitions. The function and type names defined in the @c .api files are
 prefixed with the interface name and an underscore (similar to required APIs).
 
-@subsubsection defFilesCdef_providesApiManualStart [manual-start] Option
+@subsubsection defFilesCdef_providesApiManualStart [manual-start]
 
 To reduce the initialization code a component writer needs to write,
 the build tools automatically try to advertise the service when the executable is run.
@@ -266,7 +266,7 @@ provides:
 @endcode
 
 
-@subsubsection defFilesCdef_providesApiAsync [async] Option
+@subsubsection defFilesCdef_providesApiAsync [async]
 
 The server of a service can also implement the functions as if they were called
 directly by the client (even though the client may be running inside another process).
@@ -305,14 +305,14 @@ as parameters to the @c Respond function.
 See @ref apiFiles for more information, or try it and have a look at the generated
 header files.
 
-@section defFilesCdef_requires Requires
+@section defFilesCdef_requires requires
 
 The @c requires: section specifies things the component needs from its runtime
 environment.
 
 It can contain various subsections.
 
-@subsection defFilesCdef_requiresApi API
+@subsection defFilesCdef_requiresApi api
 
 Lists IPC APIs used by this component.
 
@@ -384,7 +384,7 @@ your component that includes all declarations for all the interfaces the compone
 
 The build tools search for the interface definition (.api) file based on the interface search path.
 
-@subsubsection defFilesCdef_requiresApiOptions Options
+@subsubsection defFilesCdef_requiresApiOptions options
 
 To reduce the amount of initialization code a component needs to write,
 the build tools automatically generate the client-side IPC
@@ -439,7 +439,7 @@ The first path can't end in a '/'.
 If the second path ends in a '/', then it's specifying the directory where the object
 appears, and the object has the same name inside the sandbox as it has outside the sandbox.
 
-@verbatim
+@code
 requires:
 {
     file:
@@ -452,7 +452,7 @@ requires:
         '/usr/local/share/audio/success message.wav' /usr/share/audio/
     }
 }
-@endverbatim
+@endcode
 
 @note   Even though the file system object appears in the app's sandbox it still needs
          permissions settings on the file.  File permissions (both DAC and MAC) and ownership
@@ -462,7 +462,7 @@ requires:
 It's also possible to give the object a different names inside and outside of the sandbox by
  adding a name to the end of the second path.
 
-@verbatim
+@code
 requires:
 {
     file:
@@ -471,14 +471,14 @@ requires:
         /var/run/someNamedPipe  /var/run/externalPipe
     }
 }
-@endverbatim
+@endcode
 
 @warning  When something is accessible from inside an app sandbox, there are potential security
             risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
             information or launch a denial-of-service attack on other apps within the target
             device or other devices connected to the target device).
 
-@subsection defFilesCdef_requiresDevice Device
+@subsection defFilesCdef_requiresDevice device
 
 Declares:
 - device files that reside on the target outside of the app, but made accessible to the app.
@@ -509,7 +509,7 @@ The first path can't end in a '/'.
 If the second path ends in a '/', then it's specifying the directory where the object
 appears, and the object has the same name inside the sandbox as it has outside the sandbox.
 
-@verbatim
+@code
 requires:
 {
     device:
@@ -524,7 +524,7 @@ requires:
         [rw]    /dev/sierra_i2c   /dev/
     }
 }
-@endverbatim
+@endcode
 
 Note that if a hot-plug device is unplugged and plugged back in, the app must be restarted before it
 can access the device.
@@ -532,7 +532,7 @@ can access the device.
 It's also possible to give the object a different names inside and outside of the sandbox by
  adding a name to the end of the second path.
 
-@verbatim
+@code
 requires:
 {
     device:
@@ -540,7 +540,7 @@ requires:
         /dev/ttyS0  /dev/port1     // Program uses /dev/port1, but UART0 is called /dev/ttyS0.
     }
 }
-@endverbatim
+@endcode
 
 @warning  When something is accessible from inside an app sandbox, there are potential security
             risks  (e.g., access to the object could be exploited by the app, or hacker, to access sensitive
@@ -550,7 +550,7 @@ requires:
 @warning  This section is experimental.  Future releases of may not support this section.
 
 
-@subsection defFilesCdef_requiresDir Dir
+@subsection defFilesCdef_requiresDir dir
 
 Specifies directories on target device to make accessible to the app.
 
@@ -574,7 +574,7 @@ it contains spaces or character sequences that would start comments.
 If the second path ends in a '/', then it's specifying the directory into which the object will
 appear, and the object will have the same name inside the sandbox as it has outside the sandbox.
 
-@verbatim
+@code
 requires:
 {
     dir:
@@ -591,7 +591,7 @@ requires:
         /lib    /usr/lib
     }
 }
-@endverbatim
+@endcode
 
 @note   Although the directory appears in the app's sandbox, it
         doesn't mean the app can access it. The directory permissions settings
@@ -612,7 +612,7 @@ requires:
         of the app.
 
 
-@subsection defFilesCdef_requiresLib Lib
+@subsection defFilesCdef_requiresLib lib
 
 The @c lib: subsection of the @c requires: section is used to specify that a shared (dynamic)
 library is required by any executable that the component is part of.
@@ -687,7 +687,7 @@ ldflags:
 @endcode
 
 
-@subsection defFilesCdef_requiresComponent Component
+@subsection defFilesCdef_requiresComponent component
 
 Declares this component depends on another component.
 
@@ -713,7 +713,7 @@ Dependency loops are not allowed: component C can't depend on another component 
 (either directly or indirectly) depends on component C. The build tools detect dependency
 loops and report any error.
 
-@section defFilesCdef_sources Sources
+@section defFilesCdef_sources sources
 
 Contains a list of source code files.
 

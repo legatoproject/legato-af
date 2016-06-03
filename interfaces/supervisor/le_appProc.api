@@ -1,0 +1,270 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_appProc Application Process Execution API
+ *
+ * @ref le_appProc_interface.h "API Reference"
+ *
+ * API for creating and running processes within an application that the app would not normally
+ * start on its own.
+ *
+ * This API can be used for testing and debugging purposes and should only be made available to
+ * trusted applications/tools.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_appProc_interface.h
+ *
+ * Legato @ref c_appProc include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+USETYPES le_limit.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference to application process objects.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Ref;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A handler that is called when the application process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER StopHandler
+(
+    int32 exitCode          ///< Exit code of the process.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fault action for a process.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FaultAction
+{
+    FAULT_ACTION_IGNORE,            ///< A fault occured but no further action is required.
+    FAULT_ACTION_RESTART_PROC,      ///< The process should be restarted.
+    FAULT_ACTION_RESTART_APP,       ///< The application should be restarted.
+    FAULT_ACTION_STOP_APP,          ///< The application should be terminated.
+    FAULT_ACTION_REBOOT             ///< The system should be rebooted.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates a process in an app.  This function can be used to create and subsequently start a
+ * process in an application that the application normally would not start on its own.  This
+ * function does not actually start the process, use Start() to start the process.
+ *
+ * If the specified process name matches a name in the app's list of configured processes then
+ * runtime parameters such as environment variables, priority, etc. will be taken from the
+ * configuration database.  Otherwise default parameters will be used.
+ *
+ * Parameters can be overridden by the other functions in this API such as AddArg(), SetPriority(),
+ * etc.
+ *
+ * If the executable path is empty and the process name matches a configured process then the
+ * configured executable is used.  Otherwise the specified executable path is used.
+ *
+ * Either the process name or the executable path may be empty but not both.
+ *
+ * It is an error to call this function on a configured process that is already running.
+ *
+ * @return
+ *      Reference to the application process object if successful.
+ *      NULL if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Ref Create
+(
+    string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the app.
+    string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
+    string execPath[le_limit.MAX_PATH_LEN] IN       ///< Path to the executable file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the file descriptor that the application process's standard in should be attached to.
+ *
+ * By default the standard in is directed to /dev/null.
+ *
+ * If there is an error this function will kill the calling process
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetStdIn
+(
+    Ref appProcRef IN,              ///< Application process to start.
+    file stdInFd IN                 ///< File descriptor to use as the app proc's standard in.
+                                    ///  -1 means direct to /dev/null.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the file descriptor that the application process's standard out should be attached to.
+ *
+ * By default the standard out is directed to the logs.
+ *
+ * If there is an error this function will kill the calling process
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetStdOut
+(
+    Ref appProcRef IN,              ///< Application process to start.
+    file stdOutFd IN                ///< File descriptor to use as the app proc's standard out.
+                                    ///  -1 means direct to logs.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the file descriptor that the application process's standard err should be attached to.
+ *
+ * By default the standard err is directed to the logs.
+ *
+ * If there is an error this function will kill the calling process
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetStdErr
+(
+    Ref appProcRef IN,              ///< Application process to start.
+    file stdErrFd IN                ///< File descriptor to use as the app proc's standard error.
+                                    ///  -1 means direct to logs.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process stopped event.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Stop
+(
+    Ref appProcRef,                 ///< Application process to start.
+    StopHandler handler             ///< Handler for the event.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a command line argument to the application process.
+ *
+ * If the application process is a configured process adding any argument means no arguments from
+ * the configuration database will be used.
+ *
+ * Adding an empty argument validates the argument list but does not acutally add an argument.  This
+ * is useful for overriding the configured arguments list with an empty argument list.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION AddArg
+(
+    Ref appProcRef IN,                              ///< Application process to start.
+    string arg[le_limit.MAX_ARGS_STR_LEN] IN        ///< Argument to add.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes and invalidates the cmd-line arguments to a process and use the configured arguments if
+ * available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ClearArgs
+(
+    Ref appProcRef IN                               ///< Application process to start.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the application process's priority.
+ *
+ * The priority string must be either 'idle','low', 'medium', 'high', 'rt1', 'rt2'...'rt32'.
+ *
+ * If there is an error this function will kill the client.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetPriority
+(
+    Ref appProcRef IN,                                  ///< Application process to start.
+    string priority[le_limit.MAX_PRIORITY_NAME_LEN] IN  ///< Priority for the application process.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clears the application process's priority and use either the configured priority or the default.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ClearPriority
+(
+    Ref appProcRef IN                                   ///< Application process to start.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the application process's fault action.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetFaultAction
+(
+    Ref appProcRef IN,              ///< Application process to start.
+    FaultAction action IN           ///< Priority for the application process.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clears the application process's fault action and use either the configured fault action or the
+ * default.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ClearFaultAction
+(
+    Ref appProcRef IN               ///< Application process to start.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts the application process.  If the application was not running this function will start it
+ * first.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+    Ref appProcRef IN               ///< Application process to start.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes the application process object.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Delete
+(
+    Ref appProcRef IN               ///< Application process to start.
+);

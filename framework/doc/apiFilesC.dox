@@ -31,24 +31,24 @@ A handler parameter can be used in both events and regular functions.
 This is how a handler parameter for a function in an interface file is mapped
 to actual C definitions (based on the @ref apiFilesC_sampleAPI).
 
-@verbatim
+@code
 FUNCTION int32 UseCallback
 (
     uint32 someParm IN,
     handler TestAHandler
 );
-@endverbatim
+@endcode
 
 This results in the function definition:
 
-@verbatim
+@code
 int32_t UseCallback
 (
     uint32_t someParm,
     TestAHandlerFunc_t handlerPtr,
     void* contextPtr
 );
-@endverbatim
+@endcode
 
 A @c contextPtr parameter has been automatically added to the definition of the function.
 This @c contextPtr will be passed back to the specified handler function when it is invoked.
@@ -60,17 +60,17 @@ If the @c contextPtr is not needed, then NULL can be used.
 This is how an event in an interface file is mapped
 to actual C definitions (based on the @ref apiFilesC_sampleAPI).
 
-@verbatim
+@code
 EVENT TestA
 (
     uint32 data,
     handler TestAHandler
 );
-@endverbatim
+@endcode
 
 This results in one type definition and two function definitions:
 
-@verbatim
+@code
 typedef struct TestAHandler* TestAHandlerRef_t;
 
 TestAHandlerRef_t AddTestAHandler
@@ -84,7 +84,7 @@ void RemoveTestAHandler
 (
     TestAHandlerRef_t addHandlerRef
 );
-@endverbatim
+@endcode
 
 The parameters from the event definition are used in the ADD_HANDLER function. This is used
 to register the given handler for events.  The REMOVE_HANDLER function does not take any
@@ -100,22 +100,22 @@ registered handler function.  If the @c contextPtr is not needed, then NULL can 
 This is how a handler in an interface file is mapped
 to actual C definitions (based on the @ref apiFilesC_sampleAPI):
 
-@verbatim
+@code
 HANDLER TestAHandler
 (
     int32 x
 );
-@endverbatim
+@endcode
 
 This results in a type definition for the handler function pointer:
 
-@verbatim
+@code
 typedef void (*TestAHandlerFunc_t)
 (
     int32_t x,
     void* contextPtr
 );
-@endverbatim
+@endcode
 
 A @c contextPtr parameter has been automatically added to the definition of the handler function
 pointer. The @c contextPtr passed to a regular function or ADD_HANDLER function (see section
@@ -127,7 +127,7 @@ passed back to the handler function. If the @c contextPtr is not needed, then NU
 
 These are client-specific functions:
 
-@verbatim
+@code
 void ConnectService
 (
     void
@@ -137,7 +137,7 @@ void DisconnectService
 (
     void
 );
-@endverbatim
+@endcode
 
 To use a service, a client must connect to the server using @c ConnectService().  This
 connection is only created for the current thread. Other threads must also call ConnectService()
@@ -163,7 +163,7 @@ the service so it can conserve resources).
 
 These are server-specific functions:
 
-@verbatim
+@code
 le_msg_ServiceRef_t GetServiceRef
 (
     void
@@ -178,7 +178,7 @@ void AdvertiseService
 (
     void
 );
-@endverbatim
+@endcode
 
 To provide a service, the server must advertise the service to any interested clients using
 @c AdvertiseService(). This is usually automatically called during the initialization of the

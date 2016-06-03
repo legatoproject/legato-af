@@ -131,9 +131,6 @@ static void DeferDownload
         case LE_AVC_DOWNLOAD_PENDING:
             LE_WARN("Defer download");
             LE_ASSERT( le_avc_DeferDownload(1) == LE_OK );
-
-            // In the wrong state, so this should be an error
-            LE_ASSERT( le_avc_AcceptDownload() == LE_FAULT );
             break;
 
         default:
@@ -162,9 +159,6 @@ static void DeferThenDownloadAndInstall
             {
                 LE_WARN("Defer download");
                 LE_ASSERT( le_avc_DeferDownload(1) == LE_OK );
-
-                // In the wrong state, so this should be an error
-                LE_ASSERT( le_avc_AcceptDownload() == LE_FAULT );
 
                 count++;
             }
@@ -383,6 +377,85 @@ static void SimpleDownloadDeferUninstall
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Stops and starts avc session.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RestartSession
+(
+    void
+)
+{
+    le_avc_StopSession();
+    sleep(10);
+    le_avc_StartSession();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test case 7: Defer download and install several times and restart avc session in between.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RepeatDeferDownloadAndInstall
+(
+    le_avc_Status_t updateStatus
+)
+{
+    static int count = 0;
+
+    switch ( updateStatus )
+    {
+        case LE_AVC_DOWNLOAD_PENDING:
+            if (count < 3)
+            {
+                LE_WARN("Defer download");
+                LE_ASSERT( le_avc_DeferDownload(1) == LE_OK );
+                RestartSession();
+                count++;
+            }
+            else
+            {
+                LE_WARN("Accept download");
+                LE_ASSERT( le_avc_AcceptDownload() == LE_OK );
+                RestartSession();
+                count++;
+            }
+            break;
+        case LE_AVC_INSTALL_PENDING:
+            if (count < 7)
+            {
+                LE_WARN("Defer install");
+                LE_ASSERT( le_avc_DeferInstall(1) == LE_OK );
+                RestartSession();
+                count++;
+            }
+            else
+            {
+                LE_WARN("Accept Install");
+                LE_ASSERT( le_avc_AcceptInstall() == LE_OK );
+                RestartSession();
+                count++;
+            }
+            break;
+
+        case LE_AVC_UNINSTALL_PENDING:
+            LE_WARN("Accept Uninstall");
+            LE_ASSERT( le_avc_AcceptUninstall() == LE_OK );
+            break;
+
+        case LE_AVC_INSTALL_COMPLETE:
+        case LE_AVC_UNINSTALL_COMPLETE:
+        case LE_AVC_INSTALL_FAILED:
+        case LE_AVC_UNINSTALL_FAILED:
+            LE_WARN("Operation completed");
+            count = 0;
+            break;
+        default:
+            LE_WARN("Update status %i not handled", updateStatus);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Status handler
  *
  * Everything is driven from this handler
@@ -397,6 +470,9 @@ static void StatusHandler
 )
 {
     LE_ERROR("Got status %i", updateStatus);
+
+    LE_INFO("totalNumBytes = %d", totalNumBytes);
+    LE_INFO("downloadProgress = %d", downloadProgress);
 
     switch ( TestCase )
     {
@@ -422,6 +498,10 @@ static void StatusHandler
 
         case 6:
             SimpleDownloadDeferUninstall(updateStatus);
+            break;
+
+        case 7:
+            RepeatDeferDownloadAndInstall(updateStatus);
             break;
 
         default:
