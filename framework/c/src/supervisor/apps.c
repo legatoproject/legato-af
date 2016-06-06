@@ -701,6 +701,35 @@ static void DeletesInactiveApp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Deletes all inactive app objects.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeletesAllInactiveApp
+(
+    void
+)
+{
+    le_dls_Link_t* appLinkPtr = le_dls_Pop(&InactiveAppsList);
+
+    while (appLinkPtr != NULL)
+    {
+        AppContainer_t* appContainerPtr = CONTAINER_OF(appLinkPtr, AppContainer_t, link);
+
+        // Delete any app procs containers in this app.
+        DeleteAppProcs(appContainerPtr->appRef, NULL);
+
+        // Delete the app object and container.
+        app_Delete(appContainerPtr->appRef);
+
+        le_mem_Release(appContainerPtr);
+
+        appLinkPtr = le_dls_Pop(&InactiveAppsList);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Checks whether an app's process is reference by any clients.
  */
 //--------------------------------------------------------------------------------------------------
@@ -818,6 +847,9 @@ void apps_Shutdown
     void
 )
 {
+    // Deletes all inactive apps first.
+    DeletesAllInactiveApp();
+
     // Get the first app to stop.
     le_dls_Link_t* appLinkPtr = le_dls_Peek(&ActiveAppsList);
 
