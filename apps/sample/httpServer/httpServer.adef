@@ -4,7 +4,7 @@ bundles:
 {
     file:
     {
-        [x] binaries/lighttpd /
+        [x] binaries/lighttpd /usr/local/bin/
 
     }
 
@@ -25,20 +25,23 @@ requires:
         /lib/libnss_compat.so.2 /lib/libnss_compat.so.2
         /lib/libnsl.so.1 /lib/libnsl.so.1
         /lib/libproc-3.2.8.so /lib/libproc-3.2.8.so
-        /etc/passwd /etc/passwd
+        /etc/passwd /etc/passwd    // needed by python to lookup user
         /lib/libcrypto.so.1.0.0 /lib/libcrypto.so.1.0.0
+        /legato/systems/current/version /legato/systems/current/version
+        /legato/systems/current/status /legato/systems/current/status
     }
 
     dir:
     {
-        /proc /         // for ps (listing running processes)
+        /proc /    // needed by `app` script, and for listing running processes
         /bin /
         /sbin /
-        /legato/systems /legato/
-        /mnt/legato/system /mnt/legato/
         /usr/lib /usr/
         /usr/bin /usr/
         /usr/include /usr/
+        /legato/systems/current/bin /legato/systems/current/
+        /legato/systems/current/lib /legato/systems/current/
+        /legato/systems/current/apps /legato/systems/current/
     }
 
     device:
@@ -71,6 +74,6 @@ processes:
 
     run:
     {
-        ( /lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
+        (lighttpd -m /modlibs/ -D -f /cfg/lighttpd.conf )
     }
 }
