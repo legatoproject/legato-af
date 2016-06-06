@@ -11,7 +11,7 @@ set(APP_TARGET mrcUnitTest)
 set(INTERFACES "${LEGATO_ROOT}/interfaces")
 set(INTERFACES_MODEM_SERVICES "${LEGATO_ROOT}/interfaces/modemServices/")
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
-set(PA_SIMU_MODEM_SERVICES "${MODEM_PA_DIR}/simu/components/le_pa/")
+set(PA_SIMU_MODEM_SERVICES "${PA_DIR}/simu/components/le_pa/")
 set (TEST "apps/test/modemServices/mrc/${APP_TARGET}")
 set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 

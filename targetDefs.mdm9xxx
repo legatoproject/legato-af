@@ -5,29 +5,29 @@
 # Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
 # --------------------------------------------------------------------------------------------------
 
-PROPRIETARY_UTIL_DIR := $(LEGATO_ROOT)/platformAdaptor/qmi/components
+PROPRIETARY_UTIL_DIR := $(PA_DIR)/qmi/components
 
 #   Sources:
 ifndef LEGATO_PROPRIETARY_QCT_DIR
   export LEGATO_PROPRIETARY_QCT_DIR = $(LEGATO_ROOT)/proprietary/qct/$(TARGET)
 endif
-export LEGATO_QMI_MODEM_PA_SRC_FILES := $(MODEM_PA_DIR)/qmi/components/le_pa
-export LEGATO_QMI_MODEM_PA_ECALL_SRC := $(MODEM_PA_DIR)/qmi/components/le_pa_ecall
-export LEGATO_QMI_GNSS_PA_SRC := $(GNSS_PA_DIR)/qmi/components/le_pa_gnss
-export LEGATO_QMI_AVC_PA_SRC := $(AVC_PA_DIR)/qmi/components/le_pa_avc
-export LEGATO_QMI_SECSTORE_PA_SRC := $(SECSTORE_PA_DIR)/qmi/components/le_pa_secStore
-export LEGATO_QMI_FWUPDATE_PA_SRC := $(FWUPDATE_PA_DIR)/qmi/components/le_pa_fwupdate
-export LEGATO_QMI_UTIL_SRC_FILES = $(PROPRIETARY_UTIL_DIR)/swiQmi
+export LEGATO_QMI_MODEM_PA_SRC_FILES := $(PA_DIR)/qmi/src/components/le_pa
+export LEGATO_QMI_MODEM_PA_ECALL_SRC := $(PA_DIR)/qmi/src/components/le_pa_ecall
+export LEGATO_QMI_GNSS_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_gnss
+export LEGATO_QMI_AVC_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_avc
+export LEGATO_QMI_SECSTORE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_secStore
+export LEGATO_QMI_FWUPDATE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_fwupdate
+export LEGATO_QMI_UTIL_SRC_FILES = $(PA_DIR)/qmi/src/components/swiQmi
 
 #   Pre-built binaries:
-export LEGATO_QMI_AUDIO_PA_BIN = $(LEGATO_ROOT)/components/audio/platformAdaptor/pre-built/$(TARGET)/le_pa_audio
-export LEGATO_QMI_MODEM_PA_BIN = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/pre-built/$(TARGET)/le_pa
-export LEGATO_QMI_MODEM_PA_ECALL_BIN = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/pre-built/$(TARGET)/le_pa_ecall
-export LEGATO_QMI_GNSS_PA_BIN = $(LEGATO_ROOT)/components/positioning/platformAdaptor/pre-built/$(TARGET)/le_pa_gnss
-export LEGATO_QMI_AVC_PA_BIN = $(LEGATO_ROOT)/components/airVantage/platformAdaptor/pre-built/$(TARGET)/le_pa_avc
-export LEGATO_QMI_SECSTORE_PA_BIN = $(LEGATO_ROOT)/components/secStore/platformAdaptor/pre-built/$(TARGET)/le_pa_secStore
-export LEGATO_QMI_FWUPDATE_PA_BIN = $(LEGATO_ROOT)/components/fwupdate/platformAdaptor/pre-built/$(TARGET)/le_pa_fwupdate
-export LEGATO_QMI_UTIL_BIN = $(LEGATO_ROOT)/components/proprietary/pre-built/$(TARGET)/swiQmi
+export LEGATO_QMI_AUDIO_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_audio
+export LEGATO_QMI_MODEM_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa
+export LEGATO_QMI_MODEM_PA_ECALL_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_ecall
+export LEGATO_QMI_GNSS_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_gnss
+export LEGATO_QMI_AVC_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_avc
+export LEGATO_QMI_SECSTORE_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_secStore
+export LEGATO_QMI_FWUPDATE_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_fwupdate
+export LEGATO_QMI_UTIL_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/swiQmi
 
 #   If the QMI PA sources are not available, use the pre-built binaries.
 ifneq (,$(wildcard $(LEGATO_QMI_AUDIO_PA_SRC)/*))

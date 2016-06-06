@@ -18,8 +18,8 @@ export COMPILER_DIR = $(WP85_TOOLCHAIN_DIR)
 
 export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
 export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
-export LEGATO_AUDIO_PA_PCM = $(AUDIO_PA_DIR)/audio/pcm/alsa-intf
-export LEGATO_AUDIO_PA_AMR = $(AUDIO_PA_DIR)/audio/amr/opencore-amr
+export LEGATO_AUDIO_PA_PCM = $(PA_DIR)/audio/pcm/alsa-intf
+export LEGATO_AUDIO_PA_AMR = $(PA_DIR)/audio/amr/opencore-amr
 export LEGATO_UTIL_PA = $(LEGATO_QMI_UTIL)
 export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
 export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)

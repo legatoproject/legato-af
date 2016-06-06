@@ -5,12 +5,9 @@
 # Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
 # --------------------------------------------------------------------------------------------------
 
-# Configure appropriate QMI platform adaptor build variables.
-#   Sources:
-
-export LEGATO_QMI_MODEM_PA_SRC := $(MODEM_PA_DIR)/qmi/components/le_pa/mdm9x28/le_pa
-export LEGATO_QMI_AUDIO_PA_SRC := $(AUDIO_PA_DIR)/qmi/components/le_pa_audio/mdm9x28/le_pa_audio
-export LEGATO_QMI_UTIL_SRC = $(PROPRIETARY_UTIL_DIR)/swiQmi/mdm9x28/swiQmi
+export LEGATO_QMI_MODEM_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa/mdm9x28/le_pa
+export LEGATO_QMI_AUDIO_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_audio/mdm9x28/le_pa_audio
+export LEGATO_QMI_UTIL_SRC = $(PA_DIR)/qmi/src/components/swiQmi/mdm9x28/swiQmi
 
 include targetDefs.mdm9xxx
 

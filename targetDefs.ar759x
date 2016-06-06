@@ -17,15 +17,16 @@ export TOOLCHAIN_PREFIX = $(AR759X_TOOLCHAIN_PREFIX)
 export COMPILER_DIR = $(AR759X_TOOLCHAIN_DIR)
 
 export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
+
 # Use simu PAs temporarily
-export LEGATO_AVC_PA = $(AVC_PA_DIR)/simu/components/le_pa_avc
-export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/simu/components/le_pa_secStore
-export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/simu/components/le_pa_fwupdate
+export LEGATO_AVC_PA = $(PA_DIR)/simu/components/le_pa_avc
+export LEGATO_SECSTORE_PA = $(PA_DIR)/simu/components/le_pa_secStore
+export LEGATO_FWUPDATE_PA = $(PA_DIR)/simu/components/le_pa_fwupdate
 
 # QMI PAs
 export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
-export LEGATO_AUDIO_PA_PCM = $(AUDIO_PA_DIR)/audio/pcm/alsa-intf
-export LEGATO_AUDIO_PA_AMR = $(AUDIO_PA_DIR)/audio/amr/opencore-amr
+export LEGATO_AUDIO_PA_PCM = $(PA_DIR)/audio/pcm/alsa-intf
+export LEGATO_AUDIO_PA_AMR = $(PA_DIR)/audio/amr/opencore-amr
 export LEGATO_UTIL_PA = $(LEGATO_QMI_UTIL)
 export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
 ifeq ($(INCLUDE_ECALL),1)

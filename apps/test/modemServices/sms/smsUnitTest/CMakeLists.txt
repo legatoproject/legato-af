@@ -15,7 +15,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
     -i ${LEGATO_ROOT}/components/cfgEntries
     -i ${LEGATO_ROOT}/framework/c/src
-    -i ${MODEM_PA_DIR}/simu/components/le_pa
+    -i ${PA_DIR}/simu/components/le_pa
 )
 
 add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})

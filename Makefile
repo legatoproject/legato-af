@@ -62,13 +62,7 @@ export LE_SVCDIR_SERVER_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryServer
 export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 
 # Define paths to various platform adaptors' directories.
-export AT_MANAGER_DIR := $(LEGATO_ROOT)/components/at
-export AUDIO_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
-export MODEM_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
-export GNSS_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
-export AVC_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
-export SECSTORE_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
-export FWUPDATE_PA_DIR := $(LEGATO_ROOT)/platformAdaptor
+export PA_DIR := $(LEGATO_ROOT)/platformAdaptor
 
 # Define the default platform adaptors to use if not otherwise specified for a given target.
 
@@ -248,7 +242,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 		cmake ../.. \
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
-			-DMODEM_PA_DIR=$(MODEM_PA_DIR) \
+			-DPA_DIR=$(PA_DIR) \
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
 			-DUSE_CLANG=$(USE_CLANG) \

@@ -21,9 +21,9 @@ endif
 export TOOLCHAIN_PREFIX = $(RASPI_TOOLCHAIN_PREFIX)
 export COMPILER_DIR = $(RASPI_TOOLCHAIN_DIR)
 
-export LEGATO_UTIL_PA = $(AT_MANAGER_DIR)
-export LEGATO_MODEM_PA := $(MODEM_PA_DIR)/at/components/le_pa
-export LEGATO_GNSS_PA := $(GNSS_PA_DIR)/at/components/le_pa_gnss
-export LEGATO_AVC_PA = $(AVC_PA_DIR)/at/components/le_pa_avc
-export LEGATO_SECSTORE_PA = $(SECSTORE_PA_DIR)/at/components/le_pa_secStore
-export LEGATO_FWUPDATE_PA = $(FWUPDATE_PA_DIR)/at/components/le_pa_fwupdate
+export LEGATO_UTIL_PA = $(LEGATO_ROOT)/components/at
+export LEGATO_MODEM_PA := $(PA_DIR)/at/components/le_pa
+export LEGATO_GNSS_PA := $(PA_DIR)/at/components/le_pa_gnss
+export LEGATO_AVC_PA = $(PA_DIR)/at/components/le_pa_avc
+export LEGATO_SECSTORE_PA = $(PA_DIR)/at/components/le_pa_secStore
+export LEGATO_FWUPDATE_PA = $(PA_DIR)/at/components/le_pa_fwupdate
