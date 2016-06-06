@@ -8,6 +8,8 @@
 /version
 /sources.md5
 /delivery
+/platformAdaptor
+/proprietary
 doxygen.*.log
 doxygen.*.err
 _build_*

@@ -1,9 +1,0 @@
-sources:
-{
-    pa_fwupdate.c
-}
-
-cflags:
-{
-    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
-}
