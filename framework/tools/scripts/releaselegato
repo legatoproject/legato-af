@@ -20,7 +20,7 @@ help_long_description=(
 " - -t [TARGETS]: comma-separated list of targets the package should be generated for (eg 'ar7,wp85')"
 )
 
-TARGETS="ar7,ar86,ar758x,ar759x,wp85"
+TARGETS="ar7,ar758x,ar759x,wp85"
 
 CheckForHelp $@
 
@@ -37,7 +37,7 @@ do
     esac
 done
 
-EXCLUDE_PATTERN='^proprietary|platformAdaptor/qmi|run-tests|.gitreview|.gitmodules|sonar.sh'
+REPO_EXCLUDE_PATTERN='(legato|qmi/src|proprietary|docManagement)'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
 VERSION=$(cat $LEGATO_ROOT/version)
@@ -54,7 +54,6 @@ mkdir -p $STAGE_DIR
 
 CopyRepo() {
     local path=$1
-    local exclude_pattern=$2
 
     cd $LEGATO_ROOT/$path
 
@@ -63,10 +62,10 @@ CopyRepo() {
     set -e
 
     # Copy files managed by git, except the ones that match exclude_pattern
-    git ls-tree -r --name-only HEAD | egrep -v $exclude_pattern | while read LINE; do
+    git ls-tree -r --name-only HEAD | while read LINE; do
         echo "Copying [$path] $LINE"
         if [ -L "$LINE" ]; then
-            cp -R --preserve=links "$LINE" "$STAGE_DIR/$path/$LINE"
+            cp -Rd "$LINE" "$STAGE_DIR/$path/$LINE"
         else
             mkdir -p $(dirname "$STAGE_DIR/$path/$LINE")
             cp "$LINE" "$STAGE_DIR/$path/$LINE"
@@ -77,11 +76,11 @@ CopyRepo() {
 }
 
 # Copy Legato
-CopyRepo "" $EXCLUDE_PATTERN
+CopyRepo ""
 
-# Copy modules
-for module in $(ls -1 $LEGATO_ROOT/modules); do
-    CopyRepo modules/$module "$EXCLUDE_PATTERN|.gitignore"
+# Copy other repositories
+for repo in $(repo list | awk '{print $1}' | sed 's^legato/^^g' | grep -Ev "$REPO_EXCLUDE_PATTERN"); do
+    CopyRepo $repo
 done
 
 cd $LEGATO_ROOT
@@ -90,17 +89,16 @@ cd $LEGATO_ROOT
 StageComponent() {
     local comp_name=$1
     local comp_src=$2
-    local comp_dst=$3
 
     echo "Staging ${comp_name}:"
 
-    for target in "${@:4}"; do
+    for target in "${@:3}"; do
         if ! echo "$TARGETS" | grep -E $target'(,|$)' > /dev/null; then
             continue
         fi
 
         src="build/${target}/${comp_src}"
-        dst="${comp_dst}/${target}/${comp_name}/"
+        dst="platformAdaptor/qmi/bin/${target}/components/${comp_name}/"
 
         if ! [ -e "$LEGATO_ROOT/$src" ]; then
             echo "$src doesn't exist"
@@ -140,29 +138,31 @@ StageComponent() {
 StagePaComponent() {
     local comp_name=$1
     local service=$2
-    local comp_folder=$3
 
     comp_src="system/app/$service/staging/read-only/lib/libComponent_$comp_name.so"
-    comp_dst="components/$comp_folder/platformAdaptor/pre-built"
 
-    StageComponent $comp_name $comp_src $comp_dst "${@:4}"
+    StageComponent $comp_name $comp_src "${@:3}"
 }
 
 StageComponent   swiQmi \
                  "system/app/modemService/staging/read-only/lib/libComponent_swiQmi.so" \
-                 "components/proprietary/pre-built" \
-                 ar7 ar86 wp85 ar758x ar759x
+                 ar7 wp85 ar758x ar759x
 
-StagePaComponent le_pa_audio     audioService        audio           ar7 ar86 wp85 ar759x
-StagePaComponent le_pa           modemService        modemServices   ar7 ar86 wp85 ar758x ar759x
-StagePaComponent le_pa_ecall     modemService        modemServices   ar7 ar86 ar759x
-StagePaComponent le_pa_gnss      positioningService  positioning     ar7 ar86 wp85 ar759x
-StagePaComponent le_pa_avc       avcService          airVantage      ar7 ar86 wp85
-StagePaComponent le_pa_secStore  secStore            secStore        ar7 ar86 wp85
-StagePaComponent le_pa_fwupdate  fwupdateService     fwupdate        ar7 ar86 wp85
+StagePaComponent le_pa_audio     audioService        ar7 wp85 ar759x
+StagePaComponent le_pa           modemService        ar7 wp85 ar758x ar759x
+StagePaComponent le_pa_ecall     modemService        ar7 ar759x
+StagePaComponent le_pa_gnss      positioningService  ar7 wp85 ar759x
+StagePaComponent le_pa_avc       avcService          ar7 wp85
+StagePaComponent le_pa_secStore  secStore            ar7 wp85
+StagePaComponent le_pa_fwupdate  fwupdateService     ar7 wp85
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR
+
+# Target aliases
+if [[ $TARGETS = *ar86* ]]; then
+    ln -s ar7 $STAGE_DIR/platformAdaptor/qmi/bin/ar86
+fi
 
 # Remove existing git folders
 for gitdir in $(find $STAGE_DIR -name ".git"); do
