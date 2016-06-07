@@ -152,6 +152,8 @@ endif
 FRAMEWORK_SOURCES = framework \
 					components \
 					interfaces \
+					platformAdaptor \
+					modules \
 					apps/platformServices \
 					apps/tools \
 					targetFiles \
@@ -162,7 +164,7 @@ FRAMEWORK_SOURCES = framework \
 .PHONY: sources.md5
 sources.md5:
 	# Generate an MD5 hash of everything in the source directories.
-	find $(FRAMEWORK_SOURCES) -type f | sort | while read filePath ; \
+	find $(FRAMEWORK_SOURCES) -type f | grep -v ".git" | sort | while read filePath ; \
 	do \
 	  echo "$$filePath" && \
 	  cat "$$filePath" ; \
