@@ -1,0 +1,330 @@
+#!/bin/bash
+
+SOURCEDIR=$PWD
+BUILDDIR_BASE=$PWD/build
+
+function StartServiceDirectory()
+{
+    echo -n "Starting Service Directory..."
+    serviceDirectory &
+    SERVICE_DIRECTORY_PID=$!
+    sleep 0.5
+    echo " DONE."
+}
+
+function StopServiceDirectory()
+{
+    echo -n "Stopping Service Directory..."
+    kill $SERVICE_DIRECTORY_PID > /dev/null 2>&1
+    echo " DONE."
+}
+
+function CheckServiceDirectory()
+{
+    if ! kill -0 $SERVICE_DIRECTORY_PID > /dev/null 2>&1
+    then
+        echo "Service Directory is no longer running!"
+        exit 1
+    fi
+}
+
+function StartLogControlDaemon()
+{
+    echo -n "Starting Log Control Daemon..."
+    logCtrlDaemon &
+    LOG_CTRL_DAEMON_PID=$!
+    sleep 0.5
+    echo " DONE."
+}
+
+function StopLogControlDaemon()
+{
+    echo -n "Stopping Log Control Daemon..."
+    kill $LOG_CTRL_DAEMON_PID > /dev/null 2>&1
+    sleep 0.5
+    echo " DONE."
+}
+
+function CheckLogControlDaemon()
+{
+    if ! kill -0 $LOG_CTRL_DAEMON_PID > /dev/null 2>&1
+    then
+        echo "Log Control Daemon is no longer running!"
+        StopServiceDirectory
+        exit 1
+    fi
+}
+
+function StartConfigTree()
+{
+    echo -n "Starting Configuration Tree..."
+    configTree &
+    CONFIG_TREE_PID=$!
+    sleep 0.5
+    echo " DONE."
+}
+
+function StopConfigTree()
+{
+    echo -n "Stopping Configuration Tree..."
+    kill $CONFIG_TREE_PID > /dev/null 2>&1
+    echo " DONE."
+}
+
+function CheckConfigTree()
+{
+    if ! kill -0 $CONFIG_TREE_PID > /dev/null 2>&1
+    then
+        echo "Config Tree is no longer running!"
+        exit 1
+    fi
+}
+
+function StartDaemons()
+{
+    StartServiceDirectory
+    StartLogControlDaemon
+    StartConfigTree
+}
+
+function StopDaemons()
+{
+    StopLogControlDaemon
+    StopServiceDirectory
+    StopConfigTree
+}
+
+function CheckDaemons()
+{
+    CheckLogControlDaemon
+    CheckServiceDirectory
+    CheckConfigTree
+}
+
+function CheckRet()
+{
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
+        StopDaemons
+        exit $RETVAL
+    fi
+}
+
+function CleanBuild()
+{
+    make clean
+}
+
+function TargetIdentify()
+{
+    echo "Identifying target ..."
+    TARGET_MODEL=$(ssh -o ConnectTimeout=5 root@$DEST_IP "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2> /dev/null)
+    if [ -z "$TARGET_MODEL" ]; then
+        echo "Unable to determine remote target model"
+        exit 1
+    fi
+
+    TARGET_TYPE=$($SOURCEDIR/bin/gettargettype $TARGET_MODEL)
+    if [ -z "$TARGET_TYPE" ]; then
+        echo "Unable to determine remote target type"
+        exit 1
+    fi
+
+    echo "Testing Legato on $DEST_IP (type = $TARGET_TYPE)"
+}
+
+function TargetUpdateLegato()
+{
+    echo "Updating Legato"
+
+    # if startup scripts are updated target will need to reboot.
+    instsys build/$TARGET_TYPE/system.$TARGET_TYPE.update $DEST_IP
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
+        StopDaemons
+        exit $RETVAL
+    fi
+
+    # Wait for target to bring up the new system.
+    sleep 60
+}
+
+function TargetUnitTest()
+{
+    if [ "$DEST_IP" == "" ]; then
+        echo "Target IP address is not available. Unit testing on target will be skipped."
+        return
+    fi
+
+    TargetUpdateLegato
+
+    cd $BUILDDIR_BASE/$TARGET_TYPE
+    CheckRet
+
+    # Test
+    $SOURCEDIR/apps/test/targetUnitTests $DEST_IP $TARGET_TYPE
+    CheckRet
+
+    cd $SOURCEDIR
+    CheckRet
+}
+
+function HostUnitTest()
+{
+    cd $BUILDDIR_BASE/localhost
+    CheckRet
+
+    export PATH=$PWD/framework/bin:$PWD/tests/bin:$PATH
+
+    # Stop any other instances of the legato framework daemons that may already be running.
+    # NOTE: Killing the Service Directory should be sufficient to cause everything else to die too.
+    serviceDirProcIDs=`pgrep serviceDir`
+    if [ $? -eq 0 ]
+    then
+        for procID in $serviceDirProcIDs
+        do
+            echo "*** Killing Service Directory process with PID $procID"
+            kill $procID
+        done
+    fi
+
+    StartDaemons
+
+    CheckDaemons
+
+    # Test
+    ctest -D ExperimentalTest --no-compress-output -VV
+    CheckRet
+    CheckDaemons
+
+    StopDaemons
+
+    cd $SOURCEDIR
+    CheckRet
+}
+
+function Build()
+{
+    TARGET=$1
+
+    BUILDDIR="$BUILDDIR_BASE/$TARGET"
+
+    echo "Building for $TARGET"
+
+    # Check Toolchain path
+    # NOTE: Even if the toolchain path is not set, the Makefile should be able to recover.
+    if [[ $TARGET != "localhost" ]]; then
+        TOOLCHAIN_ENV="${TARGET^^}_TOOLCHAIN_DIR"
+        if [ -z "${!TOOLCHAIN_ENV}" ]; then
+            echo "$TOOLCHAIN_ENV not set"
+        else
+            echo "$TOOLCHAIN_ENV=${!TOOLCHAIN_ENV}"
+        fi
+    fi
+
+    # Build
+    make tests_$TARGET
+    CheckRet
+
+    source $SOURCEDIR/bin/configlegatoenv
+}
+
+function BuildTools()
+{
+    echo "Building Tools"
+
+    make tools
+    CheckRet
+}
+
+function BuildClang()
+{
+    if ! which clang; then
+        echo "Unable to find clang"
+        exit 1
+    fi
+
+    echo "  Clang version:"
+    clang -v 2>&1 |head -1
+
+    # Normal build, with clang
+    export USE_CLANG=1
+    Build "localhost" false false
+    unset USE_CLANG
+    CleanBuild
+}
+
+function Job_HostUnitTest()
+{
+    if [ -n "$SKIP_HOST_TESTING" ]; then
+        echo "Skipping host unit tests."
+        return
+    fi
+
+    Build "localhost" false false
+    HostUnitTest
+}
+
+function Job_TargetUnitTest()
+{
+    if [ -n "$SKIP_TARGET_TESTING" ]; then
+        echo "Skipping on-target unit tests."
+        return
+    fi
+
+    TargetIdentify
+    Build $TARGET_TYPE false false
+    TargetUnitTest
+}
+
+function Manual_DeveloperPrePushTrial()
+{
+    echo "Cleaning ..."
+    CleanBuild
+
+    echo "Building ..."
+    Build "localhost" false true
+
+    echo "Building for virtual target..."
+    Build "virt" false false
+
+    echo "Testing ..."
+    HostUnitTest
+
+    echo "Tests complete."
+}
+
+echo -e "== Task: '$1' ==\n"
+
+if [ -e "$SOURCEDIR/bin/configlegatoenv" ]; then
+    source $SOURCEDIR/bin/configlegatoenv
+fi
+
+case "$1" in
+host-ut)
+    Job_HostUnitTest
+    ;;
+run-host-ut)
+    HostUnitTest
+    ;;
+target-ut)
+    Job_TargetUnitTest
+    ;;
+run-target-ut)
+    TargetUnitTest
+    ;;
+dev-trial)
+    Manual_DeveloperPrePushTrial
+    ;;
+quick-test)
+    Build "localhost" false 1 true
+    HostUnitTest
+    ;;
+*)
+    echo "Invalid argument: '$1'"
+    exit 1
+    ;;
+esac
+
