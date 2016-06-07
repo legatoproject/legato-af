@@ -499,7 +499,10 @@ le_result_t app_SetUpAppWriteables
 /**
  * Install a new individual application update in the current running system.
  *
- * @return LE_OK if successful.
+ * @return
+ *      - LE_OK if successful.
+ *      - LE_DUPLICATE if requested to install same app.
+ *      - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t app_InstallIndividual
@@ -509,6 +512,22 @@ le_result_t app_InstallIndividual
 )
 //--------------------------------------------------------------------------------------------------
 {
+
+    bool systemHasThisApp = false;
+
+    if (system_HasApp(appNamePtr))
+    {
+       // If it has the same hash, we don't have to do anything,
+       char currentAppHash[LIMIT_MD5_STR_BYTES];
+       systemHasThisApp =true;
+       app_Hash(appNamePtr, currentAppHash);
+       if (strcmp(appMd5Ptr, currentAppHash) == 0)
+       {
+           LE_INFO("App %s <%s> was already installed", appNamePtr, appMd5Ptr);
+           return LE_DUPLICATE;
+       }
+    }
+
     if (system_Snapshot() != LE_OK)
     {
         return LE_FAULT;
@@ -536,47 +555,35 @@ le_result_t app_InstallIndividual
         }
     }
 
-    le_result_t result = LE_OK;
-
-    // If this app is already in the current system,
-    if (system_HasApp(appNamePtr))
+    // If this app is already in the current system but its app hash is different,
+    if (systemHasThisApp)
     {
-        // If it has the same hash, we don't have to do anything,
-        char currentAppHash[LIMIT_MD5_STR_BYTES];
-        app_Hash(appNamePtr, currentAppHash);
-        if (strcmp(appMd5Ptr, currentAppHash) == 0)
-        {
-            result = LE_DUPLICATE;
-        }
-        else
-        {
-            sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
+        sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
 
-            // Otherwise, stop it before we update it.
-            supCtrl_StopApp(appNamePtr);
+        // Otherwise, stop it before we update it.
+        supCtrl_StopApp(appNamePtr);
 
-            // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
-            char path[PATH_MAX] = "";
-            LE_ASSERT(le_path_Concat("/", path, sizeof(path),
-                                     APPS_WRITEABLE_DIR, appNamePtr, NULL) == LE_OK);
+        // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
+        char path[PATH_MAX] = "";
+        LE_ASSERT(le_path_Concat("/", path, sizeof(path),
+                                 APPS_WRITEABLE_DIR, appNamePtr, NULL) == LE_OK);
 
-            fs_TryLazyUmount(path);
+        fs_TryLazyUmount(path);
 
-            // Run the pre-install hook.
-            ExecPreinstallHook(appMd5Ptr, appNamePtr);
+        // Run the pre-install hook.
+        ExecPreinstallHook(appMd5Ptr, appNamePtr);
 
-            // Set smackfs file permission for installed files
-            SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
+        // Set smackfs file permission for installed files
+        SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
 
-            // Update non-writeable files dir symlink to point to the new version of the app
-            system_SymlinkApp("current", appMd5Ptr, appNamePtr);
+        // Update non-writeable files dir symlink to point to the new version of the app
+        system_SymlinkApp("current", appMd5Ptr, appNamePtr);
 
-            // Load the root.cfg from the new version of the app into the system config tree.
-            ImportConfig(appMd5Ptr, appNamePtr);
+        // Load the root.cfg from the new version of the app into the system config tree.
+        ImportConfig(appMd5Ptr, appNamePtr);
 
-            // Update the writeable files.
-            system_UpdateCurrentAppWriteableFiles(appMd5Ptr, appNamePtr);
-        }
+        // Update the writeable files.
+        system_UpdateCurrentAppWriteableFiles(appMd5Ptr, appNamePtr);
     }
     // If the app is not in the current system yet, install fresh.
     else
@@ -640,27 +647,19 @@ le_result_t app_InstallIndividual
         }
     }
 
-    if (result == LE_OK)
-    {
-        // Reload the bindings configuration
-        system("/legato/systems/current/bin/sdir load");
 
-        ExecPostinstallHook(appMd5Ptr);
+    // Reload the bindings configuration
+    system("/legato/systems/current/bin/sdir load");
 
-        sysStatus_MarkTried();
+    ExecPostinstallHook(appMd5Ptr);
 
-        instStat_ReportAppInstall(appNamePtr);
+    sysStatus_MarkTried();
 
-        supCtrl_StartApp(appNamePtr);
+    instStat_ReportAppInstall(appNamePtr);
 
-        LE_INFO("App %s <%s> installed", appNamePtr, appMd5Ptr);
-    }
-    else
-    {
-        LE_ASSERT(result == LE_DUPLICATE);
+    supCtrl_StartApp(appNamePtr);
 
-        LE_INFO("App %s <%s> was already installed", appNamePtr, appMd5Ptr);
-    }
+    LE_INFO("App %s <%s> installed", appNamePtr, appMd5Ptr);
 
     return LE_OK;
 }

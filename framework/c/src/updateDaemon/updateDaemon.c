@@ -47,6 +47,8 @@
 #include "sysStatus.h"
 #include "supCtrl.h"
 #include "updateCtrl.h"
+#include "installer.h"
+#include "properties.h"
 
 
 // Default probation period.
@@ -58,15 +60,32 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * State of the Update Daemon state machine.
+ *
+ *                +---------------------------------------+
+ *                |                                       |
+ *                |                                       V
+ * IDLE ----> UNPACKING ----> SECURITY_CHECKING ----> APPLYING
+ *   ^            |                   |                   |
+ *   |            |                   |                   |
+ *   +------------+                   |                   |
+ *   |                                |                   |
+ *   +--------------------------------+                   |
+ *   |                                                    |
+ *   +----------------------------------------------------+
+ *
+ * Transition from UNPACKING to APPLYING happens when security-unpack finishes before the unpacking
+ * finishes.  This is common when update packs are unsigned (when security-unpack is not really
+ * doing anything).
  */
 //--------------------------------------------------------------------------------------------------
 static enum
 {
-    STATE_IDLE,         ///< The current system is "good" and there's nothing to do.
-    STATE_PROBATION,    ///< The current system is in its probation period.
-    STATE_UPDATING      ///< The current system is "good" and an update is in progress.
+    STATE_IDLE,         ///< No update is happening.  Check probation timer to see if in probation.
+    STATE_UNPACKING,    ///< A system update is being unpacked.
+    STATE_SECURITY_CHECKING, ///< A unpack finished, but security-unpack not finished yet.
+    STATE_APPLYING,     ///< A system update is being applied.
 }
-State;
+State = STATE_IDLE;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -155,12 +174,12 @@ static void StartProbation
 )
 //--------------------------------------------------------------------------------------------------
 {
-    State = STATE_PROBATION;
-
     if (le_timer_Start(ProbationTimer) == LE_BUSY)
     {
         le_timer_Restart(ProbationTimer);
     }
+
+    LE_INFO("System on probation (timer started).");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -173,14 +192,14 @@ void updateDaemon_MarkGood
     void
 )
 {
-        LE_INFO("System passed probation. Marking 'good'.");
-        State = STATE_IDLE;
-        // stop the probation timer - we may have been called from updateCtrl before expiry
-        // This will return LE_FAULT if the timer is not currently running but that is OK
-        le_timer_Stop(ProbationTimer);
-        sysStatus_MarkGood();
-        system_RemoveUnneeded();
-        system_RemoveUnusedApps();
+    LE_INFO("System passed probation. Marking 'good'.");
+
+    // stop the probation timer - we may have been called from updateCtrl before expiry
+    // This will return LE_FAULT if the timer is not currently running but that is OK
+    le_timer_Stop(ProbationTimer);
+    sysStatus_MarkGood();
+    system_RemoveUnneeded();
+    system_RemoveUnusedApps();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -341,10 +360,428 @@ static void CallStatusHandlers
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * If the update failed, go back to IDLE and report the failure to the client.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void UpdateFailed
+(
+    le_update_ErrorCode_t errCode
+)
+//--------------------------------------------------------------------------------------------------
+{
+    State = STATE_IDLE;
+    if (errCode != LE_UPDATE_ERR_NONE)
+    {
+        ErrorCode = errCode;
+    }
+
+    CallStatusHandlers(LE_UPDATE_STATE_FAILED, 0);
+
+    // Delete the security-unpack pipeline if it is still active. This is needed when unpack failed
+    // but Security-unpack is not finished yet.
+    if (SecurityUnpackPipeline != NULL)
+    {
+        pipeline_Delete(SecurityUnpackPipeline);
+        SecurityUnpackPipeline = NULL;
+    }
+
+    LE_ERROR("Update failed!!");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Report to the client that update is done.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ReportUpdateDone
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CallStatusHandlers(LE_UPDATE_STATE_APPLYING, 100);
+    CallStatusHandlers(LE_UPDATE_STATE_SUCCESS, 100);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Install system applications from unpack directory.
+ *
+ * @return
+ *      - LE_OK if successful
+ *      - LE_FAULT if failed
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_result_t InstallSystemApps
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+
+    char* pathArrayPtr[] = {(char *)app_UnpackPath,
+                            NULL};
+
+    // Open the directory tree to search. We just need to traverse top level directory, so no need
+    // of stat information.
+    FTS* ftsPtr = fts_open(pathArrayPtr,
+                           FTS_LOGICAL|FTS_NOSTAT,
+                           NULL);
+
+    LE_FATAL_IF(ftsPtr == NULL, "Could not access dir '%s'.  %m.",
+                pathArrayPtr[0]);
+
+    // Traverse through the directory tree.
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        switch (entPtr->fts_info)
+        {
+            case FTS_D:
+                if (entPtr->fts_level == 1)
+                {
+                    char appPropertyPath[LIMIT_MAX_PATH_BYTES];
+
+                    LE_ASSERT(snprintf(appPropertyPath,
+                                       sizeof(appPropertyPath),
+                                       "%s/info.properties",
+                                       entPtr->fts_path)
+                                       < sizeof(appPropertyPath));
+
+                    char appMd5Hash[LIMIT_MD5_STR_BYTES];
+                    char appName[LIMIT_MAX_APP_NAME_BYTES];
+                    le_result_t result = properties_GetValueForKey(appPropertyPath,
+                                                                   "app.md5",
+                                                                   appMd5Hash,
+                                                                   sizeof(appMd5Hash));
+                    if (result != LE_OK)
+                    {
+                        LE_CRIT("Failed to get 'app.md5' from '%s'", appPropertyPath);
+                        return LE_FAULT;
+                    }
+
+                    result = properties_GetValueForKey(appPropertyPath,
+                                                       "app.name",
+                                                       appName,
+                                                       sizeof(appName));
+                    if (result != LE_OK)
+                    {
+                        LE_CRIT("Failed to get 'app.name' from '%s'", appPropertyPath);
+                        return LE_FAULT;
+                    }
+
+
+                    char appPath[LIMIT_MAX_PATH_BYTES];
+
+                    LE_ASSERT(snprintf(appPath,
+                                       sizeof(appPath),
+                                       "/legato/apps/%s",
+                                       appMd5Hash)
+                                       < sizeof(appPath));
+
+                    (void)unlink(appPath);
+
+                    LE_DEBUG("Renaming '%s' to '%s'",
+                             entPtr->fts_path,
+                             appPath);
+
+                    if (rename(entPtr->fts_path, appPath) != 0)
+                    {
+                        LE_CRIT("Failed to rename '%s' to '%s', %m.",
+                                app_UnpackPath,
+                                appPath);
+                        return LE_FAULT;
+                    }
+
+                    // Now setup the smack permission.
+                    if (app_SetSmackPermReadOnly(appMd5Hash, appName) != LE_OK)
+                    {
+                        LE_CRIT("Failed to setup smack permission for app '%s<%s>'",
+                                appName,
+                                appMd5Hash);
+                        return LE_FAULT;
+                    }
+                    // We don't need to go into this directory.
+                    fts_set(ftsPtr, entPtr, FTS_SKIP);
+                }
+                break;
+
+            case FTS_DP:
+                // Same directory in post order, ignore it.
+                break;
+
+            default:
+                if (entPtr->fts_level != 0)
+                {
+                    LE_ERROR("Unexpected file type %d at '%s'",
+                             entPtr->fts_info,
+                             entPtr->fts_path);
+                }
+                break;
+        }
+
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Setup writable files for all system applications.
+ *
+ * @return
+ *      - LE_OK if successful
+ *      - LE_FAULT if failed
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetupSystemAppsWritable
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char sysUnpackAppPath[LIMIT_MAX_PATH_BYTES];
+    LE_ASSERT(snprintf(sysUnpackAppPath,
+                       sizeof(sysUnpackAppPath),
+                       "%s/apps",
+                       system_UnpackPath)
+                       < sizeof(sysUnpackAppPath));
+
+    char* pathArrayPtr[] = {(char *)sysUnpackAppPath,
+                             NULL};
+
+    // We need to get the app names and their md5 hash
+    FTS* ftsPtr = fts_open(pathArrayPtr,
+                           FTS_PHYSICAL,
+                           NULL);
+
+    LE_FATAL_IF(ftsPtr == NULL, "Could not access dir '%s'. %m.", pathArrayPtr[0]);
+
+    // Traverse through the directory tree.
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        if (entPtr->fts_info == FTS_SL)
+        {
+            if (entPtr->fts_level == 1)
+            {
+
+                char appMd5Buf[LIMIT_MD5_STR_BYTES];
+
+                //Here path is constructed as /legato/system/apps/<AppName point to soft link>>.
+                const char* appName = le_path_GetBasenamePtr(entPtr->fts_path, "/");
+
+                installer_GetAppHashFromSymlink(entPtr->fts_path, appMd5Buf);
+
+                LE_DEBUG("Path '%s' AppName '%s', MD5 '%s'", entPtr->fts_path, appName, appMd5Buf);
+
+                // Set up the app's writeable files in the new system (copying from install dir and/or
+                // current system).
+                if (app_SetUpAppWriteables(appMd5Buf, appName) != LE_OK)
+                {
+                    LE_CRIT("Failed to setup writable for app '%s<%s>'",
+                            appName,
+                            appMd5Buf);
+                    return LE_FAULT;
+                }
+
+                // We don't need to go into this directory.
+                fts_set(ftsPtr, entPtr, FTS_SKIP);
+            }
+        }
+        else if (entPtr->fts_level != 0)
+        {
+            LE_ERROR("Unexpected file type %d at '%s'", entPtr->fts_info, entPtr->fts_path);
+        }
+
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Apply a system update.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ApplySystemUpdate
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (InstallSystemApps() != LE_OK)
+    {
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+        return;
+    }
+
+    if (SetupSystemAppsWritable() != LE_OK)
+    {
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+        return;
+    }
+
+    if (system_FinishUpdate() == LE_OK)
+    {
+        ReportUpdateDone();
+        // Just ask the Supervisor to restart Legato.
+        supCtrl_RestartLegato();
+    }
+    else
+    {
+        // Notify error
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Apply an application update.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ApplyAppUpdate
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const char * appName = updateUnpack_GetAppName();
+    const char * md5 = updateUnpack_GetAppMd5();
+
+    // Install the app in the current running system.
+    le_result_t result = app_InstallIndividual(md5, appName);
+
+    if (result == LE_OK)
+    {
+       LE_INFO("App '%s<%s>' installed properly.", appName, md5);
+       ReportUpdateDone();
+       // App is installed, now start probation
+       StartProbation();
+    }
+    else if (result == LE_DUPLICATE)
+    {
+        LE_INFO("App '%s<%s>' already installed. Discarded app installation.", appName, md5);
+        ReportUpdateDone();
+    }
+    else
+    {
+        LE_CRIT("Failed to install app '%s<%s>'.", appName, md5);
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Do an application remove.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ApplyAppRemove
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const char * appName = updateUnpack_GetAppName();
+    // Install the app in the current running system.
+    le_result_t result = app_RemoveIndividual(appName);
+
+    if (result == LE_OK)
+    {
+        LE_INFO("App '%s' removed properly.", appName);
+        ReportUpdateDone();
+        // App is installed, now start probation
+        StartProbation();
+    }
+    else if (result == LE_NOT_FOUND)
+    {
+        LE_ERROR("App '%s' was not found in the system.", appName);
+        ReportUpdateDone();
+    }
+    else
+    {
+        LE_CRIT("Failed to remove app '%s'.", appName);
+        UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Apply an unpacked update that has passed security check.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void ApplyUpdate
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    State = STATE_APPLYING;
+    CallStatusHandlers(LE_UPDATE_STATE_APPLYING, 0);
+
+    switch (updateUnpack_GetType())
+    {
+        case TYPE_SYSTEM_UPDATE:
+            ApplySystemUpdate();
+            break;
+
+        case TYPE_APP_REMOVE:
+            ApplyAppRemove();
+            break;
+
+        case TYPE_APP_UPDATE:
+            ApplyAppUpdate();
+            break;
+
+        case TYPE_FIRMWARE_UPDATE:
+            // The firmware update will trigger a reboot, report that update done.
+            ReportUpdateDone();
+            break;
+
+        default:
+            LE_FATAL("Unexpected update type %d.", updateUnpack_GetType());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called when an unpack finishes successfully.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void UnpackDone
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, 100);
+    // If the security unpack is already finished, go straight to the APPLYING state.
+    // Otherwise, wait for the security-unpack program to finish.
+    if (SecurityUnpackPipeline == NULL)
+    {
+        ApplyUpdate();
+    }
+    else
+    {
+        State = STATE_SECURITY_CHECKING;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Callback from the update unpacker to report progress on the update.
  */
 //--------------------------------------------------------------------------------------------------
-static void HandleProgressReport
+static void HandleUpdateProgress
 (
     updateUnpack_ProgressCode_t progressCode,  ///< The update state.
     unsigned int percentDone        ///< The percentage this state is complete.
@@ -353,75 +790,27 @@ static void HandleProgressReport
 {
     LE_DEBUG("progressCode: %d, percentDone: %u", progressCode, percentDone);
 
-    bool failed = false;
-
     // Report progress to the client.
     switch (progressCode)
     {
         case UPDATE_UNPACK_STATUS_UNPACKING:
             CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, percentDone);
+            break;
 
-            // ** RETURN - There's still more work to do.
-            return;
-
-        case UPDATE_UNPACK_STATUS_APPLYING:
-            CallStatusHandlers(LE_UPDATE_STATE_APPLYING, percentDone);
-
-            // ** RETURN - There's still more work to do.
-            return;
-
-        case UPDATE_UNPACK_STATUS_APP_UPDATED:
-        case UPDATE_UNPACK_STATUS_SYSTEM_UPDATED:
-        case UPDATE_UNPACK_STATUS_WAIT_FOR_REBOOT:
-            CallStatusHandlers(LE_UPDATE_STATE_APPLYING, 100);
-            CallStatusHandlers(LE_UPDATE_STATE_SUCCESS, 100);
+        case UPDATE_UNPACK_STATUS_DONE:
+            UnpackDone();
             break;
 
         case UPDATE_UNPACK_STATUS_BAD_PACKAGE:
-            CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, percentDone);
-            if (ErrorCode == LE_UPDATE_ERR_NONE)
-            {
-                ErrorCode = LE_UPDATE_ERR_BAD_PACKAGE;
-            }
-            failed = true;
+            UpdateFailed(LE_UPDATE_ERR_BAD_PACKAGE);
             break;
 
         case UPDATE_UNPACK_STATUS_INTERNAL_ERROR:
-            CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, percentDone);
-            if (ErrorCode == LE_UPDATE_ERR_NONE)
-            {
-                ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
-            }
-            failed = true;
+            UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
             break;
     }
 
-    // If the update failed, go back to IDLE and report the failure to the client.
-    if (failed)
-    {
-        State = STATE_IDLE;
-        CallStatusHandlers(LE_UPDATE_STATE_FAILED, percentDone);
-    }
-    // If a system update finished successfully,
-    else if (progressCode == UPDATE_UNPACK_STATUS_SYSTEM_UPDATED)
-    {
-        // Ask the Supervisor to restart Legato.
-        supCtrl_RestartLegato();
-
-        // Stay in the UPDATING state while waiting to be restarted.
-    }
-    // If an update to one or more individual apps was successfully completed,
-    else if (progressCode == UPDATE_UNPACK_STATUS_APP_UPDATED)
-    {
-        StartProbation();
-
-        LE_INFO("Individual app changes applied. System on probation (timer started).");
-    }
-    // Note: If the update was a firmware update, there's no probation.
-    //       The firmware update will trigger a reboot, so we just stay in the UPDATING state.
 }
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Terminates the current update.
@@ -433,11 +822,19 @@ static void EndUpdate
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (State == STATE_UPDATING)
+    if (State == STATE_UNPACKING)
     {
         updateUnpack_Stop();
-        State = STATE_IDLE;
     }
+
+    // Delete the security-unpack pipeline if it is still active.
+    if (SecurityUnpackPipeline != NULL)
+    {
+        pipeline_Delete(SecurityUnpackPipeline);
+        SecurityUnpackPipeline = NULL;
+    }
+
+    State = STATE_IDLE;
 
     // Increment the current session reference by 2 (to keep it odd) so that we can identify stale
     // references.
@@ -793,36 +1190,56 @@ static void PipelineDone
 {
     LE_ASSERT(pipeline == SecurityUnpackPipeline);
 
+    pipeline_Delete(SecurityUnpackPipeline);
+    SecurityUnpackPipeline = NULL;
+    le_update_ErrorCode_t errCode = LE_UPDATE_ERR_NONE;
+
+    LE_FATAL_IF(State == STATE_APPLYING, "Bad state, can't apply update without security check");
+
     if (WIFEXITED(status))
     {
         if (WEXITSTATUS(status) == EXIT_SUCCESS)
         {
             LE_DEBUG("security-unpack completed successfully.");
+
+            // Only allowed state here is STATE_UNPACKING or STATE_SECURITY_CHECKING. If state is
+            // STATE_UNPACKING, then we return and wait for unpacking to finish (see UnpackDone()).
+            if (State == STATE_SECURITY_CHECKING)
+            {
+                ApplyUpdate();
+            }
+            return;
         }
         else if (WEXITSTATUS(status) == EXIT_FAILURE)
         {
-            LE_ERROR("security-unpack reported a security violation.");
-            ErrorCode = LE_UPDATE_ERR_SECURITY_FAILURE;
+            LE_CRIT("security-unpack reported a security violation.");
+            errCode = LE_UPDATE_ERR_SECURITY_FAILURE;
         }
         else
         {
-            LE_ERROR("security-unpack terminated (exit code: %d).", WEXITSTATUS(status));
-            ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
+            LE_CRIT("security-unpack terminated (exit code: %d).", WEXITSTATUS(status));
+            errCode = LE_UPDATE_ERR_INTERNAL_ERROR;
         }
     }
     else if (WIFSIGNALED(status))
     {
-        LE_WARN("security-unpack was killed by signal %d.", WTERMSIG(status));
-        ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
+        LE_CRIT("security-unpack was killed by signal %d.", WTERMSIG(status));
+        errCode = LE_UPDATE_ERR_INTERNAL_ERROR;
     }
     else
     {
-        LE_WARN("security-unpack died for an unknown reason (status: %d).", status);
-        ErrorCode = LE_UPDATE_ERR_INTERNAL_ERROR;
+        LE_CRIT("security-unpack died for an unknown reason (status: %d).", status);
+        errCode = LE_UPDATE_ERR_INTERNAL_ERROR;
     }
 
-    pipeline_Delete(SecurityUnpackPipeline);
-    SecurityUnpackPipeline = NULL;
+    // This is an error scenario. If the unpacker is still running, stop it.
+    if (State == STATE_UNPACKING)
+    {
+        updateUnpack_Stop();
+    }
+
+    UpdateFailed(errCode);
+
 }
 
 
@@ -938,12 +1355,13 @@ le_result_t le_update_Start
     // Reject updates unless IDLE.
     switch (State)
     {
-        case STATE_UPDATING:
+        case STATE_UNPACKING:
+        case STATE_APPLYING:
+        case STATE_SECURITY_CHECKING:
             LE_WARN("Update denied. Another update is already in progress.");
             result = LE_BUSY;
             break;
 
-        case STATE_PROBATION:
         case STATE_IDLE:
             if (updateCtrl_HasDefers())
             {
@@ -981,9 +1399,9 @@ le_result_t le_update_Start
 
     // Pass the readFd to the updateUnpacker module.
     LE_DEBUG("Starting unpack");
-    updateUnpack_Start(readFd, HandleProgressReport);
+    updateUnpack_Start(readFd, HandleUpdateProgress);
 
-    State = STATE_UPDATING;
+    State = STATE_UNPACKING;
 
     return LE_OK;
 }
@@ -1104,7 +1522,7 @@ le_result_t le_appRemove_Remove
 )
 {
     // Check whether any update is active.
-    if (State == STATE_UPDATING)
+    if (State != STATE_IDLE)
     {
         LE_WARN("App removal requested while an update is already in progress.");
 
@@ -1204,16 +1622,12 @@ COMPONENT_INIT
     // If the current system is "good", go into the IDLE state,
     if (sysStatus_Status() == SYS_GOOD)
     {
-        State = STATE_IDLE;
-
         LE_INFO("Current system is 'good'.");
     }
     // Otherwise, this system is on probation.
     else
     {
         StartProbation();
-
-        LE_INFO("System on probation (timer started).");
     }
 
     // Make sure that we can report app install events.

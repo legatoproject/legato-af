@@ -43,14 +43,7 @@ static updateUnpack_ProgressHandler_t ProgressFunc = NULL;
 static char Command[32];
 
 /// What type of update pack is it?
-static enum
-{
-    TYPE_UNKNOWN,       ///< Don't know yet.
-    TYPE_SYSTEM_UPDATE, ///< System update pack.
-    TYPE_APP_CHANGE,    ///< One or more individual app changes (update/remove).
-    TYPE_FIRMWARE_UPDATE, ///< Firmware update pack.
-}
-Type = TYPE_UNKNOWN;
+static updateUnpack_Type_t Type = TYPE_UNKNOWN;
 
 /// The name of the app being updated/removed.
 static char AppName[LIMIT_MAX_APP_NAME_BYTES];
@@ -74,29 +67,36 @@ static unsigned int PercentDone;
  *
  * @verbatim
 
-  +------<------+-------<--------+--------<--------+
-  |             |                |                 |
-  v             |                |                 |
-IDLE --> PARSING_JSON --> UNPACKING_PAYLOAD --> APPLYING
-             ^     |                             ^    |
-             |     |                             |    |
-             |     +-------------->--------------+    |
-             +--------------------<-------------------+
+  +---------------<--------------+
+  |                              |
+  +------<------+                |
+  |             |                |
+  v             |                |
+IDLE --> PARSING_JSON --> UNPACKING/SKIPPING_PAYLOAD
+                ^                |
+                |                |
+                +-------<--------+
 @endverbatim
  *
  * The transition from PARSING_JSON to UNPACKING_PAYLOAD happens when the JSON header for a section
  * of the update pack has been successfully parsed and all required fields have been extracted
  * from it.
  *
- * The transition from UNPACKING_PAYLOAD to APPLYING happens when the payload has been extracted
- * to the file system.  If there is no payload for a section, then the state machine skips
- * UNPACKING_PAYLOAD and goes straight to APPLYING from PARSING_JSON.
+ * The transition from UNPACKING_PAYLOAD to IDLE happens when the payload has been extracted
+ * to the file system.
  *
- * The transition back from APPLYING to PARSING_JSON happens whenever more JSON data is found after
- * the end of the section that was being applied.
+ * If there is no payload for a section, then the state machine skips
+ * UNPACKING_PAYLOAD and goes back to IDLE from PARSING_JSON.
+ *
+ * The transition back from UNPACKING_PAYLOAD to PARSING_JSON happens whenever more JSON data is
+ * found after the end of the section that was being applied.
  *
  * The state machine starts in the IDLE state and returns to the IDLE state whenever an update
  * pack is successfully installed or an error occurs.
+ *
+ * If a system update pack contains an app that is already installed on the target, then the
+ * payload bytes are read from the input stream and discarded.  In this case, the SKIPPING_PAYLOAD
+ * state replaces the UNPACKING_PAYLOAD state.
  */
 //--------------------------------------------------------------------------------------------------
 static enum
@@ -104,8 +104,7 @@ static enum
     STATE_IDLE,
     STATE_PARSING_JSON,
     STATE_UNPACKING_PAYLOAD,
-    STATE_SKIPPING_PAYLOAD,
-    STATE_APPLYING
+    STATE_SKIPPING_PAYLOAD
 }
 State = STATE_IDLE;
 
@@ -198,24 +197,20 @@ static void ReportProgress
     static unsigned int previousPercentDone;
     static unsigned int previousState;
 
-    // Return without updating, if there is no change in the percent complete and state.
+    // Return without updating if there is no change in the percent complete and state.
     if ((previousPercentDone == PercentDone) &&
         (previousState == State))
     {
         return;
     }
-    else
+
+    // Don't report progress if skipping payload.
+    if (State != STATE_SKIPPING_PAYLOAD)
     {
-        if ((State == STATE_PARSING_JSON) || (State == STATE_UNPACKING_PAYLOAD))
-        {
-            ProgressFunc(UPDATE_UNPACK_STATUS_UNPACKING, PercentDone);
-        }
-        else if (State == STATE_APPLYING)
-        {
-            ProgressFunc(UPDATE_UNPACK_STATUS_APPLYING, PercentDone);
-        }
+        ProgressFunc(UPDATE_UNPACK_STATUS_UNPACKING, PercentDone);
     }
 
+    // Remember the state and percent done so we can throttle the reports (see above).
     previousState = State;
     previousPercentDone = PercentDone;
 }
@@ -259,6 +254,35 @@ static void HandleInternalError
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Called when app unpack finishes successfully.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AppUnpackDone
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char buf[1];
+    //Check whether InputFd reaches EOF, if not it is an error condition.
+    if (fd_ReadSize(InputFd, buf, sizeof(buf)) != 0)
+    {
+        LE_ERROR("Malformed update pack. Only one app update/remove allowed per update pack.");
+        HandleFormatError();
+    }
+    else
+    {
+        PercentDone = 100;
+        ReportProgress();
+        // As we allow single app, notify that unpack is done.
+        ProgressFunc(UPDATE_UNPACK_STATUS_DONE, 100);
+        Reset();
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Error handling function called by the JSON parser when an error occurs.
  */
 //--------------------------------------------------------------------------------------------------
@@ -292,29 +316,16 @@ static void JsonErrorHandler
             // system update.
             else if (Type == TYPE_SYSTEM_UPDATE)
             {
-                State = STATE_APPLYING;
-                PercentDone = 0;
-                ReportProgress();
+                ProgressFunc(UPDATE_UNPACK_STATUS_DONE, 100);
 
-                if (system_FinishUpdate() != LE_OK)
-                {
-                    HandleInternalError();
-                }
-                else
-                {
-                    // Report successful completion back to the client and terminate the update.
-                    ProgressFunc(UPDATE_UNPACK_STATUS_SYSTEM_UPDATED, 100);
-                    Reset();
-                }
-            }
-            // Multiple individual app changes can be concatenated into one update, so we have
-            // to also check for more JSON data after applying an app change, and if that fails
-            // to find any JSON data, it's time to report completion of the update.
-            else if (Type == TYPE_APP_CHANGE)
-            {
-                // Report successful completion back to the client and terminate the update.
-                ProgressFunc(UPDATE_UNPACK_STATUS_APP_UPDATED, 100);
                 Reset();
+            }
+            else
+            {
+                // Only system update should invoke this function, all other update type is considered
+                // as error.
+                LE_CRIT("Unexpected update type: %d.", Type);
+                HandleInternalError();
             }
             break;
     }
@@ -383,16 +394,9 @@ static void UntarDone
     }
 
     // If this update pack contains changes to individual apps,
-    if (Type == TYPE_APP_CHANGE)
+    if (Type == TYPE_APP_UPDATE)
     {
-        if (app_InstallIndividual(Md5, AppName) != LE_OK)
-        {
-            HandleInternalError();
-            return;
-        }
-
-        PercentDone = 100;
-        ReportProgress();
+        AppUnpackDone();
     }
 
     // If this update pack contains a system update,
@@ -408,40 +412,18 @@ static void UntarDone
             system_RemoveUnusedApps();
         }
         // After the unpack of one of the apps, we rename the app to the appropriate location
-        // and copy over any writeable files that may have been inherited from an earlier version
+        // and copy over any writable files that may have been inherited from an earlier version
         // of the same app in the previous system.
         else
         {
-            // Rename the app's unpack directory to the appropriate location.
-            // But first, unlink whatever happens to be in that location, in case there's a
-            // dangling symlink where this app is supposed to go (because of
-            // a botched usage of the "preloaded: true" feature in the .sdef).
-            char path[PATH_MAX];
-            LE_ASSERT(snprintf(path, sizeof(path), "/legato/apps/%s", Md5) < sizeof(path));
-            (void)unlink(path);
-            if (rename(app_UnpackPath, path) != 0)
-            {
-                LE_EMERG("Failed to rename '%s' to '%s', %m.", app_UnpackPath, path);
-            }
-
-            if (app_SetSmackPermReadOnly(Md5, AppName) != LE_OK)
-            {
-                HandleInternalError();
-                return;
-            }
-
-            // Set up the app's writeable files in the new system (copying from install dir and/or
-            // current system).
-            if (app_SetUpAppWriteables(Md5, AppName) != LE_OK)
-            {
-                HandleInternalError();
-                return;
-            }
+            PercentDone = 100;
+            ReportProgress();
         }
+
+        // There could be more after this payload, so look for another JSON header.
+        StartParsing();
     }
 
-    // There could be more after this payload, so look for another JSON header.
-    StartParsing();
 }
 
 
@@ -461,30 +443,21 @@ static void SkipForwardDone
     ReportProgress();
 
     // Even if we skip the payload we still need to process the install.
-    if (Type == TYPE_APP_CHANGE)
+    if (Type == TYPE_APP_UPDATE)
     {
-        LE_DEBUG("Installing App: %s <%s>", AppName, Md5);
-        // App update pack.  Process each app as an individual app install.
-        if (app_InstallIndividual(Md5, AppName) != LE_OK)
-        {
-            HandleInternalError();
-            return;
-        }
+        AppUnpackDone();
+    }
+    else if (Type == TYPE_SYSTEM_UPDATE)
+    {
+        // There could be more after this payload, so look for another JSON header.
+        StartParsing();
     }
     else
     {
-        LE_DEBUG("Setting up files in appWriteable directory for App: %s <%s>.", AppName, Md5);
-        // System update pack.  The app dir will already be set up in the system's "unpack" area.
-        // Just might need to build up the app's writeable files if it has any.
-        if (app_SetUpAppWriteables(Md5, AppName) != LE_OK)
-        {
-            HandleInternalError();
-            return;
-        }
+        LE_CRIT("Unexpected update type: %d.", Type);
+        HandleInternalError();
     }
 
-    // There could be more after this payload, so look for another JSON header.
-    StartParsing();
 }
 
 
@@ -791,7 +764,7 @@ static void StartFirmwareUpdate
     {
         LE_INFO("Firmware update download successful. Waiting for modem to reset.");
 
-        ProgressFunc(UPDATE_UNPACK_STATUS_WAIT_FOR_REBOOT, 100);
+        ProgressFunc(UPDATE_UNPACK_STATUS_DONE, 100);
         Reset();
     }
     else
@@ -880,7 +853,7 @@ static void JsonDone
         {
             if (Type == TYPE_UNKNOWN)
             {
-                Type = TYPE_APP_CHANGE;
+                Type = TYPE_APP_UPDATE;
 
                 // Make space by removing extra systems.
                 system_RemoveUnneeded();
@@ -891,16 +864,35 @@ static void JsonDone
 
             if (app_Exists(Md5) == false)
             {
-                LE_INFO("App with MD5 sum %s being installed.", Md5);
+                LE_INFO("App with MD5 sum %s being unpacked.", Md5);
 
                 State = STATE_UNPACKING_PAYLOAD;
 
-                // Prepare the directory to unpack into.
-                app_PrepUnpackDir();
+                if (Type == TYPE_APP_UPDATE)
+                {
+                    // UnpackPath = appUnpack_Path
+                    // Prepare the directory to unpack into.
+                    app_PrepUnpackDir();
+                    // Unpack the app tarball.
+                    // This is asynchronous and will call UntarDone() when finished.
+                    StartUntar(app_UnpackPath);
+                }
+                else
+                {
+                    char unpackPath[LIMIT_MAX_PATH_BYTES];
+                    // UnpackPath = app_unpack+Md5 hash
+                    le_path_Concat("/", unpackPath, sizeof(unpackPath), app_UnpackPath, Md5, NULL);
+                    LE_FATAL_IF(le_dir_RemoveRecursive(unpackPath) != LE_OK,
+                                "Failed to recursively delete '%s'.",
+                                unpackPath);
+                    // This is system update. Create a directory in /legato/apps/unpack/<Md5>
+                    LE_FATAL_IF(LE_OK != le_dir_MakePath(unpackPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH),
+                                "Failed to create directory '%s'.",
+                                unpackPath);
+                    // Untar the app tarball. Will call UntarDone() when finished.
+                    StartUntar(unpackPath);
+                }
 
-                // Unpack the app tarball.
-                // This is asynchronous and will call UntarDone() when finished.
-                StartUntar(app_UnpackPath);
             }
             else
             {
@@ -929,28 +921,14 @@ static void JsonDone
         {
             if (Type == TYPE_UNKNOWN)
             {
-                Type = TYPE_APP_CHANGE;
+                Type = TYPE_APP_REMOVE;
 
                 // Make space by removing extra systems and apps.
                 system_RemoveUnneeded();
                 system_RemoveUnusedApps();
             }
 
-            State = STATE_APPLYING;
-            PercentDone = 0;
-            ReportProgress();
-
-            if (app_RemoveIndividual(AppName) == LE_FAULT)
-            {
-                HandleInternalError();
-                return;
-            }
-
-            PercentDone = 100;
-            ReportProgress();
-
-            // Start parsing JSON again, in case there's more.
-            StartParsing();
+            AppUnpackDone();
         }
     }
     else if (strcmp(Command, "updateFirmware") == 0)
@@ -1246,6 +1224,57 @@ void updateUnpack_Start
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the type of the update pack (available when 100% done).
+ *
+ * @return The type of update (firmware, app, or system).
+ **/
+//--------------------------------------------------------------------------------------------------
+updateUnpack_Type_t updateUnpack_GetType
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return Type;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the name of the app being changed (valid for app update or remove).
+ *
+ * @return The name of the app (valid until next unpack is started).
+ **/
+//--------------------------------------------------------------------------------------------------
+const char* updateUnpack_GetAppName
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return AppName;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the MD5 sum of the app being updated (valid for app update only).
+ *
+ * @return The MD5 sum of the app, as a string (valid until next unpack is started).
+ **/
+//--------------------------------------------------------------------------------------------------
+const char* updateUnpack_GetAppMd5
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return Md5;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Stop unpacking an update pack.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1258,13 +1287,9 @@ void updateUnpack_Stop
     switch (State)
     {
         case STATE_IDLE:
-
-            LE_FATAL("Can't stop when IDLE.");
-
         case STATE_PARSING_JSON:
         case STATE_UNPACKING_PAYLOAD:
         case STATE_SKIPPING_PAYLOAD:
-        case STATE_APPLYING:
             Reset();
             return;
     }

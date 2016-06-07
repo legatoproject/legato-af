@@ -95,7 +95,10 @@ le_result_t app_SetUpAppWriteables
 /**
  * Install a new individual application update in the current running system.
  *
- * @return LE_OK if successful.
+ * @return
+ *      - LE_OK if successful.
+ *      - LE_DUPLICATE if requested to install same app.
+ *      - LE_FAULT for any other failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t app_InstallIndividual
