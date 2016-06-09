@@ -936,12 +936,52 @@ static int HandleSet
             break;
 
         case LE_CFG_TYPE_INT:
-            le_cfg_SetInt(iterRef, "", atoi(NodeValue));
-            break;
+            {
+                char *endIntp;
+
+                errno = 0;
+                int32_t value = strtol(NodeValue, &endIntp, 10);
+
+                if (errno != 0)
+                {
+                    fprintf(stderr, "Integer '%s' out of range\n", NodeValue);
+                    result = EXIT_FAILURE;
+                }
+                else if (*endIntp != '\0')
+                {
+                    fprintf(stderr, "Invalid character in integer '%s'\n", NodeValue);
+                    result = EXIT_FAILURE;
+                }
+                else
+                {
+                    le_cfg_SetInt(iterRef, "", value);
+                }
+                break;
+            }
 
         case LE_CFG_TYPE_FLOAT:
-            le_cfg_SetFloat(iterRef, "", atof(NodeValue));
-            break;
+            {
+                char *endFloatp;
+
+                errno = 0;
+                double floatVal = strtod(NodeValue, &endFloatp);
+
+                if (errno != 0)
+                {
+                    fprintf(stderr, "Float value '%s' out of range\n", NodeValue);
+                    result = EXIT_FAILURE;
+                }
+                else if (*endFloatp != '\0')
+                {
+                    fprintf(stderr, "Invalid character in float value '%s'\n", NodeValue);
+                    result = EXIT_FAILURE;
+                }
+                else
+                {
+                    le_cfg_SetFloat(iterRef, "", floatVal);
+                }
+                break;
+            }
 
         case LE_CFG_TYPE_DOESNT_EXIST:
             result = EXIT_FAILURE;

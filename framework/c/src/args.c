@@ -244,6 +244,85 @@ static le_sls_List_t OptionList = LE_SLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Positional callback record.  Used to store a positional callback function in the positional
+ * callback list.
+ **/
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sls_Link_t   link;               ///< Used to link the object into the list.
+    le_arg_StringCallbackFunc_t func;   ///< Function address.
+}
+PositionalCallbackRec_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Positional callback list.
+ **/
+//--------------------------------------------------------------------------------------------------
+static le_sls_List_t PositionalCallbackList = LE_SLS_LIST_INIT;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true = More positional arguments are allowed than there are positional callbacks in the
+ *        positional callback list, in which case the last positional callback in the list will
+ *        be called multiple times.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsMorePositionalArgsThanCallbacksAllowed = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true = Less positional arguments are allowed than there are positional callbacks in the
+ *        positional callback list, in which case the last positional callbacks (the ones for which
+ *        there are not args) will not be called.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsLessPositionalArgsThanCallbacksAllowed = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * true = All positional callbacks have been called at least once.
+ *
+ * @note    Initialized to true because there are initially no callbacks.  Will be set to false
+ *          when a callback is added to the list.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool AllPositionalCallbacksHaveBeenCalled = true;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether  a positional argument at a given index in the Argv array is integer or floating
+ * point number.
+ *
+ * @return  True if it is a valid number, false otherwise.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool IsArgNumber
+(
+    size_t i    ///< The index of the argument in the Argv array.
+)
+{
+    char *endptr;
+
+    strtold(Argv[i], &endptr);
+
+    if (*endptr != '\0')
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Creates a new option record and adds it to the option list.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -266,6 +345,59 @@ static void CreateOptionRec
     recPtr->destPtr = destPtr;
 
     le_sls_Queue(&OptionList, &recPtr->link);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handle a positional argument at a given index in the Argv array.
+ *
+ * @return  The number of arguments that le_arg_Scan() should skip over following this one.
+ **/
+//--------------------------------------------------------------------------------------------------
+static size_t HandlePositionalArgument
+(
+    size_t i    ///< The index of the argument in the Argv array.
+)
+{
+    // Pop the first positional callback from the list.
+    le_sls_Link_t* linkPtr = le_sls_Pop(&PositionalCallbackList);
+
+    // If wasn't anything on the list, then there are too many positional arguments.
+    if (linkPtr == NULL)
+    {
+        return ErrorHandler(i - 1, LE_OVERFLOW);
+    }
+    else
+    {
+        PositionalCallbackRec_t* recPtr = CONTAINER_OF(linkPtr, PositionalCallbackRec_t, link);
+
+        // Call the positional callback.
+        recPtr->func(Argv[i]);
+
+        // If this was the last callback on the list,
+        if (le_sls_IsEmpty(&PositionalCallbackList))
+        {
+            AllPositionalCallbacksHaveBeenCalled = true;
+
+            // If there are allowed to be more positional arguments than positional callbacks,
+            // then add this callback back onto the list in case we encounter more positional
+            // arguments.
+            if (IsMorePositionalArgsThanCallbacksAllowed)
+            {
+                le_sls_Queue(&PositionalCallbackList, linkPtr);
+            }
+        }
+        else
+        {
+            // Note: Free is used here only because we expect argument processing to
+            // occur only at start-up, and therefore we can be certain that we won't be creating
+            // a long-running fragmentation problem that slowly eats all memory.
+            free(recPtr);
+        }
+    }
+
+    return 0;
 }
 
 
@@ -400,7 +532,14 @@ static size_t HandleShortOption
         linkPtr = le_sls_PeekNext(&OptionList, linkPtr);
     }
 
-    // Report an unexpected argument.
+    // It doesn't match with any short option. So it may be a negative number.
+    if (IsArgNumber(i))
+    {
+        // Only it can be a positional argument.
+        return HandlePositionalArgument(i);
+    }
+
+    // Doesn't match with anything. Report an unexpected argument.
     return ErrorHandler(i - 1, LE_BAD_PARAMETER);
 }
 
@@ -477,112 +616,6 @@ static size_t HandleLongOption
 
     // Report an unexpected argument.
     return ErrorHandler(i - 1, LE_BAD_PARAMETER);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Positional callback record.  Used to store a positional callback function in the positional
- * callback list.
- **/
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    le_sls_Link_t   link;               ///< Used to link the object into the list.
-    le_arg_StringCallbackFunc_t func;   ///< Function address.
-}
-PositionalCallbackRec_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Positional callback list.
- **/
-//--------------------------------------------------------------------------------------------------
-static le_sls_List_t PositionalCallbackList = LE_SLS_LIST_INIT;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * true = More positional arguments are allowed than there are positional callbacks in the
- *        positional callback list, in which case the last positional callback in the list will
- *        be called multiple times.
- **/
-//--------------------------------------------------------------------------------------------------
-static bool IsMorePositionalArgsThanCallbacksAllowed = false;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * true = Less positional arguments are allowed than there are positional callbacks in the
- *        positional callback list, in which case the last positional callbacks (the ones for which
- *        there are not args) will not be called.
- **/
-//--------------------------------------------------------------------------------------------------
-static bool IsLessPositionalArgsThanCallbacksAllowed = false;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * true = All positional callbacks have been called at least once.
- *
- * @note    Initialized to true because there are initially no callbacks.  Will be set to false
- *          when a callback is added to the list.
- **/
-//--------------------------------------------------------------------------------------------------
-static bool AllPositionalCallbacksHaveBeenCalled = true;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handle a positional argument at a given index in the Argv array.
- *
- * @return  The number of arguments that le_arg_Scan() should skip over following this one.
- **/
-//--------------------------------------------------------------------------------------------------
-static size_t HandlePositionalArgument
-(
-    size_t i    ///< The index of the argument in the Argv array.
-)
-{
-    // Pop the first positional callback from the list.
-    le_sls_Link_t* linkPtr = le_sls_Pop(&PositionalCallbackList);
-
-    // If wasn't anything on the list, then there are too many positional arguments.
-    if (linkPtr == NULL)
-    {
-        return ErrorHandler(i - 1, LE_OVERFLOW);
-    }
-    else
-    {
-        PositionalCallbackRec_t* recPtr = CONTAINER_OF(linkPtr, PositionalCallbackRec_t, link);
-
-        // Call the positional callback.
-        recPtr->func(Argv[i]);
-
-        // If this was the last callback on the list,
-        if (le_sls_IsEmpty(&PositionalCallbackList))
-        {
-            AllPositionalCallbacksHaveBeenCalled = true;
-
-            // If there are allowed to be more positional arguments than positional callbacks,
-            // then add this callback back onto the list in case we encounter more positional
-            // arguments.
-            if (IsMorePositionalArgsThanCallbacksAllowed)
-            {
-                le_sls_Queue(&PositionalCallbackList, linkPtr);
-            }
-        }
-        else
-        {
-            // Note: Free is used here only because we expect argument processing to
-            // occur only at start-up, and therefore we can be certain that we won't be creating
-            // a long-running fragmentation problem that slowly eats all memory.
-            free(recPtr);
-        }
-    }
-
-    return 0;
 }
 
 
