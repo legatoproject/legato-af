@@ -2,6 +2,8 @@
 /**
  * @file app.c
  *
+ * Functions used by updateDaemon to install and remove apps.
+ *
  * Structure:
  *
  * legato/
@@ -29,6 +31,7 @@
 #include "file.h"
 #include "dir.h"
 #include "app.h"
+#include "sysStatus.h"
 #include "system.h"
 #include "supCtrl.h"
 #include "instStat.h"
@@ -528,7 +531,7 @@ le_result_t app_InstallIndividual
         if (rename(app_UnpackPath, path) != 0)
         {
             LE_EMERG("Failed to rename '%s' to '%s', %m.", app_UnpackPath, path);
-            system_MarkBad();
+            sysStatus_MarkBad();
             LE_FATAL("Rolling-back to snapshot.");
         }
     }
@@ -547,7 +550,7 @@ le_result_t app_InstallIndividual
         }
         else
         {
-            system_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
+            sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
 
             // Otherwise, stop it before we update it.
             supCtrl_StopApp(appNamePtr);
@@ -578,7 +581,7 @@ le_result_t app_InstallIndividual
     // If the app is not in the current system yet, install fresh.
     else
     {
-        system_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
+        sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
 
         // Run the pre-install hook.
         ExecPreinstallHook(appMd5Ptr, appNamePtr);
@@ -644,7 +647,7 @@ le_result_t app_InstallIndividual
 
         ExecPostinstallHook(appMd5Ptr);
 
-        system_MarkTried();
+        sysStatus_MarkTried();
 
         instStat_ReportAppInstall(appNamePtr);
 
@@ -697,7 +700,7 @@ le_result_t app_RemoveIndividual
 
     system_MarkModified();
 
-    system_MarkBad();
+    sysStatus_MarkBad();
 
     // Get the hash for this application.
     char appHash[LIMIT_MD5_STR_BYTES] = "";
@@ -734,7 +737,7 @@ le_result_t app_RemoveIndividual
     // Reload the bindings configuration
     system("/legato/systems/current/bin/sdir load");
 
-    system_MarkTried();
+    sysStatus_MarkTried();
 
     instStat_ReportAppUninstall(appNamePtr);
 

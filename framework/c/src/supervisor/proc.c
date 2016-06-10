@@ -22,7 +22,7 @@
 #include "smack.h"
 #include "killProc.h"
 #include "interfaces.h"
-#include "system.h"
+#include "sysStatus.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1816,7 +1816,7 @@ FaultAction_t proc_SigChildHandler
     // the apparently futile attempts to start this thing.
     if (ReachedFaultLimit(procRef, faultAction, prevFaultTime))
     {
-        if (system_IsGood())
+        if (sysStatus_IsGood())
         {
             LE_CRIT("Process '%s' reached the fault limit (in a 'good' system) "
                      "and will be stopped.",

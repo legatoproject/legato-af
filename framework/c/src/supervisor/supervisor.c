@@ -211,6 +211,7 @@
 #include "apps.h"
 #include "wait.h"
 #include "fileSystem.h"
+#include "sysStatus.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -426,22 +427,29 @@ static void StopSupervisor
     // Older start programs need us to do this as they cannot do it for themselves!
     fs_TryLazyUmount(CURRENT_SYSTEM_PATH);
 
+    // At the current time - each of these is a controlled shutdown of some type
+    // that indicate that a try has not failed but was ended for some deliberate
+    // reason before probation was completed. Back out the last try from the
+    // status - it doesn't count towards failed tries.
     if (State == STATE_RESTARTING)
     {
+        // Initiated by updateDaemon requesting restart
         LE_INFO("Legato framework shut down complete. Restarting...");
-
+        sysStatus_DecrementTryCount();
         exit(2);
     }
     else if (State == STATE_RESTARTING_MANUAL)
     {
+        // Initiated by user command restartLegato
         LE_INFO("Legato framework manual shut down complete. Restarting...");
-
+        sysStatus_DecrementTryCount();
         exit(3);
     }
     else if (State == STATE_STOPPING)
     {
+        // Initiated by user command stopLegato
         LE_INFO("Legato framework shut down.");
-
+        sysStatus_DecrementTryCount();
         // Exit the Supervisor.
         exit(EXIT_SUCCESS);
     }

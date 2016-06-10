@@ -44,6 +44,7 @@
 #include "instStat.h"
 #include "app.h"
 #include "system.h"
+#include "sysStatus.h"
 #include "supCtrl.h"
 #include "updateCtrl.h"
 
@@ -177,7 +178,7 @@ void updateDaemon_MarkGood
         // stop the probation timer - we may have been called from updateCtrl before expiry
         // This will return LE_FAULT if the timer is not currently running but that is OK
         le_timer_Stop(ProbationTimer);
-        system_MarkGood();
+        sysStatus_MarkGood();
         system_RemoveUnneeded();
         system_RemoveUnusedApps();
 }
@@ -1201,7 +1202,7 @@ COMPONENT_INIT
     UpdateUsersAndGroups();
 
     // If the current system is "good", go into the IDLE state,
-    if (system_Status() == SYS_GOOD)
+    if (sysStatus_Status() == SYS_GOOD)
     {
         State = STATE_IDLE;
 

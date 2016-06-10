@@ -8,6 +8,7 @@
 #include "legato.h"
 #include "limit.h"
 #include "interfaces.h"
+#include "sysStatus.h"
 #include "system.h"
 #include "updateCtrl.h"
 
@@ -370,7 +371,7 @@ void le_updateCtrl_LockProbation
     // 0 is not a real pid and if the pid isn't real, don't do anything!
     if ( clientPid != 0)
     {
-        if (system_Status() == SYS_PROBATION)
+        if (sysStatus_Status() == SYS_PROBATION)
         {
             IncrementProbationLocks(clientPid);
         }
@@ -459,7 +460,7 @@ le_result_t le_updateCtrl_MarkGood
 {
     le_result_t result = LE_OK;
 
-    if (system_Status() == SYS_PROBATION)
+    if (sysStatus_Status() == SYS_PROBATION)
     {
         if ( !updateCtrl_IsProbationLocked() || force)
         {
@@ -505,9 +506,9 @@ void le_updateCtrl_FailProbation
     void
 )
 {
-    if (system_Status() == SYS_PROBATION)
+    if (sysStatus_Status() == SYS_PROBATION)
     {
-        system_MarkBad();
+        sysStatus_MarkBad();
         if (updateCtrl_HasDefers())
         {
             // we can't start the rollback just yet. Set a callback to be called when the last defer

@@ -21,24 +21,8 @@
 #include "system.h"
 #include "installer.h"
 #include "sysPaths.h"
+#include "sysStatus.h"
 #include "smack.h"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Absolute file system path to where systems are installed.
- */
-//--------------------------------------------------------------------------------------------------
-#define SYSTEM_PATH "/legato/systems"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Absolute file system path to where the current running system is installed.
- */
-//--------------------------------------------------------------------------------------------------
-#define CURRENT_BASE_PATH SYSTEM_PATH "/current"
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -70,23 +54,7 @@ static const char* NumberedSystemPath = SYSTEM_PATH "/%d";
  * Absolute file system path to where the current running system's "modified" file is.
  */
 //--------------------------------------------------------------------------------------------------
-static const char* CurrentModifiedFilePath = CURRENT_BASE_PATH "/modified";
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Absolute file system path to where the current running system's "status" file is.
- */
-//--------------------------------------------------------------------------------------------------
-static const char* CurrentStatusPath = CURRENT_BASE_PATH "/status";
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Absolute file system path to where a freshly unpacked system's "status" file is.
- */
-//--------------------------------------------------------------------------------------------------
-const char* UnpackStatusPath = UNPACK_BASE_PATH "/status";
+static const char* CurrentModifiedFilePath = CURRENT_SYSTEM_PATH "/modified";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -94,7 +62,7 @@ const char* UnpackStatusPath = UNPACK_BASE_PATH "/status";
  * Absolute file system path to where the current running system's "info.properties" file is.
  */
 //--------------------------------------------------------------------------------------------------
-static const char* CurrentPropertiesFilePath = CURRENT_BASE_PATH "/info.properties";
+static const char* CurrentPropertiesFilePath = CURRENT_SYSTEM_PATH "/info.properties";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -111,7 +79,7 @@ static const char* NumberedSystemPropertiesPath = SYSTEM_PATH "/%d/info.properti
  * Absolute file system path to where the current running system's "version" file is.
  */
 //--------------------------------------------------------------------------------------------------
-static const char* CurrentVersionFilePath = CURRENT_BASE_PATH "/version";
+static const char* CurrentVersionFilePath = CURRENT_SYSTEM_PATH "/version";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -135,7 +103,7 @@ const char* system_UnpackPath = UNPACK_BASE_PATH;
  * Absolute file system path to directory containing apps in current running system.
  **/
 //--------------------------------------------------------------------------------------------------
-const char* system_CurrentAppsDir = CURRENT_BASE_PATH "/apps";
+const char* system_CurrentAppsDir = CURRENT_SYSTEM_PATH "/apps";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -143,12 +111,10 @@ const char* system_CurrentAppsDir = CURRENT_BASE_PATH "/apps";
  * Absolute file system path to directory containing writeable app files in the current system.
  **/
 //--------------------------------------------------------------------------------------------------
-static const char* CurrentAppsWriteableDir = CURRENT_BASE_PATH "/appsWriteable";
+static const char* CurrentAppsWriteableDir = CURRENT_SYSTEM_PATH "/appsWriteable";
 
 
 // People should really use the const variables, so undefine the macros.
-#undef SYSTEM_PATH
-#undef CURRENT_BASE_PATH
 #undef UNPACK_BASE_PATH
 
 
@@ -349,7 +315,7 @@ int system_Index
 
     if (index < 0)
     {
-        if (system_Status() != SYS_GOOD)
+        if (sysStatus_Status() != SYS_GOOD)
         {
             LE_FATAL("Going down because of problems with system index file.");
         }
@@ -468,161 +434,6 @@ bool system_Exists
     }
 
     return system_Index() == systemIndex;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the status of the current system.
- *
- * @return The system status (SYS_BAD on error).
- */
-//--------------------------------------------------------------------------------------------------
-static system_Status_t GetStatus
-(
-    const char* systemNamePtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    char path[PATH_MAX];
-    LE_ASSERT(snprintf(path, sizeof(path), "%s/%s/status", SystemPath, systemNamePtr)
-              < sizeof(path));
-
-    char statusBuffer[100] = "";
-
-    if (file_Exists(path) == false)
-    {
-        LE_DEBUG("System status file '%s' does not exist, assuming untried system.", path);
-        return SYS_PROBATION;
-    }
-
-    if (file_ReadStr(path, statusBuffer, sizeof(statusBuffer)) == -1)
-    {
-        LE_DEBUG("The system status file could not be read, '%s', assuming a bad system.", path);
-
-        return SYS_BAD;
-    }
-
-    if (strcmp("good", statusBuffer) == 0)
-    {
-        return SYS_GOOD;
-    }
-
-    if (strcmp("bad", statusBuffer) == 0)
-    {
-        return SYS_BAD;
-    }
-
-    char* triedStr = "tried ";
-    size_t triedSize = strlen(triedStr);
-
-    if (strncmp(triedStr, statusBuffer, triedSize) == 0)
-    {
-        return SYS_PROBATION;
-    }
-
-    LE_ERROR("Unknown system status '%s' found in file '%s'.", statusBuffer, path);
-
-    return SYS_BAD;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the status of the current system.
- *
- * @return the system status.
- */
-//--------------------------------------------------------------------------------------------------
-system_Status_t system_Status
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    system_Status_t status = GetStatus("current");
-
-    if (status == SYS_BAD)
-    {
-        LE_FATAL("Currently running a 'bad' system!");
-    }
-
-    return status;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * If the current system status is in Probation, then this returns the number of times the system
- * has been tried while in probation.
- *
- * Do not call this if you are not in probation!
- *
- * @return A count of the number of times the system has been "tried."
- */
-//--------------------------------------------------------------------------------------------------
-int system_TryCount
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    char statusBuffer[100] = "";
-
-    if (file_ReadStr(CurrentStatusPath, statusBuffer, sizeof(statusBuffer)) == -1)
-    {
-        LE_WARN("The system status file could not be found, '%s', assuming a bad system.",
-                CurrentStatusPath);
-        return 10;
-    }
-
-    char* triedStr = "tried ";
-    size_t triedSize = strlen(triedStr);
-
-    if (strncmp(triedStr, statusBuffer, triedSize) == 0)
-    {
-        int tryCount;
-
-        le_result_t result = le_utf8_ParseInt(&tryCount, &statusBuffer[triedSize]);
-
-        if (result != LE_OK)
-        {
-            LE_FATAL("System try count '%s' is not a valid integer. (%s)",
-                     &statusBuffer[triedSize],
-                     LE_RESULT_TXT(result));
-        }
-        else
-        {
-            return tryCount;
-        }
-    }
-
-    LE_FATAL("Current system not in probation, so try count is invalid.");
-    return 0;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Increment the try count.
- */
-//--------------------------------------------------------------------------------------------------
-void system_IncrementTryCount
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    int tryCount = system_TryCount();
-    char statusBuffer[100] = "";
-
-    ++tryCount;
-
-    int len = snprintf(statusBuffer, sizeof(statusBuffer), "tried %d", tryCount);
-
-    LE_ASSERT(len < sizeof(statusBuffer));
-
-    file_WriteStrAtomic(CurrentStatusPath, statusBuffer, 0644 /* rw-r--r-- */);
 }
 
 
@@ -886,7 +697,7 @@ le_result_t system_Snapshot
 )
 //--------------------------------------------------------------------------------------------------
 {
-    system_Status_t status = system_Status();
+    sysStatus_Status_t status = sysStatus_Status();
 
     if (status != SYS_GOOD)
     {
@@ -998,7 +809,7 @@ void system_MarkModified
 //--------------------------------------------------------------------------------------------------
 {
     // If the system is already modified, there's not much left to do.
-    if (system_IsModifed())
+    if (system_IsModified())
     {
         return;
     }
@@ -1031,9 +842,7 @@ void system_MarkModified
                                           "modified") != LE_OK,
                 "Failed to update the system properties file.");
 
-    LE_FATAL_IF((unlink(CurrentStatusPath) == -1) && (errno != ENOENT),
-                "Unable to delete '%s' (%m).",
-                CurrentStatusPath);
+    sysStatus_SetUntried();
 
     // Update the version string.
     static const char modifiedStr[] = "_modified";
@@ -1066,60 +875,13 @@ void system_MarkModified
  * @return true if the system has been modified, false if not.
  */
 //--------------------------------------------------------------------------------------------------
-bool system_IsModifed
+bool system_IsModified
 (
     void
 )
 //--------------------------------------------------------------------------------------------------
 {
     return file_Exists(CurrentModifiedFilePath);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Mark the system "bad".
- */
-//--------------------------------------------------------------------------------------------------
-void system_MarkBad
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    file_WriteStrAtomic(CurrentStatusPath, "bad", 0644 /* rw-r--r-- */);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Mark the system "tried 1".
- */
-//--------------------------------------------------------------------------------------------------
-void system_MarkTried
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    file_WriteStrAtomic(CurrentStatusPath, "tried 1", 0644 /* rw-r--r-- */);
-
-    LE_INFO("Current system has been marked \"tried 1\".");
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Mark the system "good".
- */
-//--------------------------------------------------------------------------------------------------
-void system_MarkGood
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    file_WriteStrAtomic(CurrentStatusPath, "good", 0644 /* rw-r--r-- */);
 }
 
 
@@ -1276,7 +1038,7 @@ void system_RemoveUnneeded
 )
 //--------------------------------------------------------------------------------------------------
 {
-    system_Status_t status = system_Status();
+    sysStatus_Status_t status = sysStatus_Status();
 
     // Walk the list of directories in /legato/systems/ to find out which is the newest "good"
     // system, and delete any "bad" systems while we are at it.
@@ -1298,7 +1060,7 @@ void system_RemoveUnneeded
                     // If the current system is good, delete all other systems.
                     // Otherwise, we should only have one "good" system, so delete everything
                     // but the "good" system.
-                    if ((status == SYS_GOOD) || (GetStatus(foundSystemPtr) != SYS_GOOD))
+                    if ((status == SYS_GOOD) || (sysStatus_GetStatus(foundSystemPtr) != SYS_GOOD))
                     {
                         // Attempt to umount the system because it may have been mounted when
                         // sandboxed apps were created.
