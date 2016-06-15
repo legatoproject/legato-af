@@ -505,41 +505,65 @@ static le_result_t SetRouteConfiguration
     le_mdc_ProfileRef_t profileRef
 )
 {
-    bool isIpv6 = false;
-    char gatewayAddr[100] = {0};
-    char interface[100] = {0};
-    le_result_t (*getGatewayFunction)(le_mdc_ProfileRef_t,char*,size_t) = NULL;
+    bool isIpv6 = true;
+    char ipv6GatewayAddr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
+    char ipv4GatewayAddr[LE_MDC_IPV4_ADDR_MAX_BYTES] = {0};
+    char interface[LE_MDC_INTERFACE_NAME_MAX_BYTES] = {0};
 
-    if ( le_mdc_IsIPv6(profileRef) ) {
-        isIpv6 = true;
-        getGatewayFunction = le_mdc_GetIPv6GatewayAddress;
-    }
-    else if ( le_mdc_IsIPv4(profileRef) )
-    {
-        isIpv6 = false;
-        getGatewayFunction = le_mdc_GetIPv4GatewayAddress;
-    }
-    else
+    if ( !( le_mdc_IsIPv6(profileRef) || le_mdc_IsIPv4(profileRef) ) )
     {
         LE_WARN("Profile is not using IPv4 nor IPv6");
         return LE_FAULT;
     }
 
-    if ( getGatewayFunction &&
-         (*getGatewayFunction)(profileRef, gatewayAddr, sizeof(gatewayAddr)) != LE_OK )
-    {
-        LE_INFO("le_mdc_GetGatewayAddress failed");
-        return LE_FAULT;
-    }
 
-    if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
-    {
-        LE_WARN("le_mdc_GetInterfaceName failed");
-        return LE_FAULT;
-    }
+    if ( le_mdc_IsIPv6(profileRef) )
+     {
 
-    // Set the default gateway retrieved from modem.
-    return SetDefaultGateway(interface,gatewayAddr, isIpv6);
+       if ( le_mdc_GetIPv6GatewayAddress(profileRef, ipv6GatewayAddr, sizeof(ipv6GatewayAddr)) != LE_OK )
+        {
+          LE_INFO("le_mdc_GetIPv6GatewayAddress failed");
+          return LE_FAULT;
+        }
+
+       if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
+        {
+          LE_WARN("le_mdc_GetInterfaceName failed");
+          return LE_FAULT;
+        }
+
+       // Set the default ipv6 gateway retrieved from modem.
+       if ( SetDefaultGateway(interface,ipv6GatewayAddr, isIpv6) != LE_OK )
+        {
+          LE_WARN("SetDefaultGateway for ipv6 gateway failed");
+          return LE_FAULT;
+       }
+     }
+
+    if ( le_mdc_IsIPv4(profileRef) )
+     {
+
+       if ( le_mdc_GetIPv4GatewayAddress(profileRef, ipv4GatewayAddr, sizeof(ipv4GatewayAddr)) != LE_OK )
+        {
+           LE_INFO("le_mdc_GetIPv4GatewayAddress failed");
+           return LE_FAULT;
+        }
+
+       if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
+        {
+           LE_WARN("le_mdc_GetInterfaceName failed");
+           return LE_FAULT;
+        }
+
+        // Set the default ipv4 gateway retrieved from modem.
+        if ( SetDefaultGateway(interface,ipv4GatewayAddr, !(isIpv6)) != LE_OK )
+         {
+           LE_WARN("SetDefaultGateway for ipv4 gateway failed");
+           return LE_FAULT;
+         }
+     }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
