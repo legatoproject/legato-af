@@ -1,26 +1,62 @@
 Welcome to Legato!
 ==================
 
+![Build Status](https://travis-ci.org/legatoproject/legato-af.svg)
+
 #### Dependencies
 
-  - Ubuntu 12.04 or newer.
-  - Install the packages required:
+  - Ubuntu 12.04 or newer
+  - Install required packages:
 
-        sudo apt-get install bison build-essential chrpath cifs-utils cmake \
-        coreutils curl desktop-file-utils diffstat docbook-utils doxygen \
-        fakeroot flex g++ gawk gcc git-core gitk graphviz help2man \
-        libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev \
-        libxml-libxml-perl make m4 ninja-build python-pip python-jinja2 \
-        python-pysqlite2 quilt samba scons sed subversion texi2html texinfo \
-        unzip wget ninja-build
+```
+$ sudo apt-get install vim expect-dev build-essential cmake coreutils curl \
+    fakeroot sed git-core gawk unzip wget diffstat python python-jinja2 \
+    python-pip python-pyparsing python-pysqlite2 python-bs4 python-xmltodict \
+    bison flex chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev \
+    libxml-libxml-perl m4 clang ninja-build autoconf pkg-config doxygen graphviz
+```
 
-  - Cross toolchain(s).
+  - Cross-build toolchain(s)
+    For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/
+
+#### Clone from GitHub
+
+Legato uses [repo](https://code.google.com/p/git-repo/) as it is distributed as multiple
+repositories.
+
+  1. Install git-repo:
+
+    (on Ubuntu > 14.04)
+    ```
+    $ sudo apt-get install phablet-tools
+    ```
+    OR
+    ```
+    $ curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo```
+    $ chmod a+x ~/bin/repo
+    ```
+
+  2. Clone the environment:
+
+    ```
+    $ mkdir workspace
+    $ cd workspace
+    $ repo init -u git://github.com/legatoproject/manifest
+    $ repo sync
+    ```
+
+    You can also clone a specific release:
+
+    ```
+    $ repo init -u git://github.com/legatoproject/manifest -m legato/releases/16.04.1.xml
+    $ repo sync
+    ```
 
 #### Installation
 
  To install the Legato framework on your development PC,
 
-  1. unzip/untar it into a directory
+  1. clone it from GitHub or untar a release archive into a directory
 
   2. cd into that directory
 
@@ -31,28 +67,31 @@ Welcome to Legato!
 
         $ . bin/configlegatoenv
 
-    OR, run the interactive bash shell ```bin/legs```:
+     OR, run the interactive bash shell ```bin/legs```:
 
         $ bin/legs
 
   5. To build support for cross-build targets, run ```make <target>```.
-    For example, to enable support for the Sierra Wireless AR7xxx devices, run ```make ar7```.
-    Of course, each of these depends on the cross-build tool chain for that target,
-    so ensure that you have the appropriate tool chain installed first.
+     For example, to enable support for the Sierra Wireless AR7xxx devices, run ```make ar7```.
+     Of course, each of these depends on the cross-build tool chain for that target,
+     so ensure that you have the appropriate tool chain installed first.
 
-    If your toolchain is installed somewhere other than under ```/opt/swi```,
-    ensure that the appropriate environment variable is set to the path of
-    the directory containing your toolchain.
-    For example, for AR7 devices, ```AR7_TOOLCHAIN_DIR``` must be set to the path of the directory
-    that contains the file ```arm-poky-linux-gnuabi-gcc```.
+     If your toolchain is installed somewhere other than under ```/opt/swi```,
+     ensure that the appropriate environment variable is set to the path of
+     the directory containing your toolchain.
+     For example, for WP85 devices, ```WP85_TOOLCHAIN_DIR``` must be set to the path of the directory
+     that contains the file ```arm-poky-linux-gnuabi-gcc```.
 
      Following is a list of supported cross-build targets:
 
-Target |  Description                    | Environment variable
-:------|---------------------------------|:-----------------------
-  ar7  | Sierra Wireless AR7xxx module   | ```AR7_TOOLCHAIN_DIR```
-  ar86 | Sierra Wireless AR86xx module   | ```AR86_TOOLCHAIN_DIR```
-  wp85 | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```
+Target   |  Description                    | Environment variable
+:--------|---------------------------------|:-----------------------
+  ar7    | Sierra Wireless AR755x module   | ```AR7_TOOLCHAIN_DIR```
+  ar758x | Sierra Wireless AR758x module   | ```AR758X_TOOLCHAIN_DIR```
+  ar759x | Sierra Wireless AR759x module   | ```AR759X_TOOLCHAIN_DIR```
+  ar86   | Sierra Wireless AR86xx module   | ```AR86_TOOLCHAIN_DIR```
+  wp85   | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```
+  raspi  | Raspberry Pi                    | ```RASPI_TOOLCHAIN_DIR```
 
 #### Documentation
 
@@ -87,9 +126,15 @@ Target |  Description                    | Environment variable
 
    ```./cmake``` - contains CMake scripts used by the build system.
 
+   ```./components``` - contains components providing various services.
+
    ```./framework``` - contains the source code for the Legato framework itself.
 
    ```./targetFiles``` - contains files that are for installation on target devices.
+
+   ```./platformAdaptor``` - contains components that are adapting Legato services to a platform.
+
+   ```./modules``` - contains other repositories that are extending Legato.
 
 * * *
 _Copyright (C) Sierra Wireless Inc. Use of this work is subject to license._
