@@ -15,4 +15,11 @@ else
 endif
 
 export TOOLCHAIN_PREFIX :=
-export COMPILER_DIR := /usr/bin
+
+ifeq ($(USE_CLANG),1)
+  export COMPILER_DIR := $(dir $(shell which clang))
+else
+  export COMPILER_DIR := $(dir $(shell which gcc))
+endif
+
+$(info "Compiler Dir: ${COMPILER_DIR}")

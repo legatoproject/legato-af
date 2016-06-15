@@ -25,10 +25,14 @@ install:
   - git config --global user.email "legato@travis-ci.org" 
 
 script:
-  - if [ "$CC" == "clang" ]; then export USE_CLANG=1; fi
+  - if [ "$CC" == "clang" ]; then export USE_CLANG=1 && which clang; fi
+  - cd ..
   - mkdir workspace
   - cd workspace
   - repo init -q -u git://github.com/legatoproject/manifest
   - repo sync
   - cd legato
+  - git remote add local ../../legato-af
+  - git fetch local
+  - git reset --hard FETCH_HEAD
   - make localhost
