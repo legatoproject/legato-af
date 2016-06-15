@@ -1282,6 +1282,19 @@ static void Testle_mrc_PreferredPLMN()
                 &ratMask);
             LE_ASSERT(res == LE_OK);
 
+            res = le_mrc_GetPreferredOperatorDetails(optRef,
+                mccStr, LE_MRC_MCC_BYTES-1,
+                mncStr, LE_MRC_MNC_BYTES,
+                &ratMask);
+            LE_ASSERT(res == LE_OVERFLOW);
+
+
+            res = le_mrc_GetPreferredOperatorDetails(optRef,
+                mccStr, LE_MRC_MCC_BYTES,
+                mncStr, LE_MRC_MNC_BYTES-1,
+                &ratMask);
+            LE_ASSERT(res == LE_OVERFLOW);
+
             if(beforeIndex < 3)
             {
                 strcpy(saveMccStr[beforeIndex], mccStr);

@@ -1985,8 +1985,22 @@ le_result_t le_mrc_GetPreferredOperatorDetails
         return LE_FAULT;
     }
 
-    le_utf8_Copy(mccPtr, prefOperatorInfoPtr->mobileCode.mcc, mccPtrNumElements, NULL);
-    le_utf8_Copy(mncPtr, prefOperatorInfoPtr->mobileCode.mnc, mncPtrNumElements, NULL);
+
+    if( le_utf8_Copy(mccPtr, prefOperatorInfoPtr->mobileCode.mcc, mccPtrNumElements, NULL) ==
+                    LE_OVERFLOW )
+    {
+        LE_ERROR("Mobile Country Code string size is greater than mccPtrNumElements");
+        return LE_OVERFLOW;
+    }
+
+    if( le_utf8_Copy(mncPtr, prefOperatorInfoPtr->mobileCode.mnc, mncPtrNumElements, NULL) ==
+                   LE_OVERFLOW )
+    {
+        LE_ERROR("Mobile Network Code string size is greater than mncPtrNumElements");
+        return LE_OVERFLOW;
+    }
+
+
     *ratMaskPtr = prefOperatorInfoPtr->ratMask;
 
     return LE_OK;
