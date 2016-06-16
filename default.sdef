@@ -30,6 +30,7 @@ commands:
     fwupdate = tools:/bin/fwupdate
     secstore = tools:/bin/secstore
     pmtool = tools:/bin/pmtool
+    gnss = tools:/bin/gnss
 }
 
 bindings:

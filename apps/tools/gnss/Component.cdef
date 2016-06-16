@@ -1,0 +1,14 @@
+requires:
+{
+    api:
+    {
+        positioning/le_gnss.api
+        positioning/le_pos.api
+        positioning/le_posCtrl.api
+    }
+}
+
+sources:
+{
+    gnss.c
+}

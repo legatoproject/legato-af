@@ -12,6 +12,7 @@ executables:
     fwupdate = (fwupdate)
     secstore = (secstore)
     pmtool = (pmtool)
+    gnss = (gnss)
 }
 
 bindings:
@@ -26,6 +27,10 @@ bindings:
     cm.cm.le_temp -> modemService.le_temp
     cm.cm.le_ips -> modemService.le_ips
     cm.cm.le_rtc -> modemService.le_rtc
+
+    gnss.gnss.le_gnss -> positioningService.le_gnss
+    gnss.gnss.le_pos -> positioningService.le_pos
+    gnss.gnss.le_posCtrl -> positioningService.le_posCtrl
 
     fwupdate.fwupdate.le_fwupdate -> fwupdateService.le_fwupdate
 
