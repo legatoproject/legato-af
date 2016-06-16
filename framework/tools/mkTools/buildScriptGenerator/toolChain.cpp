@@ -118,11 +118,6 @@ static std::string GetCrossBuildToolChainPrefix
     varName += "_TOOLCHAIN_PREFIX";
     envValue = envVars::Get(varName);
 
-    if(envValue.empty())
-    {
-        return "arm-poky-linux-gnueabi-";
-    }
-
     return envValue;
 }
 

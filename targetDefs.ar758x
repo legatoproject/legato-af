@@ -10,9 +10,11 @@ export TARGET := ar758x
 
 ifndef AR758X_TOOLCHAIN_DIR
   $(warning AR758X_TOOLCHAIN_DIR not defined.  Using default.)
-  export AR758X_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar758x)
+  export AR758X_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar758x dir)
 endif
-export AR758X_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
+ifndef AR758X_TOOLCHAIN_PREFIX
+  export AR758X_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) ar758x prefix)
+endif
 export TOOLCHAIN_PREFIX = $(AR758X_TOOLCHAIN_PREFIX)
 export COMPILER_DIR = $(AR758X_TOOLCHAIN_DIR)
 

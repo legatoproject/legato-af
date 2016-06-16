@@ -9,10 +9,10 @@ NAME
         $(basename $0) - search for an installed cross-build toolchain for a given type of target.
 
 SYNOPSIS
-        $(basename $0) TARGET
+        $(basename $0) TARGET [dir or prefix]
 
 DESCRIPTION
-        Will output the toolchain directory path to stdout and exit with code 0 on success.
+        Will output the toolchain directory directory (or prefix) to stdout and exit with code 0 on success.
 
         Prints an error message to stderr and exits with a non-zero exit code on error.
 ENDHELP
@@ -20,6 +20,7 @@ ENDHELP
 
 HOST_ARCH=$(uname -m)
 TARGET=$1
+CMD=${2:-dir}
 
 # Select the appropriate list of toolchain directories to search, in order of preference
 # (most preferred first) based on the target name given.
@@ -75,11 +76,23 @@ esac
 check_toolchain_dir() {
     dir=$1
 
-    if find $dir -name "*-linux*-gcc" > /dev/null 2>&1
-    then
-        echo "$dir"
-        return 0
+    COMPILER_EXEC=gcc
+    if [[ "$USE_CLANG" == "1" ]]; then
+        COMPILER_EXEC=clang
     fi
+
+    for entry in $(find $dir -name "*$COMPILER_EXEC" 2>/dev/null); do
+        if [[ "$CMD" == "dir" ]]; then
+            echo "$dir"
+        elif [[ "$CMD" == "prefix" ]]; then
+            echo $(basename $entry | sed 's/'$COMPILER_EXEC'$//')
+        else
+            echo "Unknown option $CMD"
+            exit 1
+        fi
+
+        return 0
+    done
 
     return 1
 }

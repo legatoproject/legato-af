@@ -8,18 +8,18 @@ export TARGET := raspi
 
 ifndef RASPI_TOOLCHAIN_DIR
   $(warning RASPI_TOOLCHAIN_DIR not defined.  Using default.)
-  export RASPI_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) raspi)
+  export RASPI_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) raspi dir)
 endif
-
-export RASPI_TOOLCHAIN_PREFIX := arm-linux-gnueabihf-
-export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_RASPI
-ifeq (,$(wildcard $(RASPI_TOOLCHAIN_DIR)/$(RASPI_TOOLCHAIN_PREFIX)gcc))
-  export RASPI_TOOLCHAIN_PREFIX := arm-poky-linux-gnueabi-
-  export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV6
+ifndef RASPI_TOOLCHAIN_PREFIX
+  export RASPI_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) raspi prefix)
 endif
-
 export TOOLCHAIN_PREFIX = $(RASPI_TOOLCHAIN_PREFIX)
 export COMPILER_DIR = $(RASPI_TOOLCHAIN_DIR)
+
+export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_RASPI
+ifeq ($(RASPI_TOOLCHAIN_PREFIX),arm-poky-linux-gnueabi-)
+  export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV6
+endif
 
 export LEGATO_UTIL_PA = $(LEGATO_ROOT)/components/at
 export LEGATO_MODEM_PA := $(PA_DIR)/at/components/le_pa

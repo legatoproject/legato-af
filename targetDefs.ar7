@@ -10,9 +10,11 @@ export TARGET := ar7
 
 ifndef AR7_TOOLCHAIN_DIR
   $(warning AR7_TOOLCHAIN_DIR not defined.  Using default.)
-  export AR7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar7)
+  export AR7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar7 dir)
 endif
-export AR7_TOOLCHAIN_PREFIX := arm-poky-linux-gnueabi-
+ifndef AR7_TOOLCHAIN_PREFIX
+  export AR7_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) ar7 prefix)
+endif
 export TOOLCHAIN_PREFIX = $(AR7_TOOLCHAIN_PREFIX)
 export COMPILER_DIR = $(AR7_TOOLCHAIN_DIR)
 

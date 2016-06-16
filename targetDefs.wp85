@@ -10,9 +10,11 @@ export TARGET := wp85
 
 ifndef WP85_TOOLCHAIN_DIR
   $(warning WP85_TOOLCHAIN_DIR not defined.  Using default.)
-  export WP85_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp85)
+  export WP85_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp85 dir)
 endif
-export WP85_TOOLCHAIN_PREFIX = arm-poky-linux-gnueabi-
+ifndef WP85_TOOLCHAIN_PREFIX
+  export WP85_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) wp85 prefix)
+endif
 export TOOLCHAIN_PREFIX = $(WP85_TOOLCHAIN_PREFIX)
 export COMPILER_DIR = $(WP85_TOOLCHAIN_DIR)
 

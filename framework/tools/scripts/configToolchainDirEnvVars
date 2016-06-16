@@ -8,36 +8,20 @@
 set_toolchain_dir ()
 {
     TARGET=$1
+
     toolchain_dir_env_name="$(echo $TARGET | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
-    eval "toolchain_dir_env_value=\"\${$toolchain_dir_env_name}\""
+    toolchain_prefix_env_name="$(echo $TARGET | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
 
-    if [ "$toolchain_dir_env_value" = "" ]
-    then
-        # Search for an installed toolchain.
-        toolchain_dir=$(findtoolchain $TARGET)
-        if (($? > 0))
-        then
-            return 1
-        fi
-
-        if [ -z "$toolchain_dir" ]
-        then
-            echo "Unable to find compatible cross-build toolchain for target '$TARGET'."
-            return 1
-        else
-            eval "export ${toolchain_dir_env_name}=$toolchain_dir"
-            echo "${toolchain_dir_env_name} set to default ($toolchain_dir)."
-        fi
-    fi
-
-    # Double check that the toolchain is actually installed.
-    eval "toolchain_dir_env_value=\"\${$toolchain_dir_env_name}\""
-    if ! [ -f "${toolchain_dir_env_value}/arm-poky-linux-gnueabi-gcc" ]
-    then
-        echo "*** WARNING: $TARGET toolchain directory not found in '"${toolchain_dir_env_value}"'"
-        echo "             Check value set for ${toolchain_dir_env_name}"
+    toolchain_dir=$(findtoolchain $TARGET dir)
+    if [ -z "$toolchain_dir" ] || ! [ -e "$toolchain_dir" ]; then
+        echo "Unable to find compatible cross-build toolchain for target '$TARGET'."
         return 1
     fi
+
+    toolchain_prefix=$(findtoolchain $TARGET prefix)
+
+    eval "export ${toolchain_dir_env_name}=$toolchain_dir"
+    eval "export ${toolchain_prefix_env_name}=$toolchain_prefix"
 
     return 0
 }
