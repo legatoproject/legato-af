@@ -3,8 +3,8 @@
 These topics contain Legato and Yocto platform-specific info:
 | Section                            | Description                                         |
 | ---------------------------------- | --------------------------------------------------- |
-| @subpage yoctoHowToLegato          | details on how to build Legato in the Yocto dist    |
-| @subpage yoctoLegatoOverview       | info about the Legato Yocto distribution            |
+| @subpage yoctoHowToLegato          | details on how to build Legato on the Yocto platform    |
+| @subpage yoctoLegatoOverview       |  Yocto distribution info and how to build an image          |
 | @subpage yoctoInstallNotes         | handy notes for working with the Legato Yocto dist  |
 | @subpage howToCustomizeUSB         | customize USB behaviour of Legato Yocto dist        |
 
