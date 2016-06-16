@@ -15,3 +15,12 @@ set_legato_component(${APP_COMPONENT})
 add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
+
+set(APP_TARGET testFwThreadLimit)
+set(APP_SOURCES
+    limit.c
+)
+
+add_legato_executable(${APP_TARGET} ${APP_SOURCES})
+
+add_test(${APP_TARGET} ${CMAKE_CURRENT_SOURCE_DIR}/limit.sh ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

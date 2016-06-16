@@ -814,9 +814,9 @@ void le_thread_Start
                                 threadPtr);
     if (result != 0)
     {
-        int err = errno;
-        LE_EMERG("pthread_create() failed with error code %d (%m).", err);
-        if (err == EPERM)
+        errno = result;
+        LE_EMERG("pthread_create() failed with error code %d (%m).", result);
+        if (result == EPERM)
         {
             LE_FATAL("Insufficient permissions to create thread '%s' with its current attributes.",
                      threadPtr->name);
