@@ -584,6 +584,21 @@ void* gpioSysfs_SetChangeCallback
         return NULL;
     }
 
+    // Seek to the start of the file and read from it - this is required to prevent
+    // false triggers- see https://www.kernel.org/doc/Documentation/gpio/sysfs.txt
+    LE_DEBUG("Seek to start of file %d", monFd);
+
+    LE_ERROR_IF(lseek(monFd, 0, SEEK_SET) == (off_t)(-1),
+                "Failed to SEEK_SET for GPIO '%s'. %m.", gpioRef->gpioName );
+
+    //We will read a single character
+    char buf[1];
+
+    if (read(monFd, buf, 1) != 1)
+    {
+        LE_ERROR("Unable to read value for GPIO %s. %m", gpioRef->gpioName);
+    }
+
     LE_DEBUG("Setting up file monitor for fd %d and pin %s", monFd, gpioRef->gpioName);
     gpioRef->fdMonitor = le_fdMonitor_Create (gpioRef->gpioName, monFd, fdMonFunc, POLLPRI);
     gpioRef->monitorFd = monFd;
