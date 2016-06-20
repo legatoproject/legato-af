@@ -209,7 +209,8 @@ typedef struct le_audio_Stream {
     le_thread_Ref_t     pcmThreadRef;                  ///< Playback/capture thread reference
     bool                playFile;                      ///< Stream plays a file
     int8_t              deviceIdentifier;              ///< Device identifier
-    pa_audio_Params_t   PaParams;                   ///< PA Parameters
+    int8_t              hwDeviceId;                    ///< Hardware Device identifier
+    pa_audio_Params_t   PaParams;                      ///< PA Parameters
 }
 le_audio_Stream_t;
 

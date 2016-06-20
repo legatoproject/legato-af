@@ -1343,7 +1343,8 @@ static void* CaptureThread
     pcm_Handle_t pcmHandle = NULL;
 
     char deviceString[10]="\0";
-    snprintf(deviceString,10,"hw:0,%d", streamPtr->deviceIdentifier);
+    snprintf(deviceString,10,"hw:0,%d", streamPtr->hwDeviceId);
+    LE_DEBUG("Hardware interface: %s", deviceString);
 
     if ((pa_pcm_InitCapture(&pcmHandle, deviceString, &(threadContextPtr->pcmConfig)) != LE_OK) ||
         (pcmHandle == NULL))
@@ -1527,11 +1528,11 @@ static void* PlaybackThread
     LE_DEBUG("Open playback");
 
     pcm_Handle_t pcmHandle = NULL;
-
     LE_DEBUG("streamPtr->deviceIdentifier %d",streamPtr->deviceIdentifier);
 
     char deviceString[10]="\0";
-    snprintf(deviceString,10,"hw:0,%d", streamPtr->deviceIdentifier);
+    snprintf(deviceString,10,"hw:0,%d", streamPtr->hwDeviceId);
+    LE_DEBUG("Hardware interface: %s", deviceString);
 
     if ((pa_pcm_InitPlayback(&pcmHandle, deviceString, &(threadContextPtr->pcmConfig)) != LE_OK)
                             || (pcmHandle == NULL))

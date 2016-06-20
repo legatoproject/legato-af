@@ -5,6 +5,10 @@
 * @verbatim
   $ app start audioPlaybackRec
   $ execInApp audioPlaybackRec audioPlaybackRecTest <test case> [main audio path] [file's name] [option]
+
+  Example:
+  $ execInApp audioPlaybackRec audioPlaybackRecTest REC I2S /record/remote.wav WAV STOP=10
+  $ execInApp audioPlaybackRec audioPlaybackRecTest PB I2S /usr/share/sounds/0-to-9.wav
  @endverbatim
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
@@ -807,8 +811,6 @@ static void ConnectAudioToFileLocalRec
 )
 {
     le_result_t res;
-
-    LE_ASSERT(le_audio_SetGain( FeInRef, 0x5000 ) == LE_OK);
 
     if ((AudioFileFd=open(AudioFilePath, O_WRONLY | O_CREAT | O_TRUNC)) == -1)
     {
