@@ -16,6 +16,8 @@ Unfortunately Legato's minimal Python 2 installation doesn't include the cgi mod
 
 The Makefile contains a script to download and build the latest lighttpd version.
 
+It also generates a default self-signed certificate for SSL: cfg/server.pem
+
 ### Manually
 
 Download source from
