@@ -1,0 +1,123 @@
+/** @page platformConstraintsATCommand AT Command
+
+Just a limited set of functions are supported on AT-command based platform adaptor.
+
+<b>@subpage c_info :</b>
+ - le_info_GetImei()
+ - le_info_GetFirmwareVersion()
+ - le_info_GetDeviceModel()
+ - le_info_GetManufacturerName()
+
+
+<b>@subpage c_mcc :</b>
+ - le_mcc_Create()
+ - le_mcc_Delete()
+ - le_mcc_Start()
+ - le_mcc_IsConnected()
+ - le_mcc_GetRemoteTel()
+ - le_mcc_GetTerminationReason()
+ - le_mcc_Answer()
+ - le_mcc_HangUp()
+ - le_mcc_HangUpAll()
+ - le_mcc_AddCallEventHandler()
+ - le_mcc_RemoveCallEventHandler()
+
+<b>@subpage c_mdc :</b>
+ - le_mdc_GetProfile()
+ - le_mdc_GetProfileIndex()
+ - le_mdc_GetProfileFromApn()
+ - le_mdc_GetPDP()
+ - le_mdc_GetAPN()
+ - le_mdc_GetAuthentication()
+ - le_mdc_SetPDP()
+ - le_mdc_SetAPN()
+ - le_mdc_SetAuthentication()
+ - le_mdc_StartSession() (only IPv4)
+ - le_mdc_StartSessionAsync()
+ - le_mdc_IsIPv4()
+ - le_mdc_IsIPv6()
+ - le_mdc_StopSession()
+ - le_mdc_StopSessionAsync()
+ - le_mdc_GetSessionState()
+ - le_mdc_GetInterfaceName()
+ - le_mdc_GetIPv4Address()
+ - le_mdc_GetIPv4GatewayAddress()
+ - le_mdc_GetIPv4DNSAddresses()
+ - le_mdc_AddSessionStateHandler()
+ - le_mdc_RemoveSessionStateHandler()
+
+<b>@subpage c_mrc :</b>
+ - le_mrc_SetRadioPower()
+ - le_mrc_GetRadioPower()
+ - le_mrc_AddNetRegStateEventHandler()
+ - le_mrc_RemoveNetRegStateEventHandler()
+ - le_mrc_GetNetRegState()
+ - le_mrc_GetSignalQual()
+ - le_mrc_GetCurrentNetworkName()
+ - le_mrc_GetCurrentNetworkMccMnc()
+ - le_mrc_SetAutomaticRegisterMode()
+ - le_mrc_GetRegisterMode()
+ - le_mrc_GetRadioAccessTechInUse()
+ - le_mrc_SetRatPreferences()
+ - le_mrc_GetRatPreferences()
+ - le_mrc_MeasureSignalMetrics() (only signal strength)
+ - le_mrc_DeleteSignalMetrics() (only signal strength)
+ - le_mrc_GetRatOfSignalMetrics() (only signal strength)
+ - le_mrc_GetGsmSignalMetrics() (only signal strength)
+ - le_mrc_GetUmtsSignalMetrics() (only signal strength)
+ - le_mrc_GetBandCapabilities()
+
+<b>@subpage c_sim :</b>
+ - le_sim_GetICCID()
+ - le_sim_GetIMSI()
+ - le_sim_IsReady()
+ - le_sim_IsPresent()
+ - le_sim_GetState()
+ - le_sim_AddNewStateHandler()
+ - le_sim_RemoveNewStateHandler()
+ - le_sim_EnterPIN()
+ - le_sim_Unblock()
+ - le_sim_ChangePIN()
+ - le_sim_Lock()
+ - le_sim_Unlock()
+ - le_sim_GetHomeNetworkOperator()
+
+<b>@subpage c_sms :</b>
+ - le_sms_Create()
+ - le_sms_SetTimeout()
+ - le_sms_Delete()
+ - le_sms_GetFormat()
+ - le_sms_GetType()
+ - le_sms_SetDestination()
+ - le_sms_GetSenderTel()
+ - le_sms_GetTimeStamp()
+ - le_sms_GetUserdataLen()
+ - le_sms_GetPDULen()
+ - le_sms_GetUCS2()
+ - le_sms_SetText()
+ - le_sms_SetBinary()
+ - le_sms_SetPDU()
+ - le_sms_SetUCS2()
+ - le_sms_GetText()
+ - le_sms_GetBinary()
+ - le_sms_GetPDU()
+ - le_sms_SendAsync()
+ - le_sms_Send()
+ - le_sms_SendText()
+ - le_sms_SendPdu()
+ - le_sms_AddRxMessageHandler()
+ - le_sms_RemoveRxMessageHandler()
+ - le_sms_CreateRxMsgList()
+ - le_sms_DeleteList()
+ - le_sms_GetFirst()
+ - le_sms_GetNext()
+ - le_sms_GetStatus()
+ - le_sms_DeleteFromStorage()
+ - le_sms_GetSmsCenterAddress()
+
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

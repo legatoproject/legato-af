@@ -7,7 +7,8 @@ The AR755x, AR8652, and WP8548 platforms have the following limitations:
 @subpage platformConstraintsAdc <br>
 @subpage platformConstraintsSim <br>
 @subpage platformConstraintsStk <br>
-@subpage platformConstraintsTemperature
+@subpage platformConstraintsTemperature <br>
+@subpage platformConstraintsATCommand
 
 <HR>
 
