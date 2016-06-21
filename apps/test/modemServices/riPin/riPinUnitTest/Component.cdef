@@ -1,0 +1,14 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_riPin.api       [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_riPin.c
+    ${PA_DIR}/simu/components/le_pa/pa_riPin_simu.c
+}

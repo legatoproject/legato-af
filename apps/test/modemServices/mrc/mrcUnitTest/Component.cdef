@@ -1,0 +1,18 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_mdmDefs.api       [types-only]
+        modemServices/le_sim.api           [types-only]
+        modemServices/le_mrc.api           [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mrc.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_sim.c
+    ${PA_DIR}/simu/components/le_pa/pa_mrc_simu.c
+    ${PA_DIR}/simu/components/le_pa/pa_sim_simu.c
+}

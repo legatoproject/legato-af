@@ -2,48 +2,30 @@
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 #*******************************************************************************
 
-set(APP_COMPONENT mdcTest)
-set(APP_TARGET mdcUnitTest)
 
-set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/framework/libjansson/include/")
-set(INTERFACES_MODEM_SERVICES "${LEGATO_ROOT}/interfaces/modemServices/")
+set(TEST_EXEC mdcUnitTest)
+
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
-set(PA_SIMU_MODEM_SERVICES "${PA_DIR}/simu/components/le_pa/")
-set (TEST "apps/test/modemServices/mdc/${APP_TARGET}")
-set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 set(APNFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-full-conf.json")
+set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/framework/libjansson/include/")
 
-#generate API interfaces
-execute_process (COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_mdc.api
-                 COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_mdmDefs.api
-                 COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_mrc.api
-                 COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_sim.api
-                 WORKING_DIRECTORY ${LEGATO_BUILD}/${TEST})
+if(TEST_COVERAGE EQUAL 1)
+    set(CFLAGS "--cflags=\"--coverage\"")
+    set(LFLAGS "--ldflags=\"--coverage\"")
+endif()
 
-include_directories(    ${LEGATO_ROOT}/framework/c/inc
-                        ${LEGATO_ROOT}/framework/c/src
-                        ${LEGATO_MODEM_SERVICES}/modemDaemon
-                        ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
-                        ${PA_SIMU_MODEM_SERVICES}
-                        ${LEGATO_BUILD}/${TEST}
-                        ${LEGATO_ROOT}/${TEST}
-                        ${LEGATO_ROOT}/components/cfgEntries
-                        ${JANSSON_INC_DIR}  )
-
-set(APP_SOURCES
-    ${LEGATO_ROOT}/${TEST}/main.c
-    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mdc.c
-    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_mrc.c
-    ${LEGATO_MODEM_SERVICES}/modemDaemon/le_sim.c
-    ${PA_SIMU_MODEM_SERVICES}/pa_mrc_simu.c
-    ${PA_SIMU_MODEM_SERVICES}/pa_mdc_simu.c
-    ${PA_SIMU_MODEM_SERVICES}/pa_sim_simu.c
+mkexe(${TEST_EXEC}
+    .
+    -i ${LEGATO_MODEM_SERVICES}/modemDaemon
+    -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
+    -i ${LEGATO_ROOT}/components/cfgEntries
+    -i ${LEGATO_ROOT}/framework/c/src
+    -i ${PA_DIR}/simu/components/le_pa
+    -i ${JANSSON_INC_DIR}
+    -i ${LEGATO_ROOT}/
+    ${CFLAGS}
+    ${LFLAGS}
+    -L "-ljansson"
 )
 
-set_legato_component(${APP_COMPONENT})
-
-add_legato_executable(${APP_TARGET} ${APP_SOURCES})
-
-target_link_libraries(${APP_TARGET} -ljansson)
-
-add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET} ${APNFILE} )
+add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC}  ${APNFILE} )

@@ -16,7 +16,7 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
     uint64_t millisecondsPastGpsEpoch=0x1234567887654321;
     uint64_t millisecondsPastGpsEpochTmp=0;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 
     LE_INFO("======== UnitTest of RTC API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }
 
 

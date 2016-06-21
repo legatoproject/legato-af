@@ -77,101 +77,6 @@ void le_audio_Init(void);
 //--------------------------------------------------------------------------------------------------
 void pa_audio_Init(void);
 
-
-//--------------------------------------------------------------------------------------------------
-// Begin Stubbed functions.
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Registers a function to be called whenever one of this service's sessions is closed by
- * the client.
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler
-(
-    le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
-    le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
-    void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
-)
-{
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the server service reference
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_MessageRef_t MyGetServiceRxMsg
-(
-    void
-)
-{
-    return (le_msg_MessageRef_t) 0x01;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets a reference to the session to which a given message belongs.
- *
- * @return The session reference.
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t MyGetSession
-(
-    le_msg_MessageRef_t msgRef      ///< [in] Reference to the message.
-)
-{
-    return (le_msg_SessionRef_t) 0x01;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Registers a function to be called whenever one of this service's sessions is closed by
- * the client.
- *
- */
-//--------------------------------------------------------------------------------------------------
-void MyCloseSession
-(
-    le_msg_SessionRef_t sessionRef  ///< [in] Reference to the session.
-)
-{
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the client session reference for the current message
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t le_audio_GetClientSessionRef
-(
-    void
-)
-{
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the server service reference
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t le_audio_GetServiceRef
-(
-    void
-)
-{
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-// End Stubbed functions.
-//--------------------------------------------------------------------------------------------------
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Test thread destructor.
@@ -1111,9 +1016,6 @@ void* MainThread
     void* contextPtr
 )
 {
-    pa_audio_Init();
-    le_audio_Init();
-
     le_sem_Post(ThreadSemaphore);
 
     le_event_RunLoop();
@@ -1125,7 +1027,7 @@ void* MainThread
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
     // To reactivate for all DEBUG logs
   //  le_log_SetFilterLevel(LE_LOG_DEBUG);
@@ -1175,5 +1077,5 @@ int main(int argc, char *argv[])
     Testle_audio_PlayDtmf();
 
     LE_INFO("======== UnitTest of AUDIO API ends with SUCCESS ========");
-    return(0);
+    exit(0);
 }

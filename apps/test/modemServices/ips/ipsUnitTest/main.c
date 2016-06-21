@@ -165,11 +165,7 @@ static void Testle_ips_SetGetVoltageThresholds
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main
-(
-    int   argc,
-    char* argv[]
-)
+COMPONENT_INIT
 {
     pa_ipsSimu_Init();
     le_ips_Init();
@@ -182,5 +178,5 @@ int main
 
     LE_INFO("======== UnitTest of IPS API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }

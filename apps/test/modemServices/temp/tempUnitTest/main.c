@@ -363,11 +363,7 @@ static void Testle_Temp_RemoveHandlers
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main
-(
-    int argc,
-    char *argv[]
-)
+COMPONENT_INIT
 {
     // To reactivate for all DEBUG logs
    le_log_SetFilterLevel(LE_LOG_DEBUG);
@@ -392,6 +388,5 @@ int main
     Testle_Temp_RemoveHandlers();
 
     LE_INFO("======== UnitTest of TEMP API ends with SUCCESS ========");
-
-    return 0;
+    exit(0);
 }

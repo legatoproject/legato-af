@@ -15,7 +15,7 @@
  *
  */
 //--------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
     bool amIOwner = false;
     uint32_t duration = 0x12345678;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
     LE_INFO("======== UnitTest of RI PIN API ends with SUCCESS ========");
 
-    return 0;
+    exit(0);
 }
 
 

@@ -7,32 +7,21 @@
 
 set(TEST_EXEC ipsUnitTest)
 
-set(INTERFACES "${LEGATO_ROOT}/interfaces")
-set(INTERFACES_MODEM_SERVICES "${LEGATO_ROOT}/interfaces/modemServices/")
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
-set(PA_SIMU_MODEM_SERVICES "${PA_DIR}/simu/components/le_pa/")
-set (TEST "apps/test/modemServices/ips/${TEST_EXEC}")
-set (LEGATO_BUILD "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
-set(LEGATO_LIBRARY_PATH ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/lib/liblegato.so)
 
-#generate API interfaces
-execute_process (COMMAND ifgen --gen-interface ${INTERFACES_MODEM_SERVICES}/le_ips.api
-                 WORKING_DIRECTORY ${LEGATO_BUILD}/${TEST})
+if(TEST_COVERAGE EQUAL 1)
+    set(CFLAGS "--cflags=\"--coverage\"")
+    set(LFLAGS "--ldflags=\"--coverage\"")
+endif()
 
-include_directories(    ${LEGATO_ROOT}/framework/c/inc
-                        ${LEGATO_ROOT}/framework/c/src
-                        ${LEGATO_MODEM_SERVICES}/modemDaemon
-                        ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
-                        ${PA_SIMU_MODEM_SERVICES}
-                        ${LEGATO_BUILD}/${TEST}
-                        ${LEGATO_ROOT}/${TEST}
-                        ${LEGATO_ROOT}/components/cfgEntries )
+mkexe(${TEST_EXEC}
+    .
+    -i ${LEGATO_MODEM_SERVICES}/modemDaemon
+    -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
+    -i ${LEGATO_ROOT}/framework/c/src
+    -i ${PA_DIR}/simu/components/le_pa
+    ${CFLAGS}
+    ${LFLAGS}
+)
 
-add_executable(${TEST_EXEC} main.c
-               ${LEGATO_MODEM_SERVICES}/modemDaemon/le_ips.c
-               ${PA_SIMU_MODEM_SERVICES}/pa_ips_simu.c
-              )
-
-target_link_libraries(${TEST_EXEC} ${LEGATO_LIBRARY_PATH})
-
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} )
+add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})

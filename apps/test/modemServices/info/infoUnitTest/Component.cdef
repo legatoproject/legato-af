@@ -1,0 +1,16 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_info.api         [types-only]
+        modemServices/le_sim.api         [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_info.c
+    ${LEGATO_MODEM_PA_DEFAULT}/pa_info_default.c
+    ${LEGATO_MODEM_PA_DEFAULT}/pa_sim_default.c
+}

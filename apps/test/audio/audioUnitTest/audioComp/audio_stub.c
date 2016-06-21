@@ -1,7 +1,12 @@
-#include "le_audio_interface.h"
+/**
+ * This module implements some stub for audio unit tetst.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *
+ */
 
-#undef LE_KILL_CLIENT
-#define LE_KILL_CLIENT LE_WARN
+#include "legato.h"
+#include "interfaces.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -11,7 +16,10 @@
 le_msg_SessionRef_t le_audio_GetClientSessionRef
 (
     void
-);
+)
+{
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -21,7 +29,10 @@ le_msg_SessionRef_t le_audio_GetClientSessionRef
 le_msg_ServiceRef_t le_audio_GetServiceRef
 (
     void
-);
+)
+{
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -30,9 +41,12 @@ le_msg_ServiceRef_t le_audio_GetServiceRef
 
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionEventHandlerRef_t myAddServiceCloseHandler
+le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler
 (
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
-);
+)
+{
+    return NULL;
+}

@@ -14,6 +14,7 @@
 #include "buildScriptCommon.h"
 #include "componentBuildScript.h"
 
+
 namespace ninja
 {
 
@@ -190,6 +191,7 @@ static void GenerateLdFlagsDef
 //--------------------------------------------------------------------------------------------------
 {
     script << "  ldFlags = ";
+    script << buildParams.ldFlags;
 
     // Add the ldflags from the Component.cdef file.
     for (auto& arg : componentPtr->ldFlags)

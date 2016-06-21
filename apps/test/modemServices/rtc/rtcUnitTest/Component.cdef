@@ -1,0 +1,14 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_rtc.api         [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_rtc.c
+    ${PA_DIR}/simu/components/le_pa/pa_rtc_simu.c
+}

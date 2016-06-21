@@ -65,6 +65,23 @@ le_msg_SessionRef_t le_mcc_GetClientSessionRef
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Registers a function to be called whenever one of this service's sessions is closed by
+ * the client.  (STUBBED FUNCTION)
+
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
+    le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
+    void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Acquire a wakeup source
  *
  * @note The process exits on failures
@@ -161,7 +178,7 @@ static le_sem_Ref_t         ThreadSemaphore;
 static le_sem_Ref_t         InitSemaphore;
 static le_ecall_State_t     CurrentEcallState;
 static le_ecall_CallRef_t   CurrentEcallRef = NULL;
-static le_clk_Time_t        TimeToWait = { 0, 1000000 };
+static le_clk_Time_t        TimeToWait = { 2, 0 };
 
 
 //--------------------------------------------------------------------------------------------------

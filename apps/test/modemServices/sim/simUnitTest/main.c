@@ -8,7 +8,6 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "log.h"
-#include "le_sim_local.h"
 #include "pa_sim_simu.h"
 #include "args.h"
 
@@ -46,6 +45,8 @@ static char ShortPuk[]="1234567";
 static char LongPuk[]="123456789";
 static char NewPin[]="6789";
 static le_sim_StkEvent_t  StkEvent;
+
+le_result_t le_sim_Init(void);
 
 //--------------------------------------------------------------------------------------------------
 /**
