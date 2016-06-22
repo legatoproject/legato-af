@@ -1,0 +1,18 @@
+provides:
+{
+    api:
+    {
+        atService/le_atClient.api
+    }
+}
+
+
+sources:
+{
+    le_atClient.c
+}
+
+cflags:
+{
+    -g
+}

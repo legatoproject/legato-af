@@ -1,0 +1,495 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_atClient AT commands client
+ *
+ * @ref le_atClient_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The ATClient service handles the AT commands sending to the modem on a specified
+ * serial device. It permits also to get the AT commands responses (intermediate, final or
+ * unsolicited responses).
+ * This service can be subscribed by several application simultaneously.
+ *
+ * @section binding Device binding
+ *
+ * le_atClient_Start() API must be called to bind a specific device with the ATClient.
+ * Multiple devices can be binded. The application has to configured the device before using it with
+ * the ATClient.
+ * A device can be unbinded using le_atClient_Stop() API.
+ *
+ * A samples code can be seen in the following page:
+ * - @subpage c_AtCommandBinding
+ *
+ * @section Create AT commands statement
+ *
+ * An AT command statement is requested before sending it. The following steps have to be done for
+ * its declaration:
+ *
+ * - An AT command reference has to be created using le_atClient_Create() API.
+ *
+ * - le_atClient_SetCommand() API is used to set the AT command to be sent to the modem.
+ *
+ * - The sending port has to be set using le_atClient_SetDevice() API.
+ *
+ * - A timeout value may be set using le_atClient_SetTimeout() API. The default value is 30s.
+ *
+ * - The expected final responses are requested and have to be set using
+ * le_atClient_SetFinalResponse() API. Given the possible final responses is mandatory to detect
+ * the end of the AT command execution. If an AT command is answering with a final response which
+ * doesn't belong to the final responses set, the AT command execution will be over by the timeout.
+ *
+ * - le_atClient_SetIntermediateResponse() API may be called to set the intermediate responses
+ * filters. This API is optional.
+ *
+ * Command responses given in le_atClient_SetIntermediateResponse() and
+ * le_atClient_SetFinalResponse() are the first characters of the response lines, they are used as a
+ * filter of the received lines (a line is the characters received between two reception of
+ * <CR><LF>). Other lines are dropped.
+ *
+ * - A text can be set using le_atClient_SetText() API. This is used for commands which answers a
+ * '>' character to receive additional information. The given text is sent to the modem when '>' is
+ * detected. The character CTRL-Z is automatically sent.
+ *
+ *
+ * @section send AT commands sending
+ *
+ * When the AT command declaration is done, it can be sent using le_atClient_Send(). This API is
+ * synchronous (blocking until final response is detected, or timeout reached).
+ *
+ * le_atClient_SetCommandAndSend() is equivalent to le_atClient_Start(), le_atClient_SetCommand(),
+ * le_atClient_SetDevice(), le_atClient_SetTimeout(), le_atClient_SetIntermediateResponse() and
+ * le_atClient_SetFinalResponse() in one API call.
+ *
+ * Samples code can be seen in the following pages:
+ * - @subpage c_AtCommandDeclaration
+ * - @subpage c_AtCommandDeclarationSimple
+ * - @subpage c_AtCommandDeclarationText
+ *
+ * @section responses AT commands responses
+ *
+ * When the AT command has been correctly sent (i.e. le_atClient_Send() or
+ * le_atClient_SetCommandAndSend() execution is successful), the application can get the AT command
+ * responses:
+ * - le_atClient_GetFinalResponse() is used to get the final responses
+ * - le_atClient_GetFirstIntermediateResponse() is used to get the first intermediate result code.
+ * Then, other intermediate result codes can be got calling
+ * le_atClient_GetNextIntermediateResponse(). There's no more result to get when one of both APIs
+ * returns LE_NOT_FOUND.
+ *
+ * When a response has been set in the AT command declaration, the AT command response returned by
+ * these API starts by the given patterns, and ends when a <CR><LF> is detected.
+ *
+ * A samples code can be seen in the following page:
+ * - @subpage c_AtCommandResponse
+ *
+ * @section Delete AT commands
+ *
+ * When the AT command is over, the reference has to be deleted calling le_atClient_Delete() API.
+ *
+ * A samples code can be seen in the following page:
+ * - @subpage c_AtCommandDelete
+ *
+ * @section unsolicited Unsolicited responses
+ *
+ * An application can subscribe to a specific unsolicited response using
+ * le_atClient_AddUnsolicitedResponseHandler() (and can be removed using
+ * le_atClient_RemoveUnsolicitedResponseHandler()). The subscribed handler is called when the given
+ * pattern is detected. The handler receives in parameter the complete line of the unsolicited
+ * response.
+ * The parameter "lineCount" is used to set the unsolicited lines number.
+ * For instance, +CMT unsolicited response has the following syntax:
+ * +CMT: ...<CR><LF>
+ * <sms text>
+ * In this case, lineCount has to be set to 2 to receive both lines into the handler.
+ * +CREG unsolicited response is sent one only one line, so lineCount is set to 1.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_atClient_interface.h
+ *
+ * Legato @ref c_atClient include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_AtCommandBinding AT command client binding
+ *
+ * @snippet "apps/test/atService/atClientTest/atClientTestComp/atClientTest.c" binding
+ */
+/**
+ * @page c_AtCommandDeclaration First sample code for AT command declaration and send
+ *
+ * @snippet "apps/test/atService/atClientTest/atClientTestComp/atClientTest.c" declarationFull
+ */
+/**
+ * @page c_AtCommandDeclarationSimple Second sample code for AT command declaration and send
+ *
+ * @snippet "apps/test/atService/atClientTest/atClientTestComp/atClientTest.c" declarationSimple
+ */
+ /**
+ * @page c_AtCommandDeclarationText Sample code for AT command declaration using text command
+ *
+ * @snippet "apps/test/atService/atClientTest/atClientTestComp/atClientTest.c" declarationText
+ */
+/**
+ * @page c_AtCommandResponse Sample code for AT command responses
+ *
+ * @snippet "apps/test/atService/atClientTest/atClientTestComp/atClientTest.c" responses
+ */
+ /**
+ * @page c_AtCommandDelete Sample code for deleting an AT command
+ *
+ * @snippet "apps/test/atService/atClientTest/atClientTestComp/atClientTest.c" delete
+ */
+
+REFERENCE Cmd;
+REFERENCE Device;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an AT command (not including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMD_MAX_LEN = 31;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an AT command (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMD_MAX_BYTES = (CMD_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an AT Command response (not including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMD_RSP_MAX_LEN = 63;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an AT Command response (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMD_RSP_MAX_BYTES = (CMD_RSP_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an unsolicited response (not including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UNSOLICITED_MAX_LEN = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an unsolicited response (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UNSOLICITED_MAX_BYTES = (UNSOLICITED_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an text message (not including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_LEN = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an text message (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_BYTES = (TEXT_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters permitted for a path.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PATH_MAX_LEN = 30;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters permitted for a path (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PATH_MAX_BYTES = (PATH_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command default timeout (in ms)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMD_DEFAULT_TIMEOUT = 30000;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to start a ATClient session on a specified device.
+ *
+ * @return reference on a device context
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Device Start
+(
+    string devicePath[PATH_MAX_LEN] IN  ///< Device path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to stop the ATClient session on the specified device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+    Device device IN  ///< Device reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to create a new AT command.
+ *
+ * @return pointer to the new AT Command reference
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Cmd Create
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to delete an AT command reference.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    Cmd     cmdRef  IN     ///< AT Command
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the AT command string to be sent.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCommand
+(
+    Cmd     cmdRef                  IN,      ///< AT Command
+    string  command[CMD_MAX_LEN]    IN       ///< Set Command
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the waiting intermediate responses.
+ * Several intermediate responses can be specified separated by a '|' character into the string
+ * given in parameter.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetIntermediateResponse
+(
+    Cmd        cmdRef                           IN,   ///< AT Command
+    string     intermediate[CMD_RSP_MAX_LEN]    IN    ///< Set Intermediate
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the final response(s) of the AT command execution.
+ * Several final responses can be specified separated by a '|' character into the string given in
+ * parameter.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetFinalResponse
+(
+    Cmd     cmdRef                      IN,        ///< AT Command
+    string  response[CMD_RSP_MAX_LEN]   IN         ///< Set Response
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the text when the prompt is expected.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetText
+(
+    Cmd     cmdRef              IN,          ///< AT Command
+    string  text[TEXT_MAX_LEN]  IN           ///< The AT Data to send
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the timeout of the AT command execution.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetTimeout
+(
+    Cmd     cmdRef      IN,        ///< AT Command
+    uint32  timer       IN         ///< Set Timer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set the device where the AT command will be sent.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDevice
+(
+    Cmd     cmdRef      IN,        ///< AT Command
+    Device  devRef      IN         ///< Device where the AT command has to be sent
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to send an AT Command and wait for response.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_TIMEOUT when a timeout occur
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Send
+(
+    Cmd    cmdRef     IN    ///< AT Command
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to get the first intermediate result code.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirstIntermediateResponse
+(
+    Cmd        cmdRef                           IN,     ///< AT Command
+    string     intermediateRsp[CMD_RSP_MAX_LEN] OUT     ///< First intermediate result code.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to get the next intermediate result codes.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNextIntermediateResponse
+(
+    Cmd        cmdRef                           IN,              ///< AT Command
+    string     intermediateRsp[CMD_RSP_MAX_LEN] OUT              ///< Get Next intermediate result
+                                                                 ///< code.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to get the final response
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFinalResponse
+(
+    Cmd          cmdRef                    IN,              ///< AT Command
+    string       finalRsp[CMD_RSP_MAX_LEN] OUT              ///< Get Final Line
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to automatically set and send an AT Command.
+ *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_TIMEOUT when a timeout occur
+ *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCommandAndSend
+(
+    Cmd                            cmdRef                        OUT,    ///< Command reference
+    Device                         devRef                        IN,     ///< Device reference
+    string                         command[CMD_MAX_LEN]          IN,     ///< AT Command
+    string                         interResp[CMD_RSP_MAX_LEN]    IN,     ///< Expected intermediate
+                                                                         ///< response
+    string                         finalResp[CMD_RSP_MAX_LEN]    IN,     ///< Expected final
+                                                                         ///< response
+    uint32                         timeout                       IN      ///< Timeout
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for unsolicited response reception.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER UnsolicitedResponseHandler
+(
+    string unsolicitedRsp[UNSOLICITED_MAX_LEN] IN ///< The call reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on a subscribed unsolicited response when this unsolicited
+ * response is received.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT UnsolicitedResponse
+(
+    string                                  unsolRsp[CMD_RSP_MAX_LEN] IN,   ///< Pattern to match
+    Device                                  devRef                    IN,   ///< Device to listen
+    UnsolicitedResponseHandler              handler                   IN,   ///< unsolicited handler
+    uint32                                  lineCount                 IN    ///< Indicate the
+                                                                            ///< number of line of
+                                                                            ///< the unsolicited
+);

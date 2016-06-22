@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        atService/le_atClient.api
+    }
+}
+
+sources:
+{
+    atClientTest.c
+}

@@ -1,0 +1,21 @@
+sandboxed: false
+
+executables:
+{
+    atDaemon = ( $LEGATO_ROOT/components/atService )
+}
+
+processes:
+{
+    run:
+    {
+        (atDaemon)
+    }
+    maxFileBytes: 5000K
+    faultAction: restart
+}
+
+extern:
+{
+    atDaemon.atService.le_atClient
+}
