@@ -279,6 +279,7 @@ static const FileLinkObj_t DefaultSystemLinks[] =
 static const FileLinkObj_t DefaultSystemLinks[] =
 {
     {.src = "/lib/ld-linux.so.3", .dest = "/lib/"},
+    {.src = "/lib/ld-linux-armhf.so.3", .dest = "/lib/"},
     {.src = "/lib/arm-linux-gnueabihf/libc.so.6", .dest = "/lib/"},
     {.src = "/lib/arm-linux-gnueabihf/libpthread.so.0", .dest = "/lib/"},
     {.src = "/lib/arm-linux-gnueabihf/librt.so.1", .dest = "/lib/"},
