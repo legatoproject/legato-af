@@ -24,6 +24,14 @@
 #define GNSS_POSITION_ACTIVATION_MAX      13      // Ideally should be a prime number.
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * NMEA node path definition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_GNSS_NMEA_NODE_PATH                  "/dev/nmea"
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -186,6 +194,14 @@ static le_event_HandlerRef_t PaHandlerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * PA NMEA handler's reference.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_HandlerRef_t PaNmeaHandlerRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Number of position Handler functions that own position samples.
  *
  */
@@ -223,6 +239,13 @@ static le_dls_List_t PositionSampleList = LE_DLS_LIST_INIT;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t PositionSampleMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * NMEA pipe file descriptor
+ */
+//--------------------------------------------------------------------------------------------------
+static int NmeaPipeFd = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -302,6 +325,164 @@ static void PositionSampleDestructor
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create NMEA named pipe (FIFO)
+ */
+//--------------------------------------------------------------------------------------------------
+static void CreateNmeaPipe
+(
+    void
+)
+{
+    int result = 0;
+
+    LE_DEBUG("Create %s", LE_GNSS_NMEA_NODE_PATH);
+
+    // Create the node for /dev/nmea device folder
+    umask(0);
+    result = mknod(LE_GNSS_NMEA_NODE_PATH, S_IFIFO|0666, 0);
+
+    LE_ERROR_IF((result != 0)&&(result != EEXIST)
+            , "Could not create %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open the NMEA pipe
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t OpenNmeaPipe
+(
+    void
+)
+{
+
+    // Check NMEA pipe file descriptor
+    if(NmeaPipeFd != -1)
+    {
+        return LE_DUPLICATE;
+    }
+
+    // Open NMEA pipe
+    do
+    {
+        if ( ((NmeaPipeFd=open(LE_GNSS_NMEA_NODE_PATH,
+                                O_WRONLY|O_APPEND|O_CLOEXEC|O_NONBLOCK)) == -1)
+            && (errno != EINTR) )
+        {
+            LE_WARN("Open %s failure: errno.%d (%s)"
+                    , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+            return LE_FAULT;
+        }
+    }while (NmeaPipeFd==-1);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close the NMEA pipe
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CloseNmeaPipe
+(
+    void
+)
+{
+    le_result_t retResult = LE_OK;
+    int result;
+
+    // Check NMEA pipe file descriptor
+    if(NmeaPipeFd == -1)
+    {
+        LE_WARN("Invalid file descriptor. File already closed");
+        return LE_DUPLICATE;
+    }
+
+    // Close NMEA pipe
+    do
+    {
+        result = close(NmeaPipeFd);
+    }
+    while ( (result != 0) && (errno == EINTR) );
+
+    LE_ERROR_IF(result != 0, "Could not close %s. errno.%d (%s)"
+                , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+
+    if(result != 0)
+    {
+        retResult = LE_FAULT;
+    }
+    else
+    {
+        // Release the NMEA pipe file descriptor
+        NmeaPipeFd = -1;
+    }
+
+    return retResult;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the NMEA sentence to NMEA pipe
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteNmeaPipe
+(
+    const char*  nmeaStringPtr          ///< [IN] Pointer to the NMEA sentence to write.
+)
+{
+    le_result_t resultNmeaPipe = LE_OK;
+    ssize_t resultWrite = 0;
+    ssize_t written = 0;
+    ssize_t stringSize = 0;
+
+    // Open the NMEA FIFO pipe
+    resultNmeaPipe = OpenNmeaPipe();
+
+    if((resultNmeaPipe == LE_OK)||(resultNmeaPipe == LE_DUPLICATE))
+    {
+        written = 0;
+        stringSize = strlen(nmeaStringPtr)+1;
+        // Write to NMEA pipe
+        while (written < stringSize)
+        {
+            resultWrite = write(NmeaPipeFd, nmeaStringPtr + written, stringSize - written);
+
+            if ((resultWrite < 0) && (errno != EINTR))
+            {
+                LE_ERROR("Could not write to %s (write error, errno.%d (%s))",
+                         LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+                CloseNmeaPipe();
+                return LE_FAULT;
+            }
+
+            written += resultWrite;
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The PA NMEA Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void PaNmeaHandler
+(
+    char* nmeaPtr
+)
+{
+    LE_DEBUG("Handler Function called with PA NMEA %p", nmeaPtr);
+
+    // Write the NMEA sentence to the /dev/nmea device folder
+    WriteNmeaPipe(nmeaPtr);
+
+    le_mem_Release(nmeaPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -322,6 +503,8 @@ le_result_t gnss_Init
 )
 {
     le_result_t result = LE_FAULT;
+    struct stat nmeaFileStat;
+    int resultStat = 0;
 
     LE_DEBUG("gnss_Init");
 
@@ -371,10 +554,43 @@ le_result_t gnss_Init
     NumOfPositionHandlers = 0;
     PaHandlerRef = NULL;
 
+
+    // NMEA pipe management
+    // Get information from NMEA device file
+    resultStat = stat(LE_GNSS_NMEA_NODE_PATH, &nmeaFileStat);
+    // That node is a character device file: it will be managed from the Firmware (Kernel space).
+    // That node is a FIFO (named pipe): it will be managed from Legato (User space).
+    if ((resultStat == 0) && (S_ISFIFO(nmeaFileStat.st_mode))) // FIFO (named pipe)
+    {
+         if ((PaNmeaHandlerRef=pa_gnss_AddNmeaHandler(PaNmeaHandler)) == NULL)
+         {
+             LE_ERROR("Failed to add PA NMEA handler!");
+         }
+    }
+    else if ((resultStat == 0 )&& (S_ISCHR(nmeaFileStat.st_mode))) // Character device file
+    {
+        LE_INFO("%s is a character device file", LE_GNSS_NMEA_NODE_PATH);
+    }
+    else if((resultStat == -1)&&(errno == ENOENT)) // No such file or directory
+    {
+        if ((PaNmeaHandlerRef=pa_gnss_AddNmeaHandler(PaNmeaHandler)) != NULL)
+        {
+            // Create NMEA device folder
+            CreateNmeaPipe();
+        }
+        else
+        {
+            LE_ERROR("Failed to add PA NMEA handler!");
+        }
+    }
+    else
+    {
+        LE_ERROR("Could not get file info for '%s'. errno.%d (%s)"
+                , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+    }
+
     return result;
 }
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**

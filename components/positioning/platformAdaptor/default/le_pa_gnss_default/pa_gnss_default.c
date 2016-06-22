@@ -197,6 +197,37 @@ void pa_gnss_RemovePositionDataHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to register an handler for NMEA frames notifications.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_gnss_AddNmeaHandler
+(
+    pa_gnss_NmeaHandlerFunc_t handler ///< [IN] The handler function.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to remove a handler for NMEA frames notifications.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_gnss_RemoveNmeaHandler
+(
+    le_event_HandlerRef_t    handlerRef ///< [IN] The handler reference.
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to get the location's data.
  *
  * @return LE_FAULT         The function cannot get internal position information

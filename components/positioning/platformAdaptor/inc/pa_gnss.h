@@ -205,6 +205,14 @@ pa_Gnss_Position_t;
 //--------------------------------------------------------------------------------------------------
 typedef void(*pa_gnss_PositionDataHandlerFunc_t)(pa_Gnss_Position_t* positionPtr);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to get NMEA frames.
+ *
+ * @param position The new position.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void(*pa_gnss_NmeaHandlerFunc_t)(char* nmeaPtr);
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -345,6 +353,30 @@ LE_SHARED le_event_HandlerRef_t pa_gnss_AddPositionDataHandler
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void pa_gnss_RemovePositionDataHandler
+(
+    le_event_HandlerRef_t    handlerRef ///< [IN] The handler reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register an handler for NMEA frames notifications.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_gnss_AddNmeaHandler
+(
+    pa_gnss_NmeaHandlerFunc_t handler ///< [IN] The handler function.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to remove a handler for NMEA frames notifications.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_gnss_RemoveNmeaHandler
 (
     le_event_HandlerRef_t    handlerRef ///< [IN] The handler reference.
 );
