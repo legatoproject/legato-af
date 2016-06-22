@@ -30,6 +30,24 @@ le_result_t pa_sms_SetNewMsgHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *
+ * This function is used to add a status notification handler
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_sms_AddStorageStatusHandler
+(
+    pa_sms_StorageMsgHdlrFunc_t statusHandler   ///< [IN] The handler function to handle a new status
+                                                ///  notification
+)
+{
+    LE_ERROR("Unsupported function called");
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to unregister the handler for a new message reception handling.
  *
  * @return LE_FAULT         The function failed to unregister the handler.
@@ -44,6 +62,20 @@ le_result_t pa_sms_ClearNewMsgHandler
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to unregister from a storage message notification handler.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_sms_RemoveStorageStatusHandler
+(
+    le_event_HandlerRef_t storageSMSHandler
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

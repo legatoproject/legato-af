@@ -137,6 +137,18 @@
  *
  * Please refer to @ref c_smsSampleMT page to get an example of SMS message reception handling.
  *
+ * @section le_sms_ops_sms_storage Receiving a full SMS storage indication
+ * To receive a SMS full storage status, the application has to register a handler function.
+ * Use @c le_sms_AddFullStorageEventHandler() to register that handler.
+ *
+ * The handler must satisfy the following prototype:
+ * @c typedef void (*le_sms_FullStorageEventFunc_t)(le_sms_Storage_t storage).
+ *
+ * Uninstall the handler function by calling @c le_sms_RemoveFullStorageEventHandler().
+ *
+ * Please refer to @ref c_smsSampleMT page to get an example of SMS storage indication
+ * handling.
+ *
  * @section le_sms_ops_listing Listing  messages recorded in storage area
  *
  * Call @c le_sms_CreateRxMsgList() to create a List object that lists the received
@@ -491,6 +503,20 @@ ENUM CdmaServiceCat
     CDMA_SVC_CAT_MAX
 };
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  SMS storage area.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Storage
+{
+    STORAGE_NV,            ///< Non volatile memory storage.
+    STORAGE_SIM,           ///< Sim SMS storage.
+    STORAGE_MAX            ///< Undefined storage.
+};
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * 3GPP2 Message Error code when the message sending has failed.
@@ -641,7 +667,6 @@ ENUM ErrorCode
 //--------------------------------------------------------------------------------------------------
 REFERENCE Msg;
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Opaque type for SMS Message Listing.
@@ -683,6 +708,29 @@ EVENT RxMessage
 (
     RxMessageHandler handler
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for full storage indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER FullStorageHandler
+(
+    Storage  storage ///< storage parameter.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on full storage indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT FullStorageEvent
+(
+    FullStorageHandler handler
+);
+
 
 
 //--------------------------------------------------------------------------------------------------

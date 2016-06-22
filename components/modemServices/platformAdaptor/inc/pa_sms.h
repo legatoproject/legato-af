@@ -251,6 +251,31 @@ typedef void (*pa_sms_NewMsgHdlrFunc_t)
     pa_sms_NewMessageIndication_t* msgRef
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * storage status structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    pa_sms_Storage_t  storage;     ///< SMS Storage used
+}
+pa_sms_StorageStatusInd_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report a message storage event.
+ *
+ * @param storageMsgInd The message indication in storage message.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_sms_StorageMsgHdlrFunc_t)
+(
+    pa_sms_StorageStatusInd_t* storageMsgInd
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to register a handler for a new message reception handling.
@@ -267,6 +292,20 @@ LE_SHARED le_result_t pa_sms_SetNewMsgHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *
+ * This function is used to add a storage status notification handler
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_sms_AddStorageStatusHandler
+(
+    pa_sms_StorageMsgHdlrFunc_t statusHandler   ///< [IN] The handler function to handle a new status
+                                                ///  notification
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to unregister the handler for a new message reception handling.
  *
  * @return LE_FAULT         The function failed to unregister the handler.
@@ -277,6 +316,17 @@ LE_SHARED le_result_t pa_sms_ClearNewMsgHandler
 (
     void
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to unregister a storage message notification handler.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_sms_RemoveStorageStatusHandler
+(
+    le_event_HandlerRef_t storageHandler ///< [IN] The handler function to remove.
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**

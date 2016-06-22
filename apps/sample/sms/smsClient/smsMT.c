@@ -13,7 +13,8 @@
 
 #define  MESSAGE_FEEDBACK "Message from %s received"
 
-static le_sms_RxMessageHandlerRef_t HdlrRef;
+static le_sms_RxMessageHandlerRef_t RxHdlrRef;
+static le_sms_FullStorageEventHandlerRef_t FullStorageHdlrRef;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -99,6 +100,21 @@ static void RxMessageHandler
     le_sms_Delete(msgRef);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for SMS storage full message indication.
+ *
+ */
+//--------------------- -----------------------------------------------------------------------------
+static void StorageMessageHandler
+(
+    le_sms_Storage_t  storage,
+    void*            contextPtr
+)
+{
+    LE_INFO("A Full storage SMS message is received. Type of full storage %d", storage);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -113,10 +129,35 @@ le_result_t smsmt_Receiver
     void
 )
 {
-    HdlrRef = le_sms_AddRxMessageHandler(RxMessageHandler, NULL);
-    if (!HdlrRef)
+    RxHdlrRef = le_sms_AddRxMessageHandler(RxMessageHandler, NULL);
+    if (!RxHdlrRef)
     {
         LE_ERROR("le_sms_AddRxMessageHandler has failed!");
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function installs an handler for storage message indication.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smsmt_MonitorStorage
+(
+    void
+)
+{
+    FullStorageHdlrRef = le_sms_AddFullStorageEventHandler(StorageMessageHandler, NULL);
+    if (!FullStorageHdlrRef)
+    {
+        LE_ERROR("le_sms_AddFullStorageEventHandler has failed!");
         return LE_FAULT;
     }
     else
@@ -137,5 +178,19 @@ void smsmt_HandlerRemover
     void
 )
 {
-    le_sms_RemoveRxMessageHandler(HdlrRef);
+    le_sms_RemoveRxMessageHandler(RxHdlrRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function remove the handler for storage message indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void smsmt_StorageHandlerRemover
+(
+    void
+)
+{
+    le_sms_RemoveFullStorageEventHandler(FullStorageHdlrRef);
 }

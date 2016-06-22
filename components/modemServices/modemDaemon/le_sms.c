@@ -220,6 +220,14 @@ static le_event_Id_t NewSmsEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for SMS storage message notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t StorageStatusEventId;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Event ID for message sending commands.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1062,6 +1070,69 @@ static void NewSmsHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer SMS storage handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerStorageSmsHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    le_sms_FullStorageHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    le_sms_Storage_t referencePtr = (le_sms_Storage_t)reportPtr;
+
+    clientHandlerFunc(referencePtr, le_event_GetContextPtr());
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SMS storage indication handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void StorageIndicationHandler
+(
+    pa_sms_StorageStatusInd_t *storageMessageIndicationPtr
+)
+{
+    le_sms_Storage_t storage = LE_SMS_STORAGE_MAX;
+
+    LE_DEBUG("SMS storage is full : Storage SIM '%c', NV '%c'",
+               (storageMessageIndicationPtr->storage == PA_SMS_STORAGE_SIM ? 'Y' : 'N'),
+               (storageMessageIndicationPtr->storage == PA_SMS_STORAGE_NV ? 'Y' : 'N'));
+
+    switch(storageMessageIndicationPtr->storage)
+    {
+        case PA_SMS_STORAGE_NV:
+        {
+            storage = LE_SMS_STORAGE_NV;
+        }
+        break;
+
+        case PA_SMS_STORAGE_SIM:
+        {
+            storage = LE_SMS_STORAGE_SIM;
+        }
+        break;
+
+        default:
+        {
+            LE_ERROR("new message doesn't content Storage area indication");
+        }
+    }
+
+    // Notify all the registered client's handlers with own reference.
+    le_event_Report(StorageStatusEventId, (void*)&storage, sizeof(le_sms_Storage_t));
+
+    LE_DEBUG("All the registered client's handlers notified");
+}
+
+
 static le_result_t CheckAndEncodeMessage
 (
     le_sms_Msg_t* msgPtr
@@ -1505,6 +1576,15 @@ le_result_t le_sms_Init
     // Create an event Id for new incoming SMS messages
     NewSmsEventId = le_event_CreateId("NewSms", sizeof(le_sms_Msg_t*));
 
+    // Create an event Id for SMS storage indication
+    StorageStatusEventId = le_event_CreateId("StorageStatusEventId", sizeof(le_sms_Storage_t*));
+
+    // Register a handler function for SMS storage status indication
+    if (pa_sms_AddStorageStatusHandler(StorageIndicationHandler) == NULL)
+    {
+        LE_WARN("failed to register a handler function for SMS storage");
+    }
+
     SmsSem = le_sem_Create("SmsSem", 1);
 
     // Init the SMS command Event Id
@@ -1517,7 +1597,6 @@ le_result_t le_sms_Init
         LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
         return LE_FAULT;
     }
-
     return LE_OK;
 }
 
@@ -2829,6 +2908,57 @@ void le_sms_RemoveRxMessageHandler
     return;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler function for SMS full storage
+ * message reception.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_FullStorageEventHandlerRef_t le_sms_AddFullStorageEventHandler
+(
+    le_sms_FullStorageHandlerFunc_t handlerFuncPtr, ///< [IN] The handler function for SMS
+                                                      ///  full storage message indication.
+    void*                              contextPtr     ///< [IN] The handler's context.
+)
+{
+    le_event_HandlerRef_t handlerRef;
+
+    if(handlerFuncPtr == NULL)
+    {
+        LE_KILL_CLIENT("handlerFuncPtr is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("StorageSms",
+                    StorageStatusEventId,
+                    FirstLayerStorageSmsHandler,
+                    (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_sms_FullStorageEventHandlerRef_t)(handlerRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister a handler function
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sms_RemoveFullStorageEventHandler
+(
+    le_sms_FullStorageEventHandlerRef_t   handlerRef ///< [IN] The handler reference.
+)
+{
+    // Remove the handler
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

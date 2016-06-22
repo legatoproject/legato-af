@@ -23,4 +23,5 @@ COMPONENT_INIT
     LE_INFO("Start SMS Sample!");
 
     smsmt_Receiver();
+    smsmt_MonitorStorage();
 }

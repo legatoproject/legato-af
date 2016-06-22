@@ -77,6 +77,8 @@ static uint8_t BINARY_TEST_PATTERN[]={0x05,0x01,0x00,0x0A};
 
 
 static le_sms_RxMessageHandlerRef_t RxHdlrRef = NULL;
+static le_sms_FullStorageEventHandlerRef_t FullStorageHdlrRef = NULL;
+
 
 static char DEST_TEST_PATTERN[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 
@@ -119,6 +121,26 @@ static le_result_t WaitFunction
 
     return LE_OK;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for SMS storage full message indication.
+ *
+ */
+//--------------------- -----------------------------------------------------------------------------
+static void StorageFullTestHandler
+(
+    le_sms_Storage_t  storage,
+    void*            contextPtr
+)
+{
+    LE_INFO("A Full storage SMS message is received. Type of full storage %d", storage);
+}
+
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for SMS message reception.
@@ -500,6 +522,7 @@ static void* MyRxThread
     le_sms_ConnectService();
 
     RxHdlrRef = le_sms_AddRxMessageHandler(TestRxHandler, context);
+    FullStorageHdlrRef = le_sms_AddFullStorageEventHandler(StorageFullTestHandler, context);
 
     le_event_RunLoop();
     return NULL;
@@ -879,7 +902,14 @@ static le_result_t Testle_sms_Send_Text
     // Check if Thread SMS RX handler has been started
     if (!RxHdlrRef)
     {
-        LE_ERROR("Handler not ready !!");
+        LE_ERROR("Handler SMS RX not ready !!");
+        return LE_FAULT;
+    }
+
+    // Check if Thread SMS Storage indication handler has been started
+    if (!FullStorageHdlrRef)
+    {
+        LE_ERROR("Handler SMS full storage not ready !!");
         return LE_FAULT;
     }
 
@@ -931,6 +961,7 @@ static le_result_t Testle_sms_Send_Text
     }
 
     le_sms_RemoveRxMessageHandler(RxHdlrRef);
+    le_sms_RemoveFullStorageEventHandler(FullStorageHdlrRef);
     le_thread_Cancel(RxThread);
 
     return res;
@@ -968,6 +999,12 @@ static le_result_t Testle_sms_Send_UCS2
         LE_ERROR("Handler not ready !!");
         return LE_FAULT;
     }
+    // Check if Thread SMS full Storage handler has been started
+    if (!FullStorageHdlrRef)
+    {
+        LE_ERROR("Handler SMS full Storage not ready !!");
+        return LE_FAULT;
+    }
 
     myMsg = le_sms_Create();
     if (myMsg)
@@ -1003,6 +1040,7 @@ static le_result_t Testle_sms_Send_UCS2
     }
 
     le_sms_RemoveRxMessageHandler(RxHdlrRef);
+    le_sms_RemoveFullStorageEventHandler(FullStorageHdlrRef);
     le_thread_Cancel(RxThread);
 
     return res;

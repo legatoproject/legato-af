@@ -43,6 +43,19 @@ le_result_t smsmt_Receiver
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function installs a handler for full storage indication.
+ *
+ * @return LE_FAULT  The function failed.
+ * @return LE_OK     The function succeed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smsmt_MonitorStorage
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function removes the handler for message reception.
  *
  */
@@ -51,5 +64,17 @@ void smsmt_HandlerRemover
 (
     void
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function removes the handler for full storage indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void smsmt_StorageHandlerRemover
+(
+    void
+);
+
 
 #endif // SMS_SAMPLE_INCLUDE_GUARD
