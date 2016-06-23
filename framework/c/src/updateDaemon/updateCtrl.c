@@ -430,7 +430,7 @@ static bool LogLock
 )
 {
     char pathStr[LIMIT_MAX_PATH_BYTES] = "";
-    char procNameBuffer[255] = "";
+    char procNameBuffer[LIMIT_MAX_PROCESS_NAME_BYTES] = "";
     char* procName = "unknown";
     ClientLockCountObj_t*  obj = (ClientLockCountObj_t*) valuePtr;
 
@@ -440,10 +440,11 @@ static bool LogLock
         int fd = open(pathStr, O_RDONLY);
         if (fd)
         {
-            result = read (fd, procNameBuffer, LIMIT_MAX_PATH_BYTES);
+            result = read (fd, procNameBuffer, sizeof(procNameBuffer) - 1);
             close(fd);
             if (result > 0)
             {
+                procNameBuffer[result] = '\0';
                 procName = procNameBuffer;
             }
         }
