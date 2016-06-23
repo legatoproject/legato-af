@@ -301,13 +301,11 @@ CreateImg_mdm9x15() {
 
 CreateImg_mdm9x28() {
     local img_type=${1:-ubi}
-    local ubi_img_type=${2:-ubifs}
+    local ubi_img_type=${2:-squashfs}
 
-    PAGE_SIZE=2048
-    OOB_SIZE=64
-    PEB_SIZE=128KiB
-    LAB_SIZE=126976
-    MAX_LEB_COUNT=1208
+    PAGE_SIZE=4096
+    OOB_SIZE=224
+    PEB_SIZE=256KiB
     COMPAT_BYTE=00000001
     PID='9X28'
     PLATFORM=$PID
@@ -369,8 +367,7 @@ case $TARGET in
         ;;
     ar758x)
         CreateImg_mdm9x28 ubi squashfs
-        CreateImg_mdm9x28 ubi ubifs
-        DefaultImg "ubifs.ubi"
+        DefaultImg "squashfs.ubi"
         ;;
     ar759x)
         CreateImg_mdm9x40 yaffs2
