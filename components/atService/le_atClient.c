@@ -529,6 +529,7 @@ static void ParseRxBuffer
 )
 {
     RxEvent_t event;
+
     for (;rxParserPtr->rxData.idx < rxParserPtr->rxData.endBuffer;)
     {
         if (GetNextEvent(rxParserPtr, &event))
@@ -888,6 +889,8 @@ static void TimerHandler
 )
 {
     AtCmd_t* atCmdPtr = le_timer_GetContextPtr(timerRef);
+
+    LE_ERROR("Timeout when sending %s, timeout = %d",  atCmdPtr->cmd, atCmdPtr->timeout);
     atCmdPtr->result = LE_TIMEOUT;
     le_dls_Pop(&atCmdPtr->interfacePtr->atCommandList);
     le_sem_Post(atCmdPtr->endSem);
@@ -920,6 +923,7 @@ static void StartTimer
 
     le_timer_Start(cmdPtr->interfacePtr->timerRef);
 }
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -997,6 +1001,8 @@ static void SendingState
     ClientEvent_t    input
 )
 {
+    LE_DEBUG("%d", input);
+
     DeviceContext_t* interfacePtr = clientStatePtr->interfacePtr;
 
     le_dls_Link_t* linkPtr = le_dls_Peek(&(interfacePtr->atCommandList));
@@ -1080,6 +1086,8 @@ static void WaitingState
 )
 {
     DeviceContext_t* interfacePtr = clientStatePtr->interfacePtr;
+
+    LE_DEBUG("input %d", input);
 
     switch (input)
     {
@@ -1168,6 +1176,8 @@ static void StartingState
     RxEvent_t     input
 )
 {
+    LE_DEBUG("%d", input);
+
     switch (input)
     {
         case PARSER_CRLF:
@@ -1194,6 +1204,8 @@ static void InitializingState
     RxEvent_t     input
 )
 {
+    LE_DEBUG("%d", input);
+
     switch (input)
     {
         case PARSER_CRLF:
@@ -1217,6 +1229,8 @@ static void ProcessingState
     RxEvent_t     input
 )
 {
+    LE_DEBUG("%d", input);
+
     switch (input)
     {
         case PARSER_CRLF:
@@ -1304,7 +1318,6 @@ static void StartClient
     le_fdMonitor_Ref_t fdMonitorRef;
     DeviceContext_t *interfacePtr = param1Ptr;
 
-
     if (interfacePtr->device.fdMonitor)
     {
         LE_WARN("Interface %s already started",interfacePtr->device.path);
@@ -1318,7 +1331,20 @@ static void StartClient
 
     LE_FATAL_IF(interfacePtr->device.handle==-1,"Open device failed");
 
-    tcflush(interfacePtr->device.handle, TCIOFLUSH);
+    uint32_t fd = interfacePtr->device.handle;
+
+    struct termios term;
+    bzero(&term, sizeof(term));
+
+     // Default config
+    tcgetattr(fd, &term);
+
+    cfmakeraw(&term);
+    term.c_oflag &= ~OCRNL;
+    term.c_oflag &= ~ONLCR;
+    term.c_oflag &= ~OPOST;
+    tcsetattr(fd, TCSANOW, &term);
+    tcflush(fd, TCIOFLUSH);
 
     // Create a File Descriptor Monitor object for the serial port's file descriptor.
     snprintf(monitorName,
@@ -1859,11 +1885,13 @@ le_result_t le_atClient_Send
 
     if (cmdPtr->interfacePtr == NULL)
     {
+        LE_ERROR("no device set");
         return LE_FAULT;
     }
 
     if (le_dls_NumLinks(&cmdPtr->expectResponseList) == 0)
     {
+        LE_ERROR("no final responses set");
         return LE_FAULT;
     }
 
@@ -1871,6 +1899,7 @@ le_result_t le_atClient_Send
     {
         if (le_atClient_SetIntermediateResponse(cmdRef,"") != LE_OK)
         {
+            LE_ERROR("Can't set intermediate rsp");
             return LE_FAULT;
         }
     }
