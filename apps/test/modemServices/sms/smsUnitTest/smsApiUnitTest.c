@@ -52,6 +52,17 @@ static uint16_t UCS2_TEST_PATTERN[] =
 
 static char DEST_TEST_PATTERN[] = "0123456789";
 
+// Task context
+typedef struct
+{
+    le_thread_Ref_t appStorageFullThread;
+    le_sms_FullStorageEventHandlerRef_t statHandler;
+    le_sms_Storage_t storage;
+} AppContext_t;
+
+static AppContext_t AppCtx;
+static le_sem_Ref_t SmsThreadSemaphore;
+static le_clk_Time_t TimeToWait ={ 0, 1000000 };
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -344,6 +355,177 @@ static void Testle_sms_ErrorDecodingReceivedList()
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Synchronize test thread (i.e. Testle_sms_FullStorage) and task
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SynchTest( void )
+{
+    LE_ASSERT(le_sem_WaitWithTimeOut(SmsThreadSemaphore, TimeToWait) == LE_OK);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove sms full storage handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
+
+    le_sms_RemoveFullStorageEventHandler( appCtxPtr->statHandler );
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(SmsThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test remove handler
+ *
+ * API tested:
+ * - le_sms_RemoveFullStorageEventHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_sms_RemoveFullStorageHandler
+(
+    void
+)
+{
+    // Remove handler le_sms_RemoveFullStorageEventHandler to the eventLoop of tasks
+    le_event_QueueFunctionToThread( AppCtx.appStorageFullThread ,
+                                    RemoveHandler,
+                                    &AppCtx,
+                                    NULL );
+    // Wait for the tasks
+    SynchTest();
+
+    // Provoke events that calls the handler (Simulate sms full storage notification)
+    AppCtx.storage = LE_SMS_STORAGE_SIM;
+    pa_sms_SetFullStorageType(SIMU_SMS_STORAGE_SIM);
+
+    // Wait for the semaphore timeout to check that handlers are not called
+    LE_ASSERT( le_sem_WaitWithTimeOut(SmsThreadSemaphore, TimeToWait) == LE_TIMEOUT );
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * FullStorageHandler: this handler is subcribed by test task and is called on sms full storage
+ * indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FullStorageHandler
+(
+    le_sms_Storage_t  storage,
+    void*            contextPtr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) contextPtr;
+
+    // test storage indication
+    LE_ASSERT(appCtxPtr->storage == storage);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(SmsThreadSemaphore);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test task: this function handles the task and run an eventLoop
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* AppHandler
+(
+    void* ctxPtr
+)
+{
+    AppContext_t * appCtxPtr = (AppContext_t*) ctxPtr;
+
+    // Subscribe to SMS full storage indication handler
+    appCtxPtr->statHandler = le_sms_AddFullStorageEventHandler(FullStorageHandler, ctxPtr);
+    LE_ASSERT(appCtxPtr->statHandler != NULL);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(SmsThreadSemaphore);
+
+    le_event_RunLoop();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the test environment:
+ * - create a task
+ * - create semaphore (to make checkpoints and synchronize test and tasks)
+ * - simulate an full storage
+ * - check that state handlers are correctly called
+ *
+ * API tested:
+ * - le_sms_AddFullStorageEventHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_sms_FullStorage
+(
+    void
+)
+{
+    // Create a semaphore to coordinate the test
+    SmsThreadSemaphore = le_sem_Create("HandlerSmsFull",0);
+
+    // int app context
+    memset(&AppCtx, 0, sizeof(AppContext_t));
+
+    // Start tasks:
+    // the thread subcribes to full storage indication handler using le_sms_AddFullStorageEventHandler
+    AppCtx.appStorageFullThread = le_thread_Create("appStorageFullThread", AppHandler, &AppCtx);
+    le_thread_Start(AppCtx.appStorageFullThread);
+
+    // Wait that the task have started before continuing the test
+    SynchTest();
+
+    // Simulate sms full storage notification with SIM storage
+    AppCtx.storage = LE_SMS_STORAGE_SIM;
+    pa_sms_SetFullStorageType(SIMU_SMS_STORAGE_SIM);
+
+    // The task has subscribe to full storage event handler:
+    // wait the handlers' calls and check result.
+    SynchTest();
+
+    // Simulate sms full storage notification with NV storage
+    AppCtx.storage = LE_SMS_STORAGE_NV;
+    pa_sms_SetFullStorageType(SIMU_SMS_STORAGE_NV);
+
+    // wait the handlers' calls and check result.
+    SynchTest();
+
+    // Simulate sms full storage notification with error storage
+    AppCtx.storage = LE_SMS_STORAGE_MAX;
+    pa_sms_SetFullStorageType(SIMU_SMS_STORAGE_ERROR);
+
+    // wait the handlers' calls and check result.
+    SynchTest();
+
+    // Check that no more call of the semaphore
+    LE_ASSERT(le_sem_GetValue(SmsThreadSemaphore) == 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * SMS API Unitary Test
  */
 //--------------------------------------------------------------------------------------------------
@@ -371,6 +553,12 @@ void testle_sms_SmsApiUnitTest
 
     LE_INFO("Test Testle_sms_ErrorDecodingReceivedList started");
     Testle_sms_ErrorDecodingReceivedList();
+
+    LE_INFO("Test Testle_sms_FullStorage started");
+    Testle_sms_FullStorage();
+
+    LE_INFO("Test Testle_sms_RemoveFullStorageHandler started");
+    Testle_sms_RemoveFullStorageHandler();
 
     LE_INFO("smsApiUnitTest sequence PASSED");
 }

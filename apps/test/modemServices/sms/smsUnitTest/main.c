@@ -76,14 +76,14 @@ COMPONENT_INIT
     // Init pa simu
     pa_simSimu_Init();
 
-    // Init le_sim
-    le_sim_Init();
-
     pa_simSimu_SetPin("0000");
     pa_sms_SetSmsc("+33123456789");
 
     // Init the sms PA Simu
     sms_simu_Init();
+
+    // Init le_sim
+    le_sim_Init();
 
     //EnterPin Code
     pa_sim_EnterPIN(PA_SIM_PIN, "0000");

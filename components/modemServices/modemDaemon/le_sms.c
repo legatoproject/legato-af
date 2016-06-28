@@ -1084,9 +1084,9 @@ static void FirstLayerStorageSmsHandler
 {
     le_sms_FullStorageHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
-    le_sms_Storage_t referencePtr = (le_sms_Storage_t)reportPtr;
+    le_sms_Storage_t storage = *(le_sms_Storage_t *)reportPtr;
 
-    clientHandlerFunc(referencePtr, le_event_GetContextPtr());
+    clientHandlerFunc(storage, le_event_GetContextPtr());
 }
 
 //--------------------------------------------------------------------------------------------------
