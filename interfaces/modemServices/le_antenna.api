@@ -6,11 +6,11 @@
  *
  * <HR>
  *
- * This file contains prototype definitions for the antenna diagnosis APIs.
+ * This file contains reference definitions for the antenna diagnostic APIs.
  *
  * @section le_antenna_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b modemService.
+ * All functions of this API are provided by the @b modemService.
  *
  * Here's a code sample binding to modem services:
  * @verbatim
@@ -20,70 +20,73 @@
    }
    @endverbatim
  *
- * @section le_antenna_cell_section Cellular or Diversity antenna
+ * @section le_antenna_cell_antenna Cellular or Diversity antenna
  *
- * @subsection le_antenna_cell_diag_subsection Diagnostics principle
+ * @subsection le_antenna_cell_antenna_diag Diagnostics principle
  *
- * This functionality allows to detect or not the presence of an antenna or to detect a defective
- * antenna.
+ * Diagnostic functionality detects antenna presence and/or defective
+ * antennas.
  *
- * Antenna diagnosis is based on the following principle :
+ * Antenna diagnostics are based on the following principles:
  *
- * A very small D.C. current goes through the coaxial cable to the antenna. A resistive bridge is
- * realized to provide different voltages depending on the antenna state.
+ * A small DC current passes through the coaxial cable to the antenna. A resistive bridge is
+ * used to provide different voltage depending on the antenna state.
  *
- * It is mandatory to use a specific antenna. The antenna used have to be built with a resistor
- * between radiating element and ground.
+ * @note Only antennas with a resistor between the radiating element and ground are supported.
  *
- * The states to diagnose are listed here:
- * - Antenna in open circuit: there is no antenna but RF open circuit
- * - Antenna in close circuit: presence of antenna
- * - Antenna in short circuit: with or without antenna, short circuit for RF path.
+ * These are the diagnostic states:
+ * - open circuit: there's no antenna but RF open circuit
+ * - closed circuit: antenna is present
+ * - short circuit: with or without antenna, short circuit for RF path.
  *
  * @subsection le_antenna_cell_thres_subsection Thresholds
  *
  * Configurable thresholds are compared to the ADC (Analog to Digital Converter) reading from the
- * antenna diagnostic voltage to determine in which state the RF (Radio Frequency) is.
+ * antenna diagnostic voltage to determine the antenna state. 
  *
- * Two thresholds are set to decide the state:
- *@verbatim
-                           short limit                   open limit
-   ---- short circuit ----|---- close circuit ----|---- open circuit ----
-          unknown state      |   presence of antenna  |        no antenna
- @endverbatim
+ * Short and Open threshold limits determine the antenna's state:
+ *
+ * <b>Short Threshold Limit</b>
+ * - short circuit: unknown state
+ * - close circuit: presence of antenna
  *
  * A short event is reported for the Cellular or Diversity antenna if the ADC value is lower than
- * the corresponding short limit. An open event is reported for the Cellular or Diversity antenna
+ * the corresponding short limit. 
+ 
+ * <b>Open Threshold Limit</b>
+ * - open circuit: no antenna
+ *
+ * An open event is reported for the Cellular or Diversity antenna
  * if the ADC value is higher than the corresponding open limit.
  *
  * @note The open threshold is always HIGHER than the short threshold.
  *
- * @section le_antenna_gnss_section GNSS antenna
+ * @section le_antenna_gnss GNSS antenna
  *
- * @warning Ensure to check the supported antenna diagnosis for your specific platform.
+ * @warning Be sure check the supported antenna diagnostic limit for your specific platform.
  *
- * @subsection le_antenna_gnss_diag_subsection Diagnostics principle
+ * @subsection le_antenna_gnss_diag Diagnostics principle
  *
- * This functionality allows to detect or not the presence of an antenna or to detect a defective
+ * This functionality detects (or not) the presence of an antenna or a defective
  * antenna.
  *
- * The antenna diagnosis is based on the measurement of the current consumption  for a GNSS active
- * antenna.
- * Moreover a current hardware protection circuitry is able to protect the power supply of that active antenna.
+ * Antenna diagnostics measure the current consumption for a GNSS active
+ * antenna, and provides current protection circuitry to protect the active
+ * antenna's power supply.
  *
- * The states to diagnose are listed here:
- * - Antenna in short circuit: with or without antenna, short circuit for RF path.
- * - Antenna in open circuit: there is no antenna but RF open circuit.
- * - Antenna in close circuit: presence of antenna.
- * - Antenna in over current : with or without antenna, short circuit for RF path and current
+ * These are the diagnostic states:
+ * - short circuit: with or without antenna, short circuit for RF path.
+ * - open circuit: there is no antenna.
+ * - closed circuit: presence of antenna.
+ * - over current : with or without antenna, short circuit for RF path and current
  * hardware protection circuitry has tripped.
  *
- * @subsection le_antenna_gnss_thre_subsection Thresholds
+ * @subsection le_antenna_gnss_thresh Thresholds
  *
- * Configurable thresholds are compared to the ADC (Analog to Digital Converter) reading from the
- * antenna diagnostic hardware design measuring the current to determine in which state the antenna is.
+ * GNSS configurable thresholds are compared to the ADC reading from the
+ * antenna diagnostic hardware design to measure the current to determine the antenna state.
  *
- * The following status are reported for the GNSS antenna if the ADC value is:
+ * These are the status values reported for a GNSS antenna:
  * - SHORT_CIRCUIT: ADC value > short limit, but over current HW not tripped.
  * - CLOSE_CIRCUIT: short limit >= ADC value >= open limit.
  * - OPEN_CIRCUIT: ADC value < open limit.
@@ -95,14 +98,14 @@
  *
  * @warning Ensure to check the supported antenna diagnosis for your specific platform.
  *
- * By default, the antenna diagnostics use an internal ADC for reading the voltage from the
- * integrated antenna diagnosis circuit if any.
+ * By default, antenna diagnostics use an internal ADC to read the voltage from the
+ * integrated antenna diagnostic circuit, if any.
  *
- * An antenna design that makes use of an external antenna diagnosis circuit can still take
+ * An antenna design using an external antenna diagnostic circuit can still take
  * advantage of the antenna monitoring service. Using the function le_antenna_SetExternalAdc(),
- * the module can be instructed to monitor one of the external ADC’s to read the voltage from an
- * external antenna diagnosis circuit rather than the internal ADC.
- * Moreover, the le_antenna_GetExternalAdc() function reads the external ADC used to monitor
+ * the module can monitor one of the external ADC’s to read the voltage from an
+ * external antenna diagnosis circuit, rather than the internal ADC.
+ * le_antenna_GetExternalAdc() function reads the external ADC used to monitor
  * the requested antenna.
  *
  * @section API_desc API description
@@ -130,7 +133,6 @@
  *
  * le_antenna_GetExternalAdc() API gets the external ADC used to monitor the requested antenna.
  *
- * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -174,7 +176,7 @@ ENUM Type
 ENUM Status
 {
     SHORT_CIRCUIT,     ///< antenna in short circuit: unknown state.
-    CLOSE_CIRCUIT,     ///< antenna in close circuit: presence of antenna.
+    CLOSE_CIRCUIT,     ///< antenna in closed circuit: presence of antenna.
     OPEN_CIRCUIT,      ///< antenna in open circuit: there is no antenna.
     OVER_CURRENT,      ///< antenna in short circuit and current HW protection circuitry has
                        ///< tripped. Only applicable for GNSS antenna.
@@ -224,7 +226,7 @@ FUNCTION le_result_t GetType
 FUNCTION le_result_t SetShortLimit
 (
     Obj         antennaRef  IN,     ///< antenna reference
-    uint32      shortLimit  IN      ///< The ADC value used to detect a short circuit
+    uint32      shortLimit  IN      ///< ADC value used to detect a short circuit
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -240,7 +242,7 @@ FUNCTION le_result_t SetShortLimit
 FUNCTION le_result_t GetShortLimit
 (
     Obj         antennaRef  IN,    ///< antenna reference
-    uint32      shortLimit  OUT    ///< The ADC value used to detect a short circuit
+    uint32      shortLimit  OUT    ///< ADC value used to detect a short circuit
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -256,7 +258,7 @@ FUNCTION le_result_t GetShortLimit
 FUNCTION le_result_t SetOpenLimit
 (
     Obj         antennaRef  IN,      ///< antenna reference
-    uint32      openLimit   IN       ///< The ADC value used to detect an open circuit
+    uint32      openLimit   IN       ///< ADC value used to detect an open circuit
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -272,7 +274,7 @@ FUNCTION le_result_t SetOpenLimit
 FUNCTION le_result_t GetOpenLimit
 (
     Obj         antennaRef  IN,      ///< antenna reference
-    uint32      openLimit   OUT    ///< The ADC value used to detect an open circuit
+    uint32      openLimit   OUT    ///< ADC value used to detect an open circuit
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -333,7 +335,7 @@ FUNCTION le_result_t GetStatus
 FUNCTION le_result_t SetExternalAdc
 (
     Obj           antennaRef  IN,      ///< antenna reference
-    int8          adcId       IN       ///< The ADC index used to monitor the requested antenna
+    int8          adcId       IN       ///< ADC index used to monitor the requested antenna
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -346,12 +348,12 @@ FUNCTION le_result_t SetExternalAdc
  *      - LE_UNSUPPORTED request not supported
  *      - LE_FAULT on other failure
  *
- * @note If the returned ADC index is "-1", it means that no external ADC are used to monitor
+ * @note If the returned ADC index is "-1", it means no external ADC are used to monitor
  * the requested antenna.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetExternalAdc
 (
     Obj           antennaRef  IN,      ///< antenna reference
-    int8          adcId       OUT      ///< The ADC index used to monitor the requested antenna
+    int8          adcId       OUT      ///< ADC index used to monitor the requested antenna
 );
