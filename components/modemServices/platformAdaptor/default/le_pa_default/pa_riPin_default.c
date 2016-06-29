@@ -88,13 +88,12 @@ le_result_t pa_riPin_ReleaseRingSignal
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets the Ring Indicator signal high for configurable duration of time before lowering it.
- *
+ * Set RI GPIO value
  */
 //--------------------------------------------------------------------------------------------------
-void pa_riPin_PulseRingSignal
+void pa_riPin_Set
 (
-    uint32_t duration ///< [IN] duration in ms
+    uint8_t     set ///< [IN] 1 to Pull up GPIO RI or 0 to lower it down
 )
 {
     LE_ERROR("Unsupported function called");
