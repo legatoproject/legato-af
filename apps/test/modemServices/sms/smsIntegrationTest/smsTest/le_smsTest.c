@@ -1488,8 +1488,6 @@ static le_result_t Testle_sms_Storage
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_result_t res;
-
     if (le_arg_NumArgs() == 1)
     {
         const char* phoneNumber = le_arg_GetArg(0);
@@ -1499,34 +1497,25 @@ COMPONENT_INIT
         // Delete all Rx SMS message
         DeleteMessages();
 
-        res = Testle_sms_Storage();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_Storage() == LE_OK);
 
-        res = Testle_sms_AsyncSendTextTimeout();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_AsyncSendTextTimeout() == LE_OK);
 
-        res = Testle_sms_Send_Binary();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_Send_Binary() == LE_OK);
 
-        res = Testle_sms_Send_Text();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_Send_Text() == LE_OK);
 
-        res = Testle_sms_ReceivedList();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_ReceivedList() == LE_OK);
 
-        res = Testle_sms_AsyncSendText();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_AsyncSendText() == LE_OK);
 
 #if PDU_TEST
-        res = Testle_sms_AsyncSendPdu();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_AsyncSendPdu() == LE_OK);
 
-        res = Testle_sms_Send_Pdu();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_Send_Pdu() == LE_OK);
 #endif
 
-        res = Testle_sms_Send_UCS2();
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT(Testle_sms_Send_UCS2() == LE_OK);
 
         LE_INFO("smsTest sequence PASSED");
         // Delete all Rx SMS message
