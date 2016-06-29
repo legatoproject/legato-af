@@ -9,6 +9,7 @@
 # $ find . -name "*.api" |sort | sed 's/\.\/\(.*\)/generate_header(\1)/g'
 generate_header(airVantage/le_avc.api)
 generate_header(airVantage/le_avdata.api)
+generate_header(atService/le_atClient.api)
 generate_header(le_audio.api)
 generate_header(le_cellnet.api)
 generate_header(le_data.api)
