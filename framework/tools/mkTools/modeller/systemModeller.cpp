@@ -213,7 +213,7 @@ static void ModelApp
 
     // The first token in the app subsection could be the name of an app or a .adef file path.
     // Find the app name and .adef file.
-    const auto& appSpec = sectionPtr->firstTokenPtr->text;
+    const auto appSpec = path::Unquote(envVars::DoSubstitution(sectionPtr->firstTokenPtr->text));
     if (path::HasSuffix(appSpec, ".adef"))
     {
         appName = path::RemoveSuffix(path::GetLastNode(appSpec), ".adef");
@@ -302,7 +302,7 @@ static void ModelKernelModule
 
     // Tokens in the module subsection are paths to their .mdef file
     // Assume that modules are built outside of Legato
-    const auto& moduleSpec = sectionPtr->firstTokenPtr->text;
+    const auto moduleSpec = path::Unquote(envVars::DoSubstitution(sectionPtr->firstTokenPtr->text));
     if (path::HasSuffix(moduleSpec, ".mdef"))
     {
         moduleName = path::RemoveSuffix(path::GetLastNode(moduleSpec), ".mdef");
