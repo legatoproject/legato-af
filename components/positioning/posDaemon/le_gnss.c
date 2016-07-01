@@ -2618,6 +2618,7 @@ le_result_t le_gnss_GetTtff
 )
 {
     le_result_t result = LE_FAULT;
+    *ttffPtr = 0;
 
     // Check the GNSS device state
     switch (GnssState)
