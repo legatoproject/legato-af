@@ -3,7 +3,8 @@
 These topics contain platform-specific info:
 | Section                            | Description                                        |
 | ---------------------------------- | -------------------------------------------------- |
-| @subpage platformConstraints                       | platform constraints  |
-| @subpage yoctoMain                              |  Yocto dist info |
+| @subpage platformConstraints       | Platform constraints                               |
+| @subpage yoctoMain                 | Yocto dist info                                   |
+| @subpage raspbianInstallNotes      | Raspbian dist info                                |
 
 **/
