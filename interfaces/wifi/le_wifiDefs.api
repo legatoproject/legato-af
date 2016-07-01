@@ -27,7 +27,14 @@ DEFINE MAX_WEPKEY_LENGTH   = 63;
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_WEPKEY_BYTES   = (MAX_WEPKEY_LENGTH+1);
+DEFINE MAX_WEPKEY_BYTES   = (MAX_WEPKEY_LENGTH + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The minimum length of the pass-phrase used to generate PSK is 8 bytes. See 802.11-2007: H4.2.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MIN_PASSPHRASE_LENGTH   = 8;
 
 /**
  * The maximum length of the pass-phrase used to generate PSK is 63 bytes. See 802.11-2007: H4.2.
@@ -41,7 +48,7 @@ DEFINE MAX_PASSPHRASE_LENGTH   = 63;
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_PASSPHRASE_BYTES = (MAX_PASSPHRASE_LENGTH+1);
+DEFINE MAX_PASSPHRASE_BYTES = (MAX_PASSPHRASE_LENGTH + 1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -56,7 +63,7 @@ DEFINE MAX_PSK_LENGTH   = 64;
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_PSK_BYTES = (MAX_PSK_LENGTH+1);
+DEFINE MAX_PSK_BYTES = (MAX_PSK_LENGTH + 1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -71,7 +78,7 @@ DEFINE MAX_USERNAME_LENGTH   = 63;
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_USERNAME_BYTES = (MAX_USERNAME_LENGTH+1);
+DEFINE MAX_USERNAME_BYTES = (MAX_USERNAME_LENGTH + 1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -86,14 +93,22 @@ DEFINE MAX_PASSWORD_LENGTH   = 130;
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_PASSWORD_BYTES = (MAX_PASSWORD_LENGTH+1);
+DEFINE MAX_PASSWORD_BYTES = (MAX_PASSWORD_LENGTH + 1);
 
 //--------------------------------------------------------------------------------------------------
 /**
  * The maximum length of octets of the Service set identification (SSID).
- * @note that while the values are probably human readable, this is not a string.
+ * @note While the values are probably human readable, this is not a string.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE MAX_SSID_BYTES  =  32;
+DEFINE MAX_SSID_LENGTH  =  32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The maximum length of octets of the Service set identification (SSID).
+ * @note While the values are probably human readable, this is not a string.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SSID_BYTES  =  (MAX_SSID_LENGTH + 1);
 
 
