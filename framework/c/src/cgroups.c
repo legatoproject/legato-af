@@ -121,6 +121,34 @@ static bool IsAllSubSysMounted
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Setup a separate cgroup hierarchy for each supported subsystem.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MountSubSys
+(
+    void
+)
+{
+    // Setup a separate cgroup hierarchy for each supported subsystem.
+    cgrp_SubSys_t subSys = 0;
+    for (; subSys < CGRP_NUM_SUBSYSTEMS; subSys++)
+    {
+        char dir[LIMIT_MAX_PATH_BYTES] = ROOT_PATH;
+
+        LE_ASSERT(le_path_Concat("/", dir, sizeof(dir), SubSysName[subSys], (char*)NULL) == LE_OK);
+
+        LE_ASSERT(le_dir_Make(dir, S_IRWXU) != LE_FAULT);
+
+        LE_FATAL_IF(mount(SubSysName[subSys], dir, "cgroup", 0, SubSysName[subSys]) != 0,
+                    "Could not mount cgroup subsystem '%s'.  %m.", SubSysName[subSys]);
+
+        LE_INFO("Mounted cgroup hierarchy for subsystem '%s'.", SubSysName[subSys]);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes cgroups for the system.  Sets up a hierarchy for each supported subsystem.
  *
  * @note Should be called once for the entire system, subsequent calls to this function will have no
@@ -134,30 +162,27 @@ void cgrp_Init
     void
 )
 {
-    // Check whether all cgroup subsystems are mounted.
-    if (!IsAllSubSysMounted())
+    // Setup the cgroup root directory if it does not already exist.
+    if (!fs_IsMounted(ROOT_NAME, ROOT_PATH))
     {
-        // Unmount everything in cgroup.
-        LE_FATAL_IF(umount2(ROOT_PATH, MNT_DETACH) != 0,
-                        "Could not unmount cgroup root file system. %m");
-        // Mount cgroup root directory.
-        LE_FATAL_IF(mount(ROOT_NAME, ROOT_PATH, "tmpfs", 0, NULL) != 0,
-                        "Could not mount cgroup root file system.  %m.");
+        LE_FATAL_IF(mount(ROOT_NAME, ROOT_PATH, "tmpfs", 0, NULL) !=0,
+                        "Could not mount cgroup root file system. %m.");
 
-        // Setup a separate cgroup hierarchy for each supported subsystem.
-        cgrp_SubSys_t subSys = 0;
-        for (; subSys < CGRP_NUM_SUBSYSTEMS; subSys++)
+        MountSubSys();
+    }
+    else
+    {
+        // Check whether all cgroup subsystems are mounted.
+        if (!IsAllSubSysMounted())
         {
-            char dir[LIMIT_MAX_PATH_BYTES] = ROOT_PATH;
+            // Unmount everything in cgroup.
+            LE_FATAL_IF(umount2(ROOT_PATH, MNT_DETACH) != 0,
+                            "Could not unmount cgroup root file system. %m");
+            // Mount cgroup root directory.
+            LE_FATAL_IF(mount(ROOT_NAME, ROOT_PATH, "tmpfs", 0, NULL) != 0,
+                            "Could not mount cgroup root file system.  %m.");
 
-            LE_ASSERT(le_path_Concat("/", dir, sizeof(dir), SubSysName[subSys], (char*)NULL) == LE_OK);
-
-            LE_ASSERT(le_dir_Make(dir, S_IRWXU) != LE_FAULT);
-
-            LE_FATAL_IF(mount(SubSysName[subSys], dir, "cgroup", 0, SubSysName[subSys]) != 0,
-                        "Could not mount cgroup subsystem '%s'.  %m.", SubSysName[subSys]);
-
-            LE_INFO("Mounted cgroup hierarchy for subsystem '%s'.", SubSysName[subSys]);
+            MountSubSys();
         }
     }
 }
