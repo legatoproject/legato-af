@@ -1213,14 +1213,7 @@ static bool DoesLinkExist
         }
 
         // Attempt to delete the original link.
-        if (appRef->sandboxed)
-        {
-            if (umount(destPath) == -1)
-            {
-                LE_WARN("Could not unmount %s.  %m,", destPath);
-            }
-        }
-        else
+        if (!appRef->sandboxed)
         {
             if (unlink(destPath) == -1)
             {
