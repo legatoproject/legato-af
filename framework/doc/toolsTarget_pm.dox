@@ -1,0 +1,44 @@
+/** @page toolsTarget_pmTool pmtool
+
+Use the Power Manager @c pmtool to set power management options.
+
+Usage:
+<b>@verbatim
+pmtool bootOn gpio  <gpioNum> <triggerOption>
+pmtool bootOn timer <timeOutVal>
+pmtool shutdown
+pmtool bootReason timer
+pmtool bootReason gpio <gpioNum>
+pmtool query
+@endverbatim
+</b>
+
+@verbatim pmtool bootOn gpio <gpioNum> <triggerOption>@endverbatim
+> Configure specified gpio as boot source.
+> TriggerOption specifies the gpio state that will trigger device boot:
+> high, low, rising, falling, both, off.
+
+@verbatim pmtool bootOn timer <timeOutVal>@endverbatim
+> Configure specified timer as boot source.
+> timeOutVal specifies the time interval
+> seconds to trigger device boot.
+
+@verbatim pmtool shutdown@endverbatim
+> Initiates target device shutdown.
+
+@verbatim pmtool bootReason gpio  <gpioNum>@endverbatim
+> Checks if the specified gpio triggers' target device boot.
+
+@verbatim pmtool bootReason timer@endverbatim
+> Checks if the timer expiry triggers' target device boot.
+
+@verbatim pmtool query@endverbatim
+> Displays the current ultra-low power manager firmware version.
+
+@verbatim pmtool --help@endverbatim
+
+> Prints help text to standard out and exits.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

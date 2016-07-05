@@ -1,21 +1,21 @@
 /** @page toolsTarget Target
 
 Legato has these tools to run on the target:
-
-@subpage toolsTarget_app <br>
-@subpage toolsTarget_cm <br>
-@subpage toolsTarget_config <br>
-@subpage toolsTarget_configEcm <br>
-@subpage toolsTarget_execInApp <br>
-@subpage toolsTarget_fwUpdate <br>
-@subpage toolsTarget_inspect <br>
-@subpage toolsTarget_legato <br>
-@subpage toolsTarget_log <br>
-@subpage toolsTarget_sdir <br>
-@subpage toolsTarget_setNet <br>
-@subpage toolsTarget_update <br>
-
-<HR>
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage toolsTarget_app           | list and control installed apps                    |
+| @subpage toolsTarget_cm            | control modem functions                            |
+| @subpage toolsTarget_config        | change config database                             |
+| @subpage toolsTarget_configEcm     | setup an ECM interface                             |
+| @subpage toolsTarget_execInApp     | execute process in running app's sandbox           |
+| @subpage toolsTarget_fwUpdate      | download image files directly to                   |
+| @subpage toolsTarget_inspect       | examine running Legato processes and memory pools  |
+| @subpage toolsTarget_legato        | run Legato framework                               |
+| @subpage toolsTarget_log           | set logging variables for components               |
+| @subpage toolsTarget_sdir          | control IPC bindings and troubleshoot              |
+| @subpage toolsTarget_setNet        | set your MAC address or static IP                  |
+| @subpage toolsTarget_pmTool        | set power manager target options                   |
+| @subpage toolsTarget_update        | install, update, and remove software               |
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

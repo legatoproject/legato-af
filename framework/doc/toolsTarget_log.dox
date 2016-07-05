@@ -1,6 +1,6 @@
 /** @page toolsTarget_log log
 
-Use the Log tool tool to set logging variables for components. Also see @ref howToLogs.
+Use the Log tool to set logging variables for components. Also see @ref howToLogs.
 
 Here's more detailed info on the @ref c_logging.
 
