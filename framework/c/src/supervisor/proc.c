@@ -1285,6 +1285,10 @@ void proc_SetStdIn
     int stdInFd                 ///< [IN] File descriptor to use as the app proc's standard in.
 )
 {
+    if (procRef->stdInFd != -1)
+    {
+        fd_Close(procRef->stdInFd);
+    }
     procRef->stdInFd = stdInFd;
 }
 
@@ -1302,6 +1306,10 @@ void proc_SetStdOut
     int stdOutFd                ///< [IN] File descriptor to use as the app proc's standard out.
 )
 {
+    if (procRef->stdOutFd != -1)
+    {
+        fd_Close(procRef->stdOutFd);
+    }
     procRef->stdOutFd = stdOutFd;
 }
 
@@ -1319,6 +1327,10 @@ void proc_SetStdErr
     int stdErrFd                ///< [IN] File descriptor to use as the app proc's standard error.
 )
 {
+    if (procRef->stdErrFd != -1)
+    {
+        fd_Close(procRef->stdErrFd);
+    }
     procRef->stdErrFd = stdErrFd;
 }
 
