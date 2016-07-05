@@ -19,7 +19,7 @@
  * @verbatim
    bindings:
    {
-      clientExe.clientComponent.le_temp -> modemService.le_temp
+      clientExe.clientComponent.le_temp -> modemServices.le_temp
    }
    @endverbatim
  *
