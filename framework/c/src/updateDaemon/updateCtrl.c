@@ -68,9 +68,10 @@ void updateCtrl_SetProbationExpiryCallBack
  * When a client dies deallocate any storage we allocated to store its counts.
  *
  * @note
- * If a client dies while holding locks it is probably not an indication that things are going well
- * and it would be wrong to allow the current system to be marked good in that case. Instead we
- * let the framework reboot at its earliest convenience.
+ * If a client dies while holding probation-locks, it is better to let the framework reboot (to
+ * avoid marking system good despite of failure) at its earliest convenience. However, if a client
+ * dies while holding defer-locks, it is probably OK to release the defer-locks (held by dead client)
+ * without reboot.
  */
 //--------------------------------------------------------------------------------------------------
 static void FreeDeadClientLockObjs
@@ -87,13 +88,23 @@ static void FreeDeadClientLockObjs
         {
             if (obj)
             {
-                if ((obj->LockProbationCount != 0) || (obj->DeferCount != 0))
+                if (obj->LockProbationCount != 0)
                 {
-                    LE_FATAL("Process %d died while holding %d probation and %d defer locks",
-                            clientPid, obj->LockProbationCount, obj->DeferCount);
+                    LE_FATAL("Process %d died while holding %d probation locks",
+                              clientPid,
+                              obj->LockProbationCount);
                 }
                 else
                 {
+                    if (obj->DeferCount != 0)
+                    {
+                        LE_EMERG("Process %d died while holding %d defer locks",
+                                  clientPid,
+                                  obj->DeferCount);
+
+                        AggregateDeferCount -= obj->DeferCount;
+                    }
+
                     le_mem_Release(obj);
                 }
             }
