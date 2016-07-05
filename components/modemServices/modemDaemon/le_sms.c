@@ -1683,11 +1683,13 @@ le_result_t le_sms_SetTimeout
 
     if(msgPtr->readonly)
     {
+        LE_ERROR("Message is Read-only");
         return LE_FAULT;
     }
 
     if(msgPtr->pdu.status != LE_SMS_UNSENT)
     {
+        LE_ERROR("Message is not in UNSENT state");
         return LE_FAULT;
     }
 
@@ -3066,11 +3068,13 @@ le_result_t le_sms_SendAsync
 
     if(msgPtr->readonly)
     {
+        LE_ERROR("Message is Read-only");
         return LE_FAULT;
     }
 
     if(msgPtr->pdu.status != LE_SMS_UNSENT)
     {
+        LE_ERROR("Message is not in UNSENT state");
         return LE_FAULT;
     }
 
