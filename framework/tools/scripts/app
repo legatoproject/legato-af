@@ -1,0 +1,111 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
+
+help_short_desc="call the app script on the target"
+help_long_description=(
+"DEST_IP is the IP address of the target device. If DEST_IP is not specified on"
+"the command line, the contents of the DEST_IP environment variable will be used."
+""
+"Command-specific usage:"
+""
+"[start|stop|restart|remove|status|version|info]"
+""
+"   Takes an application name."
+""
+"[list|status|info]"
+""
+"   Takes no application names."
+""
+"runProc"
+""
+"   --exe=<exePath>"
+"      Use the executable at <exePath>.  <exePath> is from the perspective of the app"
+"      (ie. /exe would be at the sandbox root if the app is sandboxed)."
+""
+"   --priority=<priorityStr>"
+"      Sets the priority of the process.  <priorityStr> can be either 'idle', 'low',"
+"      'medium', 'high', 'rt1', 'rt2', ... 'rt32'."
+""
+"   --faultAction=<action>"
+"      Sets the fault action for the process.  <action> can be either 'ignore',"
+"      'restartProc', 'restartApp', 'stopApp'."
+""
+"   -- [<args> ...]"
+"      The -- option is used to specify comamnd line arguments to the process."
+"      Everything following the -- option is taken as arguments to the process to be"
+"      started.  Therefore the -- option must be the last option to appCtrl runProc."
+"      If the -- option is not used then the configured arguments are used if available."
+""
+"install"
+""
+"   Apply the given update pack to the target device at a given IP address."
+""
+"   UPDATE_FILE is the update pack file to be applied."
+"   E.g., 'myApp.ar7.update' or 'system.wp85.update'."
+""
+"   System update files are created by 'mksys'."
+"   App update files are created by 'mkapp'."
+"   App removal update packs and firmware update packs can be created using 'update-pack'."
+)
+
+help_usage=(
+"[start|stop|restart|remove|status|version|info] APP_NAME [DEST_IP]"
+"[list|status|info] [DEST_IP]"
+"install UPDATE_FILE [DEST_IP]"
+"runProc APP_NAME [PROC_NAME] [options] [DEST_IP]"
+)
+
+CheckForHelp $@
+
+# Check if at least one argument was provided
+if [[ -z $1 ]]; then
+    PrintAvailableUsage
+    exit 1
+fi
+
+# Check if last argument is an IP address
+ip=${@: -1}
+if [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SetTargetIP $ip
+    # unset last argument by setting the argument list to a subset of the original
+    set -- "${@:1:$(($#-1))}"
+else
+    SetTargetIP
+fi
+
+case $1 in
+    start|stop|restart|remove|status|version|info|list|runProc)
+        SshToTarget "$BIN_PATH/app '$@'"
+        ;;
+    install)
+        UPDATE_FILE=$2
+        # Check that the second argument exists and is a file.
+        if ! [ -f "$UPDATE_FILE" ]
+        then
+            ExitWithError "Second argument should be an update pack file."
+        fi
+
+        # Pipe the update pack to the on-target "update" program through ssh.
+        echo "Applying update from file '$UPDATE_FILE' to device at address '$TARGET_IP'."
+        cat $UPDATE_FILE | SshToTarget "/legato/systems/current/bin/update"
+
+        result=$?
+        if [ "$result" = 0 ]; then
+            echo "Done"
+        else
+            echo "Update failed"
+            SshToTarget "/legato/systems/current/bin/legato status"
+            exit $result
+        fi
+        ;;
+    *)
+        PrintAvailableUsage
+        exit 1
+        ;;
+esac
+
+

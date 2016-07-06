@@ -1,26 +1,2 @@
 #!/bin/bash
-copyright="
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-"
-
-. "$(dirname "${BASH_SOURCE[0]}")/shlib"
-
-help_short_desc="show status of apps on target"
-
-help_usage=(
-"[TARGET_IP]"
-)
-
-help_long_description=(
-"The target at TARGET_IP will be queried to find out the status of all"
-"installed applications and a list of all running and stopped apps"
-"will be returned"
-)
-
-CheckForHelp $@
-
-SetTargetIP $1
-
-# List the contents of the application install directory.
-SshToTarget "$BIN_PATH/app status \"*\""
-
+echo "$0 has been deprecated. Please use 'app status' instead."

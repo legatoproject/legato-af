@@ -1,24 +1,3 @@
 #!/bin/bash
-copyright="
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-"
-
-. "$(dirname "${BASH_SOURCE[0]}")/shlib"
-
-help_short_desc="list apps on target"
-
-help_usage=(
-"[TARGET_IP]"
-)
-
-help_long_description=(
-"List all apps on the target at TARGET_IP"
-)
-
-CheckForHelp $@
-
-SetTargetIP $1
-
-# List the contents of the application install directory.
-SshToTarget "$BIN_PATH/app list"
+echo "$0 has been deprecated. Please use 'app list' instead."
 

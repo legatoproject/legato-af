@@ -23,6 +23,7 @@ SetMarkup() {
     endverbatim="@endverbatim"
     bold_next_word="@b "
     copyright_footer="<hr>$copyright"
+    lt_escape="\\"
 }
 
 UsageHasOptionalTargetIp() {
@@ -74,7 +75,7 @@ PrintDescriptionSection() {
             printf "    %s\\n" "$desc_line"
         done \
             | sed 's^\@^\\@^g' \
-            | sed 's^<^\\<^g'
+            | sed "s^<^${lt_escape}<^g"
         echo ""
         echo "$endverbatim"
     fi
@@ -163,7 +164,7 @@ SetTargetIP()
     then
         if ! [ $DEST_IP ]
         then
-            ExitWithError "Destination IP address not available."
+            ExitWithError "A destination IP address was not provided, and environment variable DEST_IP is not set."
         fi
 
         TARGET_IP=$DEST_IP

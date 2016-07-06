@@ -155,7 +155,7 @@ elif [[ "$COMMAND" == "instlegato" ]]; then
 elif [[ "$COMMAND" == "instapp" ]]; then
     CheckLegatoRoot
     export SSH_PORT=$SIMU_PORT
-    $LEGATO_ROOT/bin/instapp $2 $SIMU_IP
+    $LEGATO_ROOT/bin/app install $2 $SIMU_IP
 else
     message $COLOR_ERROR "Unknown command '$COMMAND'"
 fi
