@@ -329,6 +329,18 @@ void proc_SetFaultAction
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the run flag.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetRun
+(
+    proc_Ref_t procRef, ///< [IN] The process reference.
+    bool run            ///< [IN] Run flag.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This handler must be called when a SIGCHILD is received for the specified process.
  *
  * @return

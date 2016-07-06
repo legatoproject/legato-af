@@ -4,7 +4,7 @@
 
 INSTALLED_VERSION=/legato/systems/current/version
 
-# Wait upto 10 seconds for appCtrl to stop legato
+# Wait upto 10 seconds for the app tool to stop legato
 StopLegatoTimeout=10
 
 ACTION=$1
@@ -117,8 +117,8 @@ StopLegato()
         echo "Stopping Legato... "
 
         # Tell the Supervisor to shutdown Legato.
-        appCtrl "stopLegato" 2> /dev/null &
-        appCtrlPid=$!
+        app "stopLegato" 2> /dev/null &
+        appToolPid=$!
 
         # wait for supervisor shutdown
         countDown=$StopLegatoTimeout
@@ -136,15 +136,15 @@ StopLegato()
         # make sure supervisor shut down
         if IsRunning supervisor
         then
-            if $PS | grep $appCtrlPid | grep appCtrl | grep -v grep > /dev/null
+            if $PS | grep $appToolPid | grep app | grep -v grep > /dev/null
             then
-                echo "appCtrl still trying to shut down supervisor after 10 seconds"
+                echo "The app tool has tried to shut down Supervisor after $StopLegatoTimeout seconds."
             else
-                wait $appCtrlPid
-                echo "appCtrl exited with code $? and supervisor still running after 10 seconds."
+                wait $appToolPid
+                echo "The app tool exited with code $? and Supervisor is still running after $StopLegatoTimeout seconds."
             fi
 
-            echo "Killing supervisor ..."
+            echo "Killing Supervisor ..."
             killall supervisor > /dev/null 2>&1
         fi
     fi
@@ -180,7 +180,7 @@ RestartLegato()
         echo "Restarting Legato... "
 
         # Tell the Supervisor to restart Legato.
-        appCtrl "restartLegato" 2> /dev/null
+        app "restartLegato" 2> /dev/null
     else
         StopLegato
         StartLegato

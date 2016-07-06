@@ -21,7 +21,7 @@ BUILD_PRODUCTS = 	config		\
 					straceCfg	\
 					inspect	\
 					xattr	\
-					appCtrl \
+					app \
 					update \
 					scripts
 
@@ -102,16 +102,10 @@ sdir:
 			$(MKEXE_FLAGS)
 
 gdbCfg:
-	mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/$@ \
-			-i $(FRAMEWORK_SRC_DIR) \
-			-c $(FRAMEWORK_SRC_DIR) \
-			appConfig \
-			-i $(FRAMEWORK_SRC_DIR)/appConfig \
-			$(MKEXE_FLAGS)
+	ln -sf debugCfg $(BIN_DIR)/gdbCfg
 
 straceCfg:
-	ln -sf gdbCfg $(BIN_DIR)/straceCfg
+	ln -sf debugCfg $(BIN_DIR)/straceCfg
 
 inspect:
 	mkexe -o $(BIN_DIR)/$@ \
@@ -127,9 +121,9 @@ xattr:
 			-i $(FRAMEWORK_SRC_DIR) \
 			$(MKEXE_FLAGS)
 
-appCtrl:
+app:
 	mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/appCtrl \
 			-i $(LEGATO_INTERFACES_DIR)/supervisor \
 			-i $(FRAMEWORK_SRC_DIR) \
 			$(MKEXE_FLAGS)

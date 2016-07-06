@@ -125,6 +125,27 @@ ThreadObj_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Process name object.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char* procName;     // The name of the process.
+    le_sls_Link_t link; // The link in the list of process names.
+}
+ProcName_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process name list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sls_List_t ProcNameList = LE_SLS_LIST_INIT;  // Process name list.
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pool of process objects
  */
 //--------------------------------------------------------------------------------------------------
@@ -137,6 +158,14 @@ static le_mem_PoolRef_t ProcObjPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ThreadObjPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool of process name objects
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ProcNamePool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -159,63 +188,78 @@ static void PrintHelp
 {
     puts(
         "NAME:\n"
-        "    appCtrl - Used to start, stop and get the status of Legato applications.\n"
+        "    app - Used to start, stop and get the status of Legato applications.\n"
         "\n"
         "SYNOPSIS:\n"
-        "    appCtrl --help\n"
-        "    appCtrl start <appName>\n"
-        "    appCtrl stop <appName>\n"
-        "    appCtrl stopLegato\n"
-        "    appCtrl restartLegato\n"
-        "    appCtrl list\n"
-        "    appCtrl status [<appName>]\n"
-        "    appCtrl version <appName>\n"
-        "    appCtrl info [<appName>]\n"
-        "    appCtrl runProc <appName> <procName> [options]\n"
-        "    appCtrl runProc <appName> [<procName>] --exe=<exePath> [options]\n"
+        "    app --help\n"
+        "    app start <appName> [<options>]\n"
+        "    app stop <appName>\n"
+        "    app restart <appName>\n"
+        "    app remove <appName>\n"
+        "    app stopLegato\n"
+        "    app restartLegato\n"
+        "    app list\n"
+        "    app status [<appName>]\n"
+        "    app version <appName>\n"
+        "    app info [<appName>]\n"
+        "    app runProc <appName> <procName> [options]\n"
+        "    app runProc <appName> [<procName>] --exe=<exePath> [options]\n"
         "\n"
         "DESCRIPTION:\n"
-        "    appCtrl --help\n"
+        "    app --help\n"
         "       Display this help and exit.\n"
         "\n"
-        "    appCtrl start <appName>\n"
+        "    app start <appName>\n"
         "       Starts the specified application.\n"
         "\n"
-        "    appCtrl stop <appName>\n"
+        "    app start <appName> [<options>]\n"
+        "       Runs an app in a modified manner by one or more of the following options:\n"
+        "\n"
+        "       --norun=<procName1>[,<procName2>,...]\n"
+        "           Do not start the specified configured processes. Names are separated by commas\n"
+        "           without spaces.\n"
+        "\n"
+        "    app stop <appName>\n"
         "       Stops the specified application.\n"
         "\n"
-        "    appCtrl stopLegato\n"
+        "    app restart <appName>\n"
+        "       Restarts the specified application.\n"
+        "\n"
+        "    app remove <appName>\n"
+        "       Removes the specified application.\n"
+        "\n"
+        "    app stopLegato\n"
         "       Stops the Legato framework.\n"
         "\n"
-        "    appCtrl restartLegato\n"
+        "    app restartLegato\n"
         "       Restarts the Legato framework.\n"
         "\n"
-        "    appCtrl list\n"
+        "    app list\n"
         "       List all installed applications.\n"
         "\n"
-        "    appCtrl status [<appName>]\n"
+        "    app status [<appName>]\n"
         "       If no name is given, prints the status of all installed applications.\n"
         "       If a name is given, prints the status of the specified application.\n"
         "       The status of the application can be 'stopped', 'running', 'paused' or 'not installed'.\n"
         "\n"
-        "    appCtrl version <appName>\n"
+        "    app version <appName>\n"
         "       Prints the version of the specified application.\n"
         "\n"
-        "    appCtrl info [<appName>]\n"
+        "    app info [<appName>]\n"
         "       If no name is given, prints the information of all installed applications.\n"
         "       If a name is given, prints the information of the specified application.\n"
         "\n"
-        "    appCtrl runProc <appName> <procName> [options]\n"
+        "    app runProc <appName> <procName> [options]\n"
         "       Runs a configured process inside an app using the process settings from the\n"
         "       configuration database.  If an exePath is provided as an option then the specified\n"
         "       executable is used instead of the configured executable.\n"
         "\n"
-        "    appCtrl runProc <appName> [<procName>] --exe=<exePath> [options]\n"
+        "    app runProc <appName> [<procName>] --exe=<exePath> [options]\n"
         "       Runs an executable inside an app.  The exePath must be provided and the optional\n"
         "       process name must not match any configured processes for the app.  Unless specified\n"
         "       using the options below the executable will be run with default settings.\n"
         "\n"
-        "    appCtrl runProc takes the following options that can be used to modify the process\n"
+        "    app runProc takes the following options that can be used to modify the process\n"
         "    settings:\n"
         "\n"
         "       --exe=<exePath>\n"
@@ -233,7 +277,7 @@ static void PrintHelp
         "       -- [<args> ...]\n"
         "           The -- option is used to specify comamnd line arguments to the process.\n"
         "           Everything following the -- option is taken as arguments to the process to be\n"
-        "           started.  Therefore the -- option must be the last option to appCtrl runProc.\n"
+        "           started.  Therefore the -- option must be the last option to app runProc.\n"
         "           If the -- option is not used then the configured arguments are used if available.\n"
         );
 
@@ -255,8 +299,44 @@ static void StartApp
 {
     le_sup_ctrl_ConnectService();
 
+    // Determine if any options are specified. If so, get the app ref and set the options. If not,
+    // simply start the app.
+
+    // Get the app ref by the app name.
+    le_sup_ctrl_AppRef_t appRef = le_sup_ctrl_GetAppRef(AppNamePtr);
+
+    if (appRef == NULL)
+    {
+        fprintf(stderr, "Application '%s' is not installed.\n", AppNamePtr);
+        exit(EXIT_FAILURE);
+    }
+
+    // Set the overrides.
+    if (!le_sls_IsEmpty(&ProcNameList)) // for the "norun" option
+    {
+        le_sls_Link_t* procNameLinkPtr = le_sls_Peek(&ProcNameList);
+
+        while (procNameLinkPtr != NULL)
+        {
+            ProcName_t* procNamePtr = CONTAINER_OF(procNameLinkPtr, ProcName_t, link);
+
+            le_sup_ctrl_SetRun(appRef, procNamePtr->procName, false);
+
+            procNameLinkPtr = le_sls_PeekNext(&ProcNameList, procNameLinkPtr);
+        }
+    }
+
+
     // Start the application.
-    switch (le_sup_ctrl_StartApp(AppNamePtr))
+    le_result_t startAppResult = le_sup_ctrl_StartApp(AppNamePtr);
+
+
+    // Release the app ref.
+    le_sup_ctrl_ReleaseAppRef(appRef);
+
+
+    // Print msg and exit based on the result of the StartApp request.
+    switch (startAppResult)
     {
         case LE_OK:
             exit(EXIT_SUCCESS);
@@ -294,15 +374,87 @@ static void StopApp
     switch (le_sup_ctrl_StopApp(AppNamePtr))
     {
         case LE_OK:
-            exit(EXIT_SUCCESS);
+            // If this function is not called from CommandFunc, it could be part of another
+            // function call, so don't exit yet.
+            if (CommandFunc == StopApp)
+            {
+                exit(EXIT_SUCCESS);
+            }
+
+            break;
 
         case LE_NOT_FOUND:
             printf("Application '%s' was not running.\n", AppNamePtr);
-            exit(EXIT_FAILURE);
+
+            if (CommandFunc == StopApp)
+            {
+                exit(EXIT_FAILURE);
+            }
+
+            break;
 
         default:
             INTERNAL_ERR("Unexpected response from the Supervisor.");
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Requests the Supervisor to restart an application.
+ *
+ * @note This function does not return.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RestartApp
+(
+    void
+)
+{
+    StopApp();
+    le_sup_ctrl_DisconnectService();
+    StartApp();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Removes an app.
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void RemoveApp
+(
+    void
+)
+{
+    le_cfg_ConnectService();
+
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("system:/apps");
+
+    if (!le_cfg_NodeExists(cfgIter, AppNamePtr))
+    {
+        fprintf(stderr, "App '%s' is not installed.\n", AppNamePtr);
+        exit(EXIT_FAILURE);
+    }
+
+    le_cfg_CancelTxn(cfgIter);
+
+    printf("Removing app '%s'...\n", AppNamePtr);
+
+    char systemCmd[200] = {0};
+
+    // NOTE: update --remove will make sure the app is stopped first.
+    snprintf(systemCmd, sizeof(systemCmd),
+             "/legato/systems/current/bin/update --remove %s", AppNamePtr);
+
+    if (system(systemCmd) != 0)
+    {
+        fprintf(stderr, "***Error: Couldn't remove app '%s'.\n", AppNamePtr);
+        exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -1495,7 +1647,7 @@ static void RunProc
 
     if (lastCmdIndex > 0)
     {
-        // This is the index of the last valid command line argument for appCtrl runProc.  All
+        // This is the index of the last valid command line argument for "app runProc".  All
         // proceeding arguments belong to the process to start.
         lastCmdIndex--;
     }
@@ -1602,6 +1754,37 @@ static void AppNameArgHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler to get the process names specified by the "--norun" option of the startMod command. The
+ * process names are placed in a linked list.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void NoRunProcNameArgHanlder
+(
+    const char* noRunProcNamesPtr   ///< [IN] string containing proc names
+)
+{
+    char* procNames = strdup(noRunProcNamesPtr);
+    char delim[2] = ",";
+    char* token;
+
+    token = strtok(procNames, delim);
+
+    while (token != NULL)
+    {
+        ProcName_t* procNamePtr = le_mem_ForceAlloc(ProcNamePool);
+
+        procNamePtr->procName = token;
+        procNamePtr->link = LE_SLS_LINK_INIT;
+
+        le_sls_Queue(&ProcNameList, &(procNamePtr->link));
+
+        token = strtok(NULL, delim);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Function that gets called by le_arg_Scan() when it encounters the command argument on the
  * command line.
  **/
@@ -1621,10 +1804,23 @@ static void CommandArgHandler
         CommandFunc = StartApp;
 
         le_arg_AddPositionalCallback(AppNameArgHandler);
+        le_arg_SetStringCallback(NoRunProcNameArgHanlder, NULL, "norun");
     }
     else if (strcmp(command, "stop") == 0)
     {
         CommandFunc = StopApp;
+
+        le_arg_AddPositionalCallback(AppNameArgHandler);
+    }
+    else if (strcmp(command, "restart") == 0)
+    {
+        CommandFunc = RestartApp;
+
+        le_arg_AddPositionalCallback(AppNameArgHandler);
+    }
+    else if (strcmp(command, "remove") == 0)
+    {
+        CommandFunc = RemoveApp;
 
         le_arg_AddPositionalCallback(AppNameArgHandler);
     }
@@ -1675,6 +1871,7 @@ COMPONENT_INIT
 {
     ProcObjPool = le_mem_CreatePool("ProcObjPool", sizeof(ProcObj_t));
     ThreadObjPool = le_mem_CreatePool("ThreadObjPool", sizeof(ThreadObj_t));
+    ProcNamePool = le_mem_CreatePool("ProcNamePool", sizeof(ProcName_t));
 
     ProcObjMap = le_hashmap_Create("ProcsMap",
                                    EST_MAX_NUM_PROC,

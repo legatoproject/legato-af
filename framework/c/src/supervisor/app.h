@@ -97,6 +97,22 @@ void app_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets a process container for the app by name.
+ *
+ * @return
+ *      The pointer to a process container if successful.
+ *      NULL if the process container could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+app_Proc_Ref_t app_GetProcContainer
+(
+    app_Ref_t appRef,               ///< [IN] The application to search in.
+    const char* procNamePtr         ///< [IN] The process name to get for.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Creates an application object.
  *
  * @note
@@ -507,6 +523,30 @@ void app_SetFaultAction
 (
     app_Proc_Ref_t appProcRef,          ///< [IN] Process reference.
     FaultAction_t faultAction           ///< [IN] Fault action.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag of a process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetRun
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    bool run                    ///< [IN] Run flag.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag of all processes in an app.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetRunForAllProcs
+(
+    app_Ref_t appRef,  ///< [IN] App reference.
+    bool run           ///< [IN] Run flag.
 );
 
 

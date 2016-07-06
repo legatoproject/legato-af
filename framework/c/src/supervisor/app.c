@@ -2176,7 +2176,7 @@ void app_Init
  *      NULL if the process container could not be found.
  */
 //--------------------------------------------------------------------------------------------------
-static ProcContainer_t* GetProcContainer
+app_Proc_Ref_t app_GetProcContainer
 (
     app_Ref_t appRef,               ///< [IN] The application to search in.
     const char* procNamePtr         ///< [IN] The process name to get for.
@@ -3107,7 +3107,7 @@ app_Proc_Ref_t app_CreateProc
 )
 {
     // See if the process already exists.
-    ProcContainer_t* procContainerPtr = GetProcContainer(appRef, procNamePtr);
+    ProcContainer_t* procContainerPtr = app_GetProcContainer(appRef, procNamePtr);
 
     if (procContainerPtr == NULL)
     {
@@ -3320,6 +3320,46 @@ void app_SetFaultAction
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets the run flag of a process.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetRun
+(
+    app_Proc_Ref_t appProcRef,  ///< [IN] Process reference.
+    bool run                    ///< [IN] Run flag.
+)
+{
+    proc_SetRun(appProcRef->procRef, run);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag of all processes in an app.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetRunForAllProcs
+(
+    app_Ref_t appRef,  ///< [IN] App reference.
+    bool run           ///< [IN] Run flag.
+)
+{
+    // Go through all procs in app's proc list and set the run flag for each one.
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        proc_SetRun(procContainerPtr->procRef, run);
+
+        procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts an application process.  This function assumes that the app has already started.
  *
  * @return
@@ -3373,6 +3413,7 @@ void app_DeleteProc
         proc_SetPriority(appProcRef->procRef, NULL);
         proc_ClearArgs(appProcRef->procRef);
         proc_SetFaultAction(appProcRef->procRef, FAULT_ACTION_NONE);
+        proc_SetRun(appProcRef->procRef, true);
 
         appProcRef->externStopHandler = NULL;
         appProcRef->externContextPtr = NULL;

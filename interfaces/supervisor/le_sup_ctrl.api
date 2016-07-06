@@ -67,6 +67,50 @@
 USETYPES le_limit.api;
 
 
+REFERENCE App;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to an application.
+ *
+ * @return
+ *      Reference to the named app.
+ *      NULL if the app is not installed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION App GetAppRef
+(
+    string appName[le_limit.APP_NAME_LEN] IN    ///< Name of the app to get the ref for.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the reference to an application.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ReleaseAppRef
+(
+    App appRef IN   ///< Ref to the app.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetRun
+(
+    App appRef IN,                              ///< Ref to the app.
+    string procName[le_limit.PROC_NAME_LEN] IN, ///< Process name to set the run flag for.
+    bool run IN                                 ///< Flag to run the process or not.
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Starts an app.

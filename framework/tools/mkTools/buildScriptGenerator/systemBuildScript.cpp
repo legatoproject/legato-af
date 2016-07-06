@@ -67,7 +67,7 @@ static void GenerateSystemBuildRules
     "            mkdir -p $stagingDir/bin && $\n"
     "            mkdir -p $stagingDir/lib && $\n"
     "            find $$LEGATO_ROOT/build/$target/framework/bin/* -type d -prune -o"
-                                  " -print | xargs cp -t $stagingDir/bin && $\n"
+                                  " -print | xargs cp -P -t $stagingDir/bin && $\n"
     "            find $$LEGATO_ROOT/build/$target/framework/lib/* -type d -prune -o"
                        " \\( -type f -o -type l \\) -print | xargs cp -P -t $stagingDir/lib && $\n"
 

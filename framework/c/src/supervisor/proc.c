@@ -147,6 +147,7 @@ typedef struct proc_Ref
     bool    argsListValid;          ///< Arguments list override valid flag.  true if argsList is
                                     ///  valid (possibly empty).
     FaultAction_t faultAction;      ///< Fault action override.
+    bool    run;                    ///< run override.
 }
 Process_t;
 
@@ -333,6 +334,7 @@ proc_Ref_t proc_Create
     procPtr->argsListValid = false;
     procPtr->argsList = LE_SLS_LIST_INIT;
     procPtr->faultAction = FAULT_ACTION_NONE;
+    procPtr->run = true;
 
     return procPtr;
 }
@@ -971,6 +973,12 @@ le_result_t proc_Start
     proc_Ref_t procRef              ///< [IN] The process to start.
 )
 {
+    if (procRef->run == false)
+    {
+        LE_INFO("Process '%s' is configured to not run.", procRef->namePtr);
+        return LE_OK;
+    }
+
     if (procRef->pid != -1)
     {
         LE_ERROR("Process '%s' (PID: %d) cannot be started because it is already running.",
@@ -1623,6 +1631,21 @@ static FaultAction_t GetFaultAction
     LE_WARN("Unrecognized fault action for process '%s'.  Assume 'ignore'.",
             procRef->namePtr);
     return FAULT_ACTION_IGNORE;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the run flag.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetRun
+(
+    proc_Ref_t procRef, ///< [IN] The process reference.
+    bool run            ///< [IN] Run flag.
+)
+{
+    procRef->run = run;
 }
 
 

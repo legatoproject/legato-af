@@ -1,0 +1,135 @@
+#!/bin/sh
+
+# Configure a sandboxed app with a debug tool.
+
+gdbserverPath="/usr/bin/gdbserver"
+stracePath="/usr/bin/strace"
+externalToolName="`basename $0`"
+debugToolName=
+debugToolPath=
+appName="$1"
+sandboxPath="/legato/systems/current/appsWriteable/$appName"
+reset=false
+
+
+# Help text.
+PrintUsage()
+{
+    echo "NAME:"
+    echo "    $externalToolName - Modify an app's sandbox to make it suitable to run $debugToolName."
+    echo
+    echo "SYNOPSIS:"
+    echo "    $externalToolName appName"
+    echo "    $externalToolName appName --reset"
+    echo
+    echo "DESCRIPTION:"
+    echo "    $externalToolName appName"
+    echo "       Make $debugToolName available in the /bin directory of the sandbox of an app."
+    echo
+    echo "    $externalToolName appName --reset"
+    echo "       Undo what \"$externalToolName appName\" does."
+    echo
+    echo "    $externalToolName --help"
+    echo "        Display this help and exit."
+    echo
+}
+
+
+# Figure out which debug tool to configure.
+if [ "$externalToolName" == "gdbCfg" ]
+then
+    debugToolName="`basename $gdbserverPath`"
+    debugToolPath="$gdbserverPath"
+elif [ "$externalToolName" == "straceCfg" ]
+then
+    debugToolName="`basename $stracePath`"
+    debugToolPath="$stracePath"
+else
+    # If this tool is run directly, simply exits and prints nothing.
+    exit 1
+fi
+
+
+# Figure out what the user wants to do.
+case $# in
+1)
+    ;;
+2)
+    if [ "$2" != "--reset" ]
+    then
+        PrintUsage
+        exit 1
+    else
+        reset=true
+    fi
+    ;;
+*)
+    PrintUsage
+    exit 1
+    ;;
+esac
+
+
+# Check if sandbox is present.
+if [ ! -d "${sandboxPath}/bin" ]
+then
+    echo "Sandbox for the app [$appName] is not available."
+    echo "Ensure the app exists and run it at least once."
+    echo
+    exit 1
+fi
+
+
+# Modify the sandbox
+if $reset
+then
+    # Check if the tool path is a valid mount point.
+    if ! mount | grep -q "${sandboxPath}/bin/$debugToolName"
+    then
+        echo "${sandboxPath}/bin/$debugToolName is not a mount point."
+        echo
+        exit 1
+    fi
+
+    # Unmount the debug tool.
+    umount "${sandboxPath}/bin/$debugToolName"
+
+    # Remove the mount point.
+    rm "${sandboxPath}/bin/$debugToolName"
+
+
+    # Unmount /proc for gdbserver.
+    if [ "$externalToolName" == "gdbCfg" ]
+    then
+        # Unmount /proc from the sandbox.
+        umount "${sandboxPath}/proc"
+
+        # Remove the mount point.
+        rmdir "${sandboxPath}/proc"
+    fi
+else
+    # Check if the tool path already exists.
+    if [ -e "${sandboxPath}/bin/$debugToolName" ]
+    then
+        echo "${sandboxPath}/bin/$debugToolName already exists."
+        echo
+        exit 1
+    fi
+
+    # Create a mount point,
+    touch "${sandboxPath}/bin/$debugToolName"
+
+    # Mount the debug tool into the sandbox.
+    mount -o bind "$debugToolPath" "${sandboxPath}/bin/$debugToolName"
+
+
+    # Bind-mounting in /proc for gdbserver.
+    if [ "$externalToolName" == "gdbCfg" ]
+    then
+        # Create a mount point.
+        mkdir "${sandboxPath}/proc"
+
+        # Mount /proc into the sandbox.
+        mount -o bind /proc "${sandboxPath}/proc"
+    fi
+fi

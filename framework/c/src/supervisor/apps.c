@@ -149,6 +149,14 @@ static le_mem_PoolRef_t AppContainerPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Safe reference map of applications.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t AppMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * List of all active app containers.
  */
 //--------------------------------------------------------------------------------------------------
@@ -192,6 +200,41 @@ static le_mem_PoolRef_t AppProcContainerPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t AppProcMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes application container and references to it.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteApp
+(
+    AppContainer_t* appContainerPtr     ///< App container to be deleted.
+)
+{
+    le_ref_IterRef_t iter = le_ref_GetIterator(AppMap);
+
+    while (le_ref_NextNode(iter) == LE_OK)
+    {
+        AppContainer_t* currAppContainerPtr = (AppContainer_t*)le_ref_GetValue(iter);
+
+        if (appContainerPtr == currAppContainerPtr)
+        {
+            // Delete the safe reference.
+            void* safeRef = (void*)le_ref_GetSafeRef(iter);
+            LE_ASSERT(safeRef != NULL);
+
+            le_ref_DeleteRef(AppMap, safeRef);
+
+            // No need to look further since app names are unique.
+            break;
+        }
+    }
+
+    app_Delete(appContainerPtr->appRef);
+
+    le_mem_Release(appContainerPtr);
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -281,9 +324,8 @@ static void ShutdownNextApp
 
     le_dls_Remove(&ActiveAppsList, &(appContainerRef->link));
 
-    app_Delete(appContainerRef->appRef);
+    DeleteApp(appContainerRef);
 
-    le_mem_Release(appContainerRef);
 
     // Continue the shutdown process.
     apps_Shutdown();
@@ -690,9 +732,7 @@ static void DeletesInactiveApp
         DeleteAppProcs(appContainerPtr->appRef, NULL);
 
         // Delete the app object and container.
-        app_Delete(appContainerPtr->appRef);
-
-        le_mem_Release(appContainerPtr);
+        DeleteApp(appContainerPtr);
 
         LE_DEBUG("Deleted app %s.", appName);
     }
@@ -719,9 +759,7 @@ static void DeletesAllInactiveApp
         DeleteAppProcs(appContainerPtr->appRef, NULL);
 
         // Delete the app object and container.
-        app_Delete(appContainerPtr->appRef);
-
-        le_mem_Release(appContainerPtr);
+        DeleteApp(appContainerPtr);
 
         appLinkPtr = le_dls_Pop(&InactiveAppsList);
     }
@@ -865,6 +903,7 @@ void apps_Init
     AppProcContainerPool = le_mem_CreatePool("appProcContainers", sizeof(AppProcContainer_t));
 
     AppProcMap = le_ref_CreateMap("AppProcs", 5);
+    AppMap = le_ref_CreateMap("App", 5);
 
     le_instStat_AddAppUninstallEventHandler(DeletesInactiveApp, NULL);
     le_instStat_AddAppInstallEventHandler(DeletesInactiveApp, NULL);
@@ -1051,6 +1090,129 @@ le_result_t apps_SigChildHandler
 
     // Handle any faults that the child process state change my have caused.
     return HandleAppFault(appContainerPtr, pid, status);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to an application.
+ *
+ * @return
+ *      Reference to the named app.
+ *      NULL if the app is not installed.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_GetAppRef
+(
+    le_sup_ctrl_ServerCmdRef_t cmdRef,       ///< [IN] Command reference that must be passed to this
+                                             ///       command's response function.
+    const char* appName                      ///< [IN] Name of the app to get the ref for.
+)
+{
+    le_result_t result;
+
+    // Get a ref for an app with the app name.
+    AppContainer_t* appContainerPtr = CreateApp(appName, &result);
+
+    if (appContainerPtr == NULL)
+    {
+        le_sup_ctrl_GetAppRefRespond(cmdRef, NULL);
+        return;
+    }
+
+    // Get the existing safe ref or create a new one.
+    void* appSafeRef = NULL;
+
+    le_ref_IterRef_t iter = le_ref_GetIterator(AppMap);
+
+    while (le_ref_NextNode(iter) == LE_OK)
+    {
+        AppContainer_t* currAppContainerPtr = (AppContainer_t*)le_ref_GetValue(iter);
+
+        if (appContainerPtr == currAppContainerPtr)
+        {
+            appSafeRef = (void*)le_ref_GetSafeRef(iter);
+            LE_ASSERT(appSafeRef != NULL);
+
+            // No need to look further since app names are unique.
+            break;
+        }
+    }
+
+    if (appSafeRef == NULL)
+    {
+        appSafeRef = le_ref_CreateRef(AppMap, appContainerPtr);
+    }
+
+    le_sup_ctrl_GetAppRefRespond(cmdRef, appSafeRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the reference to an application.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_ReleaseAppRef
+(
+    le_sup_ctrl_ServerCmdRef_t cmdRef, ///< [IN] Command reference that must be passed to this
+                                       ///       command's response function.
+    le_sup_ctrl_AppRef_t appRef        ///< [IN] Ref to the app.
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid application reference.");
+        return;
+    }
+
+    // Reset the overrides.
+    app_SetRunForAllProcs(appContainerPtr->appRef, true);
+
+    // Remove the safe ref.
+    le_ref_DeleteRef(AppMap, appRef);
+
+    le_sup_ctrl_ReleaseAppRefRespond(cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_SetRun
+(
+    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    le_sup_ctrl_AppRef_t appRef,        ///< [IN] Ref to the app.
+    const char* procName,               ///< [IN] Process name to set the run flag for.
+    bool run                            ///< [IN] Flag to run the process or not.
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid application reference.");
+        return;
+    }
+
+    // Look up the proc ref by name.
+    app_Proc_Ref_t procContainerPtr = app_GetProcContainer(appContainerPtr->appRef, procName);
+
+    if (procContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid process name '%s'.", procName);
+        return;
+    }
+
+    app_SetRun(procContainerPtr, run);
+    le_sup_ctrl_SetRunRespond(cmdRef);
 }
 
 
@@ -1872,7 +2034,7 @@ void le_appProc_SetFaultAction
         ///< [IN] Application process to start.
 
     le_appProc_FaultAction_t action
-        ///< [IN] Priority for the application process.
+        ///< [IN] Fault action for the application process.
 )
 {
     AppProcContainer_t* appProcContainerPtr = le_ref_Lookup(AppProcMap, appProcRef);

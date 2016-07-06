@@ -227,7 +227,7 @@ FUNCTION ClearPriority
 FUNCTION SetFaultAction
 (
     Ref appProcRef IN,              ///< Application process to start.
-    FaultAction action IN           ///< Priority for the application process.
+    FaultAction action IN           ///< Fault action for the application process.
 );
 
 
