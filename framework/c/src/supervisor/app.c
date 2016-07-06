@@ -681,7 +681,7 @@ static le_result_t SetDevicePermissions
 
             // Get the app's SMACK label.
             char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            appSmack_GetLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+            smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
 
             // Get the required permissions for the device.
             char permStr[MAX_DEVICE_PERM_STR_BYTES];
@@ -736,7 +736,7 @@ static void SetSmackRulesForBindings
         {
             // Get the server's SMACK label.
             char serverLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            appSmack_GetLabel(serverName, serverLabel, sizeof(serverLabel));
+            smack_GetAppLabel(serverName, serverLabel, sizeof(serverLabel));
 
             // Set the SMACK label to/from the server.
             smack_SetRule(appLabelPtr, "rw", serverLabel);
@@ -769,23 +769,23 @@ static void SetDefaultSmackRules
     for (i = 0; i < NUM_PERMISSONS; i++)
     {
         // Create the mode from the permissions.
-        appSmack_AccessFlags_t mode = 0;
+        mode_t mode = 0;
 
         if (strstr(permissionStr[i], "r") != NULL)
         {
-            mode |= APPSMACK_ACCESS_FLAG_READ;
+            mode |= S_IRUSR;
         }
         if (strstr(permissionStr[i], "w") != NULL)
         {
-            mode |= APPSMACK_ACCESS_FLAG_WRITE;
+            mode |= S_IWUSR;
         }
         if (strstr(permissionStr[i], "x") != NULL)
         {
-            mode |= APPSMACK_ACCESS_FLAG_EXECUTE;
+            mode |= S_IXUSR;
         }
 
         char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        appSmack_GetAccessLabel(appNamePtr, mode, dirLabel, sizeof(dirLabel));
+        smack_GetAppAccessLabel(appNamePtr, mode, dirLabel, sizeof(dirLabel));
 
         smack_SetRule(appLabelPtr, permissionStr[i], dirLabel);
     }
@@ -811,7 +811,7 @@ static void CleanupAppSmackSettings
 {
     // Clean up SMACK rules.
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    appSmack_GetLabel(appRef->name, appLabel, sizeof(appLabel));
+    smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
 
     smack_RevokeSubject(appLabel);
 }
@@ -837,7 +837,7 @@ static le_result_t SetSmackRules
 
     // Get the app label.
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    appSmack_GetLabel(appRef->name, appLabel, sizeof(appLabel));
+    smack_GetAppLabel(appRef->name, appLabel, sizeof(appLabel));
 
     SetDefaultSmackRules(appRef->name, appLabel);
 
@@ -2040,12 +2040,7 @@ static le_result_t SetupAppArea
 {
     // Get the SMACK label for the folders we create.
     char appDirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    appSmack_GetAccessLabel(app_GetName(appRef),
-                            APPSMACK_ACCESS_FLAG_READ |
-                            APPSMACK_ACCESS_FLAG_WRITE |
-                            APPSMACK_ACCESS_FLAG_EXECUTE,
-                            appDirLabel,
-                            sizeof(appDirLabel));
+    smack_GetAppAccessLabel(app_GetName(appRef), S_IRWXU, appDirLabel, sizeof(appDirLabel));
 
     // Create the appsWritable/<appName> directory if it does not already exist.
     if (dir_MakeSmack(appRef->workingDir,
@@ -2425,12 +2420,7 @@ le_result_t app_Start
     {
         // Get the SMACK label for the folders we create.
         char appDirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        appSmack_GetAccessLabel(app_GetName(appRef),
-                                APPSMACK_ACCESS_FLAG_READ |
-                                APPSMACK_ACCESS_FLAG_WRITE |
-                                APPSMACK_ACCESS_FLAG_EXECUTE,
-                                appDirLabel,
-                                sizeof(appDirLabel));
+        smack_GetAppAccessLabel(app_GetName(appRef), S_IRWXU, appDirLabel, sizeof(appDirLabel));
 
         // Create the app's /tmp for sandboxed apps.
         if (CreateTmpFs(appRef, appDirLabel) != LE_OK)

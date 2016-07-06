@@ -472,7 +472,7 @@ COMPONENT_INIT
 
         // Get the smack label for the process.
         char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        appSmack_GetLabel(appNamePtr, smackLabel, sizeof(smackLabel));
+        smack_GetAppLabel(appNamePtr, smackLabel, sizeof(smackLabel));
 
         // Set the process's SMACK label.
         smack_SetMyLabel(smackLabel);

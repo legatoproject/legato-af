@@ -206,15 +206,43 @@ void smack_RevokeSubject
 /**
  * Gets an application's SMACK label.
  *
+ * @note
+ *      The application need not be installed for this function to succeed.
+ *
  * @warning
- *      This function will call LE_KILL_CLIENT() if there is an error.
+ *      This function kills the calling process if there is an error such as if the buffer is too
+ *      small.
  */
 //--------------------------------------------------------------------------------------------------
 void smack_GetAppLabel
 (
-    const char* appName, ///< [IN] The name of the application.
-    char* label,         ///< [OUT] Ptr to the buffer the label will be written into.
-    size_t labelSize     ///< [IN] Size (in bytes) of the label buffer.
+    const char* appNamePtr,     ///< [IN] Name of the application.
+    char* bufPtr,               ///< [OUT] Buffer to store the proc's SMACK label.
+    size_t bufSize              ///< [IN] Size of the buffer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's the application's smack label with the user's access mode appended to it as a string.  For
+ * example, if the accessMode is S_IRUSR | S_IWUSR then "rw" will be appended to the application's
+ * smack label.  The groups and other bits of accessMode are ignored.  If the user's accessMode is 0
+ * (empty) then "-" will be appended to the app's smack label.
+ *
+ * @note
+ *      The application need not be installed for this function to succeed.
+ *
+ * @warning
+ *      This function kills the calling process if there is an error such as if the buffer is too
+ *      small.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetAppAccessLabel
+(
+    const char* appNamePtr,     ///< [IN] Name of the application.
+    mode_t accessMode,          ///< [IN] Access mode.
+    char* bufPtr,               ///< [OUT] Buffer to store the proc's SMACK label.
+    size_t bufSize              ///< [IN] Size of the buffer.
 );
 
 

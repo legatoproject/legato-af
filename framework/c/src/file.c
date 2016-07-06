@@ -284,7 +284,6 @@ static le_result_t CreateWrite
 (
     const char* destPathPtr,    ///< [IN]  Path to the file to create.
     mode_t mode,                ///< [IN]  The mode bits to set for the file.
-    const char* smackLabelPtr,  ///< [IN]  If not NULL, the file will have this smack label set.
     int* fdPtr                  ///< [OUT] The FD of the newly created and opened file.
 )
 //--------------------------------------------------------------------------------------------------
@@ -304,17 +303,6 @@ static le_result_t CreateWrite
     {
         LE_CRIT("Error when opening file for writing, '%s'. (%m)", destPathPtr);
         return LE_NOT_PERMITTED;
-    }
-
-    if (smackLabelPtr != NULL)
-    {
-        le_result_t result = smack_SetLabel(destPathPtr, smackLabelPtr);
-
-        if (result != LE_OK)
-        {
-            fd_Close(newFd);
-            return result;
-        }
     }
 
     *fdPtr = newFd;
@@ -378,7 +366,167 @@ static le_result_t StatPath
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy a file.
+ * Copies the extended attributes from the source to the destination file.
+ *
+ * @return - LE_OK if all goes to plan.
+ -         - LE_IO_ERROR if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CopyXattrs
+(
+    const char* srcPathPtr,                 ///< [IN] Path to source file.
+    const char* destPathPtr                 ///< [IN] Path to destination file.
+)
+//--------------------------------------------------------------------------------------------------
+{
+#define MAX_XATTR_LIST_SIZE             1000
+#define MAX_XATTR_VALUE_SIZE            255
+
+    // Get a list of extended attributes.
+    char xattrList[MAX_XATTR_LIST_SIZE] = "";
+
+    ssize_t listSize = listxattr(srcPathPtr, xattrList, sizeof(xattrList));
+
+    if (listSize == -1)
+    {
+        LE_ERROR("Could not get list of extended attributes for %s.  %m.", srcPathPtr);
+        return LE_IO_ERROR;
+    }
+
+    // Copy each extended attribute.
+    char* namePtr = xattrList;
+
+    while (listSize > 0)
+    {
+        // Get the extended attribute value.
+        char value[MAX_XATTR_VALUE_SIZE] = "";
+
+        ssize_t valueSize = getxattr(srcPathPtr, namePtr, value, sizeof(value));
+
+        if (valueSize == -1)
+        {
+            LE_ERROR("Could not get value for extended attribute %s for file %s.  %m.",
+                     namePtr, srcPathPtr);
+            return LE_IO_ERROR;
+        }
+
+        // Set the extended attribute in the destination file.
+        if (setxattr(destPathPtr, namePtr, value, valueSize, 0) == -1)
+        {
+            LE_ERROR("Could not set extended attribute %s for file %s.  %m.",
+                     namePtr, srcPathPtr);
+            return LE_IO_ERROR;
+        }
+
+        ssize_t nameLen = strlen(namePtr) + 1;
+        listSize -= nameLen;
+        namePtr += nameLen;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copies the owner, group and the extended attributes from the source to the destination file.
+ *
+ * @return - LE_OK if all goes to plan.
+ -         - LE_IO_ERROR if there is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CopyAttrs
+(
+    const char* srcPathPtr,     ///< [IN] Path to source file.
+    const char* destPathPtr,    ///< [IN] Path to destination file.
+    const char* smackLabelPtr   ///< [IN] If not NULL, set the dest file to this smack label.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    struct stat sourceStatus;
+
+    le_result_t result = StatPath(srcPathPtr, &sourceStatus);
+
+    if (result != LE_OK)
+    {
+        return LE_IO_ERROR;
+    }
+
+    // Set the owner of the dest file.
+    if (chown(destPathPtr, sourceStatus.st_uid, sourceStatus.st_gid) == -1)
+    {
+        LE_ERROR("Could not set owner and group of %s.  %m.", destPathPtr);
+        return LE_IO_ERROR;
+    }
+
+    // Copy all extended attributes.
+    result = CopyXattrs(srcPathPtr, destPathPtr);
+
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Set the SMACK label.
+    if (smackLabelPtr != NULL)
+    {
+        if (smack_SetLabel(destPathPtr, smackLabelPtr) != LE_OK)
+        {
+            return LE_IO_ERROR;
+        }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a destination directory with the same owner, permissions and extended attributes as the
+ * source directory.
+ *
+ * @return - LE_OK if the copy was successful.
+ *         - LE_IO_ERROR if an IO error occurs during the copy operation.
+ *         - LE_NOT_FOUND if source file or the destination directory does not exist.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CreateDir
+(
+    const char* sourcePathPtr,  ///< [IN] Source directory.
+    const char* destPathPtr,    ///< [IN] Destination directory.
+    const char* smackLabelPtr   ///< [IN] If not NULL, the directory will have this smack label set.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    struct stat sourceStatus;
+
+    le_result_t result = StatPath(sourcePathPtr, &sourceStatus);
+
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    if (BasePathExists(destPathPtr) == false)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    // Create the directory with the proper permissions.
+    if (le_dir_MakePath(destPathPtr, sourceStatus.st_mode) == LE_FAULT)
+    {
+        return LE_IO_ERROR;
+    }
+
+    // Set the owner and extended attributes.
+    return CopyAttrs(sourcePathPtr, destPathPtr, smackLabelPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Copy a file.  This function copies the source file's owner, permissions and extended attributes
+ * to the destination file as well.
  *
  * @return - LE_OK if the copy was successful.
  *         - LE_NOT_PERMITTED if either the source or destination paths are not files or could not
@@ -444,11 +592,21 @@ le_result_t file_Copy
         return result;
     }
 
-    result = CreateWrite(destPathPtr, sourceStatus.st_mode, smackLabelPtr, &writeFd);
+    result = CreateWrite(destPathPtr, sourceStatus.st_mode, &writeFd);
 
     if (result != LE_OK)
     {
         fd_Close(readFd);
+        return result;
+    }
+
+    // Copy owner and extended attributes.
+    result = CopyAttrs(sourcePathPtr, destPathPtr, smackLabelPtr);
+
+    if (result != LE_OK)
+    {
+        fd_Close(readFd);
+        fd_Close(writeFd);
         return result;
     }
 
@@ -475,7 +633,6 @@ le_result_t file_Copy
         sizeWritten += nextWritten;
     }
 
-
     fd_Close(readFd);
     fd_Close(writeFd);
 
@@ -485,7 +642,8 @@ le_result_t file_Copy
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy a batch of files recursively from one directory into another.
+ * Copy a batch of files recursively from one directory into another.  This function copies the
+ * source files' owner, permissions and extended attributes to the destination files as well.
  *
  * @note Does not copy mounted files or any files under mounted directories.  Does not copy anything
  *       if the source path directory is empty.
@@ -533,13 +691,12 @@ le_result_t file_CopyRecursive
     // If the destination doesn't exist, make sure it's base path exists.
     if (result == LE_NOT_FOUND)
     {
-        if (BasePathExists(destPathPtr) == false)
-        {
-            return LE_NOT_FOUND;
-        }
+        result = CreateDir(sourcePathPtr, destPathPtr, smackLabelPtr);
 
-        // Looks like the dest dir does not exist, so create it now.
-        le_dir_MakePath(destPathPtr, sourceStatus.st_mode);
+        if (result != LE_OK)
+        {
+            return result;
+        }
     }
     else if (!S_ISDIR(destStatus.st_mode))
     {
@@ -589,9 +746,10 @@ le_result_t file_CopyRecursive
                     }
                     else
                     {
-                        if (le_dir_MakePath(newPath, entPtr->fts_statp->st_mode) == LE_FAULT)
+                        result = CreateDir(entPtr->fts_path, newPath, smackLabelPtr);
+
+                        if (result != LE_OK)
                         {
-                            result = LE_NOT_PERMITTED;
                             goto cleanup;
                         }
                     }

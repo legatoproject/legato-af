@@ -20,7 +20,6 @@ provides:
         le_sup_wdog.api [async] [manual-start]
         le_appInfo.api          [manual-start]
         le_appProc.api          [manual-start]
-        appSmack.api            [manual-start]
     }
 }
 
@@ -31,14 +30,6 @@ requires:
         le_cfg.api              [manual-start]
         logDaemon/logFd.api     [manual-start]
         le_instStat.api         [manual-start]
-    }
-}
-
-requires:
-{
-    component:
-    {
-        appSmack
     }
 }
 

@@ -94,11 +94,12 @@ void file_WriteStrAtomic
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy a file.
+ * Copy a file.  This function copies the source file's owner, permissions and extended attributes
+ * to the destination file as well.
  *
  * @return - LE_OK if the copy was successful.
  *         - LE_NOT_PERMITTED if either the source or destination paths are not files or could not
- *           be opened, or if the smack label could not be set.
+ *           be opened.
  *         - LE_IO_ERROR if an IO error occurs during the copy operation.
  *         - LE_NOT_FOUND if source file or the destination directory does not exist.
  */
@@ -113,14 +114,15 @@ le_result_t file_Copy
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy a batch of files recursively from one directory into another.
+ * Copy a batch of files recursively from one directory into another.  This function copies the
+ * source files' owner, permissions and extended attributes to the destination files as well.
  *
  * @note Does not copy mounted files or any files under mounted directories.  Does not copy anything
  *       if the source path directory is empty.
  *
  * @return - LE_OK if the copy was successful.
  *         - LE_NOT_PERMITTED if either the source or destination paths are not files or could not
- *           be opened, if new copies could not be created, or if the smack label could not be set.
+ *           be opened.
  *         - LE_IO_ERROR if an IO error occurs during the copy operation.
  *         - LE_NOT_FOUND if source file or the destination directory does not exist.
  */

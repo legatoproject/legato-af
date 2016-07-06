@@ -991,12 +991,6 @@ le_result_t proc_Start
         return LE_FAULT;
     }
 
-    // Get the smack label for the process.
-    // Must get the label here because smack_GetAppLabel uses the config and we can not
-    // use any IPC after a fork.
-    char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-    appSmack_GetLabel(app_GetName(procRef->appRef), smackLabel, sizeof(smackLabel));
-
     // Create pipes for the process's standard error and standard out streams.
     int logStdOutPipe[2];
     int logStdErrPipe[2];
@@ -1034,6 +1028,9 @@ le_result_t proc_Start
         RedirectStdStreams(procRef, logStdOutPipe, logStdErrPipe);
 
         // Set the process's SMACK label.
+        char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+        smack_GetAppLabel(app_GetName(procRef->appRef), smackLabel, sizeof(smackLabel));
+
         smack_SetMyLabel(smackLabel);
 
         // Set the umask so that files are not accidentally created with global permissions.

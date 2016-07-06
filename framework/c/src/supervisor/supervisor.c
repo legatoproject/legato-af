@@ -393,7 +393,6 @@ static void StartFramework
     le_sup_wdog_AdvertiseService();
     le_appInfo_AdvertiseService();
     le_appProc_AdvertiseService();
-    appSmack_AdvertiseService();
 
     // Initialize the apps sub system.
     apps_Init();
@@ -498,7 +497,6 @@ static void PrepareFullShutdown
     le_msg_HideService(le_sup_wdog_GetServiceRef());
     le_msg_HideService(le_appInfo_GetServiceRef());
     le_msg_HideService(le_appProc_GetServiceRef());
-    le_msg_HideService(appSmack_GetServiceRef());
 }
 
 

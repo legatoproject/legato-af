@@ -4,7 +4,6 @@ requires:
     {
         le_appInfo.api    [manual-start]
         le_cfg.api
-        appSmack.api
     }
 }
 

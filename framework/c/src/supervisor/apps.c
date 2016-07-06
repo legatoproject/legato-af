@@ -60,10 +60,10 @@
 #include "app.h"
 #include "interfaces.h"
 #include "limit.h"
-#include "appSmack/appSmack.h"
 #include "wait.h"
 #include "sysPaths.h"
 #include "properties.h"
+#include "smack.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -812,6 +812,44 @@ static bool IsAppNameValid
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the application name of the process with the specified PID.
+ *
+ * @return
+ *      LE_OK if the application name was successfully found.
+ *      LE_OVERFLOW if the application name could not fit in the provided buffer.
+ *      LE_NOT_FOUND if the process is not part of an application.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetAppNameFromPid
+(
+    int pid,                ///< [IN] PID of the process.
+    char* bufPtr,           ///< [OUT] Buffer to hold the name of the app.
+    size_t bufSize          ///< [IN] Size of the buffer.
+)
+{
+    // Get the SMACK label for the process.
+    char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+
+    le_result_t result = smack_GetProcLabel(pid, smackLabel, sizeof(smackLabel));
+
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    // Strip the prefix from the label.
+    if (strncmp(smackLabel, SMACK_APP_PREFIX, sizeof(SMACK_APP_PREFIX)-1) == 0)
+    {
+        return le_utf8_Copy(bufPtr, &(smackLabel[strlen(SMACK_APP_PREFIX)]), bufSize, NULL);
+    }
+
+    return LE_NOT_FOUND;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the applications system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -965,8 +1003,8 @@ le_result_t apps_SigChildHandler
 {
     // Get the name of the application this process belongs to from the dead process's SMACK
     // label.  Must do this before we reap the process, or the SMACK label will be unavailable.
-    char appName[LIMIT_MAX_APP_NAME_BYTES];
-    le_result_t result = appSmack_GetName(pid, appName, sizeof(appName));
+    char appName[LIMIT_MAX_APP_NAME_BYTES] = "";
+    le_result_t result = GetAppNameFromPid(pid, appName, sizeof(appName));
 
     LE_FATAL_IF(result == LE_OVERFLOW, "App name '%s...' is too long.", appName);
 
@@ -1247,7 +1285,7 @@ le_result_t le_appInfo_GetName
         ///< [IN]
 )
 {
-    return appSmack_GetName(pid, appName, appNameNumElements);
+    return GetAppNameFromPid(pid, appName, appNameNumElements);
 }
 
 
