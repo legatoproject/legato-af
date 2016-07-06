@@ -43,7 +43,7 @@ The mandatory quotes (“ ”) around each parameter value indicate a string typ
 @section defFilesMdef_preBuilt_buildKernal Build Kernel Modules
 
 For info on how to build Linux kernel modules, see the
-<a href="http://www.yoctoproject.org/docs/1.6.1/kernel-dev/kernel-dev.html">Yoco kernel dev docs</a>
+<a href="http://www.yoctoproject.org/docs/1.7.3/kernel-dev/kernel-dev.html">Yocto kernel dev docs</a>
 and
 @code
 $(KERNEL_SRC)/Documentation/kbuild/modules.txt file@endcode
