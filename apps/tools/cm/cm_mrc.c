@@ -67,6 +67,43 @@ static le_result_t GetCurrentNetworkName
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function will attempt to check if the radio is powered on.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t GetRadioPower
+(
+    void
+)
+{
+    le_result_t res;
+    le_onoff_t state;
+
+    res = le_mrc_GetRadioPower(&state);
+
+    if (res != LE_OK)
+    {
+        return res;
+    }
+
+    switch (state)
+    {
+        case LE_OFF:
+            cm_cmn_FormatPrint("Power", "OFF");
+            break;
+        case LE_ON:
+            cm_cmn_FormatPrint("Power", "ON");
+            break;
+        default:
+            return LE_FAULT;
+    }
+
+    return res;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function will attempt to get the network registration state.
  *
  * @return LE_OK if the call was successful.
@@ -278,13 +315,19 @@ int cm_mrc_GetModemStatus
     le_result_t res;
     int exitStatus = EXIT_SUCCESS;
 
-    res = GetCurrentNetworkName();
+    res = GetRadioPower();
 
     if (res != LE_OK)
     {
         exitStatus = EXIT_FAILURE;
     }
 
+    res = GetCurrentNetworkName();
+
+    if (res != LE_OK)
+    {
+        exitStatus = EXIT_FAILURE;
+    }
 
     res = GetRAT();
 
