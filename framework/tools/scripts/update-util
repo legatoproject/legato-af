@@ -1,0 +1,206 @@
+#! /usr/bin/python2
+
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+# Combine two system update files by the following rules
+# No version checking is done to see if updates are in version order.
+# No name check is done to make sure the updates are for the same kind of system.
+# This tool currently only merges two system update packages into a delta package
+# that contains the changes needed to update from the first given update to
+# the second with all duplicate apps removed.
+#
+# If both contain an updateSystem then do update delta
+# Use the second systemUpdate as the output systemUpdate.
+# If an app appears in both (and they are the same), emit it to the output without data section.
+# If an app appears in both but they differ, use the newer one.
+# If an app appears in the first update but not in the second update omit it.
+# If an app appears in the second but not in the first, output it.
+# removeApp shouldn't exist in a freshly built system.XX.update
+#
+# We'll read it all and work with the bits in memory because we can and it's simpler and faster.
+
+
+import json
+import sys
+import io
+import os
+
+MinJsonSize = 512
+
+def PrintUsage():
+    exeName = os.path.basename(sys.argv[0])
+    print ''
+    print 'NAME'
+    print '%s' % (exeName)
+    print ''
+    print 'USAGE'
+    print ''
+    print '%s help|-h|--help' % (exeName)
+    print '     Print this message.'
+    print ''
+    print '%s updateFile' % (exeName)
+    print '     List the headers found in the updateFile to stdout.'
+    print ''
+    print '%s oldSystemUpdateFile newSystemUpdateFile outputFile' % (exeName)
+    print '     Create a delta system update file with the name given for outputFile'
+    print '     using oldSystemUpdateFile as the initial update calculating the changes'
+    print '     necessary to get from the initial system to that in newSystemUpdateFile'
+    print '     omitting unchanged apps.'
+    print ''
+
+
+OldUpdateFile = ''
+NewUpdateFile = ''
+OldChunkList = []
+newChunkList = []
+
+def FindJson(buffer):
+    count = 0
+    braceDepth = 0
+    for c in buffer:
+        count += 1
+        if c == '{':
+            braceDepth += 1
+        if c == '}':
+            braceDepth -= 1
+            if braceDepth == 0:
+                return count
+    return -1
+
+# returns with a chunk or dies
+def ReadChunk(inBufferedStream):
+    chunk = {}
+    pBuff = inBufferedStream.peek();
+    if len(pBuff):
+        inStr = ''
+        jsonLength = FindJson(pBuff)
+        if jsonLength < 1:
+            # Have to account for the fact that peek only can return what's left
+            # in the read buffer. If peekable buffer is under a certain threshold and we find no json we
+            # read to empty the buffer and try again.
+            if len(pBuff) < MinJsonSize:
+                previousLen = len(pBuff)
+                buffer = inBufferedStream.read(previousLen) + inBufferedStream.peek()
+                jsonLength = FindJson(buffer)
+                if jsonLength < 1:
+                    # That's the second try so we are dead.
+                    print 'Error reading json section. No closing brace found'
+                    exit(1)
+                inStr = buffer[:jsonLength]
+                inBufferedStream.read(jsonLength - previousLen)
+        else:
+            inStr = inBufferedStream.read(jsonLength)
+
+        # We keep the original json string because we aren't guaranteed to get
+        # it back in the same order after we turn it into an object.
+        chunk['header'] = inStr
+        jsonObj = json.loads(inStr)
+        chunk['jHead'] = jsonObj
+        if 'size' in jsonObj:
+            chunk['data'] = inBufferedStream.read(jsonObj['size'])
+
+    return chunk
+
+def ReadUpdateFile(updateFileName):
+    chunkList = []
+    inStream = io.FileIO(updateFileName, mode='r')
+    bufferedStream = io.BufferedReader(inStream)
+
+    while 1:
+        chunk = ReadChunk(bufferedStream)
+        if chunk:
+            chunkList.append(chunk)
+        else:
+            break
+    inStream.close()
+    return chunkList
+
+def GetSystems(chunkList, fileName):
+    # Should be one system per file, no more, no less!
+    systems = [x for x in chunkList if x['jHead']['command'] == 'updateSystem']
+    if len(systems) < 1:
+        print '%s is not a system update file' % (fileName)
+        exit(1)
+    if len(systems) > 1:
+        print 'Error: %s contains more than one system section' % (fileName)
+        exit(1)
+    return systems
+
+def MergeChunkLists(oldChunkList, newChunkList):
+    deltaChunkList = []
+    # Check systems first.
+    oldSystems = GetSystems(oldChunkList, OldUpdateFile)
+    newSystems = GetSystems(newChunkList, NewUpdateFile)
+    # Keep only the new system
+    deltaChunkList.append(newSystems[0])
+
+    # Keeps apps that are in the new but not in the old, or that are in both
+    # but have different md5.
+
+    newAppsList = [x for x in newChunkList if x['jHead']['command'] == 'updateApp']
+    oldAppsList = [x for x in oldChunkList if x['jHead']['command'] == 'updateApp']
+
+    # Get all the new apps that do not exist in the old apps or, if they do
+    # they have a different md5 sum.
+    # We create a name keyed dict for faster lookup
+    oldAppNames = {x['jHead']['name']:x for x in oldAppsList}
+
+    for app in newAppsList:
+        if app['jHead']['name'] in oldAppNames:
+            if app['jHead']['md5'] == oldAppNames[app['jHead']['name']]['jHead']['md5']:
+                # new app is same as old app. Send no app data.
+                app['jHead']['size'] = 1
+                app['data'] = '*'
+                app['header'] = json.dumps(app['jHead'], indent=0)
+                deltaChunkList.append(app)
+            else:
+                # new app is different from old app
+                deltaChunkList.append(app)
+        else:
+            # app is not in old apps
+            deltaChunkList.append(app)
+
+    return deltaChunkList
+
+
+def DeltaSystems():
+    oldChunkList = ReadUpdateFile(OldUpdateFile)
+    newChunkList = ReadUpdateFile(NewUpdateFile)
+
+    outList = MergeChunkLists(oldChunkList, newChunkList)
+
+    # Should output the combined list not oldChunkList
+    outFile = open(sys.argv[3], mode='w')
+    for chunk in outList:
+        outFile.write(chunk['header'])
+        if 'data' in chunk:
+            outFile.write(chunk['data'])
+    outFile.close()
+
+def ListHeaders():
+    oldChunkList = ReadUpdateFile(OldUpdateFile)
+    for chunk in oldChunkList:
+        print chunk['header']
+
+# is the user asking for help?
+if 'help' in sys.argv or '-h' in sys.argv or '--help' in sys.argv:
+    PrintUsage()
+    exit(0)
+
+# If only a single update file is given, list the section headers
+if len(sys.argv) == 2:
+    OldUpdateFile = sys.argv[1]
+    ListHeaders()
+    exit(0)
+
+# If if we are given two update files we also need the name of a file for output
+if len(sys.argv) < 4:
+    print "Error in arguments."
+    PrintUsage()
+    exit(1)
+
+#else we have all we need for update diff
+OldUpdateFile = sys.argv[1]
+NewUpdateFile = sys.argv[2]
+DeltaSystems()
+
