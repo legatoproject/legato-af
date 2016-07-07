@@ -552,6 +552,7 @@ static void GetRequiredApi
     // Check for options.
     bool typesOnly = false;
     bool manualStart = false;
+    bool optional = false;
     for (auto contentPtr : contentList)
     {
         if (contentPtr->type == parseTree::Token_t::CLIENT_IPC_OPTION)
@@ -564,12 +565,17 @@ static void GetRequiredApi
             {
                 manualStart = true;
             }
+            else if (contentPtr->text == "[optional]")
+            {
+                manualStart = true; // [optional] implies [manual-start].
+                optional = true;
+            }
         }
     }
     if (typesOnly && manualStart)
     {
-        itemPtr->ThrowException("Can't use both [types-only] and [manual-start] for the same"
-                                " interface.");
+        itemPtr->ThrowException("Can't use [types-only] with [manual-start] or [optional]"
+                                " for the same interface.");
     }
 
     // Get a pointer to the .api file object.
@@ -593,6 +599,7 @@ static void GetRequiredApi
         auto ifPtr = new model::ApiClientInterface_t(apiFilePtr, componentPtr, internalName);
 
         ifPtr->manualStart = manualStart;
+        ifPtr->optional = optional;
 
         componentPtr->clientApis.push_back(ifPtr);
     }
@@ -988,6 +995,11 @@ static void PrintSummary
             if (itemPtr->manualStart)
             {
                 std::cout << "      Automatic service connection at start-up suppressed."
+                          << std::endl;
+            }
+            if (itemPtr->optional)
+            {
+                std::cout << "      Binding this to a service is optional."
                           << std::endl;
             }
         }

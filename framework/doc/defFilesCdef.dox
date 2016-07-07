@@ -398,8 +398,8 @@ this API, but the types defined in the API will still be available to the compon
 
 The @b @c [manual-start] option tells the build tools not to automatically connect to this API's
 server when the process starts. This means the component can control when
-it wants to connect to the server by calling the @c xxxx_ConnectService() function explicitly
-in the component source code.
+it wants to connect to the server by calling the @c ConnectService() function for this
+interface explicitly in the component source code.
 
 @code
 requires:
@@ -408,6 +408,27 @@ requires:
     {
         foo.api [types-only]    // Only need typedefs from here.  Don't need IPC code generated.
         bar.api [manual-start]  // I'll start this when I'm ready by calling bar_ConnectService().
+    }
+}
+@endcode
+
+In addition, @c mksys and @c mkapp will check to make sure that all client-side IPC interfaces
+are bound to some service.  If you want to allow a client-side interface to not be bound sometimes,
+the @b @c [optional] option can be used.  Use of @c [optional] also implies @c [manual-start].
+
+Also, if @c [optional] is used on an interface that would normally get automatically bound
+(le_cfg.api or le_wdog.api) the automatic binding will be suppressed.
+
+At runtime, the component can try to use the interface by calling the @c TryConnectService()
+function for the interface.  If the interface is not bound to anything, an error code will be
+returned.
+
+@code
+requires:
+{
+    api:
+    {
+        baz.api [optional]      // May not be bound. I'll try it by calling baz_TryConnectService().
     }
 }
 @endcode

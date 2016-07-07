@@ -107,38 +107,44 @@ void EnsureClientInterfacesBound
             {
                 for (auto ifInstancePtr : componentInstancePtr->clientApis)
                 {
+                    // If the client-side interface is unbound,
                     if (ifInstancePtr->bindingPtr == NULL)
                     {
-                        // If le_cfg API, then bind it to the one served by the root user.
-                        if (ifInstancePtr->ifPtr->internalName == "le_cfg")
+                        // If the binding of this interface is not optional,
+                        if ( ! (ifInstancePtr->ifPtr->optional))
                         {
-                            BindToRootService(appPtr, ifInstancePtr, "le_cfg");
-                        }
-                        // If le_wdog API, then bind it to the one served by the root user.
-                        else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
-                        {
-                            BindToRootService(appPtr, ifInstancePtr, "le_wdog");
-                        }
-                        // At this point, we know it's an error, just need to figure out which
-                        // type of error message to report (depending on whether the interface
-                        // has been marked "extern" or not).
-                        else if (ifInstancePtr->externMarkPtr != NULL)
-                        {
-                            throw mk::Exception_t("Client interface '"
-                                                  + appPtr->name + "."
-                                                  + ifInstancePtr->name + "' (aka '"
-                                                  + appPtr->name + "."
-                                                  + exePtr->name + "."
-                                                  + componentInstancePtr->componentPtr->name + "."
-                                                  + ifInstancePtr->ifPtr->internalName
-                                                  + "') is not bound to anything.");
-                        }
-                        else
-                        {
-                            throw mk::Exception_t("Client interface '"
-                                                  + appPtr->name + "."
-                                                  + ifInstancePtr->name
-                                                  + "' is not bound to anything.");
+                            // If le_cfg API, then bind it to the one served by the root user.
+                            if (ifInstancePtr->ifPtr->internalName == "le_cfg")
+                            {
+                                BindToRootService(appPtr, ifInstancePtr, "le_cfg");
+                            }
+                            // If le_wdog API, then bind it to the one served by the root user.
+                            else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
+                            {
+                                BindToRootService(appPtr, ifInstancePtr, "le_wdog");
+                            }
+                            // At this point, we know it's an error, just need to figure out which
+                            // type of error message to report (depending on whether the interface
+                            // has been marked "extern" or not).
+                            else if (ifInstancePtr->externMarkPtr != NULL)
+                            {
+                                throw mk::Exception_t("Client interface '"
+                                                      + appPtr->name + "."
+                                                      + ifInstancePtr->name + "' (aka '"
+                                                      + appPtr->name + "."
+                                                      + exePtr->name + "."
+                                                      + componentInstancePtr->componentPtr->name
+                                                      + "."
+                                                      + ifInstancePtr->ifPtr->internalName
+                                                      + "') is not bound to anything.");
+                            }
+                            else
+                            {
+                                throw mk::Exception_t("Client interface '"
+                                                      + appPtr->name + "."
+                                                      + ifInstancePtr->name
+                                                      + "' is not bound to anything.");
+                            }
                         }
                     }
                     else
@@ -178,27 +184,32 @@ void EnsureClientInterfacesSatisfied
             {
                 if ((ifInstancePtr->bindingPtr == NULL) && (ifInstancePtr->externMarkPtr == NULL))
                 {
-                    // If this is an le_cfg API, then bind it to the one offered by the root user.
-                    if (ifInstancePtr->ifPtr->internalName == "le_cfg")
+                    // If the binding of this interface is not optional,
+                    if ( ! (ifInstancePtr->ifPtr->optional))
                     {
-                        BindToRootService(appPtr, ifInstancePtr, "le_cfg");
-                    }
-                    else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
-                    {
-                        BindToRootService(appPtr, ifInstancePtr, "le_wdog");
-                    }
-                    else
-                    {
-                        throw mk::Exception_t("Client interface '"
-                                                   + ifInstancePtr->ifPtr->internalName
-                                                   + "' of component '"
-                                                   + componentInstancePtr->componentPtr->name
-                                                   + "' in executable '" + exePtr->name
-                                                   + "' is unsatisfied. It must either be declared"
-                                                   " an external (inter-app) required interface"
-                                                   " (in a \"requires: api:\" section in the .adef)"
-                                                   " or be bound to a server side interface"
-                                                   " (in the \"bindings:\" section of the .adef).");
+                        // If this is an le_cfg API, bind it to the one offered by the root user.
+                        if (ifInstancePtr->ifPtr->internalName == "le_cfg")
+                        {
+                            BindToRootService(appPtr, ifInstancePtr, "le_cfg");
+                        }
+                        // If this is an le_wdog API, bind it to the one offered by the root user.
+                        else if (ifInstancePtr->ifPtr->internalName == "le_wdog")
+                        {
+                            BindToRootService(appPtr, ifInstancePtr, "le_wdog");
+                        }
+                        else
+                        {
+                            throw mk::Exception_t("Client interface '"
+                                                  + ifInstancePtr->ifPtr->internalName
+                                                  + "' of component '"
+                                                  + componentInstancePtr->componentPtr->name
+                                                  + "' in executable '" + exePtr->name
+                                                  + "' is unsatisfied. It must either be declared"
+                                                  " an external (inter-app) required interface"
+                                                  " (in a \"requires: api:\" section in the .adef)"
+                                                  " or be bound to a server side interface"
+                                                  " (in the \"bindings:\" section of the .adef).");
+                        }
                     }
                 }
             }

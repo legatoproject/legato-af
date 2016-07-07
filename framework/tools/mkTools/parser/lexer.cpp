@@ -871,9 +871,10 @@ void Lexer_t::PullClientIpcOption
 {
     PullIpcOption(tokenPtr);
 
-    // Check that it's one of the valid server-side options.
+    // Check that it's one of the valid client-side options.
     if (   (tokenPtr->text != "[manual-start]")
-        && (tokenPtr->text != "[types-only]") )
+        && (tokenPtr->text != "[types-only]")
+        && (tokenPtr->text != "[optional]") )
     {
         ThrowException("Invalid client-side IPC option: '" + tokenPtr->text + "'");
     }

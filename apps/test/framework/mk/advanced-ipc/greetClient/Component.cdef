@@ -8,5 +8,6 @@ requires:
     api:
     {
         hello = greet.api
+        unused = greet.api [optional] // To test [optional], don't bind this to anything.
     }
 }

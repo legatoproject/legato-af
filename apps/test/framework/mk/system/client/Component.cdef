@@ -5,6 +5,7 @@ requires:
     api:
     {
         foo.api
+        unused = foo.api [optional] // Leave unbound to test [optional].
     }
 }
 

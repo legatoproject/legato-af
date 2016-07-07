@@ -139,6 +139,7 @@ struct ApiTypesOnlyInterface_t : public ApiRef_t
 struct ApiClientInterface_t : public ApiRef_t
 {
     bool manualStart;   ///< true = generated main() should not call the ConnectService() function.
+    bool optional;      ///< true = okay to not be bound.
 
     ApiClientInterface_t(ApiFile_t* aPtr, Component_t* cPtr, const std::string& iName);
 
