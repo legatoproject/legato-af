@@ -699,15 +699,18 @@ le_result_t system_Snapshot
 {
     sysStatus_Status_t status = sysStatus_Status();
 
+    // Copy the current system to the work dir.
+    int currentIndex = system_Index();
+
     if (status != SYS_GOOD)
     {
         LE_WARN("System has not yet passed probation, no snapshot taken.");
 
+        // Increment the index of the current system.
+        SetIndex("current", currentIndex + 1);
+
         return LE_OK;
     }
-
-    // Copy the current system to the work dir.
-    int currentIndex = system_Index();
 
     system_PrepUnpackDir();
 
