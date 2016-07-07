@@ -1,0 +1,29 @@
+//-------------------------------------------------------------------------------------------------
+// Sample definition file for kernel module.
+//
+// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+//-------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------
+// To bundle this kernel module with Legato, add a kernelModules: section to file system.sdef in Legato
+// root directory, such as:
+// kernelModules:
+// {
+//     $LEGATO_ROOT/drivers/example/example.mdef
+// }
+//
+// Using the preBuilt: section in this file, point Legato to the kernel module binary built in this directory.
+// Make sure the module is built, i.e. that example.ko exists before Legato is built and packaged. See this
+// module's Makefile for details on how to build the module.
+//--------------------------------------------------------------------------------------------------
+preBuilt: $LEGATO_ROOT/drivers/example/example.ko
+
+//--------------------------------------------------------------------------------------------------
+// Optionally, override default module parameter values.
+//--------------------------------------------------------------------------------------------------
+params:
+{
+    param1 = "Legato"
+    param2 = "loadable kernel module"
+}
+
