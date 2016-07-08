@@ -1,0 +1,17 @@
+sources:
+{
+    httpGet.c
+}
+
+requires:
+{
+    lib:
+    {
+        curl
+    }
+
+    api:
+    {
+        le_data.api
+    }
+}

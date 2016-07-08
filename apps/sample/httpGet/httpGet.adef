@@ -1,0 +1,49 @@
+executables:
+{
+    httpGet = ( httpGetComponent )
+}
+bindings:
+{
+    httpGet.httpGetComponent.le_data -> dataConnectionService.le_data
+}
+requires:
+{
+    file:
+    {
+        // needed for curl itself:
+        /lib/libcrypto.so.1.0.0 /lib/libcrypto.so.1.0.0
+        /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+        /usr/bin/curl /usr/bin/curl
+        /usr/lib/libcurl.so.5 /usr/lib/
+        /usr/lib/libgnutls.so.28 /usr/lib/
+        /usr/lib/libnettle.so.4 /usr/lib/
+        /usr/lib/libhogweed.so.2 /usr/lib/
+        /usr/lib/libgmp.so.10 /usr/lib/
+        /lib/libz.so.1 /lib/
+
+        // needed for networking:
+        /lib/libnss_compat.so.2 /lib/
+        /lib/libnss_files.so.2 /lib/
+        /etc/nsswitch.conf /etc/
+        /etc/hosts /etc/
+        /etc/resolv.conf /etc/
+        /lib/libnss_dns.so.2 /lib/
+        /lib/libresolv.so.2 /lib/
+
+        /bin/sh /bin/sh
+        /bin/date /bin/date
+    }
+    device:
+    {
+        [rw] /dev/null /dev/null
+        [r] /dev/urandom /dev/urandom
+        [r] /dev/random /dev/random
+    }
+}
+processes:
+{
+    run:
+    {
+        ( httpGet)
+    }
+}
