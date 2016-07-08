@@ -299,7 +299,7 @@ static void ShutdownNextApp
  *      NULL if the app is not found.
  */
 //--------------------------------------------------------------------------------------------------
-static AppContainer_t* GetAcitveApp
+static AppContainer_t* GetActiveApp
 (
     const char* appNamePtr          ///< [IN] Name of the application to get.
 )
@@ -405,7 +405,7 @@ static AppContainer_t* CreateApp
 )
 {
     // Check active list.
-    AppContainer_t* appContainerPtr = GetAcitveApp(appNamePtr);
+    AppContainer_t* appContainerPtr = GetActiveApp(appNamePtr);
 
     if (appContainerPtr != NULL)
     {
@@ -1030,16 +1030,13 @@ le_result_t apps_SigChildHandler
     else
     {
         // Got the app name for the process.  Now get the app object by name.
-        appContainerPtr = GetAcitveApp(appName);
+        appContainerPtr = GetActiveApp(appName);
 
         if (appContainerPtr == NULL)
         {
-            // This is an app name but the app container can't be found.
-            // NOTE: There is a race condition that can cause this to happen.  If we get a
-            //       command to stop an app just after the last process in the app dies (for
-            //       some other reason) but before we can process the SIGCHILD for the dead
-            //       process we will get here.
-
+            // There is an app name but the app container can't be found.  This can happen if
+            // non-direct descendant app proceses are zombies (died but not yet reaped) when the app
+            // was deactivated.
             LE_INFO("Reaping app process (PID %d) for stopped app %s.", pid, appName);
 
             wait_ReapChild(pid);
@@ -1120,7 +1117,7 @@ void le_sup_ctrl_StopApp
     LE_DEBUG("Received request to stop application '%s'.", appName);
 
     // Get the app object.
-    AppContainer_t* appContainerPtr = GetAcitveApp(appName);
+    AppContainer_t* appContainerPtr = GetActiveApp(appName);
 
     if (appContainerPtr == NULL)
     {

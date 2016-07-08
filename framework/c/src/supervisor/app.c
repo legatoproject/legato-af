@@ -849,6 +849,33 @@ static le_result_t SetSmackRules
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Tells all the child processes in the list that we are going to kill them.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StoppingProcsInList
+(
+    le_dls_List_t list              ///< [IN] List of process containers.
+)
+{
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(&list);
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        if (proc_GetState(procContainerPtr->procRef) != PROC_STATE_STOPPED)
+        {
+            procContainerPtr->stopHandler = NULL;
+            proc_Stopping(procContainerPtr->procRef);
+        }
+
+        procLinkPtr = le_dls_PeekNext(&list, procLinkPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Kills all the processes in the specified application.
  *
  * @return
@@ -889,20 +916,8 @@ static le_result_t KillAppProcs
     }
 
     // Tell the child process objects we are going to kill them.
-    le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
-
-    while (procLinkPtr != NULL)
-    {
-        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
-
-        if (proc_GetState(procContainerPtr->procRef) != PROC_STATE_STOPPED)
-        {
-            procContainerPtr->stopHandler = NULL;
-            proc_Stopping(procContainerPtr->procRef);
-        }
-
-        procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
-    }
+    StoppingProcsInList(appRef->procs);
+    StoppingProcsInList(appRef->auxProcs);
 
     // Kill all procs in the app including child processes and forked processes.
     int killSig = (killType == KILL_SOFT) ? SIGTERM: SIGKILL;
@@ -1011,10 +1026,42 @@ static ProcContainer_t* FindProcContainer
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks if the application has any processes running.
+ * Checks if the there is a running process in the specified list.
  *
  * @note This only applies to child processes.  Forked processes in the application are not
  *       monitored.
+ *
+ * @return
+ *      true if there is at least one running process for in the list.
+ *      false if there are no running processes in the list.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool HasRunningProcInList
+(
+    le_dls_List_t list              ///< [IN] List of process containers.
+)
+{
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(&list);
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        if (proc_GetState(procContainerPtr->procRef) == PROC_STATE_RUNNING)
+        {
+            return true;
+        }
+
+        procLinkPtr = le_dls_PeekNext(&list, procLinkPtr);
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the application has any processes running.
  *
  * @return
  *      true if there is at least one running process for the application.
@@ -1026,7 +1073,12 @@ static bool HasRunningProc
     app_Ref_t appRef                    ///< [IN] The application reference.
 )
 {
-    return !cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, appRef->name);
+    // Checks the appRef->procs list for processes that configured in the configuration DB.
+    // Checks the appRef->auxProcs list for processes started by the le_appProc API.
+    // Checks the cgroup for all running processes including non-direct descendant processes.
+    return ( HasRunningProcInList(appRef->procs) ||
+             HasRunningProcInList(appRef->auxProcs) ||
+             !cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, appRef->name) );
 }
 
 
@@ -2483,14 +2535,7 @@ void app_Stop
     }
 
     // Soft kill all the processes in the app.
-    if (KillAppProcs(appRef, KILL_SOFT) == LE_NOT_FOUND)
-    {
-        // There are no more running processes in the app.
-        LE_INFO("app '%s' has stopped.", appRef->name);
-
-        appRef->state = APP_STATE_STOPPED;
-    }
-    else
+    if (KillAppProcs(appRef, KILL_SOFT) == LE_OK)
     {
         // Start the kill timeout timer for this app.
         if (appRef->killTimer == NULL)
@@ -2507,6 +2552,13 @@ void app_Stop
         }
 
         le_timer_Start(appRef->killTimer);
+    }
+    else if (!HasRunningProc(appRef))
+    {
+        // There are no more running processes in the app.
+        LE_DEBUG("app '%s' has stopped.", appRef->name);
+
+        appRef->state = APP_STATE_STOPPED;
     }
 }
 
