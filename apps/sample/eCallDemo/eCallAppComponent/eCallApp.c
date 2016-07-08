@@ -12,6 +12,7 @@
 #include "interfaces.h"
 
 
+
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
@@ -71,7 +72,7 @@ static void LoadECallSettings
     // Get PSAP
     if (le_cfg_NodeExists(eCallCfgRef, CFG_NODE_PSAP))
     {
-        if ( le_cfg_GetString(eCallCfgRef, CFG_NODE_PSAP, psapStr, sizeof(psapStr), "") != LE_OK )
+        if (le_cfg_GetString(eCallCfgRef, CFG_NODE_PSAP, psapStr, sizeof(psapStr), "") != LE_OK)
         {
             LE_FATAL("No node value set for '%s', exit the app!", CFG_NODE_PSAP);
         }
@@ -387,6 +388,21 @@ COMPONENT_INIT
 
     LE_WARN_IF((le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK),
                 "Unable to set the MSD Push mode! Use default settings.");
+
+    LE_ERROR_IF((!le_ecall_SetSystemStandard(LE_ECALL_PAN_EUROPEAN)),
+        " Unable to set System Standard!");
+
+    LE_ERROR_IF((!le_ecall_SetMsdVersion(1)),
+                " Unable to set Msd Version!");
+
+    LE_ERROR_IF((!le_ecall_SetVehicleType(LE_ECALL_MSD_VEHICLE_BUS_M2)),
+                " Unable to set Vehicle Type!");
+
+    LE_ERROR_IF((!le_ecall_SetVIN("12345678901234567")),
+                " Unable to set VIN!");
+
+    LE_ERROR_IF((!le_ecall_SetPropulsionType(LE_ECALL_PROPULSION_TYPE_ELECTRIC)),
+                " Unable to set VIN!");
 
     LE_INFO("eCallDemo app is started.");
 }

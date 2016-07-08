@@ -104,8 +104,7 @@
  * - le_ecall_SetMsdPositionN2() sets the second delta position of the vehicle.
  * - le_ecall_SetMsdPassengersCount() sets the number of passengers.
  *
- * The MSD is automatically encoded with the dynamic values and the static values retrieved from
- * the configuration tree each time those functions are called.
+ * The MSD is automatically encoded with the values previously set.
  *
  * @warning Those functions return a LE_DUPLICATE error when the MSD has been already imported with
  * le_ecall_ImportMsd() function.
@@ -123,8 +122,7 @@
  * publication has been prepared by Technical Committee CEN/TC 278 “Intelligent Transport Systems").
  *
  * @warning The imported MSD doesn't take into account the values provided by the
- * le_ecall_SetMsdXxx() functions and the configuration tree. It overwrites any previous imported
- * MSD or encoded MSD.
+ * le_ecall_SetMsdXxx() functions. It overwrites any previous imported MSD or encoded MSD.
  *
  * @warning The imported MSD overwrites the control flags (automaticActivation and testCall) set by
  * le_ecall_StartXxx() functions (Manual, Automatic, Test). The User App is in charge of their
@@ -326,69 +324,27 @@
  * In the case the call was connected, the redial will be immediate.
  *
  *  le_ecall_SetIntervalBetweenDialAttempts() is available for both manual and test modes.
-
- * @section le_ecall_configdb Configuration tree
- * @copydoc le_ecall_configdbPage_Hide
  *
- * <HR>
+ * The prefered system standard defaults to PAN-EUROPEAN
+ * It can be set an gotten with the following functions:
+ * - le_ecall_SetSystemStandard()
+ * - le_ecall_GetSystemStandard()
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- */
-
-/**
- * @interface le_ecall_configdbPage_Hide
+ * The MSD version can be set and and gotten with the following functions:
+ * - le_ecall_SetMsdVersion()
+ * - le_ecall_GetMsdVersion()
  *
- * The configuration database path for the eCall is:
- * @verbatim
-   /
-       modemServices/
-           eCall/
-               systemStandard<string> = <eCall system>
-               msdVersion<int> = <MSD value>
-               vehicleType<string> = <vehicle type>
-               vin<string> = <VIN>
-               propulsionType/
-                   0<string> = <propulsion type>
-                   1<string> = <propulsion type>
-                   ...
-   @endverbatim
+ * The vehicle type can be set and gotten with the following functions:
+ * - le_ecall_SetVehicleType()
+ * - le_ecall_GetVehicleType()
  *
- * The 'systemStandard' is the kind of eCall system:
- * - PAN-EUROPEAN
- * - ERA-GLONASS
+ * The vehicle identifier can be set and gotten with the following functions:
+ * - le_ecall_SetVIN()
+ * - le_ecall_GetVIN()
  *
- * If no value or a bad entry is filled, the default value is 'PAN-EUROPEAN'.
- *
- * The 'msdVersion' field is the MSD format version. If the field is not present, the default MSD
- * version is version 1.
- *
- * The 'vehicleType' field can be set with the following choices (string type):
- * - "Passenger-M1" (Passenger vehicle, Class M1)
- * - "Bus-M2" (Buses and coaches, Class M2)
- * - "Bus-M3" (Buses and coaches, Class M3)
- * - "Commercial-N1" (Light commercial vehicles, Class N1)
- * - "Heavy-N2" (Heavy duty vehicles, Class N2)
- * - "Heavy-N3" (Heavy duty vehicles, Class N3)
- * - "Motorcycle-L1e" (Motorcycles, Class L1e)
- * - "Motorcycle-L2e" (Motorcycles, Class L2e)
- * - "Motorcycle-L3e" (Motorcycles, Class L3e)
- * - "Motorcycle-L4e" (Motorcycles, Class L4e)
- * - "Motorcycle-L5e" (Motorcycles, Class L5e)
- * - "Motorcycle-L6e" (Motorcycles, Class L6e)
- * - "Motorcycle-L7e" (Motorcycles, Class L7e)
- *
- * The 'vin' is the vehicle identification number (string type).
- *
- * The 'propulsionType' field can be set with the following choices (string type):
- * - "Gasoline" (Gasoline propulsion)
- * - "Diesel" (Diesel propulsion)
- * - "NaturalGas" (Compressed natural gas propulsion)
- * - "Propane" (Liquid propane gas propulsion)
- * - "Electric" (Electric propulsion)
- * - "Hydrogen" (Hydrogen propulsion)
- * - "Other" (Other type of propulsion)
- *
- * Several 'propulsionType' can be applied.
+ * The propulsion type can be set and gotten with the following functions:
+ * - le_ecall_SetPropulsionType()
+ * - le_ecall_GetPropulsionType()
  *
  * <HR>
  *
@@ -447,6 +403,21 @@ DEFINE  MSD_MAX_LEN = (140);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Vehicle Identification Number (VIN) string LENGTH. (without nulltermination)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE VIN_MAX_LEN  =  (17);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Vehicle Identification Number (VIN) string BYTES. One extra byte is added for the null
+ * character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE VIN_MAX_BYTES  = (VIN_MAX_LEN + 1);
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Configured operation modes.
  */
 //--------------------------------------------------------------------------------------------------
@@ -457,6 +428,18 @@ ENUM OpMode
                                   ///< by application through the le_ecall_ForceOnlyMode() function.
     FORCED_PERSISTENT_ONLY_MODE   ///< Persistent eCall only mode.
 };
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Configure which standard to follow for the eCall, either PAN European eCall or ERA GLONASS.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SystemStandard
+{
+    PAN_EUROPEAN,             ///< PAN-EUROPEAN standard
+    ERA_GLONASS               ///< ERA GLONASS standard
+};
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -505,6 +488,46 @@ ENUM MsdTxMode
     TX_MODE_PULL,  ///< Pull mode (modem/host waits for MSD request from PSAP to send MSD).
     TX_MODE_PUSH   ///< Push mode (modem/host sends MSD to PSAP right after eCall is connected).
 };
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  eCall MSD vehicle type
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM MsdVehicleType
+{
+    MSD_VEHICLE_PASSENGER_M1,    ///< Passenger vehicle (Class M1)
+    MSD_VEHICLE_BUS_M2,          ///< Buses and coaches (Class M2)
+    MSD_VEHICLE_BUS_M3,          ///< Buses and coaches (Class M3)
+    MSD_VEHICLE_COMMERCIAL_N1,   ///< Light commercial vehicles (Class N1)
+    MSD_VEHICLE_HEAVY_N2,        ///< Heavy duty vehicles (Class N2)
+    MSD_VEHICLE_HEAVY_N3,        ///< Heavy duty vehicles (Class N3)
+    MSD_VEHICLE_MOTORCYCLE_L1E,  ///< Motorcycles (Class L1e)
+    MSD_VEHICLE_MOTORCYCLE_L2E,  ///< Motorcycles (Class L2e)
+    MSD_VEHICLE_MOTORCYCLE_L3E,  ///< Motorcycles (Class L3e)
+    MSD_VEHICLE_MOTORCYCLE_L4E,  ///< Motorcycles (Class L4e)
+    MSD_VEHICLE_MOTORCYCLE_L5E,  ///< Motorcycles (Class L5e)
+    MSD_VEHICLE_MOTORCYCLE_L6E,  ///< Motorcycles (Class L6e)
+    MSD_VEHICLE_MOTORCYCLE_L7E,  ///< Motorcycles (Class L7e)
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Propulsion type Bit Mask
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK PropulsionTypeBitMask
+{
+    PROPULSION_TYPE_GASOLINE,        ///< Gasoline propulsion)
+    PROPULSION_TYPE_DIESEL,          ///< Diesel propulsion
+    PROPULSION_TYPE_NATURALGAS,      ///< Compressed natural gas propulsion
+    PROPULSION_TYPE_PROPANE,         ///< Liquid propane gas propulsion
+    PROPULSION_TYPE_ELECTRIC,        ///< Electric propulsion
+    PROPULSION_TYPE_HYDROGEN,        ///< Hydrogen propulsion
+    PROPULSION_TYPE_OTHER,           ///< Other type of propulsions
+};
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -697,6 +720,160 @@ FUNCTION Delete
 (
     Call ecallRef     IN  ///< eCall reference
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the system standard.
+ * Default is PAN EUROPEAN
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSystemStandard
+(
+    SystemStandard systemStandard IN ///< System standard
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the system standard.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ *  - LE_BAD_PARAMETER parameter is NULL
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSystemStandard
+(
+    SystemStandard systemStandard OUT ///< System Standard
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the MSDs version.
+ * Default value is 1
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetMsdVersion
+(
+    uint32 msdVersion IN ///< Msd version
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the MSD version.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ *  - LE_BAD_PARAMETER parameter is NULL
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMsdVersion
+(
+    uint32 msdVersion OUT ///< Msd version
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Vehicled Type
+ * Default value is 0
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetVehicleType
+(
+    MsdVehicleType vehicleType IN ///< Vehicle type
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Vehicled Type.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_BAD_PARAMETER parameter is NULL
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetVehicleType
+(
+    MsdVehicleType vehicleType OUT ///< Vehicle type
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the VIN (Vehicle Identification Number).
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_BAD_PARAMETER parameter is NULL.
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetVIN
+(
+    string vin[VIN_MAX_LEN]  IN ///< VIN (Vehicle Identification Number)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the VIN (Vehicle Identification Number).
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_NOT_FOUND if the value is not set.
+ *  - LE_BAD_PARAMETER parameter is NULL or to small
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetVIN
+(
+    string vin[VIN_MAX_BYTES]  OUT ///< VIN is gotten with a null termination.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the propulsion type.
+ * Note that a vehicle may have more than one propulsion type.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPropulsionType
+(
+    PropulsionTypeBitMask propulsionType IN ///< bitmask
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the propulsion stored.
+ * Note that a vehicle may have more than one propulsion type.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_NOT_FOUND if the value is not set.
+ *  - LE_FAULT for other failures
+ *  - LE_BAD_PARAMETER parameter is NULL
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPropulsionType
+(
+    PropulsionTypeBitMask propulsionType OUT ///< bitmask
+);
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**

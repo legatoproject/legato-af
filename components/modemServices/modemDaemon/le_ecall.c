@@ -31,32 +31,47 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * System standard type string length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SYS_STD_MAX_LEN      (12)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * System standard type string length. One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-#define SYS_STD_MAX_LEN      (12+1)
+#define SYS_STD_MAX_BYTES      (SYS_STD_MAX_LEN+1)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Propulsion type string length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PROPULSION_MAX_LEN      (16)
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Propulsion type string length. One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-#define PROPULSION_MAX_LEN      (16+1)
+#define PROPULSION_MAX_BYTES      (PROPULSION_MAX_LEN + 1)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Vehicle type string length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define VEHICLE_TYPE_MAX_LEN      (16)
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Vehicle type string length. One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
-#define VEHICLE_TYPE_MAX_LEN      (16+1)
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Vehicle Identification Number (VIN) string length. One extra byte is added for the null
- * character.
- */
-//--------------------------------------------------------------------------------------------------
-#define VIN_MAX_LEN      (17+1)
+#define VEHICLE_TYPE_MAX_BYTES      (VEHICLE_TYPE_MAX_LEN + 1)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -468,6 +483,265 @@ static void IntervalTimerHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Map the vehicle type string to enum.
+ * the APIs enum to the asn1Msd.h enum.
+ */
+//--------------------------------------------------------------------------------------------------
+static msd_VehicleType_t VehicleTypeEnumToEnumAsn1
+(
+    le_ecall_MsdVehicleType_t vehType // IN
+)
+{
+    switch( vehType )
+    {
+        case LE_ECALL_MSD_VEHICLE_PASSENGER_M1:
+            return MSD_VEHICLE_PASSENGER_M1;
+
+        case LE_ECALL_MSD_VEHICLE_BUS_M2:
+            return MSD_VEHICLE_BUS_M2;
+
+        case LE_ECALL_MSD_VEHICLE_BUS_M3:
+            return MSD_VEHICLE_BUS_M3;
+
+        case LE_ECALL_MSD_VEHICLE_COMMERCIAL_N1:
+            return MSD_VEHICLE_COMMERCIAL_N1;
+
+        case LE_ECALL_MSD_VEHICLE_HEAVY_N2:
+            return MSD_VEHICLE_HEAVY_N2;
+
+        case LE_ECALL_MSD_VEHICLE_HEAVY_N3:
+            return MSD_VEHICLE_HEAVY_N3;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L1E:
+            return MSD_VEHICLE_MOTORCYCLE_L1E;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L2E:
+            return MSD_VEHICLE_MOTORCYCLE_L2E;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L3E:
+            return MSD_VEHICLE_MOTORCYCLE_L3E;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L4E:
+            return MSD_VEHICLE_MOTORCYCLE_L4E;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L5E:
+            return MSD_VEHICLE_MOTORCYCLE_L5E;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L6E:
+            return MSD_VEHICLE_MOTORCYCLE_L6E;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L7E:
+            return MSD_VEHICLE_MOTORCYCLE_L7E;
+        default:
+            LE_FATAL( "vehType outside enum range");
+            return MSD_VEHICLE_MOTORCYCLE_L7E;
+    }
+}
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map the vehicle type string to enum.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT no vehicle type found.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t VehicleTypeStringToEnum
+(
+    char* vehStr,  // IN
+    le_ecall_MsdVehicleType_t* vehType // OUT
+)
+{
+    le_result_t result = LE_OK;
+    LE_FATAL_IF((vehStr == NULL), "vehStr is NULL !");
+
+    if (!strcmp(vehStr, "Passenger-M1"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_PASSENGER_M1;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Bus-M2"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_BUS_M2;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Bus-M3"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_BUS_M3;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Commercial-N1"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_COMMERCIAL_N1;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Heavy-N2"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_HEAVY_N2;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Heavy-N3"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_HEAVY_N3;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L1e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L1E;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L2e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L2E;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L3e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L3E;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L4e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L4E;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L5e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L5E;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L6e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L6E;
+        result = LE_OK;
+    }
+    else if (!strcmp(vehStr, "Motorcycle-L7e"))
+    {
+        *vehType = LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L7E;
+        result = LE_OK;
+    }
+    else
+    {
+        result = LE_FAULT;
+    }
+
+    LE_DEBUG("VehicleTypeStringToEnum '%s' -> %d", vehStr,  *vehType);
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map the vehicle type enum to string.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT no vehicle type found.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t VehicleTypeEnumToString
+(
+    le_ecall_MsdVehicleType_t vehType, // IN
+    char* vehStr  // OUT
+)
+{
+    le_result_t result = LE_OK;
+    LE_FATAL_IF((vehStr == NULL), "vehStr is NULL !");
+    switch( vehType )
+    {
+        case LE_ECALL_MSD_VEHICLE_PASSENGER_M1:
+        {
+            strncpy(vehStr, "Passenger-M1", VEHICLE_TYPE_MAX_BYTES);
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_BUS_M2:
+        {
+            strncpy(vehStr, "Bus-M2", VEHICLE_TYPE_MAX_BYTES);
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_BUS_M3:
+        {
+            strncpy(vehStr, "Bus-M3", VEHICLE_TYPE_MAX_BYTES);
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_COMMERCIAL_N1:
+        {
+            strncpy(vehStr, "Commercial-N1", VEHICLE_TYPE_MAX_BYTES);
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_HEAVY_N2:
+        {
+            strncpy(vehStr, "Heavy-N2", VEHICLE_TYPE_MAX_BYTES);
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_HEAVY_N3:
+        {
+            strncpy(vehStr, "Heavy-N3", VEHICLE_TYPE_MAX_BYTES);
+        }
+        break;
+
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L1E:
+        {
+            strncpy(vehStr, "Motorcycle-L1e", 1+sizeof("Motorcycle-L1e"));
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L2E:
+        {
+            strncpy(vehStr, "Motorcycle-L2e", 1+sizeof("Motorcycle-L2e"));
+        }
+        break;
+
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L3E:
+        {
+            strncpy(vehStr, "Motorcycle-L3e", 1+sizeof("Motorcycle-L3e"));
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L4E:
+        {
+            strncpy(vehStr, "Motorcycle-L4e", 1+sizeof("Motorcycle-L4e"));
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L5E:
+        {
+            strncpy(vehStr, "Motorcycle-L5e", 1+sizeof("Motorcycle-L5e"));
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L6E:
+        {
+            strncpy(vehStr, "Motorcycle-L6e", 1+sizeof("Motorcycle-L6e"));
+        }
+        break;
+
+        case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L7E:
+        {
+            strncpy(vehStr, "Motorcycle-L7e", 1+sizeof("Motorcycle-L7e"));
+        }
+        break;
+
+        default:
+        {
+            LE_ERROR("ERROR vehType enum not recognized %d", vehType);
+            result = LE_FAULT;
+        }
+    }
+
+    LE_DEBUG("VehicleTypeEnumToString  %d -> '%s'", vehType, vehStr );
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse the vehicle type from the config DB entry and update the corresponding MSD element.
  *
  * @return
@@ -481,77 +755,19 @@ static le_result_t ParseAndSetVehicleType
 )
 {
     LE_FATAL_IF((vehStr == NULL), "vehStr is NULL !");
-
-    if (!strcmp(vehStr, "Passenger-M1"))
+    if (NULL != vehStr)
     {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_PASSENGER_M1;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Bus-M2"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_BUS_M2;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Bus-M3"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_BUS_M3;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Commercial-N1"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_COMMERCIAL_N1;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Heavy-N2"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_HEAVY_N2;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Heavy-N3"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_HEAVY_N3;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L1e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L1E;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L2e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L2E;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L3e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L3E;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L4e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L4E;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L5e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L5E;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L6e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L6E;
-        return LE_OK;
-    }
-    else if (!strcmp(vehStr, "Motorcycle-L7e"))
-    {
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_MOTORCYCLE_L7E;
-        return LE_OK;
+        le_ecall_MsdVehicleType_t vehType;
+        le_result_t result = VehicleTypeStringToEnum( vehStr, &vehType);
+        ECallObj.msd.msdMsg.msdStruct.control.vehType = VehicleTypeEnumToEnumAsn1(vehType);
+        return result;
     }
     else
     {
         return LE_FAULT;
     }
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -627,8 +843,8 @@ static le_result_t GetPropulsionType
     uint8_t i=0;
     char cfgNodeLoc[8] = {0};
     char configPath[LIMIT_MAX_PATH_BYTES];
-    char propStr[PROPULSION_MAX_LEN] = {0};
-    le_result_t res;
+    char propStr[PROPULSION_MAX_BYTES] = {0};
+    le_result_t res = LE_OK;
 
     snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_ECALL_PATH, CFG_NODE_PROP);
     le_cfg_IteratorRef_t propCfg = le_cfg_CreateReadTxn(configPath);
@@ -636,13 +852,13 @@ static le_result_t GetPropulsionType
     sprintf (cfgNodeLoc, "%d", i);
     while (!le_cfg_IsEmpty(propCfg, cfgNodeLoc))
     {
-        if ( le_cfg_GetString(propCfg, cfgNodeLoc, propStr, sizeof(propStr), "") != LE_OK )
+        if (le_cfg_GetString(propCfg, cfgNodeLoc, propStr, sizeof(propStr), "") != LE_OK)
         {
             LE_ERROR("No node value set for '%s'", CFG_NODE_PROP);
             res = LE_FAULT;
             break;
         }
-        if ( strlen(propStr) == 0 )
+        if (strlen(propStr) == 0)
         {
             LE_ERROR("No node value set for '%s'", CFG_NODE_PROP);
             res = LE_FAULT;
@@ -694,8 +910,8 @@ static le_result_t LoadECallSettings
         // Get VIN
         if (le_cfg_NodeExists(eCallCfg, CFG_NODE_VIN))
         {
-            char vinStr[VIN_MAX_LEN] = {0};
-            if ( le_cfg_GetString(eCallCfg, CFG_NODE_VIN, vinStr, sizeof(vinStr), "") != LE_OK )
+            char vinStr[LE_ECALL_VIN_MAX_BYTES] = {0};
+            if (le_cfg_GetString(eCallCfg, CFG_NODE_VIN, vinStr, sizeof(vinStr), "") != LE_OK)
             {
                 LE_WARN("No node value set for '%s'", CFG_NODE_VIN);
             }
@@ -715,8 +931,8 @@ static le_result_t LoadECallSettings
         // Get vehicle type
         if (le_cfg_NodeExists(eCallCfg, CFG_NODE_VEH))
         {
-            char  vehStr[VEHICLE_TYPE_MAX_LEN] = {0};
-            if ( le_cfg_GetString(eCallCfg, CFG_NODE_VEH, vehStr, sizeof(vehStr), "") != LE_OK )
+            char  vehStr[VEHICLE_TYPE_MAX_BYTES] = {0};
+            if (le_cfg_GetString(eCallCfg, CFG_NODE_VEH, vehStr, sizeof(vehStr), "") != LE_OK)
             {
                 LE_WARN("No node value set for '%s'", CFG_NODE_VEH);
             }
@@ -744,7 +960,7 @@ static le_result_t LoadECallSettings
                 LE_WARN("No correct value set for '%s' ! Use the default one (%d)",
                         CFG_NODE_MSDVERSION,
                         DEFAULT_MSD_VERSION);
-                eCallPtr->msd.version = 1;
+                eCallPtr->msd.version = DEFAULT_MSD_VERSION;
             }
         }
         else
@@ -752,20 +968,20 @@ static le_result_t LoadECallSettings
             LE_WARN("No value set for '%s' ! Use the default one (%d)",
                     CFG_NODE_MSDVERSION,
                     DEFAULT_MSD_VERSION);
-            eCallPtr->msd.version = 1;
+            eCallPtr->msd.version = DEFAULT_MSD_VERSION;
         }
 
         // Get system standard
         {
-            char  sysStr[SYS_STD_MAX_LEN] = {0};
+            char  sysStr[SYS_STD_MAX_BYTES] = {0};
             bool isEraGlonass = false;
             if (le_cfg_NodeExists(eCallCfg, CFG_NODE_SYSTEM_STD))
             {
-                if ( le_cfg_GetString(eCallCfg,
+                if (le_cfg_GetString(eCallCfg,
                                       CFG_NODE_SYSTEM_STD,
                                       sysStr,
                                       sizeof(sysStr),
-                                      "PAN-EUROPEAN") != LE_OK )
+                                      "PAN-EUROPEAN") != LE_OK)
                 {
                     LE_WARN("No node value set for '%s' ! Use the default one (%s)",
                             CFG_NODE_SYSTEM_STD,
@@ -1269,7 +1485,7 @@ static void CallEventHandler
     int32_t callId;
     ECall_t* eCallPtr = (ECall_t*) contextPtr;
 
-    if ( !eCallPtr )
+    if (!eCallPtr)
     {
         LE_ERROR("NULL eCallPtr !!!");
         return;
@@ -1284,7 +1500,7 @@ static void CallEventHandler
     {
         le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
 
-        if ( res != LE_OK )
+        if (res != LE_OK)
         {
             LE_ERROR("Error in GetCallIdentifier %d", res);
             return;
@@ -3202,3 +3418,585 @@ int32_t le_ecall_GetPlatformSpecificTerminationCode
 
     return eCallPtr->specificTerm;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the system standard.
+ * Default is PAN EUROPEAN
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetSystemStandard
+(
+    le_ecall_SystemStandard_t systemStandard
+        ///< [IN]
+        ///< System mode
+)
+{
+    le_result_t result = LE_FAULT;
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    if (LE_ECALL_PAN_EUROPEAN == systemStandard)
+    {
+        le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, "PAN-EUROPEAN");
+        result = LE_OK;
+    }
+    else if (LE_ECALL_ERA_GLONASS == systemStandard)
+    {
+        le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, "ERA-GLONASS");
+        result = LE_OK;
+        le_cfg_CommitTxn(iteratorRef);
+    }
+    else
+    {
+        LE_ERROR("parameter %d has invalid value", systemStandard);
+        result = LE_FAULT;
+        le_cfg_CancelTxn( iteratorRef );
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the system standard.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetSystemStandard
+(
+    le_ecall_SystemStandard_t* systemStandardPtr
+        ///< [OUT] System mode
+)
+{
+    le_cfg_IteratorRef_t iteratorRef = NULL;
+    char systemModeString[20];
+
+    if (NULL == systemStandardPtr)
+    {
+        LE_KILL_CLIENT("systemStandardPtr is NULL.");
+        return LE_FAULT;
+    }
+
+    iteratorRef = le_cfg_CreateReadTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    if (!le_cfg_NodeExists(iteratorRef, CFG_NODE_SYSTEM_STD))
+    {
+        LE_WARN("Node 'systemStandard' does not exist. Default to PAN EU");
+        *systemStandardPtr = LE_ECALL_PAN_EUROPEAN;
+        le_cfg_CancelTxn( iteratorRef );
+        return LE_OK;
+    }
+
+    if (LE_OVERFLOW == le_cfg_GetString(iteratorRef, CFG_NODE_SYSTEM_STD,
+        systemModeString, sizeof(systemModeString), ""))
+    {
+        LE_WARN("Node '"CFG_NODE_SYSTEM_STD"' exist, but is too long. Default to PAN EU. :%s",
+            systemModeString);
+
+        *systemStandardPtr = LE_ECALL_PAN_EUROPEAN;
+        le_cfg_CancelTxn( iteratorRef );
+        return LE_OK;
+    }
+
+    if (0 == strncmp( "PAN-EUROPEAN", systemModeString, 12))
+    {
+        *systemStandardPtr = LE_ECALL_PAN_EUROPEAN;
+    }
+    else if (0 == strncmp( "ERA-GLONASS", systemModeString, 11))
+    {
+        *systemStandardPtr = LE_ECALL_ERA_GLONASS;
+    }
+    else
+    {
+        LE_WARN("Node '"CFG_NODE_SYSTEM_STD"' exist, but does not match:%s. Default to PAN EU.",
+                systemModeString);
+        *systemStandardPtr = LE_ECALL_PAN_EUROPEAN;
+    }
+
+    le_cfg_CancelTxn( iteratorRef );
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the MSDs version and store it in the config tree
+ * Default value is 1
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetMsdVersion
+(
+    uint32_t msdVersion
+        ///< [IN] Msd version
+)
+{
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    le_cfg_SetInt(iteratorRef, CFG_NODE_MSDVERSION, msdVersion);
+    le_cfg_CommitTxn(iteratorRef);
+
+    LE_DEBUG("Set MsdVersion to %d", msdVersion);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the MSD version stored in the config tree.
+ * @note that if the value is not correct in the config tree, it will default to 1.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_BAD_PARAMETER if inparameter is NULL
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetMsdVersion
+(
+    uint32_t* msdVersionPtr
+        ///< [OUT] Msd version
+)
+{
+    le_cfg_IteratorRef_t iteratorRef = NULL;
+
+    if (NULL == msdVersionPtr)
+    {
+        LE_KILL_CLIENT("msdVersionPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    iteratorRef = le_cfg_CreateReadTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    if (le_cfg_NodeExists(iteratorRef, CFG_NODE_MSDVERSION))
+    {
+        *msdVersionPtr = le_cfg_GetInt(iteratorRef, CFG_NODE_MSDVERSION, 0);
+        LE_DEBUG("MSD version read as %d", *msdVersionPtr);
+        if (*msdVersionPtr == 0)
+        {
+            LE_WARN("No correct value set for '%s' ! Use the default one (%d)",
+                    CFG_NODE_MSDVERSION,
+                    DEFAULT_MSD_VERSION);
+
+            *msdVersionPtr = DEFAULT_MSD_VERSION;
+        }
+    }
+    else
+    {
+        LE_WARN("No config tree value set for '%s' ! Use the default one (%d)",
+                CFG_NODE_MSDVERSION,
+                DEFAULT_MSD_VERSION);
+        *msdVersionPtr = DEFAULT_MSD_VERSION;
+    }
+
+    le_cfg_CancelTxn( iteratorRef );
+
+    return LE_OK;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Vehicled Type and store it in the config tree
+ * Default value is 0
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetVehicleType
+(
+    le_ecall_MsdVehicleType_t vehicleType
+        ///< [IN] Vehicle type
+)
+{
+    le_result_t result = LE_FAULT;
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
+    char  vehStr[VEHICLE_TYPE_MAX_BYTES] = {0};
+
+    if( LE_OK == VehicleTypeEnumToString( vehicleType, vehStr ))
+    {
+        LE_WARN("VehicleTypeEnumToString %d -> '%s' !", vehicleType, vehStr );
+
+        le_cfg_SetString(iteratorRef, CFG_NODE_VEH, vehStr);
+        result = LE_OK;
+        le_cfg_CommitTxn(iteratorRef);
+    }
+    else
+    {
+        LE_WARN("No value set for '%s' !", CFG_NODE_VEH);
+        result = LE_FAULT;
+        le_cfg_CancelTxn( iteratorRef );
+    }
+
+    LE_DEBUG("VehicleTypeEnumToString %s", vehStr );
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Vehicled Type stored in the config tree.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_BAD_PARAMETER parameter is NULL
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetVehicleType
+(
+    le_ecall_MsdVehicleType_t* vehicleTypePtr
+        ///< [OUT] Vehicle type
+)
+{
+    le_result_t result = LE_FAULT;
+    le_cfg_IteratorRef_t iteratorRef = NULL;
+    char  vehStr[VEHICLE_TYPE_MAX_BYTES] = {0};
+
+    if (NULL == vehicleTypePtr)
+    {
+        LE_KILL_CLIENT("vehicleTypePtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    iteratorRef = le_cfg_CreateReadTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    // Get vehicle type
+    if (le_cfg_NodeExists(iteratorRef, CFG_NODE_VEH))
+    {
+        if (le_cfg_GetString(iteratorRef, CFG_NODE_VEH, vehStr, sizeof(vehStr), "") != LE_OK)
+        {
+            LE_WARN("No node value set for '%s'", CFG_NODE_VEH);
+        }
+        else if (strlen(vehStr) > 0)
+        {
+            le_ecall_MsdVehicleType_t vehicleType;
+            LE_DEBUG("vehicle type is %s", vehStr);
+            if (VehicleTypeStringToEnum(vehStr, &vehicleType) == LE_OK)
+            {
+                *vehicleTypePtr = vehicleType;
+                result = LE_OK;
+            }
+            else
+            {
+                LE_WARN("Bad vehicle type. No match found in vehicletype");
+                result = LE_FAULT;
+            }
+        }
+    }
+    else
+    {
+        LE_WARN("No value set for '%s' !", CFG_NODE_VEH);
+        result = LE_FAULT;
+
+    }
+
+    le_cfg_CancelTxn( iteratorRef );
+
+    LE_DEBUG("vehicle type is %s", vehStr);
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the VIN (Vehicle Identification Number)
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_BAD_PARAMETER parameter is NULL.
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetVIN
+(
+    const char* vin
+        ///< [IN] VIN (Vehicle Identification Number)
+)
+{
+    le_result_t result = LE_OK;
+    le_cfg_IteratorRef_t iteratorRef = NULL;
+
+    if (NULL == vin)
+    {
+        LE_KILL_CLIENT("vin is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    if (LE_ECALL_VIN_MAX_LEN > strnlen( vin, LE_ECALL_VIN_MAX_BYTES))
+    {
+        LE_WARN("SetVIN parameter vin is not big enough %zu. Should be least %d. '%s'",
+                strnlen( vin, LE_ECALL_VIN_MAX_BYTES),
+                LE_ECALL_VIN_MAX_LEN,
+                vin);
+        result = LE_FAULT;
+        le_cfg_CancelTxn( iteratorRef );
+    }
+    else
+    {
+        le_cfg_SetString(iteratorRef, CFG_NODE_VIN, vin);
+        LE_INFO("Set VIN to %s", vin);
+        result = LE_OK;
+        le_cfg_CommitTxn(iteratorRef);
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the VIN (Vehicle Identification Number)
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_NOT_FOUND if the value is not set.
+ *  - LE_BAD_PARAMETER parameter is NULL or to small
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetVIN
+(
+    char* vin,
+        ///< [OUT] VIN size is 17 chars
+
+    size_t vinNumElements
+        ///< [IN]
+)
+{
+    le_result_t result = LE_FAULT;
+    le_cfg_IteratorRef_t iteratorRef = NULL;
+
+    if (NULL == vin)
+    {
+        LE_KILL_CLIENT("vin is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+
+    if (LE_ECALL_VIN_MAX_LEN > vinNumElements)
+    {
+        LE_ERROR("vinNumElements must be at least %d not %zu", LE_ECALL_VIN_MAX_LEN, vinNumElements);
+        return LE_FAULT;
+    }
+
+    iteratorRef = le_cfg_CreateReadTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
+    // Get VIN
+    char vinStr[LE_ECALL_VIN_MAX_BYTES] = {'\0'};
+    if (le_cfg_NodeExists(iteratorRef, CFG_NODE_VIN))
+    {
+        if (le_cfg_GetString(iteratorRef, CFG_NODE_VIN, vinStr, LE_ECALL_VIN_MAX_BYTES, "")
+            != LE_OK)
+        {
+            LE_WARN("No node value set for '%s'", CFG_NODE_VIN);
+            vin[0] = '\0';
+        }
+        else if (strnlen( vinStr, LE_ECALL_VIN_MAX_BYTES) > 0)
+        {
+            memcpy( &vin[0],
+                   (const void *)vinStr,
+                   strnlen( vinStr, LE_ECALL_VIN_MAX_BYTES));
+            result = LE_OK;
+        }
+        else
+        {
+            result = LE_NOT_FOUND;
+        }
+        LE_DEBUG("eCall settings, VIN is %s", vinStr);
+    }
+    else
+    {
+        LE_WARN("No value set for '%s' !", CFG_NODE_VIN);
+        result = LE_NOT_FOUND;
+    }
+
+    le_cfg_CancelTxn( iteratorRef );
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the propulsion type in the config tree.
+ * Note that a vehicle may have more than one propulsion type.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_SetPropulsionType
+(
+    le_ecall_PropulsionTypeBitMask_t propulsionTypeBitMask
+        ///< [IN] bitmask
+)
+{
+    uint8_t i=0;
+    char cfgNodeLoc[8] = {0};
+    char configPath[LIMIT_MAX_PATH_BYTES];
+    le_result_t res = LE_OK;
+
+    snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_ECALL_PATH, CFG_NODE_PROP);
+
+    // First remove old node data.
+    le_cfg_QuickDeleteNode( configPath );
+
+    // recreate the node /propulsionType/
+    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( configPath );
+
+    if (LE_ECALL_PROPULSION_TYPE_GASOLINE & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Gasoline");
+        i++;
+    }
+
+    if (LE_ECALL_PROPULSION_TYPE_DIESEL & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Diesel");
+        i++;
+    }
+
+    if (LE_ECALL_PROPULSION_TYPE_NATURALGAS & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "NaturalGas");
+        i++;
+    }
+
+    if (LE_ECALL_PROPULSION_TYPE_PROPANE & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Propane");
+        i++;
+    }
+
+    if (LE_ECALL_PROPULSION_TYPE_ELECTRIC & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Electric");
+        i++;
+    }
+
+    if (LE_ECALL_PROPULSION_TYPE_HYDROGEN & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Hydrogen");
+        i++;
+
+    }
+
+    if (LE_ECALL_PROPULSION_TYPE_OTHER & propulsionTypeBitMask)
+    {
+        sprintf (cfgNodeLoc, "%d", i);
+        le_cfg_GoToNode(iteratorRef, cfgNodeLoc);
+        le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Other");
+        i++;
+    }
+
+    // if i is 0 at this point, there was no valid bit set in the bitmask
+    if (i == 0)
+    {
+        LE_WARN("Bitmask had no valid bits set 0x%x", propulsionTypeBitMask);
+        res = LE_FAULT;
+    }
+    if (LE_OK == res)
+    {
+        le_cfg_CommitTxn(iteratorRef);
+    }
+    else
+    {
+        le_cfg_CancelTxn( iteratorRef );
+    }
+    return res;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the propulsion stored in the config tree.
+ * Note that a vehicle may have more than one propulsion type.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_NOT_FOUND if the value is not set
+ *  - LE_FAULT for other failures
+ *  - LE_BAD_PARAMETER parameter is NULL
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ecall_GetPropulsionType
+(
+    le_ecall_PropulsionTypeBitMask_t* propulsionTypePtr
+        ///< [OUT] bitmask
+)
+{
+    le_result_t result = LE_OK;
+    le_ecall_PropulsionTypeBitMask_t resultBitMask= 0;
+
+    if (NULL == propulsionTypePtr)
+    {
+        LE_KILL_CLIENT("propulsionTypePtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    // GetPropulsionType reads from config tree
+    // and writes a boolean values in the MSD.
+    result = GetPropulsionType();
+
+    if (LE_OK == result)
+    {
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_GASOLINE;
+        }
+
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_DIESEL;
+        }
+
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.compressedNaturalGas)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_NATURALGAS;
+        }
+
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.liquidPropaneGas)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_PROPANE;
+        }
+
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.electricEnergyStorage)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_ELECTRIC;
+        }
+
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_HYDROGEN;
+        }
+
+        if (ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.otherStorage)
+        {
+            resultBitMask |=  LE_ECALL_PROPULSION_TYPE_OTHER;
+        }
+
+        *propulsionTypePtr = resultBitMask;
+    }
+    return result;
+}
+

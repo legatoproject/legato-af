@@ -53,34 +53,6 @@ config set eCallDemo:/settings/hMinAccuracy 100 int
 config set eCallDemo:/settings/dirMinAccuracy 100 int
 @endverbatim
 
-@section sampleApps_eCall_ConfigTreePath Config Tree Path
-
-This is the config tree database path for the sample app:
-
-@verbatim
-/
-    modemServices/
-        eCall/
-            systemStandard<string> = <eCall system>
-            msdVersion<int> = <MSD value>
-            vehicleType<string> = <vehicle type>
-            vin<string> = <VIN>
-            propulsionType/
-                0<string> = <propulsion type>
-                1<string> = <propulsion type>
-                ...
-@endverbatim
-
-This is a config tree path setting example (values given as an example):
-
-@verbatim
-config set /modemServices/eCall/systemStandard PAN-EUROPEAN
-config set /modemServices/eCall/msdVersion 1 int
-config set /modemServices/eCall/vehicleType Commercial-N1
-config set /modemServices/eCall/vin WWWWWWWWWWW123456
-config set /modemServices/eCall/propulsionType/0 Diesel
-@endverbatim
-
 @section sampleApps_eCallTrig trig utility
 
 This utility triggers the eCallDemo application.

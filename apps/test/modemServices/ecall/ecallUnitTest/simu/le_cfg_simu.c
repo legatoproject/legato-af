@@ -26,8 +26,19 @@ static char ECallSys[ECALL_SYS_STD_MAX_LEN] = {0};
 static char ECallVin[ECALL_VIN_MAX_LEN] = {0};
 static char ECallProp[ECALL_PROPULSION_MAX_LEN] = {0};
 static char ECallVeh[ECALL_VEHICLE_TYPE_MAX_LEN] = {0};
+
+
+static char ECallCfg0[255] = {0};
+static char ECallCfg1[255] = {0};
+static char ECallCfg2[255] = {0};
+static char ECallCfg3[255] = {0};
+
 static le_cfg_IteratorRef_t IteratorRefSimu;
 
+#define CFG_NODE_0 "0"
+#define CFG_NODE_1 "1"
+#define CFG_NODE_2 "2"
+#define CFG_NODE_3 "3"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -545,6 +556,52 @@ bool le_cfg_IsEmpty
         ///< a path relative from the iterator's current position.
 )
 {
+    char * strPtr = NULL;
+    if ( strncmp(path, CFG_NODE_SYSTEM_STD, strlen(CFG_NODE_SYSTEM_STD)) == 0 )
+    {
+        strPtr = &ECallSys[0];
+    }
+    else if ( strncmp(path, CFG_NODE_VIN, strlen(CFG_NODE_VIN)) == 0 )
+    {
+        strPtr = &ECallVin[0];
+    }
+    else if ( strncmp(path, CFG_NODE_VEH, strlen(CFG_NODE_VEH)) == 0 )
+    {
+        strPtr = &ECallVeh[0];
+    }
+    else if ( strncmp(path, CFG_NODE_PROP, strlen(CFG_NODE_PROP)) == 0 )
+    {
+        strPtr = &ECallProp[0];
+    }
+    else if ( strncmp(path, CFG_NODE_0, strlen(CFG_NODE_0)) == 0 )
+    {
+        strPtr = &ECallCfg0[0];
+    }
+    else if ( strncmp(path, CFG_NODE_1, strlen(CFG_NODE_1)) == 0 )
+    {
+        strPtr = &ECallCfg1[0];
+    }
+    else if ( strncmp(path, CFG_NODE_2, strlen(CFG_NODE_2)) == 0 )
+    {
+        strPtr = &ECallCfg2[0];
+    }
+    else if ( strncmp(path, CFG_NODE_3, strlen(CFG_NODE_3)) == 0 )
+    {
+        strPtr = &ECallCfg3[0];
+    }
+    else
+    {
+        LE_WARN("le_cfg_IsEmpty DID not find path %s", path);
+        return false;
+    }
+
+    if( NULL != strPtr )
+    {
+        if( 0 == strlen(strPtr))
+        {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -570,7 +627,50 @@ void le_cfg_SetEmpty
         ///< a path relative from the iterator's current position.
 )
 {
-    return ;
+    char * strPtr = NULL;
+    if ( strncmp(path, CFG_NODE_SYSTEM_STD, strlen(CFG_NODE_SYSTEM_STD)) == 0 )
+    {
+        strPtr = &ECallSys[0];
+    }
+    else if ( strncmp(path, CFG_NODE_VIN, strlen(CFG_NODE_VIN)) == 0 )
+    {
+        strPtr = &ECallVin[0];
+    }
+    else if ( strncmp(path, CFG_NODE_VEH, strlen(CFG_NODE_VEH)) == 0 )
+    {
+        strPtr = &ECallVeh[0];
+    }
+    else if ( strncmp(path, CFG_NODE_PROP, strlen(CFG_NODE_PROP)) == 0 )
+    {
+        strPtr = &ECallProp[0];
+    }
+    else if ( strncmp(path, CFG_NODE_0, strlen(CFG_NODE_0)) == 0 )
+    {
+        strPtr = &ECallCfg0[0];
+    }
+    else if ( strncmp(path, CFG_NODE_1, strlen(CFG_NODE_1)) == 0 )
+    {
+        strPtr = &ECallCfg1[0];
+    }
+    else if ( strncmp(path, CFG_NODE_2, strlen(CFG_NODE_2)) == 0 )
+    {
+        strPtr = &ECallCfg2[0];
+    }
+    else if ( strncmp(path, CFG_NODE_3, strlen(CFG_NODE_3)) == 0 )
+    {
+        strPtr = &ECallCfg3[0];
+    }
+    else
+    {
+        LE_WARN("le_cfg_SetEmpty DID not find path %s", path);
+        return;
+    }
+
+    if( NULL != strPtr )
+    {
+        strPtr[0] = '\0';
+    }
+    return;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -640,6 +740,27 @@ void le_cfgSimu_SetStringNodeValue
         memset(ECallProp, 0, sizeof(ECallProp));
         strncpy(ECallProp, value, strlen(value));
     }
+    else if ( strncmp(path, CFG_NODE_0, strlen(CFG_NODE_0)) == 0 )
+    {
+        memset(ECallCfg0, 0, sizeof(ECallCfg0));
+        strncpy(ECallCfg0, value, strlen(value));
+    }
+    else if ( strncmp(path, CFG_NODE_1, strlen(CFG_NODE_1)) == 0 )
+    {
+        memset(ECallCfg1, 0, sizeof(ECallCfg1));
+        strncpy(ECallCfg1, value, strlen(value));
+    }
+    else if ( strncmp(path, CFG_NODE_2, strlen(CFG_NODE_2)) == 0 )
+    {
+        memset(ECallCfg2, 0, sizeof(ECallCfg2));
+        strncpy(ECallCfg2, value, strlen(value));
+    }
+    else if ( strncmp(path, CFG_NODE_3, strlen(CFG_NODE_3)) == 0 )
+    {
+        memset(ECallCfg3, 0, sizeof(ECallCfg3));
+        strncpy(ECallCfg3, value, strlen(value));
+    }
+
     return ;
 }
 
@@ -698,9 +819,24 @@ le_result_t le_cfg_GetString
         strncpy(value, ECallVeh, strlen(ECallVeh));
         res = LE_OK;
     }
-    else if ( strncmp(path, "0", strlen("0")) == 0 )
+    else if ( strncmp(path, CFG_NODE_0, strlen(CFG_NODE_0)) == 0 )
     {
-        strncpy(value, ECallProp, strlen(ECallProp));
+        strncpy(value, ECallCfg0, strlen(ECallCfg0));
+        res = LE_OK;
+    }
+    else if ( strncmp(path, CFG_NODE_1, strlen(CFG_NODE_1)) == 0 )
+    {
+        strncpy(value, ECallCfg1, strlen(ECallCfg1));
+        res = LE_OK;
+    }
+    else if ( strncmp(path, CFG_NODE_2, strlen(CFG_NODE_2)) == 0 )
+    {
+        strncpy(value, ECallCfg2, strlen(ECallCfg2));
+        res = LE_OK;
+    }
+    else if ( strncmp(path, CFG_NODE_3, strlen(CFG_NODE_3)) == 0 )
+    {
+        strncpy(value, ECallCfg3, strlen(ECallCfg3));
         res = LE_OK;
     }
 
@@ -731,6 +867,7 @@ void le_cfg_SetString
         ///< Value to write.
 )
 {
+    le_cfgSimu_SetStringNodeValue( iteratorRef, path, value);
     return ;
 }
 

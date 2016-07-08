@@ -235,8 +235,11 @@ void Testle_ecall_ConfigSettings
 )
 {
     char                 psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
-    le_ecall_MsdTxMode_t mode = LE_ECALL_TX_MODE_PULL;
+    uint32_t             msdVersion = 1;
     uint16_t             deregTime = 0;
+    le_ecall_MsdTxMode_t      mode           = LE_ECALL_TX_MODE_PULL;
+    le_ecall_SystemStandard_t systemStandard = LE_ECALL_ERA_GLONASS;
+    le_ecall_MsdVehicleType_t vehicleType    = LE_ECALL_MSD_VEHICLE_BUS_M2;
 
     LE_INFO("Start Testle_ecall_ConfigSettings");
 
@@ -255,6 +258,35 @@ void Testle_ecall_ConfigSettings
     LE_ASSERT(le_ecall_SetNadDeregistrationTime(180) == LE_OK);
     LE_ASSERT(le_ecall_GetNadDeregistrationTime(&deregTime) == LE_OK);
     LE_ASSERT(deregTime == 180);
+
+    LE_ASSERT((LE_OK == le_ecall_SetSystemStandard(LE_ECALL_ERA_GLONASS)));
+    systemStandard = LE_ECALL_PAN_EUROPEAN;
+    LE_ASSERT((LE_OK == le_ecall_GetSystemStandard(&systemStandard)));
+    LE_ASSERT(LE_ECALL_ERA_GLONASS == systemStandard);
+
+    LE_ASSERT((LE_OK == le_ecall_SetMsdVersion(msdVersion)));
+    msdVersion = 42;
+    LE_ASSERT((LE_OK == le_ecall_GetMsdVersion(&msdVersion)));
+    LE_ASSERT(( 1 == msdVersion  ));
+
+    LE_ASSERT((LE_OK == le_ecall_SetVehicleType(vehicleType)));
+    vehicleType = LE_ECALL_MSD_VEHICLE_PASSENGER_M1;
+    LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
+    LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
+
+    char VinSet[LE_ECALL_VIN_MAX_BYTES] = "12345678901234567";
+    char VinGet[LE_ECALL_VIN_MAX_BYTES] = { '\0' };
+    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
+
+    LE_ASSERT((LE_OK == le_ecall_GetVIN(&VinGet[0], LE_ECALL_VIN_MAX_LEN)));
+    LE_ASSERT(( 0 == strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_LEN )));
+
+    le_ecall_PropulsionTypeBitMask_t propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
+
+    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
+    propulsionType = LE_ECALL_PROPULSION_TYPE_GASOLINE;
+    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
+    LE_ASSERT( LE_ECALL_PROPULSION_TYPE_ELECTRIC == propulsionType );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -270,7 +302,8 @@ void Testle_ecall_EraGlonassSettings
 {
     uint16_t                            attempts = 0;
     uint16_t                            duration = 0;
-    le_ecall_CallRef_t                   testECallRef = 0x00;
+    le_ecall_CallRef_t                  testECallRef = 0x00;
+
 
     LE_INFO("Start Testle_ecall_EraGlonassSettings");
 
@@ -511,10 +544,8 @@ COMPONENT_INIT
 {
     if (le_arg_NumArgs() == 1)
     {
-        char configPath[LIMIT_MAX_PATH_BYTES];
-        char  sysStr[] = "PAN-EUROPEAN";
+        le_ecall_SystemStandard_t systemStandard = LE_ECALL_PAN_EUROPEAN;
         bool isEraGlonass = false;
-        snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
 
         // Register a signal event handler for SIGINT when user interrupts/terminates process
         signal(SIGINT, SigHandler);
@@ -527,38 +558,18 @@ COMPONENT_INIT
         le_thread_Start(le_thread_Create("TestThread",Test_thread,NULL));
 
         // Get system standard
-        le_cfg_IteratorRef_t eCallCfg = le_cfg_CreateReadTxn(configPath);
-        if (le_cfg_NodeExists(eCallCfg, CFG_NODE_SYSTEM_STD))
+        if (LE_OK != le_ecall_GetSystemStandard(&systemStandard))
         {
-            if ( le_cfg_GetString(eCallCfg,
-                                    CFG_NODE_SYSTEM_STD,
-                                    sysStr,
-                                    sizeof(sysStr),
-                                    "PAN-EUROPEAN") != LE_OK )
-            {
-                LE_WARN("No node value set for '%s' ! Use the default one (%s)",
-                        CFG_NODE_SYSTEM_STD,
-                        sysStr);
-            }
-            else if ((strncmp(sysStr, "PAN-EUROPEAN", strlen("PAN-EUROPEAN")) != 0) &&
-                        (strncmp(sysStr, "ERA-GLONASS", strlen("ERA-GLONASS")) != 0))
-            {
-                LE_WARN("Bad value set for '%s' ! Use the default one (%s)",
-                        CFG_NODE_SYSTEM_STD,
-                        sysStr);
-            }
-            if (strncmp(sysStr, "ERA-GLONASS", strlen("ERA-GLONASS")) == 0)
+            LE_FATAL("ERROR le_ecall_GetSystemStandard failed.");
+        }
+        else
+        {
+            LE_INFO("le_ecall_SetSystemStandard %d!", systemStandard);
+            if( LE_ECALL_ERA_GLONASS == systemStandard )
             {
                 isEraGlonass = true;
             }
         }
-        else
-        {
-            LE_WARN("No node value set for '%s' ! Use the default one (%s)",
-                    CFG_NODE_SYSTEM_STD,
-                    sysStr);
-        }
-        le_cfg_CancelTxn(eCallCfg);
 
         // Start Test
         LE_INFO("======== OperationMode Test  ========");
@@ -567,13 +578,13 @@ COMPONENT_INIT
         Testle_ecall_ConfigSettings();
         if (isEraGlonass)
         {
-            LE_INFO("Selected standard is %s", sysStr);
+            LE_INFO("Selected standard is ERA GLONASS");
             LE_INFO("======== EraGlonassSettings Test  ========");
             Testle_ecall_EraGlonassSettings();
         }
         else
         {
-            LE_INFO("Selected standard is %s, EraGlonassSettings test is not ran.", sysStr);
+            LE_INFO("Selected standard is PAN EUROPEAN, EraGlonassSettings test is not ran.");
         }
         LE_INFO("======== LoadMsd Test  ========");
         Testle_ecall_LoadMsd();

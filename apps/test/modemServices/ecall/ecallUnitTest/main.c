@@ -178,7 +178,7 @@ static le_sem_Ref_t         ThreadSemaphore;
 static le_sem_Ref_t         InitSemaphore;
 static le_ecall_State_t     CurrentEcallState;
 static le_ecall_CallRef_t   CurrentEcallRef = NULL;
-static le_clk_Time_t        TimeToWait = { 2, 0 };
+static le_clk_Time_t        TimeToWait = { 4, 0 };
 
 
 //--------------------------------------------------------------------------------------------------
@@ -568,6 +568,9 @@ static void Testle_ecall_ConfigSettings
     char                 psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
     le_ecall_MsdTxMode_t mode = LE_ECALL_TX_MODE_PULL;
     uint16_t             deregTime = 0;
+    le_ecall_SystemStandard_t systemStandard = LE_ECALL_ERA_GLONASS;
+    le_ecall_MsdVehicleType_t vehicleType    = LE_ECALL_MSD_VEHICLE_BUS_M2;
+    uint32_t             msdVersion = 1;
 
     LE_ASSERT(le_ecall_UseUSimNumbers() == LE_OK);
 
@@ -576,7 +579,6 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT(le_ecall_GetPsapNumber(psap, sizeof(psap)) == LE_OK);
     LE_ASSERT(strncmp(psap, "0102030405", strlen("0102030405")) == 0);
 
-
     LE_ASSERT(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) == LE_OK);
     LE_ASSERT(le_ecall_GetMsdTxMode(&mode) == LE_OK);
     LE_ASSERT(mode == LE_ECALL_TX_MODE_PUSH);
@@ -584,6 +586,35 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT(le_ecall_SetNadDeregistrationTime(180) == LE_OK);
     LE_ASSERT(le_ecall_GetNadDeregistrationTime(&deregTime) == LE_OK);
     LE_ASSERT(deregTime == 180);
+
+    LE_ASSERT((LE_OK == le_ecall_SetSystemStandard(LE_ECALL_ERA_GLONASS)));
+    systemStandard = LE_ECALL_PAN_EUROPEAN;
+    LE_ASSERT((LE_OK == le_ecall_GetSystemStandard(&systemStandard)));
+    LE_ASSERT(LE_ECALL_ERA_GLONASS == systemStandard);
+
+    LE_ASSERT((LE_OK == le_ecall_SetMsdVersion(msdVersion)));
+    msdVersion = 42;
+    LE_ASSERT((LE_OK == le_ecall_GetMsdVersion(&msdVersion)));
+    LE_ASSERT(( 1 == msdVersion  ));
+
+    LE_ASSERT((LE_OK == le_ecall_SetVehicleType(vehicleType)));
+    vehicleType = LE_ECALL_MSD_VEHICLE_PASSENGER_M1;
+    LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
+    LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
+
+    char VinSet[LE_ECALL_VIN_MAX_BYTES] = "12345678901234567";
+    char VinGet[LE_ECALL_VIN_MAX_BYTES] = { '\0' };
+    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
+
+    LE_ASSERT((LE_OK == le_ecall_GetVIN(&VinGet[0], LE_ECALL_VIN_MAX_LEN)));
+    LE_ASSERT(( 0 == strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_LEN )));
+
+    le_ecall_PropulsionTypeBitMask_t propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
+
+    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
+    propulsionType = LE_ECALL_PROPULSION_TYPE_GASOLINE;
+    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
+    LE_ASSERT( LE_ECALL_PROPULSION_TYPE_ELECTRIC == propulsionType );
 }
 
 //--------------------------------------------------------------------------------------------------
