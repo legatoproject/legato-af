@@ -222,6 +222,14 @@ static le_dls_List_t PositionHandlerList = LE_DLS_LIST_INIT;
  *
  */
 //--------------------------------------------------------------------------------------------------
+static le_gnss_PositionSample_t   lastPositionSample;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for position samples.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   PositionSamplePoolRef;
 
 //--------------------------------------------------------------------------------------------------
@@ -484,6 +492,110 @@ static void PaNmeaHandler
     le_mem_Release(nmeaPtr);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Fills in the position sample data by parsing the PA position data report.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetPosSampleData
+(
+    le_gnss_PositionSample_t* posSampleDataPtr,  // [OUT] Pointer to the position sample report.
+    pa_Gnss_Position_t* paPosDataPtr             // [IN] The PA position data report.
+)
+{
+    uint8_t i;
+
+    // Position information
+    posSampleDataPtr->fixState = paPosDataPtr->fixState;
+    posSampleDataPtr->latitudeValid = paPosDataPtr->latitudeValid;
+    posSampleDataPtr->latitude = paPosDataPtr->latitude;
+    posSampleDataPtr->longitudeValid = paPosDataPtr->longitudeValid;
+    posSampleDataPtr->longitude = paPosDataPtr->longitude;
+    posSampleDataPtr->hAccuracyValid = paPosDataPtr->hUncertaintyValid;
+    posSampleDataPtr->hAccuracy = paPosDataPtr->hUncertainty;
+    posSampleDataPtr->altitudeValid = paPosDataPtr->altitudeValid;
+    posSampleDataPtr->altitude = paPosDataPtr->altitude;
+    posSampleDataPtr->vAccuracyValid = paPosDataPtr->vUncertaintyValid;
+    posSampleDataPtr->vAccuracy = paPosDataPtr->vUncertainty;
+    posSampleDataPtr->hSpeedValid = paPosDataPtr->hSpeedValid;
+    posSampleDataPtr->hSpeed = paPosDataPtr->hSpeed;
+    posSampleDataPtr->hSpeedAccuracyValid = paPosDataPtr->hSpeedUncertaintyValid;
+    posSampleDataPtr->hSpeedAccuracy = paPosDataPtr->hSpeedUncertainty;
+    posSampleDataPtr->vSpeedValid = paPosDataPtr->vSpeedValid;
+    posSampleDataPtr->vSpeed = paPosDataPtr->vSpeed;
+    posSampleDataPtr->vSpeedAccuracyValid = paPosDataPtr->vSpeedUncertaintyValid;
+    posSampleDataPtr->vSpeedAccuracy = paPosDataPtr->vSpeedUncertainty;
+    posSampleDataPtr->directionValid = paPosDataPtr->directionValid;
+    posSampleDataPtr->direction = paPosDataPtr->direction;
+    posSampleDataPtr->directionAccuracyValid = paPosDataPtr->directionUncertaintyValid;
+    posSampleDataPtr->directionAccuracy = paPosDataPtr->directionUncertainty;
+    // Date
+    posSampleDataPtr->dateValid = paPosDataPtr->dateValid;
+    posSampleDataPtr->year = paPosDataPtr->date.year;
+    posSampleDataPtr->month = paPosDataPtr->date.month;
+    posSampleDataPtr->day = paPosDataPtr->date.day;
+    // UTC time
+    posSampleDataPtr->timeValid = paPosDataPtr->timeValid;
+    posSampleDataPtr->hours = paPosDataPtr->time.hours;
+    posSampleDataPtr->minutes = paPosDataPtr->time.minutes;
+    posSampleDataPtr->seconds = paPosDataPtr->time.seconds;
+    posSampleDataPtr->milliseconds = paPosDataPtr->time.milliseconds;
+    // GPS time
+    posSampleDataPtr->gpsTimeValid = paPosDataPtr->gpsTimeValid;
+    posSampleDataPtr->gpsWeek = paPosDataPtr->gpsWeek;
+    posSampleDataPtr->gpsTimeOfWeek = paPosDataPtr->gpsTimeOfWeek;
+    // Time accuracy
+    posSampleDataPtr->timeAccuracyValid = paPosDataPtr->timeAccuracyValid;
+    posSampleDataPtr->timeAccuracy = paPosDataPtr->timeAccuracy;
+
+    // Position measurement latency
+    posSampleDataPtr->positionLatencyValid = paPosDataPtr->positionLatencyValid;
+    posSampleDataPtr->positionLatency = paPosDataPtr->positionLatency;
+
+    // DOP parameters
+    posSampleDataPtr->hdopValid = paPosDataPtr->hdopValid;
+    posSampleDataPtr->hdop = paPosDataPtr->hdop;
+    posSampleDataPtr->vdopValid = paPosDataPtr->vdopValid;
+    posSampleDataPtr->vdop = paPosDataPtr->vdop;
+    posSampleDataPtr->pdopValid = paPosDataPtr->pdopValid;
+    posSampleDataPtr->pdop = paPosDataPtr->pdop;
+    // Satellites information
+    posSampleDataPtr->satsInViewCountValid = paPosDataPtr->satsInViewCountValid;
+    posSampleDataPtr->satsInViewCount = paPosDataPtr->satsInViewCount;
+    posSampleDataPtr->satsTrackingCountValid = paPosDataPtr->satsTrackingCountValid;
+    posSampleDataPtr->satsTrackingCount = paPosDataPtr->satsTrackingCount;
+    posSampleDataPtr->satsUsedCountValid = paPosDataPtr->satsUsedCountValid;
+    posSampleDataPtr->satsUsedCount = paPosDataPtr->satsUsedCount;
+    posSampleDataPtr->satInfoValid = paPosDataPtr->satInfoValid;
+    for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
+    {
+        posSampleDataPtr->satInfo[i].satId = paPosDataPtr->satInfo[i].satId;
+        posSampleDataPtr->satInfo[i].satConst = paPosDataPtr->satInfo[i].satConst;
+        posSampleDataPtr->satInfo[i].satUsed = paPosDataPtr->satInfo[i].satUsed;
+        posSampleDataPtr->satInfo[i].satSnr = paPosDataPtr->satInfo[i].satSnr;
+        posSampleDataPtr->satInfo[i].satAzim = paPosDataPtr->satInfo[i].satAzim;
+        posSampleDataPtr->satInfo[i].satElev = paPosDataPtr->satInfo[i].satElev;
+    }
+
+    // Satellite latency measurement
+    posSampleDataPtr->satMeasValid = paPosDataPtr->satMeasValid;
+    for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
+    {
+        posSampleDataPtr->satMeas[i].satId = paPosDataPtr->satMeas[i].satId;
+        posSampleDataPtr->satMeas[i].satLatency = paPosDataPtr->satMeas[i].satLatency;
+    }
+
+    // Node Link
+    posSampleDataPtr->link = LE_DLS_LINK_INIT;
+
+    return;
+}
+
 //--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
@@ -554,6 +666,9 @@ le_result_t gnss_Init
     NumOfPositionHandlers = 0;
     PaHandlerRef = NULL;
 
+    // Initialize last Position sample
+    memset(&lastPositionSample, 0, sizeof(lastPositionSample) );
+    lastPositionSample.fixState = LE_GNSS_STATE_FIX_NO_POS;
 
     // NMEA pipe management
     // Get information from NMEA device file
@@ -616,99 +731,23 @@ static void PaPositionHandler
 
     LE_DEBUG("Handler Function called with PA position %p", positionPtr);
 
+    // Get the position sample data from the PA position data report
+    GetPosSampleData(&lastPositionSample, positionPtr);
+
     linkPtr = le_dls_Peek(&PositionHandlerList);
     if (linkPtr != NULL)
     {
         // Create the position sample node.
         positionSampleNodePtr =
                     (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
-        /* Copy GNSS information to the sample node */
-        positionSampleNodePtr->fixState = positionPtr->fixState;
-        positionSampleNodePtr->latitudeValid = positionPtr->latitudeValid;
-        positionSampleNodePtr->latitude = positionPtr->latitude;
-        positionSampleNodePtr->longitudeValid = positionPtr->longitudeValid;
-        positionSampleNodePtr->longitude = positionPtr->longitude;
-        positionSampleNodePtr->hAccuracyValid = positionPtr->hUncertaintyValid;
-        positionSampleNodePtr->hAccuracy = positionPtr->hUncertainty;
-        positionSampleNodePtr->altitudeValid = positionPtr->altitudeValid;
-        positionSampleNodePtr->altitude = positionPtr->altitude;
-        positionSampleNodePtr->vAccuracyValid = positionPtr->vUncertaintyValid;
-        positionSampleNodePtr->vAccuracy = positionPtr->vUncertainty;
-        positionSampleNodePtr->hSpeedValid = positionPtr->hSpeedValid;
-        positionSampleNodePtr->hSpeed = positionPtr->hSpeed;
-        positionSampleNodePtr->hSpeedAccuracyValid = positionPtr->hSpeedUncertaintyValid;
-        positionSampleNodePtr->hSpeedAccuracy = positionPtr->hSpeedUncertainty;
-        positionSampleNodePtr->vSpeedValid = positionPtr->vSpeedValid;
-        positionSampleNodePtr->vSpeed = positionPtr->vSpeed;
-        positionSampleNodePtr->vSpeedAccuracyValid = positionPtr->vSpeedUncertaintyValid;
-        positionSampleNodePtr->vSpeedAccuracy = positionPtr->vSpeedUncertainty;
-        positionSampleNodePtr->directionValid = positionPtr->directionValid;
-        positionSampleNodePtr->direction = positionPtr->heading;
-        positionSampleNodePtr->directionAccuracyValid = positionPtr->headingUncertaintyValid;
-        positionSampleNodePtr->directionAccuracy = positionPtr->directionUncertainty;
-        // Date
-        positionSampleNodePtr->dateValid = positionPtr->dateValid;
-        positionSampleNodePtr->year = positionPtr->date.year;
-        positionSampleNodePtr->month = positionPtr->date.month;
-        positionSampleNodePtr->day = positionPtr->date.day;
-        // UTC time
-        positionSampleNodePtr->timeValid = positionPtr->timeValid;
-        positionSampleNodePtr->hours = positionPtr->time.hours;
-        positionSampleNodePtr->minutes = positionPtr->time.minutes;
-        positionSampleNodePtr->seconds = positionPtr->time.seconds;
-        positionSampleNodePtr->milliseconds = positionPtr->time.milliseconds;
-        // GPS time
-        positionSampleNodePtr->gpsTimeValid = positionPtr->gpsTimeValid;
-        positionSampleNodePtr->gpsWeek = positionPtr->gpsWeek;
-        positionSampleNodePtr->gpsTimeOfWeek = positionPtr->gpsTimeOfWeek;
-        // Time accuracy
-        positionSampleNodePtr->timeAccuracyValid = positionPtr->timeAccuracyValid;
-        positionSampleNodePtr->timeAccuracy = positionPtr->timeAccuracy;
 
-        // Position measurement latency
-        positionSampleNodePtr->positionLatencyValid = positionPtr->positionLatencyValid;
-        positionSampleNodePtr->positionLatency = positionPtr->positionLatency;
-
-        // DOP parameters
-        positionSampleNodePtr->hdopValid = positionPtr->hdopValid;
-        positionSampleNodePtr->hdop = positionPtr->hdop;
-        positionSampleNodePtr->vdopValid = positionPtr->vdopValid;
-        positionSampleNodePtr->vdop = positionPtr->vdop;
-        positionSampleNodePtr->pdopValid = positionPtr->pdopValid;
-        positionSampleNodePtr->pdop = positionPtr->pdop;
-        // Satellites information
-        positionSampleNodePtr->satsInViewCountValid = positionPtr->satsInViewCountValid;
-        positionSampleNodePtr->satsInViewCount = positionPtr->satsInViewCount;
-        positionSampleNodePtr->satsTrackingCountValid = positionPtr->satsTrackingCountValid;
-        positionSampleNodePtr->satsTrackingCount = positionPtr->satsTrackingCount;
-        positionSampleNodePtr->satsUsedCountValid = positionPtr->satsUsedCountValid;
-        positionSampleNodePtr->satsUsedCount = positionPtr->satsUsedCount;
-        positionSampleNodePtr->satInfoValid = positionPtr->satInfoValid;
-        for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
-        {
-            positionSampleNodePtr->satInfo[i].satId = positionPtr->satInfo[i].satId;
-            positionSampleNodePtr->satInfo[i].satConst = positionPtr->satInfo[i].satConst;
-            positionSampleNodePtr->satInfo[i].satUsed = positionPtr->satInfo[i].satUsed;
-            positionSampleNodePtr->satInfo[i].satSnr = positionPtr->satInfo[i].satSnr;
-            positionSampleNodePtr->satInfo[i].satAzim = positionPtr->satInfo[i].satAzim;
-            positionSampleNodePtr->satInfo[i].satElev = positionPtr->satInfo[i].satElev;
-        }
-
-        // Satellite latency measurement
-        positionSampleNodePtr->satMeasValid = positionPtr->satMeasValid;
-        for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
-        {
-            positionSampleNodePtr->satMeas[i].satId = positionPtr->satMeas[i].satId;
-            positionSampleNodePtr->satMeas[i].satLatency = positionPtr->satMeas[i].satLatency;
-        }
-
-        // Node Link
-        positionSampleNodePtr->link = LE_DLS_LINK_INIT;
+        // Copy the position sample to the position sample node
+        memcpy(positionSampleNodePtr, &lastPositionSample, sizeof(le_gnss_PositionSample_t));
 
         // Add the node to the queue of the list by passing in the node's link.
         le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
 
-                    // Add reference for each subscribed handler
+        // Add reference for each subscribed handler
         for(i=0 ; i<NumOfPositionHandlers-1 ; i++)
         {
             le_mem_AddRef((void *)positionSampleNodePtr);
@@ -899,7 +938,7 @@ le_result_t le_gnss_GetPositionState
  *    Latitude +48858300 = 48.858300 degrees North
  *    Longitude +2294400 = 2.294400 degrees East
  *
- * @note Altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -921,7 +960,7 @@ le_result_t le_gnss_GetLocation
 
     int32_t* hAccuracyPtr
         ///< [OUT]
-        ///< Horizontal position's accuracy in metres [resolution 1e-2].
+        ///< Horizontal position's accuracy in meters [resolution 1e-2].
 )
 {
     le_result_t result = LE_OK;
@@ -983,7 +1022,7 @@ le_result_t le_gnss_GetLocation
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note Altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1003,7 +1042,7 @@ le_result_t le_gnss_GetAltitude
 
     int32_t* vAccuracyPtr
         ///< [OUT]
-        ///< Vertical position's accuracy in metres [resolution 1e-1].
+        ///< Vertical position's accuracy in meters [resolution 1e-1].
 )
 {
     le_result_t result = LE_OK;
@@ -2062,6 +2101,38 @@ le_result_t le_gnss_GetSatellitesLatency
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the last updated position sample object reference.
+ *
+ * @return A reference to last Position's sample.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+le_gnss_SampleRef_t le_gnss_GetLastSampleRef
+(
+    void
+)
+{
+    le_gnss_PositionSample_t*   positionSampleNodePtr=NULL;
+
+    // Create the position sample node.
+    positionSampleNodePtr = (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
+
+    // Copy the position sample to the position sample node
+    memcpy(positionSampleNodePtr, &lastPositionSample, sizeof(le_gnss_PositionSample_t));
+
+    // Add the node to the queue of the list by passing in the node's link.
+    le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
+
+    LE_DEBUG("Get sample %p", positionSampleNodePtr);
+
+    // Create a safe reference and call the client's handler
+    return le_ref_CreateRef(PositionSampleMap, positionSampleNodePtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

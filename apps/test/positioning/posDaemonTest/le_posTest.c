@@ -171,8 +171,8 @@ void Testle_pos_Fix()
     int32_t     hAccuracy;
     int32_t     vAccuracy;
     uint32_t    hSpeed;
+    uint32_t    hSpeedAccuracy;
     int32_t     vSpeed;
-    int32_t     hSpeedAccuracy;
     int32_t     vSpeedAccuracy;
     int32_t     heading;
     int32_t     headingAccuracy=0;

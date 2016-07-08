@@ -155,10 +155,6 @@ typedef struct {
     uint32_t           vSpeedUncertainty;  ///< The vertical speed uncertainty in m/sec,
                                            ///  with 1 decimal place
 
-    bool               headingUncertaintyValid;     ///< if true, heading uncertainty is set
-    uint32_t           headingUncertainty;          ///< The heading uncertainty in degrees,
-                                                    /// with 1 decimal place
-
     bool               directionUncertaintyValid;   ///< if true, direction uncertainty is set
     uint32_t           directionUncertainty;        ///< The direction uncertainty in degrees,
                                                     ///  with 1 decimal place

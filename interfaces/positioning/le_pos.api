@@ -30,7 +30,7 @@
  *
  * - latitude is in degrees, positive North.
  * - longitude is in degrees, positive East.
- * - horizontal accuracy is in metres.
+ * - horizontal accuracy is in meters.
  *
  * The latitude and longitude are given in degrees with 6 decimal places like:
  * - Latitude +48858300  = 48.858300 degrees North
@@ -38,8 +38,8 @@
  *
  * The @c le_pos_Get3DLocation() function gets the last updated latitude, longitude,
  * altitude and their associated accuracy values.
- * - altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
- * - horizontal and vertical accuracies are in metres.
+ * - altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
+ * - horizontal and vertical accuracies are in meters.
  *
  * The @c le_pos_GetTime() function gets the time of last updated position:
  * - Hours into the day [range 0..23].
@@ -71,7 +71,7 @@
  * @section le_pos_navigation Navigation
  * To be notified when the device is in motion, you must register an handler function
  * to get the new position's data. The @c le_pos_AddMovementHandler() API registers
- * that handler. The horizontal and vertical change is measured in metres so only movement over
+ * that handler. The horizontal and vertical change is measured in meters so only movement over
  * the threshhold will trigger notification (0 means we don't care about changes).
  *
  * The handler will give a reference to the position sample object that has triggered the
@@ -125,10 +125,10 @@
  * @verbatim
    /
        positioning/
-           acquisitionRate<int> == 5
+           acquisitionRate<int> == 5000
    @endverbatim
  *
- *  - 'acquisitionRate' is the fix acquisition rate in seconds.
+ *  - 'acquisitionRate' is the fix acquisition rate in milliseconds.
  *
  * @note
  *  If there is no configuration for 'acquisitionRate', it will be automatically set to 5 seconds.
@@ -170,10 +170,10 @@ HANDLER MovementHandler
 //--------------------------------------------------------------------------------------------------
 EVENT Movement
 (
-    uint32 horizontalMagnitude IN, ///< Horizontal magnitude in metres.
+    uint32 horizontalMagnitude IN, ///< Horizontal magnitude in meters.
                                    ///<       0 means that I don't care about
                                    ///<      changes in the latitude and longitude.
-    uint32 verticalMagnitude IN,   ///< Vertical magnitude in metres.
+    uint32 verticalMagnitude IN,   ///< Vertical magnitude in meters.
                                    ///<       0 means that I don't care about
                                    ///<       changes in the altitude.
     MovementHandler handler
@@ -193,9 +193,9 @@ EVENT Movement
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Get2DLocation
 (
-    int32 latitude OUT,     ///< Latitude in degrees, positive North.
-    int32 longitude OUT,    ///< Longitude in degrees, positive East.
-    int32 hAccuracy OUT     ///< Horizontal position's accuracy in metres.
+    int32 latitude OUT,     ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
+    int32 longitude OUT,    ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
+    int32 hAccuracy OUT     ///< Horizontal position's accuracy in meters.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -213,11 +213,11 @@ FUNCTION le_result_t Get2DLocation
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Get3DLocation
 (
-    int32 latitude OUT,     ///< Latitude in degrees, positive North.
-    int32 longitude OUT,    ///< Longitude in degrees, positive East.
-    int32 hAccuracy OUT,    ///< Horizontal position's accuracy in metres.
+    int32 latitude OUT,     ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
+    int32 longitude OUT,    ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
+    int32 hAccuracy OUT,    ///< Horizontal position's accuracy in meters.
     int32 altitude OUT,     ///< Altitude in meters, above Mean Sea Level.
-    int32 vAccuracy OUT     ///< Vertical position's accuracy in metres.
+    int32 vAccuracy OUT     ///< Vertical position's accuracy in meters.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -270,7 +270,7 @@ FUNCTION le_result_t GetDate
 FUNCTION le_result_t GetMotion
 (
     uint32 hSpeedPtr OUT,           ///< Horizontal Speed in m/sec.
-    int32 hSpeedAccuracyPtr OUT,    ///< Horizontal Speed's accuracy in m/sec.
+    uint32 hSpeedAccuracyPtr OUT,   ///< Horizontal Speed's accuracy in m/sec.
     int32 vSpeedPtr OUT,            ///< Vertical Speed in m/sec, positive up.
     int32 vSpeedAccuracyPtr OUT     ///< Vertical Speed's accuracy in m/sec.
 );
@@ -307,9 +307,8 @@ FUNCTION le_result_t GetHeading
 FUNCTION le_result_t GetDirection
 (
     int32 direction OUT,            ///< Direction indication in degrees (where 0 is True North).
-    int32 directionAccuracy OUT     ///< Direction's accuracy in degrees.
+    int32 directionAccuracy OUT     ///< Direction's accuracy estimate in degrees.
 );
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -328,10 +327,10 @@ FUNCTION le_result_t GetDirection
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t sample_Get2DLocation
 (
-    Sample positionSampleRef,           ///< Position sample's reference.
-    int32 latitude OUT,                 ///< Latitude in degrees.
-    int32 longitude OUT,                ///< Longitude in degrees.
-    int32 horizontalAccuracy OUT        ///< Horizontal's accuracy estimate in metres.
+    Sample positionSampleRef,     ///< Position sample's reference.
+    int32 latitude OUT,           ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
+    int32 longitude OUT,          ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
+    int32 horizontalAccuracy OUT  ///< Horizontal position's accuracy in meters.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -388,8 +387,8 @@ FUNCTION le_result_t sample_GetDate
 FUNCTION le_result_t sample_GetAltitude
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    int32 altitude OUT,                 ///< Altitude in meters.
-    int32 altitudeAccuracy OUT          ///< Altitude's accuracy estimate in metres.
+    int32 altitude OUT,                 ///< Altitude in meters, above Mean Sea Level.
+    int32 altitudeAccuracy OUT          ///< Vertical position's accuracy in meters.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -409,8 +408,8 @@ FUNCTION le_result_t sample_GetAltitude
 FUNCTION le_result_t sample_GetHorizontalSpeed
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    uint32 hspeed OUT,                  ///< Horizontal speed.
-    int32 hspeedAccuracy OUT            ///< Horizontal speed's accuracy estimate.
+    uint32 hSpeed OUT,                  ///< The Horizontal Speed in m/sec.
+    int32 hSpeedAccuracy OUT            ///< The Horizontal Speed's accuracy in m/sec.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -430,8 +429,8 @@ FUNCTION le_result_t sample_GetHorizontalSpeed
 FUNCTION le_result_t sample_GetVerticalSpeed
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    int32 vspeed OUT,                   ///< Vertical speed.
-    int32 vspeedAccuracy OUT            ///< Vertical speed's accuracy estimate.
+    int32 vspeed OUT,                   ///< The Vertical Speed in m/sec, positive up.
+    int32 vspeedAccuracy OUT            ///< The Vertical Speed's accuracy in m/sec.
 );
 
 

@@ -753,7 +753,7 @@ FUNCTION le_result_t GetPositionState
  *    Latitude +48858300 = 48.858300 degrees North
  *    Longitude +2294400 = 2.294400 degrees East
  *
- * @note Altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -764,7 +764,7 @@ FUNCTION le_result_t GetLocation
     Sample positionSampleRef IN, ///< Position sample's reference.
     int32 latitude OUT,          ///< WGS84 Latitude in degrees, positive North [resolution 1e-6].
     int32 longitude OUT,         ///< WGS84 Longitude in degrees, positive East [resolution 1e-6].
-    int32 hAccuracy OUT          ///< Horizontal position's accuracy in metres [resolution 1e-2].
+    int32 hAccuracy OUT          ///< Horizontal position's accuracy in meters [resolution 1e-2].
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -776,7 +776,7 @@ FUNCTION le_result_t GetLocation
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note Altitude is in metres, above Mean Sea Level, with 3 decimal places (3047 = 3.047 metres).
+ * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
  *
  * @note For a 2D position fix, the altitude will be indicated as invalid and set to INT32_MAX
  *
@@ -789,8 +789,8 @@ FUNCTION le_result_t GetLocation
 FUNCTION le_result_t GetAltitude
 (
     Sample positionSampleRef  IN,   ///< Position sample's reference.
-    int32 altitude OUT,             ///< Altitude in metres, above Mean Sea Level [resolution 1e-3].
-    int32 vAccuracy OUT             ///< Vertical position's accuracy in metres [resolution 1e-1].
+    int32 altitude OUT,             ///< Altitude in meters, above Mean Sea Level [resolution 1e-3].
+    int32 vAccuracy OUT             ///< Vertical position's accuracy in meters [resolution 1e-1].
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -918,7 +918,8 @@ FUNCTION le_result_t GetHorizontalSpeed
 FUNCTION le_result_t GetVerticalSpeed
 (
     Sample positionSampleRef IN,         ///< Position sample's reference.
-    int32  vspeed OUT,                   ///< Vertical speed in meters/second [resolution 1e-2].
+    int32  vspeed OUT,                   ///< Vertical speed in meters/second [resolution 1e-2],
+                                         ///< positive up.
     int32  vspeedAccuracy OUT            ///< Vertical speed's accuracy estimate
                                         ///< in meters/second [resolution 1e-1].
 );
@@ -1054,6 +1055,21 @@ FUNCTION le_result_t GetSatellitesLatency
     uint16  satId[SV_INFO_MAX_LEN] OUT,      ///< Satellites in View ID number, referring
                                              ///< to NMEA standard.
     int32  latency[SV_INFO_MAX_LEN] OUT     ///< Satellites latency measure in milliseconds
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the last updated position sample object reference.
+ *
+ * @return A reference to last Position's sample.
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Sample GetLastSampleRef
+(
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -136,11 +136,11 @@ static void PositionHandlerFunction
     uint16_t vdop;
     uint16_t pdop;
     // Horizontal speed
-    uint32_t hspeed;
-    uint32_t hspeedAccuracy;
+    uint32_t hSpeed;
+    uint32_t hSpeedAccuracy;
     // Vertical speed
-    int32_t vspeed;
-    int32_t vspeedAccuracy;
+    int32_t vSpeed;
+    int32_t vSpeedAccuracy;
     // Direction
     int32_t direction;
     int32_t directionAccuracy;
@@ -154,13 +154,13 @@ static void PositionHandlerFunction
         LE_DEBUG("New Position sample %p", positionSampleRef);
     }
 
-    // Get UTC time
+    // Get UTC date
     result = le_gnss_GetDate(positionSampleRef
                             , &year
                             , &month
                             , &day);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-
+    // Get UTC time
     result = le_gnss_GetTime(positionSampleRef
                             , &hours
                             , &minutes
@@ -244,35 +244,35 @@ static void PositionHandlerFunction
 
     // Get horizontal speed
     result = le_gnss_GetHorizontalSpeed( positionSampleRef
-                            , &hspeed
-                            , &hspeedAccuracy);
+                            , &hSpeed
+                            , &hSpeedAccuracy);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
     if(result == LE_OK)
     {
         LE_INFO("hSpeed %d - Accuracy %d"
-                , hspeed/100, hspeedAccuracy/10);
+                , hSpeed/100, hSpeedAccuracy/10);
     }
     else
     {
         LE_INFO("hSpeed unknown [%d,%d]"
-                , hspeed, hspeedAccuracy);
+                , hSpeed, hSpeedAccuracy);
     }
 
     // Get vertical speed
     result = le_gnss_GetVerticalSpeed( positionSampleRef
-                            , &vspeed
-                            , &vspeedAccuracy);
+                            , &vSpeed
+                            , &vSpeedAccuracy);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
     if(result == LE_OK)
     {
         LE_INFO("vSpeed %d - Accuracy %d"
-                , vspeed/100, vspeedAccuracy/10);
+                , vSpeed/100, vSpeedAccuracy/10);
     }
     else
     {
         LE_INFO("vSpeed unknown [%d,%d]"
-                , vspeed, vspeedAccuracy);
+                , vSpeed, vSpeedAccuracy);
     }
 
     // Get direction
