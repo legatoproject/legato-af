@@ -76,22 +76,28 @@ repositories.
      Of course, each of these depends on the cross-build tool chain for that target,
      so ensure that you have the appropriate tool chain installed first.
 
-     If your toolchain is installed somewhere other than under ```/opt/swi```,
-     ensure that the appropriate environment variable is set to the path of
-     the directory containing your toolchain.
-     For example, for WP85 devices, ```WP85_TOOLCHAIN_DIR``` must be set to the path of the directory
-     that contains the file ```arm-poky-linux-gnuabi-gcc```.
+     The path to your tool chain and the prefix of the name of the tools in the tool chain
+     are specified using the xxxxxx_TOOLCHAIN_DIR and xxxxxx_TOOLCHAIN_PREFIX environment variables
+     (where xxxxxx is replaced with the target platform's ID, such as WP85).
+
+     If your toolchain is installed somewhere other than the default location under ```/opt/swi```,
+     ensure that the appropriate environment variables are set to tell the build tools where to find
+     your toolchain and what its prefix is.
+     For example, for Sierra Wireless WP85xx devices, ```WP85_TOOLCHAIN_DIR``` must be set to the
+     path of the directory that contains the file ```arm-poky-linux-gnuabi-gcc```, and
+     ```WP85_TOOLCHAIN_PREFIX``` must be set to ```arm-poky-linux-gnuabi-```.
 
      Following is a list of supported cross-build targets:
 
-Target   |  Description                    | Environment variable
-:--------|---------------------------------|:-----------------------
-  ar7    | Sierra Wireless AR755x module   | ```AR7_TOOLCHAIN_DIR```
-  ar758x | Sierra Wireless AR758x module   | ```AR758X_TOOLCHAIN_DIR```
-  ar759x | Sierra Wireless AR759x module   | ```AR759X_TOOLCHAIN_DIR```
-  ar86   | Sierra Wireless AR86xx module   | ```AR86_TOOLCHAIN_DIR```
-  wp85   | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```
-  raspi  | Raspberry Pi                    | ```RASPI_TOOLCHAIN_DIR```
+Target  |  Description                    | Environment variables
+:-------|---------------------------------|:-------------------------------------------------------
+ ar7    | Sierra Wireless AR755x module   | ```AR7_TOOLCHAIN_DIR```,```AR7_TOOLCHAIN_PREFIX```
+ ar758x | Sierra Wireless AR758x module   | ```AR758X_TOOLCHAIN_DIR```,```AR758X_TOOLCHAIN_PREFIX```
+ ar759x | Sierra Wireless AR759x module   | ```AR759X_TOOLCHAIN_DIR```,```AR759X_TOOLCHAIN_PREFIX```
+ ar86   | Sierra Wireless AR86xx module   | ```AR86_TOOLCHAIN_DIR```,```AR86_TOOLCHAIN_PREFIX```
+ wp85   | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```,```WP85_TOOLCHAIN_PREFIX```
+ wp750x | Sierra Wireless WP750x module   | ```WP750X_TOOLCHAIN_DIR```,```WP750X_TOOLCHAIN_PREFIX```
+ raspi  | Raspberry Pi                    | ```RASPI_TOOLCHAIN_DIR```,```RASPI_TOOLCHAIN_PREFIX```
 
 #### Documentation
 
@@ -117,22 +123,23 @@ Target   |  Description                    | Environment variable
    ```./bin``` - created by build system and populated with executable files that run on the development
            host (the host that ran the build).
 
-   ```./build``` - contains the results of a framework build.  Will be created by the build system.
+   ```./build``` - contains the results of the build.  Will be created by the build system.
 
-   ```./build/tools``` - contains tools that are built and then used by the build system to build
-                   other things.
+   ```./build/tools``` - contains build tools that are built and then used by the build system on
+                    the build host to build other things.
 
    ```./build/<target>``` - contains the output of a build for a specific target (e.g., ./build/wp85).
 
-   ```./cmake``` - contains CMake scripts used by the build system.
+   ```./cmake``` - contains CMake scripts used by the build system to build samples and unit tests.
 
-   ```./components``` - contains components providing various services.
+   ```./components``` - contains platform-independent components that are used in apps.
 
-   ```./framework``` - contains the source code for the Legato framework itself.
+   ```./framework``` - contains the source code for the Legato application framework itself.
 
-   ```./targetFiles``` - contains files that are for installation on target devices.
+   ```./targetFiles``` - contains some files for installation on target devices that don't need
+                    to be built.
 
-   ```./platformAdaptor``` - contains components that are adapting Legato services to a platform.
+   ```./platformAdaptor``` - contains components that are specific to certain platforms.
 
    ```./modules``` - contains other repositories that are extending Legato.
 

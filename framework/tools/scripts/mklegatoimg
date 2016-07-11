@@ -19,7 +19,7 @@ help_long_description=(
 " - -d [STAGING_DIR]: staging directory for that platform"
 " - -o [OUTPUT_DIR]: output directory where the image will be stored"
 ""
-"For ar7/ar86/wp85 targets:"
+"For ar7/ar86/wp85/wp750x targets:"
 ""
 "   This creates a partition that you can use with fwupdate or airvantage"
 "   to update the legato within your target."
@@ -278,16 +278,19 @@ CreateImg_mdm9x15() {
     SUPPORT_COMPRESSION=true
 
     case $TARGET in
-        ar7)    PID='A911' ;;
-        ar86)   PID='A911' ;;
-        wp85)   PID='Y912'
-                PAGE_SIZE=2048
-                OOB_SIZE=64
-                PEB_SIZE=128KiB ;;
+        ar7|ar86)
+            PID='A911'
+            ;;
+        wp85|wp750x)
+            PID='Y912'
+            PAGE_SIZE=2048
+            OOB_SIZE=64
+            PEB_SIZE=128KiB
+            ;;
         *)
             echo "Unknown product '$TARGET'"
             exit 1
-        ;;
+            ;;
     esac
 
     local cwe_suffix=$img_type

@@ -1,6 +1,6 @@
 /** @page  howToCustomizeUART Customize UART
 
-The topic describes how to customize a WP85 UART port so it can be configured as an
+The topic describes how to customize a WP85xx or WP750x UART port so it can be configured as an
 application serial port.
 
 @section howToCustomizeUART_syntax Syntax

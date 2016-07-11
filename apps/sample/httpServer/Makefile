@@ -1,4 +1,4 @@
-TARGETS := ar7 ar86 wp85 raspi localhost
+TARGETS := ar7 ar86 wp85 raspi localhost wp750x
 
 ifneq ($(MAKECMDGOALS),clean)
   export TOOLCHAIN_DIR := $(shell findtoolchain $(MAKECMDGOALS))

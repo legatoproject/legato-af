@@ -1,22 +1,23 @@
 # --------------------------------------------------------------------------------------------------
-# make definitions specific to Sierra Wireless AR7xxx modules.
+# make definitions specific to Sierra Wireless WP750x modules.
 #
 # Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
 # --------------------------------------------------------------------------------------------------
 
 include targetDefs.mdm9x15
 
-export TARGET := ar7
+export TARGET := wp750x
 
-ifndef AR7_TOOLCHAIN_DIR
-  $(warning AR7_TOOLCHAIN_DIR not defined.  Using default.)
-  export AR7_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) ar7 dir)
+ifndef WP750X_TOOLCHAIN_DIR
+  $(warning WP750X_TOOLCHAIN_DIR not defined.  Using default.)
+  export WP750X_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp750x dir)
+  $(warning "WP750X_TOOLCHAIN_DIR = '$(WP750X_TOOLCHAIN_DIR)'")
 endif
-ifndef AR7_TOOLCHAIN_PREFIX
-  export AR7_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) ar7 prefix)
+ifndef WP750X_TOOLCHAIN_PREFIX
+  export WP750X_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) wp750x prefix)
 endif
-export TOOLCHAIN_PREFIX = $(AR7_TOOLCHAIN_PREFIX)
-export TOOLCHAIN_DIR = $(AR7_TOOLCHAIN_DIR)
+export TOOLCHAIN_PREFIX = $(WP750X_TOOLCHAIN_PREFIX)
+export TOOLCHAIN_DIR = $(WP750X_TOOLCHAIN_DIR)
 
 export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
 export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
@@ -24,20 +25,18 @@ export LEGATO_AUDIO_PA_PCM = $(PA_DIR)/audio/pcm/alsa-intf
 export LEGATO_AUDIO_PA_AMR = $(PA_DIR)/audio/amr/opencore-amr
 export LEGATO_UTIL_PA = $(LEGATO_QMI_UTIL)
 export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
-ifeq ($(INCLUDE_ECALL),1)
-  export LEGATO_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL)
-endif
 export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
 export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
 export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
 export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
 
-
+export LEGATO_FEATURE_AVMS_CONFIG = -DLEGATO_FEATURE_AVMS_CONFIG
 export LEGATO_FEATURE_BLOCK_TRANSFER = -DLEGATO_FEATURE_BLOCK_TRANSFER
+export LEGATO_FEATURE_OBSERVE = -DLEGATO_FEATURE_OBSERVE
 
 # Audio HW settings
-MKSYS_FLAGS += -C "-DPCM_IF="SEC_AUX""
-MKSYS_FLAGS += -C "-DI2S_IF="SEC""
+MKSYS_FLAGS += -C "-DPCM_IF="AUX""
+MKSYS_FLAGS += -C "-DI2S_IF="PRI""
 MKSYS_FLAGS += -C "-DUSB_IF="AFE_PCM""
 MKSYS_FLAGS += -C "-DCODEC_IF="PRI""
 

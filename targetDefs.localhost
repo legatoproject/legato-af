@@ -17,9 +17,9 @@ endif
 export TOOLCHAIN_PREFIX :=
 
 ifeq ($(USE_CLANG),1)
-  export COMPILER_DIR := $(dir $(shell which clang))
+  export TOOLCHAIN_DIR := $(dir $(shell which clang))
 else
-  export COMPILER_DIR := $(dir $(shell which gcc))
+  export TOOLCHAIN_DIR := $(dir $(shell which gcc))
 endif
 
-$(info "Compiler Dir: ${COMPILER_DIR}")
+$(info "Compiler Dir: ${TOOLCHAIN_DIR}")

@@ -1,5 +1,5 @@
 # Define variable containing list of supported targets.
-SUPPORTED_TARGETS := localhost ar7 ar86 wp85
+SUPPORTED_TARGETS := localhost ar7 ar86 wp85 wp750x
 .PHONY: $(SUPPORTED_TARGETS)
 
 # Declare the default build goal.
@@ -10,6 +10,7 @@ default: localhost
 ar7: CC := $(AR7_TOOLCHAIN_DIR)/arm-poky-linux-gnueabi-gcc
 ar86: CC := $(AR86_TOOLCHAIN_DIR)/arm-poky-linux-gnueabi-gcc
 wp85: CC := $(WP85_TOOLCHAIN_DIR)/arm-poky-linux-gnueabi-gcc
+wp750x: CC := $(WP750X_TOOLCHAIN_DIR)/arm-poky-linux-gnueabi-gcc
 
 export CC
 
@@ -17,7 +18,7 @@ export CC
 # make again with the TARGET variable set.
 ifndef TARGET
 
-localhost ar7 ar86 wp85:
+localhost ar7 ar86 wp85 wp750x:
 	mkdir -p _build/$@
 	$(MAKE) legacy.$@ TARGET=$@
 

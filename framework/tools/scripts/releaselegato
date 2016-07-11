@@ -17,10 +17,14 @@ help_long_description=(
 "and produces a tarball."
 ""
 "Options:"
-" - -t [TARGETS]: comma-separated list of targets the package should be generated for (eg 'ar7,wp85')"
+""
+"-t TARGETS"
+"        Specify comma-separated list of targets the package should be generated for"
+"        (e.g., 'ar7,wp85').  If this option is not specified, packages will be generated"
+"        for all supported targets."
 )
 
-TARGETS="ar7,ar758x,ar759x,wp85"
+TARGETS="ar7,ar758x,ar759x,wp85,wp750x"
 
 CheckForHelp $@
 
@@ -146,15 +150,15 @@ StagePaComponent() {
 
 StageComponent   swiQmi \
                  "system/app/modemService/staging/read-only/lib/libComponent_swiQmi.so" \
-                 ar7 wp85 ar758x ar759x
+                 ar7 wp85 wp750x ar758x ar759x
 
-StagePaComponent le_pa_audio     audioService        ar7 wp85 ar759x
-StagePaComponent le_pa           modemService        ar7 wp85 ar758x ar759x
+StagePaComponent le_pa_audio     audioService        ar7 wp85 wp750x ar759x
+StagePaComponent le_pa           modemService        ar7 wp85 wp750x ar758x ar759x
 StagePaComponent le_pa_ecall     modemService        ar7 ar759x
-StagePaComponent le_pa_gnss      positioningService  ar7 wp85 ar759x
-StagePaComponent le_pa_avc       avcService          ar7 wp85
-StagePaComponent le_pa_secStore  secStore            ar7 wp85
-StagePaComponent le_pa_fwupdate  fwupdateService     ar7 wp85
+StagePaComponent le_pa_gnss      positioningService  ar7 wp85 wp750x ar759x
+StagePaComponent le_pa_avc       avcService          ar7 wp85 wp750x
+StagePaComponent le_pa_secStore  secStore            ar7 wp85 wp750x
+StagePaComponent le_pa_fwupdate  fwupdateService     ar7 wp85 wp750x
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR

@@ -4,7 +4,8 @@ This topic provides details on how to customize the USB behavior of the Legato
 Yocto distribution when working with the following Sierra Wireless devices:
 - AR755x
 - AR8652
-- WP85
+- WP85xx
+- WP750x
 
 The information is based on the USB Driver Developer Guide
 available from the <a href="http://source.sierrawireless.com/">Source</a>.

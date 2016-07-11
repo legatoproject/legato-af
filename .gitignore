@@ -16,16 +16,8 @@ _build_*
 system.sdef
 binaries
 
-# ... per target
-*.localhost
-*.ar7
-*.ar86
-*.ar758x
-*.ar759x
-*.wp85
-*.virt
+# Update pack files
 *.update
-*.uinst
 
 # Vim
 *.swp

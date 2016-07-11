@@ -3,7 +3,7 @@
 This section contains topics about frequently needed tasks:
 | Section                            | Description                                        |
 | ---------------------------------- | -------------------------------------------------- |
-| @subpage howToCustomizeUART | customize UART on WP85 module    |
+| @subpage howToCustomizeUART | customize UART on WP85 or WP75 module    |
 | @subpage howToDebug |  different ways to debug apps  |
 | @subpage howToConfigTree | info on how to manage target config tree   |
 | @subpage howToPowerMgmt | summary about how to manage device power   |

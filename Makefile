@@ -37,7 +37,7 @@
 
 # List of target devices needed by the release process:
 ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85
+  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x
 endif
 
 # List of target devices supported:
@@ -117,9 +117,9 @@ ifneq ($(MAKECMDGOALS),clean)
   include targetDefs
 
   ifeq ($(USE_CLANG),1)
-    export TARGET_CC = $(COMPILER_DIR)/$(TOOLCHAIN_PREFIX)clang
+    export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)clang
   else
-    export TARGET_CC = $(COMPILER_DIR)/$(TOOLCHAIN_PREFIX)gcc
+    export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)gcc
   endif
 
 endif
@@ -239,7 +239,7 @@ $(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
 # Depends on the build directory being there.
 # NOTE: CMake is only used to build tests and samples.
 $(foreach target,$(TARGETS),build/$(target)/Makefile):
-	export PATH=$(COMPILER_DIR):$(PATH) && \
+	export PATH=$(TOOLCHAIN_DIR):$(PATH) && \
 		cd `dirname $@` && \
 		cmake ../.. \
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
@@ -250,7 +250,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DUSE_CLANG=$(USE_CLANG) \
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
-			-DCOMPILER_DIR=$(COMPILER_DIR) \
+			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
 			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
 # Construct the staging directory with common files for embedded targets.
@@ -295,14 +295,14 @@ stage_mklegatoimg:
 .PHONY: stage_localhost
 stage_localhost:
 
-# ==== AR7, AR86 and WP85 (9x15-based Sierra Wireless modules) ====
+# ==== 9x15-based Sierra Wireless modules ====
 
 .PHONY: stage_9x15
 stage_9x15:
 	install targetFiles/shared/bin/start build/$(TARGET)/staging
 
-.PHONY: stage_ar7 stage_ar86 stage_wp85
-stage_ar7 stage_ar86 stage_wp85: stage_embedded stage_9x15 stage_mklegatoimg
+.PHONY: stage_ar7 stage_ar86 stage_wp85 stage_wp750x
+stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 stage_mklegatoimg
 
 # ==== AR758X (9x28-based Sierra Wireless modules) ====
 

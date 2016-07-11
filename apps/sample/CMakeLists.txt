@@ -41,7 +41,7 @@ add_subdirectory(shellPiping)
 add_subdirectory(lwm2mAirVantageControl)
 
 # Simple GPIO Cf3 application using GPIO Service
-if(LEGATO_TARGET MATCHES "wp85")
+if((LEGATO_TARGET MATCHES "wp85") OR (LEGATO_TARGET MATCHES "wp750x"))
     add_subdirectory(gpioCf3Demo)
 endif()
 

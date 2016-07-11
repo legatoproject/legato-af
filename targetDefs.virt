@@ -26,7 +26,7 @@ ifndef VIRT_TOOLCHAIN_PREFIX
   export VIRT_TOOLCHAIN_PREFIX := ${TOOLCHAIN_PREFIX}
 endif
 
-export COMPILER_DIR := $(VIRT_TOOLCHAIN_DIR)
+export TOOLCHAIN_DIR := $(VIRT_TOOLCHAIN_DIR)
 export TARGET := virt
 export LEGATO_AUDIO_PA := $(PA_DIR)/simu/components/le_pa_audio
 export LEGATO_MODEM_PA := $(PA_DIR)/simu/components/le_pa
