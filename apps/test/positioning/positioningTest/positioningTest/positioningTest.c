@@ -21,7 +21,7 @@ void Testle_pos_GetInfo();
 static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contextPtr)
 {
     int32_t  val, val1, accuracy;
-    uint32_t uval;
+    uint32_t uval, uAccuracy;
     // Date parameters
     uint16_t year;
     uint16_t month;
@@ -54,8 +54,8 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);
 
-    le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &accuracy);
-    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, accuracy);
+    le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
+    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetVerticalSpeed passed, vSpeed.%d, accuracy.%d", val, accuracy);
@@ -78,7 +78,7 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
 static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contextPtr)
 {
     int32_t  val, val1, accuracy;
-    uint32_t uval;
+    uint32_t uval, uAccuracy;
 
     if(positionSampleRef == NULL)
     {
@@ -95,8 +95,8 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);
 
-    le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &accuracy);
-    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, accuracy);
+    le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
+    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetVerticalSpeed passed, vSpeed.%d, accuracy.%d", val, accuracy);

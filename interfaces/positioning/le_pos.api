@@ -269,10 +269,10 @@ FUNCTION le_result_t GetDate
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetMotion
 (
-    uint32 hSpeedPtr OUT,           ///< Horizontal Speed in m/sec.
-    uint32 hSpeedAccuracyPtr OUT,   ///< Horizontal Speed's accuracy in m/sec.
-    int32 vSpeedPtr OUT,            ///< Vertical Speed in m/sec, positive up.
-    int32 vSpeedAccuracyPtr OUT     ///< Vertical Speed's accuracy in m/sec.
+    uint32 hSpeed OUT,           ///< Horizontal Speed in m/sec.
+    uint32 hSpeedAccuracy OUT,   ///< Horizontal Speed's accuracy in m/sec.
+    int32 vSpeed OUT,            ///< Vertical Speed in m/sec, positive up.
+    int32 vSpeedAccuracy OUT     ///< Vertical Speed's accuracy in m/sec.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -409,7 +409,7 @@ FUNCTION le_result_t sample_GetHorizontalSpeed
 (
     Sample positionSampleRef,           ///< Position sample's reference.
     uint32 hSpeed OUT,                  ///< The Horizontal Speed in m/sec.
-    int32 hSpeedAccuracy OUT            ///< The Horizontal Speed's accuracy in m/sec.
+    uint32 hSpeedAccuracy OUT           ///< The Horizontal Speed's accuracy in m/sec.
 );
 
 //--------------------------------------------------------------------------------------------------

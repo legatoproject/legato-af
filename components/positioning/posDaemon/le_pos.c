@@ -1368,7 +1368,7 @@ le_result_t le_pos_sample_GetHorizontalSpeed
     uint32_t* hSpeedPtr,
         ///< [OUT] The Horizontal Speed in m/sec.
 
-    int32_t* hSpeedAccuracyPtr
+    uint32_t* hSpeedAccuracyPtr
         ///< [OUT] The Horizontal Speed's accuracy in m/sec.
 )
 {
@@ -1397,7 +1397,7 @@ le_result_t le_pos_sample_GetHorizontalSpeed
         {
             *hSpeedAccuracyPtr = positionSamplePtr->hSpeedAccuracy/10; // Update resolution
         } else {
-            *hSpeedAccuracyPtr = INT32_MAX;
+            *hSpeedAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
