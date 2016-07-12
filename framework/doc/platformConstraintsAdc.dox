@@ -1,9 +1,12 @@
 /** @page platformConstraintsAdc Analog to Digital Converter
 
-The AR755x, AR8652, and WP8548 support 2 ADC.
+The AR755x and AR8652 support 2 ADCs.
 The dedicated string in le_adc_ReadValue() API are "EXT_ADC1" and "EXT_ADC2".
 
-The AR759x supports 4 ADC.
+The WP750x and WP8548 support 4 ADCs.
+The dedicated string in le_adc_ReadValue() API are "EXT_ADC0", "EXT_ADC1", "EXT_ADC2" and "EXT_ADC3".
+
+The AR758x and AR759x support 4 ADCs.
 The dedicated string in le_adc_ReadValue() API are "EXT_ADC1", "EXT_ADC2", "EXT_ADC3" and "EXT_ADC4".
 
 For all platforms, channels are externally available for general use, and by default use 1.8V
