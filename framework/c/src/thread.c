@@ -42,6 +42,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Nice level definitions for the different Legato priority levels.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LOW_PRIORITY_NICE_LEVEL         10
+#define MEDIUM_PRIORITY_NICE_LEVEL      0
+#define HIGH_PRIORITY_NICE_LEVEL        -10
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe reference map for Thread References.
  */
 //--------------------------------------------------------------------------------------------------
@@ -323,6 +333,35 @@ static void* PThreadStartRoutine
             LE_DEBUG("Set scheduling policy to SCHED_IDLE.");
         }
     }
+    else if ( (threadPtr->priority == LE_THREAD_PRIORITY_MEDIUM) ||
+              (threadPtr->priority == LE_THREAD_PRIORITY_LOW) ||
+              (threadPtr->priority == LE_THREAD_PRIORITY_HIGH) )
+    {
+        int niceLevel = MEDIUM_PRIORITY_NICE_LEVEL;
+
+        if (threadPtr->priority == LE_THREAD_PRIORITY_LOW)
+        {
+            niceLevel = LOW_PRIORITY_NICE_LEVEL;
+        }
+        else if (threadPtr->priority == LE_THREAD_PRIORITY_HIGH)
+        {
+            niceLevel = HIGH_PRIORITY_NICE_LEVEL;
+        }
+
+        // Get this thread's tid.
+        pid_t tid;
+        tid = syscall(SYS_gettid);
+
+        errno = 0;
+        if (setpriority(PRIO_PROCESS, tid, niceLevel) == -1)
+        {
+            LE_CRIT("Could not set the nice level.  %m.");
+        }
+        else
+        {
+            LE_DEBUG("Set nice level to %d.", niceLevel);
+        }
+    }
 
     // Perform thread specific init
     thread_InitThread();
@@ -380,7 +419,7 @@ static thread_Obj_t* CreateThread
         LE_CRIT("Could not set the detached state for thread '%s'.", name);
     }
 
-    threadPtr->priority = LE_THREAD_PRIORITY_NORMAL;
+    threadPtr->priority = LE_THREAD_PRIORITY_MEDIUM;
     threadPtr->isJoinable = false;
     threadPtr->state = THREAD_STATE_NEW;
     threadPtr->mainFunc = mainFunc;
@@ -430,11 +469,9 @@ static thread_Obj_t* GetCurrentThreadPtr
  * Set the scheduling policy attribute for a thread that has not yet been started.
  *
  * See 'man pthread_attr_setschedpolicy'.
- *
- * @return true if successful, false if failed.
  **/
 //--------------------------------------------------------------------------------------------------
-static bool SetSchedPolicyAttr
+static void SetSchedPolicyAttr
 (
     thread_Obj_t* threadPtr,
     int policy, ///< SCHED_OTHER, SCHED_RR or SCHED_FIFO.
@@ -449,19 +486,15 @@ static bool SetSchedPolicyAttr
     int result = pthread_attr_setschedpolicy(&(threadPtr->attr), policy);
     if (result != 0)
     {
-        LE_CRIT("Failed to set scheduling policy to %s for thread '%s' (%d: %s).",
+        LE_FATAL("Failed to set scheduling policy to %s for thread '%s' (%d: %s).",
                 policyName,
                 threadPtr->name,
                 result,
                 strerror(result));
-
-        return false;
     }
     else
     {
         LE_DEBUG("Set scheduling policy to %s for thread '%s'.", policyName, threadPtr->name);
-
-        return true;
     }
 }
 
@@ -664,35 +697,38 @@ le_result_t le_thread_SetPriority
 
     LE_FATAL_IF(threadPtr == NULL, "Invalid thread reference %p.", thread);
 
-    if (   (priority == LE_THREAD_PRIORITY_NORMAL)
+    struct sched_param param = {.sched_priority = 0};
+
+    if (   (priority == LE_THREAD_PRIORITY_MEDIUM)
+        || (priority == LE_THREAD_PRIORITY_LOW)
+        || (priority == LE_THREAD_PRIORITY_HIGH)
         || (priority == LE_THREAD_PRIORITY_IDLE) )  // IDLE can't be set until the thread starts.
     {
-        (void)SetSchedPolicyAttr(threadPtr, SCHED_OTHER, "SCHED_OTHER");
+        SetSchedPolicyAttr(threadPtr, SCHED_OTHER, "SCHED_OTHER");
     }
     else if (   (priority >= LE_THREAD_PRIORITY_RT_LOWEST)
              && (priority <= LE_THREAD_PRIORITY_RT_HIGHEST) )
     {
         // Set the policy to a real-time policy.  Set the priority level.
-        if (SetSchedPolicyAttr(threadPtr, SCHED_RR, "SCHED_RR"))
-        {
-            struct sched_param param = {.sched_priority = priority};
+        SetSchedPolicyAttr(threadPtr, SCHED_RR, "SCHED_RR");
 
-            int result = pthread_attr_setschedparam(&(threadPtr->attr), &param);
-
-            if (result != 0)
-            {
-                LE_CRIT("Failed to set real-time priority to %d for thread '%s' (%d: %s).",
-                        priority,
-                        threadPtr->name,
-                        result,
-                        strerror(result));
-            }
-        }
+        param.sched_priority = priority - LE_THREAD_PRIORITY_RT_LOWEST + 1;
     }
     else
     {
         return LE_OUT_OF_RANGE;
     }
+
+    // Note: Scheduling priority must be set to 0 if the policy is SCHED_OTHER otherwise
+    //       pthread_create() will fail.
+    int result = pthread_attr_setschedparam(&(threadPtr->attr), &param);
+
+    LE_FATAL_IF(result != 0,
+                "Failed to set real-time priority to %d for thread '%s' (%d: %s).",
+                priority,
+                threadPtr->name,
+                result,
+                strerror(result));
 
     threadPtr->priority = priority;
 
@@ -812,6 +848,7 @@ void le_thread_Start
                                 &(threadPtr->attr),
                                 PThreadStartRoutine,
                                 threadPtr);
+
     if (result != 0)
     {
         errno = result;

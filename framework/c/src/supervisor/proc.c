@@ -450,6 +450,14 @@ le_result_t SetProcPriority
             policy = SCHED_RR;
             priority.sched_priority = level;
         }
+
+        // Set no limits for realtime processes to allow processes to increase their nice level if
+        // the change the policy to be non-realtime later.
+        // TODO: Set nice and priority limits according to configured limits.
+        struct rlimit lim = {RLIM_INFINITY, RLIM_INFINITY};
+
+        LE_ERROR_IF(prlimit(pid, RLIMIT_NICE, &lim, NULL) == -1,
+                    "Could not set nice limit.  %m.");
     }
     else if (strcmp(priorStr, "medium") != 0)
     {

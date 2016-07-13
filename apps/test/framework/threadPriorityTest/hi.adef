@@ -1,0 +1,26 @@
+// Manual test for priorities.  Check resulting priorities of threads in /proc
+
+
+//sandboxed: false
+
+executables:
+{
+    helloWorld = ( helloComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( helloWorld )
+    }
+
+    priority: medium
+}
+
+start: manual

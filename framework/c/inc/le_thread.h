@@ -194,7 +194,15 @@ typedef struct le_thread* le_thread_Ref_t;
 typedef enum
 {
     LE_THREAD_PRIORITY_IDLE = 0,    ///< Lowest priority level. Only runs when nothing else to do.
-    LE_THREAD_PRIORITY_NORMAL,      ///< Normal, non-real-time priority level. THIS IS THE DEFAULT.
+
+    LE_THREAD_PRIORITY_LOW,         ///< Low, non-realtime priority level.
+                                    ///< Low, medium, high: intended for normal processes that
+                                    ///< contend for the CPU. Processes with these priorities don't
+                                    ///< preempt each other, but their priorities affect how they're
+                                    ///< inserted into the scheduling queue (high to low).
+    LE_THREAD_PRIORITY_MEDIUM,      ///< Medium, non-real-time priority level. THIS IS THE DEFAULT.
+    LE_THREAD_PRIORITY_HIGH,        ///< High, non-real-time priority level.
+
     LE_THREAD_PRIORITY_RT_1,        ///< Real-time priority level 1.  The lowest realtime priority
                                     ///  level.
     LE_THREAD_PRIORITY_RT_2,        ///< Real-time priority level 2.
@@ -233,6 +241,15 @@ le_thread_Priority_t;
 
 #define LE_THREAD_PRIORITY_RT_LOWEST    LE_THREAD_PRIORITY_RT_1     ///< Lowest real-time priority.
 #define LE_THREAD_PRIORITY_RT_HIGHEST   LE_THREAD_PRIORITY_RT_32    ///< Highest real-time priority.
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @deprecated
+ *
+ * LE_THREAD_PRIORITY_NORMAL is deprecated, use LE_THREAD_PRIORITY_MEDIUM instead.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_THREAD_PRIORITY_NORMAL       LE_THREAD_PRIORITY_MEDIUM
 
 
 //--------------------------------------------------------------------------------------------------
