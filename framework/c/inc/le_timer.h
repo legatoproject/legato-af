@@ -150,7 +150,7 @@ typedef void (*le_timer_ExpiryHandler_t)
  * Create the timer object.
  *
  * @return
- *      Reference to the timer object.
+ *      A reference to the timer object.
  */
 //--------------------------------------------------------------------------------------------------
 le_timer_Ref_t le_timer_Create
@@ -231,8 +231,8 @@ le_result_t le_timer_SetInterval
 //--------------------------------------------------------------------------------------------------
 le_result_t le_timer_SetMsInterval
 (
-    le_timer_Ref_t timerRef,    ///< [IN] Set interval for this timer object.
-    size_t interval             ///< [IN] Timer interval in milliseconds.
+    le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object.
+    uint32_t interval            ///< [IN] Timer interval in milliseconds.
 );
 
 
@@ -253,7 +253,7 @@ le_result_t le_timer_SetMsInterval
 //--------------------------------------------------------------------------------------------------
 le_result_t le_timer_SetRepeat
 (
-    le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object.
+    le_timer_Ref_t timerRef,     ///< [IN] Set repeat count for this timer object
     uint32_t repeatCount         ///< [IN] Number of times the timer will repeat (0 = forever).
 );
 
@@ -274,7 +274,7 @@ le_result_t le_timer_SetRepeat
 //--------------------------------------------------------------------------------------------------
 le_result_t le_timer_SetContextPtr
 (
-    le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object.
+    le_timer_Ref_t timerRef,     ///< [IN] Set context pointer for this timer object
     void* contextPtr             ///< [IN] Context Pointer.
 );
 
@@ -294,7 +294,7 @@ le_result_t le_timer_SetContextPtr
 //--------------------------------------------------------------------------------------------------
 void* le_timer_GetContextPtr
 (
-    le_timer_Ref_t timerRef      ///< [IN] Set interval for this timer object.
+    le_timer_Ref_t timerRef      ///< [IN] Get context pointer for this timer object
 );
 
 
@@ -314,7 +314,7 @@ void* le_timer_GetContextPtr
 //--------------------------------------------------------------------------------------------------
 uint32_t le_timer_GetExpiryCount
 (
-    le_timer_Ref_t timerRef      ///< [IN] Set interval for this timer object.
+    le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
 );
 
 

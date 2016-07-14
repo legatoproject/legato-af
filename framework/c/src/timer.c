@@ -19,6 +19,8 @@
 
 #define DEFAULT_POOL_NAME "Default Timer Pool"
 #define DEFAULT_POOL_INITIAL_SIZE 1
+#define DEFAULT_REFMAP_NAME "Default Timer SafeRefs"
+#define DEFAULT_REFMAP_MAXSIZE 23
 
 
 //--------------------------------------------------------------------------------------------------
@@ -36,6 +38,7 @@ static size_t* TimerListChangeCountRef = &TimerListChangeCount;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t TimerMemPoolRef = NULL;
+static  le_ref_MapRef_t SafeRefMap = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -80,16 +83,20 @@ static le_log_TraceRef_t TraceRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Initialize the named timer with default values.
+ * Allocate and initialize the named timer with default values.
+ *
+ * @return
+ *      A pointer to the timer object.
  */
 //--------------------------------------------------------------------------------------------------
-static void InitTimer
+static Timer_t* CreateTimer
 (
-    Timer_t* timerPtr,               ///< [IN] The timer to initialize
     const char* nameStr              ///< [IN] Name of the timer.
 )
 {
-    le_clk_Time_t initTime = { 0, 0 };
+    Timer_t* timerPtr;
+
+    timerPtr = le_mem_ForceAlloc(TimerMemPoolRef);
 
     if (le_utf8_Copy(timerPtr->name, nameStr, sizeof(timerPtr->name), NULL) == LE_OVERFLOW)
     {
@@ -100,13 +107,17 @@ static void InitTimer
     //  - RepeatCount defaults to one-shot timer.
     //  - All other values are invalid
     timerPtr->handlerRef = NULL;
-    timerPtr->interval = initTime;
+    timerPtr->interval = (le_clk_Time_t){0, 0};
     timerPtr->repeatCount = 1;
     timerPtr->contextPtr = NULL;
     timerPtr->link = LE_DLS_LINK_INIT;
     timerPtr->isActive = false;
-    timerPtr->expiryTime = initTime;
+    timerPtr->expiryTime = (le_clk_Time_t){0, 0};
     timerPtr->expiryCount = 0;
+    timerPtr->safeRef = NULL;
+    timerPtr->safeRef = le_ref_CreateRef(SafeRefMap, timerPtr);
+
+    return timerPtr;
 }
 
 
@@ -304,8 +315,8 @@ static void RestartTimerFD
     struct itimerspec timerInterval;
 
     // Set the timer to expire at the expiry time of the given timer
-    // todo: confirm that this will still work if expiryTime is in the past, as there is a small
-    //       window that this could happen.
+    // There is a small possibility that the time set now will be slightly in the past
+    // at this point but it will just cause the timerfd to expire immediately.
     timerInterval.it_value.tv_sec = timerPtr->expiryTime.sec;
     timerInterval.it_value.tv_nsec = timerPtr->expiryTime.usec * 1000;
 
@@ -400,7 +411,7 @@ static void ProcessExpiredTimer
     // call the optional expiry handler function
     if ( expiredTimer->handlerRef != NULL )
     {
-        expiredTimer->handlerRef(expiredTimer);
+        expiredTimer->handlerRef(expiredTimer->safeRef);
     }
 }
 
@@ -527,6 +538,8 @@ void timer_Init
     TimerMemPoolRef = le_mem_CreatePool(DEFAULT_POOL_NAME, sizeof(Timer_t));
     le_mem_ExpandPool(TimerMemPoolRef, DEFAULT_POOL_INITIAL_SIZE);
 
+    SafeRefMap = le_ref_CreateMap(DEFAULT_REFMAP_NAME, DEFAULT_REFMAP_MAXSIZE);
+
     // Assume CLOCK_MONOTONIC is supported both by timerfd and clock routines.
     // Then, query O/S to see if we could use CLOCK_BOOTTIME/_ALARM.
     if (!clock_gettime(CLOCK_BOOTTIME, &tS))
@@ -641,7 +654,6 @@ void timer_DestructThread
 //  PUBLIC API FUNCTIONS
 // =============================================
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Create the timer object.
@@ -652,15 +664,14 @@ void timer_DestructThread
 //--------------------------------------------------------------------------------------------------
 le_timer_Ref_t le_timer_Create
 (
-    const char* nameStr                 ///< [IN]  Name of the timer.
+    const char* nameStr          ///< [IN]  Name of this timer for logging and debug
 )
 {
     Timer_t* newTimerPtr;
 
-    newTimerPtr = le_mem_ForceAlloc(TimerMemPoolRef);
-    InitTimer(newTimerPtr, nameStr);
+    newTimerPtr = CreateTimer(nameStr);
 
-    return newTimerPtr;
+    return newTimerPtr->safeRef;
 }
 
 
@@ -674,18 +685,19 @@ le_timer_Ref_t le_timer_Create
 //--------------------------------------------------------------------------------------------------
 void le_timer_Delete
 (
-    le_timer_Ref_t timerRef                 ///< [IN] Delete this timer object
+    le_timer_Ref_t timerRef      ///< [IN] Delete this timer object
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
     // If the timer is running, stop it first.
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         le_timer_Stop(timerRef);
     }
-
-    le_mem_Release(timerRef);
+    le_ref_DeleteRef(SafeRefMap, timerRef);
+    le_mem_Release(timerPtr);
 }
 
 
@@ -709,14 +721,15 @@ le_result_t le_timer_SetHandler
     le_timer_ExpiryHandler_t handlerRef     ///< [IN] Handler function to call on expiry
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         return LE_BUSY;
     }
 
-    timerRef->handlerRef = handlerRef;
+    timerPtr->handlerRef = handlerRef;
 
     return LE_OK;
 }
@@ -742,14 +755,15 @@ le_result_t le_timer_SetInterval
     le_clk_Time_t interval       ///< [IN] Timer interval
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         return LE_BUSY;
     }
 
-    timerRef->interval = interval;
+    timerPtr->interval = interval;
 
     return LE_OK;
 }
@@ -771,20 +785,21 @@ le_result_t le_timer_SetInterval
 //--------------------------------------------------------------------------------------------------
 le_result_t le_timer_SetMsInterval
 (
-    le_timer_Ref_t timerRef,    ///< [IN] Set interval for this timer object.
-    size_t interval             ///< [IN] Timer interval in milliseconds.
+    le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object.
+    uint32_t interval            ///< [IN] Timer interval in milliseconds.
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         return LE_BUSY;
     }
 
     time_t seconds = interval / 1000;
-    timerRef->interval.sec = seconds;
-    timerRef->interval.usec = (interval - (seconds * 1000)) * 1000;
+    timerPtr->interval.sec = seconds;
+    timerPtr->interval.usec = (interval - (seconds * 1000)) * 1000;
 
     return LE_OK;
 }
@@ -807,18 +822,19 @@ le_result_t le_timer_SetMsInterval
 //--------------------------------------------------------------------------------------------------
 le_result_t le_timer_SetRepeat
 (
-    le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object
-    uint32_t repeatCount         ///< [IN] Number of times the timer will repeat
+    le_timer_Ref_t timerRef,     ///< [IN] Set repeat count for this timer object
+    uint32_t repeatCount         ///< [IN] Number of times the timer will repeat (0 = forever).
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         return LE_BUSY;
     }
 
-    timerRef->repeatCount = repeatCount;
+    timerPtr->repeatCount = repeatCount;
 
     return LE_OK;
 }
@@ -840,18 +856,19 @@ le_result_t le_timer_SetRepeat
 //--------------------------------------------------------------------------------------------------
 le_result_t le_timer_SetContextPtr
 (
-    le_timer_Ref_t timerRef,     ///< [IN] Set interval for this timer object
+    le_timer_Ref_t timerRef,     ///< [IN] Set context pointer for this timer object
     void* contextPtr             ///< [IN] Context Pointer
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         return LE_BUSY;
     }
 
-    timerRef->contextPtr = contextPtr;
+    timerPtr->contextPtr = contextPtr;
 
     return LE_OK;
 }
@@ -872,12 +889,13 @@ le_result_t le_timer_SetContextPtr
 //--------------------------------------------------------------------------------------------------
 void* le_timer_GetContextPtr
 (
-    le_timer_Ref_t timerRef      ///< [IN] Set interval for this timer object
+    le_timer_Ref_t timerRef      ///< [IN] Get context pointer for this timer object
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    return timerRef->contextPtr;
+    return timerPtr->contextPtr;
 }
 
 
@@ -897,12 +915,13 @@ void* le_timer_GetContextPtr
 //--------------------------------------------------------------------------------------------------
 uint32_t le_timer_GetExpiryCount
 (
-    le_timer_Ref_t timerRef      ///< [IN] Set interval for this timer object
+    le_timer_Ref_t timerRef      ///< [IN] Get expiry count for this timer object
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    return timerRef->expiryCount;
+    return timerPtr->expiryCount;
 }
 
 
@@ -925,16 +944,17 @@ le_result_t le_timer_Start
     le_timer_Ref_t timerRef      ///< [IN] Start this timer object
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( timerRef->isActive )
+    if ( timerPtr->isActive )
     {
         return LE_BUSY;
     }
 
     // Timer is valid and not active; proceed with starting it.
 
-    TRACE("Starting timer '%s'", timerRef->name);
+    TRACE("Starting timer '%s'", timerPtr->name);
 
     timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
     Timer_t* firstTimerPtr;
@@ -968,9 +988,9 @@ le_result_t le_timer_Start
     }
 
     // Add the timer to the timer list. This is the only place we reset the expiry count.
-    timerRef->expiryCount = 0;
-    timerRef->expiryTime = le_clk_Add(le_clk_GetRelativeTime(), timerRef->interval);
-    AddToTimerList(&threadRecPtr->activeTimerList, timerRef);
+    timerPtr->expiryCount = 0;
+    timerPtr->expiryTime = le_clk_Add(le_clk_GetRelativeTime(), timerPtr->interval);
+    AddToTimerList(&threadRecPtr->activeTimerList, timerPtr);
     //PrintTimerList(&threadRecPtr->activeTimerList);
 
     // Get the first timer from the active list. This is needed to determine whether the timerFD
@@ -1007,9 +1027,10 @@ le_result_t le_timer_Stop
     le_timer_Ref_t timerRef      ///< [IN] Stop this timer object
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    if ( ! timerRef->isActive )
+    if ( ! timerPtr->isActive )
     {
         return LE_FAULT;
     }
@@ -1020,12 +1041,12 @@ le_result_t le_timer_Stop
 
     timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
 
-    result = RemoveFromTimerList(&threadRecPtr->activeTimerList, timerRef);
+    result = RemoveFromTimerList(&threadRecPtr->activeTimerList, timerPtr);
     if (result == LE_OK)
     {
         // If the timer was at the start of the active list, then restart the timerFD using the next
         // timer on the active list, if any.  Otherwise, stop the timerFD.
-        if (timerRef == threadRecPtr->firstTimerPtr)
+        if (timerPtr == threadRecPtr->firstTimerPtr)
         {
             TRACE("Stopping the first active timer");
             threadRecPtr->firstTimerPtr = NULL;
@@ -1063,7 +1084,8 @@ void le_timer_Restart
     le_timer_Ref_t timerRef      ///< [IN] (Re)start this timer object
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
     // Ignore the error if the timer is not currently running
     (void)le_timer_Stop(timerRef);
@@ -1086,8 +1108,9 @@ bool le_timer_IsRunning
     le_timer_Ref_t timerRef      ///< [IN] Is this timer object currently running
 )
 {
-    LE_ASSERT(timerRef != NULL);
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
 
-    return timerRef->isActive;
+    return timerPtr->isActive;
 }
 

@@ -17,7 +17,7 @@
  * Timer object.  Created by le_timer_Create().
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct le_timer
+typedef struct
 {
     // Settable attributes
     char name[LIMIT_MAX_TIMER_NAME_BYTES];   ///< The timer name
@@ -31,6 +31,7 @@ typedef struct le_timer
     bool isActive;                           ///< Is the timer active/running?
     le_clk_Time_t expiryTime;                ///< Time at which the timer should expire
     uint32_t expiryCount;                    ///< Number of times the counter has expired
+    le_timer_Ref_t safeRef;                  ///< For the API user to refer to this timer by
 }
 Timer_t;
 
@@ -50,7 +51,7 @@ typedef struct
 {
     int timerFD;                        ///< System timer used by the thread.
     le_dls_List_t activeTimerList;      ///< Linked list of running legato timers for this thread
-    le_timer_Ref_t firstTimerPtr;       ///< Pointer to the timer on the active list that is
+    Timer_t* firstTimerPtr;             ///< Pointer to the timer on the active list that is
                                         ///  associated with the currently running timerFD,
                                         ///  or NULL if there are no timers on the active list.
                                         ///  This is normally the first timer on the list.
