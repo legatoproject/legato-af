@@ -4,9 +4,8 @@ Configuration tree services provide an easy way to manage target's configuration
 
 @subpage c_config <br>
 @subpage configTreePage <br>
-@subpage c_configAdmin
-
-<HR>
+@subpage c_configAdmin <br>
+@ref howToConfigTree
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

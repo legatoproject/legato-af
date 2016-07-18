@@ -45,8 +45,6 @@ The <c>interface</c> name corresponds to the server IPC interface name.
       The @ref toolsTarget_sdir implements a @c load command that can be used to update the Service
       Directory with the latest binding configuration from the configuration tree.
 
-<hr>
-
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

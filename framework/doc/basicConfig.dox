@@ -1,12 +1,12 @@
 /** @page basicConfig Configuration
 
-This topic describes how target device configuration works in Legato.
+This topic describes how target device configuration works in Legato. We'll shorten it to 'config'
+from here on.
 
 Also see @ref howToConfigTree
 
-<HR>
 
-Device configuration data is vital for most applications. Seldom are all devices
+Device config data is vital for most apps. Seldom are all devices
 in an application identical.  Usually, there's some kind of customization on each
 device: it may be a complex set of user preferences, or it may be just a simple node name.
 Regardless of the device's customization, the device needs to be:
@@ -22,87 +22,83 @@ Regardless of the device's customization, the device needs to be:
 
 @section Tree Structure
 
-Configuration data is stored in a tree structure, where each non-leaf node can contain any number
-of child nodes, each with its own name.  At the leaves of the tree, the nodes can contain data.
+Config data is stored in a tree structure, where each non-leaf node can contain any number
+of child nodes, each with its own name. At the leaves of the tree, the nodes can contain data.
 
-This tree structure allows configuration data items to be uniquely identified using path names,
-much like file system paths, which makes it much easier to access configuration data via HTTP,
-SNMP, OMA-DM, and other protocols. It also allows the configuration database to be explored using
+This tree structure allows config data items to be uniquely identified using path names,
+much like file system paths, which makes it much easier to access config data via HTTP,
+SNMP, OMA-DM, and other protocols. It also allows the config database to be explored using
 tree walking algorithms and tools.
 
 @section Transactions
 
-Configuration data can be shared by multiple processes and threads. This can sometimes result in race conditions
+Config data can be shared by multiple processes and threads. This can sometimes result in race conditions
 that can threaten data integrity. For example, if threads A and B both use data
 fields X and Y, it could be bad if thread A interrupts thread B to read those fields just
 after thread B has updated field X and is about to update field Y to be consistent with the new
 value of field X.
 
 A possible reset or power loss may occur at any time, and we must be sure that would not
-corrupt the configuration data.  For example, if power fails just after field X
+corrupt the config data.  For example, if power fails just after field X
 has been updated, but before field Y gets updated to match the new value of field X, then the
-configuration data could be in an invalid state.  Transactions are used to prevent these
+config data could be in an invalid state. Transactions are used to prevent these
 sorts of problems.
 
-Before a change can be made to configuration data, a write transaction must be started. All
+Before a change can be made to config data, a write transaction must be started. All
 changes are made in the context of such a transaction, and when the changes are complete, the
-transaction can be "committed".  If a fault prevents the entire set of changes from being applied
+transaction can be "committed". If a fault prevents the entire set of changes from being applied
 on commit, or if the transaction is cancelled before it is committed, then none of that
 transaction's changes will be applied.
 
 Transactions can also be started for reading only.  A write transaction will be allowed to start
 while there is a read transaction in progress. But the commit process will block write transactions
-until the read transactions have finished.  This ensures that anyone reading configuration
+until the read transactions have finished.  This ensures that anyone reading config
 data fields will see only field values that are consistent.
 
 To prevent denial of service problems (either accidental or malicious), transactions have a
-limited lifetime.  If a transaction remains open for too long, it will be automatically terminated;
+limited lifetime. If a transaction remains open for too long, it will be automatically terminated;
 the configration database will drop its connection to the offending client.
 
 @section backForwardCompatibility Backward/Forward Compatibility
 
-For example,
-to support a new recurring wake-up schedule that supports waking on particular days of the
-week, the wake schedule configuration data may need to be completely re-structured.
+For example, for a new recurring wake-up schedule that supports waking on particular days of the
+week, the wake schedule config data may need to be completely re-structured.
 There are several ways to do this.
 
-One approach is to have a "configuration data upgrade" utility
-run when the new software is installed.  However, if the new software upgrades the configuration
+One approach is to have a "config data upgrade" utility
+run when the new software is installed. However, if the new software upgrades the config
 data and then fails to fully boot, and the device is forced to fall-back to the old software,
-then the old software won't be able to read its configuration data anymore.  This can be mitigated
-by keeping a complete backup copy of the configuration data prior to the software upgrade, but
+then the old software won't be able to read its config data anymore. This can be mitigated
+by keeping a complete backup copy of the config data prior to the software upgrade, but
 this either consumes space in the device's non-volatile memory or it consumes time and over-the-air
 bandwidth to make backup copies elsewhere in the network.
 
 However, the recommended approach is to:
- - have newer software understand the configuration data structure used by previous versions of
+ - have newer software understand the config data structure used by previous versions of
    the software;
- - never write to the configuration data unless settings are being changed;
- - when changing settings, write the configuration data using the newest format;
- - leave the older version of the configuration data along-side the newer version (in case of
+ - never write to the config data unless settings are being changed;
+ - when changing settings, write the config data using the newest format;
+ - leave the older version of the config data along-side the newer version (in case of
    later software "downgrade");
- - if both multiple versions of the same configuration data are found, use only the newest that is
+ - if both multiple versions of the same config data are found, use only the newest that is
    understood by the current running software.
 
-@section configChangeNotification Configuration Change Notifications
+@section configChangeNotification Config Change Notifications
 
-Sometimes, action needs to be taken whenever a configuration data field changes value.  The
-Configuration Data API allows client software to register for
-notification when changes are committed to a particular branch of the configuration tree.
+Sometimes, action needs to be taken whenever a config data field changes value. The
+@ref c_config allows client software to register for notification when changes are committed to
+a particular branch of the config tree.
 
 @section accessControl Access Control
 
-Because the behaviour of applications can be affected by the configuration data that they use,
-configuration data can be used as an attack vector for malicious software.  As a result,
-access to configuration data must be strictly controlled when there is any possibility that
+Because the behaviour of apps can be affected by the config data that they use,
+config data can be used as an attack vector for malicious software. As a result,
+access to config data must be strictly controlled when there is any possibility that
 malicious software may be allowed to run on a device.
 
-The Configuration Data system separates each applications' configration data only allowing access to its own data.
+The Config Tree system separates each apps' configration data only allowing access to its own data.
 
-@todo Document how configuration data access control lists are specified.
-
-
-<HR>
+@todo Document how config data access control lists are specified.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

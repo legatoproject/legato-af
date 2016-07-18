@@ -1,14 +1,14 @@
 /** @page howToConfigTree Manage Config Tree
 
-These topics provide some how to details on managing the target config tree:
+These topics provide how to info on managing the target config tree:
 
-@subpage howToConfigTreeImportExport <br>
 @subpage howToConfigTreeTransactions <br>
-@subpage howToConfigTreeSchema
+@subpage howToConfigTreeSchema <br>
+@subpage howToConfigTreeImportExport <br>
+@subpage howToConfigTreeUpdate
 
 There's also some @ref basicConfig "background" info.
-
- <HR>
+Here are the @ref legatoServicesConfigTree APIs
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

@@ -80,8 +80,11 @@ of the @c .sdef file.
 
 @section howToSystemUpdate_maintainConfig Maintain Config Settings
 
-This is how to maintain system config settings outside of the /apps and /users branches of the
-config tree:
+If you use the @ref c_update API to update Legato, target device config trees are automatically
+inherited.
+
+If you need to maintain system config settings outside of the /apps and /users branches of the
+config tree, do this:
 
 - Copy old system configuration into new system.
 - Import application configuration settings into “/apps” node (which destroys old apps config).

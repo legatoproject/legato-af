@@ -2,13 +2,18 @@
 /**
  * @page c_config Config Tree API
  *
- * @ref le_cfg_interface.h "API Reference"
+ * @ref le_cfg_interface.h "API Reference" <br>
+ * @ref howToConfigTree
  *
  * <HR>
  *
  * The Config Tree API is used by apps to read and write their specific configurations.
  * Each app is given an isolated tree. The system utilities
  * store their configuration in the @c root tree.
+ * Trees are created when they are first accessed by a user or component/process etc.
+ * Apps automatically get read access to a tree with the same name as the app.
+ * Apps can also be granted read or write access to any other tree with any other name (e.g., a tree
+ * named @c foo can be shared with @e appA and @e appB).
  *
  * Paths in the tree look like traditional Unix style paths like this:
  *
@@ -235,6 +240,8 @@
  * @note Because each read is independant, there's no guarantee of
  * consistency between them. If another process changes one of the values while you
  * read/write the other, the two values could be read out of sync.
+ *
+ * You'll also need to set @ref howToConfigTree_nonTxn.
  *
  * <HR>
  *
