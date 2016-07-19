@@ -1611,7 +1611,7 @@ int main
                 // sandboxed apps were created.
                 fs_TryLazyUmount(CurrentSystemDir);
 
-                if (GetStatus("current", NULL) == STATUS_BAD)
+                if (GetStatus("current", NULL) != STATUS_GOOD)
                 {
                     RecursiveDelete(CurrentSystemDir);
                 }
