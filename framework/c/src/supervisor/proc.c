@@ -353,6 +353,22 @@ void proc_Delete
     // Delete arguments override list.
     proc_ClearArgs(procRef);
 
+    // Close any open file descriptors.
+    if (procRef->stdInFd != -1)
+    {
+        fd_Close(procRef->stdInFd);
+    }
+
+    if (procRef->stdOutFd != -1)
+    {
+        fd_Close(procRef->stdOutFd);
+    }
+
+    if (procRef->stdErrFd != -1)
+    {
+        fd_Close(procRef->stdErrFd);
+    }
+
     // Delete priority override string.
     if (procRef->priorityPtr != NULL)
     {
