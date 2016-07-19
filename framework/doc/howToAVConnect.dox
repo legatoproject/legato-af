@@ -45,8 +45,6 @@ Check device status on the AirVantage Server:
 The `Last seen` field should be updated with a recent date.
 You can also see the initial data exchange in the Timeline screen.
 
-<HR>
-
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/

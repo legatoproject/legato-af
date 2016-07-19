@@ -13,7 +13,7 @@
  * Data is setup as @b assets &mdash;  a collection of fields that can be managed by the AirVantage
  * server.
  *
- * An asset field is a single piece of information that can be managed by the Air Vantage server.
+ * An asset field is a single piece of information that can be managed by the AirVantage server.
  * There can be multiple fields in an asset.
  *
  * A field can be:
