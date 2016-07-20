@@ -172,7 +172,7 @@ DEFINE CMD_MAX_BYTES = (CMD_MAX_LEN + 1);
  * Maximum number of bytes in an AT Command response (not including the null-terminator).
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE CMD_RSP_MAX_LEN = 63;
+DEFINE CMD_RSP_MAX_LEN = 352;
 
 //--------------------------------------------------------------------------------------------------
 /**
