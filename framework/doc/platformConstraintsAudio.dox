@@ -1,6 +1,6 @@
 /** @page platformConstraintsAudio Audio
 
-Audio functions are constrained by the following platform limitations for AR755x, AR8652, and WP8548.
+@ref c_audio "Audio" functions are constrained by the following platform limitations for AR755x, AR8652, and WP8548.
 
 <b>Possible audio connections:</b>
 
