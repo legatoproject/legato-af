@@ -17,7 +17,7 @@ $ sudo apt-get install vim expect-dev build-essential cmake coreutils curl \
 ```
 
   - Cross-build toolchain(s)
-    For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/
+    For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/resources/legato/downloads/
 
 #### Clone from GitHub
 
@@ -32,7 +32,7 @@ repositories.
     ```
     OR
     ```
-    $ curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo```
+    $ curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
     $ chmod a+x ~/bin/repo
     ```
 
