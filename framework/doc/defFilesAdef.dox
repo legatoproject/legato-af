@@ -197,14 +197,14 @@ processes:
 @endcode
 
 @note If a component is included in an @ref defFilesAdef_executables "executable", then
-it is not necessary to include that component in a @c components: section.
+it isn't necessary to include that component in a @c components: section.
 
 @section defFilesAdef_cpuShare cpuShare
 
 Specifies the relative cpu share for an app.
 
 Cpu share calculates the cpu percentage for a process relative to all other processes
-in the system.  New cgroups and processes default value of @b 1024 if not otherwise configured.
+in the system.  New cgroups and processes default value is @b 1024 if not otherwise configured.
 The actual percentage of the cpu allocated to a process is calculated like this:
 
  (share value of process) / (sum of shares from all processes contending for the cpu)
@@ -442,7 +442,7 @@ run:
 }
 @endcode
 
-If the process name is not specified, then the process will be given the same name as the
+If the process name isn't specified, then the process will be given the same name as the
 executable it's running (e.g.  @c myexe)
 
 A given executable can be launched multiple times.
@@ -530,8 +530,10 @@ will preempt a lower realtime priority (ie. rt2 would preempt rt1).
 Processes with any realtime priority will preempt processes with high, medium, low and
 idle priorities.
 
-@warning Processes with realtime priorities preempt the Legato framework processes.
-         Ensure that your design lets realtime processes relinquish the CPU appropriately.
+@warning Processes assigned realtime priorities preempt Legato framework processes.
+         Ensure that your design relinquinshes the CPU appropriately. Processes assigned a 
+         realtime priority aren't constrained by an app's cpu share even if the process later changes
+         to a non-realtime priority. This also applies to all threads the process spawns.
 
 @code
 priority: medium
@@ -616,7 +618,7 @@ If a watchdog action has not been supplied, the default action will restart the 
 Specifies the timeout length (in milliseconds) for watchdogs called by processes
 in the enclosing processes section.
 
-Once a process has called @c le_wdog_Kick(),  it's registered with
+Once a process has called @c le_wdog_Kick(), it's registered with
 the software watchdog service. If it then fails to call @c le_wdog_Kick() within the given timeout,
 the Supervisor is notified will take the action specified in @ref defFilesAdef_processWatchdogAction
 
@@ -715,7 +717,7 @@ access permission specifier:
  - <c>[r]</c> - grant read-only access
  - <c>[w]</c> - grant read and write access
 
-If access is granted to a tree, but the access mode ([r] or [w]) is not specified,
+If access is granted to a tree, but the access mode ([r] or [w]) isn't specified,
  only read permission will be granted.
 
 A special tree name "." can be used to refer to the app's own configuration data tree.
@@ -882,7 +884,7 @@ its sandbox at runtime.
 
 Each entry consists of two file system paths and a set of optional access permissions:
 
- - access permissions, readable ([r]) and/or writeable ([w]).  Executable is not allowed on device
+ - access permissions, readable ([r]) and/or writeable ([w]).  Executable isn't allowed on device
    files.  If permission values are not specified, then read-only ([r]) is the default.
 
  - path to the object in the file system outside of the app, which
@@ -952,7 +954,7 @@ Permitted content in this section is:
 
 The default is @b true.
 
-If an app is unsandboxed (app is not inside of a sandbox), it can see the target device's real root file
+If an app is unsandboxed (app isn't inside of a sandbox), it can see the target device's real root file
 system. A sandboxed app can't see the target's real root file system; a sandboxed app has a
 separate root file system, which it can't leave.
 
