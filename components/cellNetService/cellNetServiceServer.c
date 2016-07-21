@@ -42,13 +42,6 @@ static uint32_t RequestCount = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Is the Radio powered on
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsOn = false;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Safe Reference Map for the request reference
  */
 //--------------------------------------------------------------------------------------------------
@@ -250,7 +243,6 @@ static void StartCellNetTimerHandler
         result=le_mrc_GetRadioPower(&radioState);
         if ((result == LE_OK) && (radioState == LE_ON))
         {
-            IsOn = true;
             // The radio is ON, stop and delete the Timer.
             le_timer_Delete(timerRef);
 
@@ -290,7 +282,6 @@ static void StartCellularNetwork
     result=le_mrc_GetRadioPower(&radioState);
     if ((result == LE_OK) && (radioState == LE_ON))
     {
-        IsOn = true;
         // Load SIM configuration from Config DB
         le_sim_Id_t simSelected = le_sim_GetSelectedCard();
 
@@ -345,7 +336,6 @@ static void StopCellNetTimerHandler
         result=le_mrc_GetRadioPower(&radioState);
         if ((result == LE_OK) && (radioState == LE_OFF))
         {
-            IsOn = false;
             // The radio is OFF, stop and delete the Timer.
             le_timer_Delete(timerRef);
         }
@@ -373,7 +363,6 @@ static void StopCellularNetwork
     result=le_mrc_GetRadioPower(&radioState);
     if ((result == LE_OK) && (radioState == LE_OFF))
     {
-        IsOn = false;
         return;
     }
     else
@@ -405,21 +394,14 @@ static void ProcessCommand
     void* reportPtr
 )
 {
-    uint32_t command = *(uint32_t*)reportPtr;
+    uint32_t    command = *(uint32_t*)reportPtr;
 
     LE_PRINT_VALUE("%i", command);
 
     if (command == REQUEST_COMMAND)
     {
         RequestCount++;
-        if (!IsOn)
-        {
-            StartCellularNetwork();
-        }
-        else
-        {
-            SendCellNetStateEvent();
-        }
+        StartCellularNetwork();
     }
     else if (command == RELEASE_COMMAND)
     {
@@ -429,7 +411,7 @@ static void ProcessCommand
             RequestCount--;
         }
 
-        if ( (RequestCount == 0) && IsOn )
+        if (RequestCount == 0)
         {
             StopCellularNetwork();
         }
