@@ -79,7 +79,7 @@ fi
 
 case $1 in
     start|stop|restart|remove|status|version|info|list|runProc)
-        SshToTarget "$BIN_PATH/app '$@'"
+        SshToTarget "$BIN_PATH/app $@"
         ;;
     install)
         UPDATE_FILE=$2
