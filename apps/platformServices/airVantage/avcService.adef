@@ -47,5 +47,6 @@ bindings:
     avcDaemon.avcAppUpdate.le_instStat -> <root>.le_instStat
     avcDaemon.avcAppUpdate.le_sup_ctrl -> <root>.le_sup_ctrl
     avcDaemon.avcAppUpdate.le_appInfo -> <root>.le_appInfo
+    avcDaemon.avcAppUpdate.le_appRemove -> <root>.le_appRemove
     avcDaemon.avcDaemon.le_appInfo -> <root>.le_appInfo
 }

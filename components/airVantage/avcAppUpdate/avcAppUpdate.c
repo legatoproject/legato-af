@@ -15,7 +15,6 @@
 #include "../avcDaemon/assetData.h"
 #include "../avcDaemon/avcServer.h"
 #include "pa_avc.h"
-#include "exec.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1255,35 +1254,6 @@ static void AppUninstallHandler
 }
 
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Callback for when the uninstall script has completed.
- */
-//--------------------------------------------------------------------------------------------------
-static void OnUninstallCompleted
-(
-    int result,       ///< Command line result.
-    void* contextPtr  ///< Context.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    LE_DEBUG("OnUninstallCompleted");
-
-    if (result == 0)
-    {
-        LE_DEBUG("Uninstall of application completed.");
-        avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_COMPLETE, -1, LE_AVC_ERR_NONE);
-    }
-    else
-    {
-        LE_DEBUG("Uninstall of application failed.");
-        avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_FAILED, -1, LE_AVC_ERR_INTERNAL);
-    }
-}
-
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Called during an application install.
@@ -1563,14 +1533,18 @@ static void StartUninstall
     // report the status to registerd control app
     avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_IN_PROGRESS, -1, LE_AVC_ERR_NONE);
 
-    const char* command[] = { "/legato/systems/current/bin/app", "remove", appName, NULL };
-    exec_RunProcess("/legato/systems/current/bin/app",
-                    command,
-                    -1,
-                    -1,
-                    -1,
-                    OnUninstallCompleted,
-                    CurrentObj9);
+    le_result_t result = le_appRemove_Remove(appName);
+
+    if (result == LE_OK)
+    {
+        LE_DEBUG("Uninstall of application completed.");
+        avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_COMPLETE, -1, LE_AVC_ERR_NONE);
+    }
+    else
+    {
+        LE_DEBUG("Uninstall of application failed.");
+        avcServer_ReportInstallProgress(LE_AVC_UNINSTALL_FAILED, -1, LE_AVC_ERR_INTERNAL);
+    }
 }
 
 
@@ -2202,8 +2176,6 @@ static void RestoreAvcAppUpdateState
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    exec_Init();
-
     // Register our handler for update progress reports from the Update Daemon.
     le_update_AddProgressHandler(UpdateProgressHandler, NULL);
 
