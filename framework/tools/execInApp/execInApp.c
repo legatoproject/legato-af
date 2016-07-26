@@ -383,6 +383,9 @@ static bool GetFlagArg
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    printf("WARNING: This tool has been deprecated and may be removed in the future.\n");
+    printf("Please use 'app runProc' instead.\n");
+
     // Need to parse the command line args in order because the argument order have specific meanings.
     const char* appNamePtr = GetAppName();
 
