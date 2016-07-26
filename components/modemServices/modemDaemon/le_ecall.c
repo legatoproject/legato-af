@@ -96,7 +96,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumeration for eCall handler and  MCC notification synchronization timeout
+ * eCall handler and  MCC notification synchronization timeout
  */
 //--------------------------------------------------------------------------------------------------
 #define LE_ECALL_SEM_TIMEOUT_SEC         3
@@ -104,24 +104,31 @@
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Unlimited dial attempts for eCall session (used for PAN-European system)
+ */
+//--------------------------------------------------------------------------------------------------
+#define UNLIMITED_DIAL_ATTEMPTS      UINT32_MAX
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * PAN-EUROPEAN specific context.
- *
+ * Enumeration for the eCall session state
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct
+typedef enum
 {
-    bool            stopDialing;                 ///< flag indicating that no more call attempts are
-                                                 ///< possible
-    le_timer_Ref_t  remainingDialDurationTimer;  ///< the 120-second room timer within eCall is
-                                                 ///< allowed to redial the PSAP when the call has
-                                                 ///< been connected once
+    ECALL_SESSION_INIT = 0,
+    ECALL_SESSION_REQUEST,
+    ECALL_SESSION_NOT_CONNECTED,
+    ECALL_SESSION_CONNECTED,
+    ECALL_SESSION_COMPLETED,
+    ECALL_SESSION_STOPPED,
 }
-PanEuropeanContext_t;
+ECallSessionState_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -133,16 +140,68 @@ typedef struct
 {
     uint16_t        manualDialAttempts;     ///< Manual dial attempts
     uint16_t        autoDialAttempts;       ///< Automatic dial attempts
-    uint8_t         dialAttempts;           ///< generic dial attempts value
-    int8_t          dialAttemptsCount;      ///< counter of dial attempts
     uint16_t        dialDuration;           ///< Dial duration value
     uint16_t        nadDeregistrationTime;  ///< NAD deregistration time
     bool            pullModeSwitch;         ///< AL ack received positive has been reported or T7
                                             ///< timer has expired, Pull mode must be selected on
                                             ///< next redials
-    le_timer_Ref_t  dialDurationTimer;      ///< Dial duration timer
 }
 EraGlonassContext_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration for redial state
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    ECALL_REDIAL_INIT = 0,
+    ECALL_REDIAL_IDLE,
+    ECALL_REDIAL_ACTIVE,
+    ECALL_REDIAL_STOPPED
+}
+RedialState_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration for the cause stopping the redial
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    ECALL_REDIAL_STOP_COMPLETE = 0,          ///< eCall session is completed: redial stopped.
+    ECALL_REDIAL_STOP_ALACK_RECEIVED,        ///< ALACK is received: redial stopped.
+    ECALL_REDIAL_STOP_FROM_PSAP,             ///< eCall session and redial are stopped from PSAP.
+    ECALL_REDIAL_STOP_FROM_USER,             ///< eCall session and redial are stopped from user.
+    ECALL_REDIAL_STOP_NO_REDIAL_CONDITION,   ///< Redial is stopped according to the eCall
+                                             ///< standard (FprEN 16062:2014) / eCall clear-down.
+    ECALL_REDIAL_DURATION_EXPIRED,           ///< Redial duration timer expired
+    ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT       ///< Maximum attempts performed: redial stopped.
+}
+RedialStopCause_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ecall and Era-Glonass redial context
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    RedialState_t   state;                      ///< Redial state machine
+    le_timer_Ref_t  intervalTimer;              ///< Interval timer
+    le_timer_Ref_t  dialDurationTimer;          ///< Dial duration timer
+                                                ///< For panEuropean:
+                                                ///< 120 seconds when the call has been connected
+                                                ///< once
+                                                ///< For EraGlonass:
+                                                ///< 5 minutes for dial duration from the first
+                                                ///< attempt
+    int8_t          dialAttemptsCount;          ///< Counter of dial attempts
+    uint32_t        maxDialAttempts;            ///< Maximum redial attempts
+    le_clk_Time_t   startTentativeTime;         ///< Relative time of a dial tentative
+    uint16_t        intervalBetweenAttempts;    ///< Interval value between dial attempts (in sec)
+}
+RedialCtx_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -154,28 +213,14 @@ typedef struct
 {
     le_ecall_CallRef_t      ref;                                        ///< eCall reference
     char                    psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES]; ///< PSAP telephone number
-    le_ecall_State_t        state;                                      ///< eCall state
+    ECallSessionState_t     sessionState;                               ///< eCall session state
+    le_ecall_State_t        state;                                      ///< eCall state,
+                                                                        ///< as reported to the app
     bool                    isPushed;                                   ///< True if the MSD is
                                                                         /// pushed by the IVS,
                                                                         /// false if it  is sent
                                                                         /// when requested by the
                                                                         /// PSAP (pull)
-    bool                    isStarted;                                  ///< Flag indicating that
-                                                                        ///< an eCall is started.
-    bool                    isCompleted;                                ///< flag indicating
-                                                                        ///< whether the Modem
-                                                                        ///< successfully completed
-                                                                        ///< the MSD
-                                                                        ///< transmission and
-                                                                        ///< received two AL-ACKs
-    bool                    isConnected;                                ///< flag indicating whether
-                                                                        ///< a connection with PSAP
-                                                                        ///< is established
-    bool                    isSessionStopped;                           ///< Flag indicating that
-                                                                        ///< the previous session
-                                                                        ///< was manually stopped.
-    bool                    isRedialPeriod;                             ///< Redial period ongoing
-    uint32_t                maxRedialAttempts;                          ///< Maximum redial attempts
     msd_t                   msd;                                        ///< MSD
     uint8_t                 builtMsd[LE_ECALL_MSD_MAX_LEN];             ///< built MSD
     size_t                  builtMsdSize;                               ///< Size of the built MSD
@@ -184,13 +229,8 @@ typedef struct
                                                                         ///  is built thanks to
                                                                         ///  SetMsdXxx() functions
     pa_ecall_StartType_t    startType;                                  ///< eCall start type
-    PanEuropeanContext_t    panEur;                                     ///< PAN-EUROPEAN context
     EraGlonassContext_t     eraGlonass;                                 ///< ERA-GLONASS context
-    le_clk_Time_t           startTentativeTime;                         ///< relative time of a dial
-                                                                        ///< tentative
-    uint16_t                intervalBetweenAttempts;                    ///< interval value between
-                                                                        ///< dial attempts (in sec)
-    le_timer_Ref_t          intervalTimer;                              ///< interval timer
+    RedialCtx_t             redial;                                     ///< Redial context
     uint32_t                callId;                                     ///< call identifier of the
                                                                         ///< call
     le_mcc_TerminationReason_t termination;                             ///< Call termination reason
@@ -217,6 +257,14 @@ ReportState_t;
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Declaration of Dial Duration Timer handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DialDurationTimerHandler(le_timer_Ref_t timerRef);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -324,6 +372,9 @@ static void ReportState
 {
     ReportState_t reportState;
 
+    // Update eCall state for le_ecall_GetState function
+    ECallObj.state = state;
+    // Report state to application
     reportState.ref = ECallObj.ref;
     reportState.state = state;
     le_event_Report(ECallEventStateId, &(reportState), sizeof(reportState));
@@ -340,30 +391,361 @@ static void StopTimers
     void
 )
 {
-    if(ECallObj.intervalTimer)
+    if(ECallObj.redial.intervalTimer)
     {
         LE_DEBUG("Stop the Interval timer");
-        if (le_timer_IsRunning(ECallObj.intervalTimer))
+        if (le_timer_IsRunning(ECallObj.redial.intervalTimer))
         {
-            le_timer_Stop(ECallObj.intervalTimer);
+            le_timer_Stop(ECallObj.redial.intervalTimer);
         }
     }
-    if(ECallObj.panEur.remainingDialDurationTimer)
+
+    if(ECallObj.redial.dialDurationTimer)
     {
-        LE_DEBUG("Stop the PAN-European RemainingDialDuration timer");
-        if (le_timer_IsRunning(ECallObj.panEur.remainingDialDurationTimer))
+        LE_DEBUG("Stop the dial duration timer");
+        if (le_timer_IsRunning(ECallObj.redial.dialDurationTimer))
         {
-            le_timer_Stop(ECallObj.panEur.remainingDialDurationTimer);
+            le_timer_Stop(ECallObj.redial.dialDurationTimer);
         }
     }
-    if(ECallObj.eraGlonass.dialDurationTimer)
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Init the redial mechanism
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RedialInit
+(
+    void
+)
+{
+    LE_DEBUG("Redial init, state %d", ECallObj.redial.state);
+    // Initialize redial state machine
+    ECallObj.redial.state = ECALL_REDIAL_INIT;
+
+    if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
-        LE_DEBUG("Stop the ERA-GLONASS DialDuration timer");
-        if (le_timer_IsRunning(ECallObj.eraGlonass.dialDurationTimer))
+        ECallObj.eraGlonass.pullModeSwitch = false;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start redial period.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RedialStart
+(
+    void
+)
+{
+    // Check redial state
+    switch(ECallObj.redial.state)
+    {
+        case ECALL_REDIAL_INIT:
+        case ECALL_REDIAL_IDLE:
+            break;
+        case ECALL_REDIAL_STOPPED:
+            LE_DEBUG("Redial stopped");
+            return;
+        case ECALL_REDIAL_ACTIVE:
+            LE_WARN("Redial already started");
+            return;
+    }
+
+    LE_DEBUG("Start redial: state %d", ECallObj.redial.state);
+
+    // Update redial state machine
+    ECallObj.redial.state = ECALL_REDIAL_ACTIVE;
+
+    if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+    {
+        if (!ECallObj.isPushed)
         {
-            le_timer_Stop(ECallObj.eraGlonass.dialDurationTimer);
+            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+            {
+                LE_WARN("Unable to set the Push mode!");
+            }
+            else
+            {
+                ECallObj.isPushed = true;
+            }
         }
     }
+
+    // Starts dial duration timer
+    le_clk_Time_t interval;
+    if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+    {
+        interval.sec = 120;
+        interval.usec = 0;
+    }
+    else // PA_ECALL_ERA_GLONASS
+    {
+        interval.sec = ECallObj.eraGlonass.dialDuration;
+        interval.usec = 0;
+    }
+
+    if (!le_timer_IsRunning(ECallObj.redial.dialDurationTimer))
+    {
+        LE_DEBUG("Start Dial Duration timer ");
+        LE_ERROR_IF( ((le_timer_SetInterval(
+                    ECallObj.redial.dialDurationTimer, interval)
+                    != LE_OK) ||
+                    (le_timer_SetHandler(ECallObj.redial.dialDurationTimer,
+                    DialDurationTimerHandler) != LE_OK) ||
+                    (le_timer_Start(ECallObj.redial.dialDurationTimer)
+                    != LE_OK)),
+                    "Cannot start the dialDurationTimer !");
+    }
+    else
+    {
+        LE_WARN("Dial Duration is already started!");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clear the redial mechanism when the connection is established
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RedialClear
+(
+    void
+)
+{
+
+    // Check redial state
+    switch(ECallObj.redial.state)
+    {
+        case ECALL_REDIAL_INIT:
+        case ECALL_REDIAL_ACTIVE:
+            break;
+        case ECALL_REDIAL_STOPPED:
+            LE_DEBUG("Redial stopped");
+            return;
+        case ECALL_REDIAL_IDLE:
+            LE_WARN("Redial already in idle state");
+            return;
+    }
+
+    LE_DEBUG("Clear redial: state %d", ECallObj.redial.state);
+
+    // Update redial state machine
+    ECallObj.redial.state = ECALL_REDIAL_IDLE;
+
+    // Stop redial timers
+    StopTimers();
+
+    // Initialize dial attempt counter
+    ECallObj.redial.dialAttemptsCount = 0;
+    // Initialize max dial attempt
+    if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+    {
+        ECallObj.redial.maxDialAttempts = UNLIMITED_DIAL_ATTEMPTS;
+    }
+    else
+    {
+        switch(ECallObj.startType)
+        {
+            case PA_ECALL_START_AUTO:
+                ECallObj.redial.maxDialAttempts = ECallObj.eraGlonass.autoDialAttempts;
+                break;
+            case PA_ECALL_START_MANUAL:
+            case PA_ECALL_START_TEST:
+                ECallObj.redial.maxDialAttempts = ECallObj.eraGlonass.manualDialAttempts;
+                break;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the redial mecanism.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RedialStop
+(
+    RedialStopCause_t stopCause
+)
+{
+
+    LE_DEBUG("Stop redial: cause %d, state %d", stopCause, ECallObj.redial.state);
+
+    // Check redial state
+    switch(ECallObj.redial.state)
+    {
+        case ECALL_REDIAL_INIT:
+        case ECALL_REDIAL_IDLE:
+        case ECALL_REDIAL_ACTIVE:
+            break;
+        case ECALL_REDIAL_STOPPED:
+            LE_DEBUG("Redial already stopped [%d]", ECallObj.redial.state);
+            return;
+    }
+
+    // Update redial state machine
+    ECallObj.redial.state = ECALL_REDIAL_STOPPED;
+
+    // Manage redial stop cause
+    switch(stopCause)
+    {
+        case ECALL_REDIAL_STOP_ALACK_RECEIVED:
+        {
+            // Redial state machine should be ECALL_REDIAL_IDLE. Noting else to do.
+            break;
+        }
+        case ECALL_REDIAL_STOP_COMPLETE:
+        {
+            // Unlock MSD
+            ECallObj.isMsdImported = false;
+            // Redial state machine should be ECALL_REDIAL_IDLE. Nothing else to do.
+            break;
+        }
+        case ECALL_REDIAL_STOP_NO_REDIAL_CONDITION:
+        {
+            StopTimers();
+            // Send End of redial event
+            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+            break;
+        }
+        case ECALL_REDIAL_DURATION_EXPIRED:
+        {
+            StopTimers();
+            // Send End of redial event
+            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+            break;
+        }
+        case ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT:
+        {
+            StopTimers();
+            // Send End of redial event
+            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+            break;
+        }
+        case ECALL_REDIAL_STOP_FROM_PSAP:
+        {
+            StopTimers();
+            // Send End of redial event
+            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+            break;
+        }
+        case ECALL_REDIAL_STOP_FROM_USER:
+        {
+            StopTimers();
+            break;
+        }
+        default:
+        {
+            LE_ERROR("Unknown stop cause %d", stopCause);
+            break;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attemp a redial if all conditions are valid (redial period, number of redial attempts, ...)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DialAttempt
+(
+    void
+)
+{
+    le_result_t result = LE_OK;
+
+    // Check redial state
+    switch(ECallObj.redial.state)
+    {
+        case ECALL_REDIAL_INIT:
+        case ECALL_REDIAL_ACTIVE:
+            LE_DEBUG("Dial attempt requested");
+            break;
+        case ECALL_REDIAL_IDLE:
+        case ECALL_REDIAL_STOPPED:
+            LE_DEBUG("Dial attempt rejected [%d]", ECallObj.redial.state);
+            return LE_FAULT;
+    }
+
+    // Management of PUSH/PULL mode
+    if (SystemStandard == PA_ECALL_ERA_GLONASS)
+    {
+        // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
+        if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
+        {
+            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL) != LE_OK)
+            {
+                LE_WARN("Unable to set the Pull mode!");
+            }
+            else
+            {
+                ECallObj.isPushed = false;
+            }
+        }
+    }
+    else // PA_ECALL_PAN_EUROPEAN
+    {
+        if (!ECallObj.isPushed)
+        {
+            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+            {
+                LE_WARN("Unable to set the Push mode!");
+            }
+            else
+            {
+                ECallObj.isPushed = true;
+            }
+        }
+    }
+
+    // Check dial attemps counter
+    if(ECallObj.redial.maxDialAttempts == UNLIMITED_DIAL_ATTEMPTS)
+    {
+        LE_INFO("Start dial attempt #%d",
+                ECallObj.redial.dialAttemptsCount+1);
+        if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
+        {
+            ECallObj.redial.dialAttemptsCount++;
+            result = LE_OK;
+        }
+        else
+        {
+            LE_ERROR("Dial attempt failed!");
+            result = LE_FAULT;
+        }
+    }
+    else if(ECallObj.redial.dialAttemptsCount < ECallObj.redial.maxDialAttempts)
+    {
+        LE_INFO("Start dial attempt %d of %d",
+                ECallObj.redial.dialAttemptsCount+1,
+                ECallObj.redial.maxDialAttempts);
+        if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
+        {
+            ECallObj.redial.dialAttemptsCount++;
+            result = LE_OK;
+        }
+        else
+        {
+            LE_ERROR("Dial attempt failed!");
+            result = LE_FAULT;
+        }
+    }
+
+    if(ECallObj.redial.dialAttemptsCount >= ECallObj.redial.maxDialAttempts)
+    {
+        LE_INFO("Max dial attempts done");
+        // Stop redial
+        RedialStop(ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT);
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -377,35 +759,10 @@ static void DialDurationTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    LE_INFO("[ERA-GLONASS] Dial duration expires! stop dialing...");
+    LE_INFO("Dial duration expires! stop dialing...");
 
-    ECallObj.eraGlonass.dialAttemptsCount = 0;
-
-    if(ECallObj.isRedialPeriod)
-    {
-        ECallObj.isRedialPeriod = false;
-        ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remaining Dial Duration Timer handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void RemainingDialDurationTimerHandler
-(
-    le_timer_Ref_t timerRef
-)
-{
-    LE_INFO("[PAN-EUROPEAN] remaining dial duration expires! Stop dialing eCall...");
-    ECallObj.panEur.stopDialing = true;
-    if(ECallObj.isRedialPeriod)
-    {
-        ECallObj.isRedialPeriod = false;
-        ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-    }
+    // Stop redial period
+    RedialStop(ECALL_REDIAL_DURATION_EXPIRED);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -419,67 +776,48 @@ static void IntervalTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    if (SystemStandard == PA_ECALL_ERA_GLONASS)
-    {
-        // ERA-GLONASS
-        if(ECallObj.eraGlonass.dialAttemptsCount)
-        {
-            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
-            if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
-            {
-                if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL) != LE_OK)
-                {
-                    LE_WARN("Unable to set the Pull mode!");
-                }
-                else
-                {
-                    ECallObj.isPushed = false;
-                }
-            }
+    // Dial attempt
+    DialAttempt();
+}
 
-            LE_INFO("[ERA-GLONASS] Interval duration expires! Start attempts #%d of %d",
-                    (ECallObj.eraGlonass.dialAttempts - ECallObj.eraGlonass.dialAttemptsCount + 1),
-                    ECallObj.eraGlonass.dialAttempts);
-            if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
-            {
-                ECallObj.eraGlonass.dialAttemptsCount--;
-            }
-        }
-        else
-        {
-            LE_WARN("[ERA-GLONASS] All the %d tries of %d attempts have been dialed or Dial "
-                    "duration has expired, stop dialing...",
-                    ECallObj.eraGlonass.dialAttempts,
-                    ECallObj.eraGlonass.dialAttempts);
-            StopTimers();
-            if(ECallObj.isRedialPeriod)
-            {
-                ECallObj.isRedialPeriod = false;
-                ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-            }
-        }
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attemp a redial after the interval duration
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void DialAttemptInterval
+(
+    void
+)
+{
+
+    le_clk_Time_t time = le_clk_GetRelativeTime();
+    le_clk_Time_t interval;
+    interval.usec = 0;
+
+    if ((time.sec-ECallObj.redial.startTentativeTime.sec) >=
+         ECallObj.redial.intervalBetweenAttempts)
+    {
+        interval.sec = 1;
     }
     else
     {
-        // PAN-EUROPEAN
-        if(!ECallObj.panEur.stopDialing)
-        {
-            LE_INFO("[PAN-EUROPEAN] Interval duration expires! Start again...");
-            if (!ECallObj.isPushed)
-            {
-                if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
-                {
-                    LE_WARN("Unable to set the Push mode!");
-                }
-                else
-                {
-                    ECallObj.isPushed = true;
-                }
-            }
-            pa_ecall_Start(ECallObj.startType, &ECallObj.callId);
-        }
+        interval.sec = ECallObj.redial.intervalBetweenAttempts -
+                    (time.sec-ECallObj.redial.startTentativeTime.sec);
     }
+
+    LE_INFO("Redial in %d seconds", (int)interval.sec);
+
+    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.redial.intervalTimer, interval)
+                    != LE_OK) ||
+                    (le_timer_SetHandler(ECallObj.redial.intervalTimer,
+                    IntervalTimerHandler) != LE_OK) ||
+                    (le_timer_Start(ECallObj.redial.intervalTimer) != LE_OK)),
+                    "Cannot start the Interval timer!");
 }
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1165,35 +1503,21 @@ static void ECallStateHandler
     le_ecall_State_t* statePtr
 )
 {
-    bool reportEndOfRedialPeriod = false;
+    bool endOfRedialPeriod = false;
 
     LE_DEBUG("Handler Function called with state %d", *statePtr);
-
-    // Update eCall state
-    ECallObj.state = *statePtr;
 
     switch (*statePtr)
     {
         case LE_ECALL_STATE_STARTED: /* eCall session started */
         {
-            ECallObj.isCompleted = false;
-            ECallObj.isStarted = true;
-            ECallObj.startTentativeTime = le_clk_GetRelativeTime();
+            LE_DEBUG("Start dialing...");
+            // Update eCall context
+            ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
+            ECallObj.redial.startTentativeTime = le_clk_GetRelativeTime();
             ECallObj.termination = LE_MCC_TERM_UNDEFINED;
             ECallObj.specificTerm = 0;
             ECallObj.llackOrT5OrT7Received = false;
-            ECallObj.isRedialPeriod = true;
-            LE_DEBUG("Start dialing...");
-            if (SystemStandard == PA_ECALL_ERA_GLONASS)
-            {
-                if (!le_timer_IsRunning(ECallObj.eraGlonass.dialDurationTimer))
-                {
-                    LE_DEBUG("Start Dial Duration timer for ERA-GLONASS");
-                    // Re-arm Dial Duration timer
-                    LE_WARN_IF((le_timer_Start(ECallObj.eraGlonass.dialDurationTimer) != LE_OK),
-                                "Cannot start the Dial Duration timer for ERA-GLONASS");
-                }
-            }
             break;
         }
 
@@ -1203,198 +1527,104 @@ static void ECallStateHandler
                                     .usec=LE_ECALL_SEM_TIMEOUT_USEC };
             le_result_t semTerminaisonResult = LE_FAULT;
 
-            // Get Call terminaison result
-            if (ECallObj.isConnected)
+            // Update eCall session state
+            switch(ECallObj.sessionState)
             {
-
-                semTerminaisonResult = le_sem_WaitWithTimeOut(SemaphoreRef,timer);
-                if (semTerminaisonResult == LE_OK)
+                case ECALL_SESSION_CONNECTED:
                 {
-                    LE_DEBUG("Termination: %d, llackOrT5OrT7Received %d, sem %d"
-                            , ECallObj.termination
-                            , ECallObj.llackOrT5OrT7Received
-                            , semTerminaisonResult);
-
-                    // Check redial condition (cf N16062:2014 7.9)
-                    if (ECallObj.llackOrT5OrT7Received &&
-                       (ECallObj.termination == LE_MCC_TERM_REMOTE_ENDED))
+                    // Session was connected, get Call terminaison result
+                    semTerminaisonResult = le_sem_WaitWithTimeOut(SemaphoreRef,timer);
+                    if (semTerminaisonResult == LE_OK)
                     {
-                        // After the IVS has received the LL-ACK
-                        // or T5 – IVS wait for SEND MSD period
-                        // or T7 – IVS MSD maximum transmission time ends,
-                        // the IVS shall recognise a normal hang-up from the network.
-                        // The IVS shall not attempt an automatic redial following
-                        // a call clear-down.
+                        LE_DEBUG("Termination: %d, llackOrT5OrT7Received %d, sem %d"
+                                , ECallObj.termination
+                                , ECallObj.llackOrT5OrT7Received
+                                , semTerminaisonResult);
 
-                        StopTimers();
-                        // Redial deactivated
-                        if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
+                        // Check redial condition (cf N16062:2014 7.9)
+                        if (ECallObj.llackOrT5OrT7Received &&
+                           (ECallObj.termination == LE_MCC_TERM_REMOTE_ENDED))
                         {
-                            ECallObj.panEur.stopDialing = true;
-                            // Report End Of Redial Period event after the LE_ECALL* event
-                            reportEndOfRedialPeriod = true;
+                            // After the IVS has received the LL-ACK
+                            // or T5 – IVS wait for SEND MSD period
+                            // or T7 – IVS MSD maximum transmission time ends,
+                            // the IVS shall recognise a normal hang-up from the network.
+                            // The IVS shall not attempt an automatic redial following
+                            // a call clear-down.
+
+                            // End Of Redial Period
+                            endOfRedialPeriod = true;
                         }
-                        else// ERAGLONASS
-                        {
-                            ECallObj.eraGlonass.dialAttemptsCount = 0;
-                            // Report End Of Redial Period event after the LE_ECALL* event
-                            reportEndOfRedialPeriod = true;
-                        }
-                    }
-                }
-                else
-                {
-                    LE_ERROR("MCC notification timeout happen");
-                }
-            }
-
-            // Check redial condition
-            if (!ECallObj.isCompleted && !ECallObj.isSessionStopped)
-            {
-                if (ECallObj.isConnected)
-                {
-                    LE_ERROR("Connection with PSAP has dropped!");
-                    ECallObj.isConnected = false;
-
-                    if (SystemStandard == PA_ECALL_ERA_GLONASS)
-                    {
-                        // ERA-GLONASS
-                        if(ECallObj.eraGlonass.dialAttemptsCount)
-                        {
-                            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
-                            if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
-                            {
-                                if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL) != LE_OK)
-                                {
-                                    LE_WARN("Unable to set the Pull mode!");
-                                }
-                                else
-                                {
-                                    ECallObj.isPushed = false;
-                                }
-                            }
-
-                            LE_INFO("[ERA-GLONASS] Start attempts #%d of %d",
-                                    (ECallObj.eraGlonass.dialAttempts
-                                    - ECallObj.eraGlonass.dialAttemptsCount + 1),
-                                    ECallObj.eraGlonass.dialAttempts);
-                            if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
-                            {
-                                ECallObj.eraGlonass.dialAttemptsCount--;
-                            }
-                        }
-                    }
-                    else if(!ECallObj.panEur.stopDialing)
-                    {
-                        // PAN-EUROPEAN
-                        LE_WARN("[PAN-EUROPEAN] Got 120 seconds to reconnect with PSAP");
-
-                        le_clk_Time_t interval = {120,0};
-
-                        if (!ECallObj.isPushed)
-                        {
-                            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
-                            {
-                                LE_WARN("Unable to set the Push mode!");
-                            }
-                            else
-                            {
-                                ECallObj.isPushed = true;
-                            }
-                        }
-
-                        LE_ERROR_IF( ((le_timer_SetInterval(
-                                    ECallObj.panEur.remainingDialDurationTimer, interval)
-                                    != LE_OK) ||
-                                    (le_timer_SetHandler(ECallObj.panEur.remainingDialDurationTimer,
-                                    RemainingDialDurationTimerHandler) != LE_OK) ||
-                                    (le_timer_Start(ECallObj.panEur.remainingDialDurationTimer)
-                                    != LE_OK)),
-                                    "Cannot start the RemainingDialDuration timer!");
-
-                        pa_ecall_Start(ECallObj.startType, &ECallObj.callId);
-                    }
-                }
-                else
-                {
-                    le_clk_Time_t time = le_clk_GetRelativeTime();
-                    le_clk_Time_t interval;
-                    interval.usec = 0;
-
-                    if ((time.sec-ECallObj.startTentativeTime.sec) >=
-                         ECallObj.intervalBetweenAttempts)
-                    {
-                        interval.sec = 1;
                     }
                     else
                     {
-                        interval.sec = ECallObj.intervalBetweenAttempts -
-                                    (time.sec-ECallObj.startTentativeTime.sec);
+                        LE_ERROR("MCC notification timeout happen");
                     }
 
-                    LE_WARN("Failed to connect with PSAP! Redial in %d seconds", (int)interval.sec);
+                    if(!endOfRedialPeriod)
+                    {
+                        // Start redial period
+                        RedialStart();
 
-                    LE_ERROR_IF( ((le_timer_SetInterval(ECallObj.intervalTimer, interval)
-                                    != LE_OK) ||
-                                    (le_timer_SetHandler(ECallObj.intervalTimer,
-                                    IntervalTimerHandler) != LE_OK) ||
-                                    (le_timer_Start(ECallObj.intervalTimer) != LE_OK)),
-                                    "Cannot start the Interval timer!");
+                        // eCall session attempt
+                        DialAttempt();
+                    }
+                    break;
                 }
+                case ECALL_SESSION_NOT_CONNECTED:
+                {
+                    LE_WARN("Failed to connect with PSAP");
+                    // eCall session was not connected. Redial in attempt interval
+                    DialAttemptInterval();
+                    break;
+                }
+                case ECALL_SESSION_COMPLETED:
+                    // Session completed: no redial
+                    break;
+                case ECALL_SESSION_STOPPED:
+                    // Session stopped: no redial
+                    break;
+                case ECALL_SESSION_INIT:
+                case ECALL_SESSION_REQUEST:
+                default:
+                    LE_ERROR("Unexpected session state %d", ECallObj.sessionState);
+                    break;
             }
+            // Update eCall context
+            ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
             break;
         }
 
         case LE_ECALL_STATE_CONNECTED: /* Emergency call is established */
         {
-            ECallObj.isConnected = true;
-            StopTimers();
-            switch(ECallObj.startType)
-            {
-                case PA_ECALL_START_AUTO:
-                    ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
-                    break;
-                case PA_ECALL_START_MANUAL:
-                case PA_ECALL_START_TEST:
-                    ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
-                    break;
-            }
+            // Update eCall session state
+            ECallObj.sessionState = ECALL_SESSION_CONNECTED;
+            // Clear redial during connection
+            RedialClear();
             break;
         }
 
         case LE_ECALL_STATE_COMPLETED: /* eCall session completed */
         {
-            ECallObj.isSessionStopped = true;
+            // Update eCall session state
+            ECallObj.sessionState = ECALL_SESSION_COMPLETED;
             // Invalidate MSD
             memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
             ECallObj.builtMsdSize = 0;
             // The Modem successfully completed the MSD transmission and received two AL-ACKs
             // (positive).
-            ECallObj.isCompleted = true;
-            ECallObj.isMsdImported = false;
-            StopTimers();
+            // Clear the redial mechanism
+            RedialStop(ECALL_REDIAL_STOP_COMPLETE);
             break;
         }
 
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* eCall session completed */
         {
-            if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
-            {
-                StopTimers();
-            }
-            else
-            {
-                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
-                ECallObj.eraGlonass.pullModeSwitch = true;
-            }
-            break;
-        }
-
-        case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
-        {
+            // Stop redial
+            RedialStop(ECALL_REDIAL_STOP_ALACK_RECEIVED);
             if (SystemStandard == PA_ECALL_ERA_GLONASS)
             {
-                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2, event triggered on T7 timeout
+                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
                 ECallObj.eraGlonass.pullModeSwitch = true;
             }
             break;
@@ -1408,27 +1638,19 @@ static void ECallStateHandler
             // and the IVS receives a AL-ACK with status = “clear- down”,
             // it shall clear-down the call.
             // The IVS shall not attempt an automatic redial following a call clear-down.
-            StopTimers();
-            // Redial deactivated
-            if (SystemStandard == PA_ECALL_PAN_EUROPEAN)
-            {
-                ECallObj.panEur.stopDialing = true;
-            }
-            else // ERAGLONASS
-            {
-                ECallObj.eraGlonass.dialAttemptsCount = 0;
-            }
 
-            // Report End Of Redial Period event after the LE_ECALL* event
-            reportEndOfRedialPeriod = true;
+            // End Of Redial Period
+            endOfRedialPeriod = true;
             break;
         }
-
 
         case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by PSAP
                                         or IVS le_ecall_End() */
         {
-            ECallObj.isStarted = false;
+            // Update eCall session state
+            ECallObj.sessionState = ECALL_SESSION_STOPPED;
+            // Stop redial period
+            RedialStop(ECALL_REDIAL_STOP_FROM_PSAP);
             break;
         }
 
@@ -1439,6 +1661,7 @@ static void ECallStateHandler
         case LE_ECALL_STATE_MSD_TX_COMPLETED: /* MSD transmission is complete */
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
+        case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
         {
             // Nothing to do, just report the event
              break;
@@ -1447,7 +1670,15 @@ static void ECallStateHandler
         case LE_ECALL_STATE_TIMEOUT_T5: /* timeout for T5 */
         case LE_ECALL_STATE_TIMEOUT_T7: /* timeout for T7 */
         {
+            // To check redial condition (cf N16062:2014 7.9)
             ECallObj.llackOrT5OrT7Received = true;
+
+            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2, event triggered on T7 timeout
+            if ((*statePtr == LE_ECALL_STATE_TIMEOUT_T7) &&
+                (SystemStandard == PA_ECALL_ERA_GLONASS))
+            {
+                ECallObj.eraGlonass.pullModeSwitch = true;
+            }
             break;
         }
         case LE_ECALL_STATE_UNKNOWN: /* Unknown state */
@@ -1462,10 +1693,13 @@ static void ECallStateHandler
     ReportState(*statePtr);
 
     // Report the End of Redial Period event
-    if(reportEndOfRedialPeriod && ECallObj.isRedialPeriod)
+    if(endOfRedialPeriod)
     {
-        ECallObj.isRedialPeriod = false;
-        ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
+        // Stop redial period
+        RedialStop(ECALL_REDIAL_STOP_NO_REDIAL_CONDITION);
+
+        // Update eCall session state
+        ECallObj.sessionState = ECALL_SESSION_STOPPED;
     }
 }
 
@@ -1491,12 +1725,9 @@ static void CallEventHandler
         return;
     }
 
-    LE_DEBUG("isStarted %d isCompleted %d event %d"
-            , eCallPtr->isStarted
-            ,  eCallPtr->isCompleted
-            , event);
+    LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
-    if (eCallPtr->isConnected)
+    if (eCallPtr->sessionState == ECALL_SESSION_CONNECTED)
     {
         le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
 
@@ -1583,8 +1814,7 @@ le_result_t le_ecall_Init
     ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber.isovisSeqPlant[0] = '\0';
     ECallObj.msd.version = 1;
     ECallObj.isPushed = true;
-    ECallObj.maxRedialAttempts = 10,
-    ECallObj.isRedialPeriod = true;
+    ECallObj.redial.maxDialAttempts = UNLIMITED_DIAL_ATTEMPTS;
     ECallObj.msd.msdMsg.msdStruct.control.vehType = MSD_VEHICLE_PASSENGER_M1;
     ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent = false;
     ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent = false;
@@ -1605,36 +1835,21 @@ le_result_t le_ecall_Init
         return LE_FAULT;
     }
 
-    // Ecall Context initialization
-    ECallObj.startType = PA_ECALL_START_MANUAL;
-    ECallObj.isConnected = false;
-    ECallObj.isStarted = false;
-    ECallObj.isCompleted = false;
-    ECallObj.isSessionStopped = true;
-    ECallObj.intervalTimer = le_timer_Create("Interval");
-    ECallObj.intervalBetweenAttempts = 30; // 30 seconds
+    // Initialize redial state machine
+    RedialInit();
 
-    ECallObj.panEur.stopDialing = false;
-    ECallObj.panEur.remainingDialDurationTimer = le_timer_Create("RemainingDialDuration");
+    // Ecall Context initialization
+    ECallObj.sessionState = ECALL_SESSION_INIT;
+    ECallObj.startType = PA_ECALL_START_MANUAL;
+    ECallObj.redial.intervalTimer = le_timer_Create("Interval");
+    ECallObj.redial.intervalBetweenAttempts = 30; // 30 seconds
+    ECallObj.redial.dialDurationTimer = le_timer_Create("dialDurationTimer");
     ECallObj.llackOrT5OrT7Received = false;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
-    ECallObj.eraGlonass.dialAttempts = 10;
-    ECallObj.eraGlonass.dialAttemptsCount = 10;
     ECallObj.eraGlonass.dialDuration = 300;
-    ECallObj.eraGlonass.dialDurationTimer = le_timer_Create("DialDuration");
     ECallObj.eraGlonass.pullModeSwitch = false;
-
-    le_clk_Time_t interval;
-    interval.sec = ECallObj.eraGlonass.dialDuration;
-    interval.usec = 0;
-
-    LE_WARN_IF( ((le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer,
-                                        interval) != LE_OK) ||
-                (le_timer_SetHandler(ECallObj.eraGlonass.dialDurationTimer,
-                                    DialDurationTimerHandler) != LE_OK) ),
-                "Cannot set the DialDuration timer for ERA-GLONASS!");
 
     // Add a config tree handler for eCall settings update.
     le_cfg_AddChangeHandler(CFG_MODEMSERVICE_ECALL_PATH, SettingsUpdate, NULL);
@@ -1686,11 +1901,11 @@ le_result_t le_ecall_Init
         ECallObj.isPushed = true;
     }
 
-    LE_DEBUG("eCall settings: VIN.%17s, version.%d, isPushed.%d, maxRedialAttempts.%d, veh.%d",
+    LE_DEBUG("eCall settings: VIN.%17s, version.%d, isPushed.%d, maxDialAttempts.%d, veh.%d",
              (char*)&ECallObj.msd.msdMsg.msdStruct.vehIdentificationNumber.isowmi[0],
              ECallObj.msd.version,
              ECallObj.isPushed,
-             ECallObj.maxRedialAttempts,
+             ECallObj.redial.maxDialAttempts,
              (int)ECallObj.msd.msdMsg.msdStruct.control.vehType);
 
     // Initialize call identifier
@@ -2215,7 +2430,8 @@ le_result_t le_ecall_StartAutomatic
         return LE_BAD_PARAMETER;
     }
 
-    if (!ECallObj.isSessionStopped)
+    if ((ECallObj.sessionState != ECALL_SESSION_INIT)
+    && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
     {
         LE_ERROR("An eCall session is already in progress");
         return LE_BUSY;
@@ -2227,6 +2443,9 @@ le_result_t le_ecall_StartAutomatic
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
+
+    // Update eCall session state
+    ECallObj.sessionState = ECALL_SESSION_REQUEST;
 
     eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
     eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
@@ -2240,16 +2459,15 @@ le_result_t le_ecall_StartAutomatic
         return LE_FAULT;
     }
 
-    ECallObj.isSessionStopped = false;
-
+    // Initialize redial state machine
+    RedialInit();
+    // Start redial period for ERA GLONASS system standard
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
-        ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.autoDialAttempts;
-        ECallObj.eraGlonass.pullModeSwitch = false;
-    }
-    else
-    {
-        ECallObj.panEur.stopDialing = false;
+        // Clear redial
+        RedialClear();
+        // Start redial
+        RedialStart();
     }
 
     // Update eCall start type
@@ -2267,13 +2485,8 @@ le_result_t le_ecall_StartAutomatic
         }
     }
 
-    if (pa_ecall_Start(PA_ECALL_START_AUTO, &ECallObj.callId) == LE_OK)
+    if (DialAttempt() == LE_OK)
     {
-        // Manage redial policy for ERA-GLONASS
-        if (SystemStandard == PA_ECALL_ERA_GLONASS)
-        {
-            ECallObj.eraGlonass.dialAttemptsCount--;
-        }
         result = LE_OK;
     }
     else
@@ -2311,7 +2524,8 @@ le_result_t le_ecall_StartManual
         return LE_BAD_PARAMETER;
     }
 
-    if (!ECallObj.isSessionStopped)
+    if ((ECallObj.sessionState != ECALL_SESSION_INIT)
+    && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
     {
         LE_ERROR("An eCall session is already in progress");
         return LE_BUSY;
@@ -2323,6 +2537,9 @@ le_result_t le_ecall_StartManual
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
+
+    // Update eCall session state
+    ECallObj.sessionState = ECALL_SESSION_REQUEST;
 
     eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
     eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
@@ -2336,16 +2553,15 @@ le_result_t le_ecall_StartManual
         return LE_FAULT;
     }
 
-    ECallObj.isSessionStopped = false;
-
+    // Initialize redial state machine
+    RedialInit();
+    // Start redial period for ERA GLONASS system standard
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
-        ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
-        ECallObj.eraGlonass.pullModeSwitch = false;
-    }
-    else
-    {
-        ECallObj.panEur.stopDialing = false;
+        // Clear redial
+        RedialClear();
+        // Start redial
+        RedialStart();
     }
 
     // Update eCall start type
@@ -2363,13 +2579,8 @@ le_result_t le_ecall_StartManual
         }
     }
 
-    if (pa_ecall_Start(PA_ECALL_START_MANUAL, &ECallObj.callId) == LE_OK)
+    if (DialAttempt() == LE_OK)
     {
-        // Manage redial policy for ERA-GLONASS
-        if (SystemStandard == PA_ECALL_ERA_GLONASS)
-        {
-            ECallObj.eraGlonass.dialAttemptsCount--;
-        }
         result = LE_OK;
     }
     else
@@ -2407,7 +2618,8 @@ le_result_t le_ecall_StartTest
         return LE_BAD_PARAMETER;
     }
 
-    if (!ECallObj.isSessionStopped)
+    if ((ECallObj.sessionState != ECALL_SESSION_INIT)
+    && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
     {
         LE_ERROR("An eCall session is already in progress");
         return LE_BUSY;
@@ -2419,6 +2631,9 @@ le_result_t le_ecall_StartTest
         LE_ERROR("Hang up ongoing call(s) failed");
         return LE_FAULT;
     }
+
+    // Update eCall session state
+    ECallObj.sessionState = ECALL_SESSION_REQUEST;
 
     eCallPtr->msd.msdMsg.msdStruct.messageIdentifier = 0;
     eCallPtr->msd.msdMsg.msdStruct.timestamp = (uint32_t)time(NULL);
@@ -2432,16 +2647,15 @@ le_result_t le_ecall_StartTest
         return LE_FAULT;
     }
 
-    ECallObj.isSessionStopped = false;
-
+    // Initialize redial state machine
+    RedialInit();
+    // Start redial period for ERA GLONASS system standard
     if (SystemStandard == PA_ECALL_ERA_GLONASS)
     {
-        ECallObj.eraGlonass.dialAttemptsCount = ECallObj.eraGlonass.manualDialAttempts;
-        ECallObj.eraGlonass.pullModeSwitch = false;
-    }
-    else
-    {
-        ECallObj.panEur.stopDialing = false;
+        // Clear redial
+        RedialClear();
+        // Start redial
+        RedialStart();
     }
 
     // Update eCall start type
@@ -2459,13 +2673,8 @@ le_result_t le_ecall_StartTest
         }
     }
 
-    if (pa_ecall_Start(PA_ECALL_START_TEST, &ECallObj.callId) == LE_OK)
+    if (DialAttempt() == LE_OK)
     {
-        // Manage redial policy for ERA-GLONASS
-        if (SystemStandard == PA_ECALL_ERA_GLONASS)
-        {
-            ECallObj.eraGlonass.dialAttemptsCount--;
-        }
         result = LE_OK;
     }
     else
@@ -2505,12 +2714,15 @@ le_result_t le_ecall_End
     eCallPtr->builtMsdSize = 0;
     eCallPtr->isMsdImported = false;
 
-    ECallObj.isSessionStopped = true;
-
     result = pa_ecall_End();
+
+    // Stop redial
     if(result == LE_OK)
     {
-        StopTimers();
+        // Update eCall session state
+        ECallObj.sessionState = ECALL_SESSION_STOPPED;
+        // Stop redial
+        RedialStop(ECALL_REDIAL_STOP_FROM_USER);
     }
 
     return (result);
@@ -2785,7 +2997,7 @@ le_result_t le_ecall_SetIntervalBetweenDialAttempts
     uint16_t    pause   ///< [IN] the minimum interval value in seconds
 )
 {
-    ECallObj.intervalBetweenAttempts = pause;
+    ECallObj.redial.intervalBetweenAttempts = pause;
     return LE_OK;
 }
 
@@ -2809,7 +3021,7 @@ le_result_t le_ecall_GetIntervalBetweenDialAttempts
         return LE_FAULT;
     }
 
-    *pausePtr = ECallObj.intervalBetweenAttempts;
+    *pausePtr = ECallObj.redial.intervalBetweenAttempts;
     return LE_OK;
 }
 
@@ -2832,7 +3044,6 @@ le_result_t le_ecall_SetEraGlonassManualDialAttempts
 )
 {
     ECallObj.eraGlonass.manualDialAttempts = attempts;
-    ECallObj.eraGlonass.dialAttempts = attempts;
     return LE_OK;
 }
 
@@ -2855,7 +3066,6 @@ le_result_t le_ecall_SetEraGlonassAutoDialAttempts
 )
 {
     ECallObj.eraGlonass.autoDialAttempts = attempts;
-    ECallObj.eraGlonass.dialAttempts = attempts;
     return LE_OK;
 }
 
@@ -2881,7 +3091,7 @@ le_result_t le_ecall_SetEraGlonassDialDuration
     interval.usec = 0;
 
     ECallObj.eraGlonass.dialDuration = duration;
-    if (le_timer_SetInterval(ECallObj.eraGlonass.dialDurationTimer, interval) != LE_OK)
+    if (le_timer_SetInterval(ECallObj.redial.dialDurationTimer, interval) != LE_OK)
     {
         LE_ERROR("Cannot start the DialDuration timer!");
         return LE_FAULT;

@@ -220,6 +220,41 @@ static void ECallStateHandler
             LE_INFO("New eCall state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
+        case LE_ECALL_STATE_TIMEOUT_T2:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T2.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T3:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T3.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T5:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T5.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T6:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T6.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T7:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T7.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T9:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T9.");
+            break;
+        }
+        case LE_ECALL_STATE_TIMEOUT_T10:
+        {
+            LE_INFO("New eCall state is LE_ECALL_STATE_TIMEOUT_T10.");
+            break;
+        }
         case LE_ECALL_STATE_UNKNOWN:
         default:
         {
