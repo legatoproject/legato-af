@@ -2,15 +2,15 @@
 
 The AR755x, AR8652, and WP8548 platforms have the following limitations:
 
-@subpage platformConstraintsAudio <br>
-@subpage platformConstraintsSecStorage <br>
-@subpage platformConstraintsAdc <br>
-@subpage platformConstraintsSim <br>
-@subpage platformConstraintsStk <br>
-@subpage platformConstraintsTemperature <br>
-@subpage platformConstraintsATCommand
-
-<HR>
+| Constraint   | AR755x        | AR8652       |  WP8548  |
+| ---------------- | :--------------: | :--------------: | :--------------:
+| @subpage platformConstraintsAudio | X  | X  | X |
+| @subpage platformConstraintsSecStorage | X  | X  | X |
+| @subpage platformConstraintsAdc  | X  | X  | X |
+| @subpage platformConstraintsSim  | X  | X  | X |
+| @subpage platformConstraintsStk  | X  | X  | X |
+| @subpage platformConstraintsTemperature   | X  | X  | X |
+| @subpage platformConstraintsATCommand | X  | X  | X |
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

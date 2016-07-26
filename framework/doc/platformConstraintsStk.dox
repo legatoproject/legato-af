@@ -7,7 +7,7 @@ Application Toolkit) mode is properly set in your PRI (Product Requirement Infor
 OPEN_CHANNEL BIP command is not raised up to a user app. By consequence, it can't be
 accepted/rejected.
 
-<HR>
+See @ref le_sim_stk
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

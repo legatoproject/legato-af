@@ -1,6 +1,6 @@
 /** @page platformConstraintsATCommand AT Command
 
-Just a limited set of functions are supported on AT-command based platform adaptor.
+The following limited set of functions are supported on the AT-command based platform adaptor.
 
 <b>@subpage c_info :</b>
  - le_info_GetImei()

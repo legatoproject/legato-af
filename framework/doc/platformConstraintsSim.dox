@@ -1,24 +1,21 @@
 /** @page platformConstraintsSim SIM
 
-<b>SIM command API</b>
+le_sim_SendCommand() supports sending commands to the SIM. The parameters
+of this API depend on the platform.
 
-The API le_sim_SendSimCommand() offers the possibility to send commands to the SIM. The parameters
-of this API depends on the platform.
-
-For AR755x, AR8652, and WP8548:
- - p1, p2, p3 parameters:
+For AR755x, AR8652, and WP8548, these are the p1, p2, p3 parameters:
 
 | Command \ Parameters    |  P1                               | P2            | P3         |
-|:                       :|:                                 :|:             :|:          :|
+|                       |                                 |:             :|:          :|
 | LE_SIM_READ_RECORD      | Record number to read             | Unused        | Unused     |
 | LE_SIM_READ_BINARY      | Offset to the first byte to read  | Unused        | Unused     |
 | LE_SIM_UPDATE_RECORD    | Record number to write            | Unused        | Unused     |
 | LE_SIM_UPDATE_BINARY    | Offset to the first byte to write | Unused        | Unused     |
 
- - path parameter: it contains the path of the elementary file from the master file in hexadecimal
+ - path parameter contains the path of the elementary file from the master file in hexadecimal
  (e.g. "3F007FFF", "3F007F20"). The path is mandatory for all commands.
 
-<HR>
+See @ref c_sim API
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

@@ -2,7 +2,7 @@
 
 The AR755x, AR8652, and WP8548 platforms maximum space available for secure storage is 256 KB.
 
-<HR>
+See @ref c_secStore API
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

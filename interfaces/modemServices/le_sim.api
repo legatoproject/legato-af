@@ -2,7 +2,8 @@
 /**
  * @page c_sim SIM
  *
- * @ref le_sim_interface.h "API Reference"
+ * @ref le_sim_interface.h "API Reference" <br>
+ * @ref platformConstraintsSim Constraints
  *
  * <HR>
  *
@@ -197,7 +198,7 @@
  * @section le_sim_stk SIM Toolkit
  *
  * The SIM application Toolkit allows the SIM card to initiates commands or asking input from the
- * modem to accept/reject SIM operations.
+ * modem to accept/reject SIM operations.  See @ref platformConstraintsStk Constraints.
  *
  * One of the use case is the remote provisioning of an embedded UICC (eUICC).
  *
@@ -232,7 +233,7 @@
  * @note Between two successive call to le_sim_SendApdu() API, there is no locking
  * protection. In this situation, some command types and parameters can modify SIM files incorrectly.
  *
- * Using le_sim_SendSimCommand() API, the application has easier but more limited access to the
+ * Using le_sim_SendCommand(), the application has easier but more limited access to the
  * SIM database. The command is transmitted to the SIM, which gives information through swi1 and
  * swi2 about the execution of the command (see 3GPP recommendation previously mentioned for
  * their coding).

@@ -3,7 +3,8 @@
  * @page c_secStore Secure Storage
  *
  * @ref le_secStore_interface.h "API Reference" <br>
- * @ref c_secStoreAdmin API
+ * @ref c_secStoreAdmin API <br>
+ * @ref platformConstraintsSecStorage Constraints
  *
  * <HR>
  *

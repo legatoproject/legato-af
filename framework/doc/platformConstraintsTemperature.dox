@@ -1,4 +1,6 @@
-/** @page platformConstraintsTemperature Temperature monitoring
+/** @page platformConstraintsTemperature Temperature Monitoring
+
+See @ref c_temp API
 
 The AR755x, AR8652, and WP8548 platforms support two main sensors.
 
@@ -146,9 +148,6 @@ if the "POWER_CONTROLLER" sensor temperature decreases below the:
 
 @note Please refer to the Product Technical specification document of your platform for further
 details.
-
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

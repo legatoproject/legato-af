@@ -2,7 +2,8 @@
 /**
  * @page c_adc ADC Channel API
  *
- * @ref le_adc_interface.h "API Reference"
+ * @ref le_adc_interface.h "API Reference" <br>
+ * @ref platformConstraintsAdc Constraints
  *
  * <HR>
  *

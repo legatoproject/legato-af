@@ -12,7 +12,7 @@ The dedicated string in le_adc_ReadValue() API are "EXT_ADC1", "EXT_ADC2", "EXT_
 For all platforms, channels are externally available for general use, and by default use 1.8V
 reference and return results in mV.
 
-<HR>
+See @ref  c_adc API
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
