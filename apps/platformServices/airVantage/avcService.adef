@@ -14,6 +14,7 @@ bundles:
     file:
     {
         [x] avcStart.sh /bin/
+        [r] assets.cfg  /cfg/
     }
 }
 
@@ -38,6 +39,7 @@ requires:
     configTree:
     {
         [w] system
+        [w] .
     }
 }
 

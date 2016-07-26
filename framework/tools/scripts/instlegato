@@ -70,4 +70,4 @@ fi
 
 echo "Installing Legato system update pack $SYSTEM_FILE"
 
-update "$SYSTEM_FILE" $TARGET_IP
+app install "$SYSTEM_FILE" $TARGET_IP

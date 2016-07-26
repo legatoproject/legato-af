@@ -15,6 +15,9 @@
 #include "../avcDaemon/assetData.h"
 #include "../avcDaemon/avcServer.h"
 #include "pa_avc.h"
+#include "avcUpdateShared.h"
+#include "avcFrameworkUpdate.h"
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -103,30 +106,12 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Maximum allowed size for for a Legato framework version string.
- */
-//--------------------------------------------------------------------------------------------------
-#define MAX_VERSION_STR 100
-#define MAX_VERSION_STR_BYTES (MAX_VERSION_STR + 1)
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Base path for an Object 9 application binding inside of the configTree.
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_OBJECT_INFO_PATH "system:/lwm2m/objectMap"
 
 
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Path to the file that stores the Legato version number string.
- */
-//--------------------------------------------------------------------------------------------------
-#define LEGATO_VERSION_FILE "/legato/systems/current/version"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -196,21 +181,6 @@ typedef enum
     O9F_PACKAGE_SETTINGS         = 13   ///< <Not supported>
 }
 LwObj9Fids;
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Field Ids of the Legato application object.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LO0F_VERSION = 0,  ///< Version field for the framework.
-    LO0F_RESTART = 1   ///< Executable field to restart the framework.
-}
-LegatoObj0Fids;
 
 
 
@@ -489,118 +459,6 @@ static bool IsHiddenApp
     }
 
     return false;
-}
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Attempt to read the Legato version string from the file system.
- */
-//--------------------------------------------------------------------------------------------------
-static void GetLegatoVersionStr
-(
-    char versionBuffer[MAX_VERSION_STR_BYTES]  ///< Buffer to hold the string.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    LE_DEBUG("Read the Legato version string.");
-
-    FILE* versionFile = NULL;
-
-    do
-    {
-        versionFile = fopen(LEGATO_VERSION_FILE, "r");
-    }
-    while (   (versionFile != NULL)
-           && (errno == EINTR));
-
-    if (versionFile == NULL)
-    {
-        LE_ERROR("Could not open Legato version file.");
-        return;
-    }
-
-    if (fgets(versionBuffer, MAX_VERSION_STR_BYTES, versionFile) != NULL)
-    {
-        char* newLine = strchr(versionBuffer, '\n');
-
-        if (newLine != NULL)
-        {
-            *newLine = 0;
-        }
-
-        LE_DEBUG("The current Legato framework version is, '%s'.", versionBuffer);
-    }
-    else
-    {
-        LE_ERROR("Could not read Legato version.");
-    }
-
-    int retVal = -1;
-
-    do
-    {
-        retVal = fclose(versionFile);
-    }
-    while (   (retVal == -1)
-           && (errno == EINTR));
-}
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Called to register lwm2m object and field event handlers.
- */
-//--------------------------------------------------------------------------------------------------
-static void RegisterFieldEventHandlers
-(
-    const char* appNamePtr,                              ///< Namespace for the object.
-    int objectId,                                        ///< The Id of the object.
-    assetData_AssetActionHandlerFunc_t assetHandlerPtr,  ///< Handler for object level events.
-    int* monitorFields,                                  ///< List of fields to monitor.
-    size_t monFieldCount,                                ///< Size of the field list.
-    assetData_FieldActionHandlerFunc_t fieldHandlerPtr   ///< Handler to be called for field
-                                                         ///<   activity.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    assetData_AssetDataRef_t assetRef = NULL;
-
-    LE_DEBUG("Registering on %s/%d.", appNamePtr, objectId);
-
-    LE_FATAL_IF(assetData_GetAssetRefById(appNamePtr, objectId, &assetRef) != LE_OK,
-                "Could not reference object %s/%d data.",
-                appNamePtr,
-                objectId);
-
-    if (assetHandlerPtr != NULL)
-    {
-        LE_DEBUG("Registering AssetActionHandler");
-
-        LE_FATAL_IF(assetData_client_AddAssetActionHandler(assetRef,
-                                                           assetHandlerPtr,
-                                                           NULL) == NULL,
-                    "Could not register for instance activity on %s/%d.",
-                    appNamePtr,
-                    objectId);
-    }
-
-    for (size_t i = 0; i < monFieldCount; i++)
-    {
-        LE_DEBUG("Registering %s/%d/%d field handler.", appNamePtr, objectId, monitorFields[i]);
-
-        LE_FATAL_IF(assetData_client_AddFieldActionHandler(assetRef,
-                                                           monitorFields[i],
-                                                           fieldHandlerPtr,
-                                                           NULL) == NULL,
-                    "Could not register for object %s/%d field activity.",
-                    appNamePtr,
-                    objectId);
-    }
 }
 
 
@@ -891,19 +749,19 @@ static void CreateLegatoObjectsForApp
             // LO1F_FAULT_ACTION
         };
 
-    RegisterFieldEventHandlers(objNameBuffer,
-                               0,
-                               NULL,
-                               obj0MonitorFields,
-                               NUM_ARRAY_MEMBERS(obj0MonitorFields),
-                               App0FieldHandler);
+    aus_RegisterFieldEventHandlers(objNameBuffer,
+                                   0,
+                                   NULL,
+                                   obj0MonitorFields,
+                                   NUM_ARRAY_MEMBERS(obj0MonitorFields),
+                                   App0FieldHandler);
 
-    RegisterFieldEventHandlers(objNameBuffer,
-                               1,
-                               NULL,
-                               obj1MonitorFields,
-                               NUM_ARRAY_MEMBERS(obj1MonitorFields),
-                               App1FieldHandler);
+    aus_RegisterFieldEventHandlers(objNameBuffer,
+                                   1,
+                                   NULL,
+                                   obj1MonitorFields,
+                                   NUM_ARRAY_MEMBERS(obj1MonitorFields),
+                                   App1FieldHandler);
 
     char stringBuffer[512] = "";
 
@@ -965,71 +823,6 @@ static void CreateLegatoObjectsForApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Update Legato object; specifically the version.
- */
-//--------------------------------------------------------------------------------------------------
-static void UpdateLegatoObject
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    assetData_InstanceDataRef_t legatoObjectRef = NULL;
-
-    LE_ASSERT(assetData_GetInstanceRefById(ASSET_DATA_LEGATO_OBJ_NAME,
-                                           0,
-                                           0,
-                                           &legatoObjectRef) == LE_OK);
-
-    char versionBuffer[MAX_VERSION_STR_BYTES] = "";
-
-    GetLegatoVersionStr(versionBuffer);
-
-    le_result_t result = assetData_client_SetString(legatoObjectRef, LO0F_VERSION, versionBuffer);
-    LE_ERROR_IF(result != LE_OK,
-                "Could not update Legato version field (%d): %s",
-                result,
-                LE_RESULT_TXT(result));
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Create an instance of the Legato object.
- */
-//--------------------------------------------------------------------------------------------------
-static void CreateLegatoObject
-(
-    void
-)
-//--------------------------------------------------------------------------------------------------
-{
-    assetData_InstanceDataRef_t legatoObjectRef = NULL;
-
-    LE_ASSERT(assetData_CreateInstanceById(ASSET_DATA_LEGATO_OBJ_NAME,
-                                           0,
-                                           0,
-                                           &legatoObjectRef) == LE_OK);
-
-    char versionBuffer[MAX_VERSION_STR_BYTES] = "";
-
-    GetLegatoVersionStr(versionBuffer);
-
-    le_result_t result = assetData_client_SetString(legatoObjectRef, LO0F_VERSION, versionBuffer);
-    LE_ERROR_IF(result != LE_OK,
-                "Could not update Legato version field (%d): %s",
-                result,
-                LE_RESULT_TXT(result));
-}
-
-
-
-
-
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Read the current state of the given object 9 instance.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1044,7 +837,6 @@ static UpdateState GetOb9State
     LE_ASSERT(assetData_client_GetInt(instanceRef, O9F_UPDATE_STATE, &state) == LE_OK);
     return (UpdateState)state;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1605,42 +1397,6 @@ static void StopApp
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Called when "interesting" activity happens on fields of the Legato framework object.
- */
-//--------------------------------------------------------------------------------------------------
-static void Legato0FieldActivityHandler
-(
-    assetData_InstanceDataRef_t instanceRef,  ///< The instance of the Legato object.
-    int fieldId,                              ///< The field that updated.
-    assetData_ActionTypes_t action,           ///< The action performed.
-    void* contextPtr                          ///< Useful context.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    int instanceId;
-    LE_ASSERT(assetData_GetInstanceId(instanceRef, &instanceId) == LE_OK);
-
-    if (instanceId != 0)
-    {
-        LE_ERROR("Legato objects outside of instance 0 are not supported.");
-        return;
-    }
-
-    if (   (fieldId == LO0F_RESTART)
-        && (action == ASSET_DATA_ACTION_EXEC))
-    {
-        LE_DEBUG("Send Legato restart request.");
-
-        if (le_sup_ctrl_RestartLegato(false) != LE_OK)
-        {
-            LE_INFO("Legato restart request rejected.  Shutdown must be underway already.");
-        }
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Set object9 state and result to failure and send a registration update.
  *
  *  During a SOTA operation the server waits for a registration update from the device before
@@ -2183,12 +1939,6 @@ COMPONENT_INIT
     le_instStat_AddAppInstallEventHandler(AppInstallHandler, NULL);
     le_instStat_AddAppUninstallEventHandler(AppUninstallHandler, NULL);
 
-    // Register for Legato Object 0 Events.
-    static int legatoObjMonitorFields[] =
-        {
-            // LO0F_VERSION,
-            LO0F_RESTART
-        };
 
     // Register for Object 9 Events.
     static int obj9MonitorFields[] =
@@ -2210,22 +1960,15 @@ COMPONENT_INIT
         };
 
 
-    RegisterFieldEventHandlers(ASSET_DATA_LEGATO_OBJ_NAME,
-                               0,
-                               NULL,
-                               legatoObjMonitorFields,
-                               NUM_ARRAY_MEMBERS(legatoObjMonitorFields),
-                               Legato0FieldActivityHandler);
-
-    RegisterFieldEventHandlers(LWM2M_NAME,
-                               9,
-                               Object9ActivityHandler,
-                               obj9MonitorFields,
-                               NUM_ARRAY_MEMBERS(obj9MonitorFields),
-                               Object9FieldActivityHandler);
+    aus_RegisterFieldEventHandlers(LWM2M_NAME,
+                                   9,
+                                   Object9ActivityHandler,
+                                   obj9MonitorFields,
+                                   NUM_ARRAY_MEMBERS(obj9MonitorFields),
+                                   Object9FieldActivityHandler);
 
     PopulateAppInfoObjects();
-    CreateLegatoObject();
+    InitLegatoObjects();
 
     // Restore the state of the update process, if avcService was rebooted or interrupted
     // by a power failure while in the middle of a download process.

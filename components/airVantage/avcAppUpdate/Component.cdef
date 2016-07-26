@@ -32,4 +32,6 @@ cflags:
 sources:
 {
     avcAppUpdate.c
+    avcFrameworkUpdate.c
+    avcUpdateShared.c
 }
