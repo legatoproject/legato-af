@@ -15,13 +15,7 @@ Then you're ready for the next level: @ref basicAppsAddThings, @ref basicAppsIPC
 @section basicAppsCreate_sampleDir Sample Directories and Files
 
 Typical apps have directories and files that look this:
-@verbatim
-helloWorld/
-├── helloComp
-│   ├── Component.cdef
-│   └── hello.c
-└── helloWorld.adef
-@endverbatim
+@image html sampleDirFiles.png
 
 @section basicAppsCreate_component Create Component
 Complete these steps to create a component: @ref basicAppsCreate_componentCreateDir,
