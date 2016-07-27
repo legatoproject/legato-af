@@ -1,6 +1,8 @@
 /** @page defFilesMdef Kernel Module Definition .mdef
 
-The @c .mdef files supports declaring pre-built kernel modules to use Legato.
+This topic provides details about Legato's Kernel Module Definition file.
+
+The @c .mdef files support declaring pre-built kernel modules to use Legato.
 
 @c .mdef files contain the following sections:
 
@@ -40,7 +42,7 @@ params:
 
 The mandatory quotes (“ ”) around each parameter value indicate a string type.
 
-@section defFilesMdef_preBuilt_buildKernal Build Kernel Modules
+@section defFilesMdef_preBuilt_buildKernel Build Kernel Modules
 
 For info on how to build Linux kernel modules, see the
 <a href="http://www.yoctoproject.org/docs/1.7.3/kernel-dev/kernel-dev.html">Yocto kernel dev docs</a>
@@ -48,7 +50,8 @@ and
 @code
 $(KERNEL_SRC)/Documentation/kbuild/modules.txt file@endcode
 
-@subsection defFilesMdef_preBuilt_binaries Build Directory
+
+@subsection defFilesMdef_buildDir Build Directory
 
 Kernel module binares are built in the Yocto Linux kernel build environment,
 preferably with Yocto cross-build tools.
@@ -64,6 +67,10 @@ From the Legato directory, this is the path to kernel build directory:
 @verbatim
 ../build_bin/tmp/work/swi_mdm9x15-poky-linux-gnueabi/linux-yocto/<kernel-version>/linux-swi_mdm9x15-standard-build
 @endverbatim
+
+@section defFiles_kernelDriver Kernel Driver
+
+See @ref yoctoOutofTreeKernelModule for details.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
