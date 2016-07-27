@@ -78,6 +78,9 @@ buildVars:
     LEGATO_FWUPDATE_PA = $PA_DIR/qmi/components/le_pa_fwupdate
     LEGATO_FWUPDATE_PA_DEFAULT = $LEGATO_ROOT/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
 
+    LEGATO_UARTMODE_PA = $PA_DIR/qmi/components/le_pa_uartMode
+    LEGATO_UARTMODE_PA_DEFAULT = $LEGATO_ROOT/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
+
     PROPRIETARY_UTIL_DIR = $PA_DIR/qmi/components
     LEGATO_QMI_UTIL_SRC_FILES = $PROPRIETARY_UTIL_DIR/swiQmi
     LEGATO_UTIL_PA = $PROPRIETARY_UTIL_DIR/swiQmi/mdm9x15/swiQmi

@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Fails on errors.
+set -e
+
 copyright="
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 "
@@ -38,8 +42,8 @@ SetTargetIP $1
 # If there isn't already a key file for Legato targets, create one.
 if ! [ -e  $PRIVATE_KEY_FILE ]
 then
-    echo "Generating new key pair... --->>> LEAVE THE PASSPHRASE EMPTY <<<---"
-    ssh-keygen -t rsa -f $PRIVATE_KEY_FILE -C "$USER's key for Legato target devices."
+    echo "Generating new key pair..."
+    ssh-keygen -t rsa -b 4096 -f $PRIVATE_KEY_FILE -C "$USER's key for Legato target devices."
 fi
 
 # Create an SSH configuration file for the user, if there isn't already one.
@@ -51,19 +55,32 @@ chmod 600 ~/.ssh/config
 # If the Legato targets key file isn't already listed in the user's SSH configuration,
 # and the target host IP address is not already listed too (because the IP address might
 # change or the user might have multiple targets), then add an entry to the user's SSH
-# configuration so that SSH will always use this no-passphrase key for this target.
+# configuration so that SSH will always use this key for this target.
 if ! grep "$PRIVATE_KEY_FILE" ~/.ssh/config > /dev/null || ! grep "Host $TARGET_IP" ~/.ssh/config > /dev/null
 then
     echo >> ~/.ssh/config
     echo "Host $TARGET_IP" >> ~/.ssh/config
     echo "  IdentityFile $PRIVATE_KEY_FILE" >> ~/.ssh/config
     echo "  User root" >> ~/.ssh/config
+    echo "  Ciphers aes128-ctr,aes192-ctr,aes256-ctr,aes128-cbc,aes192-cbc,aes256-cbc,blowfish-cbc" >> ~/.ssh/config
 fi
 
+# Create an SSH known_hosts file for the user, if there isn't already one.
+touch ~/.ssh/known_hosts
+
+# Make sure the SSH known_hosts file is only readable and writeable by the current user.
+chmod 600 ~/.ssh/known_hosts
+
+# Remove all keys belonging to our target from our list of known hosts.
 ssh-keygen -f "/home/$USER/.ssh/known_hosts" -R $TARGET_IP
+
+# Add the targets host key to our list of known hosts.
+echo "Adding the target to the list of known hosts."
+ssh-keyscan -H -t rsa $TARGET_IP >> "/home/$USER/.ssh/known_hosts"
 
 # Connect to the target and copy the
 ON_TARGET_KEY_FILE=$(basename $PUBLIC_KEY_FILE).$USER
+echo ""
 echo "Connecting to the target...  (ENTER TARGET'S ROOT PASSWORD WHENEVER PROMPTED FOR A PASSWORD)"
 echo "(Just hit ENTER if your target doesn't have a root password.)"
 cat $PUBLIC_KEY_FILE | SshToTarget "
@@ -73,5 +90,8 @@ cat $PUBLIC_KEY_FILE | SshToTarget "
     else
         mkdir -p .ssh
         cat >> .ssh/authorized_keys
+        chmod 700 .ssh
+        chmod 600 .ssh/authorized_keys
+        echo \"SSH Keys successfully setup for target $TARGET_IP.\"
     fi
     "

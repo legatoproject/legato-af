@@ -23,6 +23,7 @@ BUILD_PRODUCTS = 	config		\
 					xattr	\
 					app \
 					update \
+					uartMode \
 					scripts
 
 .PHONY: all $(BUILD_PRODUCTS)
@@ -46,7 +47,7 @@ BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
 BIN_DIR := $(BUILD_DIR)/bin
 LIB_DIR := $(BUILD_DIR)/lib
 
-MKEXE_FLAGS = -w $(BUILD_DIR)/tools/$@ -l $(LIB_DIR) -t $(TARGET)
+MKEXE_FLAGS += -w $(BUILD_DIR)/tools/$@ -l $(LIB_DIR) -t $(TARGET)
 
 # Do not be verbose by default.
 VERBOSE ?= 0
@@ -131,6 +132,11 @@ app:
 update:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/$@ \
+			$(MKEXE_FLAGS)
+
+uartMode:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/uartMode \
 			$(MKEXE_FLAGS)
 
 scripts:

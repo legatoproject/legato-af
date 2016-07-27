@@ -1,0 +1,99 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_uartConfig UART confi
+ *
+ * @ref le_uartConsole_interface.h "API Reference" <br>
+ *
+ * <HR>
+ *
+ * API for enabling/disabling either UART1 or UART2 for use as /dev/console.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_uartConsole_interface.h
+ *
+ * Legato @ref c_secStore API
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters and byte storage size permitted for a secure storage item name.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_NAME_SIZE = 255;
+DEFINE MAX_NAME_BYTES = (MAX_NAME_SIZE + 1);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes for each item in secure storage.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_ITEM_SIZE = 8192;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes an item to secure storage. If the item already exists, it'll be overwritten with
+ * the new value. If the item doesn't already exist, it'll be created.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there isn't enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Write
+(
+    string name[MAX_NAME_SIZE] IN,      ///< Name of the secure storage item.
+    uint8 buf[MAX_ITEM_SIZE] IN         ///< Buffer containing the data to store.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item. No data will be written to
+ *                  the buffer in this case.
+ *      LE_NOT_FOUND if the item doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Read
+(
+    string name[MAX_NAME_SIZE] IN,      ///< Name of the secure storage item.
+    uint8 buf[MAX_ITEM_SIZE] OUT        ///< Buffer to store the data in.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the item doesn't exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    string name[MAX_NAME_SIZE] IN       ///< Name of the secure storage item.
+);
+
+

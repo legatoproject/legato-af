@@ -1,0 +1,9 @@
+sources:
+{
+    pa_uartMode_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+}

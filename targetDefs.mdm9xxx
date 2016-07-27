@@ -17,6 +17,7 @@ export LEGATO_QMI_GNSS_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_gnss
 export LEGATO_QMI_AVC_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_avc
 export LEGATO_QMI_SECSTORE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_secStore
 export LEGATO_QMI_FWUPDATE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_fwupdate
+export LEGATO_QMI_UARTMODE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_uartMode
 export LEGATO_QMI_UTIL_SRC_FILES = $(PA_DIR)/qmi/src/components/swiQmi
 
 #   Pre-built binaries:
@@ -27,6 +28,7 @@ export LEGATO_QMI_GNSS_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_gns
 export LEGATO_QMI_AVC_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_avc
 export LEGATO_QMI_SECSTORE_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_secStore
 export LEGATO_QMI_FWUPDATE_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_fwupdate
+export LEGATO_QMI_UARTMODE_PA_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/le_pa_uartMode
 export LEGATO_QMI_UTIL_BIN = $(PA_DIR)/qmi/bin/$(TARGET)/components/swiQmi
 
 #   If the QMI PA sources are not available, use the pre-built binaries.
@@ -64,6 +66,11 @@ ifneq (,$(wildcard $(LEGATO_QMI_FWUPDATE_PA_SRC)/*))
   export LEGATO_QMI_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA_SRC)
 else
   export LEGATO_QMI_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA_BIN)
+endif
+ifneq (,$(wildcard $(LEGATO_QMI_UARTMODE_PA_SRC)/*))
+  export LEGATO_QMI_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA_SRC)
+else
+  export LEGATO_QMI_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA_BIN)
 endif
 ifneq (,$(wildcard $(LEGATO_QMI_UTIL_SRC)/*))
   export LEGATO_QMI_UTIL = $(LEGATO_QMI_UTIL_SRC)

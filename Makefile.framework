@@ -58,7 +58,7 @@ NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
 NINJA_FLAGS =
 
 # The daemons are built using mkexe.
-MKEXE_FLAGS = -o $(BIN_DIR)/$@ -t $(TARGET) -w $(BUILD_DIR)/$@ -l $(LIB_DIR)
+MKEXE_FLAGS += -o $(BIN_DIR)/$@ -t $(TARGET) -w $(BUILD_DIR)/$@ -l $(LIB_DIR)
 
 # Do not be verbose by default.
 VERBOSE ?= 0

@@ -1,0 +1,18 @@
+sources:
+{
+    uartMode.c
+}
+
+cflags:
+{
+    -I$CURDIR/../platformAdaptor/inc
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_UARTMODE_PA_DEFAULT
+        $LEGATO_UARTMODE_PA
+    }
+}

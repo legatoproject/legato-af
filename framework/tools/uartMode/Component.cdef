@@ -1,0 +1,16 @@
+cflags:
+{
+    -I$LEGATO_QMI_UTIL_SRC_FILES
+    -I$LEGATO_PROPRIETARY_QCT_DIR/inc/framework
+    -I$LEGATO_PROPRIETARY_QCT_DIR/inc/services
+}
+
+
+requires:
+{
+    component:
+    {
+        $LEGATO_UTIL_PA
+        $LEGATO_ROOT/components/uartMode/uartMode
+    }
+}
