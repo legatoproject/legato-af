@@ -5,6 +5,6 @@ These topics contain platform-specific info:
 | ---------------------------------- | -------------------------------------------------- |
 | @subpage platformConstraints       | Platform constraints                               |
 | @subpage yoctoMain                 | Yocto dist info                                   |
-| @subpage raspbianInstallNotes      | Raspbian dist info                                |
+| @subpage raspbianMain     | Raspbian dist info                                |
 
 **/
