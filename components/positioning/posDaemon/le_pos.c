@@ -21,7 +21,7 @@
 // TODO move to configuration module? or retrieve it from a speedometer?
 //--------------------------------------------------------------------------------------------------
 #define SUPPOSED_AVERAGE_SPEED       50  // 50 km/h
-#define DEFAULT_ACQUISITION_RATE     5   // 5 seconds
+#define DEFAULT_ACQUISITION_RATE     5000   // 5 seconds
 #define DEFAULT_POWER_STATE          true
 
 
@@ -2139,4 +2139,53 @@ le_result_t le_pos_GetDirection
     return posResult;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * Set the acquisition rate.
+ *
+ * @return
+ *    LE_OUT_OF_RANGE    Invalid acquisition rate.
+ *    LE_OK              The function succeeded.
+ */
+// -------------------------------------------------------------------------------------------------
+le_result_t le_pos_SetAcquisitionRate
+(
+    uint32_t  acquisitionRate   ///< IN Acquisition rate in milliseconds.
+)
+{
+    if (!acquisitionRate)
+    {
+        LE_WARN("Invalid acquisition rate (%d)", acquisitionRate);
+        return LE_OUT_OF_RANGE;
+    }
+
+    le_cfg_IteratorRef_t posCfg = le_cfg_CreateWriteTxn(CFG_POSITIONING_PATH);
+    le_cfg_SetInt(posCfg,CFG_NODE_RATE,acquisitionRate);
+    le_cfg_CommitTxn(posCfg);
+
+    return LE_OK;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the acquisition rate.
+ *
+ * @return
+ *   Acquisition rate in milliseconds.
+ */
+// -------------------------------------------------------------------------------------------------
+uint32_t le_pos_GetAcquisitionRate
+(
+    void
+)
+{
+    uint32_t  acquisitionRate;
+
+    le_cfg_IteratorRef_t posCfg = le_cfg_CreateReadTxn(CFG_POSITIONING_PATH);
+    acquisitionRate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
+    le_cfg_CancelTxn(posCfg);
+
+    LE_DEBUG("acquisition rate (%d) for positioning",acquisitionRate);
+    return acquisitionRate;
+}
 

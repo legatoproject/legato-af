@@ -222,6 +222,23 @@ void Testle_pos_GetInfo()
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: Get position Fix info.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_pos_TestAcquisitionRate()
+{
+    LE_ASSERT(le_pos_SetAcquisitionRate(3000) == LE_OK);
+    LE_ASSERT(le_pos_GetAcquisitionRate() == 3000);
+
+    LE_ASSERT(le_pos_SetAcquisitionRate(0) == LE_OUT_OF_RANGE);
+
+    LE_ASSERT(le_pos_SetAcquisitionRate(5000) == LE_OK);
+    LE_ASSERT(le_pos_GetAcquisitionRate() == 5000);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * App init.
  *
  */
@@ -234,6 +251,7 @@ COMPONENT_INIT
 
     LE_INFO("======== Positioning Test started  ========");
 
+    Testle_pos_TestAcquisitionRate();
     // Add Position Handler Test
     navigationThreadRef = le_thread_Create("NavigationThread",NavigationThread,NULL);
     le_thread_Start(navigationThreadRef);

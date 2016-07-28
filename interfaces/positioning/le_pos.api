@@ -97,10 +97,16 @@
  * A sample code can be seen in the following page:
  * - @subpage c_posSampleCodeNavigation
  *
- * @section le_pos_configdb Positioning configuration tree
- * @copydoc le_pos_configdbPage_Hide
+ * @section le_pos_acquisitionRate Positioning acquisition rate
  *
- * <HR>
+ * The acquisition rate value can be set or get with le_pos_SetAcquisitionRate() and
+ * le_pos_GetAcquisitionRate().
+ * @note
+ * If the acquisition rate was not previously configured, it will be set to a default value
+ * of 5 seconds.
+ * @note
+ * The acquisition rate set with le_pos_SetAcquisitionRate() will take effect once a request of
+ * activation of the positioning service by le_posCtrl_Request() is done.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -117,23 +123,6 @@
  *
  * @include "apps/test/positioning/posDaemonTest/le_posTest.c"
  */
-
-/**
- * @interface le_pos_configdbPage_Hide
- *
- * The configuration database path for Positioning is:
- * @verbatim
-   /
-       positioning/
-           acquisitionRate<int> == 5000
-   @endverbatim
- *
- *  - 'acquisitionRate' is the fix acquisition rate in milliseconds.
- *
- * @note
- *  If there is no configuration for 'acquisitionRate', it will be automatically set to 5 seconds.
- */
-
 //--------------------------------------------------------------------------------------------------
 /**
  * @file le_pos_interface.h
@@ -491,5 +480,31 @@ FUNCTION le_result_t sample_GetDirection
 FUNCTION sample_Release
 (
     Sample positionSampleRef            ///< Position sample's reference.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Set the acquisition rate.
+ *
+ * @return
+ *    LE_OUT_OF_RANGE    Invalid acquisition rate.
+ *    LE_OK              The function succeeded.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetAcquisitionRate
+(
+    uint32  acquisitionRate IN  ///< Acquisition rate in milliseconds.
+);
+
+// -------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the acquisition rate.
+ *
+ * @return
+ *    Acquisition rate in milliseconds.
+ */
+// -------------------------------------------------------------------------------------------------
+FUNCTION uint32 GetAcquisitionRate
+(
 );
 
