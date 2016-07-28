@@ -879,7 +879,7 @@ static void JsonDone
                 }
                 else
                 {
-                    char unpackPath[LIMIT_MAX_PATH_BYTES];
+                    char unpackPath[LIMIT_MAX_PATH_BYTES] = "";
                     // UnpackPath = app_unpack+Md5 hash
                     le_path_Concat("/", unpackPath, sizeof(unpackPath), app_UnpackPath, Md5, NULL);
                     LE_FATAL_IF(le_dir_RemoveRecursive(unpackPath) != LE_OK,
