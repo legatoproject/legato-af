@@ -275,9 +275,11 @@ static void Testle_sms_SetGetPDU
     le_sms_Delete(myMsg);
 }
 
+//--------------------------------------------------------------------------------------------------
 /*
  * Test case le_sms_GetSmsCenterAddress() and le_sms_SetSmsCenterAddress() APIs
  */
+//--------------------------------------------------------------------------------------------------
 static void Testle_sms_SetGetSmsCenterAddress
 (
     void
@@ -352,6 +354,32 @@ static void Testle_sms_ErrorDecodingReceivedList()
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/*
+ * Test le_sms_SetPreferredStorage() and le_sms_GetPreferredStorage() APIs
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_sms_Storage
+(
+    void
+)
+{
+    le_sms_Storage_t storage;
+
+    LE_ASSERT(le_sms_SetPreferredStorage(LE_SMS_STORAGE_MAX) == LE_FAULT);
+
+    LE_ASSERT(le_sms_SetPreferredStorage(LE_SMS_STORAGE_NV) == LE_OK);
+
+    LE_ASSERT(le_sms_GetPreferredStorage(&storage) == LE_OK);
+
+    LE_ASSERT(storage == LE_SMS_STORAGE_NV);
+
+    LE_ASSERT(le_sms_SetPreferredStorage(LE_SMS_STORAGE_SIM) == LE_OK);
+
+    LE_ASSERT(le_sms_GetPreferredStorage(&storage) == LE_OK);
+
+    LE_ASSERT(storage == LE_SMS_STORAGE_SIM);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -535,6 +563,9 @@ void testle_sms_SmsApiUnitTest
 )
 {
     LE_ASSERT(le_sms_Init() == LE_OK);
+
+    LE_INFO("Test Testle_sms_Storage started");
+    Testle_sms_Storage();
 
     LE_INFO("Test Testle_sms_SetGetSmsCenterAddress started");
     Testle_sms_SetGetSmsCenterAddress();

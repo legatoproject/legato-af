@@ -1286,81 +1286,120 @@ static le_result_t Testle_sms_ReceivedList()
     le_sms_Status_t         mystatus;
 
     myMsg = le_sms_Create();
-    LE_ASSERT(!myMsg);
+    LE_ASSERT(myMsg);
 
     res = le_sms_SetDestination(myMsg, DEST_TEST_PATTERN);
-    LE_ASSERT(res != LE_OK);
+    LE_ASSERT(res == LE_OK);
 
     res = le_sms_SetText(myMsg, TEXT_TEST_PATTERN);
-    LE_ASSERT(res != LE_OK);
+    LE_ASSERT(res == LE_OK);
 
     res = le_sms_Send(myMsg);
-    LE_ASSERT((res == LE_FAULT) || (res == LE_FORMAT_ERROR));
+    LE_ASSERT((res != LE_FAULT) && (res != LE_FORMAT_ERROR));
 
     res = le_sms_Send(myMsg);
-    LE_ASSERT((res == LE_FAULT) || (res == LE_FORMAT_ERROR));
+    LE_ASSERT((res != LE_FAULT) && (res != LE_FORMAT_ERROR));
 
     sleep(10);
 
     // List Received messages
     receivedList = le_sms_CreateRxMsgList();
-    LE_ASSERT(!receivedList);
-
-    lMsg1 = le_sms_GetFirst(receivedList);
-    if (lMsg1 != NULL)
+    if (receivedList)
     {
-        mystatus = le_sms_GetStatus(lMsg1);
-        LE_ASSERT((mystatus != LE_SMS_RX_READ) && (mystatus != LE_SMS_RX_UNREAD));
+        lMsg1 = le_sms_GetFirst(receivedList);
+        if (lMsg1 != NULL)
+        {
+            mystatus = le_sms_GetStatus(lMsg1);
+            LE_ASSERT((mystatus == LE_SMS_RX_READ) || (mystatus == LE_SMS_RX_UNREAD));
 
-        // Verify Mark Read functions on Rx message list
-        le_sms_MarkRead(lMsg1);
-        mystatus = le_sms_GetStatus(lMsg1);
-        LE_ASSERT(mystatus != LE_SMS_RX_READ);
+            // Verify Mark Read functions on Rx message list
+            le_sms_MarkRead(lMsg1);
+            mystatus = le_sms_GetStatus(lMsg1);
+            LE_ASSERT(mystatus == LE_SMS_RX_READ);
 
-        // Verify Mark Unread functions on Rx message list
-        le_sms_MarkUnread(lMsg1);
-        mystatus = le_sms_GetStatus(lMsg1);
-        LE_ASSERT(mystatus != LE_SMS_RX_UNREAD);
+            // Verify Mark Unread functions on Rx message list
+            le_sms_MarkUnread(lMsg1);
+            mystatus = le_sms_GetStatus(lMsg1);
+            LE_ASSERT(mystatus == LE_SMS_RX_UNREAD);
 
-        // Verify Mark Read functions on Rx message list
-        le_sms_MarkRead(lMsg1);
-        mystatus = le_sms_GetStatus(lMsg1);
-        LE_ASSERT(mystatus != LE_SMS_RX_READ);
+            // Verify Mark Read functions on Rx message list
+            le_sms_MarkRead(lMsg1);
+            mystatus = le_sms_GetStatus(lMsg1);
+            LE_ASSERT(mystatus == LE_SMS_RX_READ);
 
-        LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
-        le_sms_DeleteFromStorage(lMsg1);
+            LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
+            le_sms_DeleteFromStorage(lMsg1);
+        }
+        else
+        {
+            LE_ERROR("Test required at less 2 SMSs in the storage");
+            return LE_FAULT;
+        }
+
+        lMsg2 = le_sms_GetNext(receivedList);
+        if (lMsg2 != NULL)
+        {
+            mystatus = le_sms_GetStatus(lMsg2);
+            LE_ASSERT((mystatus == LE_SMS_RX_READ) || (mystatus == LE_SMS_RX_UNREAD));
+
+            LE_INFO("-TEST- Delete Rx message 2 from storage.%p", lMsg2);
+            le_sms_DeleteFromStorage(lMsg2);
+        }
+        else
+        {
+            LE_ERROR("Test requiered at less 2 SMSs in the storage");
+            le_sms_Delete(myMsg);
+            return LE_FAULT;
+        }
+
+        LE_INFO("-TEST- Delete the ReceivedList");
+        le_sms_DeleteList(receivedList);
     }
-    else
-    {
-        LE_ERROR("Test required at less 2 SMSs in the storage");
-        return LE_FAULT;
-    }
-
-    lMsg2 = le_sms_GetNext(receivedList);
-    if (lMsg2 != NULL)
-    {
-        mystatus = le_sms_GetStatus(lMsg2);
-        LE_ASSERT((mystatus != LE_SMS_RX_READ) && (mystatus != LE_SMS_RX_UNREAD));
-
-        LE_INFO("-TEST- Delete Rx message 2 from storage.%p", lMsg2);
-        le_sms_DeleteFromStorage(lMsg2);
-    }
-    else
-    {
-        LE_ERROR("Test requiered at less 2 SMSs in the storage");
-        le_sms_Delete(myMsg);
-        return LE_FAULT;
-    }
-
-    LE_INFO("-TEST- Delete the ReceivedList");
-    le_sms_DeleteList(receivedList);
-
-    // Delete sent message
     le_sms_Delete(myMsg);
 
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: testing the SMS storage area.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t Testle_sms_Storage
+(
+    void
+)
+{
+    le_sms_Storage_t storage;
+
+    LE_ASSERT(le_sms_SetPreferredStorage(LE_SMS_STORAGE_MAX) == LE_FAULT);
+
+    LE_ASSERT(le_sms_SetPreferredStorage(LE_SMS_STORAGE_NV) == LE_OK);
+
+    LE_ASSERT(le_sms_GetPreferredStorage(&storage) == LE_OK);
+
+    LE_ASSERT(storage == LE_SMS_STORAGE_NV);
+
+    LE_ASSERT(Testle_sms_Send_Text() == LE_OK);
+    // test that pa_sms_DelMsgFromMem() called in TestRxHandler is
+    // from storage 1 (PA_SMS_STORAGE_NV)
+
+    LE_ASSERT(le_sms_SetPreferredStorage(LE_SMS_STORAGE_SIM) == LE_OK);
+
+    LE_ASSERT(le_sms_GetPreferredStorage(&storage) == LE_OK);
+
+    LE_ASSERT(storage == LE_SMS_STORAGE_SIM);
+
+    LE_ASSERT(Testle_sms_Send_Text() == LE_OK);
+
+    // test that pa_sms_DelMsgFromMem() called in TestRxHandler is
+    // from storage 2 (PA_SMS_STORAGE_SIM)
+
+    LE_INFO("Testle_sms_SetStorage PASSED");
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /*
@@ -1383,6 +1422,9 @@ COMPONENT_INIT
 
         // Delete all Rx SMS message
         DeleteMessages();
+
+        res = Testle_sms_Storage();
+        LE_ASSERT(res == LE_OK);
 
         res = Testle_sms_AsyncSendTextTimeout();
         LE_ASSERT(res == LE_OK);

@@ -265,6 +265,11 @@
  *  Modem SMS Center Address can be set or get with le_sms_SetSmsCenterAddress() and
  *   le_sms_GetSmsCenterAddress() functions
  *
+ * @section le_sms_ops_storage_configuration Preferred SMS storage configuration
+ *
+ *  Preferred SMS storage for incoming messages can be set or get with le_sms_SetPreferredStorage()
+ *  and le_sms_GetPreferredStorage() functions.
+ *
  * @section le_sms_ops_samples Sample codes
  * A sample code that implements a function for Mobile Originated SMS message can be found in
  * \b smsMO.c file (please refer to @ref c_smsSampleMO page).
@@ -1431,6 +1436,32 @@ FUNCTION le_result_t GetSmsCenterAddress
 FUNCTION le_result_t SetSmsCenterAddress
 (
     string          tel[le_mdmDefs.PHONE_NUM_MAX_LEN] IN    ///< SMS center address number string.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the preferred SMS storage for incoming messages.
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPreferredStorage
+(
+    Storage  prefStorage  IN ///< storage parameter.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the preferred SMS storage for incoming messages.
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPreferredStorage
+(
+    Storage  prefStorage  OUT ///< storage parameter.
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -12,6 +12,40 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function is called to set the preferred SMS storage area.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_SetPreferredStorage
+(
+    le_sms_Storage_t prefStorage
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to get the preferred SMS storage area.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sms_GetPreferredStorage
+(
+    le_sms_Storage_t* prefStoragePtr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to register a handler for a new message reception handling.
  *
  * @return LE_FAULT         The function failed to register a new handler.

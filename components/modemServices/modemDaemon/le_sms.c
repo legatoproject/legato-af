@@ -3578,6 +3578,37 @@ le_result_t le_sms_SetSmsCenterAddress
     return res;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the preferred SMS storage for incoming messages.
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_SetPreferredStorage
+(
+    le_sms_Storage_t  prefStorage  ///< IN storage parameter.
+)
+{
+    return (pa_sms_SetPreferredStorage(prefStorage));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the preferred SMS storage for incoming messages.
+ * @return
+ *  - LE_FAULT         Function failed.
+ *  - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_GetPreferredStorage
+(
+    le_sms_Storage_t*  prefStorage  ///< OUT storage parameter.
+)
+{
+    return (pa_sms_GetPreferredStorage(prefStorage));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
