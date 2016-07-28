@@ -1,0 +1,42 @@
+/** @page howToSecuritySandboxLimits Sandboxed App Limits
+
+This topic provides details on sandboxed apps' limits.
+
+There are two sandboxed app limit types:
+- @e app limits on the aggregated resource usage of all processes in an app.
+- @e process limits on the resource usage of a single process.
+
+When a resource limit is reached, the resulting behaviour depends on the resource type.
+
+@section howToSecuritySandboxLimits_app App Limits
+
+This is what happens when app limits are reached:
+
+- @ref defFilesAdef_maxFileSystemBytes write() calls will return either ENOSPC or EDQUOT.
+- @ref defFilesAdef_cpuShare processes will just slow down as they get less of the cpu. This is
+not actually a limit; it's a share of the cpu for all currently running processes in the system.
+- @ref defFilesAdef_maxMemoryBytes oom-killer will kill off the offending process.
+- @ref defFilesAdef_maxMQueueBytes mq_open() calls will return ENOSPC.
+- @ref defFilesAdef_maxThreads fork() calls return EAGAIN.
+- @ref defFilesAdef_maxQueuedSignals sigqueue() calls return EAGAIN.
+
+@section howToSecuritySandboxLimits_process Process Limits
+
+This is what happens when process limits are reached:
+
+- @ref defFilesAdef_processMaxCoreDumpFileBytes core dump files are truncated to this limit.
+- @ref defFilesAdef_processMaxFileBytes processes will receive a SIGXFSZ and systems calls like
+write() will return EFBIG.
+- @ref defFilesAdef_processMaxLockedMemoryBytes calls such as mlock(), mlockall(), mmap(), shmctl()
+will return ENOMEM.
+- @ref defFilesAdef_processMaxFileDescriptors calls such as open(), pipe(), dup(), etc. will return
+EMFILE.
+- @ref defFilesAdef_maxSecureStorageBytes the function le_secStore_Write() call will return
+LE_NO_MEMORY.
+
+@note See <a href="http://linux.die.net/man/2/prlimit">Linux man pages</a> for details on many of these
+limits.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

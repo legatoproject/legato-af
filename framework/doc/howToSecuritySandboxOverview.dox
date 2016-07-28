@@ -13,11 +13,13 @@ This is what a sandboxed app @ref howToConfigTreeSchema looks like.
 
 @section howToSecuritySandbox_probs Common Problems
 
-Often, when sandbox problems occur, it's because either:
-- the permissions are set incorrectly: check the @c .sdef bundles section to ensure permissions are
-valid.
-- there's a file missing from the file system within the sandbox: check that the @c def files'
-requires sections include all required files.
+These are some common reasons for sandbox problems:
+- permissions are set incorrectly: check the @ref defFilesCdef_bundles ".cdef bundles" section
+to ensure permissions are valid.
+- a file is missing from the file system within the sandbox: check that the files in
+@ref defFilesCdef_requires ".cdef requires" and
+@ref defFilesAdef_requires ".adef requires" sections include all required files.
+- you've reached a sanboxed app @ref howToSecuritySandboxLimits "limit".
 
 @section howToSecuritySandbox_sampleApps Sandbox Sample Apps
 
@@ -78,8 +80,6 @@ in the @c .adef and @c .cdef files @c requires section.
 
 Although it's not recommended, you can turn-off sandboxing by setting @ref defFilesAdef_sandboxed
 to @c false.
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

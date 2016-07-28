@@ -1,6 +1,7 @@
 /** @page howToSecuritySandboxUse Use Sandboxes
 
 This topic describes how to create your apps to properly use Legato's @ref basicSecuritySandbox feature.
+
 We've used a Python hello world app example of sandboxing throughout this topic.
 
 @section howToSecurity_Sandbox_createApps Create Sandboxed Apps

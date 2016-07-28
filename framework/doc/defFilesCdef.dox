@@ -1,5 +1,7 @@
 /** @page defFilesCdef Component Definition .cdef
 
+This topic provides details about Legato's Component Definition file.
+
 <c>Component.cdef</c> files can contain these sections:
 
 @section defFilesCdef_assets assets
@@ -749,8 +751,6 @@ sources:
     init.c      // This one implements the COMPONENT_INIT
 }
 @endcode
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

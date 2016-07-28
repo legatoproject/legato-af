@@ -10,6 +10,8 @@ accessed by the app.
 
 You @subpage howToSecuritySandboxOverview "configure" Legato sandboxes through @ref defFiles.
 
+There are @subpage howToSecuritySandboxLimits you should understand.
+
 Here are some details on creating and building a @subpage howToSecuritySandboxUse.
 
 <HR>

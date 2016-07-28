@@ -1,5 +1,11 @@
 /** @page defFilesSdef System Definition .sdef
 
+This topic provides details about Legato's System Definition files.
+
+See @ref howToSecurity for details on how to @ref howToSecuritySandboxUse and understand
+@ref howToSecuritySandboxLimits_app "app" and @ref howToSecuritySandboxLimits_process "process"
+limits.
+
 <c>.sdef</c> files can contain these sections:
 
 @section defFilesSdef_apps apps
@@ -37,19 +43,19 @@ the .adef setting for all processes in that app:
 
 @ref defFilesAdef_cpuShare <br>
 @ref defFilesAdef_processFaultAction <br>
-@ref defFilesAdef_groups  <br>
-@ref defFilesAdef_processMaxCoreDumpFileBytes  <br>
-@ref defFilesAdef_processMaxFileBytes  <br>
-@ref defFilesAdef_processMaxFileDescriptors  <br>
-@ref defFilesAdef_maxFileSystemBytes  <br>
-@ref defFilesAdef_processMaxLockedMemoryBytes  <br>
-@ref defFilesAdef_maxMemoryBytes  <br>
-@ref defFilesAdef_maxMQueueBytes  <br>
-@ref defFilesSdef_appsMaxPriority  <br>
-@ref defFilesAdef_maxQueuedSignals  <br>
-@ref defFilesAdef_maxThreads  <br>
-@ref defFilesAdef_maxSecureStorageBytes  <br>
-@ref defFilesAdef_pools  <br>
+@ref defFilesAdef_groups <br>
+@ref defFilesAdef_processMaxCoreDumpFileBytes <br>
+@ref defFilesAdef_processMaxFileBytes <br>
+@ref defFilesAdef_processMaxFileDescriptors <br>
+@ref defFilesAdef_maxFileSystemBytes <br>
+@ref defFilesAdef_processMaxLockedMemoryBytes <br>
+@ref defFilesAdef_maxMemoryBytes <br>
+@ref defFilesAdef_maxMQueueBytes <br>
+@ref defFilesSdef_appsMaxPriority <br>
+@ref defFilesAdef_maxQueuedSignals <br>
+@ref defFilesAdef_maxThreads <br>
+@ref defFilesAdef_maxSecureStorageBytes <br>
+@ref defFilesAdef_pools <br>
 @ref defFilesAdef_sandboxed <br>
 @ref defFilesAdef_start  <br>
 @ref defFilesAdef_watchdogAction <br>
@@ -332,9 +338,7 @@ commands:
 @endcode
 
 @warning When the command runs, it runs with the full privileges of the user that runs it.
-         So, if you login as root and run a command, the command runs as root.
-
-<HR>
+         If you login as root and run a command, the command executes with root user privileges.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

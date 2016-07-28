@@ -1,5 +1,11 @@
 /** @page defFilesAdef Application Definition .adef
 
+This topic provides details about Legato's Application Definition file.
+
+See @ref howToSecurity for details on how to @ref howToSecuritySandboxUse and understand
+@ref howToSecuritySandboxLimits_app "app" and @ref howToSecuritySandboxLimits_process "process"
+limits.
+
 <c>.adef</c> files can contain these sections:
 
 @section defFilesAdef_bindings bindings
@@ -140,7 +146,7 @@ could have a different name than the source object.
 
 @note  If the app is running unsandboxed, the bundled files and directories can be found
         in their installation location under @c /legato/systems/current/apps/xxxx, (if the system
-        is running else current is replaced by the newest system index) where xxxx is replaced by
+        is running, else current is replaced by the newest system index) where xxxx is replaced by
         the app name.
 
 <b>Quoting Paths</b>
@@ -387,7 +393,7 @@ processes:
     run:
     {
         myProc1 = ( myExe --foo -b 43 )
-        myProc2 = ( myExe –bar --b 92 )
+        myProc2 = ( myExe --bar -b 92 )
         ( myExe2 "Hello, world." )  // If no proc name is specified, uses the exe name by default.
     }
 
@@ -531,7 +537,7 @@ Processes with any realtime priority will preempt processes with high, medium, l
 idle priorities.
 
 @warning Processes assigned realtime priorities preempt Legato framework processes.
-         Ensure that your design relinquinshes the CPU appropriately. Processes assigned a 
+         Ensure that your design relinquinshes the CPU appropriately. Processes assigned a
          realtime priority aren't constrained by an app's cpu share even if the process later changes
          to a non-realtime priority. This also applies to all threads the process spawns.
 
