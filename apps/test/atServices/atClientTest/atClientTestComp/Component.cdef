@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-        atService/le_atClient.api
+        atServices/le_atClient.api
     }
 }
 

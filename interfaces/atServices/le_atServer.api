@@ -1,0 +1,365 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_atServer AT commands server
+ *
+ * @ref le_atServer_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The AT commands server handles AT commands subscription on a requested serial device. The server
+ * is complient with 3GPP 27.007, paragraph 4.0, 4.1 and 4.2.
+ *
+ * @section binding AT commands server and device binding
+ *
+ * le_atServer_Start() API must be called to bind a specific device with the AT commands server.
+ * Multiple devices can be bound.
+ * A device can be unbinded using le_atServer_Stop() API.
+ *
+ * @section subscription AT command subscription
+ *
+ * A new AT command can be added into the parser using le_atServer_Create(), and it can be deleted
+ * thanks to le_atServer_Delete().
+ * An AT command can be available only on one dedicated device, or on all binded AT devices, using
+ * le_atServer_SetDevice() API.
+ *
+ * @section handler AT command handler
+ *
+ * To handle the AT command, the application has to subscribe a handler using
+ * le_atServer_AddCommandHandler() (it may be removed with le_atServer_RemoveCommandHandler()).
+ * The called handler (le_atServer_CommandHandlerRef_t prototype) can use
+ * le_atServer_GetCommandName() to retrieve the received AT command string. It can also call
+ * le_atServer_GetParameter() to retrieve a parameter of the AT command thanks to its index.
+ *
+ * @section responses AT command responses
+ *
+ * The application has the possibility to send intermediate responses thanks to
+ * le_atServer_SendIntermediateResponse().
+ * In all cases, the application must send a final response thanks to
+ * le_atServer_SendFinalResponse(). The AT device is locked until the final response is sent. If no
+ * answer is sent, the AT device will not accept any new AT commands (an error is returned in this
+ * case).
+ *
+ * The application has also the possibility to send unsolicited responses to warn a host
+ * application with le_atServer_SendUnsolicitedResponse() API.
+ * This response is sent when no AT command is processing on the device (i.e. unsolicited
+ * response is sent between the latest final response and the next reception of an AT command).
+ * If an unsolicited response is sent whereas an AT command is in progress, the unsolicited response
+ * is buffered and sent as soon as the AT device becomes available (i.e. the processing AT command
+ * sends its final response).
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_atServer_interface.h
+ *
+ * Legato @ref c_atServer include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+USETYPES le_atClient.api;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for an AT command.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Cmd;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for a AT command device.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Device;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMMAND_MAX_LEN = (100);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command string maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMMAND_MAX_BYTES = (COMMAND_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parameter string maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PARAMETER_MAX_LEN = (20);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parameter string maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PARAMETER_MAX_BYTES = (PARAMETER_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Device name maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PATH_MAX_LEN = le_atClient.PATH_MAX_LEN;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Device name maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE DEVICE_NAME_MAX_BYTES = (PATH_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT command response maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  RESPONSE_MAX_LEN = (40);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT command response maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  RESPONSE_MAX_BYTES = (RESPONSE_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Received AT command type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Type
+{
+    TYPE_ACT,  ///< Action AT command (e.g. 'AT+CMD')
+    TYPE_PARA, ///< AT command received with parameters (e.g. 'AT+CMD=x,y')
+    TYPE_TEST, ///< Test AT command (e.g. 'AT+CMD=?')
+    TYPE_READ  ///< Read AT command (e.g. 'AT+CMD?')
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Final response.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FinalRsp
+{
+    OK,        ///< AT command successfully treated, "\r\nOK\r\n" is sent if no custom
+               ///< response is set
+    ERROR      ///< error in AT command treatement, "\r\nERROR\r\n" is sent if no custom
+               ///< response is set
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Device availabality.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM AvailableDevice
+{
+    ALL_DEVICES,      ///< action will be done on all binded devices
+    SPECIFIC_DEVICE   ///< action will be done on a specified device
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function starts an AT server session on the requested device.
+ *
+ * @return
+ *      - Reference to the requested device.
+ *      - NULL if the device is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Device Start
+(
+    string devicePath[PATH_MAX_LEN] IN   ///< device path which has to be used for the AT parser
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function stops the AT server session on the requested device.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to stop the AT server session.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+    Device device IN   ///< device to be unbinded
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function created an AT command and register it into the AT parser.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Cmd Create
+(
+    string name[COMMAND_MAX_LEN] IN   ///< AT command name string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes an AT command (i.e. unregister from the AT parser).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to delete the command.
+ */
+//--------------------------------------------------------------------------------------------------
+
+FUNCTION le_result_t Delete
+(
+    Cmd commandRef IN   ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the device(s) where the specified AT command is available.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to set the device.
+ *
+ * @note If the AT command is available for all devices (i.e. availableDevice argument is set to
+ * LE_ATSERVER_ALL_DEVICES), the "device" argument is unused.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDevice
+(
+    Cmd             commandRef          IN, ///< AT command reference
+    AvailableDevice   availableDevice   IN, ///< device available for the AT command
+    Device            device            IN  ///< device reference where the AT command is available
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for the AT command processing.
+ *
+ * @note The argument "parametersNumber" is set only when "type" parameter value is
+ * LE_AT_SERVER_TYPE_PARA
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CommandHandler
+(
+    Cmd     commandRef       IN,      ///< Received AT command reference
+    Type    type             IN,      ///< Received AT command type
+    uint32  parametersNumber IN       ///< Parameters number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information when the AT command is detected.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Command
+(
+    Cmd            commandRef IN,   ///< AT command reference
+    CommandHandler handler IN       ///< Handler to called when the AT command is detected
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the parameters of a received AT command.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the requested parameter.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetParameter
+(
+    Cmd    commandRef                    IN,             ///< AT command reference
+    uint32 index                         IN,             ///< agument index
+    string parameter[PARAMETER_MAX_LEN]  OUT             ///< parameter value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the AT command string.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCommandName
+(
+    Cmd    commandRef            IN,         ///< AT command reference
+    string name[COMMAND_MAX_LEN] OUT         ///< AT command string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send an intermediate response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendIntermediateResponse
+(
+    Cmd      commandRef                             IN, ///< AT command reference
+    string   intermediateRsp[RESPONSE_MAX_BYTES]    IN  ///< Intermediate response to be sent
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the final response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the final response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendFinalResponse
+(
+    Cmd      commandRef                     IN,     ///< AT command reference
+    FinalRsp final                          IN,     ///< Final response to be sent
+    bool     customStringAvailable          IN,     ///< Custom finalRsp string has to be sent
+                                                    ///< instead of the default one.
+    string   finalRsp[RESPONSE_MAX_BYTES]   IN      ///< custom final response string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the unsolicited response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the unsolicited response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendUnsolicitedResponse
+(
+    string        unsolRsp[RESPONSE_MAX_BYTES]  IN, ///< Unsolicited response to be sent
+    AvailableDevice availableDevice             IN, ///< device to send the unsolicited response
+    Device          device                      IN  ///< device reference where the unsolicited
+                                                    ///< response has to be sent
+);

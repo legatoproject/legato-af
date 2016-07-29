@@ -1,0 +1,19 @@
+provides:
+{
+    api:
+    {
+        atServices/le_atServer.api
+    }
+}
+
+
+sources:
+{
+    le_atServer.c
+    $CURDIR/../Common/le_dev.c
+}
+
+cflags:
+{
+    -I$CURDIR/../Common
+}

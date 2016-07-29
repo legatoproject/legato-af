@@ -1,0 +1,20 @@
+requires:
+{
+    api:
+    {
+        atServices/le_atServer.api [types-only]
+    }
+}
+
+
+sources:
+{
+    ${LEGATO_ROOT}/components/atServices/atServer/le_atServer.c
+    le_dev_simu.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/atServices/Common
+    -Dle_fdMonitor_GetContextPtr=My_fdMonitor_GetContextPtr
+}

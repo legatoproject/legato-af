@@ -61,7 +61,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include <termios.h>
+#include "le_dev.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -249,19 +249,7 @@ typedef struct
 }
 Unsolicited_t;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * device structure
- *
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct Device
-{
-    char               path[LE_ATCLIENT_PATH_MAX_BYTES]; ///< Path of the device
-    uint32_t           handle;                           ///< Handle of the device.
-    le_fdMonitor_Ref_t fdMonitor;                        ///< fd event monitor associated to Handle
-}
-Device_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -279,7 +267,7 @@ typedef struct DeviceContext
     le_dls_List_t   atCommandList;      ///< List of command waiting for execution
     le_dls_List_t   unsolicitedList;    ///< unsolicited command list
     le_sem_Ref_t    waitingSemaphore;   ///< semaphore used for synchronization
-    le_atClient_DeviceRef_t ref;        ///< reference of the deivce context
+    le_atClient_DeviceRef_t ref;        ///< reference of the device context
 }
 DeviceContext_t;
 
@@ -578,130 +566,25 @@ static void ResetRxBuffer
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to print a buffer byte by byte
+ * This function is a state of the AT Command Client state machine.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void PrintBuffer
+static void InitializeState
 (
-    char     *namePtr,       ///< buffer name
-    uint8_t  *bufferPtr,     ///< the buffer to print
-    uint32_t  bufferSize     ///< Number of element to print
+    DeviceContext_t* interfacePtr
 )
 {
-    uint32_t i;
-    for(i=0;i<bufferSize;i++)
-    {
-        if (bufferPtr[i] == '\r' )
-        {
-            LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",(namePtr)?namePtr:"no name",i,bufferPtr[i],"CR");
-        }
-        else if (bufferPtr[i] == '\n')
-        {
-            LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",(namePtr)?namePtr:"no name",i,bufferPtr[i],"LF");
-        }
-        else if (bufferPtr[i] == 0x1A)
-        {
-            LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",(namePtr)?namePtr:"no name",i,bufferPtr[i],"CTRL+Z");
-        }
-        else
-        {
-            LE_DEBUG("'%s' -> [%d] '0x%.2x' '%c'",(namePtr)?namePtr:"no name",i,bufferPtr[i],
-                                                                                bufferPtr[i]);
-        }
-    }
+    ClientStatePtr_t  clientStatePtr = &interfacePtr->clientState;
+    clientStatePtr->curState = WaitingState;
+    clientStatePtr->interfacePtr = interfacePtr;
+
+    RxParserPtr_t rxParserPtr = &interfacePtr->rxParser;
+    rxParserPtr->curState = StartingState;
+
+    interfacePtr->timerRef = le_timer_Create("CommandTimer");
+    interfacePtr->rxParser.interfacePtr = interfacePtr;
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called when we want to read on device (or port)
- *
- * @return byte number read
- */
-//--------------------------------------------------------------------------------------------------
-static int32_t DeviceRead
-(
-    Device_t  *devicePtr,    ///< device pointer
-    uint8_t   *rxDataPtr,    ///< Buffer where to read
-    uint32_t   size          ///< size of buffer
-)
-{
-    int32_t status=1;
-    int32_t amount = 0;
-
-    while (status>0)
-    {
-        status = read(devicePtr->handle, rxDataPtr, size);
-
-        if(status > 0)
-        {
-            size      -= status;
-            rxDataPtr += status;
-            amount    += status;
-        }
-    }
-
-    LE_DEBUG("%s -> Read (%d) on %d",
-             devicePtr->path,
-             amount,devicePtr->handle);
-
-    return amount;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to write on device (or port)
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void  DeviceWrite
-(
-    Device_t *devicePtr,    ///< device pointer
-    uint8_t  *rxDataPtr,    ///< Buffer to write
-    uint32_t  bufLen        ///< size of buffer
-)
-{
-    int32_t amount = 0;
-
-    size_t size;
-    size_t sizeToWrite;
-    ssize_t sizeWritten;
-
-    LE_FATAL_IF(devicePtr->handle==-1,"Write Handle error\n");
-
-    for(size = 0; size < bufLen;)
-    {
-        sizeToWrite = bufLen - size;
-
-        sizeWritten = write(devicePtr->handle, &rxDataPtr[size], sizeToWrite);
-
-        if (sizeWritten < 0)
-        {
-            if ((errno != EINTR) && (errno != EAGAIN))
-            {
-                LE_ERROR("Cannot write on uart: %s",strerror(errno));
-                return;
-            }
-        }
-        else
-        {
-            size += sizeWritten;
-        }
-    }
-
-    if(size > 0)
-    {
-        bufLen  -= size;
-        amount  += size;
-    }
-
-    LE_DEBUG("%s -> write (%d) on %d",
-             devicePtr->path,
-             amount,devicePtr->handle);
-
-    PrintBuffer(devicePtr->path,rxDataPtr,amount);
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -726,7 +609,7 @@ static void RxNewData
     LE_DEBUG("Start read");
 
     /* Read RX data on uart */
-    size = DeviceRead(&interfacePtr->device,
+    size = le_dev_Read(&interfacePtr->device,
                          (uint8_t *)(&interfacePtr->rxParser.rxData.buffer) +
                          interfacePtr->rxParser.rxData.idx,
                          (PARSER_BUFFER_MAX_BYTES - interfacePtr->rxParser.rxData.idx));
@@ -735,10 +618,6 @@ static void RxNewData
     if (size > 0)
     {
         interfacePtr->rxParser.rxData.endBuffer += size;
-
-        PrintBuffer(interfacePtr->device.path,
-                    interfacePtr->rxParser.rxData.buffer,
-                    interfacePtr->rxParser.rxData.endBuffer);
 
         /* Call the parser */
         ParseRxBuffer(&interfacePtr->rxParser);
@@ -769,21 +648,16 @@ static void DestroyDeviceThread
 
     LE_DEBUG("Destroy thread for interface %s", interfacePtr->device.path);
 
-    while ((linkPtr=le_dls_Peek(&interfacePtr->unsolicitedList)) != NULL)
+    while ((linkPtr=le_dls_Pop(&interfacePtr->unsolicitedList)) != NULL)
     {
         Unsolicited_t *unsolPtr = CONTAINER_OF(linkPtr, Unsolicited_t, link);
         le_mem_Release(unsolPtr);
     }
 
-    while ((linkPtr=le_dls_Peek(&interfacePtr->atCommandList)) != NULL)
+    while ((linkPtr=le_dls_Pop(&interfacePtr->atCommandList)) != NULL)
     {
         AtCmd_t* atCmdPtr = CONTAINER_OF(linkPtr, AtCmd_t, link);
         le_mem_Release(atCmdPtr);
-    }
-
-    if (interfacePtr->device.fdMonitor)
-    {
-        le_fdMonitor_Delete(interfacePtr->device.fdMonitor);
     }
 
     if (interfacePtr->timerRef)
@@ -798,7 +672,7 @@ static void DestroyDeviceThread
 
     if (interfacePtr->device.handle)
     {
-        close(interfacePtr->device.handle);
+        le_dev_Close(&interfacePtr->device);
     }
 
     le_ref_DeleteRef(DevicesRefMap, interfacePtr->ref);
@@ -815,11 +689,24 @@ static void *DeviceThread
     void* context
 )
 {
-    DeviceContext_t* newInterfacePtr = context;
+    DeviceContext_t *interfacePtr = context;
+    LE_DEBUG("Start thread for %s ", interfacePtr->device.path);
 
-    le_sem_Post(newInterfacePtr->waitingSemaphore);
+    if (interfacePtr->device.fdMonitor)
+    {
+        LE_ERROR("Interface %s already started",interfacePtr->device.path);
+        return NULL;
+    }
 
-    LE_DEBUG("Start thread for %s ", newInterfacePtr->device.path);
+    InitializeState(interfacePtr);
+
+    if (le_dev_Open(&interfacePtr->device, RxNewData, interfacePtr) != LE_OK)
+    {
+        LE_ERROR("Error during open the device");
+        return NULL;
+    }
+
+    le_sem_Post(interfacePtr->waitingSemaphore);
 
     le_event_RunLoop();
 
@@ -1020,13 +907,13 @@ static void SendingState
         case EVENT_SENDTEXT:
         {
             // Send data
-            DeviceWrite(&(interfacePtr->device),
+            le_dev_Write(&(interfacePtr->device),
                            (uint8_t*) cmdPtr->text,
                            cmdPtr->textSize);
 
             // Send Ctrl-z
             uint8_t ctrlZ = 0x1A;
-            DeviceWrite(&(interfacePtr->device),
+            le_dev_Write(&(interfacePtr->device),
                          &ctrlZ,
                          1);
 
@@ -1114,7 +1001,7 @@ static void WaitingState
             memset(atCommand, 0, len);
             snprintf(atCommand, len, "%s\r", cmdPtr->cmd);
 
-            DeviceWrite(&(interfacePtr->device),
+            le_dev_Write(&(interfacePtr->device),
                            (uint8_t*) atCommand,
                            len-1);
 
@@ -1140,28 +1027,6 @@ static void WaitingState
             break;
         }
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is a state of the AT Command Client state machine.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void InitializeState
-(
-    DeviceContext_t* interfacePtr
-)
-{
-    ClientStatePtr_t  clientStatePtr = &interfacePtr->clientState;
-    clientStatePtr->curState = WaitingState;
-    clientStatePtr->interfacePtr = interfacePtr;
-
-    RxParserPtr_t rxParserPtr = &interfacePtr->rxParser;
-    rxParserPtr->curState = StartingState;
-
-    interfacePtr->timerRef = le_timer_Create("CommandTimer");
-    interfacePtr->rxParser.interfacePtr = interfacePtr;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1300,80 +1165,6 @@ static void ReleaseRspStringList
         le_mem_Release(currentPtr);
     }
     LE_DEBUG("All string has been released");
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is to start an AT command client session on a specified device
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void StartClient
-(
-    void *param1Ptr,
-    void *param2Ptr
-)
-{
-    char monitorName[64];
-    le_fdMonitor_Ref_t fdMonitorRef;
-    DeviceContext_t *interfacePtr = param1Ptr;
-
-    if (interfacePtr->device.fdMonitor)
-    {
-        LE_WARN("Interface %s already started",interfacePtr->device.path);
-        le_sem_Post(interfacePtr->waitingSemaphore);
-        return;
-    }
-
-    InitializeState(interfacePtr);
-
-    interfacePtr->device.handle = open(interfacePtr->device.path, O_RDWR | O_NOCTTY | O_NONBLOCK);
-
-    LE_FATAL_IF(interfacePtr->device.handle==-1,"Open device failed");
-
-    uint32_t fd = interfacePtr->device.handle;
-
-    struct termios term;
-    bzero(&term, sizeof(term));
-
-     // Default config
-    tcgetattr(fd, &term);
-
-    cfmakeraw(&term);
-    term.c_oflag &= ~OCRNL;
-    term.c_oflag &= ~ONLCR;
-    term.c_oflag &= ~OPOST;
-    tcsetattr(fd, TCSANOW, &term);
-    tcflush(fd, TCIOFLUSH);
-
-    // Create a File Descriptor Monitor object for the serial port's file descriptor.
-    snprintf(monitorName,
-             sizeof(monitorName),
-             "Monitor-%d",
-             interfacePtr->device.handle);
-
-    fdMonitorRef = le_fdMonitor_Create(monitorName,
-                                       interfacePtr->device.handle,
-                                       RxNewData,
-                                       POLLIN);
-
-    interfacePtr->device.fdMonitor = fdMonitorRef;
-
-    le_fdMonitor_SetContextPtr(fdMonitorRef, interfacePtr);
-
-    if (le_log_GetFilterLevel() == LE_LOG_DEBUG)
-    {
-        char threadName[25];
-        le_thread_GetName(le_thread_GetCurrent(), threadName, 25);
-        LE_DEBUG("Resume %s with handle(%d)(%p) [%s]",
-                 threadName,
-                 interfacePtr->device.handle,
-                 interfacePtr->device.fdMonitor,
-                 monitorName
-                );
-    }
-
-    le_sem_Post(interfacePtr->waitingSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2290,13 +2081,6 @@ le_atClient_DeviceRef_t le_atClient_Start
     le_thread_Start(newInterfacePtr->threadRef);
     le_sem_Wait(newInterfacePtr->waitingSemaphore);
 
-    le_event_QueueFunctionToThread(newInterfacePtr->threadRef,
-                                                StartClient,
-                                                (void*) newInterfacePtr,
-                                                (void*) NULL);
-
-    le_sem_Wait(newInterfacePtr->waitingSemaphore);
-
     if (newInterfacePtr != NULL)
     {
         newInterfacePtr->ref = le_ref_CreateRef(DevicesRefMap, newInterfacePtr);
@@ -2341,7 +2125,7 @@ le_result_t le_atClient_Stop
 COMPONENT_INIT
 {
     // Device pool allocation
-    DevicesPool = le_mem_CreatePool("DevicesPool",sizeof(DeviceContext_t));
+    DevicesPool = le_mem_CreatePool("AtClientDevicesPool",sizeof(DeviceContext_t));
     le_mem_ExpandPool(DevicesPool,DEVICE_POOL_SIZE);
     DevicesRefMap = le_ref_CreateMap("DevicesRefMap", DEVICE_POOL_SIZE);
     le_mem_SetDestructor(DevicesPool,DevicesPoolDestructor);

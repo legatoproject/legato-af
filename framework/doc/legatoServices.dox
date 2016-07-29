@@ -14,7 +14,7 @@ multiple apps can share the same resources.
 | @subpage legatoServicesConfigTree     | Target configuration database                      | @image html green_dot.png  |
 | @subpage c_le_data                    | Request data connection                            | @image html green_dot.png  |
 | @subpage c_gpio                       | Configure general purpose input/output             |                            |
-| @subpage c_atClient                   | AT commands client                                 | @image html green_dot.png  |
+| @subpage legatoAtServices             | AT commands services                               | @image html green_dot.png  |
 | @subpage legatoServicesModem          | Modem services                                     | @image html yellow_dot.png |
 | @subpage legatoServicesPositioning    | Posititioning services                             | @image html yellow_dot.png |
 | @subpage legatoServicesPowerMain      | Device power management                            |                            |

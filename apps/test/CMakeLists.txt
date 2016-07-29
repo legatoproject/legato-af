@@ -89,5 +89,7 @@ add_subdirectory(avcService)
 # IfGen Tool
 add_subdirectory(ifgen/test2)
 
-# AT Service
-add_subdirectory(atService/atClientTest)
+# AT Services
+add_subdirectory(atServices/atClientTest)
+add_subdirectory(atServices/atServerIntegrationTest)
+add_subdirectory(atServices/atServerUnitTest)
