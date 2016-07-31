@@ -1,0 +1,148 @@
+/** @page howToDebugGDB GDB
+
+This topic provides details on using the open-source @c GDB tool on a host PC to debug a sandboxed
+app on a target device. This type of remote debugging is useful where resources are limited like
+embedded apps.
+The sample code in this topic has an app named @c hw with one executable @c hw_exe and a few
+processes created in the same executable (@c hw_proc1, @c hw_proc2, etc.).
+
+These are the high-level steps to use GDB with a sandboxed app.
+
+On the target device:
+- Run the sandboxed app @ref howToDebugGDB_withoutProcess "without the process" that's being
+debugged.
+- @ref howToDebugGDB_makeGDBAvail "Make" @c gdbserver available in the sanboxed app.
+- Run the sandboxed app with @c gdbserver @ref howToDebugGDB_withProcess "with the process"
+being debugged.
+- @ref howToDebugGDB_removeGDB "Remove" @c gdb from the sandboxed app after you're finished
+debugging.
+
+On the host PC:
+- @ref howToDebugGDB_launchGDBhost "Launch" @c gdbserver on the host PC.
+- @ref howToDebugGDB_remoteConnect "Remote connect" to the target and run regular @c gdb commands.
+
+See @ref yoctoConfigIP if you need to setup your host/target communications.
+
+@section howToDebugGDB_sampleCode Sample Code
+The following simple app sample code is used in this topic's examples.
+
+@subsection howToDebugGDB_sampleCode_adef hw.adef
+@code
+start: manual
+
+executables:
+{
+    hw_exe = ( hw )
+}
+
+processes:
+{
+    run:
+    {
+        hw_proc1 = ( hw_exe )
+        hw_proc2 = ( hw_exe )
+        hw_proc3 = ( hw_exe )
+        hw_proc4 = ( hw_exe )
+    }
+}
+@endcode
+
+See @ref basicAppsCreate for more info.
+
+@subsection howToDebugGDB_sampleCode_cdef .cdef
+@c hw/Component.cdef
+@code
+sources:
+{
+    hello.c
+}
+
+cflags:
+{
+    -g
+}
+@endcode
+See @ref defFilesCdef_cFlags for more info on @c cflags.
+
+@subsection howToDebugGDB_sampleCode_helloC hello.c
+@c hw/hello.c
+@code
+#include "legato.h"
+
+COMPONENT_INIT
+{
+    LE_INFO("HELLO WORLD.");
+}
+@endcode
+
+See @ref basicAppsCreate for more info.
+
+@section howToDebugGDB_withoutProcess Run without Process
+
+To use GDB, you start the sandboxed app excluding the process being debugged.
+
+On the target, run the app excluding the process being debugged, @c hw_proc3:
+@code
+app start hw --norun=hw_proc3
+@endcode
+
+@section howToDebugGDB_makeGDBAvail Make GDB Available
+
+On the target, make @c gdbserver available in the sandboxed @c /bin directory:
+@code
+gdbCfg hw
+@endcode
+
+@section howToDebugGDB_withProcess Run with Process
+
+On the target, start @c gdbserver with arguments specified after @c -- (two dashes):
+@code
+app runProc hw --exe=/bin/gdbserver -- localhost:2000 /bin/hw_exe
+@endcode
+
+It will return this: <br>
+<code>Process /bin/hw_exe created; pid = 9783</code> <br>
+<code>Listening on port 2000</code>
+
+@section howToDebugGDB_launchGDBhost Launch GDB on Host
+You need to complete these steps on the host PC:
+- @ref howToDebugGDB_launchGDBhost "Launch" @c gdb on the host PC.
+- @ref howToDebugGDB_remoteConnect "Remote connect" to the target and run regular @c gdb commands.
+
+You need to run the commands from the directory where the @c hw app was made.
+
+In this example, we're running the @c gdb tool (@c arm-poky-linux-gnueabi-gdb) located in our
+target's toolchain path
+(@c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi for wp85).
+Use the @c findtoolchain command on the host PC to determine your toolchain path.
+The path
+@c _build_hw/wp85/app/hw/staging/read-only/bin/hw_exe is relative to the app directory; this build
+directory is generated when an app is made.
+
+@code
+~/LegatoApps/hw$ /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gdb _build_hw/wp85/app/hw/staging/read-only/bin/hw_exe
+@endcode
+
+@section howToDebugGDB_remoteConnect Remote Connect
+
+After GDB is launched, use the @c target @c remote command to connect to the target:
+@code
+(gdb) target remote 192.168.2.2:2000
+@endcode
+
+<code>Remote debugging from host 192.168.2.3</code> will display on the target.
+
+@note You can now run any of the standard @c gdb debugging commands on @c hw_exe.
+
+@section howToDebugGDB_removeGDB Remove GDB from Sandbox
+
+Once you've finished debugging, remove @c gdbserver from the sandbox @c /bin directory:
+@code
+gdbCfg hw --reset
+@endcode
+
+Refer to the many available open source resources if you need help using @c gdb.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

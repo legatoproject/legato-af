@@ -37,11 +37,9 @@ See @ref toolsTarget_inspect
 
 You can also try some standard, open source debugging tools like:
 - @c strace - a system call tracer good for low level code examination.
-- @c GDB - the GNU project debugger good for setting breakpoints.
+- @subpage howToDebugGDB "GDB" - the GNU project debugger good for setting breakpoints.
 
 Run the -help option for documentation.
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
