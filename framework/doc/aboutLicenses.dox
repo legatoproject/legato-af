@@ -5,5 +5,7 @@ This section provides access to Legato licenses:
 | ---------------------------------- | -------------------------------------------------- |
 | <a href="LEGATO Software Licence Agreement 15 January 2016.pdf">Legato</a>   | Legato license                        |
 | <a href="Legato_16_01_2_OpenSourceLicenses.pdf">OSL</a>    | Open Source Licenses used by Legato      |
+| @subpage  aboutLegatoContributing            | how to contribute to the Legato open source project   |
+
 
 **/
