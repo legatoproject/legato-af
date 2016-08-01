@@ -871,8 +871,8 @@ static msd_VehicleType_t VehicleTypeEnumToEnumAsn1
         case LE_ECALL_MSD_VEHICLE_MOTORCYCLE_L7E:
             return MSD_VEHICLE_MOTORCYCLE_L7E;
         default:
-            LE_FATAL( "vehType outside enum range");
-            return MSD_VEHICLE_MOTORCYCLE_L7E;
+            LE_ERROR( "vehType outside enum range");
+            return MSD_VEHICLE_PASSENGER_M1;
     }
 }
 //--------------------------------------------------------------------------------------------------
@@ -960,6 +960,7 @@ static le_result_t VehicleTypeStringToEnum
     }
     else
     {
+        LE_ERROR("Unknown vehicle type string '%s'", vehStr);
         result = LE_FAULT;
     }
 
@@ -1097,7 +1098,10 @@ static le_result_t ParseAndSetVehicleType
     {
         le_ecall_MsdVehicleType_t vehType;
         le_result_t result = VehicleTypeStringToEnum( vehStr, &vehType);
-        ECallObj.msd.msdMsg.msdStruct.control.vehType = VehicleTypeEnumToEnumAsn1(vehType);
+        if(result == LE_OK)
+        {
+            ECallObj.msd.msdMsg.msdStruct.control.vehType = VehicleTypeEnumToEnumAsn1(vehType);
+        }
         return result;
     }
     else
