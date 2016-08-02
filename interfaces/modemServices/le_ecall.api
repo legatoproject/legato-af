@@ -271,7 +271,7 @@
  * \b eCallWVoice.c file (please refer to @ref c_ecallWVoiceSample page).
  *
  * If you want to have a look at a more in-depth usage of these APIs, please refer to the
- * @subpage c_ecallAppMain .
+ * @ref c_ecall.
  *
  * @section le_ecall_configuration eCall configuration
  *

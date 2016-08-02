@@ -16,9 +16,7 @@ Use the Service Directory tool to interact with the Service Directory to
 @verbatim sdir load @endverbatim
 
 > @c load command updates the Service Directory's bindings to match the
-> @ref bindingConfig settings found in the @c system configuration tree.
-
-<HR>
+> @ref defFilesSdef_bindings "binding" settings found in the @c system configuration tree.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
