@@ -1,0 +1,26 @@
+/** @page sampleApps_httpGet HTTP Get
+
+This sample app demonstrates how to use HTTP Get to open a data connection and use @c libcurl.
+
+It has a Legato @c adef file with @c executables, @c bindings, @c requires, and @c processes sections.
+The @c cdef contains @c sources and @c requires sections.
+
+@code
+$ cd apps/sample/httpGet
+$ make wp85
+$ update httpGet.wp85.update <ip address>
+@endcode
+
+If you're not using a Sierra Wireless WP85xx module, substitute @c wp85 with the your target
+identifier.
+
+@ref sampleApps_startApp
+
+<HR>
+
+See <br>
+@ref basicAppsCreate
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -10,7 +10,8 @@ Legato has these sample apps:
 @subpage sampleApps_gpioCf3 <br>
 @subpage sampleApps_helloIpc <br>
 @subpage sampleApps_helloWorld <br>
-@subpage sampleApps_httpServer
+@subpage sampleApps_httpGet <br>
+@subpage sampleApps_httpServer <br>
 @subpage sampleApps_legacy <br>
 @subpage sampleApps_lowPower <br>
 @subpage sampleApps_modemDemo <br>
@@ -35,8 +36,6 @@ root@swi-mdm9x15:~# app stop <app name>
 @endverbatim
 
 Run @c app @c help for options.
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
