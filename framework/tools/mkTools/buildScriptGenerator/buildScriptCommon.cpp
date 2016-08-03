@@ -187,13 +187,13 @@ void GenerateBuildRules
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"
               "  description = Generating IPC interface code\n"
-              "  command = mkdir -p $outputDir && ifgen --output-dir $outputDir $ifgenFlags $in\n"
+              "  command = ifgen --output-dir $outputDir $ifgenFlags $in\n"
               "\n";
 
     // Generate a rule for creating a directory.
     script << "rule MakeDir\n"
               "  description = Creating directory\n"
-              "  command = mkdir -p $out\n\n";
+              "  command = mkdir -p \"$out\" || [ -d \"$out\" ]\n\n";
 
     // Generate a rule for creating a hard link.
     script << "rule HardLink\n"
