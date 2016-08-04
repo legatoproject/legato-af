@@ -149,8 +149,9 @@ le_result_t le_riPin_Init
  * Check whether the application core is the current owner of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_riPin_AmIOwnerOfRingSignal
@@ -159,14 +160,7 @@ le_result_t le_riPin_AmIOwnerOfRingSignal
                       ///  false when modem core is the owner of the Ring Indicator signal.
 )
 {
-    if(pa_riPin_AmIOwnerOfRingSignal(amIOwnerPtr) == LE_OK)
-    {
-        return LE_OK;
-    }
-    else
-    {
-        return LE_FAULT;
-    }
+    return pa_riPin_AmIOwnerOfRingSignal(amIOwnerPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -174,8 +168,9 @@ le_result_t le_riPin_AmIOwnerOfRingSignal
  * Take control of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_riPin_TakeRingSignal
@@ -183,14 +178,7 @@ le_result_t le_riPin_TakeRingSignal
     void
 )
 {
-    if(pa_riPin_TakeRingSignal() == LE_OK)
-    {
-        return LE_OK;
-    }
-    else
-    {
-        return LE_FAULT;
-    }
+    return pa_riPin_TakeRingSignal();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -198,8 +186,9 @@ le_result_t le_riPin_TakeRingSignal
  * Release control of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_riPin_ReleaseRingSignal
@@ -207,14 +196,7 @@ le_result_t le_riPin_ReleaseRingSignal
     void
 )
 {
-    if(pa_riPin_ReleaseRingSignal() == LE_OK)
-    {
-        return LE_OK;
-    }
-    else
-    {
-        return LE_FAULT;
-    }
+    return pa_riPin_ReleaseRingSignal();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -229,14 +211,17 @@ void le_riPin_PulseRingSignal
 )
 {
     bool isAppCoreOwner;
+    le_result_t res;
 
-    if (pa_riPin_AmIOwnerOfRingSignal(&isAppCoreOwner) != LE_OK)
+    res = pa_riPin_AmIOwnerOfRingSignal(&isAppCoreOwner);
+
+    if (res == LE_FAULT)
     {
         LE_ERROR("Cannot determine the RI pin owner");
         return;
     }
 
-    if (!isAppCoreOwner)
+    if ((res == LE_OK) && !isAppCoreOwner)
     {
         LE_WARN("Cannot perform this operation, Modem core is the owner of the signal!");
         return;

@@ -44,6 +44,7 @@ static void PrintUsage()
 COMPONENT_INIT
 {
     bool amIOwner;
+    le_result_t res;
 
     LE_INFO("Init");
 
@@ -54,25 +55,33 @@ COMPONENT_INIT
         const char* testCase = le_arg_GetArg(0);
         LE_INFO("   Test case.%s", testCase);
 
-        LE_ASSERT(le_riPin_AmIOwnerOfRingSignal(&amIOwner) == LE_OK);
-        if (amIOwner)
+        res = le_riPin_AmIOwnerOfRingSignal(&amIOwner);
+        if (res == LE_OK)
         {
-            LE_INFO("Legato is the owner of the Ring Indicator signal");
+            if (amIOwner)
+            {
+                LE_INFO("Legato is the owner of the Ring Indicator signal");
+            }
+            else
+            {
+                LE_INFO("Legato is NOT the owner of the Ring Indicator signal");
+            }
         }
-        else
-        {
-            LE_INFO("Legato is NOT the owner of the Ring Indicator signal");
-        }
+
+        LE_WARN_IF(res == LE_UNSUPPORTED, "The platform does not support this operation");
+        LE_ERROR_IF(res == LE_FAULT, "Failed to know the owner of the Ring Indicator signal");
 
         if (strncmp(testCase, "take", strlen("take")) == 0)
         {
-            LE_ASSERT(le_riPin_TakeRingSignal() == LE_OK);
-            LE_INFO("Legato is the owner of the Ring Indicator signal");
+            res = le_riPin_TakeRingSignal();
+            LE_INFO_IF(res == LE_OK, "Legato is the owner of the Ring Indicator signal");
+            LE_WARN_IF(res == LE_UNSUPPORTED, "Platform doesn't support this request");
         }
         else if (strncmp(testCase, "release", strlen("release")) == 0)
         {
-            LE_ASSERT(le_riPin_ReleaseRingSignal() == LE_OK);
-            LE_INFO("Legato is no more the owner of the Ring Indicator signal");
+            res = le_riPin_ReleaseRingSignal();
+            LE_INFO_IF(res == LE_OK, "Legato is no more the owner of the Ring Indicator signal");
+            LE_WARN_IF(res == LE_UNSUPPORTED, "Platform doesn't support this request");
         }
         else if (strncmp(testCase, "pulse", strlen("pulse")) == 0)
         {

@@ -35,7 +35,6 @@
  *   before lowering it.
  *
  * <HR>
- *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
@@ -55,8 +54,9 @@
  * Check whether the application core is the current owner of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AmIOwnerOfRingSignal
@@ -70,8 +70,9 @@ FUNCTION le_result_t AmIOwnerOfRingSignal
  * Take control of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     Function succeeded.
- *      - LE_FAULT  Function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t TakeRingSignal
@@ -83,8 +84,9 @@ FUNCTION le_result_t TakeRingSignal
  * Release control of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     Function succeeded.
- *      - LE_FAULT  Function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ReleaseRingSignal

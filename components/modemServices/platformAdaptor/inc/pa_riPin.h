@@ -32,8 +32,9 @@ le_result_t pa_riPin_Init
  * Check whether the application core is the current owner of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_riPin_AmIOwnerOfRingSignal
@@ -47,8 +48,9 @@ LE_SHARED le_result_t pa_riPin_AmIOwnerOfRingSignal
  * Take control of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_riPin_TakeRingSignal
@@ -61,8 +63,9 @@ LE_SHARED le_result_t pa_riPin_TakeRingSignal
  * Release control of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK     The function succeeded.
- *      - LE_FAULT  The function failed.
+ *      - LE_OK           The function succeeded.
+ *      - LE_FAULT        The function failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation failed.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_riPin_ReleaseRingSignal
