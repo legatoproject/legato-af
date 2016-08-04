@@ -22,10 +22,10 @@
 // These two macros are similar to CU_PASS and CU_FAIL, but allow an arbitrary value for the msg
 // parameter, rather than assuming a string literal.
 #define CU_PASS_MSG(msg) \
-  { CU_assertImplementation(CU_TRUE, __LINE__, msg, __FILE__, "", CU_FALSE); }
+  { CU_assertImplementation(CU_TRUE, __LINE__, msg, STRINGIZE(LE_FILENAME), "", CU_FALSE); }
 
 #define CU_FAIL_MSG(msg) \
-  { CU_assertImplementation(CU_FALSE, __LINE__, msg, __FILE__, "", CU_FALSE); }
+  { CU_assertImplementation(CU_FALSE, __LINE__, msg, STRINGIZE(LE_FILENAME), "", CU_FALSE); }
 
 
 // Is the test program running interactively.

@@ -50,7 +50,7 @@ void _HexDump
 
 
 #define HexDump(dataBuffer, dataSize) \
-    _HexDump(dataBuffer, dataSize, __FILE__, __func__, __LINE__)
+    _HexDump(dataBuffer, dataSize, STRINGIZE(LE_FILENAME), __func__, __LINE__)
 
 
 

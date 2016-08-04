@@ -577,7 +577,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
         _le_mem_AllocTracer(pool,                                                                   \
                             _le_mem_TryAlloc,                                                       \
                             "le_mem_TryAlloc",                                                      \
-                            __FILE__,                                                               \
+                            STRINGIZE(LE_FILENAME),                                                 \
                             __FUNCTION__,                                                           \
                             __LINE__)
 
@@ -609,7 +609,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
         _le_mem_AllocTracer(pool,                                                                   \
                             _le_mem_AssertAlloc,                                                    \
                             "le_mem_AssertAlloc",                                                   \
-                            __FILE__,                                                               \
+                            STRINGIZE(LE_FILENAME),                                                 \
                             __FUNCTION__,                                                           \
                             __LINE__)
 #endif
@@ -640,7 +640,7 @@ le_mem_PoolRef_t le_mem_ExpandPool
         _le_mem_AllocTracer(pool,                                                                   \
                             _le_mem_ForceAlloc,                                                     \
                             "le_mem_ForceAlloc",                                                    \
-                            __FILE__,                                                               \
+                            STRINGIZE(LE_FILENAME),                                                 \
                             __FUNCTION__,                                                           \
                             __LINE__)
 #endif
@@ -692,7 +692,7 @@ void le_mem_SetNumObjsToForce
 
     #define le_mem_Release(objPtr)                                                                  \
             _le_mem_Trace(_le_mem_GetBlockPool(objPtr),                                             \
-                          __FILE__,                                                                 \
+                          STRINGIZE(LE_FILENAME),                                                   \
                           __FUNCTION__,                                                             \
                           __LINE__,                                                                 \
                           "le_mem_Release",                                                         \
@@ -723,7 +723,7 @@ void le_mem_SetNumObjsToForce
 
     #define le_mem_AddRef(objPtr)                                                                   \
         _le_mem_Trace(_le_mem_GetBlockPool(objPtr),                                                 \
-                      __FILE__,                                                                     \
+                      STRINGIZE(LE_FILENAME),                                                       \
                       __FUNCTION__,                                                                 \
                       __LINE__,                                                                     \
                       "le_mem_AddRef",                                                              \

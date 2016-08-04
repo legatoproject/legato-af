@@ -120,6 +120,7 @@ void GenerateBuildRules
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
               "  command = " << cCompilerPath << " " << sysrootOption <<
               " -MMD -MF $out.d -c $in -o $out"
+              " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.
@@ -138,6 +139,7 @@ void GenerateBuildRules
               "  depfile = $out.d\n" // Tell ninja where gcc will put the dependencies.
               "  command = " << cxxCompilerPath << " " << sysrootOption <<
               " -MMD -MF $out.d -c $in -o $out"
+              " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
               " -Wall" // Enable all warnings.
               " -fPIC" // Compile to position-independent code for linking into a shared library.
               " -Werror" // Treat all warnings as errors.

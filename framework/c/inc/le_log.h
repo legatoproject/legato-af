@@ -462,7 +462,7 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 #define _LE_LOG_MSG(level, formatString, ...) \
     do { \
         if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (level >= *LE_LOG_LEVEL_FILTER_PTR)) \
-            _le_log_Send(level, NULL, LE_LOG_SESSION, __FILE__, __func__, __LINE__, \
+            _le_log_Send(level, NULL, LE_LOG_SESSION, STRINGIZE(LE_FILENAME), __func__, __LINE__, \
                     formatString, ##__VA_ARGS__); \
     } while(0)
 
@@ -611,7 +611,7 @@ const char* _le_log_GetResultCodeString
             _le_log_Send((le_log_Level_t)-1,    \
                     traceRef,                   \
                     LE_LOG_SESSION,             \
-                    __FILE__,                   \
+                    STRINGIZE(LE_FILENAME),     \
                     __func__,                   \
                     __LINE__,                   \
                     string,                     \

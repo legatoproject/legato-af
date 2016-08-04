@@ -70,10 +70,10 @@ void GenerateAppBuildRules
         // Compute the MD5 checksum of the staging area.
         // Don't follow symlinks (-P), and include the directory structure and the contents of
         // symlinks as part of the MD5 hash.
-        "            md5=$$( ( find -P $workingDir/staging | sort && $\n"
-        "                      find -P $workingDir/staging -type f | sort | xargs cat && $\n"
-        "                      find -P $workingDir/staging -type l | sort |"
-                                                                       " xargs -r -n 1 readlink $\n"
+        "            md5=$$( ( cd $workingDir/staging && $\n"
+        "                      find -P | sort && $\n"
+        "                      find -P -type f | sort | xargs cat && $\n"
+        "                      find -P -type l | sort | xargs -r -n 1 readlink $\n"
         "                    ) | md5sum) && $\n"
         "            md5=$${md5%% *} && $\n"
         // Generate the app's info.properties file.
