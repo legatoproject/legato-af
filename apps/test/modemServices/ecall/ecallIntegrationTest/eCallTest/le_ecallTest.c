@@ -499,6 +499,7 @@ void Testle_ecall_StartTest
     LE_ASSERT(le_ecall_StartManual(LastTestECallRef) == LE_BUSY);
     LE_ASSERT(le_ecall_StartAutomatic(LastTestECallRef) == LE_BUSY);
 
+    state=le_ecall_GetState(LastTestECallRef);
     LE_ASSERT(((state>=LE_ECALL_STATE_STARTED) && (state<=LE_ECALL_STATE_FAILED)));
 }
 

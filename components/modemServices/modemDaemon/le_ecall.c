@@ -1122,50 +1122,46 @@ static le_result_t ParseAndSetVehicleType
 //--------------------------------------------------------------------------------------------------
 static le_result_t ParseAndSetPropulsionType
 (
-    char* propStr
+    char* propStr,
+    msd_VehiclePropulsionStorageType_t* vehiclePropulsionStorageTypePtr
 )
 {
     LE_FATAL_IF((propStr == NULL), "propStr is NULL !");
 
     if (!strcmp(propStr, "Gasoline"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.gasolineTankPresent = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->gasolineTankPresent = true;
     }
     else if (!strcmp(propStr, "Diesel"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.dieselTankPresent = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->dieselTankPresent = true;
     }
     else if (!strcmp(propStr, "NaturalGas"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.compressedNaturalGas = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->compressedNaturalGas = true;
     }
     else if (!strcmp(propStr, "Propane"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.liquidPropaneGas = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->liquidPropaneGas = true;
     }
     else if (!strcmp(propStr, "Electric"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.electricEnergyStorage = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->electricEnergyStorage = true;
     }
     else if (!strcmp(propStr, "Hydrogen"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.hydrogenStorage = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->hydrogenStorage = true;
     }
     else if (!strcmp(propStr, "Other"))
     {
-        ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType.otherStorage = true;
-        return LE_OK;
+        vehiclePropulsionStorageTypePtr->otherStorage = true;
     }
     else
     {
         return LE_FAULT;
     }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1187,11 +1183,16 @@ static le_result_t GetPropulsionType
     char configPath[LIMIT_MAX_PATH_BYTES];
     char propStr[PROPULSION_MAX_BYTES] = {0};
     le_result_t res = LE_OK;
+    msd_VehiclePropulsionStorageType_t  vehPropulsionStorageType;
 
     snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_ECALL_PATH, CFG_NODE_PROP);
     le_cfg_IteratorRef_t propCfg = le_cfg_CreateReadTxn(configPath);
 
     sprintf (cfgNodeLoc, "%d", i);
+
+    // Init propulsion type bitmask
+    memset(&vehPropulsionStorageType, 0, sizeof(vehPropulsionStorageType));
+
     while (!le_cfg_IsEmpty(propCfg, cfgNodeLoc))
     {
         if (le_cfg_GetString(propCfg, cfgNodeLoc, propStr, sizeof(propStr), "") != LE_OK)
@@ -1207,7 +1208,7 @@ static le_result_t GetPropulsionType
             break;
         }
         LE_DEBUG("eCall settings, Propulsion is %s", propStr);
-        if (ParseAndSetPropulsionType(propStr) != LE_OK)
+        if (ParseAndSetPropulsionType(propStr, &vehPropulsionStorageType) != LE_OK)
         {
             LE_ERROR("Bad propulsion type!");
             res = LE_FAULT;
@@ -1215,6 +1216,10 @@ static le_result_t GetPropulsionType
         }
         else
         {
+            // Store propulsion type to MSD message
+            memcpy(&ECallObj.msd.msdMsg.msdStruct.vehPropulsionStorageType
+                    , &vehPropulsionStorageType
+                    , sizeof(vehPropulsionStorageType));
             res = LE_OK;
         }
 
@@ -3651,18 +3656,20 @@ le_result_t le_ecall_SetSystemStandard
 )
 {
     le_result_t result = LE_FAULT;
+
     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
 
     if (LE_ECALL_PAN_EUROPEAN == systemStandard)
     {
         le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, "PAN-EUROPEAN");
+        le_cfg_CommitTxn(iteratorRef);
         result = LE_OK;
     }
     else if (LE_ECALL_ERA_GLONASS == systemStandard)
     {
         le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, "ERA-GLONASS");
-        result = LE_OK;
         le_cfg_CommitTxn(iteratorRef);
+        result = LE_OK;
     }
     else
     {
@@ -4211,6 +4218,7 @@ le_result_t le_ecall_GetPropulsionType
 
         *propulsionTypePtr = resultBitMask;
     }
+
     return result;
 }
 
