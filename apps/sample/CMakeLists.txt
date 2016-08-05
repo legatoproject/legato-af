@@ -45,9 +45,5 @@ if((LEGATO_TARGET MATCHES "wp85") OR (LEGATO_TARGET MATCHES "wp750x"))
     add_subdirectory(gpioCf3Demo)
 endif()
 
+# Application showing ultra low power mode entry/exit
 add_subdirectory(textLoc)
-
-# Two functioning tools that can be used with AirVantage to gather information about the system
-# and apps in the field.
-add_subdirectory(avAppsInfo)
-add_subdirectory(avSystemInfo)

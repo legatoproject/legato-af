@@ -2,9 +2,7 @@
 
 Legato has these sample apps:
 
-@subpage sampleApps_avAppsInfo <br>
 @subpage sampleApps_AV <br>
-@subpage sampleApps_avSystemInfo <br>
 @subpage sampleApps_commandLine <br>
 @subpage sampleApps_eCall <br>
 @subpage sampleApps_gpioCf3 <br>
