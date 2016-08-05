@@ -75,13 +75,6 @@ static const char OldFwDir[] = "/mnt/flash/opt/legato";
 static const char LdconfigNotDoneMarkerFile[] = "/legato/systems/needs_ldconfig";
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Flag to run startupScript
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsRunStartupScriptReq = false;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1007,56 +1000,6 @@ static SystemStatus_t GetStatus
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Runs the startup script, blocks until it exits.
- *
- * @todo This is only needed to support old init scripts. Eliminate this script.
- **/
-//--------------------------------------------------------------------------------------------------
-static void RunStartupScript
-(
-    void
-)
-{
-    // Run some extra startup stuff in the startup script - don't know what to do if this fails.
-    // Shouldn't ever, of course, because it's part of the "good" stuff, but if this script has
-    // been whittled away to nothing we needn't care if it is gone in some version.
-    pid_t pid = fork();
-    if (pid == 0)
-    {
-        // I'm the child. Exec the script.
-        const char scriptPath[] = "/legato/systems/current/bin/startupScript";
-        (void)execl(scriptPath, scriptPath, NULL);
-        LE_CRIT("Failed to run '%s': %m", scriptPath);
-    }
-
-    // Wait for the script to exit.
-    int result;
-    pid_t p = waitpid(pid, &result, 0);
-    if (p != pid)
-    {
-        if (p == -1)
-        {
-            LE_FATAL("waitpid() failed: %m");
-        }
-        else
-        {
-            LE_FATAL("waitpid() returned unexpected result %d", p);
-        }
-    }
-
-    if (WIFSIGNALED(result))
-    {
-        LE_CRIT("startupScript was killed by a signal %d.", WTERMSIG(result));
-    }
-    else if (WEXITSTATUS(result) != EXIT_SUCCESS)
-    {
-        LE_CRIT("startupScript exited with error code %d.", WEXITSTATUS(result));
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * returns EXIT_FAILURE on error, otherwise, returns the exit code of the Supervisor.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1065,13 +1008,6 @@ static int TryToRun
     void
 )
 {
-    if (IsRunStartupScriptReq)
-    {
-        // @todo This is only needed to support old init scripts. Remove this later.
-        RunStartupScript();
-        // Set the flag false as startupScript need to run only once.
-        IsRunStartupScriptReq = false;
-    }
 
     // Start the Supervisor.
     pid_t supervisorPid = fork();
@@ -1552,15 +1488,6 @@ int main
 {
     int newestIndex = -1;
     int currentIndex = -1;
-
-    IsRunStartupScriptReq = false;
-
-    if (!file_Exists("/etc/init.d/bringup_ecm.sh"))
-    {
-        // Still using old init scripts, so need to run legato startupScript.
-        // TODO: This is a only needed while linux is running old init scripts. Remove it later.
-        IsRunStartupScriptReq = true;
-    }
 
     // Bind mount if they are not already mounted.
     BindMount("/mnt/flash/legato", "/legato");

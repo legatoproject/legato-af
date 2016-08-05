@@ -76,7 +76,7 @@ endif
 
 
 .PHONY: all
-all: liblegato daemons targetTools startScripts $(LEGATO_JAVA)
+all: liblegato daemons targetTools $(LEGATO_JAVA)
 	# Computing MD5 hash for contents of framework bin and lib directories.
 	md5=` ( find $(BIN_DIR) && \
 			find $(BIN_DIR) -type f | xargs cat && \
@@ -92,9 +92,6 @@ all: liblegato daemons targetTools startScripts $(LEGATO_JAVA)
 targetTools: $(LIBJANSSON) liblegato
 	$(MAKE) -f Makefile.targetTools
 
-.PHONY: startScripts
-startScripts: $(BIN_DIR)
-	install $(SRC_DIR)/start/startupScript $(BIN_DIR)
 
 .PHONY: liblegato
 liblegato: $(LIB_DIR) $(NINJA_SCRIPT)
