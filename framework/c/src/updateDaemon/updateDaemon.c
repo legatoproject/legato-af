@@ -369,23 +369,17 @@ static void UpdateFailed
 )
 //--------------------------------------------------------------------------------------------------
 {
-    State = STATE_IDLE;
+    // Should notify client only once if it is at failed state.
+    if (ErrorCode == LE_UPDATE_ERR_NONE)
+    {
+        CallStatusHandlers(LE_UPDATE_STATE_FAILED, 0);
+        LE_ERROR("Update failed!!");
+    }
+
     if (errCode != LE_UPDATE_ERR_NONE)
     {
         ErrorCode = errCode;
     }
-
-    CallStatusHandlers(LE_UPDATE_STATE_FAILED, 0);
-
-    // Delete the security-unpack pipeline if it is still active. This is needed when unpack failed
-    // but Security-unpack is not finished yet.
-    if (SecurityUnpackPipeline != NULL)
-    {
-        pipeline_Delete(SecurityUnpackPipeline);
-        SecurityUnpackPipeline = NULL;
-    }
-
-    LE_ERROR("Update failed!!");
 }
 
 
@@ -834,6 +828,9 @@ static void EndUpdate
         SecurityUnpackPipeline = NULL;
     }
 
+    // State should only be changed to idle when when update ends(i.e. le_update_End api call or
+    // client session closed), otherwise it may lead to race condition(i.e. updateDaemon will
+    // accept another update while there is one unfinished update).
     State = STATE_IDLE;
 
     // Increment the current session reference by 2 (to keep it odd) so that we can identify stale
