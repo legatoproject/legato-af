@@ -173,6 +173,13 @@ function TargetUnitTest()
 
 function HostUnitTest()
 {
+    # Default timeout to 2 minutes
+    #
+    # NOTE: Tests can eventually override this timeout using
+    #  add_test(MyTest1 ....)
+    #  set_tests_properties(MyTest1 PROPERTIES TIMEOUT 100)
+    UT_TIMEOUT=${UT_TIMEOUT:-120}
+
     cd $BUILDDIR_BASE/localhost
     CheckRet
 
@@ -195,7 +202,11 @@ function HostUnitTest()
     CheckDaemons
 
     # Test
-    ctest -D ExperimentalTest --no-compress-output -VV
+    ctest \
+        -D ExperimentalTest \
+        --no-compress-output \
+        --timeout $UT_TIMEOUT \
+        -VV
     CheckRet
     CheckDaemons
 
