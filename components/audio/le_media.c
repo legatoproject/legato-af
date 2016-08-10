@@ -1266,6 +1266,7 @@ void PlayCaptTreatEvent
     le_audio_PcmThreadContext_t* pcmThreadContextPtr = streamPtr->pcmThreadContextPtr;
     le_audio_MediaThreadContext_t* mediaThreadContextPtr = streamPtr->mediaThreadContextPtr;
     bool sendEvent = true;
+    bool mediaClose = false;
 
     if (!streamPtr || !pcmThreadContextPtr)
     {
@@ -1288,7 +1289,7 @@ void PlayCaptTreatEvent
                 LE_DEBUG("allDataSent %d", mediaThreadContextPtr->allDataSent);
                 if (mediaThreadContextPtr->allDataSent)
                 {
-                    le_media_Stop(streamPtr);
+                    mediaClose = true;
                 }
                 else
                 {
@@ -1299,7 +1300,7 @@ void PlayCaptTreatEvent
     }
     else
     {
-        le_media_Stop(streamPtr);
+        mediaClose = true;
     }
 
     if (sendEvent)
@@ -1312,6 +1313,11 @@ void PlayCaptTreatEvent
         le_event_Report(streamPtr->streamEventId,
                             &streamEvent,
                             sizeof(le_audio_StreamEvent_t));
+    }
+
+    if (mediaClose)
+    {
+        le_media_Stop(streamPtr);
     }
 }
 
