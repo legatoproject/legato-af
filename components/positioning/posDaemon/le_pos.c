@@ -596,11 +596,11 @@ static void PosSampleHandlerfunc
             // - Vertical distance is beyond the magnitude
             // - Horizontal distance is beyond the magnitude
             // - We don't care about vertical & horizontal distance (magnitudes equal to 0)
-            //   that movement handler is called each positioning acquisition rate
+            //   therefore that movement handler is called each positioning acquisition rate
             if ( ( (posSampleHandlerNodePtr->verticalMagnitude != 0)   && (vflag) )    ||
                  ( (posSampleHandlerNodePtr->horizontalMagnitude != 0) && (hflag) )    ||
                  ( (posSampleHandlerNodePtr->verticalMagnitude == 0)
-                    && (posSampleHandlerNodePtr->verticalMagnitude == 0) )    )
+                    && (posSampleHandlerNodePtr->horizontalMagnitude == 0) )    )
             {
                 if (posSampleNodePtr == NULL)
                 {

@@ -43,28 +43,28 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
     }
 
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
-    LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
+    LE_INFO("Get2DLocation: lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
 
     le_pos_sample_GetDate(positionSampleRef, &year, &month, &day);
-    LE_INFO("Check le_pos_sample_GetDate passed, year.%d, month.%d, day.%d", year, month, day);
+    LE_INFO("GetDate: year.%d, month.%d, day.%d", year, month, day);
 
     le_pos_sample_GetTime(positionSampleRef, &hours, &minutes, &seconds, &milliseconds);
-    LE_INFO("Check le_pos_sample_GetTime passed, hours.%d, minutes.%d, seconds.%d, milliseconds.%d", hours, minutes, seconds, milliseconds);
+    LE_INFO("GetTime: hours.%d, minutes.%d, seconds.%d, milliseconds.%d", hours, minutes, seconds, milliseconds);
 
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetAltitude: alt.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
-    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, uAccuracy);
+    LE_INFO("GetHorizontalSpeed: hSpeed.%d, accuracy.%d", uval, uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetVerticalSpeed passed, vSpeed.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetVerticalSpeed: vSpeed.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHeading(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetHeading passed, heading.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetHeading: heading.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetDirection(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetDirection passed, direction.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetDirection: direction.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_Release(positionSampleRef);
 }
@@ -90,22 +90,22 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
     }
 
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
-    LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
+    LE_INFO("Get2DLocation: lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
 
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetAltitude: alt.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
-    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, uAccuracy);
+    LE_INFO("GetHorizontalSpeed: hSpeed.%d, accuracy.%d", uval, uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetVerticalSpeed passed, vSpeed.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetVerticalSpeed: vSpeed.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHeading(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetHeading passed, heading.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetHeading: heading.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetDirection(positionSampleRef, &val, &accuracy);
-    LE_INFO("Check le_pos_sample_GetDirection passed, direction.%d, accuracy.%d", val, accuracy);
+    LE_INFO("GetDirection: direction.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_Release(positionSampleRef);
 }
@@ -233,8 +233,8 @@ static void Testle_pos_TestAcquisitionRate()
 
     LE_ASSERT(le_pos_SetAcquisitionRate(0) == LE_OUT_OF_RANGE);
 
-    LE_ASSERT(le_pos_SetAcquisitionRate(5000) == LE_OK);
-    LE_ASSERT(le_pos_GetAcquisitionRate() == 5000);
+    LE_ASSERT(le_pos_SetAcquisitionRate(1000) == LE_OK);
+    LE_ASSERT(le_pos_GetAcquisitionRate() == 1000);
 }
 
 //--------------------------------------------------------------------------------------------------

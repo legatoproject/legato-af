@@ -222,7 +222,7 @@ static le_dls_List_t PositionHandlerList = LE_DLS_LIST_INIT;
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_gnss_PositionSample_t   lastPositionSample;
+static le_gnss_PositionSample_t   LastPositionSample;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -602,6 +602,79 @@ static void GetPosSampleData
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The PA position Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void PaPositionHandler
+(
+    pa_Gnss_Position_t* positionPtr
+)
+{
+
+    le_gnss_PositionHandler_t*  positionHandlerNodePtr;
+    le_dls_Link_t*              linkPtr;
+    le_gnss_PositionSample_t*   positionSampleNodePtr=NULL;
+    uint8_t i;
+
+
+    LE_DEBUG("Handler Function called with PA position %p", positionPtr);
+
+    // Get the position sample data from the PA position data report
+    GetPosSampleData(&LastPositionSample, positionPtr);
+
+    if(!NumOfPositionHandlers)
+    {
+        return;
+    }
+
+    linkPtr = le_dls_Peek(&PositionHandlerList);
+    if (linkPtr != NULL)
+    {
+        // Create the position sample node.
+        positionSampleNodePtr =
+                    (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
+
+        // Copy the position sample to the position sample node
+        memcpy(positionSampleNodePtr, &LastPositionSample, sizeof(le_gnss_PositionSample_t));
+
+        // Add the node to the queue of the list by passing in the node's link.
+        le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
+
+        // Add reference for each subscribed handler
+        for(i=0 ; i<NumOfPositionHandlers-1 ; i++)
+        {
+            le_mem_AddRef((void *)positionSampleNodePtr);
+        }
+
+        // Call Handler(s)
+        do
+        {
+            // Get the node from the list
+            positionHandlerNodePtr =
+                (le_gnss_PositionHandler_t*)CONTAINER_OF(linkPtr, le_gnss_PositionHandler_t, link);
+
+            LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
+                     positionSampleNodePtr,
+                     positionHandlerNodePtr->handlerFuncPtr);
+
+            // Create a safe reference and call the client's handler
+            void* safePositionSampleRef = le_ref_CreateRef(PositionSampleMap, positionSampleNodePtr);
+            if(safePositionSampleRef != NULL)
+            {
+                positionHandlerNodePtr->handlerFuncPtr(safePositionSampleRef
+                                                    , positionHandlerNodePtr->handlerContextPtr);
+            }
+            // Move to the next node.
+            linkPtr = le_dls_PeekNext(&PositionHandlerList, linkPtr);
+        } while (linkPtr != NULL);
+    }
+
+    le_mem_Release(positionPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the GNSS
  *
  *  - LE_FAULT  The function failed.
@@ -667,8 +740,15 @@ le_result_t gnss_Init
     PaHandlerRef = NULL;
 
     // Initialize last Position sample
-    memset(&lastPositionSample, 0, sizeof(lastPositionSample) );
-    lastPositionSample.fixState = LE_GNSS_STATE_FIX_NO_POS;
+    memset(&LastPositionSample, 0, sizeof(LastPositionSample) );
+    LastPositionSample.fixState = LE_GNSS_STATE_FIX_NO_POS;
+
+    // Subscribe to PA position Data handler
+    if ((PaHandlerRef=pa_gnss_AddPositionDataHandler(PaPositionHandler)) == NULL)
+    {
+        LE_ERROR("Failed to add PA position Data handler!");
+        return LE_FAULT;
+    }
 
     // NMEA pipe management
     // Get information from NMEA device file
@@ -709,78 +789,6 @@ le_result_t gnss_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The PA position Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void PaPositionHandler
-(
-    pa_Gnss_Position_t* positionPtr
-)
-{
-
-    le_gnss_PositionHandler_t*  positionHandlerNodePtr;
-    le_dls_Link_t*              linkPtr;
-    le_gnss_PositionSample_t*   positionSampleNodePtr=NULL;
-    uint8_t i;
-
-    if(!NumOfPositionHandlers)
-    {
-        return;
-    }
-
-    LE_DEBUG("Handler Function called with PA position %p", positionPtr);
-
-    // Get the position sample data from the PA position data report
-    GetPosSampleData(&lastPositionSample, positionPtr);
-
-    linkPtr = le_dls_Peek(&PositionHandlerList);
-    if (linkPtr != NULL)
-    {
-        // Create the position sample node.
-        positionSampleNodePtr =
-                    (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
-
-        // Copy the position sample to the position sample node
-        memcpy(positionSampleNodePtr, &lastPositionSample, sizeof(le_gnss_PositionSample_t));
-
-        // Add the node to the queue of the list by passing in the node's link.
-        le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
-
-        // Add reference for each subscribed handler
-        for(i=0 ; i<NumOfPositionHandlers-1 ; i++)
-        {
-            le_mem_AddRef((void *)positionSampleNodePtr);
-        }
-
-        // Call Handler(s)
-        do
-        {
-            // Get the node from the list
-            positionHandlerNodePtr =
-                (le_gnss_PositionHandler_t*)CONTAINER_OF(linkPtr, le_gnss_PositionHandler_t, link);
-
-            LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
-                     positionSampleNodePtr,
-                     positionHandlerNodePtr->handlerFuncPtr);
-
-            // Create a safe reference and call the client's handler
-            void* safePositionSampleRef = le_ref_CreateRef(PositionSampleMap, positionSampleNodePtr);
-            if(safePositionSampleRef != NULL)
-            {
-                positionHandlerNodePtr->handlerFuncPtr(safePositionSampleRef
-                                                    , positionHandlerNodePtr->handlerContextPtr);
-            }
-            // Move to the next node.
-            linkPtr = le_dls_PeekNext(&PositionHandlerList, linkPtr);
-        } while (linkPtr != NULL);
-    }
-
-    le_mem_Release(positionPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to register an handler for position notifications.
  *
  *  - A handler reference, which is only needed for later removal of the handler.
@@ -806,13 +814,15 @@ le_gnss_PositionHandlerRef_t le_gnss_AddPositionHandler
     LE_DEBUG("handler %p", handlerPtr);
 
     // Subscribe to PA position Data handler
-    if (NumOfPositionHandlers == 0)
+    if (PaHandlerRef == NULL)
     {
         if ((PaHandlerRef=pa_gnss_AddPositionDataHandler(PaPositionHandler)) == NULL)
         {
             LE_ERROR("Failed to add PA position Data handler!");
-            le_mem_Release(positionHandlerPtr);
-            return NULL;
+        }
+        else
+        {
+            LE_DEBUG("PaHandlerRef %p subscribed", PaHandlerRef);
         }
     }
 
@@ -2123,7 +2133,7 @@ le_gnss_SampleRef_t le_gnss_GetLastSampleRef
     positionSampleNodePtr = (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
 
     // Copy the position sample to the position sample node
-    memcpy(positionSampleNodePtr, &lastPositionSample, sizeof(le_gnss_PositionSample_t));
+    memcpy(positionSampleNodePtr, &LastPositionSample, sizeof(le_gnss_PositionSample_t));
 
     // Add the node to the queue of the list by passing in the node's link.
     le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
