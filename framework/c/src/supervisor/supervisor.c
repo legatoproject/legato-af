@@ -576,7 +576,7 @@ static void CaptureDebugData
     void
 )
 {
-    int r = system("/legato/systems/current/bin/saveLogs NOTSANDBOXED framework unknown REBOOT");
+    int r = system("/legato/systems/current/bin/saveLogs framework unknown REBOOT");
 
     if (!WIFEXITED(r) || (WEXITSTATUS(r) != EXIT_SUCCESS))
     {

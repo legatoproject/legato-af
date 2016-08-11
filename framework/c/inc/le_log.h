@@ -327,30 +327,25 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
 * FS under /tmp.  When a crash occurs, this directory is created:
 
  @verbatim
- /tmp/legato_logs/<app-name>/<exe-name>/
- @endverbatim
-
-* The path for myApp and myExe would be:
-
- @verbatim
- /tmp/legato_logs/myApp/myExe/
+ /tmp/legato_logs/
  @endverbatim
 
 * The files in that directory look like this:
 
  @verbatim
- core-myExe-1418694851
- syslog-1418694851
+ core-myProc-1418694851
+ syslog-myApp-myProc-1418694851
  @endverbatim
+
+* To save on RAM space, only the most recent 4 copies of each file are preserved.
 
 * If the fault action for that app's process is to reboot the target, the output location is changed to
-* this (and is preserved across reboots):
+* this (and the most recent files in RAM space are preserved across reboots):
 
  @verbatim
- /mnt/flash/legato_logs/<app-name>/<exe-name>/
+ /mnt/flash/legato_logs/
  @endverbatim
 
-* To save on RAM and flash space, only the most recent 4 copies of each file are preserved.
 *
  * @todo May need to support log format configuration through command-line arguments or a
  *       configuration file.
