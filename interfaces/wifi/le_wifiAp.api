@@ -193,7 +193,6 @@ FUNCTION le_result_t SetSecurityProtocol
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the passphrase used to generate the PSK.
- * Default value is "ChangeThisPassword".
  *
  * @note If the PSK is to be set directly, please use le_wifiAp_SetPreSharedKey()
  *
