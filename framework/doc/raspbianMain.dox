@@ -117,7 +117,7 @@ You can now make Legato for Raspbian.
 
 @b cd to your Legato directory
 
-@b Run <code>$ make raspi<code>
+@b Run <code>$ make raspi</code>
 
 The makefile creates a @c /build/raspi/legato.squashfs file system.
 Copy this file into the @c /boot of the SD card:
@@ -135,13 +135,21 @@ $ /./mnt/legato/start
 
 @section raspbianMain_configWifi Configure WiFi
 
-If you want to use your RaspberryPi as a WiFi access point, you need to configure the @cwlan0 in the
-@c /etc/network/interfaces file like this:
+To use your Raspberry Pi as a WiFi access point, you need to
+configure @c wlan0 in the @c /etc/network/interfaces file like this:
+
 @code
 allow-hotplug wlan0
 iface wlan0 inet manual
     wireless-mode master
 @endcode
+
+The @ref wifi_wifiap_testapp "WiFi access point sample app" demonstrates how one Internet connection
+can be shared with multiple WiFi devices. To have Wireless WAN connectivity on a Raspberry Pi, a
+module like <a href="http://linkwave.co.uk/">Linkwave</a>'s 
+<a href="http://linkwave.co.uk/the-pilot">The PiloT</a> is required. The PiloT is known to work with
+Legato and Raspberry Pi, and can be used to create a wireless WiFi hotspot with the
+@ref wifi_wifiap_testapp "WiFi access point sample app".
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
