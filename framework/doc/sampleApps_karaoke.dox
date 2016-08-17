@@ -1,0 +1,47 @@
+/** @page sampleApps_karaoke Karaoke
+
+This sample app demonstrates using interactive apps through an app's processes
+standard streams.
+
+The sample app has a @c karaoke.adef file and two @c Component.cdef files (for a selector and a
+player) and related source code, make, and resource files.
+
+The @c .adef file has @c executables, @c processes, @c bundles, @c requires, and @c bindings
+sections.
+
+The @c .cdef files have @c sources (@c .c file) and @c provides (@c songs.api) sections.
+
+The @c songs.api sets the song path and speed.
+
+Run this to install the sample app:
+
+@code
+$ cd apps/sample/karaoke
+$ make wp85
+$ instapp karaoke.wp85.update <ip address>
+@endcode
+
+If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
+
+Run the app with the player process's standard out connected to the terminal:
+@code
+$ app runProc karaoke player
+@endcode
+
+The default song's lyrics will print to the terminal. 
+
+In another terminal, you can connect to the app's selector process interactively:
+@code
+$ app runProc karaoke selector normal
+@endcode
+
+The player's output will slow down because the speed was changed to @e normal (from the @c .adef
+@e fast default). 
+
+A menu is also provided to change songs.
+
+Enter @ Ctrl+C in both windows to kill processes, and stop the app.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

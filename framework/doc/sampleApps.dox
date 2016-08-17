@@ -12,12 +12,12 @@ Legato has these sample apps:
 @subpage sampleApps_helloWorld <br>
 @subpage sampleApps_httpGet <br>
 @subpage sampleApps_httpServer <br>
+@subpage sampleApps_karaoke <br>
 @subpage sampleApps_legacy <br>
 @subpage sampleApps_lowPower <br>
 @subpage sampleApps_modemDemo <br>
 @subpage sampleApps_shellPiping <br>
 @subpage sampleApps_sms <br>
-
 
 All sample apps are located in @c apps/sample/. The built apps are located in
 <code>build/\<target\>/bin/samples</code>.
@@ -26,14 +26,14 @@ All sample apps are located in @c apps/sample/. The built apps are located in
 
 To start an app, run this on the target:
 
-@verbatim
+@code
 root@swi-mdm9x15:~# app start <app name>
-@endverbatim
+@endcode
 
 To stop an app on the target, run:
-@verbatim
+@code
 root@swi-mdm9x15:~# app stop <app name>
-@endverbatim
+@endcode
 
 Run @c app @c help for options.
 
