@@ -22,22 +22,22 @@ This sample app takes a command with a list of file/directory paths, and accepts
 
 Here's an example on how to run the command-line sample app:
 
-Start your Legato app <code>app start <appname></code>.
-
 Change to the sandbox directory:
 @code
-cd /tmp/legato/sandboxes/<appname>/bin
+cd /legato/systems/current/apps/<appname>/read-only/bin
 @endcode
 
 This is how to access a regular file:
-
 @code
-root@swi-mdm9x15:/tmp/legato/sandboxes/fileInfo/bin# ./fileInfo type /etc/hosts --max-count=10
+root@swi-mdm9x15:/legato/apps/bb20bdcce7eb03179af9c62adf619e19/read-only/bin#  ./fileInfo type /etc/hosts --max-count=10
 @endcode
 
-This is how to access permissions to control read/write, group members' and others' read access.
+This is how to access permissions to control read/write, group members' and others' read access:
 @code
-root@swi-mdm9x15:/tmp/legato/sandboxes/fileInfo/bin# ./fileInfo permissions /etc/hosts --max-count=10 @endcode
+root@swi-mdm9x15:/legato/apps/bb20bdcce7eb03179af9c62adf619e19/read-only/bin# ./fileInfo permissions /etc/hosts --max-count=10 
+@endcode
+
+@note The long hexadecimal number in the apps' directory is unique to each installed app.
 
 @ref sampleApps_startApp
 
