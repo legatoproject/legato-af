@@ -4,19 +4,27 @@
  *
  *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
- * The Data Connection Service (DCS) only supports in this version the 'Mobile' technology, so the
- * data connection is based on the Modem Data Control service (MDC).
+ * The Data Connection Service (DCS) supports two technologies in this version:
+ * - the 'Mobile' technology, with a data connection based on the Modem Data Control service (MDC)
+ * - the 'Wi-Fi' technology, with a data connection based on the Wifi Client.
  *
- * When a REQUEST command is received, the DCS first sends a REQUEST command to the Cellular Network
+ * The technologies to use are saved in an ordered list. The default data connection is started
+ * with the first technology to use. If this one is or becomes unavailable, the second one is used.
+ * If the last technology of the list is also unavailable, the first one is used again.
+ *
+ * The connection establishment upon reception of a REQUEST command depends on the technology
+ * to use:
+ * - With the 'Mobile' technology, the DCS first sends a REQUEST command to the Cellular Network
  * Service in order to ensure that there is a valid SIM and the modem is registered on the network.
- * The Data session is actually started when the Cellular Network Service State is 'ROAMING' or
+ * The data session is actually started when the Cellular Network Service State is 'ROAMING' or
  * 'HOME'.
+ * - With the 'Wi-Fi' technology, the DCS first starts the wifi client and reads the Access Point
+ * configuration in the config tree. The data session is then started by connecting to the
+ * Access Point.
  *
  *
- * todo:
- *  - assumes that DHCP client will always succeed; this is not always the case
- *  - only handles the default data connection on mobile network
- *  - has a very simple recovery mechanism after data connection is lost; this needs improvement.
+ * TODO:
+ *  - 'Mobile' connection assumes that DHCP client will always succeed; this is not always the case
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -31,11 +39,8 @@
 
 #include "le_print.h"
 
-
-
-
 //--------------------------------------------------------------------------------------------------
-// Symbol and Enum definitions.
+// Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
@@ -43,22 +48,23 @@
  * The config tree path and node definitions.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_NODE_PREF_TECH      "prefTech"
-#define CFG_DCS_PATH            "/dataConnectionService"
+#define CFG_PATH_DCS            "/dataConnectionService"
+#define CFG_PATH_WIFI           "wifi"
+#define CFG_NODE_SSID           "SSID"
+#define CFG_NODE_SECPROTOCOL    "secProtocol"
+#define CFG_NODE_PASSPHRASE     "passphrase"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The preferred technology string max length.
+ * The technology string max length
  */
 //--------------------------------------------------------------------------------------------------
 #define DCS_TECH_LEN      16
 #define DCS_TECH_BYTES    (DCS_TECH_LEN+1)
 
-
-
 //--------------------------------------------------------------------------------------------------
 /**
- * The linux system file to read for default gateway.
+ * The linux system file to read for default gateway
  */
 //--------------------------------------------------------------------------------------------------
 #define ROUTE_FILE "/proc/net/route"
@@ -71,28 +77,49 @@
 #define REQUEST_COMMAND 1
 #define RELEASE_COMMAND 2
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of technologies
+ */
+//--------------------------------------------------------------------------------------------------
+#define DCS_TECH_NUMBER     LE_DATA_MAX
 
 //--------------------------------------------------------------------------------------------------
-// Data structures.
+/**
+ * Wifi interface name
+ * TODO: Should be retrieved from Wi-Fi client. To modify when API is available.
+ */
+//--------------------------------------------------------------------------------------------------
+#define WIFI_INTF "wlan0"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximal number of retries to stop the data session
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_STOP_SESSION_RETRIES    5
+
+//--------------------------------------------------------------------------------------------------
+// Data structures
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data associated with the above ConnStateEvent.
+ * Data associated with the ConnStateEvent
  *
- * interfaceName is only valid if isConnected is true.
+ * interfaceName is only valid if isConnected is true
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
     bool isConnected;
-    char interfaceName[100+1];
+    char interfaceName[LE_DATA_INTERFACE_NAME_MAX_BYTES];
 }
 ConnStateData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Data associated to retreive the state before the DCS started managing the default connection.
+ * Data associated to retrieve the state before the DCS started managing the default connection
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -106,26 +133,33 @@ InterfaceDataBackup_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Event callback for data session state changes.
+ * Data associated with a technology record in the preference list
  */
 //--------------------------------------------------------------------------------------------------
-static void DataSessionStateHandler
-(
-    le_mdc_ProfileRef_t profileRef,
-    le_mdc_ConState_t ConnectionStatus,
-    void*  contextPtr
-);
+typedef struct
+{
+    le_data_Technology_t tech;  ///< Technology
+    uint32_t             rank;  ///< Technology rank
+    le_dls_Link_t        link;  ///< Link in preference list
+}
+TechRecord_t;
 
 //--------------------------------------------------------------------------------------------------
-// Static declarations.
+// Static declarations
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Timer references
+ * Declaration of functions
  */
 //--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t StartDcsTimer = NULL;
+static void ConnectionStatusHandler(le_data_Technology_t technology, bool connected);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Timer reference
+ */
+//--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t StopDcsTimer = NULL;
 
 //--------------------------------------------------------------------------------------------------
@@ -151,10 +185,45 @@ static le_mdc_ProfileRef_t MobileProfileRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Store the mobile session state handler ref
+ * Store the mobile session state handler reference
  */
 //--------------------------------------------------------------------------------------------------
 static le_mdc_SessionStateHandlerRef_t MobileSessionStateHandlerRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Used access point when wifi technology is selected
+ */
+//--------------------------------------------------------------------------------------------------
+static le_wifiClient_AccessPointRef_t AccessPointRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Store the wifi event handler reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_wifiClient_NewEventHandlerRef_t WifiEventHandlerRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SSID of the Access Point used for the wifi connection
+ */
+//--------------------------------------------------------------------------------------------------
+static char Ssid[LE_WIFIDEFS_MAX_SSID_BYTES] = {0};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Passphrase of the Access Point used for the wifi connection
+ */
+//--------------------------------------------------------------------------------------------------
+static char Passphrase[LE_WIFIDEFS_MAX_PASSPHRASE_BYTES] = {0};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Security protocol of the Access Point used for the wifi connection
+ */
+//--------------------------------------------------------------------------------------------------
+static le_wifiClient_SecurityProtocol_t SecProtocol = LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -172,6 +241,13 @@ static uint32_t RequestCount = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Count the number of retries to stop the data session
+ */
+//--------------------------------------------------------------------------------------------------
+static uint32_t StopSessionRetries = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for the request reference
  */
 //--------------------------------------------------------------------------------------------------
@@ -179,142 +255,577 @@ static le_ref_MapRef_t RequestRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Structure used to store data allowing to restore a functioning state upon disconnection.
+ * Structure used to store data allowing to restore a functioning state upon disconnection
  */
 //--------------------------------------------------------------------------------------------------
 static InterfaceDataBackup_t InterfaceDataBackup;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Buffer to store resolv.conf cache.
+ * Buffer to store resolv.conf cache
  */
 //--------------------------------------------------------------------------------------------------
 static char ResolvConfBuffer[256];
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of used technologies
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t TechList = LE_DLS_LIST_INIT;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pointer on current technology in list
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_Link_t* CurrTechPtr = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default list of technologies to use
+ */
+//--------------------------------------------------------------------------------------------------
+static le_data_Technology_t DefaultTechList[DCS_TECH_NUMBER] = {LE_DATA_WIFI, LE_DATA_CELLULAR};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool used to store the list of technologies to use
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t TechListPoolRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Technologies availability
+ */
+//--------------------------------------------------------------------------------------------------
+static bool TechAvailability[DCS_TECH_NUMBER];
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Currently used technology
+ */
+//--------------------------------------------------------------------------------------------------
+static le_data_Technology_t CurrentTech = LE_DATA_MAX;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the list of technologies to use with the default values
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitDefaultTechList
+(
+    void
+)
+{
+    int i;
+    // Start to fill the list at rank 1
+    int listRank = 1;
+
+    // Fill technologies list with default values
+    for (i = 0; i < DCS_TECH_NUMBER; i++)
+    {
+        if (LE_OK == le_data_SetTechnologyRank(listRank, DefaultTechList[i]))
+        {
+            // Technology was correctly added to the list, increase the rank
+            listRank++;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the specified technology is already in the list
+ *
+ * @return
+ *      - pointer on technology record if technology is present
+ *      - NULL otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+static TechRecord_t* IsTechInList
+(
+    le_data_Technology_t tech   ///< [IN] Technology index
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&TechList);
+
+    // Go through the list
+    while (NULL != linkPtr)
+    {
+        TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
+
+        if (techPtr->tech == tech)
+        {
+            // Technology found
+            return techPtr;
+        }
+
+        // Get next list element
+        linkPtr = le_dls_PeekNext(&TechList, linkPtr);
+    }
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Increment the rank of all technologies present in the list beginning with
+ * the pointer given in input
+ */
+//--------------------------------------------------------------------------------------------------
+static void IncrementTechRanks
+(
+    le_dls_Link_t* linkPtr  ///< [IN] Pointer on the first node to update
+)
+{
+    // Go through the list
+    while (linkPtr != NULL)
+    {
+        TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
+
+        // Increase rank
+        techPtr->rank++;
+
+        // Get next list element
+        linkPtr = le_dls_PeekNext(&TechList, linkPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Convert le_data_Technology_t technology into a human-readable string
+ *
+ * @return
+ *      - LE_OK             The string is copied to the output buffer
+ *      - LE_OVERFLOW       The output buffer is too small
+ *      - LE_BAD_PARAMETER  The technology is unknown
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetTechnologyString
+(
+    le_data_Technology_t tech,              ///< [IN] Technology
+    char*                techStr,           ///< [IN] Buffer for technology string
+    size_t               techStrNumElem     ///< [IN] Size of buffer
+)
+{
+    le_result_t result = LE_OK;
+
+    switch (tech)
+    {
+        case LE_DATA_WIFI:
+            if (LE_OK != le_utf8_Copy(techStr, "wifi", techStrNumElem, NULL))
+            {
+                LE_WARN("Technology buffer is too small");
+                result = LE_OVERFLOW;
+            }
+            break;
+        case LE_DATA_CELLULAR:
+            if (LE_OK != le_utf8_Copy(techStr, "cellular", techStrNumElem, NULL))
+            {
+                LE_WARN("Technology buffer is too small");
+                result = LE_OVERFLOW;
+            }
+            break;
+        default:
+            LE_ERROR("Unknown technology: %s", techStr);
+            result = LE_BAD_PARAMETER;
+            break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send connection state event to registered applications
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendConnStateEvent
+(
+    bool isConnected    ///< [IN] Connection state
+)
+{
+    // Initialize the event data
+    ConnStateData_t eventData;
+    eventData.isConnected = isConnected;
+
+    // Set the interface name
+    switch (CurrentTech)
+    {
+        case LE_DATA_CELLULAR:
+            if (isConnected)
+            {
+                le_mdc_GetInterfaceName(MobileProfileRef,
+                                        eventData.interfaceName,
+                                        sizeof(eventData.interfaceName));
+            }
+            else
+            {
+                // Initialize to empty string
+                eventData.interfaceName[0] = '\0';
+            }
+            break;
+
+        case LE_DATA_WIFI:
+            snprintf(eventData.interfaceName, sizeof(eventData.interfaceName), WIFI_INTF);
+            break;
+
+        default:
+            eventData.interfaceName[0] = '\0';
+            LE_ERROR("Unknown current technology %d", CurrentTech);
+            break;
+    }
+
+    LE_DEBUG("Reporting '%s' state[%i]",
+        eventData.interfaceName,
+        eventData.isConnected);
+
+    // Send the event to interested applications
+    le_event_Report(ConnStateEvent, &eventData, sizeof(eventData));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the next technology to use after the one given as an input
+ *
+ * The only goal of this function is to get a technology to use for the default data connection,
+ * the current one being unavailable. If the end of the list is reached, the first technology
+ * is used again. The technology finally used (first one or not) is identified later when
+ * the new connection status is notified.
+ *
+ * @return
+ *      - The next technology if the end of the list is not reached
+ *      - The first technology of the list if the end is reached
+ */
+//--------------------------------------------------------------------------------------------------
+static le_data_Technology_t GetNextTech
+(
+    le_data_Technology_t technology     ///< [IN] Technology to find in the list
+)
+{
+    le_dls_Link_t* linkPtr = le_dls_Peek(&TechList);
+    le_dls_Link_t* nextTechPtr = NULL;
+
+    // Go through the list
+    while (NULL != linkPtr)
+    {
+        TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
+
+        if (techPtr->tech == technology)
+        {
+            // Technology found, get the next one in the list
+            nextTechPtr = le_dls_PeekNext(&TechList, linkPtr);
+            break;
+        }
+
+        // Get next list element
+        linkPtr = le_dls_PeekNext(&TechList, linkPtr);
+    }
+
+    if (NULL == nextTechPtr)
+    {
+        // No next technology, get the first one
+        return le_data_GetFirstUsedTechnology();
+    }
+    else
+    {
+        // Next technology
+        return CONTAINER_OF(nextTechPtr, TechRecord_t, link)->tech;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * IP Handling to be done once the wifi link is established
+ *
+ * @return
+ *      - LE_OK     Function successful
+ *      - LE_FAULT  Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t AskForIpAddress
+(
+    void
+)
+{
+    int16_t systemResult;
+    char tmpString[512];
+
+    // DHCP Client
+    snprintf(tmpString,
+             sizeof(tmpString),
+             "PATH=/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin;"
+             "/sbin/udhcpc -R -b -i %s",
+             WIFI_INTF
+            );
+
+    systemResult = system(tmpString);
+    // Return value of -1 means that the fork() has failed (see man system)
+    if (0 == WEXITSTATUS(systemResult))
+    {
+        LE_INFO("DHCP client successful!");
+        return LE_OK;
+    }
+    else
+    {
+        LE_ERROR("DHCP client failed: command %s, result %d", tmpString, systemResult);
+        return LE_FAULT;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event callback for Wifi Client changes
+ */
+//--------------------------------------------------------------------------------------------------
+static void WifiClientEventHandler
+(
+    le_wifiClient_Event_t event,    ///< [IN] Wifi event
+    void* contextPtr                ///< [IN] Associated context pointer
+)
+{
+    LE_DEBUG("Wifi event received");
+
+    switch (event)
+    {
+        case LE_WIFICLIENT_EVENT_CONNECTED:
+            LE_INFO("Wifi client connected");
+
+            // Request an IP address through DHCP and update connection status
+            if (LE_OK == AskForIpAddress())
+            {
+                IsConnected = true;
+            }
+            else
+            {
+                IsConnected = false;
+            }
+
+            // Send notification to registered applications
+            SendConnStateEvent(IsConnected);
+
+            // Handle new connection status for this technology
+            ConnectionStatusHandler(LE_DATA_WIFI, IsConnected);
+            break;
+
+        case LE_WIFICLIENT_EVENT_DISCONNECTED:
+            LE_INFO("Wifi client disconnected");
+
+            // Update connection status and send notification to registered applications
+            IsConnected = false;
+            SendConnStateEvent(IsConnected);
+
+            // Handle new connection status for this technology
+            ConnectionStatusHandler(LE_DATA_WIFI, IsConnected);
+            break;
+
+        case LE_WIFICLIENT_EVENT_SCAN_DONE:
+            LE_DEBUG("Wifi client: scan done");
+            break;
+
+        default:
+            LE_ERROR("Unknown wifi client event %d", event);
+            break;
+    }
+}
+
 // -------------------------------------------------------------------------------------------------
 /**
- *  This function will know if the APN name for profileName is empty.
+ * This function will know if the APN name for profileName is empty
  *
- *  @return true, false.
+ * @return
+ *      True or False
  */
 // -------------------------------------------------------------------------------------------------
 static bool IsApnEmpty
 (
-    le_mdc_ProfileRef_t profileRef
+    le_mdc_ProfileRef_t profileRef  ///< [IN] Modem data connection profile reference
 )
 {
     char apnName[LIMIT_MAX_PATH_BYTES] = {0};
 
-    if ( le_mdc_GetAPN(profileRef,apnName,sizeof(apnName)) != LE_OK)
+    if (LE_OK != le_mdc_GetAPN(profileRef, apnName, sizeof(apnName)))
     {
         LE_WARN("APN was truncated");
         return true;
     }
 
-    return (strcmp(apnName,"")==0);
+    return (!strcmp(apnName, ""));
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Load the profile of the selected technology (retrieved from the config tree)
+ *  Event callback for data session state changes
+ */
+//--------------------------------------------------------------------------------------------------
+static void DataSessionStateHandler
+(
+    le_mdc_ProfileRef_t profileRef,         ///< [IN] Mobile data connection profile reference
+    le_mdc_ConState_t connectionStatus,     ///< [IN] Mobile data connection status
+    void* contextPtr                        ///< [IN] Associated context pointer
+)
+{
+    uint32_t profileIndex = le_mdc_GetProfileIndex(profileRef);
+
+    LE_PRINT_VALUE("%d", profileIndex);
+    LE_PRINT_VALUE("%i", connectionStatus);
+
+    // Update connection status and send notification to registered applications
+    IsConnected = (connectionStatus == LE_MDC_CONNECTED) ? true : false;
+    SendConnStateEvent(IsConnected);
+
+    // Handle new connection status for this technology
+    ConnectionStatusHandler(LE_DATA_CELLULAR, IsConnected);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Load the profile of the selected technology
  */
 //--------------------------------------------------------------------------------------------------
 static void LoadSelectedTechProfile
 (
-    const char* techPtr
+    le_data_Technology_t technology     ///< [IN] Technology to use for the profile
 )
 {
-    // TODO: only Cellular technology is supported and we try to load the 1st profile stored in MDC
-    // database
-    if (!strncmp(techPtr, "cellular", DCS_TECH_BYTES))
+    switch (technology)
     {
-        le_mdc_ProfileRef_t profileRef;
-
-        LE_DEBUG("Use the default profile");
-        profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
-
-        if (profileRef == NULL)
+        // TODO: we only try to load the 1st profile stored in MDC database
+        case LE_DATA_CELLULAR:
         {
-            LE_FATAL("Default profile not available");
-        }
+            le_mdc_ProfileRef_t profileRef;
 
-        // Updating profileRef
-        if (profileRef != MobileProfileRef)
-        {
-            if (MobileSessionStateHandlerRef != NULL)
+            LE_DEBUG("Use the default cellular profile");
+            profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
+
+            LE_FATAL_IF(!profileRef, "Default profile not available");
+
+            // Updating profileRef
+            if (profileRef != MobileProfileRef)
             {
-                le_mdc_RemoveSessionStateHandler(MobileSessionStateHandlerRef);
-                MobileSessionStateHandlerRef = NULL;
+                if (NULL != MobileSessionStateHandlerRef)
+                {
+                    le_mdc_RemoveSessionStateHandler(MobileSessionStateHandlerRef);
+                    MobileSessionStateHandlerRef = NULL;
+                }
+
+                MobileProfileRef = profileRef;
+
+                uint32_t profileIndex;
+                profileIndex = le_mdc_GetProfileIndex(MobileProfileRef);
+                LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, profileIndex);
             }
 
-            MobileProfileRef = profileRef;
-
-            uint32_t profileIndex;
-            profileIndex = le_mdc_GetProfileIndex(MobileProfileRef);
-            LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, profileIndex);
-        }
-
-        // MobileProfileRef is now referencing the default profile to use for data connection
-        if ( IsApnEmpty(MobileProfileRef) )
-        {
-            LE_INFO("Set default APN");
-            if ( le_mdc_SetDefaultAPN(MobileProfileRef) != LE_OK )
+            // MobileProfileRef is now referencing the default profile to use for data connection
+            if (IsApnEmpty(MobileProfileRef))
             {
-                LE_WARN("Could not set APN from file");
+                LE_INFO("Set default APN");
+                if (LE_OK != le_mdc_SetDefaultAPN(MobileProfileRef))
+                {
+                    LE_WARN("Could not set APN from file");
+                }
+            }
+
+            // Register for data session state changes
+            if (NULL == MobileSessionStateHandlerRef)
+            {
+                MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
+                                                                             DataSessionStateHandler,
+                                                                             NULL);
             }
         }
-    }
-    else
-    {
-        LE_CRIT("Only 'cellular' technology is supported");
+        break;
+
+        case LE_DATA_WIFI:
+        {
+            // TODO: Only one Access Point can be configured in the config tree for now. DCS should
+            // not manage APs and Wifi client should handle the known SSIDs used for the wifi
+            // connection. This is a temporary solution until the Wifi client API is improved.
+
+            // Retrieve Access Point data from config tree
+            char configPath[LIMIT_MAX_PATH_BYTES];
+            snprintf(configPath, sizeof(configPath), "%s/%s", CFG_PATH_DCS, CFG_PATH_WIFI);
+
+            le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+
+            // SSID
+            if (le_cfg_NodeExists(cfg, CFG_NODE_SSID))
+            {
+                if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_SSID, Ssid, sizeof(Ssid), "testSsid"))
+                {
+                    LE_WARN("String value for '%s' too large", CFG_NODE_SSID);
+                }
+                LE_DEBUG("AP configuration, SSID: '%s'", Ssid);
+            }
+            else
+            {
+                LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
+            }
+
+            // Security protocol
+            if (le_cfg_NodeExists(cfg, CFG_NODE_SSID))
+            {
+                SecProtocol = le_cfg_GetInt(cfg, CFG_NODE_SECPROTOCOL,
+                                            LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL);
+                LE_DEBUG("AP configuration, Security protocol: %d", SecProtocol);
+            }
+            else
+            {
+                LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
+            }
+
+            // Passphrase
+            // TODO: passphrase should not be stored without ciphering in the config tree
+            if (le_cfg_NodeExists(cfg, CFG_NODE_PASSPHRASE))
+            {
+                if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_PASSPHRASE, Passphrase,
+                                              sizeof(Passphrase), "passphrase"))
+                {
+                    LE_WARN("String value for '%s' too large", CFG_NODE_PASSPHRASE);
+                }
+                LE_DEBUG("AP configuration, Passphrase: '%s'", Passphrase);
+            }
+            else
+            {
+                LE_WARN("No value set for '%s'!", CFG_NODE_PASSPHRASE);
+            }
+
+            le_cfg_CancelTxn(cfg);
+
+            // Create the Access Point to connect to
+            AccessPointRef = le_wifiClient_Create((const uint8_t *)Ssid, strlen(Ssid));
+
+            if (NULL != AccessPointRef)
+            {
+                // Configure the Access Point
+                LE_ASSERT(LE_OK == le_wifiClient_SetSecurityProtocol(AccessPointRef, SecProtocol));
+                LE_ASSERT(LE_OK == le_wifiClient_SetPassphrase(AccessPointRef, Passphrase));
+            }
+            else
+            {
+                LE_ERROR("Impossible to create Access Point");
+            }
+
+            // Delete sensitive information
+            memset(Ssid, '\0', sizeof(Ssid));
+            memset(Passphrase, '\0', sizeof(Passphrase));
+        }
+        break;
+
+        default:
+        {
+            LE_ERROR("Unknown technology %d", technology);
+        }
+        break;
     }
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Load preferences from the configuration tree
- */
-//--------------------------------------------------------------------------------------------------
-static void LoadPreferencesFromConfigDb
-(
-    void
-)
-{
-    char configPath[LIMIT_MAX_PATH_BYTES];
-    char techStr[DCS_TECH_BYTES] = {0};
-
-    snprintf(configPath, sizeof(configPath), "%s/%s", CFG_DCS_PATH, CFG_NODE_PREF_TECH);
-
-    LE_DEBUG("Start reading DCS information in ConfigDB");
-
-    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
-
-    if ( le_cfg_GetString(cfg, CFG_NODE_PREF_TECH, techStr, sizeof(techStr), "cellular") != LE_OK )
-    {
-        LE_WARN("String value for '%s' too large.", CFG_NODE_PREF_TECH);
-    }
-
-    le_cfg_CancelTxn(cfg);
-
-    if (techStr[0] == '\0')
-    {
-        LE_WARN("No node value set for '%s'", CFG_NODE_PREF_TECH);
-        LE_ASSERT( LE_OK != le_utf8_Copy(techStr, "cellular", sizeof(techStr), NULL) );
-    }
-
-    LE_DEBUG("'%s' is the preferred technology for data connection.", techStr);
-
-    LoadSelectedTechProfile(techStr);
-
-    LE_ASSERT( MobileProfileRef != NULL );
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Check if a default gateway is set
  *
- * return
+ * @return
  *      True or False
  */
 //--------------------------------------------------------------------------------------------------
@@ -330,21 +841,21 @@ static bool IsDefaultGatewayPresent
 
     routeFile = le_flock_OpenStream(ROUTE_FILE , LE_FLOCK_READ, &openResult);
 
-    if (routeFile == NULL)
+    if (NULL == routeFile)
     {
         LE_WARN("le_flock_OpenStream failed with error %d", openResult);
         return result;
     }
 
-    while(fgets(line , sizeof(line) , routeFile))
+    while (fgets(line, sizeof(line), routeFile))
     {
-        ifacePtr = strtok_r(line , " \t", &saveptr);
-        destPtr  = strtok_r(NULL , " \t", &saveptr);
-        gwPtr    = strtok_r(NULL , " \t", &saveptr);
+        ifacePtr = strtok_r(line, " \t", &saveptr);
+        destPtr  = strtok_r(NULL, " \t", &saveptr);
+        gwPtr    = strtok_r(NULL, " \t", &saveptr);
 
-        if(ifacePtr!=NULL && destPtr!=NULL)
+        if ((NULL != ifacePtr) && (NULL != destPtr))
         {
-            if(strcmp(destPtr , "00000000") == 0)
+            if (0 == strcmp(destPtr, "00000000"))
             {
                 if (gwPtr)
                 {
@@ -361,47 +872,47 @@ static bool IsDefaultGatewayPresent
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Save the default route.
+ * Save the default route
  *
- * return
- *      LE_OK           Function succeed
- *      LE_OVERFLOW     buffer provided are too small
- *      LE_NOT_FOUND    No default gateway is set.
+ * @return
+ *      - LE_OK           Function succeed
+ *      - LE_OVERFLOW     buffer provided are too small
+ *      - LE_NOT_FOUND    No default gateway is set
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SaveDefaultGateway
 (
-    char    *interfacePtr,
-    size_t   interfaceSize,
-    char    *gatewayPtr,
-    size_t   gatewaySize
+    char    *interfacePtr,      ///< [IN] Pointer on the interface name
+    size_t   interfaceSize,     ///< [IN] Interface name size
+    char    *gatewayPtr,        ///< [IN] Pointer on the gateway name
+    size_t   gatewaySize        ///< [IN] Gateway name size
 )
 {
     le_result_t result;
     FILE *routeFile;
     char line[100] , *ifacePtr , *destPtr, *gwPtr, *saveptr;
 
-    routeFile = le_flock_OpenStream(ROUTE_FILE , LE_FLOCK_READ, &result);
+    routeFile = le_flock_OpenStream(ROUTE_FILE, LE_FLOCK_READ, &result);
 
-    if (routeFile == NULL)
+    if (NULL == routeFile)
     {
         return result;
     }
 
     // Initialize default value
     interfacePtr[0] = '\0';
-    gatewayPtr[0] = '\0';
+    gatewayPtr[0]   = '\0';
 
     result = LE_NOT_FOUND;
-    while(fgets(line , sizeof(line) , routeFile))
+    while (fgets(line, sizeof(line), routeFile))
     {
-        ifacePtr = strtok_r(line , " \t", &saveptr);
-        destPtr  = strtok_r(NULL , " \t", &saveptr);
-        gwPtr    = strtok_r(NULL , " \t", &saveptr);
+        ifacePtr = strtok_r(line, " \t", &saveptr);
+        destPtr  = strtok_r(NULL, " \t", &saveptr);
+        gwPtr    = strtok_r(NULL, " \t", &saveptr);
 
-        if(ifacePtr!=NULL && destPtr!=NULL)
+        if ((NULL != ifacePtr) && (NULL != destPtr))
         {
-            if(strcmp(destPtr , "00000000") == 0)
+            if (0 == strcmp(destPtr , "00000000"))
             {
                 if (gwPtr)
                 {
@@ -410,14 +921,14 @@ static le_result_t SaveDefaultGateway
                     struct in_addr addr;
                     addr.s_addr=ng;
 
-                    result = le_utf8_Copy(interfacePtr,ifacePtr,interfaceSize,NULL);
+                    result = le_utf8_Copy(interfacePtr, ifacePtr, interfaceSize, NULL);
                     if (result != LE_OK)
                     {
                         LE_WARN("inferface buffer is too small");
                         break;
                     }
 
-                    result = le_utf8_Copy(gatewayPtr,inet_ntoa(addr),gatewaySize,NULL);
+                    result = le_utf8_Copy(gatewayPtr, inet_ntoa(addr), gatewaySize, NULL);
                     if (result != LE_OK)
                     {
                         LE_WARN("gateway buffer is too small");
@@ -435,7 +946,7 @@ static le_result_t SaveDefaultGateway
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the default gateway in the system.
+ * Set the default gateway in the system
  *
  * return
  *      LE_OK           Function succeed
@@ -444,44 +955,46 @@ static le_result_t SaveDefaultGateway
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetDefaultGateway
 (
-    const char *interfacePtr,
-    const char *gatewayPtr,
-    bool isIpv6
+    const char *interfacePtr,   ///< [IN] Pointer on the interface name
+    const char *gatewayPtr,     ///< [IN] Pointer on the gateway name
+    bool isIpv6                 ///< [IN] IPv6 or not
 )
 {
     const char *optionPtr = "";
     char systemCmd[200] = {0};
 
-    LE_DEBUG("Try set the gateway %s on %s", gatewayPtr, interfacePtr);
-
-    if ( (strcmp(gatewayPtr,"")==0) || (strcmp(interfacePtr,"")==0) )
+    if ((0 == strcmp(gatewayPtr,"")) || (0 == strcmp(interfacePtr,"")))
     {
-        LE_WARN("Gateway or Interface are empty");
+        LE_WARN("Default gateway or interface is empty");
         return LE_FAULT;
+    }
+    else
+    {
+        LE_DEBUG("Try set the gateway %s on %s", gatewayPtr, interfacePtr);
     }
 
     if (IsDefaultGatewayPresent())
     {
-        // Remove the last default GW.
+        // Remove the last default GW
         LE_DEBUG("Execute '/sbin/route del default'");
-        if ( system("/sbin/route del default") == -1 )
+        if (-1 == system("/sbin/route del default"))
         {
             LE_WARN("system '%s' failed", systemCmd);
             return LE_FAULT;
         }
     }
 
-    if ( isIpv6 )
+    if (isIpv6)
     {
         optionPtr = "-A inet6";
     }
 
-    // @TODO use of ioctl instead, should be done when rework the DCS.
+    // TODO: use of ioctl instead, should be done when rework the DCS
     snprintf(systemCmd, sizeof(systemCmd),
              "/sbin/route %s add default gw %s %s", optionPtr, gatewayPtr, interfacePtr);
 
     LE_DEBUG("Execute '%s", systemCmd);
-    if ( system(systemCmd) == -1 )
+    if (-1 == system(systemCmd))
     {
         LE_WARN("system '%s' failed", systemCmd);
         return LE_FAULT;
@@ -490,6 +1003,33 @@ static le_result_t SetDefaultGateway
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restore the default gateway in the system
+ *
+ * return
+ *      LE_OK           Function succeed
+ *      LE_FAULT        Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RestoreDefaultGateway
+(
+    void
+)
+{
+    // Restore backed up interface and gateway
+    le_result_t result = SetDefaultGateway(InterfaceDataBackup.defaultInterface,
+                                           InterfaceDataBackup.defaultGateway,
+                                           false);
+
+    // Delete backed up parameters
+    memset(InterfaceDataBackup.defaultInterface, '\0',
+           sizeof(InterfaceDataBackup.defaultInterface));
+    memset(InterfaceDataBackup.defaultGateway, '\0',
+           sizeof(InterfaceDataBackup.defaultGateway));
+
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -502,7 +1042,7 @@ static le_result_t SetDefaultGateway
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetRouteConfiguration
 (
-    le_mdc_ProfileRef_t profileRef
+    le_mdc_ProfileRef_t profileRef  ///< [IN] Modem data connection profile reference
 )
 {
     bool isIpv6 = true;
@@ -510,58 +1050,62 @@ static le_result_t SetRouteConfiguration
     char ipv4GatewayAddr[LE_MDC_IPV4_ADDR_MAX_BYTES] = {0};
     char interface[LE_MDC_INTERFACE_NAME_MAX_BYTES] = {0};
 
-    if ( !( le_mdc_IsIPv6(profileRef) || le_mdc_IsIPv4(profileRef) ) )
+    if (!(le_mdc_IsIPv6(profileRef) || le_mdc_IsIPv4(profileRef)))
     {
         LE_WARN("Profile is not using IPv4 nor IPv6");
         return LE_FAULT;
     }
 
 
-    if ( le_mdc_IsIPv6(profileRef) )
-     {
+    if (le_mdc_IsIPv6(profileRef))
+    {
 
-       if ( le_mdc_GetIPv6GatewayAddress(profileRef, ipv6GatewayAddr, sizeof(ipv6GatewayAddr)) != LE_OK )
+        if (LE_OK != le_mdc_GetIPv6GatewayAddress(profileRef,
+                                                  ipv6GatewayAddr,
+                                                  sizeof(ipv6GatewayAddr)))
         {
-          LE_INFO("le_mdc_GetIPv6GatewayAddress failed");
-          return LE_FAULT;
+            LE_INFO("le_mdc_GetIPv6GatewayAddress failed");
+            return LE_FAULT;
         }
 
-       if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
+        if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
         {
-          LE_WARN("le_mdc_GetInterfaceName failed");
-          return LE_FAULT;
+            LE_WARN("le_mdc_GetInterfaceName failed");
+            return LE_FAULT;
         }
 
-       // Set the default ipv6 gateway retrieved from modem.
-       if ( SetDefaultGateway(interface,ipv6GatewayAddr, isIpv6) != LE_OK )
+        // Set the default ipv6 gateway retrieved from modem
+        if (LE_OK != SetDefaultGateway(interface, ipv6GatewayAddr, isIpv6))
         {
-          LE_WARN("SetDefaultGateway for ipv6 gateway failed");
-          return LE_FAULT;
-       }
-     }
+            LE_WARN("SetDefaultGateway for ipv6 gateway failed");
+            return LE_FAULT;
+        }
+    }
 
-    if ( le_mdc_IsIPv4(profileRef) )
-     {
+    if (le_mdc_IsIPv4(profileRef))
+    {
 
-       if ( le_mdc_GetIPv4GatewayAddress(profileRef, ipv4GatewayAddr, sizeof(ipv4GatewayAddr)) != LE_OK )
+        if (LE_OK != le_mdc_GetIPv4GatewayAddress(profileRef,
+                                                  ipv4GatewayAddr,
+                                                  sizeof(ipv4GatewayAddr)))
         {
-           LE_INFO("le_mdc_GetIPv4GatewayAddress failed");
-           return LE_FAULT;
+            LE_INFO("le_mdc_GetIPv4GatewayAddress failed");
+            return LE_FAULT;
         }
 
-       if ( le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)) != LE_OK )
+        if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
         {
-           LE_WARN("le_mdc_GetInterfaceName failed");
-           return LE_FAULT;
+            LE_WARN("le_mdc_GetInterfaceName failed");
+            return LE_FAULT;
         }
 
-        // Set the default ipv4 gateway retrieved from modem.
-        if ( SetDefaultGateway(interface,ipv4GatewayAddr, !(isIpv6)) != LE_OK )
-         {
-           LE_WARN("SetDefaultGateway for ipv4 gateway failed");
-           return LE_FAULT;
-         }
-     }
+        // Set the default ipv4 gateway retrieved from modem
+        if (LE_OK != SetDefaultGateway(interface, ipv4GatewayAddr, !(isIpv6)))
+        {
+            LE_WARN("SetDefaultGateway for ipv4 gateway failed");
+            return LE_FAULT;
+        }
+    }
 
     return LE_OK;
 }
@@ -592,14 +1136,14 @@ static char * ReadResolvConf
     fileSz = lseek(fd, 0, SEEK_END);
     LE_FATAL_IF( (fileSz < 0), "Unable to get resolv.conf size" );
 
-    if (fileSz != 0)
+    if (0 != fileSz)
     {
 
         LE_DEBUG("Caching resolv.conf: size[%zu]", fileSz);
 
         lseek(fd, 0, SEEK_SET);
 
-        if (fileSz > (sizeof(ResolvConfBuffer)-1))
+        if (fileSz > (sizeof(ResolvConfBuffer) - 1))
         {
             LE_ERROR("Buffer is too small (%zu), file will be truncated from %zu",
                     sizeof(ResolvConfBuffer), fileSz);
@@ -608,7 +1152,7 @@ static char * ReadResolvConf
 
         fileContent = ResolvConfBuffer;
 
-        if ( 0 > read(fd, fileContent, fileSz) )
+        if (0 > read(fd, fileContent, fileSz))
         {
             LE_ERROR("Caching resolv.conf failed");
             fileContent[0] = '\0';
@@ -620,14 +1164,14 @@ static char * ReadResolvConf
         }
     }
 
-    if ( close(fd) != 0 )
+    if (0 != close(fd))
     {
         LE_FATAL("close failed");
     }
 
     LE_FATAL_IF( fileContent && (strlen(fileContent) > fileSz),
-                    "Content size (%zu) and File size (%zu) differ",
-                    strlen(fileContent), fileSz );
+                 "Content size (%zu) and File size (%zu) differ",
+                 strlen(fileContent), fileSz );
 
     return fileContent;
 }
@@ -643,8 +1187,8 @@ static char * ReadResolvConf
 //--------------------------------------------------------------------------------------------------
 static le_result_t AddNameserversToResolvConf
 (
-    const char *dns1Ptr,
-    const char *dns2Ptr
+    const char *dns1Ptr,    ///< [IN] Pointer on first DNS address
+    const char *dns2Ptr     ///< [IN] Pointer on second DNS address
 )
 {
     bool addDns1 = true;
@@ -658,7 +1202,7 @@ static le_result_t AddNameserversToResolvConf
     // Look for entries to add in the existing file
     char* resolvConfSourcePtr = ReadResolvConf();
 
-    if (resolvConfSourcePtr != NULL)
+    if (NULL != resolvConfSourcePtr)
     {
         char* currentLinePtr = resolvConfSourcePtr;
         int currentLinePos = 0;
@@ -666,8 +1210,9 @@ static le_result_t AddNameserversToResolvConf
         // For each line in source file
         while (true)
         {
-            if ( ('\0' == currentLinePtr[currentLinePos]) ||
-                 ('\n' == currentLinePtr[currentLinePos]) )
+            if (   ('\0' == currentLinePtr[currentLinePos])
+                || ('\n' == currentLinePtr[currentLinePos])
+               )
             {
                 char sourceLineEnd = currentLinePtr[currentLinePos];
                 currentLinePtr[currentLinePos] = '\0';
@@ -683,7 +1228,7 @@ static le_result_t AddNameserversToResolvConf
                     addDns2 = false;
                 }
 
-                if (sourceLineEnd == '\0')
+                if ('\0' == sourceLineEnd)
                 {
                     break;
                 }
@@ -701,7 +1246,7 @@ static le_result_t AddNameserversToResolvConf
         }
     }
 
-    if ( !addDns1 && !addDns2 )
+    if (!addDns1 && !addDns2)
     {
         // No need to change the file
         return LE_OK;
@@ -714,7 +1259,7 @@ static le_result_t AddNameserversToResolvConf
     oldMask = umask(022);
 
     resolvConfPtr = fopen("/etc/resolv.conf", "w");
-    if (resolvConfPtr == NULL)
+    if (NULL == resolvConfPtr)
     {
         // restore old mask
         umask(oldMask);
@@ -724,13 +1269,13 @@ static le_result_t AddNameserversToResolvConf
     }
 
     // Set DNS 1 if needed
-    if ( addDns1 && (fprintf(resolvConfPtr, "nameserver %s\n", dns1Ptr) < 0) )
+    if (addDns1 && (fprintf(resolvConfPtr, "nameserver %s\n", dns1Ptr) < 0))
     {
         // restore old mask
         umask(oldMask);
 
         LE_WARN("fprintf failed");
-        if ( fclose(resolvConfPtr) != 0 )
+        if (0 != fclose(resolvConfPtr))
         {
             LE_WARN("fclose failed");
         }
@@ -738,13 +1283,13 @@ static le_result_t AddNameserversToResolvConf
     }
 
     // Set DNS 2 if needed
-    if ( addDns2 && (fprintf(resolvConfPtr, "nameserver %s\n", dns2Ptr) < 0) )
+    if (addDns2 && (fprintf(resolvConfPtr, "nameserver %s\n", dns2Ptr) < 0))
     {
         // restore old mask
         umask(oldMask);
 
         LE_WARN("fprintf failed");
-        if ( fclose(resolvConfPtr) != 0 )
+        if (0 != fclose(resolvConfPtr))
         {
             LE_WARN("fclose failed");
         }
@@ -752,17 +1297,17 @@ static le_result_t AddNameserversToResolvConf
     }
 
     // Append rest of the file
-    if (resolvConfSourcePtr != NULL)
+    if (NULL != resolvConfSourcePtr)
     {
         size_t writeLen = strlen(resolvConfSourcePtr);
 
-        if ( writeLen != fwrite(resolvConfSourcePtr, sizeof(char), writeLen, resolvConfPtr) )
+        if (writeLen != fwrite(resolvConfSourcePtr, sizeof(char), writeLen, resolvConfPtr))
         {
             // restore old mask
             umask(oldMask);
 
             LE_CRIT("Writing resolv.conf failed");
-            if ( fclose(resolvConfPtr) != 0 )
+            if (0 != fclose(resolvConfPtr))
             {
                 LE_WARN("fclose failed");
             }
@@ -773,7 +1318,7 @@ static le_result_t AddNameserversToResolvConf
     // restore old mask
     umask(oldMask);
 
-    if ( fclose(resolvConfPtr) != 0 )
+    if (0 != fclose(resolvConfPtr))
     {
         LE_WARN("fclose failed");
         return LE_FAULT;
@@ -784,7 +1329,7 @@ static le_result_t AddNameserversToResolvConf
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Write the DNS configuration into /etc/resolv.conf
+ * Remove the DNS configuration from /etc/resolv.conf
  *
  * @return
  *      LE_FAULT        Function failed
@@ -793,8 +1338,8 @@ static le_result_t AddNameserversToResolvConf
 //--------------------------------------------------------------------------------------------------
 static le_result_t RemoveNameserversFromResolvConf
 (
-    const char *dns1Ptr,
-    const char *dns2Ptr
+    const char *dns1Ptr,    ///< [IN] Pointer on first DNS address
+    const char *dns2Ptr     ///< [IN] Pointer on second DNS address
 )
 {
     char* resolvConfSourcePtr = ReadResolvConf();
@@ -804,7 +1349,7 @@ static le_result_t RemoveNameserversFromResolvConf
     FILE*  resolvConfPtr;
     mode_t oldMask;
 
-    if (resolvConfSourcePtr == NULL)
+    if (NULL == resolvConfSourcePtr)
     {
         // Nothing to remove
         return LE_OK;
@@ -814,7 +1359,7 @@ static le_result_t RemoveNameserversFromResolvConf
     oldMask = umask(022);
 
     resolvConfPtr = fopen("/etc/resolv.conf", "w");
-    if (resolvConfPtr == NULL)
+    if (NULL == resolvConfPtr)
     {
         // restore old mask
         umask(oldMask);
@@ -826,22 +1371,24 @@ static le_result_t RemoveNameserversFromResolvConf
     // For each line in source file
     while (true)
     {
-        if ( ('\0' == currentLinePtr[currentLinePos]) ||
-             ('\n' == currentLinePtr[currentLinePos]) )
+        if (   ('\0' == currentLinePtr[currentLinePos])
+            || ('\n' == currentLinePtr[currentLinePos])
+           )
         {
             char sourceLineEnd = currentLinePtr[currentLinePos];
             currentLinePtr[currentLinePos] = '\0';
 
             // Got to the end of the source file
-            if ( (sourceLineEnd == '\0') && (currentLinePos == 0) )
+            if ('\0' == (sourceLineEnd) && (0 == currentLinePos))
             {
                 break;
             }
 
             // If line doesn't contains an entry to remove,
             // copy line to new content
-            if ( (NULL == strstr(currentLinePtr, dns1Ptr)) &&
-                 (NULL == strstr(currentLinePtr, dns2Ptr)) )
+            if (   (NULL == strstr(currentLinePtr, dns1Ptr))
+                && (NULL == strstr(currentLinePtr, dns2Ptr))
+               )
             {
                 // The original file contents may not have the final line terminated by
                 // a new-line; always terminate with a new-line, since this is what is
@@ -850,7 +1397,7 @@ static le_result_t RemoveNameserversFromResolvConf
                 fwrite(currentLinePtr, sizeof(char), (currentLinePos+1), resolvConfPtr);
             }
 
-            if (sourceLineEnd == '\0')
+            if ('\0' == sourceLineEnd)
             {
                 // This should only occur if the last line was not terminated by a new-line.
                 break;
@@ -870,7 +1417,7 @@ static le_result_t RemoveNameserversFromResolvConf
     // restore old mask
     umask(oldMask);
 
-    if ( fclose(resolvConfPtr) != 0 )
+    if (0 != fclose(resolvConfPtr))
     {
         LE_WARN("fclose failed");
         return LE_FAULT;
@@ -883,30 +1430,30 @@ static le_result_t RemoveNameserversFromResolvConf
 /**
  * Set the DNS configuration for a profile
  *
- * return
+ * @return
  *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetDnsConfiguration
 (
-    le_mdc_ProfileRef_t profileRef
+    le_mdc_ProfileRef_t profileRef      ///< [IN] Modem data connection profile reference
 )
 {
     char dns1Addr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
     char dns2Addr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
 
-    if ( le_mdc_IsIPv4(profileRef) )
+    if (le_mdc_IsIPv4(profileRef))
     {
-        if ( le_mdc_GetIPv4DNSAddresses(profileRef,
-                                        dns1Addr, sizeof(dns1Addr),
-                                        dns2Addr, sizeof(dns2Addr)) != LE_OK )
+        if (LE_OK != le_mdc_GetIPv4DNSAddresses(profileRef,
+                                                dns1Addr, sizeof(dns1Addr),
+                                                dns2Addr, sizeof(dns2Addr)))
         {
             LE_INFO("IPv4: le_mdc_GetDNSAddresses failed");
             return LE_FAULT;
         }
 
-        if ( AddNameserversToResolvConf(dns1Addr, dns2Addr) != LE_OK )
+        if (LE_OK != AddNameserversToResolvConf(dns1Addr, dns2Addr))
         {
             LE_INFO("IPv4: Could not write in resolv file");
             return LE_FAULT;
@@ -921,17 +1468,17 @@ static le_result_t SetDnsConfiguration
         InterfaceDataBackup.newDnsIPv4[1][0] = '\0';
     }
 
-    if ( le_mdc_IsIPv6(profileRef) )
+    if (le_mdc_IsIPv6(profileRef))
     {
-        if ( le_mdc_GetIPv6DNSAddresses(profileRef,
-                                        dns1Addr, sizeof(dns1Addr),
-                                        dns2Addr, sizeof(dns2Addr)) != LE_OK )
+        if (LE_OK != le_mdc_GetIPv6DNSAddresses(profileRef,
+                                                dns1Addr, sizeof(dns1Addr),
+                                                dns2Addr, sizeof(dns2Addr)))
         {
             LE_INFO("IPv6: le_mdc_GetDNSAddresses failed");
             return LE_FAULT;
         }
 
-        if ( AddNameserversToResolvConf(dns1Addr, dns2Addr) != LE_OK )
+        if (LE_OK != AddNameserversToResolvConf(dns1Addr, dns2Addr))
         {
             LE_INFO("IPv6: Could not write in resolv file");
             return LE_FAULT;
@@ -949,147 +1496,187 @@ static le_result_t SetDnsConfiguration
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the default gateway retrieved from modem
+ *
+ * @return
+ *      LE_FAULT        Function failed
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetModemGateway
+(
+    void
+)
+{
+    // Save gateway configuration
+    if (LE_OK != SaveDefaultGateway(InterfaceDataBackup.defaultInterface,
+                                    sizeof(InterfaceDataBackup.defaultInterface),
+                                    InterfaceDataBackup.defaultGateway,
+                                    sizeof(InterfaceDataBackup.defaultGateway)))
+    {
+        LE_WARN("Could not save the default gateway");
+    }
+    else
+    {
+        LE_DEBUG("default gw is: '%s' on '%s'", InterfaceDataBackup.defaultGateway,
+                                                InterfaceDataBackup.defaultInterface);
+    }
+
+    if (LE_OK != SetRouteConfiguration(MobileProfileRef))
+    {
+        LE_ERROR("Failed to get configuration route");
+        return LE_FAULT;
+    }
+
+    if (LE_OK != SetDnsConfiguration(MobileProfileRef))
+    {
+        LE_ERROR("Failed to get configuration DNS");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Try to start the data session
+ * Try to start the mobile data session
  */
 //--------------------------------------------------------------------------------------------------
 static void TryStartDataSession
 (
-    le_timer_Ref_t timerRef
+    void
 )
 {
-    le_result_t          result;
-
-    // Reload MobileProfileRef
-    LoadPreferencesFromConfigDb();
-
-    // Register for data session state changes
-    // if there was an update of profileRef
-    if (MobileSessionStateHandlerRef == NULL)
+    // Start data session
+    if (LE_OK != le_mdc_StartSession(MobileProfileRef))
     {
-        MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
-                                                                     DataSessionStateHandler,
-                                                                     NULL);
-    }
-
-    result = le_mdc_StartSession(MobileProfileRef);
-    if (result != LE_OK)
-    {
-        if (!le_timer_IsRunning(timerRef))
-        {
-            if (le_timer_Start(timerRef) != LE_OK)
-            {
-                LE_ERROR("Could not start the StartDcs timer!");
-                return;
-            }
-        }
+        // Impossible to use this technology, try the next one
+        ConnectionStatusHandler(LE_DATA_CELLULAR, false);
     }
     else
     {
-        // First wait a few seconds for the default DHCP client.
+        // First wait a few seconds for the default DHCP client
         sleep(3);
 
-        // Save gateway configuration.
-        if ( SaveDefaultGateway(InterfaceDataBackup.defaultInterface, sizeof(InterfaceDataBackup.defaultInterface),
-                                InterfaceDataBackup.defaultGateway, sizeof(InterfaceDataBackup.defaultGateway)) != LE_OK)
+        // Set the gateway retrieved from the modem
+        if (LE_OK != SetModemGateway())
         {
-            LE_WARN("Could not save the default gateway");
-        }
-        LE_DEBUG("default gw is: '%s' on '%s'",InterfaceDataBackup.defaultGateway,InterfaceDataBackup.defaultInterface);
-
-        if (SetRouteConfiguration(MobileProfileRef) != LE_OK)
-        {
-            LE_ERROR("Failed to get configuration route.");
-            if (!le_timer_IsRunning(timerRef))
-            {
-                if (le_timer_Start(timerRef) != LE_OK)
-                {
-                    LE_ERROR("Could not start the StartDcs timer!");
-                    return;
-                }
-            }
-        }
-
-        if (SetDnsConfiguration(MobileProfileRef) != LE_OK)
-        {
-            LE_ERROR("Failed to get configuration DNS.");
-            if (!le_timer_IsRunning(timerRef))
-            {
-                if (le_timer_Start(timerRef) != LE_OK)
-                {
-                    LE_ERROR("Could not start the StartDcs timer!");
-                    return;
-                }
-            }
-        }
-
-        // Wait a few seconds to prevent rapid toggling of data connection
-        sleep(5);
-
-        IsConnected = true;
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Start Data Connection Service Timer Handler.
- * When the timer expires, verify if the session is connected, if NOT retry to connect it and rearm
- * the timer.
- */
-//--------------------------------------------------------------------------------------------------
-static void StartDcsTimerHandler
-(
-    le_timer_Ref_t timerRef
-)
-{
-    le_mdc_ConState_t  sessionState;
-    le_result_t result;
-
-    if(RequestCount == 0)
-    {
-        // Release has been requested in the meantime, I must cancel the Request command process
-        le_timer_Stop(timerRef);
-    }
-    else
-    {
-        result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
-        if ((result == LE_OK) && (sessionState == LE_MDC_CONNECTED))
-        {
-            if (SetRouteConfiguration(MobileProfileRef) != LE_OK)
-            {
-                LE_ERROR("Failed to get configuration route.");
-                TryStartDataSession(timerRef);
-                return;
-            }
-
-            if (SetDnsConfiguration(MobileProfileRef) != LE_OK)
-            {
-                LE_ERROR("Failed to get configuration DNS.");
-                TryStartDataSession(timerRef);
-                return;
-            }
-
-            // The radio is ON, stop and delete the Timer.
-            le_timer_Stop(timerRef);
-
-            // Wait a few seconds to prevent rapid toggling of data connection
-            sleep(5);
-
-            IsConnected = true;
+            // Impossible to use this technology, try the next one
+            ConnectionStatusHandler(LE_DATA_CELLULAR, false);
         }
         else
         {
-            TryStartDataSession(timerRef);
-            // TODO: find a solution to get off of this infinite loop
+            // Wait a few seconds to prevent rapid toggling of data connection
+            sleep(5);
         }
     }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Used the data backup upon connection to remove DNS entries locally added.
+ * Try to start the wifi session
+ */
+//--------------------------------------------------------------------------------------------------
+static void TryStartWifiSession
+(
+    void
+)
+{
+    // Load Access Point configuration
+    LoadSelectedTechProfile(LE_DATA_WIFI);
+
+    // Start Wifi client
+    le_result_t result = le_wifiClient_Start();
+
+    if (LE_OK == result)
+    {
+        LE_INFO("Wifi client started");
+
+        // Connect to the Access Point
+        if (NULL != AccessPointRef)
+        {
+            result = le_wifiClient_Connect(AccessPointRef);
+            if (result == LE_OK)
+            {
+                LE_INFO("Connecting to AP");
+            }
+            else
+            {
+                LE_ERROR("Impossible to connect to AP, result %d", result);
+
+                // Impossible to use this technology, try the next one
+                ConnectionStatusHandler(LE_DATA_WIFI, false);
+            }
+        }
+        else
+        {
+            LE_ERROR("No reference to AP");
+
+            // Impossible to use this technology, try the next one
+            ConnectionStatusHandler(LE_DATA_WIFI, false);
+        }
+    }
+    else
+    {
+        LE_ERROR("Wifi client not started, result %d", result);
+
+        // Impossible to use this technology, try the next one
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to start the default data session with a defined technology
+ */
+//--------------------------------------------------------------------------------------------------
+static void TryStartTechSession
+(
+    le_data_Technology_t technology     ///< [IN] Technology to use for the data session
+)
+{
+    if (LE_DATA_MAX == technology)
+    {
+        LE_ERROR("Unknown technology used to start the data session!");
+    }
+    else
+    {
+        char techStr[DCS_TECH_BYTES] = {0};
+        GetTechnologyString(technology, techStr, sizeof(techStr));
+        LE_DEBUG("Technology used for the data connection: '%s'", techStr);
+
+        // Store the currently used technology
+        CurrentTech = technology;
+
+        switch (technology)
+        {
+            case LE_DATA_CELLULAR:
+                // Load MobileProfileRef
+                LoadSelectedTechProfile(LE_DATA_CELLULAR);
+
+                // Ensure that cellular network service is available.
+                // Data connection will be started when cellular network registration
+                // notification is received.
+                le_cellnet_Request();
+                break;
+
+            case LE_DATA_WIFI:
+                // Try to establish the wifi connection
+                TryStartWifiSession();
+                break;
+
+            default:
+                LE_ERROR("Unknown technology %d to start", technology);
+                break;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Used the data backup upon connection to remove DNS entries locally added
  */
 //--------------------------------------------------------------------------------------------------
 static void RestoreInitialNameservers
@@ -1097,50 +1684,75 @@ static void RestoreInitialNameservers
     void
 )
 {
-    if ( ('\0' != InterfaceDataBackup.newDnsIPv4[0][0]) ||
-         ('\0' != InterfaceDataBackup.newDnsIPv4[1][0]) )
+    if (   ('\0' != InterfaceDataBackup.newDnsIPv4[0][0])
+        || ('\0' != InterfaceDataBackup.newDnsIPv4[1][0])
+       )
     {
         RemoveNameserversFromResolvConf(InterfaceDataBackup.newDnsIPv4[0],
                                         InterfaceDataBackup.newDnsIPv4[1]);
+
+        // Delete backed up data
+        memset(InterfaceDataBackup.newDnsIPv4[0], '\0',
+               sizeof(InterfaceDataBackup.newDnsIPv4[0]));
+        memset(InterfaceDataBackup.newDnsIPv4[1], '\0',
+               sizeof(InterfaceDataBackup.newDnsIPv4[1]));
     }
 
-    if ( ('\0' != InterfaceDataBackup.newDnsIPv6[0][0]) ||
-         ('\0' != InterfaceDataBackup.newDnsIPv6[1][0]) )
+    if (   ('\0' != InterfaceDataBackup.newDnsIPv6[0][0])
+        || ('\0' != InterfaceDataBackup.newDnsIPv6[1][0])
+       )
     {
         RemoveNameserversFromResolvConf(InterfaceDataBackup.newDnsIPv6[0],
                                         InterfaceDataBackup.newDnsIPv6[1]);
+
+        // Delete backed up data
+        memset(InterfaceDataBackup.newDnsIPv6[0], '\0',
+               sizeof(InterfaceDataBackup.newDnsIPv6[0]));
+        memset(InterfaceDataBackup.newDnsIPv6[1], '\0',
+               sizeof(InterfaceDataBackup.newDnsIPv6[1]));
     }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Try to stop the data session
+ * Try to stop the mobile data session
  */
 //--------------------------------------------------------------------------------------------------
 static void TryStopDataSession
 (
-    le_timer_Ref_t timerRef
+    le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
     le_mdc_ConState_t sessionState;
     le_result_t result;
 
+    // Check if the mobile data session is already disconnected
     result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
-    if ((result == LE_OK) && (!sessionState))
+    if ((LE_OK == result) && (!sessionState))
     {
         IsConnected = false;
+
+        // Reset number of retries
+        StopSessionRetries = 0;
+
+        // Restore backed up parameters
+        RestoreDefaultGateway();
         RestoreInitialNameservers();
-        return;
     }
     else
     {
         // Try to shutdown the connection anyway
-        result = le_mdc_StopSession(MobileProfileRef);
-        if (result != LE_OK)
+        if (LE_OK != le_mdc_StopSession(MobileProfileRef))
         {
+            LE_ERROR("Impossible to stop mobile data session");
+
+            // Increase number of retries
+            StopSessionRetries++;
+
+            // Start timer
             if (!le_timer_IsRunning(timerRef))
             {
-                if (le_timer_Start(timerRef) != LE_OK)
+                if (LE_OK != le_timer_Start(timerRef))
                 {
                     LE_ERROR("Could not start the StopDcs timer!");
                 }
@@ -1150,7 +1762,11 @@ static void TryStopDataSession
         {
             IsConnected = false;
 
-            SetDefaultGateway(InterfaceDataBackup.defaultInterface, InterfaceDataBackup.defaultGateway, false);
+            // Reset number of retries
+            StopSessionRetries = 0;
+
+            // Restore backed up parameters
+            RestoreDefaultGateway();
             RestoreInitialNameservers();
         }
     }
@@ -1158,74 +1774,135 @@ static void TryStopDataSession
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stop Data Connection Service Timer Handler.
- * When the timer expires, verify if the session is disconnected, if NOT retry to disconnect it and
- * rearm the timer.
+ * Try to stop the wifi session
  */
 //--------------------------------------------------------------------------------------------------
-static void StopDcsTimerHandler
+static void TryStopWifiSession
 (
-    le_timer_Ref_t timerRef
+    le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
-    le_mdc_ConState_t sessionState;
-    le_result_t result;
-
-    if(RequestCount != 0)
+    if (LE_OK != le_wifiClient_Disconnect())
     {
-        // Request has been requested in the meantime, I must cancel the Release command process
-        le_timer_Stop(timerRef);
+        LE_ERROR("Impossible to disconnect wifi client");
+
+        // Increase number of retries
+        StopSessionRetries++;
+
+        // Start timer
+        if (!le_timer_IsRunning(timerRef))
+        {
+            if (LE_OK != le_timer_Start(timerRef))
+            {
+                LE_ERROR("Could not start the StopDcs timer!");
+            }
+        }
     }
     else
     {
-        result = le_mdc_GetSessionState(MobileProfileRef, &sessionState);
-        if ((result == LE_OK) && (!sessionState))
+        IsConnected = false;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to stop the default data session using a defined technology
+ */
+//--------------------------------------------------------------------------------------------------
+static void TryStopTechSession
+(
+    le_data_Technology_t technology     ///< [IN] Technology used for the connection to stop
+)
+{
+    if (LE_DATA_MAX == technology)
+    {
+        LE_ERROR("Unknown technology used to stop the data session!");
+    }
+    else
+    {
+        switch (technology)
         {
-            IsConnected = false;
-            // The data session is disconnected, stop and delete the Timer.
-            le_timer_Stop(timerRef);
-        }
-        else
-        {
-            TryStopDataSession(timerRef);
-            // TODO: find a solution to get off of this infinite loop
+            case LE_DATA_CELLULAR:
+                TryStopDataSession(StopDcsTimer);
+                break;
+
+            case LE_DATA_WIFI:
+                TryStopWifiSession(StopDcsTimer);
+                break;
+
+            default:
+                LE_ERROR("Unknown technology %d to stop", technology);
+                break;
         }
     }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Send connection state event
+ * Stop Data Connection Service Timer Handler
+ * When the timer expires, verify if the session is disconnected, if NOT retry to disconnect it and
+ * rearm the timer
  */
 //--------------------------------------------------------------------------------------------------
-static void SendConnStateEvent
+static void StopDcsTimerHandler
 (
-    bool isConnected
+    le_timer_Ref_t timerRef     ///< [IN] Timer used to ensure the end of the session
 )
 {
-    // Init the event data
-    ConnStateData_t eventData;
-    eventData.isConnected = isConnected;
-    if (isConnected)
+    if (0 != RequestCount)
     {
-        le_mdc_GetInterfaceName(MobileProfileRef,
-                                eventData.interfaceName,
-                                sizeof(eventData.interfaceName));
+        // Request has been requested in the meantime, the Release command process
+        // can be interrupted
+
+        // Reset number of retries
+        StopSessionRetries = 0;
     }
     else
     {
-        // init to empty string
-        eventData.interfaceName[0] = '\0';
+        switch (CurrentTech)
+        {
+            case LE_DATA_CELLULAR:
+            {
+                // Try again if necessary
+                if (StopSessionRetries < MAX_STOP_SESSION_RETRIES)
+                {
+                    TryStopDataSession(timerRef);
+                }
+                else
+                {
+                    // Reset number of retries
+                    StopSessionRetries = 0;
+
+                    LE_WARN("Impossible to stop mobile data session after %d retries, stop trying",
+                            MAX_STOP_SESSION_RETRIES);
+                }
+            }
+            break;
+
+            case LE_DATA_WIFI:
+            {
+                // Try again if necessary
+                if (StopSessionRetries < MAX_STOP_SESSION_RETRIES)
+                {
+                    TryStopWifiSession(timerRef);
+                }
+                else
+                {
+                    // Reset number of retries
+                    StopSessionRetries = 0;
+
+                    LE_WARN("Impossible to disconnect wifi client after %d retries, stop trying",
+                             MAX_STOP_SESSION_RETRIES);
+                }
+            }
+            break;
+
+            default:
+                LE_ERROR("Unknown current technology %d", CurrentTech);
+                break;
+        }
     }
-
-    LE_DEBUG("Reporting '%s' state[%i]",
-        eventData.interfaceName,
-        eventData.isConnected);
-
-    // Send the event to interested applications
-    le_event_Report(ConnStateEvent, &eventData, sizeof(eventData));
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1234,40 +1911,49 @@ static void SendConnStateEvent
 //--------------------------------------------------------------------------------------------------
 static void ProcessCommand
 (
-    void* reportPtr
+    void* reportPtr     ///< [IN] Command to process
 )
 {
     uint32_t command = *(uint32_t*)reportPtr;
 
     LE_PRINT_VALUE("%i", command);
 
-    if (command == REQUEST_COMMAND)
+    if (REQUEST_COMMAND == command)
     {
         RequestCount++;
+
         if (!IsConnected)
         {
-            // Ensure that cellular network service is available
-            le_cellnet_Request();
+            // Check if this is the first connection request.
+            // If the request count is strictly greater than one, it means that a default
+            // data connection was already requested. No need to try and connect again.
+            // The connection notification will be sent when DCS retrieves the data session.
+            if (1 == RequestCount)
+            {
+                // Get the technology to use from the list and start the data session
+                TryStartTechSession(le_data_GetFirstUsedTechnology());
+            }
         }
         else
         {
             // There is already a data session, so send a fake event so that the new application
             // that just sent the command knows about the current state.  This will also cause
-            // redundant info to be sent to the other registered apps, but that's okay.
+            // redundant info to be sent to the other registered apps, but that's okay
             SendConnStateEvent(true);
         }
     }
-    else if (command == RELEASE_COMMAND)
+    else if (RELEASE_COMMAND == command)
     {
-        // Don't decrement below zero, as it will wrap-around.
+        // Don't decrement below zero, as it will wrap-around
         if (RequestCount > 0)
         {
             RequestCount--;
         }
 
-        if ((RequestCount == 0) && IsConnected)
+        if (0 == RequestCount)
         {
-            TryStopDataSession(StopDcsTimer);
+            // Try and disconnect the current technology
+            TryStopTechSession(CurrentTech);
         }
     }
     else
@@ -1276,56 +1962,19 @@ static void ProcessCommand
     }
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- *  Event callback for data session state changes.
- */
-//--------------------------------------------------------------------------------------------------
-static void DataSessionStateHandler
-(
-    le_mdc_ProfileRef_t profileRef,
-    le_mdc_ConState_t ConnectionStatus,
-    void*  contextPtr
-)
-{
-    uint32_t profileIndex = le_mdc_GetProfileIndex(profileRef);
-
-    LE_PRINT_VALUE("%d", profileIndex);
-    LE_PRINT_VALUE("%i", ConnectionStatus);
-
-    // Update global state variable
-    IsConnected = (ConnectionStatus == LE_MDC_CONNECTED) ? true : false;
-
-    // Send the state event to applications
-    SendConnStateEvent(IsConnected);
-
-    // Restart data connection, if it has gone down, and there are still valid requests
-    // todo: this mechanism needs to be much better
-    if ( ( RequestCount>0 ) && ( !IsConnected ) )
-    {
-        // Give the modem some time to recover from whatever caused the loss of the data
-        // connection, before trying to recover.
-        sleep(30);
-
-        // Try to restart
-        TryStartDataSession(StartDcsTimer);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Event callback for Cellular Network Service state changes.
+ *  Event callback for Cellular Network Service state changes
  */
 //--------------------------------------------------------------------------------------------------
 static void CellNetStateHandler
 (
-    le_cellnet_State_t state,
-    void*              contextPtr
+    le_cellnet_State_t state,       ///< [IN] Cellular network state
+    void*              contextPtr   ///< [IN] Associated context pointer
 )
 {
-    LE_DEBUG("Cellular Network Service is in state.%d", state);
+    LE_DEBUG("Cellular Network Service is in state %d", state);
+
     switch (state)
     {
         case LE_CELLNET_RADIO_OFF:
@@ -1335,59 +1984,40 @@ static void CellNetStateHandler
 
         case LE_CELLNET_REG_HOME:
         case LE_CELLNET_REG_ROAMING:
-            if ((RequestCount > 0) && (!IsConnected))
+            // Check if the mobile data session should be started
+            if ((LE_DATA_CELLULAR == CurrentTech) && (RequestCount > 0) && (!IsConnected))
             {
-                TryStartDataSession(StartDcsTimer);
+                TryStartDataSession();
             }
             break;
     }
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This thread does the actual work of starting/stopping a data connection
- *
- * @NOTE: For now, only one MobileProfile is manage, need to improve it for all profiles.
+ * Handler for connection status
  */
 //--------------------------------------------------------------------------------------------------
-static void* DataThread
+static void ConnectionStatusHandler
 (
-    void* contextPtr
+    le_data_Technology_t technology,    ///< [IN] Affected technology
+    bool connected                      ///< [IN] Connection status
 )
 {
-    // Connect to the services required by this thread
-    le_cellnet_ConnectService();
-    le_cfg_ConnectService();
-    le_mdc_ConnectService();
-    le_mrc_ConnectService();
-    le_sim_ConnectService();
+    // Check if the default data connection is still necessary
+    if ((false == connected) && (RequestCount > 0))
+    {
+        // Disconnect the current technology which is not available anymore
+        TryStopTechSession(CurrentTech);
 
-    LE_INFO("Data Thread Started");
-
-    // Register for command events
-    le_event_AddHandler("ProcessCommand",
-                        CommandEvent,
-                        ProcessCommand);
-
-    // Register for Cellular Network Service state changes
-    le_cellnet_AddStateEventHandler(CellNetStateHandler, NULL);
-
-    // Register for data session state changes
-    MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(   MobileProfileRef,
-                                                                    DataSessionStateHandler,
-                                                                    NULL );
-
-    // Run the event loop
-    le_event_RunLoop();
-    return NULL;
+        // Connect the next technology to use
+        TryStartTechSession(GetNextTech(CurrentTech));
+    }
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
  * The first-layer Connection State Handler
- *
  */
 //--------------------------------------------------------------------------------------------------
 static void FirstLayerConnectionStateHandler
@@ -1406,8 +2036,7 @@ static void FirstLayerConnectionStateHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * handler function to the close session service
- *
+ * Handler function for the close session service
  */
 //--------------------------------------------------------------------------------------------------
 static void CloseSessionEventHandler
@@ -1416,47 +2045,47 @@ static void CloseSessionEventHandler
     void*               contextPtr
 )
 {
-    LE_INFO("Client %p killed, remove allocated ressources", sessionRef);
+    LE_INFO("Client %p killed, remove allocated resources", sessionRef);
 
-    if ( !sessionRef )
+    if (!sessionRef)
     {
         LE_ERROR("ERROR sessionRef is NULL");
         return;
     }
 
-    // Search the data reference used by the killed client.
+    // Search the data reference used by the killed client
     le_ref_IterRef_t iterRef = le_ref_GetIterator(RequestRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
 
-    while ( result == LE_OK )
+    while (LE_OK == result)
     {
         le_msg_SessionRef_t session = (le_msg_SessionRef_t) le_ref_GetValue(iterRef);
 
-        // Check if the session reference saved matchs with the current session reference.
+        // Check if the session reference saved matches with the current session reference
         if (session == sessionRef)
         {
-            // Release the data connexion
-            le_data_Release( (le_data_RequestObjRef_t) le_ref_GetSafeRef(iterRef) );
+            // Release the data connection
+            le_data_Release((le_data_RequestObjRef_t) le_ref_GetSafeRef(iterRef));
         }
 
-        // Get the next value in the reference mpa
+        // Get the next value in the reference map
         result = le_ref_NextNode(iterRef);
     }
 }
 
 //--------------------------------------------------------------------------------------------------
-// APIs.
+// APIs
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function adds a handler ...
+ * This function adds a handler...
  */
 //--------------------------------------------------------------------------------------------------
 le_data_ConnectionStateHandlerRef_t le_data_AddConnectionStateHandler
 (
-    le_data_ConnectionStateHandlerFunc_t handlerPtr,
-    void* contextPtr
+    le_data_ConnectionStateHandlerFunc_t handlerPtr,    ///< [IN] Handler pointer
+    void* contextPtr                                    ///< [IN] Associated context pointer
 )
 {
     LE_PRINT_VALUE("%p", handlerPtr);
@@ -1473,22 +2102,20 @@ le_data_ConnectionStateHandlerRef_t le_data_AddConnectionStateHandler
     return (le_data_ConnectionStateHandlerRef_t)(handlerRef);
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * This function removes a handler ...
+ * This function removes a handler...
  */
 //--------------------------------------------------------------------------------------------------
 void le_data_RemoveConnectionStateHandler
 (
-    le_data_ConnectionStateHandlerRef_t addHandlerRef
+    le_data_ConnectionStateHandlerRef_t addHandlerRef   ///< [IN] Connection state handler reference
 )
 {
     LE_PRINT_VALUE("%p", addHandlerRef);
 
     le_event_RemoveHandler((le_event_HandlerRef_t)addHandlerRef);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1515,7 +2142,6 @@ le_data_RequestObjRef_t le_data_Request
     return reqRef;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Release a previously requested data connection
@@ -1523,14 +2149,13 @@ le_data_RequestObjRef_t le_data_Request
 //--------------------------------------------------------------------------------------------------
 void le_data_Release
 (
-    le_data_RequestObjRef_t requestRef
-    ///< Reference to a previously requested data connection
+    le_data_RequestObjRef_t requestRef  ///< [IN] Reference to a previously requested connection
 )
 {
     // Look up the reference.  If it is NULL, then the reference is not valid.
     // Otherwise, delete the reference and send the release command to the data thread.
     void* dataPtr = le_ref_Lookup(RequestRefMap, requestRef);
-    if ( dataPtr == NULL )
+    if (NULL == dataPtr)
     {
         LE_ERROR("Invalid data request reference %p", requestRef);
     }
@@ -1544,54 +2169,352 @@ void le_data_Release
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the rank of the technology used for the data connection service
+ *
+ * @return
+ *      - @ref LE_OK if the technology is added to the list
+ *      - @ref LE_BAD_PARAMETER if the technology is unknown
+ *      - @ref LE_UNSUPPORTED if the technology is not available
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_SetTechnologyRank
+(
+    uint32_t rank,                  ///< [IN] Rank of the used technology
+    le_data_Technology_t technology ///< [IN] Technology
+)
+{
+    // Check if technology is correct
+    if (technology >= LE_DATA_MAX)
+    {
+        LE_WARN("Unknown technology %d, not added to the list", technology);
+        return LE_BAD_PARAMETER;
+    }
+
+    // Get technology string
+    char techStr[DCS_TECH_BYTES] = {0};
+    GetTechnologyString(technology, techStr, sizeof(techStr));
+
+    // Check if technology is available
+    if (false == TechAvailability[technology])
+    {
+        LE_WARN("Unsupported technology '%s', not added to the list", techStr);
+        return LE_UNSUPPORTED;
+    }
+
+    LE_DEBUG("Adding technology '%s' with the rank %d to the list", techStr, rank);
+
+    // Check if technology is already in the list
+    TechRecord_t* techPtr = IsTechInList(technology);
+    if (NULL != techPtr)
+    {
+        if (rank != techPtr->rank)
+        {
+            // Remove the technology from it's current rank
+            le_dls_Remove(&TechList, &techPtr->link);
+
+            // The technology can now be added at the new rank
+            LE_DEBUG("Technology %s was already in list with rank %d, setting new rank %d",
+                     techStr, techPtr->rank, rank);
+        }
+        else
+        {
+            // Technology already in list with correct rank, nothing to do
+            LE_DEBUG("Technology %s already in list with same rank %d", techStr, rank);
+            return LE_OK;
+        }
+    }
+
+    // Check if list is empty
+    if (true == le_dls_IsEmpty(&TechList))
+    {
+        // Create the new technology node
+        TechRecord_t* newTechPtr = le_mem_ForceAlloc(TechListPoolRef);
+        newTechPtr->tech = technology;
+        newTechPtr->rank = rank;
+        newTechPtr->link = LE_DLS_LINK_INIT;
+
+        // Add the technology node to the list
+        le_dls_Stack(&TechList, &(newTechPtr->link));
+    }
+    else
+    {
+        // Insert in the list according to the rank
+        le_dls_Link_t* currentLinkPtr = TechList.headLinkPtr;
+        le_dls_Link_t* nextLinkPtr = NULL;
+        uint32_t currRank = 0;
+        uint32_t nextRank = UINT32_MAX;
+        bool inserted = false;
+
+        // Create the new technology node
+        TechRecord_t* newTechPtr = le_mem_ForceAlloc(TechListPoolRef);
+        newTechPtr->tech = technology;
+        newTechPtr->rank = rank;
+        newTechPtr->link = LE_DLS_LINK_INIT;
+
+        // Find the correct rank for the new technology
+        do
+        {
+            currRank = CONTAINER_OF(currentLinkPtr, TechRecord_t, link)->rank;
+            nextLinkPtr = le_dls_PeekNext(&TechList, currentLinkPtr);
+            nextRank = (NULL != nextLinkPtr ? CONTAINER_OF(nextLinkPtr, TechRecord_t, link)->rank
+                                            : UINT32_MAX);
+
+            if (rank < currRank)
+            {
+                // Lower rank for the new technology, add it before the current technology
+
+                // Add the node before the current one
+                le_dls_AddBefore(&TechList, currentLinkPtr, &(newTechPtr->link));
+                inserted = true;
+            }
+            else if (rank == currRank)
+            {
+                // Same rank for the new technology, add it before the current technology
+                // and increment the rank of the current and next ones
+
+                // Add the node before the current one
+                le_dls_AddBefore(&TechList, currentLinkPtr, &(newTechPtr->link));
+                inserted = true;
+                // The next ranks are incremented
+                IncrementTechRanks(le_dls_PeekNext(&TechList, &(newTechPtr->link)));
+            }
+            else
+            {
+                // Higher rank for the new technology, check the next rank to know where
+                // it should be inserted in the list
+
+                if (rank < nextRank)
+                {
+                    // Higher next rank, add the new technology between the current one
+                    // and the next one
+
+                    // Add the node after the current one and before the next one
+                    le_dls_AddAfter(&TechList, currentLinkPtr, &(newTechPtr->link));
+                    inserted = true;
+                }
+                else if (rank == nextRank)
+                {
+                    // Same next rank, add the new technology between the current one
+                    // and the next one, and increment the rank of the current and next technologies
+
+                    // Add the node after the current one and replace the next one
+                    le_dls_AddAfter(&TechList, currentLinkPtr, &(newTechPtr->link));
+                    inserted = true;
+                    // The next ranks are incremented
+                    IncrementTechRanks(le_dls_PeekNext(&TechList, &(newTechPtr->link)));
+                }
+                else
+                {
+                    // Lower next rank, try the next link in list
+                }
+            }
+
+            // Move to the next link
+            currentLinkPtr = currentLinkPtr->nextPtr;
+
+        } while ((currentLinkPtr != TechList.headLinkPtr) && (false == inserted));
+    }
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Server Init
+ * Get the first technology to use
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator if the list is not empty
+ *      - @ref LE_DATA_MAX if the list is empty
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_Technology_t le_data_GetFirstUsedTechnology
+(
+    void
+)
+{
+    le_data_Technology_t firstTech = LE_DATA_MAX;
+
+    // Check if list is empty
+    if (false == le_dls_IsEmpty(&TechList))
+    {
+        // Get first technology
+        le_dls_Link_t* linkPtr = le_dls_Peek(&TechList);
+
+        if (NULL != linkPtr)
+        {
+            uint32_t firstRank = 0;
+            char techStr[DCS_TECH_BYTES] = {0};
+
+            // Retrieve technology and rank
+            TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
+            firstTech = techPtr->tech;
+            firstRank = techPtr->rank;
+            // Store last peeked technology
+            CurrTechPtr = linkPtr;
+
+            GetTechnologyString(firstTech, techStr, sizeof(techStr));
+
+            LE_DEBUG("First used technology: '%s' with rank %d", techStr, firstRank);
+        }
+        else
+        {
+            LE_WARN("Cannot get first used technology");
+        }
+    }
+    else
+    {
+        LE_INFO("Used technologies list is empty");
+    }
+
+    return firstTech;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the next technology to use
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator if the list is not empty
+ *      - @ref LE_DATA_MAX if the list is empty or the end of the list is reached
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_Technology_t le_data_GetNextUsedTechnology
+(
+    void
+)
+{
+    le_data_Technology_t nextTech = LE_DATA_MAX;
+
+    // Check if list is empty
+    if (false == le_dls_IsEmpty(&TechList))
+    {
+        // Check if CurrTechPtr is coherent
+        if (   (NULL != CurrTechPtr)
+            && (true == le_dls_IsInList(&TechList, CurrTechPtr))
+           )
+        {
+            le_dls_Link_t* linkPtr = le_dls_PeekNext(&TechList, CurrTechPtr);
+
+            if (NULL != linkPtr)
+            {
+                uint32_t nextRank = 0;
+                char techStr[DCS_TECH_BYTES] = {0};
+
+                // Retrieve technology and rank
+                TechRecord_t* techPtr = CONTAINER_OF(linkPtr, TechRecord_t, link);
+                nextTech = techPtr->tech;
+                nextRank = techPtr->rank;
+                // Store last peeked technology
+                CurrTechPtr = linkPtr;
+
+                GetTechnologyString(nextTech, techStr, sizeof(techStr));
+
+                LE_DEBUG("Next used technology: '%s' with rank %d", techStr, nextRank);
+            }
+            else
+            {
+                LE_DEBUG("End of used technologies list, cannot get the next one");
+            }
+        }
+        else
+        {
+            LE_ERROR("Incoherent CurrTechPtr %p", CurrTechPtr);
+        }
+    }
+    else
+    {
+        LE_INFO("Used technologies list is empty");
+    }
+
+    return nextTech;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the technology currently used for the default data connection
+ *
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator
+ *      - @ref LE_DATA_MAX if the current technology is not set
+ *
+ * @note The supported technologies are @ref LE_DATA_WIFI and @ref LE_DATA_CELLULAR
+ */
+//--------------------------------------------------------------------------------------------------
+le_data_Technology_t le_data_GetTechnology
+(
+    void
+)
+{
+    // Return the currently used technology stored
+    return CurrentTech;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Server initialization
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Init the various events
+    // Initialize the various events
     CommandEvent = le_event_CreateId("Data Command", sizeof(uint32_t));
     ConnStateEvent = le_event_CreateId("Conn State", sizeof(ConnStateData_t));
+
+    // Create memory pool and expand it
+    TechListPoolRef = le_mem_CreatePool("Technologies list pool", sizeof(TechRecord_t));
+    le_mem_ExpandPool(TechListPoolRef, DCS_TECH_NUMBER);
 
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous data requests, so take a reasonable guess.
     RequestRefMap = le_ref_CreateMap("Requests", 5);
 
-    // Load the preferences from the configuration tree
-    LoadPreferencesFromConfigDb();
-
-    // Set a timer to retry the start data session.
-    StartDcsTimer = le_timer_Create("StartDcsTimer");
-    le_clk_Time_t interval = {15, 0}; // 15 seconds
-
-    if ( (le_timer_SetHandler(StartDcsTimer, StartDcsTimerHandler) != LE_OK) ||
-         (le_timer_SetRepeat(StartDcsTimer, 0) != LE_OK) ||
-         (le_timer_SetInterval(StartDcsTimer, interval) != LE_OK) )
-    {
-        LE_ERROR("Could not start the StartDcs timer!");
-    }
-
-    // Set a timer to retry the stop data session.
+    // Set a timer to retry the stop data session
     StopDcsTimer = le_timer_Create("StopDcsTimer");
-    interval.sec = 5; // 5 seconds
+    le_clk_Time_t interval = {0, 5};    // 5 seconds
 
-    if ( (le_timer_SetHandler(StopDcsTimer, StopDcsTimerHandler) != LE_OK) ||
-         (le_timer_SetRepeat(StopDcsTimer, 0) != LE_OK) ||
-         (le_timer_SetInterval(StopDcsTimer, interval) != LE_OK) )
+    if (   (LE_OK != le_timer_SetHandler(StopDcsTimer, StopDcsTimerHandler))
+        || (LE_OK != le_timer_SetRepeat(StopDcsTimer, 1))       // One shot timer
+        || (LE_OK != le_timer_SetInterval(StopDcsTimer, interval))
+       )
     {
-        LE_ERROR("Could not start the StopDcs timer!");
+        LE_ERROR("Could not configure the StopDcs timer!");
     }
 
     // Add a handler to the close session service
-    le_msg_AddServiceCloseHandler( le_data_GetServiceRef(),
-                                   CloseSessionEventHandler,
-                                   NULL );
+    le_msg_AddServiceCloseHandler(le_data_GetServiceRef(),
+                                  CloseSessionEventHandler,
+                                  NULL);
 
-    // Start the data thread
-    le_thread_Start( le_thread_Create("Data Thread", DataThread, NULL) );
+    // Services required by DCS
 
-    LE_INFO("Data Connection Server is ready");
+    // 1. Mobile services
+    // Mobile services are always available
+    TechAvailability[LE_DATA_CELLULAR] = true;
+
+    // Register for Cellular Network Service state changes
+    le_cellnet_AddStateEventHandler(CellNetStateHandler, NULL);
+
+    // 2. Wifi service
+    // Check wifi client availability
+    if (LE_OK == le_wifiClient_TryConnectService())
+    {
+        LE_INFO("Wifi client is available");
+        TechAvailability[LE_DATA_WIFI] = true;
+
+        // Register for Wifi Client state changes
+        WifiEventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler, NULL);
+    }
+    else
+    {
+        LE_INFO("Wifi client is not available");
+        TechAvailability[LE_DATA_WIFI] = false;
+    }
+
+    // Initialize technologies list with default values
+    InitDefaultTechList();
+
+    // Register for command events
+    le_event_AddHandler("ProcessCommand", CommandEvent, ProcessCommand);
+
+    LE_INFO("Data Connection Service is ready");
 }

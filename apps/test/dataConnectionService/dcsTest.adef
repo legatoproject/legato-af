@@ -5,10 +5,17 @@ executables:
     dcsTest = ( dcsTestComp )
 }
 
+processes:
+{
+    run:
+    {
+        ( dcsTest )
+    }
+}
+
 start: manual
 
 bindings:
 {
     dcsTest.dcsTestComp.le_data -> dataConnectionService.le_data
-
 }

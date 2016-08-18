@@ -12,6 +12,8 @@
  *
  * The data connection service provides a basic API for requesting and releasing a data connection.
  *
+ * @note This interface does not support yet data connection over a fixed link.
+ *
  * @section le_data_binding IPC interfaces binding
  *
  * All the functions of this API are provided by the @b dataConnectionService application service.
@@ -33,6 +35,8 @@
  * connection changes, then the handler will be called with the new state. To release a data
  * connection, an application can use le_data_Release().
  *
+ * The technology of the established connection can be retrieved with le_data_GetTechnology().
+ *
  * If the default data connection is not currently available when le_data_Request() is called,
  * the data connection service first ensures all pre-conditions are satisfied (e.g.,
  * modem is registered on the network), before trying to start the data connection.
@@ -50,55 +54,53 @@
  * issue a new connection request.
  *
  * The default data connection will not necessarily be released when an application calls
- * le_data_Release().  The data connection will be released only after le_data_Release
+ * le_data_Release().  The data connection will be released only after le_data_Release()
  * is called by all applications that previously called le_data_Request().
  *
- * All configuration data required for the default data connection, like the Access Point Name
- * (APN), will be stored in the Config database.
+ * @section c_le_data_rank Technology rank
+ *
+ * The technology to use for the default data connection can be chosen by the applications
+ * with an ordered list. If the connection becomes unavailable through a technology, the next
+ * one in the list is used for the default data connection. If the connection is also unavailable
+ * through the last technology of the list, the first technology will be used again.
+ * The default sequence is @ref LE_DATA_WIFI at rank #1 and @ref LE_DATA_CELLULAR at rank #2.
+ *
+ * @note
+ * - Only one list is available and therefore only one application should set the technology
+ * preferences for the default data connection.
+ * - The list should not be modified while the default data connection is established.
+ * .
+ *
+ *
+ * - le_data_SetTechnologyRank() sets the rank of the technology to use for the data connection
+ * service.
+ * le_data_SetTechnologyRank() inserts a technology into a list, so all the technologies
+ * previously set with ranks @c r and @c r+n are automatically shifted to ranks @c r+1
+ * and @c r+n+1. Technologies with ranks under @c r are not impacted. If the technology is already
+ * in the list, it is removed from its current rank and added to the new rank.
+ *
+ * - le_data_GetFirstUsedTechnology() and le_data_GetNextUsedTechnology() let you retrieve
+ * the different technologies of the ordered list to use for the default connection data.
  *
  * @section c_le_data_configdb Configuration tree
  *
- * The configuration database path for the Data Connection Service is:
+ * The configuration of the Wi-Fi access point is stored in the configuration database under the
+ * following path:
  * @verbatim
-   /
-       dataConnectionService/
-           prefTech<string> == <technology>
-
-  @endverbatim
+    /
+        dataConnectionService/
+            wifi/
+                SSID<string> == TestSsid
+                secProtocol<int> == 3
+                passphrase<string> == Passw0rd
+   @endverbatim
  *
- * 'prefTech' is the preferred technology used for the data connection service. It can be set with
- * the following choices (string type):
- * - "wifi"
- * - "ethernet"
- * - "cellular"
+ * @note The security protocol is one of the supported protocols defined in the
+ * @ref le_wifiClient_SecurityProtocol_t enumerator.
  *
- * For example, with "cellular", the DCS will load a profile regarding a policy.
- * If the APN is empty the DCS will read a configuration file
- * (Containing all APN for MCC/MNC) to fill the APN regarding the MCC,MNC
- * (provided by the IMSI code).
- *
- *
- * @note Only "cellular" choice is available in the present version.
- *
- * @note Profile selection policy is not yet implemented. The first found profile of the selected
- * technology is loaded in the present version.
- *
- *
- * @section c_le_data_options Data Connection Options
- *
- * @note Functionality described in this section is not currently implemented; this
- * description is provided to outline future functionality.
- *
- * Some applications may have data connection requirements that are not met by the default data
- * connection (e.g., use a least cost data link or disable roaming on mobile networks). You can do this
- * by:
- * - creating a request object using le_data_CreateRequest(),
- * - setting optional values on that request object using le_data_SelectLeastCost() or
- * le_data_DisableRoaming(),
- * - and then submitting that object to a data connection request using le_data_SubmitRequest
- *
- * le_data_AddConnectionStateHandler() and le_data_Release() APIs can continue to be
- * used, as described above.
+ * @todo This solution is temporary, as the list of access points to connect to should be
+ * managed by the Wi-Fi client. Until its API is modified, the config tree is used to configure
+ * the only access point to use for the default data connection.
  *
  * <HR>
  *
@@ -116,6 +118,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+// Objects references.
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -124,6 +129,35 @@
 //--------------------------------------------------------------------------------------------------
 REFERENCE RequestObj;
 
+//--------------------------------------------------------------------------------------------------
+// Symbol and Enum definitions.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Interface name string length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  INTERFACE_NAME_MAX_LEN   = 100;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Interface name string length. One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  INTERFACE_NAME_MAX_BYTES = (INTERFACE_NAME_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Technologies.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Technology
+{
+    WIFI,       ///< Wi-Fi
+    CELLULAR,   ///< Cellular
+    MAX         ///< Unknown state.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -132,8 +166,8 @@ REFERENCE RequestObj;
 //--------------------------------------------------------------------------------------------------
 HANDLER ConnectionStateHandler
 (
-    string intfName[100] IN,  ///< Interface name for the data connection
-    bool isConnected IN       ///< State: connected or disconnected
+    string intfName[INTERFACE_NAME_MAX_LEN] IN,  ///< Interface name for the data connection
+    bool   isConnected                      IN   ///< State: connected or disconnected
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -160,7 +194,6 @@ FUNCTION RequestObj Request
 (
 );
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Release a previously requested data connection
@@ -171,4 +204,57 @@ FUNCTION Release
     RequestObj requestRef IN  ///< Reference to a previously requested data connection
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the rank of the technology used for the data connection service
+ *
+ * @return
+ *      - @ref LE_OK if the technology is added to the list
+ *      - @ref LE_BAD_PARAMETER if the technology is unknown
+ *      - @ref LE_UNSUPPORTED if the technology is not available
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetTechnologyRank
+(
+    uint32      rank        IN,  ///< Rank of the used technology
+    Technology  technology  IN   ///< Technology
+);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the first technology to use
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator if the list is not empty
+ *      - @ref LE_DATA_MAX if the list is empty
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Technology GetFirstUsedTechnology
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the next technology to use
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator if the list is not empty
+ *      - @ref LE_DATA_MAX if the list is empty or the end of the list is reached
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Technology GetNextUsedTechnology
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the technology currently used for the default data connection
+ *
+ * @return
+ *      - One of the technologies from @ref le_data_Technology_t enumerator
+ *      - @ref LE_DATA_MAX if the current technology is not set
+ *
+ * @note The supported technologies are @ref LE_DATA_WIFI and @ref LE_DATA_CELLULAR
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Technology GetTechnology
+(
+);

@@ -38,6 +38,10 @@ cm data info @endverbatim
 To start a data connection, ensure that your profile is configured correctly.
 Also ensure your modem is registered to the network. To verify, use <c>cm radio</c> and check @c Status.
 
+@todo With the evolution of DCS to handle several technologies (wifi, cellular, ...), <c> cm data </c>
+should be modified: it uses DCS to create a cellular data connection, but DCS is not dedicated to
+the cellular technology anymore.
+
 If you specify a time-out timer when starting a data connection, it will try to start a data
 connection until the timer expires.
 
