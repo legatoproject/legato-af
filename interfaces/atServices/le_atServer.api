@@ -1,50 +1,52 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_atServer AT commands server
+ * @page c_atServer AT Commands Server
  *
  * @ref le_atServer_interface.h "API Reference"
  *
- * <HR>
+ * @warning Some AT commands may conflict with Legato APIs; using both may cause problems that can be
+ * difficult to diagnose. AT commands should be avoided whenever possible, and should only be used
+ * with great care.
  *
- * The AT commands server handles AT commands subscription on a requested serial device. The server
- * is complient with 3GPP 27.007, paragraph 4.0, 4.1 and 4.2.
+ * The AT Commands Server handles AT commands' subscriptions on a requested serial device. The server
+ * is compliant with 3GPP 27.007, paragraph 4.0, 4.1 and 4.2.
  *
- * @section binding AT commands server and device binding
+ * @section atServer_binding Device Binding
  *
- * le_atServer_Start() API must be called to bind a specific device with the AT commands server.
+ * le_atServer_Start() must be called to bind a specific device with the AT commands server.
  * Multiple devices can be bound.
- * A device can be unbinded using le_atServer_Stop() API.
+ * A device can be unbound using le_atServer_Stop().
  *
- * @section subscription AT command subscription
+ * @section atServer_subscription Subscription
  *
  * A new AT command can be added into the parser using le_atServer_Create(), and it can be deleted
- * thanks to le_atServer_Delete().
- * An AT command can be available only on one dedicated device, or on all binded AT devices, using
- * le_atServer_SetDevice() API.
+ * using le_atServer_Delete().
+ * An AT command can be available only on one dedicated device, or on all bound AT devices, using
+ * le_atServer_SetDevice().
  *
- * @section handler AT command handler
+ * @section atServer_handler Handler
  *
- * To handle the AT command, the application has to subscribe a handler using
- * le_atServer_AddCommandHandler() (it may be removed with le_atServer_RemoveCommandHandler()).
+ * To handle the AT command, the app has to subscribe a handler using
+ * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().
  * The called handler (le_atServer_CommandHandlerRef_t prototype) can use
  * le_atServer_GetCommandName() to retrieve the received AT command string. It can also call
  * le_atServer_GetParameter() to retrieve a parameter of the AT command thanks to its index.
  *
- * @section responses AT command responses
+ * @section atServer_responses Responses
  *
- * The application has the possibility to send intermediate responses thanks to
+ * The app has can send intermediate responses through
  * le_atServer_SendIntermediateResponse().
- * In all cases, the application must send a final response thanks to
- * le_atServer_SendFinalResponse(). The AT device is locked until the final response is sent. If no
- * answer is sent, the AT device will not accept any new AT commands (an error is returned in this
- * case).
+ * In all cases, the app must send a final response using
+ * le_atServer_SendFinalResponse(). The AT device will be locked until the final response is sent.
+ * If no answer is sent, the AT device will not accept any new AT commands (an error will be
+ * returned).
  *
- * The application has also the possibility to send unsolicited responses to warn a host
- * application with le_atServer_SendUnsolicitedResponse() API.
- * This response is sent when no AT command is processing on the device (i.e. unsolicited
+ * The app can also send unsolicited responses to warn a host
+ * app using le_atServer_SendUnsolicitedResponse().
+ * This response is sent when no AT command is being processing on the device (i.e. unsolicited
  * response is sent between the latest final response and the next reception of an AT command).
- * If an unsolicited response is sent whereas an AT command is in progress, the unsolicited response
- * is buffered and sent as soon as the AT device becomes available (i.e. the processing AT command
+ * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
+ * is buffered and sent as soon as the AT device becomes available (i.e., the processing AT command
  * sends its final response).
  *
  * <HR>
@@ -171,7 +173,7 @@ ENUM FinalRsp
 //--------------------------------------------------------------------------------------------------
 ENUM AvailableDevice
 {
-    ALL_DEVICES,      ///< action will be done on all binded devices
+    ALL_DEVICES,      ///< action will be done on all bound devices
     SPECIFIC_DEVICE   ///< action will be done on a specified device
 };
 
@@ -200,7 +202,7 @@ FUNCTION Device Start
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Stop
 (
-    Device device IN   ///< device to be unbinded
+    Device device IN   ///< device to be unbound
 );
 
 //--------------------------------------------------------------------------------------------------

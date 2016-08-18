@@ -1,14 +1,14 @@
-/** @page legatoAtServices AT commands services
+/** @page legatoAtServices AT Commands
+
+@warning Some AT commands may conflict with Legato APIs; using both may cause problems that can be
+difficult to diagnose. AT commands should be avoided whenever possible, and should only be used with great care.
+
 
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
 | @subpage c_atClient                | AT commands client                                 | @image html green_dot.png |
 | @subpage c_atServer                | AT commands server                                 | @image html green_dot.png |
 
-
- <br>
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
