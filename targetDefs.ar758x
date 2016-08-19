@@ -21,7 +21,6 @@ export TOOLCHAIN_DIR = $(AR758X_TOOLCHAIN_DIR)
 export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
 
 # Use simu PAs temporarily
-export LEGATO_GNSS_PA := $(PA_DIR)/simu/components/le_pa_gnss
 export LEGATO_AVC_PA = $(PA_DIR)/simu/components/le_pa_avc
 export LEGATO_SECSTORE_PA = $(PA_DIR)/simu/components/le_pa_secStore
 export LEGATO_FWUPDATE_PA = $(PA_DIR)/simu/components/le_pa_fwupdate
@@ -35,7 +34,7 @@ export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
 ifeq ($(INCLUDE_ECALL),1)
   export LEGATO_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL)
 endif
-#export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
+export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
 #export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
 #export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
 #export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
