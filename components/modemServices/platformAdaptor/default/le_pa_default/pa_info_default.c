@@ -309,3 +309,44 @@ le_result_t pa_info_GetPlatformSerialNumber
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the RF devices working status (i.e. working or broken) of modem's RF devices such as
+ * power amplifier, antenna switch and transceiver. That status is updated every time the module
+ * power on.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT function failed to get the RF devices working status
+ *      - LE_OVERFLOW the number of statuses exceeds the maximum size
+ *        (LE_INFO_RF_DEVICES_STATUS_MAX)
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetRfDeviceStatus
+(
+    uint16_t* manufacturedIdPtr,
+        ///< [OUT] Manufactured identifier (MID)
+
+    size_t* manufacturedIdNumElementsPtr,
+        ///< [INOUT]
+
+    uint8_t* productIdPtr,
+        ///< [OUT] Product identifier (PID)
+
+    size_t* productIdNumElementsPtr,
+        ///< [INOUT]
+
+    bool* statusPtr,
+        ///< [OUT] Status of the specified device (MID,PID):
+        ///<       0 means something wrong in the RF device,
+        ///<       1 means no error found in the RF device
+
+    size_t* statusNumElementsPtr
+        ///< [INOUT]
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}

@@ -59,6 +59,10 @@
  *
  * le_info_GetPlatformSerialNumber() is used to retrieve the Platform Serial Number (PSN) string.
  *
+ * le_info_GetRfDeviceStatus() is used to retrieve the RF devices working status (i.e. working or
+ * broken) of modem's RF devices such as power amplifier, antenna switch and transceiver.
+ * That status is updated every time the module power on.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -262,6 +266,13 @@ DEFINE MAX_PSN_LEN   = 14;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_PSN_BYTES = (MAX_PSN_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum fields for the RF devices status request.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE RF_DEVICES_STATUS_MAX = 10;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -495,4 +506,27 @@ FUNCTION le_result_t GetPriId
 FUNCTION le_result_t GetPlatformSerialNumber
 (
     string platformSerialNumberStr[MAX_PSN_LEN] OUT     ///< Platform Serial Number string.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the RF devices working status (i.e. working or broken) of modem's RF devices such as
+ * power amplifier, antenna switch and transceiver. That status is updated every time the module
+ * power on.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT function failed to get the RF devices working status
+ *      - LE_OVERFLOW the number of statuses exceeds the maximum size
+ *        (LE_INFO_RF_DEVICES_STATUS_MAX)
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRfDeviceStatus
+(
+    uint16  manufacturedId[RF_DEVICES_STATUS_MAX] OUT,  ///< Manufactured identifier (MID)
+    uint8   productId[RF_DEVICES_STATUS_MAX] OUT,       ///< Product identifier (PID)
+    bool    status[RF_DEVICES_STATUS_MAX] OUT           ///< Status of the RF device (MID,PID):
+                                                        ///< 0 means something wrong
+                                                        ///< 1 means no error found
 );

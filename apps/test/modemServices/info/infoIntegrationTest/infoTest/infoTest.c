@@ -470,6 +470,62 @@ static void PlatformSerialNumberTest
     }
 }
 
+/*
+ * This test le_info_GetRfDeviceStatus API.
+ *
+ * API Tested:
+ *  - le_info_GetRfDeviceStatus().
+ */
+static void GetRfDeviceStatusTest
+(
+    void
+)
+{
+    le_result_t result = LE_OK;
+    int i = 0;
+    uint16_t manufacturedIdPtr[LE_INFO_RF_DEVICES_STATUS_MAX];
+    size_t manufacturedIdNumElements = sizeof(manufacturedIdPtr);
+    uint8_t productIdPtr[LE_INFO_RF_DEVICES_STATUS_MAX];
+    size_t productIdNumElements = sizeof(productIdPtr);
+    bool statusPtr[LE_INFO_RF_DEVICES_STATUS_MAX];
+    size_t statusNumElements = sizeof(statusPtr);
+
+    LE_INFO("======== GetRfDeviceStatusTest ========");
+    result =  le_info_GetRfDeviceStatus( manufacturedIdPtr
+                                        , &manufacturedIdNumElements
+                                        , productIdPtr
+                                        , &productIdNumElements
+                                        , statusPtr
+                                        , &statusNumElements);
+
+    if (result == LE_OK)
+    {
+        // Number of elements should be identical
+        LE_ERROR_IF((manufacturedIdNumElements != productIdNumElements)||
+                    (manufacturedIdNumElements != statusNumElements)
+                    , "Unexpected NumElements (%i, %i,%i)"
+                    , (int)manufacturedIdNumElements
+                    , (int)productIdNumElements
+                    , (int)statusNumElements);
+
+        LE_INFO("Display RF devices status");
+        for(i=0; i<manufacturedIdNumElements; i++)
+        {
+            LE_INFO("Status %d for MID %d, PID %d"
+                    , statusPtr[i]
+                    , manufacturedIdPtr[i]
+                    , productIdPtr[i]);
+        }
+    }
+    else
+    {
+        /* Other return values possibilities */
+        LE_ERROR("le_info_GetRfDeviceStatus return code %d",result);
+        LE_ERROR("======== GetRfDeviceStatusTest FAILED ========");
+        return;
+    }
+}
+
 
 /*
  * Each Test called once.
@@ -500,6 +556,8 @@ COMPONENT_INIT
     PriIdTest();
 
     PlatformSerialNumberTest();
+
+    GetRfDeviceStatusTest();
 
     // TODO add other le_info test.
     LE_INFO("======== Test LE_INFO implementation Tests SUCCESS ========");

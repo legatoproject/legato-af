@@ -457,3 +457,64 @@ le_result_t le_info_GetPlatformSerialNumber
     return pa_info_GetPlatformSerialNumber(platformSerialNumberStr,
                     platformSerialNumberStrNumElements);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the RF devices working status (i.e. working or broken) of modem's RF devices such as
+ * power amplifier, antenna switch and transceiver. That status is updated every time the module
+ * power on.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED request not supported
+ *      - LE_FAULT function failed to get the RF devices working status
+ *      - LE_OVERFLOW the number of statuses exceeds the maximum size
+ *        (LE_INFO_RF_DEVICES_STATUS_MAX)
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetRfDeviceStatus
+(
+    uint16_t* manufacturedIdPtr,
+        ///< [OUT] Manufactured identifier (MID)
+
+    size_t* manufacturedIdNumElementsPtr,
+        ///< [INOUT]
+
+    uint8_t* productIdPtr,
+        ///< [OUT] Product identifier (PID)
+
+    size_t* productIdNumElementsPtr,
+        ///< [INOUT]
+
+    bool* statusPtr,
+        ///< [OUT] Status of the specified device (MID,PID):
+        ///<       0 means something wrong in the RF device,
+        ///<       1 means no error found in the RF device
+
+    size_t* statusNumElementsPtr
+        ///< [INOUT]
+)
+{
+
+    // Check input pointers
+    if ((manufacturedIdPtr == NULL) || (manufacturedIdNumElementsPtr == NULL)||
+        (productIdPtr == NULL)|| (productIdNumElementsPtr == NULL) ||
+        (statusPtr == NULL)|| (statusNumElementsPtr == NULL))
+    {
+        LE_KILL_CLIENT("NULL pointer!");
+        return LE_FAULT;
+    }
+
+    // Check elements size
+    if ((* manufacturedIdNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX) ||
+        (* productIdNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX) ||
+        (* statusNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX))
+    {
+        LE_ERROR("Buffer size overflow !!");
+        return LE_OVERFLOW;
+    }
+
+    return pa_info_GetRfDeviceStatus( manufacturedIdPtr, manufacturedIdNumElementsPtr
+                                    , productIdPtr, productIdNumElementsPtr
+                                    , statusPtr, statusNumElementsPtr);
+}
