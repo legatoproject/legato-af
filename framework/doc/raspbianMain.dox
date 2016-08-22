@@ -73,8 +73,9 @@ After you've set the options, you can build the kernel:
 $ make -j 4 ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage modules dtbs
 @endcode
 
-Follow the <a href="https://www.raspberrypi.org/documentation/installation/installing-images/linux.md> installing Linux images</a>
-Raspbian docs for details on how to update the kernel on the SD card.
+Follow the
+<a href="https://www.raspberrypi.org/documentation/installation/installing-images/linux.md">Raspbian installing Linux images docs</a>
+for details on how to update the kernel on the SD card.
 
 See the <a href="https://www.raspberrypi.org/documentation/linux/kernel/building.md">Raspbian building docs</a>
 if you want detailed info about building the kernel (CROSS-COMPILING).
