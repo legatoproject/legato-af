@@ -1005,16 +1005,16 @@ static void NewSmsHandler
     {
         le_sem_Wait(SmsSem);
         res = pa_sms_RdPDUMsgFromMem(newMessageIndicationPtr->msgIndex,
-                        newMessageIndicationPtr->protocol,
-                        newMessageIndicationPtr->storage,
-                        &messagePdu);
+            newMessageIndicationPtr->protocol,
+            newMessageIndicationPtr->storage,
+            &messagePdu);
         le_sem_Post(SmsSem);
     }
     else
     {
         LE_DEBUG("SMS Cell Broadcast GW '%c', CDMA Format '%c'",
-                        (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GW_CB ? 'Y' : 'N'),
-                        (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_CDMA ? 'Y' : 'N'));
+            (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_GW_CB ? 'Y' : 'N'),
+            (newMessageIndicationPtr->protocol == PA_SMS_PROTOCOL_CDMA ? 'Y' : 'N'));
 
         memcpy(messagePdu.data, newMessageIndicationPtr->pduCB, LE_SMS_PDU_MAX_BYTES);
         messagePdu.dataLen = newMessageIndicationPtr->pduLen;
@@ -1027,46 +1027,47 @@ static void NewSmsHandler
     }
     else
     {
+        pa_sms_Message_t    messageConverted;
+        le_sms_Msg_t* newSmsMsgObjPtr = NULL;
+
         if (messagePdu.dataLen > LE_SMS_PDU_MAX_BYTES)
         {
             LE_ERROR("PDU length out of range (%u) !", messagePdu.dataLen);
         }
+
         // Try to decode message
-        pa_sms_Message_t    messageConverted;
+        res = smsPdu_Decode(messagePdu.protocol,
+            messagePdu.data,
+            messagePdu.dataLen,
+            &messageConverted);
 
-        if ( smsPdu_Decode(messagePdu.protocol,
-                        messagePdu.data,
-                        messagePdu.dataLen,
-                        &messageConverted) == LE_OK )
+        if ( (res == LE_OK) && ((messageConverted.type == PA_SMS_DELIVER)
+                        || (messageConverted.type == PA_SMS_CELL_BROADCAST)) )
         {
-            if ((messageConverted.type == PA_SMS_DELIVER)
-                 || (messageConverted.type == PA_SMS_CELL_BROADCAST))
-            {
-                le_sms_Msg_t* newSmsMsgObjPtr = CreateAndPopulateMessage(
-                                newMessageIndicationPtr->msgIndex,
-                                &messagePdu,
-                                &messageConverted);
-                if (newSmsMsgObjPtr == NULL)
-                {
-                    LE_CRIT("Cannot create a new message object, no report!");
-                    return;
-                }
-                newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
-                // Notify all the registered client's handlers with own reference.
-                le_event_Report(NewSmsEventId, (void*)&newSmsMsgObjPtr, sizeof(le_sms_MsgRef_t));
-
-                LE_DEBUG("All the registered client's handlers notified with objPtr %p, Obj %p",
-                    &newSmsMsgObjPtr, newSmsMsgObjPtr);
-            }
-            else
-            {
-                LE_DEBUG("This messagePdu type %d is not supported yet", messageConverted.type);
-            }
+            newSmsMsgObjPtr = CreateAndPopulateMessage(
+                newMessageIndicationPtr->msgIndex,
+                &messagePdu,
+                &messageConverted);
         }
         else
         {
             LE_DEBUG("Could not decode the message");
+            newSmsMsgObjPtr = CreateMessage(newMessageIndicationPtr->msgIndex,
+                &messagePdu);
         }
+
+        if (newSmsMsgObjPtr == NULL)
+        {
+            LE_CRIT("Cannot create a new message object, no report!");
+            return;
+        }
+
+        newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
+        // Notify all the registered client's handlers with own reference.
+        le_event_Report(NewSmsEventId, (void*)&newSmsMsgObjPtr, sizeof(le_sms_MsgRef_t));
+
+        LE_DEBUG("All the registered client's handlers notified with objPtr %p, Obj %p",
+            &newSmsMsgObjPtr, newSmsMsgObjPtr);
     }
 }
 

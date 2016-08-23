@@ -499,6 +499,82 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
         }
         NbSmsRx --;
     }
+    if (myformat == LE_SMS_FORMAT_UNKNOWN)
+    {
+        LE_INFO("SMS LE_SMS_FORMAT_UNKNOWN received");
+        // Verify Mark Read/Unread functions
+        le_sms_MarkRead(msg);
+
+        mystatus = le_sms_GetStatus(msg);
+        if(mystatus != LE_SMS_RX_READ)
+        {
+            LE_ERROR("-TEST  1- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            LE_ASSERT(mystatus != LE_SMS_RX_READ);
+        }
+        else
+        {
+            LE_INFO("-TEST  1- Check le_sms_GetStatus, status OK.");
+        }
+
+        le_sms_MarkUnread(msg);
+
+        mystatus = le_sms_GetStatus(msg);
+        if(mystatus != LE_SMS_RX_UNREAD)
+        {
+            LE_ERROR("-TEST  2- Check le_sms_GetStatus, bad status (%d)!", mystatus);
+            LE_ASSERT(mystatus != LE_SMS_RX_UNREAD);
+        }
+        else
+        {
+            LE_INFO("-TEST  2- Check le_sms_GetStatus, status OK.");
+        }
+
+        // Verify that the message is read-only
+        res = le_sms_SetDestination(msg, DEST_TEST_PATTERN);
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  3- Check le_sms_SetDestination, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
+        }
+        else
+        {
+            LE_INFO("-TEST  3- Check le_sms_SetDestination OK.");
+        }
+
+        res = le_sms_SetText(msg, TEXT_TEST_PATTERN);
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  4- Check le_sms_SetText, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
+        }
+        else
+        {
+            LE_INFO("-TEST  4- Check le_sms_SetText OK.");
+        }
+
+        res = le_sms_SetUCS2(msg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN) / 2);
+        if(res != LE_NOT_PERMITTED)
+        {
+            LE_ERROR("-TEST  5- Check le_sms_SetUCS2, parameter check failure!");
+            LE_ASSERT(res != LE_NOT_PERMITTED);
+        }
+        else
+        {
+            LE_INFO("-TEST  5- Check le_sms_SetUCS2 OK.");
+        }
+
+        res = le_sms_DeleteFromStorage(msg);
+        if(res != LE_OK)
+        {
+            LE_ERROR("-TEST  6- Check le_sms_DeleteFromStorage failure!");
+            LE_ASSERT(res != LE_OK);
+        }
+        else
+        {
+            LE_INFO("-TEST  6- Check le_sms_DeleteFromStorage OK.");
+        }
+        NbSmsRx --;
+    }
     else
     {
         LE_WARN("-TEST- I check only Text message!");
