@@ -151,7 +151,7 @@ StagePaComponent() {
 StagePaComponent swiQmi          modemService        ar7 wp85 wp750x ar758x ar759x
 StagePaComponent le_pa_audio     audioService        ar7 wp85 wp750x ar759x
 StagePaComponent le_pa           modemService        ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa_ecall     modemService        ar7 wp85 wp750x ar759x
+StagePaComponent le_pa_ecall     modemService        ar7 wp85 wp750x ar758x ar759x
 StagePaComponent le_pa_gnss      positioningService  ar7 wp85 wp750x ar759x
 StagePaComponent le_pa_avc       avcService          ar7 wp85 wp750x
 StagePaComponent le_pa_secStore  secStore            ar7 wp85 wp750x
