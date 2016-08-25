@@ -8,6 +8,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
+#include <ctype.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -757,6 +758,7 @@ static le_result_t GetAtCmdContext
         if (( cmdParserPtr->currentCmdPtr == NULL ) ||
             ( cmdParserPtr->currentCmdPtr && cmdParserPtr->currentCmdPtr->processing ))
         {
+            LE_DEBUG("AT command not found");
             return LE_FAULT;
         }
 
@@ -850,10 +852,8 @@ static le_result_t AtParserContinue
     CmdParser_t* cmdParserPtr
 )
 {
-        if ((*cmdParserPtr->currentCharPtr >= 0x61) && (*cmdParserPtr->currentCharPtr <= 0x7A))
-        {
-            *cmdParserPtr->currentCharPtr -= 0x20;
-        }
+    // Put character in upper case
+    *cmdParserPtr->currentCharPtr = toupper(*cmdParserPtr->currentCharPtr);
 
     return LE_OK;
 }
@@ -1024,10 +1024,23 @@ static le_result_t AtParserParam
     memset(paramPtr,0,sizeof(ParamString_t));
     uint32_t index = 0;
     bool tokenQuote = false;
+    bool loop = true;
 
-    while (( cmdParserPtr->currentCharPtr <= cmdParserPtr->lastCharPtr ) &&
-           ( *cmdParserPtr->currentCharPtr != AT_TOKEN_COMMA ) &&
-           ( *cmdParserPtr->currentCharPtr != AT_TOKEN_SEMICOLON ))
+    if (le_dls_NumLinks(&(cmdParserPtr->currentCmdPtr->paramList)) != 0)
+    {
+        // bypass comma (not done for the first param)
+        cmdParserPtr->currentCharPtr++;
+    }
+
+    if (( cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr ) ||
+        ( *cmdParserPtr->currentCharPtr == AT_TOKEN_COMMA ) ||
+        ( *cmdParserPtr->currentCharPtr == AT_TOKEN_SEMICOLON ))
+    {
+        loop = false;
+        cmdParserPtr->currentCharPtr--;
+    }
+
+    while (loop)
     {
         if ( IS_QUOTE(*cmdParserPtr->currentCharPtr) )
         {
@@ -1054,6 +1067,18 @@ static le_result_t AtParserParam
         }
 
         cmdParserPtr->currentCharPtr++;
+
+        if ( cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr )
+        {
+            loop = false;
+        }
+
+        if (( *cmdParserPtr->currentCharPtr == AT_TOKEN_COMMA ) ||
+            ( *cmdParserPtr->currentCharPtr == AT_TOKEN_SEMICOLON ))
+        {
+            loop = false;
+            cmdParserPtr->currentCharPtr--;
+        }
     }
 
     le_dls_Queue(&(cmdParserPtr->currentCmdPtr->paramList),&(paramPtr->link));
@@ -1072,8 +1097,13 @@ static le_result_t AtParserLastChar
     CmdParser_t* cmdParserPtr
 )
 {
+    LE_DEBUG("AtParserLastChar");
+
     if ( cmdParserPtr->currentCmdPtr == NULL )
     {
+        // Put character in upper case
+        *cmdParserPtr->currentCharPtr = toupper(*cmdParserPtr->currentCharPtr);
+
         if (GetAtCmdContext(cmdParserPtr) == LE_OK)
         {
             cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_ACT;
@@ -1154,9 +1184,8 @@ static void ParseATCmd
         return;
     }
 
-    while ( ( cmdParserPtr->currentCharPtr <= cmdParserPtr->lastCharPtr ) &&
-            ( cmdParserPtr->cmdParser != AT_PARSE_SEMICOLON ) &&
-            ( cmdParserPtr->cmdParser != AT_PARSE_LAST ) )
+    while (( cmdParserPtr->cmdParser != AT_PARSE_SEMICOLON ) &&
+           ( cmdParserPtr->cmdParser != AT_PARSE_LAST ))
     {
         switch (*cmdParserPtr->currentCharPtr)
         {
@@ -1237,6 +1266,11 @@ static void ParseATCmd
 
         cmdParserPtr->lastCmdParserState = cmdParserPtr->cmdParser;
         cmdParserPtr->currentCharPtr++;
+
+        if (cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr)
+        {
+            cmdParserPtr->cmdParser = AT_PARSE_LAST;
+        }
     }
 
     if (cmdParserPtr->currentCmdPtr)
@@ -1561,6 +1595,8 @@ le_atServer_CmdRef_t le_atServer_Create
     {
         cmdPtr = le_mem_ForceAlloc(AtCommandsPool);
 
+        LE_DEBUG("Create: %s", namePtr);
+
         memset(cmdPtr,0,sizeof(ATCmdSubscribed_t));
 
         le_utf8_Copy(cmdPtr->cmdName, namePtr, LE_ATSERVER_COMMAND_MAX_BYTES,0);
@@ -1655,6 +1691,8 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
     char name[30];
     memset(name,0,30);
     snprintf(name, 30, "%s-handler", cmdPtr->cmdName);
+
+    LE_DEBUG("Add handler to: %s", cmdPtr->cmdName);
 
     handlerRef = le_event_AddLayeredHandler(name,
                                             cmdPtr->eventId,

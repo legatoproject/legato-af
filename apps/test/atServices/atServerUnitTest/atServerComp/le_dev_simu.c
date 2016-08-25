@@ -67,7 +67,11 @@ int32_t le_dev_Read
 
     memcpy( rxDataPtr, RxDataPtr, RxDataLen );
 
-    LE_INFO("Receive: %s", rxDataPtr);
+    char buff[size+1];
+    memset(buff,0,size+1);
+    memcpy(buff, RxDataPtr, RxDataLen);
+
+    LE_INFO("Receive: %s", buff);
 
     le_sem_Post(Semaphore);
 

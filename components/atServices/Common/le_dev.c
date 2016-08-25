@@ -81,7 +81,7 @@ int32_t le_dev_Read
              amount,devicePtr->handle);
 
     PrintBuffer(devicePtr->path,
-                rxDataPtr,
+                rxDataPtr-amount,
                 amount);
 
     return amount;

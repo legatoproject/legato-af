@@ -398,7 +398,7 @@ static void* TestHandler
     LE_ASSERT(le_sem_GetValue(HandlerSemaphore) == 0);
 
     // Send AT+ABCD=0,,1,2,"3", command - Send a second command during the parsing
-    ExpectedParametersNumber = 5;
+    ExpectedParametersNumber = 6;
     ExpectedAtCommandPtr = "AT+ABCD";
     ExpectedType = LE_ATSERVER_TYPE_PARA;
     ExpectedParamPtr[0] = "0";
@@ -423,6 +423,39 @@ static void* TestHandler
     le_sem_Wait(HandlerSemaphore);
     le_dev_WaitSemaphore();
     SetExpectedResponse("OK");
+    le_dev_WaitSemaphore();
+
+    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+
+    // Send AT+ABCD=,,1,,;+ABCD=,,;+ABCD=,,1 commandd
+    ExpectedParametersNumber = 5;
+    ExpectedAtCommandPtr = "AT+ABCD";
+    ExpectedType = LE_ATSERVER_TYPE_PARA;
+    ExpectedParamPtr[0] = "";
+    ExpectedParamPtr[1] = "";
+    ExpectedParamPtr[2] = "1";
+    ExpectedParamPtr[3] = "";
+    ExpectedParamPtr[4] = "";
+    SendRspCustom = false;
+    ExpectedIntermediateRsp = false;
+    SetExpectedResponse("OK");
+    le_sem_Post(ThreadSemaphore);
+    le_dev_NewData("AT+ABCD=,,1,,;+ABCD=,,;+ABCD=,,1\r", 33);
+    le_sem_Wait(HandlerSemaphore);
+
+    ExpectedParametersNumber = 3;
+    ExpectedParamPtr[0] = "";
+    ExpectedParamPtr[1] = "";
+    ExpectedParamPtr[2] = "";
+    le_sem_Post(ThreadSemaphore);
+    le_sem_Wait(HandlerSemaphore);
+
+    ExpectedParametersNumber = 3;
+    ExpectedParamPtr[0] = "";
+    ExpectedParamPtr[1] = "";
+    ExpectedParamPtr[2] = "1";
+    le_sem_Post(ThreadSemaphore);
+    le_sem_Wait(HandlerSemaphore);
     le_dev_WaitSemaphore();
 
     LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
