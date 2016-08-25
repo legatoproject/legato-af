@@ -722,7 +722,7 @@ static void TestLeGnssConstellations
     // test4: error test (GPS constallation is not set)
     //        and Beidou is unknown for mdm9x15
     constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
-#if defined(SIERRA_MDM9X40)
+#if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_FAULT);
 #else
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
