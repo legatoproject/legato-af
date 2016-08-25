@@ -204,6 +204,50 @@ static le_ref_MapRef_t AppProcMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Deletes all application process containers for either an application or a client.
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteAppProcs
+(
+    app_Ref_t appRef,                       ///< Apps to delete from. NULL if not used.
+    le_msg_SessionRef_t clientRef           ///< Client to delete from.  NULL if not used.
+)
+{
+    // Iterate over the safe references to find all application process containers for this client.
+    le_ref_IterRef_t iter = le_ref_GetIterator(AppProcMap);
+
+    while (le_ref_NextNode(iter) == LE_OK)
+    {
+        // Get the app process container.
+        // WARNING: Casting away the const from le_ref_GetValue() and le_ref_GetSafeRef() so we can
+        //          delete the data and the safe reference.  Should these functions be changed to
+        //          not return a const value pointer?
+        AppProcContainer_t* appProcContainerPtr = (AppProcContainer_t*)le_ref_GetValue(iter);
+
+        LE_ASSERT(appProcContainerPtr != NULL);
+
+        if ( ((appRef != NULL) && (appProcContainerPtr->appContainerPtr->appRef == appRef)) ||
+             ((clientRef != NULL) && (appProcContainerPtr->clientRef == clientRef)) )
+        {
+            // Delete the safe reference.
+            void* safeRef = (void*)le_ref_GetSafeRef(iter);
+            LE_ASSERT(safeRef != NULL);
+
+            le_ref_DeleteRef(AppProcMap, safeRef);
+
+            // Delete the app proc.
+            app_DeleteProc(appProcContainerPtr->appContainerPtr->appRef,
+                           appProcContainerPtr->procRef);
+
+            // Free the container.
+            le_mem_Release(appProcContainerPtr);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Deletes application container and references to it.
  */
 //--------------------------------------------------------------------------------------------------
@@ -230,6 +274,9 @@ static void DeleteApp
             break;
         }
     }
+
+    // Delete any app procs containers in this app.
+    DeleteAppProcs(appContainerPtr->appRef, NULL);
 
     app_Delete(appContainerPtr->appRef);
 
@@ -653,50 +700,6 @@ static le_result_t HandleAppFault
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes all application process containers for either an application or a client.
- */
-//--------------------------------------------------------------------------------------------------
-static void DeleteAppProcs
-(
-    app_Ref_t appRef,                       ///< Apps to delete from. NULL if not used.
-    le_msg_SessionRef_t clientRef           ///< Client to delete from.  NULL if not used.
-)
-{
-    // Iterate over the safe references to find all application process containers for this client.
-    le_ref_IterRef_t iter = le_ref_GetIterator(AppProcMap);
-
-    while (le_ref_NextNode(iter) == LE_OK)
-    {
-        // Get the app process container.
-        // WARNING: Casting away the const from le_ref_GetValue() and le_ref_GetSafeRef() so we can
-        //          delete the data and the safe reference.  Should these functions be changed to
-        //          not return a const value pointer?
-        AppProcContainer_t* appProcContainerPtr = (AppProcContainer_t*)le_ref_GetValue(iter);
-
-        LE_ASSERT(appProcContainerPtr != NULL);
-
-        if ( ((appRef != NULL) && (appProcContainerPtr->appContainerPtr->appRef == appRef)) ||
-             ((clientRef != NULL) && (appProcContainerPtr->clientRef == clientRef)) )
-        {
-            // Delete the safe reference.
-            void* safeRef = (void*)le_ref_GetSafeRef(iter);
-            LE_ASSERT(safeRef != NULL);
-
-            le_ref_DeleteRef(AppProcMap, safeRef);
-
-            // Delete the app proc.
-            app_DeleteProc(appProcContainerPtr->appContainerPtr->appRef,
-                           appProcContainerPtr->procRef);
-
-            // Free the container.
-            le_mem_Release(appProcContainerPtr);
-        }
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Deletes all application process containers for the client with the given session reference.
  */
 //--------------------------------------------------------------------------------------------------
@@ -728,9 +731,6 @@ static void DeletesInactiveApp
     {
         le_dls_Remove(&InactiveAppsList, &(appContainerPtr->link));
 
-        // Delete any app procs containers in this app.
-        DeleteAppProcs(appContainerPtr->appRef, NULL);
-
         // Delete the app object and container.
         DeleteApp(appContainerPtr);
 
@@ -754,9 +754,6 @@ static void DeletesAllInactiveApp
     while (appLinkPtr != NULL)
     {
         AppContainer_t* appContainerPtr = CONTAINER_OF(appLinkPtr, AppContainer_t, link);
-
-        // Delete any app procs containers in this app.
-        DeleteAppProcs(appContainerPtr->appRef, NULL);
 
         // Delete the app object and container.
         DeleteApp(appContainerPtr);
