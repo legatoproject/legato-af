@@ -399,6 +399,7 @@ ENUM Constellation
     SV_CONSTELLATION_SBAS,             ///< Satellite Vehicle of SBAS constellation.
     SV_CONSTELLATION_GLONASS,          ///< Satellite Vehicle of Glonass constellation.
     SV_CONSTELLATION_GALILEO,          ///< Satellite Vehicle of Galileo constellation.
+    SV_CONSTELLATION_BEIDOU,           ///< Satellite Vehicle of Beidou constellation.
     SV_CONSTELLATION_MAX               ///< Maximum value.
 };
 
