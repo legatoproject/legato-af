@@ -19,40 +19,115 @@
 #
 # We'll read it all and work with the bits in memory because we can and it's simpler and faster.
 
+'''
+NAME
+    update-util - a tool to inspect. modify and unpack update packs
+
+SYNOPSIS
+    update-util [file] [file file] [-t] [-l [name]...] [-x [name]...] [-s] [-p output_dir]
+
+DESCRIPTION
+
+update-util -h|--help
+     Print this message.
+
+update-util [updateFile]
+     List the headers found in the updateFile to stdout.
+
+update-util [oldSystemUpdateFile] [newSystemUpdateFile] [outputFile]
+     Create a delta system update file with the name given for outputFile
+     using oldSystemUpdateFile as the initial update calculating the changes
+     necessary to get from the initial system to that in newSystemUpdateFile
+     omitting unchanged apps.
+
+update-util [updateFile] -t|--terse
+     List just the names of the sections found in the update file
+
+update-util [updateFile] -l|--list [[name] ... ]
+     List the files contained in each section. If a name or list of names are given,
+     only those sections will have their contents listed.
+
+update-util [updateFile] -x|--extract [[name] ... ] [-s|--staging] [-p|--output-path output_dir]
+    Unpack any of the named sections in the list of names. Sections will be unpacked
+    into directories that are named as per the name found in the header. If no names
+    are given then the entire update will be unpacked.
+
+    if the option -p is given then the unpack will be done into output_dir, which will be
+    created if it does not exist.
+
+    option -s will cause the sections to be unpacked with paths and names as they are in
+    the staging directory after being built and before being packed. The system, if present,
+    will be unpacked into a directory named 'system' and the apps will be unpacked into an
+    'apps' directory with each app in a directory named for its md5 sum.
+
+    'system' is a pseudo name - no header contains the name system but it can be used to refer
+    to the system section. Try not to create any apps named 'system' as this will confuse
+    update-util.
+
+examples:
+
+    unpack-util update_file -x tools
+    - Unpack the tools app from update_file into a directory named tools
+
+    unpack-util update_file -x -s tools
+    - Unpack the tools app to apps/xxx where xxx is the md5 sum of the tools app
+
+    unpack-util update_file -x -s -p my_staging
+    - Unpack all the sections of the update file with their staging paths into
+      a directory named my_staging
+
+'''
+
 
 import json
 import sys
 import io
 import os
+import errno
+import tarfile
+import argparse
+import re
 
 MinJsonSize = 512
-
-def PrintUsage():
-    exeName = os.path.basename(sys.argv[0])
-    print ''
-    print 'NAME'
-    print '%s' % (exeName)
-    print ''
-    print 'USAGE'
-    print ''
-    print '%s help|-h|--help' % (exeName)
-    print '     Print this message.'
-    print ''
-    print '%s updateFile' % (exeName)
-    print '     List the headers found in the updateFile to stdout.'
-    print ''
-    print '%s oldSystemUpdateFile newSystemUpdateFile outputFile' % (exeName)
-    print '     Create a delta system update file with the name given for outputFile'
-    print '     using oldSystemUpdateFile as the initial update calculating the changes'
-    print '     necessary to get from the initial system to that in newSystemUpdateFile'
-    print '     omitting unchanged apps.'
-    print ''
-
 
 OldUpdateFile = ''
 NewUpdateFile = ''
 OldChunkList = []
 newChunkList = []
+
+HeadingRE = re.compile(r'^\s*(NAME|SYNOPSIS|DESCRIPTION|ENVIRONMENT|NOTES)')
+
+def Help():
+    marked_up = os.getenv('MARKUP_HELP_DOX')
+    if marked_up:
+        #add markup to doc for pretty doxygen formatting
+        print '<!--%s-->' % (marked_up)
+        lastHeading = None
+        for line in __doc__.splitlines():
+            match = HeadingRE.match(line)
+            if match:
+                if lastHeading == 'verbatim':
+                    print '@endverbatim'
+                lastHeading = match.group(0)
+                print line.replace(lastHeading, '<h1>%s</h1>' % lastHeading)
+            else:
+                # don't decorate empy lines (checked by line.strip() is empty)
+                if lastHeading == 'NAME' and line.strip():
+                    print '@b', line
+                elif lastHeading == 'SYNOPSIS' and line.strip():
+                    print '<code>', line, '</code></br>'
+                elif lastHeading == 'DESCRIPTION':
+                    print '@verbatim', line
+                    lastHeading = 'verbatim' # now in verbatim state
+                else:
+                    print line
+
+        if lastHeading == 'verbatim':
+            print '@endverbatim'
+        print '<hr>'
+        print 'Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.'
+    else:
+        print __doc__
 
 def FindJson(buffer):
     count = 0
@@ -177,30 +252,106 @@ def DeltaSystems():
             outFile.write(chunk['data'])
     outFile.close()
 
-def ListHeaders():
+# if this is a system update chunk add the pseudo name 'system'
+def modifySystemChunk(chunk):
+    if 'command' in chunk['jHead'] and 'updateSystem' in chunk['jHead']['command']:
+        chunk['jHead']['name'] = 'system'
+
+def TarList(chunk, chunkNameList):
+    # System doesn't have a name but we should allow a default name, maybe like "system"??
+    modifySystemChunk(chunk)
+    if len(args.segList) == 0 or ('name' in chunk['jHead'] and chunk['jHead']['name'] in args.segList):
+        if chunk['jHead']['size'] > 1:
+            print chunk['header']
+            file_like_object = io.BytesIO(chunk['data'])
+            tar = tarfile.open(fileobj=file_like_object)
+            # use "tar" as a regular TarFile object
+            for info in tar:
+                print 'file %s, size %d' % (info.name, info.size)
+            tar.close()
+
+def CreateExtractDirName(args, chunk):
+    DirName = ''
+
+    # prepend the given path name or the 'staging' path if not given and we are doing staging
+    if args.outputPath:
+        outputPath = args.outputPath[0]
+        if not outputPath.endswith('/'):
+            outputPath = outputPath + '/'
+        DirName = outputPath + DirName
+    else:
+        if args.staging:
+            DirName = 'staging/' + DirName
+
+    if args.staging:
+        # use staging directory paths
+        if chunk['jHead']['command'] == 'updateApp':
+            DirName = DirName + 'apps/' + chunk['jHead']['md5']
+        elif chunk['jHead']['command'] == 'updateSystem':
+            DirName = DirName + 'system/'
+    else:
+        DirName = DirName + chunk['jHead']['name']
+
+    return DirName
+
+# unpack the chunk using the path it would have had in the staging directory
+def ExtractList(chunk, chunkNameList):
+    modifySystemChunk(chunk)
+    if len(args.unpackList) == 0 or ('name' in chunk['jHead'] and chunk['jHead']['name'] in args.unpackList):
+        # the system is a special case - ignoring it until I have a solution
+        if chunk['jHead']['size'] > 1:
+            print chunk['header']
+            file_like_object = io.BytesIO(chunk['data'])
+            tar = tarfile.open(fileobj=file_like_object)
+            extractDirName = CreateExtractDirName(args, chunk)
+            try:
+                os.makedirs(extractDirName)
+            except OSError as err:
+                if err.errno == errno.EEXIST:
+                    print "Destination directory '%s' exists. Remove it and try again." % (extractDirName)
+                    exit (1)
+                else:
+                    raise
+
+            tar.extractall(extractDirName)
+            tar.close()
+
+def ProcessHeaders(args):
     oldChunkList = ReadUpdateFile(OldUpdateFile)
     for chunk in oldChunkList:
-        print chunk['header']
+        if args.segList != None:
+            TarList(chunk, args.segList)
+        elif args.unpackList != None:
+            ExtractList(chunk, args.unpackList)
+        elif args.terse:
+            if 'command' in chunk['jHead'] and chunk['jHead']['command'] == 'updateSystem':
+                print 'system'
+            if 'name' in chunk['jHead']:
+                print chunk['jHead']['name']
+        else:
+            print chunk['header']
 
-# is the user asking for help?
-if 'help' in sys.argv or '-h' in sys.argv or '--help' in sys.argv:
-    PrintUsage()
-    exit(0)
+parser = argparse.ArgumentParser('update-util')
+parser.add_argument('files', nargs='+')
+parser.add_argument('-t', '--terse', dest='terse', action='store_true')
+parser.add_argument('-s', '--staging', dest='staging', action='store_true')
+parser.add_argument('-l', '--list', dest='segList', nargs='*')
+parser.add_argument('-x', '--extract', dest='unpackList', nargs='*')
+parser.add_argument('-p', '--output-path', dest='outputPath', nargs=1)
+parser.print_help = Help
+
+
+args = parser.parse_args()
 
 # If only a single update file is given, list the section headers
-if len(sys.argv) == 2:
-    OldUpdateFile = sys.argv[1]
-    ListHeaders()
+if len(args.files) == 1:
+    OldUpdateFile = args.files[0]
+    ProcessHeaders(args)
     exit(0)
 
-# If if we are given two update files we also need the name of a file for output
-if len(sys.argv) < 4:
-    print "Error in arguments."
-    PrintUsage()
-    exit(1)
-
 #else we have all we need for update diff
-OldUpdateFile = sys.argv[1]
-NewUpdateFile = sys.argv[2]
-DeltaSystems()
+if len(args.files) == 3:
+    OldUpdateFile = args.files[0]
+    NewUpdateFile = args.files[1]
+    DeltaSystems()
 
