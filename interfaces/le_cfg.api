@@ -161,7 +161,8 @@
  *     // Change current tree position to the base ip4 node.
  *     char nameBuffer[MAX_CFG_STRING] = { 0 };
  *
- *     sprintf(nameBuffer, "/system/%s/ip4", interfaceNamePtr);
+ *     int r = snprintf(nameBuffer, sizeof(nameBuffer), "/system/%s/ip4", interfaceNamePtr);
+ *     LE_ASSERT((r >= 0) && (r < sizeof(nameBuffer));
  *
  *     le_cfg_GoToNode(iteratorRef, nameBuffer);
  *
@@ -191,7 +192,15 @@
  *     // Change current tree position to the base ip4 node.
  *     char nameBuffer[MAX_CFG_STRING] = { 0 };
  *
- *     sprintf(nameBuffer, "/system/%s/ip4", interfaceNamePtr);
+ *     int r = snprintf(nameBuffer, sizeof(nameBuffer), "/system/%s/ip4", interfaceNamePtr);
+ *     if (r < 0)
+ *     {
+ *         return LE_FAULT;
+ *     }
+ *     else if (r >= sizeof(nameBuffer))
+ *     {
+ *         return LE_OVERFLOW;
+ *     }
  *
  *     if (le_cfg_NodeExists(iteratorRef, nameBuffer) == false)
  *     {
@@ -232,7 +241,7 @@
  * {
  *     char pathBuffer[MAX_CFG_STRING] = { 0 };
  *
- *     sprintf(pathBuffer, "/system/%s/ip4/", interfaceNamePtr);
+ *     snprintf(pathBuffer, sizeof(pathBuffer), "/system/%s/ip4/", interfaceNamePtr);
  *     le_cfg_QuickDeleteNode(pathBuffer);
  * }
  * @endcode
