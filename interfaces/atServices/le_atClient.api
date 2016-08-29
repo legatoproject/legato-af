@@ -34,7 +34,7 @@
  * - can set a timeout value using le_atClient_SetTimeout(); default value is @c 30s.
  *
  * - request expected final responses and set using le_atClient_SetFinalResponse().The final
- * response is mandatory to detect 
+ * response is mandatory to detect
  * the end of the AT command execution. If an AT command answers with a final response that
  * doesn't belong to the final responses set, the AT command execution will end by timeout.
  *
@@ -43,7 +43,7 @@
  *
  * Command responses given in le_atClient_SetIntermediateResponse() and
  * le_atClient_SetFinalResponse() are the first characters of the response lines. They are used as a
- * filter of the received lines (a line are the characters received between receiving a 
+ * filter of the received lines (a line are the characters received between receiving a
  * <CR> and an <LF>). Other lines are dropped.
  *
  * - text can be set using le_atClient_SetText(). This is used for commands that answers a
@@ -206,6 +206,9 @@ FUNCTION Device Start
 /**
  * This function must be called to stop the ATClient session on the specified device.
  *
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_OK when function succeed
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Stop
@@ -229,9 +232,11 @@ FUNCTION Cmd Create
  * This function must be called to delete an AT command reference.
  *
  * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Delete
@@ -244,9 +249,11 @@ FUNCTION le_result_t Delete
  * This function must be called to set the AT command string to be sent.
  *
  * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommand
@@ -263,8 +270,11 @@ FUNCTION le_result_t SetCommand
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetIntermediateResponse
@@ -281,8 +291,11 @@ FUNCTION le_result_t SetIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetFinalResponse
@@ -297,8 +310,11 @@ FUNCTION le_result_t SetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetText
@@ -312,15 +328,17 @@ FUNCTION le_result_t SetText
  * This function must be called to set the timeout of the AT command execution.
  *
  * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetTimeout
 (
     Cmd     cmdRef      IN,        ///< AT Command
-    uint32  timer       IN         ///< Set Timer
+    uint32  timer       IN         ///< The timeout value in milliseconds.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -329,7 +347,11 @@ FUNCTION le_result_t SetTimeout
  *
  * @return
  *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDevice
@@ -344,9 +366,12 @@ FUNCTION le_result_t SetDevice
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Send
@@ -356,13 +381,16 @@ FUNCTION le_result_t Send
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is used to get the first intermediate result code.
+ * This function is used to get the first intermediate response.
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
- */
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
+*/
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirstIntermediateResponse
 (
@@ -372,12 +400,15 @@ FUNCTION le_result_t GetFirstIntermediateResponse
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is used to get the next intermediate result codes.
+ * This function is used to get the next intermediate response.
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNextIntermediateResponse
@@ -393,8 +424,11 @@ FUNCTION le_result_t GetNextIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFinalResponse
@@ -409,9 +443,12 @@ FUNCTION le_result_t GetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the reference is invalid
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
+ *
+ * @note If the AT command is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommandAndSend
@@ -423,7 +460,7 @@ FUNCTION le_result_t SetCommandAndSend
                                                                          ///< response
     string                         finalResp[CMD_RSP_MAX_LEN]    IN,     ///< Expected final
                                                                          ///< response
-    uint32                         timeout                       IN      ///< Timeout
+    uint32                         timeout                       IN      ///< Timeout value in milliseconds.
 );
 
 //--------------------------------------------------------------------------------------------------
