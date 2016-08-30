@@ -275,7 +275,7 @@ static void PrintHelp
         "           'restartProc', 'restartApp', 'stopApp'.\n"
         "\n"
         "       -- [<args> ...]\n"
-        "           The -- option is used to specify comamnd line arguments to the process.\n"
+        "           The -- option is used to specify command line arguments to the process.\n"
         "           Everything following the -- option is taken as arguments to the process to be\n"
         "           started.  Therefore the -- option must be the last option to app runProc.\n"
         "           If the -- option is not used then the configured arguments are used if available.\n"

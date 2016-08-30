@@ -1,38 +1,88 @@
 /** @page toolsTarget_app app
 
-The @c app tool can be used to list and control apps installed on the target device.
+The @c app tool can be used to control and obtain info about apps installed on the target device.
 
 <h1>Usage</h1>
 
-<b><c>app [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ] <br>
-app [start|stop|restart|remove|status|version|info] '*' <br>
-app [list|status|info] <br>
-app help <br>
+<b><c>app start <appName> [<options>] <br>
+app stop <appName> <br>
+app restart <appName> <br>
+app remove <appName> <br>
+app list <br>
+app status [<appName>] <br>
+app version <appName> <br>
+app info [<appName>] <br>
+app runProc <appName> <procName> [options] <br>
+app runProc <appName> [<procName>] --exe=<exePath> [options] <br>
+app --help <br>
 </c></b>
 
-@verbatim app [start|stop|restart|remove|status|version|info] APP_NAME [ APP_NAME ... ]@endverbatim
-> Multiple app names can be specified.
+@verbatim app start <appName> [<options>] @endverbatim
+> Runs an app in a modified manner by one or more of the following options: 
 
-@verbatim app [start|stop|restart|remove|status|version|info] '*'@endverbatim
-> A wildcard '*' can be used to apply action to all apps.
+> <c>--norun=<procName1>[,<procName2>,...]</c> <br>
+> Don't start the specified configured processes. Names are separated by commas
+> without spaces.
 
-@warning
-Be careful not to accidentally remove system services apps that you might need (e.g., modemService
-app).
+@verbatim app stop <appName> @endverbatim
+> Stops the specified app.
+ 
+@verbatim app restart <appName> @endverbatim
+> Restarts the specified app.
+ 
+@verbatim app remove <appName> @endverbatim
+> Removes the specified app.
+> @warning Be careful not to accidentally remove system services apps that you might
+> need (e.g., modemService app).
 
-@verbatim app list@endverbatim
-> Lists apps.
+@verbatim app list @endverbatim
+> List all installed apps.
+ 
+@verbatim app status [<appName>] @endverbatim
+> If an appName is specified, provides status on that app. If no app is specified,
+> provides status on all installed apps.
+> Status can be @c stopped, @c running, @c paused or @c not installed.
+ 
+@verbatim app version <appName> @endverbatim
+> Provides the version of the specified app.
 
-@verbatim app status@endverbatim
-> List apps and their current status.
+@verbatim app info <appName> @endverbatim
+> If an appName is specified, provides info on that app. If no app is specified,
+> provides info on all installed apps.
 
-@verbatim app info @endverbatim
-> Provides info on one or more apps' running state and processes' state (stopped or never started, running, paused).
+@verbatim app runProc <appName> <procName> [options]@endverbatim
 
-@verbatim app help @endverbatim
+> Runs a configured process inside an app using the process settings from the
+> configuration database. If an @c exePath is provided as an option, the specified
+> executable is used instead of the configured executable.
+
+@verbatim app runProc <appName> [<procName>] --exe=<exePath> [options]@endverbatim
+
+> Runs an executable inside an app.  The @c exePath must be provided, and the optional
+> process name must not match any configured processes for the app.
+
+> Unless specified through the options below, the executable will be run with default settings:
+
+> <c>--exe=<exePath></c> <br>
+> Use the executable at <exePath>. <exePath> is from the perspective of the app
+> (e.g., @c /exe would be at the sandbox root if the app is sandboxed).
+
+> <c>--priority=<priorityStr></c> <br>
+> Sets the priority of the process. <priorityStr> can be either @c idle, @c low,
+> @c medium, @c high, @c rt1, @c rt2, ... @c rt32.
+
+> <c>--faultAction=<action></c> <br>
+> Sets the fault action for the process. <action> can be either 'ignore',
+> 'restartProc', 'restartApp', 'stopApp'.
+
+> <c>--[<args> ...]</c> <br>
+> Specifies command line arguments to the process.
+> Everything following the @c -- option is taken as arguments for process to be
+> started. The @c -- option must be the last option to app runProc.
+> If the @c -- option is not used, then the configured arguments are used (if available).
+
+@verbatim app --help@endverbatim
 > Prints help text to standard out and exits.
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

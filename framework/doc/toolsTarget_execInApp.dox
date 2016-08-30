@@ -1,5 +1,8 @@
 /** @page toolsTarget_execInApp  execInApp
 
+@warning This tool has been deprecated and will be removed in a future release.
+Use @ref toolsTarget_app @c runProc instead.
+
 Use the Execute In App tool to execute a process in a running app's sandbox.
 
 The executed process will inherit the terminal's environment variables and file descriptors. The
