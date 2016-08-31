@@ -2034,6 +2034,8 @@ le_result_t le_audio_EnableNoiseSuppressor
     le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
 )
 {
+    le_result_t res;
+
     le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
 
     if (streamPtr == NULL)
@@ -2042,7 +2044,16 @@ le_result_t le_audio_EnableNoiseSuppressor
         return LE_FAULT;
     }
 
-    return pa_audio_NoiseSuppressorSwitch(streamPtr, LE_ON);
+    if ( (res = pa_audio_NoiseSuppressorSwitch(streamPtr, LE_ON)) != LE_OK )
+    {
+        LE_ERROR("Cannot enable Noise Suppressor for audio stream");
+        return res;
+    }
+    else
+    {
+        streamPtr->noiseSuppressorEnabled = true;
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2061,6 +2072,8 @@ le_result_t le_audio_DisableNoiseSuppressor
     le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
 )
 {
+    le_result_t res;
+
     le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
 
     if (streamPtr == NULL)
@@ -2069,7 +2082,16 @@ le_result_t le_audio_DisableNoiseSuppressor
         return LE_FAULT;
     }
 
-    return pa_audio_NoiseSuppressorSwitch(streamPtr, LE_OFF);
+    if ( (res = pa_audio_NoiseSuppressorSwitch(streamPtr, LE_OFF)) != LE_OK )
+    {
+        LE_ERROR("Cannot disable Noise Suppressor for audio stream");
+        return res;
+    }
+    else
+    {
+        streamPtr->noiseSuppressorEnabled = false;
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2088,6 +2110,8 @@ le_result_t le_audio_EnableEchoCanceller
     le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
 )
 {
+    le_result_t res;
+
     le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
 
     if (streamPtr == NULL)
@@ -2096,7 +2120,16 @@ le_result_t le_audio_EnableEchoCanceller
         return LE_FAULT;
     }
 
-    return pa_audio_EchoCancellerSwitch(streamPtr, LE_ON);
+    if ( (res = pa_audio_EchoCancellerSwitch(streamPtr, LE_ON)) != LE_OK )
+    {
+        LE_ERROR("Cannot enable Echo Canceller for audio stream");
+        return res;
+    }
+    else
+    {
+        streamPtr->echoCancellerEnabled = true;
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2115,6 +2148,8 @@ le_result_t le_audio_DisableEchoCanceller
     le_audio_StreamRef_t    streamRef       ///< [IN] The audio stream reference.
 )
 {
+    le_result_t        res;
+
     le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
 
     if (streamPtr == NULL)
@@ -2123,7 +2158,100 @@ le_result_t le_audio_DisableEchoCanceller
         return LE_FAULT;
     }
 
-    return pa_audio_EchoCancellerSwitch(streamPtr, LE_OFF);
+    if ( (res = pa_audio_EchoCancellerSwitch(streamPtr, LE_OFF)) != LE_OK )
+    {
+        LE_ERROR("Cannot disable Echo Canceller for audio stream");
+        return res;
+    }
+    else
+    {
+        streamPtr->echoCancellerEnabled = false;
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the status of Noise Suppressor.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER If streamRef contains an invalid audioInterface.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_IsNoiseSuppressorEnabled
+(
+    le_audio_StreamRef_t    streamRef,       ///< [IN] The audio stream reference.
+    bool*                   statusPtr        ///< [OUT] true if NS is enabled, false otherwise
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if (statusPtr == NULL)
+    {
+        LE_KILL_CLIENT("statusPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ( pa_audio_GetNoiseSuppressorStatus(streamPtr, statusPtr) != LE_OK )
+    {
+        LE_ERROR("Cannot get stream NS status");
+        return LE_FAULT;
+    }
+
+    streamPtr->noiseSuppressorEnabled = *statusPtr;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the status of Echo Canceller.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER If streamRef contains an invalid audioInterface.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_audio_IsEchoCancellerEnabled
+(
+    le_audio_StreamRef_t    streamRef,       ///< [IN] The audio stream reference.
+    bool*                   statusPtr        ///< [OUT] true if EC is enabled, false otherwise
+)
+{
+    le_audio_Stream_t* streamPtr = le_ref_Lookup(AudioStreamRefMap, streamRef);
+
+    if (streamPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if (statusPtr == NULL)
+    {
+        LE_KILL_CLIENT("statusPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    if ( pa_audio_GetEchoCancellerStatus(streamPtr, statusPtr) != LE_OK )
+    {
+        LE_ERROR("Cannot get stream NS status");
+        return LE_FAULT;
+    }
+
+    streamPtr->echoCancellerEnabled = *statusPtr;
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

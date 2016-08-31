@@ -623,3 +623,39 @@ void pa_audio_ReleasePaParameters
 {
     LE_ERROR("Unsupported function called");
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Noise Suppressor status
+ *
+ * @return LE_FAULT         The function failed to get the interface NS status
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_GetNoiseSuppressorStatus
+(
+    le_audio_Stream_t* streamPtr,                   ///< [IN] input audio stream
+    bool*              noiseSuppressorStatusPtr     ///< [OUT] Noise Suppressor status
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the Echo Canceller status
+ *
+ * @return LE_FAULT         The function failed to get the interface EC status
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_audio_GetEchoCancellerStatus
+(
+    le_audio_Stream_t* streamPtr,                   ///< [IN] input audio stream
+    bool*              echoCancellerStatusPtr       ///< [OUT] Echo Canceller status
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}

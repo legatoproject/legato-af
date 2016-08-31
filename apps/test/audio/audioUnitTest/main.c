@@ -1006,6 +1006,74 @@ void Testle_audio_PlayDtmf
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test the capturing status of Echo canceller and noise suppressor.
+ * echo canceller and noise suppressor are simulated in the pa_audio_simu. The test checks that the
+ * streamref is not NULL.
+ *
+ *
+ * API tested:
+ * - le_audio_IsNoiseSuppressorEnabled
+ * - le_audio_IsEchoCancellerEnabled
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_audio_EchoCancellerNoiseSuppressor
+(
+    void
+)
+{
+    bool status;
+    le_audio_StreamRef_t MdmTxAudioRef;
+
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
+
+    LE_ASSERT(MdmTxAudioRef != NULL)
+
+    //------------
+    // Sub-test 1
+    //------------
+
+    LE_ASSERT(le_audio_EnableNoiseSuppressor(MdmTxAudioRef) == LE_OK);
+
+    LE_ASSERT(le_audio_IsNoiseSuppressorEnabled(MdmTxAudioRef, &status) == LE_OK);
+
+    LE_ASSERT(status == 1);
+
+    //------------
+    // Sub-test 2
+    //------------
+
+    LE_ASSERT(le_audio_DisableNoiseSuppressor(MdmTxAudioRef) == LE_OK);
+
+    LE_ASSERT(le_audio_IsNoiseSuppressorEnabled(MdmTxAudioRef, &status) == LE_OK);
+
+    LE_ASSERT(status == 0);
+
+    //------------
+    // Sub-test 3
+    //------------
+
+    LE_ASSERT(le_audio_EnableEchoCanceller(MdmTxAudioRef) == LE_OK);
+
+    LE_ASSERT(le_audio_IsEchoCancellerEnabled(MdmTxAudioRef, &status) == LE_OK);
+
+    LE_ASSERT(status == 1);
+
+    //------------
+    // Sub-test 4
+    //------------
+
+    LE_ASSERT(le_audio_DisableEchoCanceller(MdmTxAudioRef) == LE_OK);
+
+    LE_ASSERT(le_audio_IsEchoCancellerEnabled(MdmTxAudioRef, &status) == LE_OK);
+
+    LE_ASSERT(status == 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * main thread: this thread is used to initialized the le_audio and pa_audio, and to have an event
  * loop to treat the events.
  *
@@ -1075,6 +1143,9 @@ COMPONENT_INIT
 
     LE_INFO("======== Test play dtmf ========");
     Testle_audio_PlayDtmf();
+
+    LE_INFO("======== Test Echo canceller and Noise suppressor ========");
+    Testle_audio_EchoCancellerNoiseSuppressor();
 
     LE_INFO("======== UnitTest of AUDIO API ends with SUCCESS ========");
     exit(0);

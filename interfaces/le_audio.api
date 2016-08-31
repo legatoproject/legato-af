@@ -51,6 +51,9 @@
  * - le_audio_EnableAutomaticGainControl()/ le_audio_DisableAutomaticGainControl(): automatic
  * gain on the selected audio stream.
  *
+ * - le_audio_IsNoiseSuppressorEnabled(): To get the status of Noise Suppressor.
+ * - le_audio_IsEchoCancellerEnabled(): To get the status of Echo Canceller.
+ *
  * To configure the encoding format, use le_audio_GetEncodingFormat() and le_audio_SetEncodingFormat().
  *
  * To configure gain settings, use le_audio_GetGain() and le_audio_SetGain().
@@ -838,6 +841,40 @@ FUNCTION le_result_t EnableEchoCanceller
 FUNCTION le_result_t DisableEchoCanceller
 (
     Stream streamRef IN ///< Audio stream reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the status of Noise Suppressor.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER If streamRef contains an invalid audioInterface.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t IsNoiseSuppressorEnabled
+(
+    Stream streamRef IN, ///< Audio stream reference.
+    bool   status    OUT    ///< true if NS is enabled, false otherwise
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the status of Echo Canceller.
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER If streamRef contains an invalid audioInterface.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note The process exits, if an invalid audio stream reference is given.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t IsEchoCancellerEnabled
+(
+    Stream streamRef IN, ///< Audio stream reference.
+    bool   status    OUT    ///< true if EC is enabled, false otherwise
 );
 
 //--------------------------------------------------------------------------------------------------

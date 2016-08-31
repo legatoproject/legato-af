@@ -211,6 +211,8 @@ typedef struct le_audio_Stream {
     int8_t              deviceIdentifier;              ///< Device identifier
     int8_t              hwDeviceId;                    ///< Hardware Device identifier
     pa_audio_Params_t   PaParams;                      ///< PA Parameters
+    bool echoCancellerEnabled;                         ///< Store the status of echo canceller
+    bool noiseSuppressorEnabled;                       ///< Store the status of noise suppressor
 }
 le_audio_Stream_t;
 
