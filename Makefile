@@ -102,6 +102,15 @@ ifeq ($(MAKECMDGOALS),release)
   override TEST_COVERAGE := 0
 endif
 
+# PlantUML file path
+PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty
+
+# PlantUML version
+PLANTUML_VERSION ?= 8047
+
+# PlantUML file definition
+PLANTUML_JAR = $(PLANTUML_PATH)/plantuml.$(PLANTUML_VERSION).jar
+
 # ========== TARGET-SPECIFIC VARIABLES ============
 
 include $(wildcard modules/*/moduleDefs)
@@ -202,8 +211,13 @@ user_pdf: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_pdf
 	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
 
+# Download of plantuml.jar file
+$(PLANTUML_JAR):
+	wget -L -O $(PLANTUML_JAR) http://sourceforge.net/projects/plantuml/files/plantuml.$(PLANTUML_VERSION).jar/download
+
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost build/localhost/Makefile
+implementation_docs: localhost $(PLANTUML_JAR) build/localhost/Makefile
+	java  -Djava.awt.headless=true -jar $(PLANTUML_JAR) -o $(LEGATO_ROOT)/build/doc/implementation/html $(LEGATO_ROOT)/components/doc/*
 	$(MAKE) -C build/localhost implementation_docs
 
 implementation_pdf: localhost build/localhost/Makefile

@@ -1,0 +1,247 @@
+/** @page c_SDD_audio Audio SDD
+
+The Audio API handles audio interfaces including play and record supported formats.
+
+@section le_audio_PlayFile le_audio_PlayFile
+
+@startuml{le_audio_PlayFile.png}
+
+participant Application
+box "audioDaemon" #lightBlue
+participant mainThread
+participant mediaThread
+participant playbackThread
+end box
+participant Alsa
+
+== Initialization ==
+Application -> mainThread: le_audio_PlayFile(streamRef,fd_audioFile)\n( or le_audio_PlayDtmf(streamRef) )
+mainThread -> mainThread: open pipe
+note left
+mainThread initiates a pipe:
+fd_in: pipe input
+fd_out: pipe output
+end note
+mainThread -> mediaThread: start thread
+activate mediaThread
+
+mainThread -> playbackThread: start thread
+activate playbackThread
+playbackThread -> Alsa: pcm_open()
+playbackThread -> mainThread: result (LE_OK/LE_FAULT)
+mainThread -> Application: result (LE_OK/LE_FAULT)
+
+== Repetition ==
+group loop
+mediaThread -> mediaThread: readFunc(fd_audioFile)
+note left
+readFunc() function may by:
+- the read() POSIX function for WAV encoded file
+- the AMR decoding function for file encoded in
+AMR-NB or AMR-WB format.
+- the DTMF encoding function for the le_audio_PlayDtmf() API
+end note
+note left of mediaThread
+write into the pipe
+write(fd_in)
+end note
+mediaThread o[#green]-->>o playbackThread:
+note right of playbackThread
+read from the pipe
+read(fd_out)
+end note
+playbackThread -> Alsa: pcm_write()
+end
+
+== End reading ==
+playbackThread -> mainThread: send LE_AUDIO_MEDIA_NO_MORE_SAMPLES event
+mainThread -> playbackThread: end thread
+playbackThread -> Alsa: pcm_close()
+playbackThread -> mainThread: done
+deactivate playbackThread
+
+mainThread -> mediaThread: end thread
+mediaThread -> mediaThread: close(fd_in)
+mediaThread -> mediaThread: close(fd_out)
+mediaThread -> mainThread: done
+deactivate mediaThread
+mainThread -> Application: send LE_AUDIO_MEDIA_NO_MORE_SAMPLES event
+
+@enduml
+
+@section le_audio_PlaySamples le_audio_PlaySamples
+
+@startuml{le_audio_PlaySamples.png}
+
+participant Application
+box "audioDaemon" #lightBlue
+participant mainThread
+participant playbackThread
+end box
+participant Alsa
+
+== Initialization ==
+Application -> Application: open pipe
+note left
+application initiates a
+synchronous pipe:
+fd_in: pipe input
+fd_out: pipe output
+end note
+Application -> mainThread: le_audio_PlaySamples(streamRef,fd_out)
+mainThread -> playbackThread: start thread
+activate playbackThread
+playbackThread -> Alsa: pcm_open()
+playbackThread -> mainThread: result (LE_OK/LE_FAULT)
+mainThread -> Application: result (LE_OK/LE_FAULT)
+
+== Repetition ==
+group Send pcm frames (in loop)
+
+group loop
+note left of Application
+write into the pipe
+write(fd_in)
+end note
+Application o[#green]-->>o playbackThread:
+note right of playbackThread
+read from the pipe
+read(fd_out)
+end note
+playbackThread -> Alsa: pcm_write()
+end
+
+== Close ==
+Application -> mainThread: le_audio_Stop(streamRef)
+mainThread -> playbackThread: end thread
+playbackThread -> Alsa: pcm_close()
+playbackThread -> mainThread: done
+deactivate playbackThread
+mainThread -> Application: result (LE_OK/LE_FAULT)
+Application -> Application: close(fd_in)
+Application -> Application: close(fd_out)
+
+@enduml
+
+@section le_audio_GetSamples le_audio_GetSamples
+
+@startuml{le_audio_GetSamples.png}
+
+participant Application
+box "audioDaemon" #lightBlue
+participant mainThread
+participant CaptureThread
+end box
+participant Alsa
+
+== Initialization ==
+Application -> Application: open pipe
+note left
+application initiates a pipe:
+fd_in: pipe input
+fd_out: pipe output
+end note
+Application -> mainThread: le_audio_GetSamples(streamRef,fd_in)
+mainThread -> CaptureThread: start thread
+activate CaptureThread
+CaptureThread -> Alsa: pcm_open()
+CaptureThread -> mainThread: result (LE_OK/LE_FAULT)
+mainThread -> Application: result (LE_OK/LE_FAULT)
+
+== Repetition ==
+group loop
+Alsa -> CaptureThread: pcm_read()
+note right of CaptureThread
+write into the pipe
+write(fd_in)
+end note
+CaptureThread o[#green]-->>o Application:
+note left of Application
+read from the pipe
+read(fd_out)
+end note
+end
+
+== Close ==
+Application -> mainThread: le_audio_Stop(streamRef)
+mainThread -> CaptureThread: end thread
+CaptureThread -> Alsa: pcm_close()
+CaptureThread -> mainThread: done
+deactivate CaptureThread
+mainThread -> Application: result (LE_OK/LE_FAULT)
+Application -> Application: close(fd_in)
+Application -> Application: close(fd_out)
+
+@enduml
+
+@section le_audio_RecordFile le_audio_RecordFile
+
+@startuml{le_audio_RecordFile.png}
+
+participant Application
+box "audioDaemon" #lightBlue
+participant mainThread
+participant mediaThread
+participant CaptureThread
+end box
+participant Alsa
+
+== Initialization ==
+Application -> mainThread: le_audio_RecordFile(streamRef,fd_audioFile)
+mainThread -> mainThread: open pipe
+note left
+mainThread initiates a pipe:
+fd_in: pipe input
+fd_out: pipe output
+end note
+mainThread -> mediaThread: start thread
+activate mediaThread
+
+mainThread -> CaptureThread: start thread
+activate CaptureThread
+CaptureThread -> Alsa: pcm_open()
+CaptureThread -> mainThread: result (LE_OK/LE_FAULT)
+mainThread -> Application: result (LE_OK/LE_FAULT)
+
+== Repetition ==
+
+group loop
+Alsa -> CaptureThread: pcm_read()
+note right of CaptureThread
+write into the pipe
+write(fd_in)
+end note
+CaptureThread o[#green]-->>o mediaThread:
+note left of mediaThread
+read from the pipe
+read(fd_out)
+end note
+mediaThread -> mediaThread: writeFunc(fd_audioFile)
+note left
+writeFunc() function may be:
+- the write() POSIX function for WAV encoding
+- the AMR encoding function for AMR-NB or AMR-WB
+encoding format.
+end note
+end
+
+
+== End reading ==
+Application -> mainThread: le_audio_Stop(streamRef)
+mainThread -> CaptureThread: end thread
+CaptureThread -> Alsa: pcm_close()
+CaptureThread -> mainThread: done
+deactivate CaptureThread
+
+mainThread -> mediaThread: end thread
+mediaThread -> mediaThread: close(fd_in)
+mediaThread -> mediaThread: close(fd_out)
+mediaThread -> mainThread: done
+deactivate mediaThread
+mainThread -> Application: LE_OK
+
+@enduml
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

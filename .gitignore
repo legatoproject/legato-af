@@ -43,3 +43,7 @@ targetFiles/*/backup_*
 targetDefs.extra
 modules/*
 docManagement
+
+# PlantUML Jar file
+3rdParty/plantuml.*.jar
+
