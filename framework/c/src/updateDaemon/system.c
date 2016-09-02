@@ -201,12 +201,12 @@ static void SetVersion
 //--------------------------------------------------------------------------------------------------
 static void SetSystemFilesPermissions
 (
-    const char * newSystemPath         ///< [IN] Path to new system.
+    const char* newSystemPath         ///< [IN] Path to new system.
 )
 {
 
     // Get the smack labels to use.
-    char *fileLabel = "_";
+    char* fileLabel = "_";
 
     char systemLibPath[LIMIT_MAX_PATH_BYTES] = "";
 
@@ -672,13 +672,14 @@ le_result_t system_FinishUpdate
         return LE_FAULT;
     }
 
+    // Set the smackfs permission of unpacked system. This has to be done before renaming unpack
+    // path to some index.
+    SetSystemFilesPermissions(system_UnpackPath);
+
     // Now, move the unpacked system into its index.
     char newSystemPath[100] = "";
     snprintf(newSystemPath, sizeof(newSystemPath), "%s/%d", SystemPath, currentIndex);
     file_Rename(system_UnpackPath, newSystemPath);
-
-    // Set the smackfs permission for new system.
-    SetSystemFilesPermissions(newSystemPath);
 
     return LE_OK;
 }

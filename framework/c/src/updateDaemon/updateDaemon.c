@@ -59,6 +59,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum length of app config tree name.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_CFGTREE_NAME_BYTES   LIMIT_MAX_USER_NAME_BYTES
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * State of the Update Daemon state machine.
  *
  *                +---------------------------------------+
@@ -645,8 +653,8 @@ static void ApplyAppUpdate
 )
 //--------------------------------------------------------------------------------------------------
 {
-    const char * appName = updateUnpack_GetAppName();
-    const char * md5 = updateUnpack_GetAppMd5();
+    const char* appName = updateUnpack_GetAppName();
+    const char* md5 = updateUnpack_GetAppMd5();
 
     // Install the app in the current running system.
     le_result_t result = app_InstallIndividual(md5, appName);
@@ -682,7 +690,7 @@ static void ApplyAppRemove
 )
 //--------------------------------------------------------------------------------------------------
 {
-    const char * appName = updateUnpack_GetAppName();
+    const char* appName = updateUnpack_GetAppName();
     // Install the app in the current running system.
     le_result_t result = app_RemoveIndividual(appName);
 
@@ -930,6 +938,335 @@ static void ImportFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Checks if given name is a valid config tree.
+ *
+ * returns
+ *     - true if it is a valid config tree.
+ *     - false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsCfgTree
+(
+    const char* treeName   ///< [IN] Config tree name.
+)
+{
+
+    char* extension = strrchr(treeName, '.');
+
+    if (extension == NULL)
+    {
+        return false;
+    }
+
+    return (strcmp(extension, ".rock") == 0) ||
+           (strcmp(extension, ".paper") == 0) ||
+           (strcmp(extension, ".scissors") == 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if given name is a valid system config tree.
+ *
+ * returns
+ *     - true if it is a valid system config tree.
+ *     - false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsSystemCfgTree
+(
+    const char* treeName   ///< [IN] Config tree name.
+)
+{
+    return (strcmp(treeName, "system.rock") == 0) ||
+           (strcmp(treeName, "system.paper") == 0) ||
+           (strcmp(treeName, "system.scissors") == 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if given directory entry is an app config tree.
+ *
+ * returns
+ *     - true if it is a valid app config tree.
+ *     - false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDirEntryAppCfgTree
+(
+    struct dirent* dp   ///< [IN] Directory entry in config dir.
+)
+{
+    if (dp->d_type == DT_REG)
+    {
+        return IsCfgTree(dp->d_name) && !IsSystemCfgTree(dp->d_name);
+    }
+    else if (dp->d_type == DT_UNKNOWN)
+    {
+        // As per man page (http://man7.org/linux/man-pages/man3/readdir.3.html), DT_UNKNOWN
+        // should be handled properly for portability purpose. Use stat(2) to check file info.
+        struct stat stbuf;
+
+        if (stat(dp->d_name, &stbuf) != 0)
+        {
+            LE_ERROR("Error when trying to stat '%s'. (%m)", dp->d_name);
+        }
+        else if (S_ISREG(stbuf.st_mode))
+        {
+            return IsCfgTree(dp->d_name) && !IsSystemCfgTree(dp->d_name);
+        }
+    }
+
+    return false;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if given config tree belongs to given app.
+ *
+ * returns
+ *     - true if belongs to the given app.
+ *     - false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsThisAppsCfgTree
+(
+    const char* treeName,   ///< [IN] Config tree name to check.
+    const char* appName     ///< [IN] App name
+)
+{
+    char* dotStrPtr = strrchr(treeName, '.');
+
+    if (dotStrPtr == NULL)
+    {
+        return false;
+    }
+
+    char tempTreeName[MAX_CFGTREE_NAME_BYTES] = "";
+
+    LE_ASSERT(le_utf8_CopyUpToSubStr(tempTreeName,
+                                     treeName,
+                                     dotStrPtr,
+                                     sizeof(tempTreeName),
+                                     NULL) == LE_OK);
+    return strcmp(appName, tempTreeName) == 0;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get number of app config trees.
+ *
+ * returns
+ *     - Number of app config trees in config directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static int GetNumAppCfgTree
+(
+    DIR* dirPtr                                       ///< [IN] Directory containing config trees.
+)
+{
+    int numAppCfgTree=0;
+    struct dirent* dp;
+
+    while ((dp = readdir(dirPtr)) != NULL)
+    {
+        if (IsDirEntryAppCfgTree(dp))
+        {
+            numAppCfgTree++;
+        }
+    }
+    return numAppCfgTree;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get list of app config trees.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetAppCfgTreeList
+(
+    DIR* dirPtr,                                     ///< [IN] Directory containing config trees.
+    int numAppCfgTree,                               ///< [IN] Number of app config tree in directory.
+    char (*cfgTreeList)[MAX_CFGTREE_NAME_BYTES]      ///< [OUT] Array containing list of config trees
+                                                     ///< in specified config directory. Caller function
+                                                     ///< is responsible to allocate it properly.
+
+
+)
+{
+    struct dirent* dp;
+    int count = 0;
+
+    while ((dp = readdir(dirPtr)) != NULL)
+    {
+        if (IsDirEntryAppCfgTree(dp))
+        {
+            LE_ASSERT(le_utf8_Copy(cfgTreeList[count],
+                                   dp->d_name,
+                                   MAX_CFGTREE_NAME_BYTES,
+                                   NULL) == LE_OK);
+            count++;
+        }
+
+        if (count >= numAppCfgTree)
+        {
+            break;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove the tree pointed by config tree node from obsolete tree list..
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveFromListTreeInCfgNode
+(
+    le_cfg_IteratorRef_t cfgIter,  ///< [IN] Node containing config tree name
+    size_t numAppCfgTree,          ///< [IN] No. of config tree in current config directory.
+    char (*obsoleteTreeList)[MAX_CFGTREE_NAME_BYTES] ///< [IN] Array containing list of config trees
+                                                     ///<      in current config directory.
+)
+{
+
+    char cfgTree[LIMIT_MAX_APP_NAME_BYTES] = "";
+    LE_FATAL_IF(le_cfg_GetNodeName(cfgIter, "", cfgTree, sizeof(cfgTree)) != LE_OK,
+                "Application name in config is too long.");
+
+    if (strcmp(cfgTree, "system") == 0)
+    {
+        return;
+    }
+
+    int i = 0;
+
+    while (i < numAppCfgTree)
+    {
+        if ((obsoleteTreeList[i][0] != 0) &&
+            IsThisAppsCfgTree(obsoleteTreeList[i], cfgTree))
+        {
+            // There may be more than one config tree (e.g. helloWorld.rock, helloWorld.paper), so
+            // don't break after first match.
+            LE_DEBUG("Removed cfgTree '%s' from obsolete list", obsoleteTreeList[i]);
+            obsoleteTreeList[i][0] = 0;
+        }
+        i++;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove trees that are in App Access list from obsolete tree list.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveFromListTreeInAppACL
+(
+    const char* appName,        ///< [IN] App name.
+    size_t numAppCfgTree,       ///< [IN] No. of config tree in current config directory.
+    char (*obsoleteTreeList)[MAX_CFGTREE_NAME_BYTES]  ///< [IN] Array containing list of config trees
+                                                      ///<      in current config directory.
+)
+{
+
+    char cfgTreePath[LIMIT_MAX_PATH_BYTES] = "";
+    snprintf(cfgTreePath, sizeof(cfgTreePath), "system:/apps/%s/configLimits/acl",appName);
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn(cfgTreePath);
+
+    if (le_cfg_GoToFirstChild(cfgIter) != LE_NOT_FOUND)
+    {
+        do
+        {
+            RemoveFromListTreeInCfgNode(cfgIter,
+                             numAppCfgTree,
+                             obsoleteTreeList);
+        }
+        while (le_cfg_GoToNextSibling(cfgIter) == LE_OK);
+    }
+    le_cfg_CancelTxn(cfgIter);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function traverses the system config tree, find required tree and remove unnecessary trees.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CleanupAppConfigTrees
+(
+    void
+)
+{
+    // Path to the config tree directory in the linux filesystem.
+    const char* configDirPath = "/legato/systems/current/config";
+    DIR* dirPtr;
+
+    LE_FATAL_IF((dirPtr = opendir(configDirPath)) == NULL, "Can't open %s (%m)", configDirPath);
+
+    // We don't know how many apps config trees are in config directory. First count them.
+    size_t numAppCfgTree=GetNumAppCfgTree(dirPtr);
+
+    LE_DEBUG("Total app cfgTree: %zu", numAppCfgTree);
+    // Now Rewind the directory
+    rewinddir(dirPtr);
+
+    char obsoleteCfgTreeList[numAppCfgTree][MAX_CFGTREE_NAME_BYTES];
+    GetAppCfgTreeList(dirPtr, numAppCfgTree, obsoleteCfgTreeList);
+
+    closedir(dirPtr);
+
+    // Iterate over config tree and mark as zero which is needed
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("system:/apps");
+
+    if (le_cfg_GoToFirstChild(cfgIter) != LE_NOT_FOUND)
+    {
+        // Iterate over the list of apps.
+        do
+        {
+            char appName[LIMIT_MAX_APP_NAME_BYTES] = "";
+
+            LE_FATAL_IF(le_cfg_GetNodeName(cfgIter, "", appName, sizeof(appName)-1) != LE_OK,
+                        "Application name in config is too long.");
+            LE_DEBUG("Removing required cfgTrees for app: '%s' from obsolete list", appName);
+
+            // Remove the app tree(currently pointed by cfgIter) from obsolete list.
+            RemoveFromListTreeInCfgNode(cfgIter, numAppCfgTree, obsoleteCfgTreeList);
+
+            // Remove trees that are in App Access list from obsolete tree list.
+            RemoveFromListTreeInAppACL(appName, numAppCfgTree, obsoleteCfgTreeList);
+        }
+        while (le_cfg_GoToNextSibling(cfgIter) == LE_OK);
+
+    }
+
+    le_cfg_CancelTxn(cfgIter);
+
+    // Now delete all obsolete config trees.
+    int i = 0;
+    while(i < numAppCfgTree)
+    {
+        if (obsoleteCfgTreeList[i][0] != 0)
+        {
+            char obsoleteCfgTree[LIMIT_MAX_PATH_BYTES];
+            LE_ASSERT (snprintf(obsoleteCfgTree, sizeof(obsoleteCfgTree), "%s/%s",configDirPath,
+                                obsoleteCfgTreeList[i])
+                        < sizeof(obsoleteCfgTree));
+            LE_DEBUG("Deleting tree '%s'", obsoleteCfgTree);
+            DeleteFile(obsoleteCfgTree);
+        }
+        i++;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Before we advertise our services, we check to see if we need to import new system
  * configuration settings.  This happens when we start after a system update has just been
  * applied.
@@ -987,6 +1324,9 @@ static void FinishSystemUpdate
         }
 
         le_cfg_CommitTxn(i);
+
+        // Cleanup unnecessary trees copied from old system.
+        CleanupAppConfigTrees();
 
         // Delete users.cfg and apps.cfg.
         DeleteFile(usersFilePath);

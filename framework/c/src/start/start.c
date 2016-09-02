@@ -70,7 +70,6 @@ static const char CurrentSystemDir[] = "/legato/systems/current";
 static const char AppsDir[] = "/legato/apps";
 static const char SystemsUnpackDir[] = "/legato/systems/unpack";
 static const char AppsUnpackDir[] = "/legato/apps/unpack";
-static const char OldConfigDir[] = "/mnt/flash/opt/legato/configTree";
 static const char OldFwDir[] = "/mnt/flash/opt/legato";
 static const char LdconfigNotDoneMarkerFile[] = "/legato/systems/needs_ldconfig";
 
@@ -118,7 +117,7 @@ static inline bool DirExists
 //--------------------------------------------------------------------------------------------------
 static void RecursiveDelete
 (
-    const char *path
+    const char* path
 )
 {
     LE_CRIT_IF(le_dir_RemoveRecursive(path) != LE_OK,
@@ -323,6 +322,43 @@ static int ReadFromFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Read the index for the given system from it's index file
+ *
+ * @return the index, or -1 if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+static int ReadIndexFile
+(
+    const char* systemDirPath ///< Name of the system directory (e.g., "0", "1", "current").
+)
+{
+    int index = -1;
+    char inputBuffer[128];
+    char indexFile[PATH_MAX];
+
+    LE_ASSERT(snprintf(indexFile, sizeof(indexFile), "%s/%s/index", SystemsDir, systemDirPath)
+              < sizeof(indexFile));
+
+    if (ReadFromFile(indexFile, inputBuffer, sizeof(inputBuffer)) > 0)
+    {
+        // Some bytes were read. Try to get a number out of them!
+        if (le_utf8_ParseInt(&index, inputBuffer) != LE_OK)
+        {
+            LE_ERROR("Invalid system index '%s' in '%s'.", inputBuffer, indexFile);
+            index = -1;
+        }
+    }
+    else
+    {
+        LE_ERROR("Unable to read from file '%s' (%m).", indexFile);
+    }
+
+    return index;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a directory.  Log an error and exit if unsuccessful.  Do nothing if the directory
  * already exists.
  **/
@@ -437,34 +473,35 @@ static void MakeUnpackDirFromGolden
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copy the previous system's configuration trees into the unpack directory.
- *
- * @warning Assumes that all systems are named according to their index (none are called "current").
+ * Copy the previous system's configuration trees into the new system config directory.
  */
 //--------------------------------------------------------------------------------------------------
 static void ImportOldConfigTrees
 (
-    int oldIndex ///< Index of system to fetch old config from.
+    int oldIndex,  ///< Index of system to fetch old config. Nothing will be copied if it is negative.
+    int newIndex   ///< Index of new system to transfer. Negative value for system unpack directory.
 )
 {
-    char srcDir[PATH_MAX];
-    char destDir[PATH_MAX];
-
-    LE_ASSERT(snprintf(destDir, sizeof(destDir), "%s/config", SystemsUnpackDir)
-              < sizeof(destDir));
-
-    // If there's a new-style system to get the config from,
     if (oldIndex > -1)
     {
+        char srcDir[PATH_MAX];
+        char destDir[PATH_MAX];
+
+        if (newIndex <= -1)
+        {
+            LE_ASSERT(snprintf(destDir, sizeof(destDir), "%s/config", SystemsUnpackDir)
+                  < sizeof(destDir));
+        }
+        else
+        {
+            LE_ASSERT(snprintf(destDir, sizeof(destDir), "%s/%d/config", SystemsDir, newIndex)
+                     < sizeof(destDir));
+        }
+
         LE_ASSERT(snprintf(srcDir, sizeof(srcDir), "%s/%d/config", SystemsDir, oldIndex)
                   < sizeof(srcDir));
 
         file_CopyRecursive(srcDir, destDir, NULL);
-    }
-    // If there's no new-style system, try to get the config from an old-style system under /opt.
-    else if (DirExists(OldConfigDir))
-    {
-        file_CopyRecursive(OldConfigDir, destDir, NULL);
     }
 }
 
@@ -496,7 +533,7 @@ static void DeleteAllButCurrent
 
     for (;;)
     {
-        struct dirent * entry;
+        struct dirent* entry;
 
         entry = readdir(d);
 
@@ -772,43 +809,6 @@ static void InstallGoldenApps
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read the index for the given system from it's index file
- *
- * @return the index, or -1 if failed.
- */
-//--------------------------------------------------------------------------------------------------
-static int ReadIndexFile
-(
-    const char* systemDirPath ///< Name of the system directory (e.g., "0", "1", "current").
-)
-{
-    int index = -1;
-    char inputBuffer[128];
-    char indexFile[PATH_MAX];
-
-    LE_ASSERT(snprintf(indexFile, sizeof(indexFile), "%s/%s/index", SystemsDir, systemDirPath)
-              < sizeof(indexFile));
-
-    if (ReadFromFile(indexFile, inputBuffer, sizeof(inputBuffer)) > 0)
-    {
-        // some bytes were read. Try to get a number out of them!
-        if (le_utf8_ParseInt(&index, inputBuffer) != LE_OK)
-        {
-            LE_ERROR("Invalid system index '%s' in '%s'.", inputBuffer, indexFile);
-            index = -1;
-        }
-    }
-    else
-    {
-        LE_ERROR("Unable to read from file '%s' (%m).", indexFile);
-    }
-
-    return (int)index;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Thin wrapper to test if the buffer contains the string good
  * @return
  *          true    is buffer equals "good"
@@ -1057,6 +1057,7 @@ static int TryToRun
     return EXIT_FAILURE;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Scans the contents of the systems directory and finds the good, new, or tried system with the
@@ -1091,7 +1092,7 @@ static int FindNewestSystemIndex
 
     for (;;)
     {
-        struct dirent * entry;
+        struct dirent* entry;
 
         entry = readdir(d);
 
@@ -1227,8 +1228,8 @@ static bool IsMounted
     char* mountPoint
 )
 {
-    struct mntent *mountEntry;
-    FILE *mtabFile = setmntent("/etc/mtab", "r");
+    struct mntent* mountEntry;
+    FILE* mtabFile = setmntent("/etc/mtab", "r");
 
     if (mtabFile == NULL)
     {
@@ -1453,7 +1454,7 @@ static int InstallGolden
     MakeUnpackDirFromGolden(goldenIndex);
 
     // Import the old configuration trees into the unpack area.
-    ImportOldConfigTrees(newestIndex);
+    ImportOldConfigTrees(newestIndex, -1);
 
     // Install apps into /legato and the system unpack area.
     InstallGoldenApps(newestIndex);
@@ -1538,16 +1539,33 @@ int main
                 // sandboxed apps were created.
                 fs_TryLazyUmount(CurrentSystemDir);
 
-                if (GetStatus("current", NULL) != STATUS_GOOD)
+                SystemStatus_t currentSysStatus = GetStatus("current", NULL);
+
+                char path[PATH_MAX];
+
+                // Rename the current system path.
+                CreateSystemPathName(currentIndex, path, sizeof(path));
+                Rename(CurrentSystemDir, path);
+
+                switch(currentSysStatus)
                 {
-                    RecursiveDelete(CurrentSystemDir);
+                    case STATUS_BAD:
+                        // System bad. Delete and roll-back (here newestIndex < currentIndex).
+                        RecursiveDelete(path);
+                        break;
+
+                    case STATUS_TRYABLE:
+                        // System try-able. Grab config tree from current system and delete it.
+                        ImportOldConfigTrees(currentIndex, newestIndex);
+                        RecursiveDelete(path);
+                        break;
+
+                    case STATUS_GOOD:
+                        // System good. Grab config tree from current system.
+                        ImportOldConfigTrees(currentIndex, newestIndex);
+                        break;
                 }
-                else
-                {
-                    char path[PATH_MAX];
-                    CreateSystemPathName(currentIndex, path, sizeof(path));
-                    Rename(CurrentSystemDir, path);
-                }
+
             }
 
             // Make the newest system the current system.
