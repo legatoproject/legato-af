@@ -193,10 +193,10 @@ le_result_t pa_ecall_GetMsdTxMode
     return LE_FAULT;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to start the eCall.
- *
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if unsuccessful.
@@ -204,8 +204,7 @@ le_result_t pa_ecall_GetMsdTxMode
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_ecall_Start
 (
-    pa_ecall_StartType_t callType,
-    uint32_t *           callIdPtr
+    pa_ecall_StartType_t callType
 )
 {
     LE_ERROR("Unsupported function called");

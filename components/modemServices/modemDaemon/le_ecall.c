@@ -710,7 +710,7 @@ static le_result_t DialAttempt
     {
         LE_INFO("Start dial attempt #%d",
                 ECallObj.redial.dialAttemptsCount+1);
-        if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
+        if(pa_ecall_Start(ECallObj.startType) == LE_OK)
         {
             ECallObj.redial.dialAttemptsCount++;
             result = LE_OK;
@@ -726,7 +726,7 @@ static le_result_t DialAttempt
         LE_INFO("Start dial attempt %d of %d",
                 ECallObj.redial.dialAttemptsCount+1,
                 ECallObj.redial.maxDialAttempts);
-        if(pa_ecall_Start(ECallObj.startType, &ECallObj.callId) == LE_OK)
+        if(pa_ecall_Start(ECallObj.startType) == LE_OK)
         {
             ECallObj.redial.dialAttemptsCount++;
             result = LE_OK;
@@ -1514,7 +1514,8 @@ static void ECallStateHandler
 {
     bool endOfRedialPeriod = false;
 
-    LE_DEBUG("Handler Function called with state %d", *statePtr);
+    LE_DEBUG("Handler Function called with state %d. sessionState %d", *statePtr,
+                ECallObj.sessionState);
 
     switch (*statePtr)
     {
@@ -1736,6 +1737,7 @@ static void CallEventHandler
 
     LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
+
     if (eCallPtr->sessionState == ECALL_SESSION_CONNECTED)
     {
         le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
@@ -1748,10 +1750,26 @@ static void CallEventHandler
 
         LE_DEBUG("callId %d eCallPtr->callId %d", callId, eCallPtr->callId);
 
+
+        if (LE_MCC_EVENT_CONNECTED == event)
+        {
+
+            LE_DEBUG("Updating callid: eCallPtr->callId %d = callId %d. sessionState %d",
+                    eCallPtr->callId,
+                    callId,
+                    ECallObj.sessionState);
+            // When a call, either outgoing or incoming connects in session, it's considered a eCall
+            // Then the CallId is set.
+            eCallPtr->callId = callId;
+        }
+
+
+
         if ((callId == eCallPtr->callId) && (event == LE_MCC_EVENT_TERMINATED))
         {
             eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
             eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
+            eCallPtr->callId = -1;
 
             LE_DEBUG("Call termination status available");
             // Synchronize eCall handler with MCC notification
@@ -3677,7 +3695,6 @@ le_result_t le_ecall_SetSystemStandard
         result = LE_FAULT;
         le_cfg_CancelTxn( iteratorRef );
     }
-
     return result;
 }
 

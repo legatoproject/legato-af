@@ -418,26 +418,28 @@ COMPONENT_INIT
 
     le_posCtrl_Request();
 
-    LE_ERROR_IF((!le_ecall_AddStateChangeHandler(ECallStateHandler, NULL)),
-                "Unable to add an eCall state change handler!");
+    LE_ERROR_IF((NULL == le_ecall_AddStateChangeHandler(ECallStateHandler, NULL)),
+                " Unable to add an eCall state change handler!");
 
-    LE_WARN_IF((le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK),
+
+    LE_WARN_IF((LE_OK != le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH)),
                 "Unable to set the MSD Push mode! Use default settings.");
 
-    LE_ERROR_IF((le_ecall_SetSystemStandard(LE_ECALL_PAN_EUROPEAN) != LE_OK),
-                "Unable to set System Standard!");
 
-    LE_ERROR_IF((le_ecall_SetMsdVersion(1) != LE_OK),
-                "Unable to set Msd Version!");
+    LE_ERROR_IF((LE_OK != le_ecall_SetSystemStandard(LE_ECALL_PAN_EUROPEAN)),
+        " Unable to set System Standard!");
 
-    LE_ERROR_IF((le_ecall_SetVehicleType(LE_ECALL_MSD_VEHICLE_BUS_M2) != LE_OK),
-                "Unable to set Vehicle Type!");
+    LE_ERROR_IF((LE_OK != le_ecall_SetMsdVersion(1)),
+                " Unable to set Msd Version!");
 
-    LE_ERROR_IF((le_ecall_SetVIN("12345678901234567") != LE_OK),
-                "Unable to set VIN!");
+    LE_ERROR_IF((LE_OK != le_ecall_SetVehicleType(LE_ECALL_MSD_VEHICLE_BUS_M2)),
+                " Unable to set Vehicle Type!");
 
-    LE_ERROR_IF((le_ecall_SetPropulsionType(LE_ECALL_PROPULSION_TYPE_ELECTRIC) != LE_OK),
-                "Unable to set Propulsion Type!");
+    LE_ERROR_IF((LE_OK != le_ecall_SetVIN("12345678901234567")),
+                " Unable to set VIN!");
+
+    LE_ERROR_IF((LE_OK != le_ecall_SetPropulsionType(LE_ECALL_PROPULSION_TYPE_ELECTRIC)),
+                " Unable to set VIN!");
 
     LE_INFO("eCallDemo app is started.");
 }
