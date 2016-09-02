@@ -179,7 +179,7 @@
 /**
  * @file le_wifiClient_interface.h
  *
- * Legato @ref c_le_wifiClient include file.
+ * Legato @ref c_le_wifi_client include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
