@@ -179,16 +179,6 @@ void FieldExecHandler
 void RunTest(void)
 {
     banner("Test Asset list before creating instances");
-    char listTestOne[] = "</lwm2m/9>,";
-    char assetList[1000];
-    int listSize;
-    int numAssets;
-
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    LE_TEST( memcmp(assetList, listTestOne, sizeof(listTestOne)) == 0 );
-    LE_TEST( listSize == strlen(listTestOne) );
-    LE_TEST( numAssets == 1 );
-
 
     banner("Get Asset Refs before creating instances");
     assetData_AssetDataRef_t lwm2mAssetRef;
@@ -233,16 +223,6 @@ void RunTest(void)
     // Try creating the same instance again
     LE_TEST( assetData_CreateInstanceById("lwm2m", 9, 4, &lwm2mRefOneB) == LE_DUPLICATE );
     LE_TEST( lwm2mRefOneB == NULL );
-
-
-    banner("Test Asset list after creating instances");
-    char listTestTwo[] = "</le_testOne/1000/0>,</le_testOne/1000/1>,"
-                         "</lwm2m/9/3>,</lwm2m/9/4>,";
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    LE_TEST( memcmp(assetList, listTestTwo, sizeof(listTestTwo)) == 0 );
-    LE_TEST( listSize == strlen(listTestTwo) );
-    LE_TEST( numAssets == 4 );
-
 
     banner("Get Asset Refs");
     assetData_AssetDataRef_t testOneAssetRef;
@@ -404,44 +384,6 @@ void RunTest(void)
 
     LE_TEST( bytesWrittenOne == bytesWrittenTwo );
     LE_TEST( memcmp(tlvBufferOne, tlvBufferTwo, bytesWrittenOne) == 0 );
-
-
-    banner("Test Asset list after deleting instances");
-    assetData_DeleteInstance(testOneRefZero);
-    char listTestThree[] = "</legato/0/0>,"
-                            "</le_testOne/1000/1>,"
-                            "</lwm2m/9/3>,</lwm2m/9/4>,";
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    LE_TEST( memcmp(assetList, listTestThree, sizeof(listTestThree)) == 0 );
-    LE_TEST( listSize == strlen(listTestThree) );
-    LE_TEST( numAssets == 4 );
-
-    assetData_DeleteInstance(testOneRefOne);
-    char listTestFour[] = "</legato/0/0>,"
-                          "</le_testOne/1000>,"
-                          "</lwm2m/9/3>,</lwm2m/9/4>,";
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    LE_TEST( memcmp(assetList, listTestFour, sizeof(listTestFour)) == 0 );
-    LE_TEST( listSize == strlen(listTestFour) );
-    LE_TEST( numAssets == 4 );
-
-    assetData_DeleteInstance(frameworkRefZero);
-    char listTestFive[] = "</legato/0>,"
-                          "</le_testOne/1000>,"
-                          "</lwm2m/9/3>,</lwm2m/9/4>,";
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    LE_TEST( memcmp(assetList, listTestFive, sizeof(listTestFive)) == 0 );
-    LE_TEST( listSize == strlen(listTestFive) );
-    LE_TEST( numAssets == 4 );
-
-    assetData_DeleteInstance(lwm2mRefZero);
-    char listTestSix[] = "</legato/0>,"
-                         "</le_testOne/1000>,"
-                         "</lwm2m/9/4>,";
-    assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    LE_TEST( memcmp(assetList, listTestSix, sizeof(listTestSix)) == 0 );
-    LE_TEST( listSize == strlen(listTestSix) );
-    LE_TEST( numAssets == 3 );
 }
 
 

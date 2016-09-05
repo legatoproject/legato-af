@@ -1681,21 +1681,6 @@ void le_avc_UnblockInstall
     }
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sends a registration update to the server.
- */
-//--------------------------------------------------------------------------------------------------
-void avcServer_RegistrationUpdate
-(
-    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
-)
-{
-    lwm2m_RegUpdateIfNotObserved(instanceRef);
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialization function for AVC Daemon

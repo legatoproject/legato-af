@@ -926,27 +926,6 @@ le_result_t assetData_ReadFieldListFromTLV
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get a list of the defined assets and asset instances.
- *
- * The list is returned as a string formatted for QMI_LWM2M_REG_UPDATE_REQ
- *
- * @return:
- *      - LE_OK on success
- *      - LE_OVERFLOW if string value was truncated when copied to strBufPtr
- *      - LE_FAULT on any other error
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAssetList
-(
-    char* strBufPtr,                            ///< [OUT] The returned list
-    size_t strBufNumBytes,                      ///< [IN] Size of strBuf
-    int* listNumBytesPtr,                       ///< [OUT] Size of returned list
-    int* numAssetsPtr                           ///< [OUT] Number of assets + instances
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Enables or Disables a field for observe.
  *
  * @return:
@@ -1003,6 +982,30 @@ bool assetData_IsObject9Observed
 void assetData_CancelAllObserve
 (
     void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sends a registration update to the server.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void assetData_RegistrationUpdate
+(
+    void
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sends a registration update if observe is not enabled. A registration update would also be sent
+ * if the instanceRef is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void assetData_RegUpdateIfNotObserved
+(
+    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
 );
 
 #endif // LEGATO_ASSET_DATA_INCLUDE_GUARD

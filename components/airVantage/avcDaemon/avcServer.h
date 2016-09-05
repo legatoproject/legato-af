@@ -82,15 +82,6 @@ LE_SHARED void avcServer_ReportInstallProgress
                                    ///        LE_AVC_INSTALL_FAILED.
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Sends a registration update to the server.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void avcServer_RegistrationUpdate
-(
-    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
-);
 
 //--------------------------------------------------------------------------------------------------
 /**

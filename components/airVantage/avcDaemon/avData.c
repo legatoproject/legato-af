@@ -163,6 +163,9 @@ static void ClientCloseSessionHandler
             le_ref_DeleteRef( InstanceRefMap, (void*)le_ref_GetSafeRef(iterRef) );
         }
     }
+
+    // Send registration update after the asset is removed.
+    assetData_RegistrationUpdate();
 }
 
 

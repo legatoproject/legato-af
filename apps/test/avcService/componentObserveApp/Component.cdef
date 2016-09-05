@@ -4,7 +4,6 @@ requires:
     api:
     {
         le_avdata.api
-        le_avc.api
     }
 }
 

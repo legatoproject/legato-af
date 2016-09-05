@@ -92,13 +92,6 @@ static assetData_InstanceDataRef_t CurrentReadInstRef;
 //--------------------------------------------------------------------------------------------------
 static assetData_AssetDataRef_t CurrentReadAssetRef;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Used to delay reporting REG_UPDATE, so that we don't generate too much message traffic.
- */
-//--------------------------------------------------------------------------------------------------
-static le_timer_Ref_t RegUpdateTimerRef;
-
 
 //--------------------------------------------------------------------------------------------------
 // Local functions
@@ -552,6 +545,10 @@ static void OperationHandler
 
             assetData_DeleteInstance(instRef);
             pa_avc_OperationReportSuccess(opRef, NULL, 0);
+
+            // Send registration update after the instance is removed.
+            assetData_RegistrationUpdate();
+
             break;
 
         case PA_AVC_OPTYPE_OBSERVE:
@@ -600,130 +597,6 @@ static void OperationHandler
 }
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Sends a registration update to the server and also used as a handler to receive
- * UpdateRequired indication.
- */
-//--------------------------------------------------------------------------------------------------
-void lwm2m_RegistrationUpdate
-(
-    void
-)
-{
-    // This size must the same as OBJ_PATH_MAX_LEN_V01 in qapi_lwm2m_v01.h
-    char assetList[4032];
-    int listSize;
-    int numAssets;
-
-    le_result_t rc;
-
-    rc = assetData_GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    if (rc == LE_OK)
-    {
-        LE_DEBUG("Reg Update.");
-        pa_avc_RegistrationUpdate(assetList, listSize, numAssets);
-    }
-    else
-    {
-        //ToDo: Support REG_UPDATE of more than 4K
-        LE_ERROR("Asset data overflowed during registration update.");
-    }
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Sends a registration update if observe is not enabled. A registration update would also be sent
- * if the instanceRef is not valid.
- */
-//--------------------------------------------------------------------------------------------------
-void lwm2m_RegUpdateIfNotObserved
-(
-    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
-)
-{
-    // If observe is enabled for object 9 state and result, don't force a registration
-    // update.
-    if ( (instanceRef != NULL) && assetData_IsObject9Observed(instanceRef) )
-    {
-        LE_DEBUG("Observe enabled on Object9.");
-        return;
-    }
-    else
-    {
-        lwm2m_RegistrationUpdate();
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler function for RegUpdateTimerRef expiry
- */
-//--------------------------------------------------------------------------------------------------
-static void RegUpdateTimerHandler
-(
-    le_timer_Ref_t timerRef    ///< This timer has expired
-)
-{
-    LE_INFO("RegUpdate timer expired; reporting REG_UPDATE");
-
-    lwm2m_RegistrationUpdate();
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler function for instance creation for any asset
- */
-//--------------------------------------------------------------------------------------------------
-static void AssetActionHandler
-(
-    assetData_AssetDataRef_t assetRef,
-    int instanceId,
-    assetData_ActionTypes_t action,
-    void* contextPtr
-)
-{
-    char appName[100];
-    int assetId;
-
-    if ( assetData_GetAppNameFromAsset(assetRef, appName, sizeof(appName)) != LE_OK )
-    {
-        LE_ERROR("Can't get app name from assetRef=%p", assetRef);
-        return;
-    }
-
-    if ( assetData_GetAssetIdFromAsset(assetRef, &assetId) != LE_OK )
-    {
-        LE_ERROR("Can't get assetId for app '%s' from assetRef=%p", appName, assetRef);
-        return;
-    }
-
-    // Only interested in CREATE or DELETE actions; anything else is an error
-    if ( action == ASSET_DATA_ACTION_CREATE )
-    {
-        LE_INFO("/%s/%d/%d created.", appName, assetId, instanceId);
-
-        // Start or restart the timer; will only report to the modem when the timer expires.
-        // TODO: Probably need to revisit how this is done.
-        le_timer_Restart(RegUpdateTimerRef);
-    }
-    else if ( action == ASSET_DATA_ACTION_DELETE )
-    {
-        LE_INFO("/%s/%d/%d deleted.", appName, assetId, instanceId);
-
-        // Start or restart the timer; will only report to the modem when the timer expires.
-        // TODO: Probably need to revisit how this is done.
-        le_timer_Restart(RegUpdateTimerRef);
-    }
-    else
-    {
-        LE_ERROR("Unexpected action %i on /%s/%d/%d.", action, appName, assetId, instanceId);
-    }
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -743,18 +616,7 @@ le_result_t lwm2m_Init
 {
     // Register handlers for Operation and UpdateRequired indications
     pa_avc_SetLWM2MOperationHandler(OperationHandler);
-    pa_avc_SetLWM2MUpdateRequiredHandler(lwm2m_RegistrationUpdate);
-
-    // Get instance creation or deletion events for any asset
-    assetData_server_SetAllAssetActionHandler(AssetActionHandler, NULL);
-
-    // Use a timer to delay reporting instance creation events to the modem for 15 seconds after
-    // the last creation event.  The timer will only be started when the creation event happens.
-    le_clk_Time_t timerInterval = { .sec=15, .usec=0 };
-
-    RegUpdateTimerRef = le_timer_Create("RegUpdate timer");
-    le_timer_SetInterval(RegUpdateTimerRef, timerInterval);
-    le_timer_SetHandler(RegUpdateTimerRef, RegUpdateTimerHandler);
+    pa_avc_SetLWM2MUpdateRequiredHandler(assetData_RegistrationUpdate);
 
     return LE_OK;
 }

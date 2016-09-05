@@ -277,7 +277,7 @@ static void SetInstallObjState_
     LE_ASSERT(assetData_client_SetInt(LegatoInstallObjectRef, LO1F_STATE, state) == LE_OK);
     LE_ASSERT(assetData_client_SetInt(LegatoInstallObjectRef, LO1F_UPDATE_RESULT, result) == LE_OK);
 
-    avcServer_RegistrationUpdate(LegatoInstallObjectRef);
+    assetData_RegUpdateIfNotObserved(LegatoInstallObjectRef);
 }
 
 #define SetInstallObjState(state, result) SetInstallObjState_(state, result, __FUNCTION__, __LINE__)

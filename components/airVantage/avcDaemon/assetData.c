@@ -256,6 +256,13 @@ static le_hashmap_Ref_t AssetMap = NULL;
 static le_hashmap_Ref_t AssetMapByName = NULL;
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Used to delay reporting REG_UPDATE, so that we don't generate too much message traffic.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_timer_Ref_t RegUpdateTimerRef;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2009,6 +2016,122 @@ le_result_t static SetString
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get a list of the defined assets and asset instances.
+ *
+ * The list is returned as a string formatted for QMI_LWM2M_REG_UPDATE_REQ
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if string value was truncated when copied to strBufPtr
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetAssetList
+(
+    char* strBufPtr,                            ///< [OUT] The returned list
+    size_t strBufNumBytes,                      ///< [IN] Size of strBuf
+    int* listNumBytesPtr,                       ///< [OUT] Size of returned list
+    int* numAssetsPtr                           ///< [OUT] Number of assets + instances
+)
+{
+    const char* nameIdPtr;
+    const AssetData_t* assetDataPtr;
+    InstanceData_t* assetInstancePtr;
+
+    le_hashmap_It_Ref_t iterRef;
+    le_dls_Link_t* linkPtr;
+    size_t bytesWritten;
+    char tempStr[100];
+    char nameStr[100];
+    char* namePrefixPtr;
+
+    int assetCount=0;
+
+    // These two pointers are used to determine the writable part of the strBuf:
+    //  - startBufPtr points to the next writable character
+    //  - endBufPtr points past the last character in strBuf
+    // The number of characters left is always (endBufPtr-startBufPtr)
+    char* startBufPtr = strBufPtr;
+    char* endBufPtr = strBufPtr + strBufNumBytes;
+
+    // Write all the asset instances, and if an asset has no instances, then write the asset
+    iterRef = le_hashmap_GetIterator(AssetMap);
+
+    while ( le_hashmap_NextNode(iterRef) == LE_OK )
+    {
+        nameIdPtr = le_hashmap_GetKey(iterRef);
+        assetDataPtr = le_hashmap_GetValue(iterRef);
+
+        // Server expects app names to have "le_" prefix.  The app name is the first part of
+        // nameIdPtr, up to the first '/', unless it is "lwm2m" or "legato", which are not apps.
+        // TODO: Should the "le_" prefix instead be added to the app name when stored?
+        le_utf8_CopyUpToSubStr(nameStr, nameIdPtr, "/", sizeof(nameStr), NULL);
+        if ( (strcmp(nameStr, "lwm2m") == 0) || (strcmp(nameStr, "legato") == 0) )
+        {
+            namePrefixPtr = "";
+        }
+        else
+        {
+            namePrefixPtr = "le_";
+        }
+
+        // Get the start of the instance list
+        linkPtr = le_dls_Peek(&assetDataPtr->instanceList);
+
+        // If the asset has no instances, then just write the asset
+        if ( linkPtr == NULL )
+        {
+            FormatString(tempStr, sizeof(tempStr), "</%s%s>,", namePrefixPtr, nameIdPtr);
+            LE_PRINT_VALUE("%s", tempStr);
+
+            if ( le_utf8_Copy(startBufPtr, tempStr, endBufPtr-startBufPtr, &bytesWritten) != LE_OK )
+            {
+                return LE_OVERFLOW;
+            }
+
+            assetCount++;
+
+            // Point to the character after the last one written
+            startBufPtr += bytesWritten;
+        }
+
+        // Otherwise, loop through the asset instances
+        else while ( linkPtr != NULL )
+        {
+            assetInstancePtr = CONTAINER_OF(linkPtr, InstanceData_t, link);
+
+            FormatString(tempStr,
+                         sizeof(tempStr),
+                         "</%s%s/%i>,",
+                         namePrefixPtr,
+                         nameIdPtr,
+                         assetInstancePtr->instanceId);
+            LE_PRINT_VALUE("%s", tempStr);
+
+            if ( le_utf8_Copy(startBufPtr, tempStr, endBufPtr-startBufPtr, &bytesWritten) != LE_OK )
+            {
+                return LE_OVERFLOW;
+            }
+
+            assetCount++;
+
+            // Point to the character after the last one written
+            startBufPtr += bytesWritten;
+
+            linkPtr = le_dls_PeekNext(&assetDataPtr->instanceList, linkPtr);
+        }
+    }
+
+    // Set return values
+    *listNumBytesPtr = startBufPtr - strBufPtr;
+    *numAssetsPtr = assetCount;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add a handler to be notified on field actions, such as write or execute
  *
  * @return:
@@ -2075,13 +2198,77 @@ static assetData_AssetActionHandlerRef_t AddAssetActionHandler
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Sends a registration update to the server and also used as a handler to receive
+ * UpdateRequired indication. For create, RegistrationUpdate will be done by assetData create
+ * function, but for delete, whoever deletes an instance has to explicitly call RegistrationUpdate.
+ */
+//--------------------------------------------------------------------------------------------------
+void assetData_RegistrationUpdate
+(
+    void
+)
+{
+    // This size must the same as OBJ_PATH_MAX_LEN_V01 in qapi_lwm2m_v01.h
+    char assetList[4032];
+    int listSize;
+    int numAssets;
+
+    le_result_t rc;
+
+    rc = GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
+    if (rc == LE_OK)
+    {
+        LE_DEBUG("Reg Update.");
+        pa_avc_RegistrationUpdate(assetList, listSize, numAssets);
+    }
+    else
+    {
+        //ToDo: Support REG_UPDATE of more than 4K
+        LE_ERROR("Asset data overflowed during registration update.");
+    }
+
+    // As a registration update already happened at this point, there is no need
+    // for the timer to kick off another one later.
+    le_timer_Stop(RegUpdateTimerRef);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sends a registration update if observe is not enabled. A registration update would also be sent
+ * if the instanceRef is not valid.
+ */
+//--------------------------------------------------------------------------------------------------
+void assetData_RegUpdateIfNotObserved
+(
+    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
+)
+{
+    // If observe is enabled for object 9 state and result, don't force a registration
+    // update.
+    if ( (instanceRef != NULL) && assetData_IsObject9Observed(instanceRef) )
+    {
+        LE_DEBUG("Observe enabled on Object9.");
+        return;
+    }
+    else
+    {
+        assetData_RegistrationUpdate();
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 // Interface functions
 //--------------------------------------------------------------------------------------------------
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a new instance of the given asset
+ * Create a new instance of the given asset. This function will schedule a registration update after
+ * 1 second if asset creation is successful. The 1 second delay is used to aggregate multiple
+ * registration updates messages.
  *
  * @return:
  *      - LE_OK on success
@@ -2206,6 +2393,11 @@ le_result_t assetData_CreateInstanceById
 
     LE_INFO("Finished creating instance %i for %s/%i", assetInstPtr->instanceId, appNamePtr, assetId);
 
+    LE_DEBUG("Schedule a registration update after asset creation.");
+
+    // Start or restart the timer; will only report to the modem when the timer expires.
+    le_timer_Restart(RegUpdateTimerRef);
+
     return LE_OK;
 }
 
@@ -2283,9 +2475,6 @@ void assetData_DeleteInstance
             instanceRef->instanceId);
 
     // Call any registered handlers to be notified before the instance is deleted.
-    // The handlers need to be called before the deletion, so they can extract info from the
-    // instance, if they need it, but they also have to be careful to not immediately do anything
-    // that would depend on the instance being deleted, e.g. send REG_UPDATE right away.
     CallAssetActionHandlers(instanceRef->assetDataPtr,
                             instanceRef->instanceId,
                             ASSET_DATA_ACTION_DELETE);
@@ -3369,6 +3558,22 @@ void assetData_server_SetAllAssetActionHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler function for RegUpdateTimerRef expiry
+ */
+//--------------------------------------------------------------------------------------------------
+static void RegUpdateTimerHandler
+(
+    le_timer_Ref_t timerRef    ///< This timer has expired
+)
+{
+    LE_INFO("RegUpdate timer expired; reporting REG_UPDATE");
+
+    assetData_RegistrationUpdate();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init this sub-component
  */
 //--------------------------------------------------------------------------------------------------
@@ -3395,6 +3600,15 @@ le_result_t assetData_Init
                                        31,
                                        le_hashmap_HashString,
                                        le_hashmap_EqualsString);
+
+
+    // Use a timer to delay reporting instance creation events to the modem for 1 second after
+    // the last creation event.  The timer will only be started when the creation event happens.
+    le_clk_Time_t timerInterval = { .sec=1, .usec=0 };
+
+    RegUpdateTimerRef = le_timer_Create("RegUpdate timer");
+    le_timer_SetInterval(RegUpdateTimerRef, timerInterval);
+    le_timer_SetHandler(RegUpdateTimerRef, RegUpdateTimerHandler);
 
     // Pre-load the /lwm2m/9 object into the AssetMap; don't actually need to use the assetRef here.
     assetData_AssetDataRef_t lwm2mAssetRef;
@@ -4187,121 +4401,6 @@ le_result_t assetData_ReadFieldListFromTLV
     return result;
 }
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get a list of the defined assets and asset instances.
- *
- * The list is returned as a string formatted for QMI_LWM2M_REG_UPDATE_REQ
- *
- * @return:
- *      - LE_OK on success
- *      - LE_OVERFLOW if string value was truncated when copied to strBufPtr
- *      - LE_FAULT on any other error
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t assetData_GetAssetList
-(
-    char* strBufPtr,                            ///< [OUT] The returned list
-    size_t strBufNumBytes,                      ///< [IN] Size of strBuf
-    int* listNumBytesPtr,                       ///< [OUT] Size of returned list
-    int* numAssetsPtr                           ///< [OUT] Number of assets + instances
-)
-{
-    const char* nameIdPtr;
-    const AssetData_t* assetDataPtr;
-    InstanceData_t* assetInstancePtr;
-
-    le_hashmap_It_Ref_t iterRef;
-    le_dls_Link_t* linkPtr;
-    size_t bytesWritten;
-    char tempStr[100];
-    char nameStr[100];
-    char* namePrefixPtr;
-
-    int assetCount=0;
-
-    // These two pointers are used to determine the writable part of the strBuf:
-    //  - startBufPtr points to the next writable character
-    //  - endBufPtr points past the last character in strBuf
-    // The number of characters left is always (endBufPtr-startBufPtr)
-    char* startBufPtr = strBufPtr;
-    char* endBufPtr = strBufPtr + strBufNumBytes;
-
-    // Write all the asset instances, and if an asset has no instances, then write the asset
-    iterRef = le_hashmap_GetIterator(AssetMap);
-
-    while ( le_hashmap_NextNode(iterRef) == LE_OK )
-    {
-        nameIdPtr = le_hashmap_GetKey(iterRef);
-        assetDataPtr = le_hashmap_GetValue(iterRef);
-
-        // Server expects app names to have "le_" prefix.  The app name is the first part of
-        // nameIdPtr, up to the first '/', unless it is "lwm2m" or "legato", which are not apps.
-        // TODO: Should the "le_" prefix instead be added to the app name when stored?
-        le_utf8_CopyUpToSubStr(nameStr, nameIdPtr, "/", sizeof(nameStr), NULL);
-        if ( (strcmp(nameStr, "lwm2m") == 0) || (strcmp(nameStr, "legato") == 0) )
-        {
-            namePrefixPtr = "";
-        }
-        else
-        {
-            namePrefixPtr = "le_";
-        }
-
-        // Get the start of the instance list
-        linkPtr = le_dls_Peek(&assetDataPtr->instanceList);
-
-        // If the asset has no instances, then just write the asset
-        if ( linkPtr == NULL )
-        {
-            FormatString(tempStr, sizeof(tempStr), "</%s%s>,", namePrefixPtr, nameIdPtr);
-            LE_PRINT_VALUE("%s", tempStr);
-
-            if ( le_utf8_Copy(startBufPtr, tempStr, endBufPtr-startBufPtr, &bytesWritten) != LE_OK )
-            {
-                return LE_OVERFLOW;
-            }
-
-            assetCount++;
-
-            // Point to the character after the last one written
-            startBufPtr += bytesWritten;
-        }
-
-        // Otherwise, loop through the asset instances
-        else while ( linkPtr != NULL )
-        {
-            assetInstancePtr = CONTAINER_OF(linkPtr, InstanceData_t, link);
-
-            FormatString(tempStr,
-                         sizeof(tempStr),
-                         "</%s%s/%i>,",
-                         namePrefixPtr,
-                         nameIdPtr,
-                         assetInstancePtr->instanceId);
-            LE_PRINT_VALUE("%s", tempStr);
-
-            if ( le_utf8_Copy(startBufPtr, tempStr, endBufPtr-startBufPtr, &bytesWritten) != LE_OK )
-            {
-                return LE_OVERFLOW;
-            }
-
-            assetCount++;
-
-            // Point to the character after the last one written
-            startBufPtr += bytesWritten;
-
-            linkPtr = le_dls_PeekNext(&assetDataPtr->instanceList, linkPtr);
-        }
-    }
-
-    // Set return values
-    *listNumBytesPtr = startBufPtr - strBufPtr;
-    *numAssetsPtr = assetCount;
-
-    return LE_OK;
-}
 
 
 //--------------------------------------------------------------------------------------------------
