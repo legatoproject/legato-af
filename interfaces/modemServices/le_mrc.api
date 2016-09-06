@@ -1046,8 +1046,10 @@ FUNCTION DeletePreferredOperatorsList
 /**
  * This function must be called to get the Operator information details.
  *
- * @return LE_FAULT  Function failed.
- * @return LE_OK     Function succeeded.
+ * @return
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
+ *      - LE_FAULT for all other errors
  *
  * @note <b>multi-app safe</b>
  */
@@ -1228,7 +1230,7 @@ FUNCTION DeleteCellularNetworkScan
  *
  * @return
  *      - LE_OK on success
- *      - LE_OVERFLOW if the mcc or mnc would not fit in buffer
+ *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
  *      - LE_FAULT for all other errors
  *
  * @note On failure, the process exits, so you don't have to worry about checking the returned

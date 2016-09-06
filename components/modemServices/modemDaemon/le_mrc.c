@@ -1928,8 +1928,9 @@ void le_mrc_DeletePreferredOperatorsList
  * This function must be called to get the Operator information details.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
+ *      - LE_FAULT for all other errors
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -2587,7 +2588,7 @@ void le_mrc_DeleteCellularNetworkScan
  *
  * @return
  *      - LE_OK on success
- *      - LE_OVERFLOW if the mcc or mnc would not fit in buffer
+ *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
  *      - LE_FAULT for all other errors
  *
  * @note
