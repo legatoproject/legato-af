@@ -705,7 +705,7 @@ static le_result_t DialAttempt
         }
     }
 
-    // Check dial attemps counter
+    // Check dial attempts counter
     if(ECallObj.redial.maxDialAttempts == UNLIMITED_DIAL_ATTEMPTS)
     {
         LE_INFO("Start dial attempt #%d",
@@ -721,28 +721,31 @@ static le_result_t DialAttempt
             result = LE_FAULT;
         }
     }
-    else if(ECallObj.redial.dialAttemptsCount < ECallObj.redial.maxDialAttempts)
+    else
     {
-        LE_INFO("Start dial attempt %d of %d",
-                ECallObj.redial.dialAttemptsCount+1,
-                ECallObj.redial.maxDialAttempts);
-        if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+        if(ECallObj.redial.dialAttemptsCount < ECallObj.redial.maxDialAttempts)
         {
-            ECallObj.redial.dialAttemptsCount++;
-            result = LE_OK;
+            LE_INFO("Start dial attempt %d of %d",
+                    ECallObj.redial.dialAttemptsCount+1,
+                    ECallObj.redial.maxDialAttempts);
+            if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+            {
+                ECallObj.redial.dialAttemptsCount++;
+                result = LE_OK;
+            }
+            else
+            {
+                LE_ERROR("Dial attempt failed!");
+                result = LE_FAULT;
+            }
         }
         else
         {
-            LE_ERROR("Dial attempt failed!");
-            result = LE_FAULT;
+            LE_INFO("Max dial attempts done");
+            // Stop redial
+            RedialStop(ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT);
+            result = LE_OK;
         }
-    }
-
-    if(ECallObj.redial.dialAttemptsCount >= ECallObj.redial.maxDialAttempts)
-    {
-        LE_INFO("Max dial attempts done");
-        // Stop redial
-        RedialStop(ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT);
     }
 
     return result;
