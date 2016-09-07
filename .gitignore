@@ -44,6 +44,5 @@ targetDefs.extra
 modules/*
 docManagement
 
-# PlantUML Jar file
-3rdParty/plantuml.*.jar
-
+# 3rd Party content
+3rdParty/*

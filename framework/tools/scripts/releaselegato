@@ -67,6 +67,11 @@ CopyRepo() {
 
     # Copy files managed by git, except the ones that match exclude_pattern
     git ls-tree -r --name-only HEAD | while read LINE; do
+        if [ -d "$LINE" ]; then
+            echo "Ignoring [$path] $LINE (submodule)"
+            continue
+        fi
+
         echo "Copying [$path] $LINE"
         if [ -L "$LINE" ]; then
             cp -Rd "$LINE" "$STAGE_DIR/$path/$LINE"
