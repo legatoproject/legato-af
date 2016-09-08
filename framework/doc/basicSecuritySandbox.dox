@@ -2,37 +2,44 @@
 
 Also see @ref howToSecuritySandboxOverview and @ref howToSecuritySandboxUse.
 
-Legato uses sandboxes to provide a security layer against untrusted apps running in the same
-system. Legato sandboxes isolate apps from the rest of the system. This allows both original
-equipment manufacturers (OEM) and independent software vendors (ISV)
-components to safely coexist on the same device without fear of interfering or breaking the stack.
+Legato uses sandboxes to provide a security layer between apps running in the same
+system. Legato sandboxes isolate apps from the rest of the system. This allows
+both original equipment manufacturer (OEM) and independent software vendor (ISV)
+apps to coexist safely on the same device without fear of interfering with each other or breaking
+the rest of the software stack.
 
-Access control for files is done using the underlying POSIX access control mechanisms, based
-on users, permissions, and SMACK labels.
+Each app has its own unique user ID, group ID, and root directory.
 
-All sandboxes are created in RAM, which provides the benefit of automatically
-removing all sandboxes during system shutdown. Legato sandboxes use bind mounts to import
-files into sandboxes (defined using the @c .adef and @c .sdef @c requires
-section). Bind-mounted files are updated when the file is updated. Bind-mounted files aren't copied
-so memory requirements are minimal.
+Legato sandboxes use @e chroot to limit an app's view to its own section of the file system only.
+Files are bound into the chroot jail using bind mounts. The process then only has access to files
+and directories under its root directory. Only processes with certain capabilities can find their
+way outside of their root directory; processes belonging to sandboxed apps run as unprivileged users
+that don't have those capabilities.
 
-A Legato sandboxed app can access services outside its sandbox.
-All available services are advertised by the Service Directory. Apps connect to services
-through a request to the Service Directory. The Service Directory grants access only if the
+Legato sandboxes use bind mounts to import files into sandboxes (defined using the @c .adef and
+@c .sdef @c requires section). This works like a file system hard link, except that the link
+is only stored in RAM and can cross over to different file systems.  Bind-mounting avoids copying
+so the overhead is minimal.
+
+Access control for files visible within the sandbox is done using a combination of standard POSIX
+discretionary access control (based on user and group permissions) and mandatory access control
+provided by Linux's SMACK.
+
+A Legato sandboxed app can access services outside its sandbox via inter-process communication
+(IPC).  All available IPC services are advertised by the Service Directory. Apps connect to
+services through a request to the Service Directory. The Service Directory grants access only if the
 app has been explicitly bound to a service (using the @c .adef and @c .sdef @c bindings section).
-
-Legato sandboxes use @e chroot to limit an app's view to its own file system only. Each app has its
-own unique user ID, group ID, and root directory. Files are bound into the chroot jail using bind mounts
-that change a process's root directory to a specified location. The process then
-only has access to files and directories under its root directory. Only processes with
-certain capabilities can find their way outside of their root directory.
+When access is granted, the connection to the client is passed to the server and all communication
+between the client and the server are direct from that point on.  SMACK is also used to add another
+layer of security to the IPC, limiting the passing of IPC socket file descriptors from one app
+to another
 
 Legato sandboxes also provide <i>resource limitations</i>. Resource limitations place
 limits on the amount of system resources an app is allowed to consume. Without
 resource limits, an isolated app can still cause damage by consuming all available resources.
+
 @todo Add support for flash and network consumption limits on apps.
 
-<HR>
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
