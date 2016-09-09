@@ -3,18 +3,17 @@
 This topic describes how to get a POSIX/Linux legacy app written in C running on a Legato device
 and using Legato APIs to access services like SMS, SIM, voice calling, and data connections.
 
-@note The examples in this topic all use the command-line tools, so you will need to have your shell
-configured correctly by running <c> bin/legs </c> in the directory in which your framework is
-installed.
+@note The examples in this topic use the command-line tools. You will need to have your shell
+configured correctly by running @ref yoctoBuildLegato_configShell_binlegs in the directory where
+your framework is installed.
 @code
 $ path/to/LegatoFramework/bin/legs
 @endcode
  <br>
-The examples also use a Sierra Wireless WP85xx device. If your device
-is different, substitute that device wherever you see WP85. <br>
-<br>
+The examples also use a Sierra Wireless WP85xx target. If your using a different target,
+substitute your target name wherever you see @c WP85. <br>
+ <br>
 The examples use IP address 192.168.2.2. Change it if your target IP uses a different address.
-
 
 @section howtoPortingLegacyC_CrossBuild Cross-Build
 

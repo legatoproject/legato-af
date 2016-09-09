@@ -46,7 +46,7 @@ Open a new terminal on the host.
 
 @c cd to your Legato directory.
 
-Run @c bin/legs to set the Legato environment.
+Run @ref yoctoBuildLegato_configShell_binlegs to set up your shell environment.
 
 Run:
 @code
