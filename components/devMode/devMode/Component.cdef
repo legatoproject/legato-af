@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_pm.api
+        le_updateCtrl.api
+    }
+}
+
+sources:
+{
+    devMode.c
+}

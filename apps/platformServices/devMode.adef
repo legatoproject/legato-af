@@ -1,0 +1,20 @@
+sandboxed: false
+
+executables:
+{
+    devMode = ( $LEGATO_ROOT/components/devMode/devMode )
+}
+
+processes:
+{
+    run:
+    {
+        ( devMode )
+    }
+}
+
+bindings:
+{
+    devMode.devMode.le_pm -> powerMgr.le_pm
+    devMode.devMode.le_updateCtrl -> <root>.le_updateCtrl
+}
