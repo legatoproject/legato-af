@@ -24,20 +24,33 @@ static le_timer_Ref_t MarkGoodTimer;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Timer expiry handler for the "MarkGood" timer. Mark the system as "Good", and start the timer
- * again.
+ * Timer expiry handler for the "MarkGood" timer. Mark the system as "Good".
  */
 //--------------------------------------------------------------------------------------------------
 static void MarkGood
 (
-    le_timer_Ref_t timer
+    le_timer_Ref_t timer    ///< [IN] Timer ref. Not used.
 )
 {
     // Attempt to mark the system "good", so return status isn't checked. If there's a probation
     // lock, it might be from the apps are being developed, so we shouldn't override that by forcing
     // "Mark Good".
     le_updateCtrl_MarkGood(false);
+}
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function called when the system is changed (app installed or removed). Upon system
+ * change, the "MarkGood" timer starts ticking.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SysChangeHandler
+(
+    const char* appName,  ///< [IN] App being installed or removed. Not used.
+    void* contextPtr      ///< [IN] Context for this function. Not used.
+)
+{
     le_timer_Start(MarkGoodTimer);
 }
 
@@ -68,9 +81,16 @@ COMPONENT_INIT
     le_pm_StayAwake(wakeUpSource);
 
 
-    /* Attempt to mark the system as "Good" within 10 seconds of system changes. */
+    /* Setup a timer to attempt to mark the system as "Good" within 10 seconds of system changes. */
     MarkGoodTimer = le_timer_Create("MarkGood");
     le_timer_SetHandler(MarkGoodTimer, MarkGood);
     le_timer_SetMsInterval(MarkGoodTimer, 10000);
-    le_timer_Start(MarkGoodTimer);
+
+    // Start the "MarkGood" timer upon the system changes of installing or uninstalling an app.
+    le_instStat_AddAppUninstallEventHandler(SysChangeHandler, NULL);
+    le_instStat_AddAppInstallEventHandler(SysChangeHandler, NULL);
+
+    // In case a new system has been installed, handle this system change. Otherwise calling this
+    // handler does no harm.
+    SysChangeHandler(NULL, NULL);
 }
