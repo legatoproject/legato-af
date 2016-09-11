@@ -251,21 +251,25 @@ static void GenerateDirBundleBuildStatements
     // Loop over list of directory contents.
     for (;;)
     {
+        // Setting errno so as to be able to detect errors from end of directory
+        // (as recommended in the documentation).
+        errno = 0;
+
         // Read an entry from the directory.
-        struct dirent entry;
-        struct dirent* entryPtr;
+        struct dirent* entryPtr = readdir(dir);
 
-        int result = readdir_r(dir, &entry, &entryPtr);
-
-        if (result != 0)
+        if (entryPtr == NULL)
         {
-            exceptionFunc("Internal error: readdir_r() failed.  Errno = "
-                          + std::string(strerror(errno)));
-        }
-        else if (entryPtr == NULL)
-        {
-            // Hit end of the directory.  Nothing more to do.
-            break;
+            if (errno != 0)
+            {
+                exceptionFunc("Internal error: readdir() failed.  Errno = "
+                              + std::string(strerror(errno)));
+            }
+            else
+            {
+                // Hit end of the directory.  Nothing more to do.
+                break;
+            }
         }
         // Skip "." and ".."
         else if ((strcmp(entryPtr->d_name, ".") != 0) && (strcmp(entryPtr->d_name, "..") != 0))
