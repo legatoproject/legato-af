@@ -228,23 +228,6 @@ void pa_gnss_RemoveNmeaHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to get the location's data.
- *
- * @return LE_FAULT         The function cannot get internal position information
- * @return LE_OK            The function succeeded.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_gnss_GetLastPositionData
-(
-    pa_Gnss_Position_t* positionPtr   ///< [OUT] Pointer to a position struct
-)
-{
-    LE_ERROR("Unsupported function called");
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function must be called to load an 'Extended Ephemeris' file into the GNSS device.
  *
  * @return LE_FAULT         The function failed to inject the 'Extended Ephemeris' file.
