@@ -12,6 +12,15 @@
 #include "interfaces.h"
 #include "pa_riPin.h"
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore to synchronize the init function with PulseRingSignalThread().
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t ThreadSemaphore;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Semaphore to protect duration value in le_riPin_PulseRingSignal().
@@ -110,6 +119,8 @@ static void* PulseRingSignalThread
         return NULL;
     }
 
+    le_sem_Post(ThreadSemaphore);
+
     // Run the event loop
     le_event_RunLoop();
 
@@ -133,6 +144,9 @@ le_result_t le_riPin_Init
     void
 )
 {
+    // Create a semaphore to wait the thread to be ready
+    ThreadSemaphore = le_sem_Create("ThreadSem",0);
+
     // Init semaphore to protect duration value in le_riPin_PulseRingSignal()
     SemRef = le_sem_Create("RiPinSem", 1);
 
@@ -140,6 +154,8 @@ le_result_t le_riPin_Init
                                                 PulseRingSignalThread,
                                                 NULL);
     le_thread_Start(PulseRingSignalThreadRef);
+
+    le_sem_Wait(ThreadSemaphore);
 
     return LE_OK;
 }

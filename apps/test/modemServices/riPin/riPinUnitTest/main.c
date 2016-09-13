@@ -49,6 +49,8 @@ COMPONENT_INIT
     pa_riPinSimu_CheckAmIOwnerOfRingSignal(false);
     LE_ASSERT(le_riPin_TakeRingSignal() == LE_OK);
     pa_riPinSimu_CheckAmIOwnerOfRingSignal(true);
+
+    LE_INFO("======== Test Pulse function ========");
     le_riPin_PulseRingSignal(500);
     LE_ASSERT(pa_riPinSimu_Get() == 1);
     LE_ASSERT(pa_riPinSimu_Get() == 0);
