@@ -1582,6 +1582,9 @@ static void ECallStateHandler
                         // eCall session attempt
                         DialAttempt();
                     }
+
+                    // Update eCall session state
+                    ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
                     break;
                 }
                 case ECALL_SESSION_NOT_CONNECTED:
@@ -1589,22 +1592,27 @@ static void ECallStateHandler
                     LE_WARN("Failed to connect with PSAP");
                     // eCall session was not connected. Redial in attempt interval
                     DialAttemptInterval();
+
+                    // No need to update eCall session state, already not connected
                     break;
                 }
                 case ECALL_SESSION_COMPLETED:
                     // Session completed: no redial
+                    // Update eCall session state
+                    ECallObj.sessionState = ECALL_SESSION_STOPPED;
                     break;
                 case ECALL_SESSION_STOPPED:
                     // Session stopped: no redial
+                    // No need to update eCall session state, already stopped
                     break;
                 case ECALL_SESSION_INIT:
                 case ECALL_SESSION_REQUEST:
                 default:
                     LE_ERROR("Unexpected session state %d", ECallObj.sessionState);
+                    // Update eCall session state
+                    ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
                     break;
             }
-            // Update eCall context
-            ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
             break;
         }
 
@@ -2460,10 +2468,10 @@ le_result_t le_ecall_StartAutomatic
         return LE_BAD_PARAMETER;
     }
 
-    if ((ECallObj.sessionState != ECALL_SESSION_INIT)
-    && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
+    if (   (ECallObj.sessionState != ECALL_SESSION_INIT)
+        && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
     {
-        LE_ERROR("An eCall session is already in progress");
+        LE_ERROR("An eCall session is already in progress, sessionState %d", ECallObj.sessionState);
         return LE_BUSY;
     }
 
@@ -2554,10 +2562,10 @@ le_result_t le_ecall_StartManual
         return LE_BAD_PARAMETER;
     }
 
-    if ((ECallObj.sessionState != ECALL_SESSION_INIT)
-    && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
+    if (   (ECallObj.sessionState != ECALL_SESSION_INIT)
+        && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
     {
-        LE_ERROR("An eCall session is already in progress");
+        LE_ERROR("An eCall session is already in progress, sessionState %d", ECallObj.sessionState);
         return LE_BUSY;
     }
 
@@ -2648,10 +2656,10 @@ le_result_t le_ecall_StartTest
         return LE_BAD_PARAMETER;
     }
 
-    if ((ECallObj.sessionState != ECALL_SESSION_INIT)
-    && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
+    if (   (ECallObj.sessionState != ECALL_SESSION_INIT)
+        && (ECallObj.sessionState != ECALL_SESSION_STOPPED))
     {
-        LE_ERROR("An eCall session is already in progress");
+        LE_ERROR("An eCall session is already in progress, sessionState %d", ECallObj.sessionState);
         return LE_BUSY;
     }
 
