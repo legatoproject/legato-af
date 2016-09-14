@@ -183,6 +183,20 @@ static le_clk_Time_t                TimeToWait = { 2, 0 };
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Mutex used to protect access to le_mcc functions when used in different threads.
+ * This test is running multiple threads. In addition, it is linking directly to le_mcc.c in the
+ * modemDaemon, rather than using the modemDaemon IPC interface. Combining these two things can
+ * create race condition on le_mcc functions accesses.
+ */
+//--------------------------------------------------------------------------------------------------
+static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mutex.
+/// Locks the mutex.
+#define LOCK    LE_ASSERT(pthread_mutex_lock(&Mutex) == 0);
+/// Unlocks the mutex.
+#define UNLOCK  LE_ASSERT(pthread_mutex_unlock(&Mutex) == 0);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler function for Call Event Notifications.
  *
  */
@@ -223,7 +237,9 @@ static void MyCallEventHandler
         case LE_MCC_EVENT_TERMINATED:
         {
             LE_INFO("Check MyCallEventHandler passed, event is LE_MCC_EVENT_TERMINATED.");
+            LOCK
             appCtxPtr->mccTerm = le_mcc_GetTerminationReason(callRef);
+            UNLOCK
             LE_ASSERT(CurrentTerm == appCtxPtr->mccTerm);
 
             switch(appCtxPtr->mccTerm)
@@ -249,7 +265,9 @@ static void MyCallEventHandler
                     break;
 
                 case LE_MCC_TERM_PLATFORM_SPECIFIC:
+                    LOCK
                     appCtxPtr->mccTermCode = le_mcc_GetPlatformSpecificTerminationCode(callRef);
+                    UNLOCK
                     LE_ASSERT(CurrentTermCode == appCtxPtr->mccTermCode);
                     LE_INFO("Termination reason is LE_MCC_TERM_PLATFORM_SPECIFIC with code.0x%X",
                              appCtxPtr->mccTermCode);
@@ -264,7 +282,9 @@ static void MyCallEventHandler
                     break;
             }
 
+            LOCK
             le_mcc_Delete(callRef);
+            UNLOCK
             break;
         }
         case LE_MCC_EVENT_INCOMING:
@@ -272,6 +292,7 @@ static void MyCallEventHandler
             LE_INFO("Check MyCallEventHandler passed, event is LE_MCC_EVENT_INCOMING.");
 
             char remoteTel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {'\0'};
+            LOCK
             LE_ASSERT(le_mcc_GetRemoteTel(callRef,
                                           remoteTel,
                                           sizeof(remoteTel)) == LE_OK);
@@ -279,6 +300,7 @@ static void MyCallEventHandler
             LE_ASSERT(!le_mcc_IsConnected(callRef));
             LE_ASSERT(le_mcc_Answer(callRef) == LE_OK);
             LE_ASSERT(le_mcc_HangUp(callRef) == LE_OK);
+            UNLOCK
             break;
         }
         case LE_MCC_EVENT_ORIGINATING:
@@ -330,10 +352,10 @@ static void* AppHandler
     _ClientSessionRef = appCtxPtr->sessionRef;
 
     // Subscribe to eCall state handler
+    LOCK
     LE_ASSERT((appCtxPtr->mccHandlerRef = le_mcc_AddCallEventHandler(MyCallEventHandler,
                                                                      ctxPtr)) != NULL);
-
-
+    UNLOCK
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
@@ -480,7 +502,9 @@ static void RemoveHandler
     AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
 
     _ClientSessionRef = appCtxPtr->sessionRef;
+    LOCK
     le_mcc_RemoveCallEventHandler(appCtxPtr->mccHandlerRef);
+    UNLOCK
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
