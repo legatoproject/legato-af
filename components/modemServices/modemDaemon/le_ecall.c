@@ -597,14 +597,12 @@ static void RedialStop
     {
         case ECALL_REDIAL_STOP_ALACK_RECEIVED:
         {
-            // Redial state machine should be ECALL_REDIAL_IDLE. Noting else to do.
+            // Redial state machine should be ECALL_REDIAL_STOPPED. Nothing else to do.
             break;
         }
         case ECALL_REDIAL_STOP_COMPLETE:
         {
-            // Unlock MSD
-            ECallObj.isMsdImported = false;
-            // Redial state machine should be ECALL_REDIAL_IDLE. Nothing else to do.
+            // Redial state machine should be ECALL_REDIAL_STOPPED. Nothing else to do.
             break;
         }
         case ECALL_REDIAL_STOP_NO_REDIAL_CONDITION:
@@ -1484,6 +1482,22 @@ static le_result_t EncodeMsd
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Invalidate the MSD stored in the eCall object
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void InvalidateMsd
+(
+    void
+)
+{
+    memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
+    ECallObj.builtMsdSize = 0;
+    ECallObj.isMsdImported = false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The first-layer eCall State Change Handler.
  *
  */
@@ -1538,43 +1552,41 @@ static void ECallStateHandler
         {
             le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
                                     .usec=LE_ECALL_SEM_TIMEOUT_USEC };
-            le_result_t semTerminaisonResult = LE_FAULT;
+            le_result_t semTerminationResult = LE_FAULT;
+
+            // Get call termination result
+            semTerminationResult = le_sem_WaitWithTimeOut(SemaphoreRef, timer);
+            if (LE_OK != semTerminationResult)
+            {
+                LE_ERROR("MCC notification timeout happen");
+            }
+            LE_DEBUG("Termination: %d, llackOrT5OrT7Received: %d, sem: %d",
+                     ECallObj.termination,
+                     ECallObj.llackOrT5OrT7Received,
+                     semTerminationResult);
 
             // Update eCall session state
             switch(ECallObj.sessionState)
             {
                 case ECALL_SESSION_CONNECTED:
                 {
-                    // Session was connected, get Call terminaison result
-                    semTerminaisonResult = le_sem_WaitWithTimeOut(SemaphoreRef,timer);
-                    if (semTerminaisonResult == LE_OK)
+                    // Check redial condition (cf N16062:2014 7.9)
+                    if (   (LE_OK == semTerminationResult)
+                        && (ECallObj.llackOrT5OrT7Received)
+                        && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
+                       )
                     {
-                        LE_DEBUG("Termination: %d, llackOrT5OrT7Received %d, sem %d"
-                                , ECallObj.termination
-                                , ECallObj.llackOrT5OrT7Received
-                                , semTerminaisonResult);
+                        // After the IVS has received the LL-ACK
+                        // or T5 – IVS wait for SEND MSD period
+                        // or T7 – IVS MSD maximum transmission time ends,
+                        // the IVS shall recognize a normal hang-up from the network.
+                        // The IVS shall not attempt an automatic redial following
+                        // a call clear-down.
 
-                        // Check redial condition (cf N16062:2014 7.9)
-                        if (ECallObj.llackOrT5OrT7Received &&
-                           (ECallObj.termination == LE_MCC_TERM_REMOTE_ENDED))
-                        {
-                            // After the IVS has received the LL-ACK
-                            // or T5 – IVS wait for SEND MSD period
-                            // or T7 – IVS MSD maximum transmission time ends,
-                            // the IVS shall recognise a normal hang-up from the network.
-                            // The IVS shall not attempt an automatic redial following
-                            // a call clear-down.
-
-                            // End Of Redial Period
-                            endOfRedialPeriod = true;
-                        }
+                        // End Of Redial Period
+                        endOfRedialPeriod = true;
                     }
                     else
-                    {
-                        LE_ERROR("MCC notification timeout happen");
-                    }
-
-                    if(!endOfRedialPeriod)
                     {
                         // Start redial period
                         RedialStart();
@@ -1587,6 +1599,7 @@ static void ECallStateHandler
                     ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
                     break;
                 }
+
                 case ECALL_SESSION_NOT_CONNECTED:
                 {
                     LE_WARN("Failed to connect with PSAP");
@@ -1596,15 +1609,41 @@ static void ECallStateHandler
                     // No need to update eCall session state, already not connected
                     break;
                 }
+
                 case ECALL_SESSION_COMPLETED:
-                    // Session completed: no redial
-                    // Update eCall session state
-                    ECallObj.sessionState = ECALL_SESSION_STOPPED;
+                {
+                    if (   (PA_ECALL_ERA_GLONASS == SystemStandard)
+                        && (   (LE_OK != semTerminationResult)
+                            || (LE_MCC_TERM_REMOTE_ENDED != ECallObj.termination)
+                           )
+                       )
+                    {
+                        // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
+                        // Connection is dropped, IVS should redial
+
+                        // Start redial period
+                        RedialStart();
+
+                        // eCall session attempt
+                        DialAttempt();
+
+                        // Update eCall session state
+                        ECallObj.sessionState = ECALL_SESSION_NOT_CONNECTED;
+                    }
+                    else
+                    {
+                        // Session completed: no redial
+                        // Update eCall session state
+                        ECallObj.sessionState = ECALL_SESSION_STOPPED;
+                    }
                     break;
+                }
+
                 case ECALL_SESSION_STOPPED:
                     // Session stopped: no redial
                     // No need to update eCall session state, already stopped
                     break;
+
                 case ECALL_SESSION_INIT:
                 case ECALL_SESSION_REQUEST:
                 default:
@@ -1629,24 +1668,37 @@ static void ECallStateHandler
         {
             // Update eCall session state
             ECallObj.sessionState = ECALL_SESSION_COMPLETED;
-            // Invalidate MSD
-            memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
-            ECallObj.builtMsdSize = 0;
-            // The Modem successfully completed the MSD transmission and received two AL-ACKs
-            // (positive).
-            // Clear the redial mechanism
-            RedialStop(ECALL_REDIAL_STOP_COMPLETE);
+
+            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
+            // IVS should be able to redial if connection is lost: MSD is still necessary.
+            // No redial is necessary for PAN EU, MSD can be invalidated in this case.
+            if (PA_ECALL_ERA_GLONASS != SystemStandard)
+            {
+                // The Modem successfully completed the MSD transmission
+                // and received two AL-ACKs (positive)
+
+                // Invalidate MSD
+                InvalidateMsd();
+
+                // Clear the redial mechanism
+                RedialStop(ECALL_REDIAL_STOP_COMPLETE);
+            }
             break;
         }
 
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* eCall session completed */
         {
-            // Stop redial
-            RedialStop(ECALL_REDIAL_STOP_ALACK_RECEIVED);
-            if (SystemStandard == PA_ECALL_ERA_GLONASS)
+            if (PA_ECALL_ERA_GLONASS == SystemStandard)
             {
-                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
+                // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
+                // After receiving AL-ACK, IVS should redial
+                // in pull mode if the connection is lost.
                 ECallObj.eraGlonass.pullModeSwitch = true;
+            }
+            else
+            {
+                // Stop redial
+                RedialStop(ECALL_REDIAL_STOP_ALACK_RECEIVED);
             }
             break;
         }
@@ -1654,7 +1706,7 @@ static void ECallStateHandler
         case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN: /* AL-ACK clear-down received */
         {
             // According to the eCall standard (FprEN 16062:2014) / eCall clear-down
-            //After the PSAP has sent the LL-ACK or T4 – PSAP wait for INITIATION signal period
+            // After the PSAP has sent the LL-ACK or T4 – PSAP wait for INITIATION signal period
             // or T8 - PSAP MSD maximum reception time ends
             // and the IVS receives a AL-ACK with status = “clear- down”,
             // it shall clear-down the call.
@@ -1668,6 +1720,14 @@ static void ECallStateHandler
         case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by PSAP
                                         or IVS le_ecall_End() */
         {
+            if (PA_ECALL_ERA_GLONASS == SystemStandard)
+            {
+                // The eCall is now correctly closed, the MSD can be invalidated.
+                // Note that MSD is already invalidated after reception of
+                // COMPLETED event for the PAN EU standard.
+                InvalidateMsd();
+            }
+
             // Update eCall session state
             ECallObj.sessionState = ECALL_SESSION_STOPPED;
             // Stop redial period
@@ -1694,9 +1754,12 @@ static void ECallStateHandler
             // To check redial condition (cf N16062:2014 7.9)
             ECallObj.llackOrT5OrT7Received = true;
 
-            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2, event triggered on T7 timeout
-            if ((*statePtr == LE_ECALL_STATE_TIMEOUT_T7) &&
-                (SystemStandard == PA_ECALL_ERA_GLONASS))
+            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
+            // After T7 timeout, IVS should redial in pull
+            // mode if the connection is lost.
+            if (   (*statePtr == LE_ECALL_STATE_TIMEOUT_T7)
+                && (SystemStandard == PA_ECALL_ERA_GLONASS)
+               )
             {
                 ECallObj.eraGlonass.pullModeSwitch = true;
             }
@@ -1714,7 +1777,7 @@ static void ECallStateHandler
     ReportState(*statePtr);
 
     // Report the End of Redial Period event
-    if(endOfRedialPeriod)
+    if (endOfRedialPeriod)
     {
         // Stop redial period
         RedialStop(ECALL_REDIAL_STOP_NO_REDIAL_CONDITION);
@@ -1911,9 +1974,9 @@ le_result_t le_ecall_Init
     ECallObj.msd.msdMsg.msdStruct.numberOfPassengersPres = false;
     ECallObj.msd.msdMsg.msdStruct.numberOfPassengers = 0;
     ECallObj.state = LE_ECALL_STATE_STOPPED;
-    memset(ECallObj.builtMsd, 0, sizeof(ECallObj.builtMsd));
-    ECallObj.builtMsdSize = 0;
-    ECallObj.isMsdImported = false;
+
+    // Initialize MSD
+    InvalidateMsd();
 
     // Initialize the eCall ERA-GLONASS Data object
     memset(&EraGlonassDataObj, 0, sizeof(EraGlonassDataObj));
@@ -2748,9 +2811,7 @@ le_result_t le_ecall_End
     }
 
     // Invalidate MSD
-    memset(eCallPtr->builtMsd, 0, sizeof(eCallPtr->builtMsd));
-    eCallPtr->builtMsdSize = 0;
-    eCallPtr->isMsdImported = false;
+    InvalidateMsd();
 
     result = pa_ecall_End();
 
