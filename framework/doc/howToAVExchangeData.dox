@@ -13,7 +13,7 @@ These are the main steps to develop a Legato app that exchanges data with AirVan
 
 @c 1. @ref howToAirVantageExchangeData_defineData "Define data model" on your target device. <br>
 @c 2. @ref howToAirVantageExchangeData_implementLegatoApp "Develop and Install Legato app". <br>
-@c 3. @ref howToAirVantageExchangeData_uploadAV "Create Packages, Upload and Run AirVantage". <br>
+@c 3. @ref howToAirVantageExchangeData_uploadAV "Create Packages, Upload, and Run AirVantage". <br>
 @c 4. @ref howToAirVantageExchangeData_exchData "Exchange data" between the target device and
 AirVantage.
 
@@ -119,7 +119,7 @@ data and to create LWM2M session.
 
 @subsection howToAirVantageExchangeData_implementLegatoApp_useAPIs Use Legato APIs
 
-The sectiton provides code samples using Legato's AirVantage APIs.
+This section provides code samples using Legato's AirVantage APIs.
 
 In the <b>component definition</b> file @c component.cdef:
 @code
@@ -171,19 +171,20 @@ le_avc_StatusEventHandlerRef_t  AvcEventHandlerRef = NULL;  // Reference to AirV
 @subsection howToAirVantageExchangeData_implementLegatoApp_initApp Initialize App
 
 The @c COMPONENT_INIT is called @b once by the Legato framework when the app starts.
-This function is the placeholder for initialization code.
+This is where your component's initialization code goes.
 
-This function must return to the framework. App logic tasks are implemented outside of this
+@c COMPONENT_INIT must return to the framework. App logic tasks are implemented outside of this
 function using event-handlers: an event-driven model app.
 
 @subsubsection howToAirVantageExchangeData_implementLegatoApp_COMPONENT_INIT COMPONENT_INIT
 
 We'll do the following initializations in COMPONENT_INIT:
 
-<b>Register an AirVantage Controler (AVC) handler</b> function, by calling
-le_avc_AddStatusEventHandler function. Registration is required before starting an AVC session.
+<b>Register an AirVantage Controller (AVC) handler</b> function, by calling
+le_avc_AddStatusEventHandler() function. Only a registered control app can call
+le_avc_StartSession().
 
-<b>Call le_avc interface</b> (le_avc_StartSession) to start an AVC Session with AirVantage.
+<b>Call</b> le_avc_StartSession() to start an AVC Session with AirVantage.
 
 @code
 // Register a AVC handler.
@@ -210,7 +211,7 @@ le_timer_SetHandler(AvcTimerRef, TimerExpiredHandler);
 le_timer_Start(AvcTimerRef);
 @endcode
 
-<b>Create 2 instances of Room Asset</b>, by calling le_avdata_Create
+<b>Create 2 instances of Room Asset</b>, by calling le_avdata_Create()
 
 @code
 // Create instances 1 and 2 of asset "Room".
@@ -250,7 +251,7 @@ for (i=0; i< 2; i++)
 @endcode
 
 <b>Register handler</b>, in order to apply Settings and Commands sent by AirVantage.
-For each data field (settings and commands), call Legato API (le_avdata_AddFieldEventHandler)
+For each data field (settings and commands), call le_avdata_AddFieldEventHandler()
 to register handler functions that will be called by the framework whenever the field is altered by
 AirVantage:
 @code
@@ -282,17 +283,17 @@ Our app needs to implement handler functions to retrieve the value of a Setting
 (@c TargetTemperature) set by AirVantage. This function should have the prototype defined
 by le_avdata_FieldHandlerFunc_t, see @ref howToAVData.
 
-This function must be registered in COMPONENT_INIT with le_avdata_AddFieldEventHandle.
+This function must be registered in COMPONENT_INIT with le_avdata_AddFieldEventHandler().
 
 Let's name it OnWriteVariable:
 - void OnWriteVariable(le_avdata_AssetInstanceRef_t instRef, const char *fieldName, void *contextPtr)
 - This function will be called by the framework whenever AirVantage wants to change the
 @c fieldname. Setting of our asset instance, referenced by @c instRef
 - To retrieve the Setting value pushed by AirVantage,
-call le_avdata_GetString, le_avdata_GetInt or le_avdata_GetBool
+call le_avdata_GetString(), le_avdata_GetInt or le_avdata_GetBool()
 
 @code
-void OnWriteSetting(le_avdata_AssetInstanceRef_t instRef, const char* fieldName, void* contextPtr)
+void OnWriteSetting(le_avdata_AssetInstanceRef_t() instRef, const char* fieldName, void* contextPtr)
 {
     int i;
 
@@ -325,15 +326,16 @@ void OnWriteSetting(le_avdata_AssetInstanceRef_t instRef, const char* fieldName,
 @subsubsection howToAirVantageExchangeData_implementLegatoApp_cmdHandlers Command Handler Functions
 
 Our app needs to implement handler function to Execute the Command (@c TurnOffAC) set by AirVantage.
-This function should have the prototype defined by le_avdata_FieldHandlerFunc_t, refer to le_avdata
-interface. This function must be registered in COMPONENT_INIT with le_avdata_AddFieldEventHandler.
+This function should have the prototype defined by le_avdata_FieldHandlerFunc_t.
+This function must be registered in COMPONENT_INIT with le_avdata_AddFieldEventHandler.
+
 Let's name it OnCommand:
 - void OnCommand(le_avdata_AssetInstanceRef_t instRef, const char *fieldName, void *contextPtr)
 - This function will be called by the framework whenever AirVantage wants to execute the
 @c TurnOffAC Command on our asset instance, referenced by @c instRef
 
 @code
-void OnCommand(le_avdata_AssetInstanceRef_t instRef, const char* fieldName, void* contextPtr)
+void OnCommand(le_avdata_AssetInstanceRef_t() instRef, const char* fieldName, void* contextPtr)
 {
     int i;
 
@@ -362,7 +364,7 @@ This is how the function modifies the temperature:
 - if AC switch is OFF, then converge the room temperature to the outside temperature
 - if AC switch is ON, then converge the room temperature to the @c targetTemperature (set in
 AirVantage).
-Simulated room temperatures are then pushed to AirVantage by calling Legato API le_avdata_SetFloat.
+Simulated room temperatures are then pushed to AirVantage by calling le_avdata_SetFloat().
 This is performed automatically by the underlying LWM2M Observe feature when AVC session is opened.
 
 @subsubsection howToAirVantageExchangeData_implementLegatoApp_avcHandler AVC Handler Functions
@@ -425,7 +427,7 @@ identify multiple versions of our app
 
 @subsection howToAirVantageExchangeData_uploadAV_upload Login and Upload
 
-- Log into the AirVantage portal.
+- Login to the AirVantage portal.
 - Choose the "Develop" activity, and then @c My Apps.
 - Click the Release button.
 - Select the app package zip file @c assetDataTutorial.zip, created in the previous section.
@@ -434,16 +436,26 @@ option.
 - Click Start.
 
 @subsection howToAirVantageExchangeData_uploadAV_assignApp Assign App to Device
-
 Before our device can exchange "Room" data fields with AirVantage, the uploaded app must be assigned
-to our device on AirVantage:
-- Log into AirVantage portal, go to @c Inventory activity then @c Systems.
+to our device on AirVantage.
+
+Depending on your AirVantage account setup, there are two alternatives to assign the app.
+
+If you're using AirVantage for one device type:
+- Login to AirVantage portal, go to @c Inventory activity, and then @c Systems.
 - Select your system by clicking on its Name.
 - Click on the Edit icon.
 - In the @c Applications field, type in the name of the app (e.g., assetDataTutorial) and select it.
 - Click Save.
 
-You can now use this package to install your app remotely using AirVantage.
+If you're using one AirVantage account to monitor multiple SIM cards and devices:
+- Login to the AirVantage portal, go to @c Monitor activity, and @c Systems.
+- Choose the More menu, and then the Edit icon.
+- In the @c Applications field, type in the name of the app (e.g., assetDataTutorial) and select it.
+- Click Save.
+
+You can now use your saved package to install your app remotely using AirVantage.
+
 So far, we created an app that can exchange a collection of information (app data fields) with
 AirVantage, packaged the app with a manifest file,and then uploaded it to AirVantage.
 
@@ -475,21 +487,20 @@ This is how your Terminal #2 (using logread -f) will look:
 
 @section howToAirVantageExchangeData_exchData Exchange Data with AirVantage
 
-The LightWeight M2M protocol default behavior initiates communication to the server by the target
-device. Once a connection between the server and the device is established, the server can send any
-request to the device: read or write a data, execute a command, apply a firmware upgrade, install
-an app, etc.
+The LightWeight M2M protocol default behavior initiates communication to the server through the
+target device. Once a connection between the server and the device is established, the server can
+send any request to the device: read or write a data, execute a command, apply a firmware upgrade,
+install an app, etc.
 @image html lwm2m_communication.png
 
 When a device is in the field:
-- At first boot, it starts to communicate with the bootstrap server to collect credentials and
-AirVantage URL.
-It will do this communication, only if AirVantage deny the connection or at regular period to
-change the security keys (steps 1 and 2)
-- Then the device initiates a communication with AirVantage, updates the objects list (step 3)
-- AirVantage sends the pending requests to the device (step 4)
-- The device executes the requests
-- The device communicates the acknowledgements and close the connection
+- On the first boot, it starts to communicate with the bootstrap server to collect credentials and
+the AirVantage URL. It will do this only if AirVantage denies the connection or because of a regular
+interval to change the security keys (steps 1 and 2).
+- Then the device initiates a communication with AirVantage, updates the objects list (step 3).
+- AirVantage sends the pending requests to the device (step 4).
+- The device executes the requests.
+- The device communicates the acknowledgements and close the connection.
 
 @subsection howToAirVantageExchangeData_exchData_pushData Push Data
 If you need to collect data as soon as the device is ready to communicate with AirVantage, and at
@@ -498,25 +509,18 @@ high frequency, use the AirVantage LWM2M Observe feature.
 This is how the Observe feature sends new data values:
 @image html lwm2m_observe.png
 
-- At first communication with a device, AirVantage will request to observe a list of data (step 1).
-This sends notification when any new values exist for this list of pre-defined data.
+- On the first communication with a device, AirVantage will request to observe a list of data
+(step 1). This sends a notification when new values exist for this list of pre-defined data.
 - When a new value is obtained from the sensor, the value is pushed to Legato (step 2).
-- The target device sends the applicative data automatically without a new request from AirVantage
+- The target device sends the data automatically without a new request from AirVantage
 (step 3).
 
-During the sample app updates data in Legato, you can see the new values directly updated in
+During sample app data updates in Legato, you can see the new values displayed in
 AirVantage using the timeline view.
 
-Go to the <a href="https://doc.airvantage.net/av/howto/hardware/test/" >Test Your Solution</a>
-to discover:
-
-- create a report that specifies the device data to be read by AirVantage
-- retrieve data from device
-- apply new setting to device
-- send command to device
-
-Also see <a href="https://source.sierrawireless.com/airvantage/av/reference/monitor/">
-Monitor your system and upgrade your app</a>
+If you're using a Sierra Wireless SIM card, you can <a href="https://doc.airvantage.net/avc">Test Your Solution</a>
+and <a href="https://source.sierrawireless.com/airvantage/av/reference/monitor/">
+Monitor Your System</a>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
