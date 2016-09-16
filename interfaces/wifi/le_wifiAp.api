@@ -56,8 +56,8 @@
  * The WiFi Access Point is started with the function le_wifiAp_Start(). Unless values have been changed, default values will be used:
  * - le_wifiAp_Start():
  *
- * To subscribe to wifi events le_wifiAp_AddEventHandler() is to be called.
- * - le_wifiAp_AddEventHandler()
+ * To subscribe to wifi events le_wifiAp_AddNewEventHandler() is to be called.
+ * - le_wifiAp_AddNewEventHandler()
  *
  *
  * @snippet "apps/sample/wifiApTest/wifiApTestComponent/wifiApTest.c"  Subscribe
