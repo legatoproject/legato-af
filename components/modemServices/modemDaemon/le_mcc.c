@@ -763,9 +763,16 @@ static void NewCallEventHandler
 
             newCall = true;
         }
+        else if (-1 == callPtr->callId)
+        {
+            // Call with no call id in MCC, update it with the value from PA
+            callPtr->callId = dataPtr->callId;
+        }
 
         callPtr->inProgress = true;
         callPtr->event = dataPtr->event;
+        callPtr->termination = dataPtr->terminationEvent;
+        callPtr->terminationCode = dataPtr->terminationCode;
     }
     else
     {

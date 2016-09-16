@@ -1811,8 +1811,10 @@ static void CallEventHandler
 
     LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
-
-    if (eCallPtr->sessionState == ECALL_SESSION_CONNECTED)
+    if (   (ECALL_SESSION_NOT_CONNECTED == eCallPtr->sessionState)
+        || (ECALL_SESSION_CONNECTED == eCallPtr->sessionState)
+        || (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)
+       )
     {
         le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
 
@@ -1823,7 +1825,6 @@ static void CallEventHandler
         }
 
         LE_DEBUG("callId %d eCallPtr->callId %d", callId, eCallPtr->callId);
-
 
         if (LE_MCC_EVENT_CONNECTED == event)
         {
@@ -1837,15 +1838,14 @@ static void CallEventHandler
             eCallPtr->callId = callId;
         }
 
-
-
         if ((callId == eCallPtr->callId) && (event == LE_MCC_EVENT_TERMINATED))
         {
             eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
             eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
             eCallPtr->callId = -1;
 
-            LE_DEBUG("Call termination status available");
+            LE_DEBUG("Call termination status available: termination %d, specificTerm %d",
+                    eCallPtr->termination, eCallPtr->specificTerm);
             // Synchronize eCall handler with MCC notification
             le_sem_Post(SemaphoreRef);
         }
