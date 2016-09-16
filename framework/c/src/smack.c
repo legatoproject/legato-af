@@ -89,6 +89,9 @@
 #define SMACK_RULE_STR_BYTES                 2*LIMIT_MAX_SMACK_LABEL_LEN + MAX_ACCESS_MODE_LEN + 3
 
 
+//********  SMACK is enabled.  *******************************************************************//
+#ifndef LE_SMACK_DISABLE
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Set SMACK netlabel exception to grant applications permission to communicate with the Internet.
@@ -257,6 +260,24 @@ static void MakeRuleStr
     int n = snprintf(bufPtr, bufSize, "%s %s %s", subjectLabelPtr, objectLabelPtr, modeStr);
 
     LE_FATAL_IF(n >= bufSize, "SMACK rule buffer is too small.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Shows whether SMACK is enabled or disabled in the Legato Framework.
+ *
+ * @return
+ *      true if SMACK is enabled.
+ *      false if SMACK is disabled.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsEnabled
+(
+    void
+)
+{
+    return true;
 }
 
 
@@ -657,3 +678,228 @@ void smack_GetAppAccessLabel
                 "Buffer is too small to hold SMACK access label %s for app %s.",
                 appLabel, appNamePtr);
 }
+
+
+//********  SMACK is disabled.  ******************************************************************//
+#else
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Shows whether SMACK is enabled or disabled in the Legato Framework.
+ *
+ * @return
+ *      true if SMACK is enabled.
+ *      false if SMACK is disabled.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsEnabled
+(
+    void
+)
+{
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initializes the SMACK system.  Mounts the SMACK file system.
+ *
+ * @note Should be called once for the entire system, subsequent calls to this function will have no
+ *       effect.  Must be called before any of the other functions in this API is called.
+ *
+ * @note Failures will cause the calling process to exit.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_Init
+(
+    void
+)
+{
+    LE_INFO("********* SMACK policy settings are disabled in the Leagto Framework ONLY. *********");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the SMACK label of the calling process. The calling process must be a privileged process.
+ *
+ * @note If there is an error this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetMyLabel
+(
+    const char* labelPtr            ///< [IN] Label to set the calling process to.
+)
+{
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's a process's SMACK label.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the supplied buffer is too small to hold the SMACK label.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_GetProcLabel
+(
+    pid_t pid,                      ///< [IN] PID of the process.
+    char* bufPtr,                   ///< [OUT] Buffer to store the proc's SMACK label.
+    size_t bufSize                  ///< [IN] Size of the buffer.
+)
+{
+    if (bufSize > 0)
+    {
+        bufPtr[0] = '\0';
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the SMACK label of a file system object. The calling process must be a privileged process.
+ *
+ * @return
+ *      LE_OK if the label was set correctly.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t smack_SetLabel
+(
+    const char* objPathPtr,         ///< [IN] Path to the object.
+    const char* labelPtr            ///< [IN] The label to set the object to.
+)
+{
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets an explicit SMACK rule.
+ *
+ * An explicit SMACK rule defines a subject's access to an object. The access mode can be any
+ * combination of the following.
+ *
+ *      a: indicates that append access should be granted.
+ *      r: indicates that read access should be granted.
+ *      w: indicates that write access should be granted.
+ *      x: indicates that execute access should be granted.
+ *      t: indicates that the rule requests transmutation.
+ *      -: is used as a place holder.
+ *
+ * For example:
+ *      "rx" means read and execute access should be granted.
+ *      "-" means that no access should be granted.
+ *
+ * @note If there is an error this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_SetRule
+(
+    const char* subjectLabelPtr,    ///< [IN] Subject label.
+    const char* accessModePtr,      ///< [IN] Access mode. See the function description for details.
+    const char* objectLabelPtr      ///< [IN] Object label.
+)
+{
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether a subject has the specified access mode for an object.
+ *
+ * @return
+ *      true if the subject has the specified access mode for the object.
+ *      false if the subject does not have the specified access mode for the object.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_HasAccess
+(
+    const char* subjectLabelPtr,    ///< [IN] Subject label.
+    const char* accessModePtr,      ///< [IN] Access mode.
+    const char* objectLabelPtr      ///< [IN] Object label.
+)
+{
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Revokes all the access rights for a subject that were given by explicit SMACK rules.
+ *
+ * @note If there is an error this function will kill the calling process.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_RevokeSubject
+(
+    const char* subjectLabelPtr     ///< [IN] Subject label.
+)
+{
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets an application's SMACK label.
+ *
+ * @note
+ *      The application need not be installed for this function to succeed.
+ *
+ * @warning
+ *      This function kills the calling process if there is an error such as if the buffer is too
+ *      small.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetAppLabel
+(
+    const char* appNamePtr,     ///< [IN] Name of the application.
+    char* bufPtr,               ///< [OUT] Buffer to store the proc's SMACK label.
+    size_t bufSize              ///< [IN] Size of the buffer.
+)
+{
+    if (bufSize > 0)
+    {
+        bufPtr[0] = '\0';
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's the application's smack label with the user's access mode appended to it as a string.  For
+ * example, if the accessMode is S_IRUSR | S_IWUSR then "rw" will be appended to the application's
+ * smack label.  The groups and other bits of accessMode are ignored.  If the user's accessMode is 0
+ * (empty) then "-" will be appended to the app's smack label.
+ *
+ * @note
+ *      The application need not be installed for this function to succeed.
+ *
+ * @warning
+ *      This function kills the calling process if there is an error such as if the buffer is too
+ *      small.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_GetAppAccessLabel
+(
+    const char* appNamePtr,     ///< [IN] Name of the application.
+    mode_t accessMode,          ///< [IN] Access mode.
+    char* bufPtr,               ///< [OUT] Buffer to store the proc's SMACK label.
+    size_t bufSize              ///< [IN] Size of the buffer.
+)
+{
+    if (bufSize > 0)
+    {
+        bufPtr[0] = '\0';
+    }
+}
+
+
+#endif

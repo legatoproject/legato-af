@@ -675,4 +675,30 @@ le_result_t app_Unblock
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the application has any configured processes running.
+ *
+ * @return
+ *      true if there is at least one configured running process for the application.
+ *      false if there are no configured running processes for the application.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_HasConfRunningProc
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Performs tasks after an app has been stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_StopComplete
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+);
+
+
 #endif  // LEGATO_SRC_APP_INCLUDE_GUARD

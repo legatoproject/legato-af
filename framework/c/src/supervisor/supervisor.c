@@ -673,9 +673,9 @@ static void SigChildHandler
             {
                 // The child is neither an application process nor a framework daemon.
                 // Reap the child now.
-                wait_ReapChild(pid);
+                LE_INFO("Reaping unconfigured child process %d.", pid);
 
-                LE_CRIT("Unknown child process %d.", pid);
+                wait_ReapChild(pid);
             }
         }
     }
@@ -846,6 +846,30 @@ COMPONENT_INIT
     // from contending with us for resources like CPU and flash memory bandwidth.
     LE_FATAL_IF(freopen("/dev/null", "r", stdin) == NULL,
                 "Failed to redirect stdin to /dev/null.  %m.");
+
+    // Create or remove the SMACK_DISABLED file, which is used by the init scripts to determine to
+    // set SMACK labels or not.
+#ifndef LE_SMACK_DISABLE
+    // Remove SMACK_DISABLED.
+    LE_FATAL_IF((unlink("/legato/SMACK_DISABLED") == -1) && (errno != ENOENT),
+                "Cannot remove /legato/SMACK_DISABLED. %m.");
+#else
+    // Create SMACK_DISABLED.
+    int fd;
+
+    do
+    {
+        fd = open("/legato/SMACK_DISABLED", O_CREAT | O_EXCL | O_WRONLY, 0);
+    }
+    while ((fd == -1) && (errno == EINTR));
+
+    LE_FATAL_IF((fd == -1) && (errno != EEXIST), "failed to create /legato/SMACK_DISABLED. %m.");
+
+    if (fd != -1)
+    {
+        fd_Close(fd);
+    }
+#endif
 }
 
 

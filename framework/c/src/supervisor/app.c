@@ -2560,6 +2560,16 @@ app_Ref_t app_Create
         goto failed;
     }
 
+    // Enable "notify_on_release" for this app, so the Supervisor will be notified when this app
+    // stops.
+    // Need to account for the characters other than app name in the path of notify_on_release.
+    char notifyPath[LIMIT_MAX_APP_NAME_BYTES + 41] = {0};
+    LE_ASSERT(snprintf(notifyPath, sizeof(notifyPath),
+                       "/sys/fs/cgroup/freezer/%s/notify_on_release", appPtr->name)
+              < sizeof(notifyPath));
+
+    file_WriteStr(notifyPath, "1", 0);
+
     // Set SMACK rules for this app.
     // Setup the runtime area in the file system.
     if ( (SetSmackRules(appPtr) != LE_OK) ||
@@ -2745,6 +2755,7 @@ void app_Stop
 
         le_timer_Start(appRef->killTimer);
     }
+    // This case is essential to stop a "running app" with no configured processes.
     else if (!HasRunningProc(appRef))
     {
         // There are no more running processes in the app.
@@ -3249,20 +3260,6 @@ void app_SigChildHandler
                 *faultActionPtr = FAULT_ACTION_REBOOT;
                 break;
         }
-    }
-
-    // If all the processes in the app have now died,
-    if (!HasRunningProc(appRef))
-    {
-        // If we've been trying to kill this thing, then we can stop the time-out timer now.
-        if (appRef->killTimer != NULL)
-        {
-            le_timer_Stop(appRef->killTimer);
-        }
-
-        LE_DEBUG("app '%s' has stopped.", appRef->name);
-
-        appRef->state = APP_STATE_STOPPED;
     }
 }
 
@@ -3834,4 +3831,47 @@ le_result_t app_Unblock
     proc_Unblock(procContainerPtr->procRef);
 
     return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the application has any configured processes running.
+ *
+ * @return
+ *      true if there is at least one configured running process for the application.
+ *      false if there are no configured running processes for the application.
+ */
+//--------------------------------------------------------------------------------------------------
+bool app_HasConfRunningProc
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+)
+{
+    // Checks the appRef->procs list for processes that configured in the configuration DB.
+    // Checks the appRef->auxProcs list for processes started by the le_appProc API.
+    return ( HasRunningProcInList(appRef->procs) ||
+             HasRunningProcInList(appRef->auxProcs) );
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Performs tasks after an app has been stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_StopComplete
+(
+    app_Ref_t appRef                    ///< [IN] The application reference.
+)
+{
+    // Since the app has already stopped, we can stop the time-out timer now.
+    if (appRef->killTimer != NULL)
+    {
+        le_timer_Stop(appRef->killTimer);
+    }
+
+    LE_DEBUG("app '%s' has stopped.", appRef->name);
+
+    appRef->state = APP_STATE_STOPPED;
 }

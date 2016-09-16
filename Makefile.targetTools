@@ -21,6 +21,7 @@ BUILD_PRODUCTS = 	config		\
 					straceCfg	\
 					inspect	\
 					xattr	\
+					appStopClient	\
 					app \
 					update \
 					uartMode \
@@ -121,6 +122,13 @@ inspect:
 xattr:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/xattr/xattr.c \
+			-i $(FRAMEWORK_SRC_DIR) \
+			$(LOCAL_MKEXE_FLAGS)
+
+appStopClient:
+	mkexe -o $(BIN_DIR)/private/$@ \
+			$(TOOLS_SRC_DIR)/appStopClient/appStopClient.c \
+			--cflags=-DLE_RUNTIME_DIR='"$(LE_RUNTIME_DIR)"' \
 			-i $(FRAMEWORK_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 

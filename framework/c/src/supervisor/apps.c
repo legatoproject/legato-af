@@ -64,6 +64,8 @@
 #include "sysPaths.h"
 #include "properties.h"
 #include "smack.h"
+#include "cgroups.h"
+#include "file.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -90,6 +92,30 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_START_MANUAL               "startManual"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the socket for the AppStop Server and Client.
+ */
+//--------------------------------------------------------------------------------------------------
+#define APPSTOP_SERVER_SOCKET_NAME       STRINGIZE(LE_RUNTIME_DIR) "AppStopServer"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The file descriptors of the AppStop Server and Client sockets.
+ */
+//--------------------------------------------------------------------------------------------------
+static int AppStopSvSocketFd = -1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The fd monitor reference for the AppStop Server socket.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_fdMonitor_Ref_t AppStopSvSocketFdMonRef = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -704,14 +730,6 @@ static le_result_t HandleAppFault
             LE_FATAL("Unexpected fault action %d.", faultAction);
     }
 
-    // Check if the app has stopped.
-    if ( (app_GetState(appContainerPtr->appRef) == APP_STATE_STOPPED) &&
-         (appContainerPtr->stopHandler != NULL) )
-    {
-        // The application has stopped.  Call the app stop handler.
-        appContainerPtr->stopHandler(appContainerPtr);
-    }
-
     return LE_OK;
 }
 
@@ -865,39 +883,113 @@ static bool IsAppNameValid
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the application name of the process with the specified PID.
- *
- * @return
- *      LE_OK if the application name was successfully found.
- *      LE_OVERFLOW if the application name could not fit in the provided buffer.
- *      LE_NOT_FOUND if the process is not part of an application.
- *      LE_FAULT if there was an error.
+ * Create the AppStop Server socket.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t GetAppNameFromPid
+static int CreateAppStopSvSocket
 (
-    int pid,                ///< [IN] PID of the process.
-    char* bufPtr,           ///< [OUT] Buffer to hold the name of the app.
-    size_t bufSize          ///< [IN] Size of the buffer.
+    void
 )
 {
-    // Get the SMACK label for the process.
-    char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    struct sockaddr_un svaddr;
+    int fd;
 
-    le_result_t result = smack_GetProcLabel(pid, smackLabel, sizeof(smackLabel));
+    fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    LE_FATAL_IF(fd == -1, "Error creating AppStop server socket.");
 
-    if (result != LE_OK)
+    LE_FATAL_IF(remove(APPSTOP_SERVER_SOCKET_NAME) == -1 && errno != ENOENT,
+                "Error removing old AppStop server socket: " APPSTOP_SERVER_SOCKET_NAME);
+
+    // Construct a well-known address and bind the socket to it
+    memset(&svaddr, 0, sizeof(struct sockaddr_un));
+    svaddr.sun_family = AF_UNIX;
+    strncpy(svaddr.sun_path, APPSTOP_SERVER_SOCKET_NAME, sizeof(svaddr.sun_path) - 1);
+
+    LE_FATAL_IF(bind(fd, (struct sockaddr*) &svaddr, sizeof(struct sockaddr_un)) == -1,
+                "Error binding AppStop server socket.");
+
+    return fd;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Marking an app as "stopped". Since the mechanisms to determine app stop (cgroup release_agent)
+ * and proc stop (SIGCHILD signals and the handlers) are decoupled, this function ensures that an
+ * app is marked as stopped only when all configured processes have been marked as stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+static void MarkAppAsStopped
+(
+    void* param1Ptr,    ///< [IN] param 1, app ref
+    void* param2Ptr     ///< [IN] param 2, app container ref
+)
+{
+    #define MaxRetryCount 10
+    // Note that this is a global retry counter shared by all apps.
+    static int RetryCount = 0;
+
+    app_Ref_t appRef = (app_Ref_t)param1Ptr;
+    AppContainer_t* appContainerPtr = (AppContainer_t*)param2Ptr;
+
+    LE_FATAL_IF(RetryCount > MaxRetryCount,
+          "Cannot mark app as stopped because configured procs' states can't be marked as stopped");
+
+    if (app_HasConfRunningProc(appRef))
     {
-        return result;
+        RetryCount++;
+        LE_WARN("App %s still has configured running procs. Cannot yet mark app as stopped.",
+                app_GetName(appRef));
+        le_event_QueueFunction(MarkAppAsStopped, appRef, appContainerPtr);
     }
-
-    // Strip the prefix from the label.
-    if (strncmp(smackLabel, SMACK_APP_PREFIX, sizeof(SMACK_APP_PREFIX)-1) == 0)
+    else
     {
-        return le_utf8_Copy(bufPtr, &(smackLabel[strlen(SMACK_APP_PREFIX)]), bufSize, NULL);
+        RetryCount = 0;
+        app_StopComplete(appRef);
+        appContainerPtr->stopHandler(appContainerPtr);
     }
+}
 
-    return LE_NOT_FOUND;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function called when the last process has exited a freezer cgroup.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AppStopHandler
+(
+    int fd,         ///< [IN] fd being monitored.
+    short events    ///< [IN] events that happened.
+)
+{
+    if (events & POLLIN)
+    {
+        ssize_t numBytesRead;
+        char appName[LIMIT_MAX_APP_NAME_BYTES] = {0};
+
+        do
+        {
+            numBytesRead = recvfrom(fd, appName, LIMIT_MAX_APP_NAME_BYTES, 0, NULL, NULL);
+        }
+        while ((numBytesRead == -1) && (errno == EINTR));
+
+        if (numBytesRead > 0)
+        {
+            AppContainer_t* appContainerPtr = GetActiveApp(appName);
+            LE_ASSERT(appContainerPtr != NULL);
+            app_Ref_t appRef = appContainerPtr->appRef;
+
+            MarkAppAsStopped(appRef, appContainerPtr);
+        }
+        else if (numBytesRead == 0)
+        {
+            LE_FATAL("No app name sent; therefore cannot determine which app to stop.");
+        }
+        else
+        {
+            LE_FATAL("Error reading from the AppStop server socket, %m");
+        }
+    }
 }
 
 
@@ -1006,6 +1098,16 @@ void apps_Init
     le_msg_AddServiceCloseHandler(le_appProc_GetServiceRef(), DeleteClientAppProcs, NULL);
 
     le_msg_AddServiceCloseHandler(le_appCtrl_GetServiceRef(), ReleaseClientAppRefs, NULL);
+
+    // Setup sockets to notify Supervisor when an app stops.
+    AppStopSvSocketFd = CreateAppStopSvSocket();
+    AppStopSvSocketFdMonRef = le_fdMonitor_Create("AppStopSvSocketFdMon", AppStopSvSocketFd,
+                                                  AppStopHandler, POLLIN);
+
+    // Specify the program to be run when the last process exits a freezer sub-group. This program
+    // notifies the Supervisor which app has stopped.
+    file_WriteStr("/sys/fs/cgroup/freezer/release_agent",
+                  "/legato/systems/current/bin/private/appStopClient", 0);
 }
 
 
@@ -1039,15 +1141,27 @@ void apps_Shutdown
         app_Stop(appContainerPtr->appRef);
 
         // If the application has already stopped then call its stop handler here.  Otherwise the
-        // stop handler will be called from the SigChildHandler() when the app actually stops.
+        // stop handler will be called from the AppStopHandler() when the app actually stops.
         if (app_GetState(appContainerPtr->appRef) == APP_STATE_STOPPED)
         {
             appContainerPtr->stopHandler(appContainerPtr);
         }
     }
-    else if (AllAppsShutdownHandler != NULL)
+    else
     {
-        AllAppsShutdownHandler();
+        le_fdMonitor_Delete(AppStopSvSocketFdMonRef);
+
+        int res;
+        do
+        {
+            res = close(AppStopSvSocketFd);
+        }
+        while ((res == -1) && (errno == EINTR));
+
+        if (AllAppsShutdownHandler != NULL)
+        {
+            AllAppsShutdownHandler();
+        }
     }
 }
 
@@ -1122,12 +1236,13 @@ void apps_AutoStart
  * handler.
  *
  * @note
- *      This function will reap the child if the child is an application process, otherwise the
- *      child will remain unreaped.
+ *      This function will reap the child if the child is a configured application process,
+ *      otherwise the child will be reaped by the Supervisor's SIGCHILD handler.
  *
  * @return
  *      LE_OK if the signal was handled without incident.
- *      LE_NOT_FOUND if the pid is not an application process.  The child will not be reaped.
+ *      LE_NOT_FOUND if the pid is not a configured application process.  The child will not be
+ *      reaped.
  *      LE_FAULT if the signal indicates a failure of one of the applications which requires a
  *               system restart.
  */
@@ -1137,48 +1252,11 @@ le_result_t apps_SigChildHandler
     pid_t pid               ///< [IN] Pid of the process that produced the SIGCHLD.
 )
 {
-    // Get the name of the application this process belongs to from the dead process's SMACK
-    // label.  Must do this before we reap the process, or the SMACK label will be unavailable.
-    char appName[LIMIT_MAX_APP_NAME_BYTES] = "";
-    le_result_t result = GetAppNameFromPid(pid, appName, sizeof(appName));
+    AppContainer_t* appContainerPtr = GetActiveAppWithProc(pid);
 
-    LE_FATAL_IF(result == LE_OVERFLOW, "App name '%s...' is too long.", appName);
-
-    if (result == LE_FAULT)
+    if (appContainerPtr == NULL)
     {
-        LE_CRIT("Could not get app name for child process %d.", pid);
         return LE_NOT_FOUND;
-    }
-
-    AppContainer_t* appContainerPtr = NULL;
-
-    if (result == LE_NOT_FOUND)
-    {
-        // It's possible that we killed an app process before it had a chance to set
-        // its own SMACK label.  So, search the apps for the PID.
-        appContainerPtr = GetActiveAppWithProc(pid);
-
-        if (appContainerPtr == NULL)
-        {
-            return LE_NOT_FOUND;
-        }
-    }
-    else
-    {
-        // Got the app name for the process.  Now get the app object by name.
-        appContainerPtr = GetActiveApp(appName);
-
-        if (appContainerPtr == NULL)
-        {
-            // There is an app name but the app container can't be found.  This can happen if
-            // non-direct descendant app proceses are zombies (died but not yet reaped) when the app
-            // was deactivated.
-            LE_INFO("Reaping app process (PID %d) for stopped app %s.", pid, appName);
-
-            wait_ReapChild(pid);
-
-            return LE_OK;
-        }
     }
 
     // This child process is an application process.
@@ -1379,7 +1457,7 @@ static le_result_t appCtrl_Stop
     app_Stop(appContainerPtr->appRef);
 
     // If the application has already stopped then call its stop handler here.  Otherwise the stop
-    // handler will be called from the SigChildHandler() when the app actually stops.
+    // handler will be called from the AppStopHandler() when the app actually stops.
     if (app_GetState(appContainerPtr->appRef) == APP_STATE_STOPPED)
     {
         appContainerPtr->stopHandler(appContainerPtr);
@@ -1863,7 +1941,53 @@ le_result_t le_appInfo_GetName
         ///< [IN]
 )
 {
-    return GetAppNameFromPid(pid, appName, appNameNumElements);
+    char cgroupFilePath[LIMIT_MAX_PATH_BYTES] = {0};
+
+    LE_ASSERT(snprintf(cgroupFilePath, sizeof(cgroupFilePath), "/proc/%d/cgroup", pid)
+              < sizeof(cgroupFilePath));
+
+    FILE* cgroupFilePtr = fopen(cgroupFilePath, "r");
+
+    if (cgroupFilePtr == NULL)
+    {
+        LE_INFO("Cannot open %s. %m.", cgroupFilePath);
+        return LE_FAULT;
+    }
+
+    // Other than the cgroup path which contains an app name, allocate another 20 bytes for
+    // hierarchy ID, controller list, and misc. separators.
+    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 20] = {0};
+
+    // Read the first line.
+    LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
+
+    // Remove the trailing newline char.
+    size_t len = strlen(lineBuf);
+
+    if (lineBuf[len - 1] == '\n')
+    {
+        lineBuf[len - 1] = '\0';
+    }
+
+    // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
+    // e.g. 4:freezer:/SomeApp
+    // We are trying to get the 3rd token and remove the leading slash.
+    char* token;
+    char delim[2] = ":";
+
+    strtok(lineBuf, delim);
+    strtok(NULL, delim);
+    token = strtok(NULL, delim);
+
+    // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
+    // hence not part of any app.
+    if (strlen(token) == 1)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    // Note that the leading slash of the token has to be removed.
+    return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
 }
 
 

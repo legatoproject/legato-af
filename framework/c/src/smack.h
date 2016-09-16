@@ -82,6 +82,21 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Shows whether SMACK is enabled or disabled in the Legato Framework.
+ *
+ * @return
+ *      true if SMACK is enabled.
+ *      false if SMACK is disabled.
+ */
+//--------------------------------------------------------------------------------------------------
+bool smack_IsEnabled
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initializes the SMACK system.  Mounts the SMACK file system.
  *
  * @note Should be called once for the entire system, subsequent calls to this function will have no

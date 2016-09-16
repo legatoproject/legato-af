@@ -48,4 +48,9 @@
 
 
 
+// Uncomment this define to disable SMACK.
+//#define LE_SMACK_DISABLE
+
+
+
 #endif
