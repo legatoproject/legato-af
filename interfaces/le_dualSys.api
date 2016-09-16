@@ -1,0 +1,234 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_dualSys Dual System
+ *
+ * @ref le_dualSys_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * @warning All of these APIs are not available for all platforms. Please refer to the
+ * Product Technical specification document of your platform for further details.
+ * Please refer to @subpage platformConstraintsDualSys for limitations
+ *
+ * @section DualSystem Dual System mechanism
+ * The <b>dual system</b> consists in managing 2 copies of most code areas, for reliability and
+ * stability purposes.
+ * One copy is a backup in case the other one is corrupted or not running properly.
+ * The running system is called \b ACTIVE and the other system (not running) is called \b UPDATE.
+ * One cannot write in \b ACTIVE system. Only \b UPDATE system is in RW mode. In the next figure,
+ * this dual-system architecture is detailled.
+ * Some partitions are duplicated, for dual-system purpose, and some other are shared between
+ * the two systems (mainly data).
+ *
+ * <center>
+ * @image html le_dualSys_Summary.svg
+ * </center>
+ *
+ * There are 3 operations to manage the <b>dual system</b>: \b SYNC, \b SWAP and \b SWAP&SYNC. Alls
+ * these operations are executed by bootloaders.
+ *
+ * - \b SWAP operation consists in a reboot, followed by a switch between ACTIVE & UPDATE systems.
+ * Legato will mark the ACTIVE system as UPDATE one, the UPDATE system as ACTIVE one and then it
+ * will load the ACTIVE system.
+ *
+ * <center>
+ * @image html le_dualSys_ResetSwap.svg
+ * </center>
+ *
+ * - \b SYNC operation consists in a copy of ACTIVE system into UPDATE one by APPS.
+ * No new downloads are possible without a successful SYNC issued previously. So it means
+ * that in a stable situation, both systems are identical (same version N).
+ *
+ * <center>
+ * @image html le_dualSys_Sync.svg
+ * </center>
+ *
+ * - \b SWAP&SYNC operation consists in a reboot, followed by a switch between ACTIVE & UPDATE
+ * systems in Legato, followed immediately by a copy of ACTIVE system into UPDATE system.
+ *
+ * <center>
+ * @image html le_dualSys_ResetSwapAndSync.svg
+ * </center>
+ *
+ *
+ * @section SystemUpdate System update
+ * The user is able to update a whole system by downloading a package and accepting the update.
+ * Using this mechanism, the user can update the UPDATE system. Then, by calling
+ * le_dualSys_ResetSwap(), the user can request to swap to the new downloaded system.
+ *
+ * @section PackageDownload Package download
+ *
+ * To launch a package download, the service user can call the le_dualSys_DownloadAndWait() API
+ * which is a blocking API.
+ * When the package download is over and succeeds, this API returns LE_OK.
+ * @warning If any Legato reset happens during the package download, a new download will
+ * be required at next startup.
+ * If any issue occurs during the le_dualSys_DownloadAndWait() API treatment, this API returns
+ * LE_FAULT and the application will need to synchronize partitions by calling
+ * le_dualSys_Sync() API which occurs a device reboot.
+ * Synchronizing partitions is necessary before calling again the le_dualSys_DownloadAndWait() API.
+ * To know if both systems are synchronized, the le_dualSys_GetSyncState() API can be called.
+ *
+ * @section UpdateReq Update request
+ *
+ * Once the package download is over (meaning that le_dualSys_DownloadAndWait() API returns
+ * LE_OK), the user is able to accept or cancel the SW update.
+ * To do that, the le_dualSys_AcceptUpdate() or le_dualSys_RejectUpdate() API can be used.
+ * @warning If any Legato reset happens before accepting the SW update, a new download will
+ * be required at next startup.
+ * Accepting or rejecting a SW update will initiate a device reboot without returning any result.
+ *
+ * @section PartitionSync Partition synchronization
+ *
+ * The user can check if the ACTIVE and UPDATE partition are synchronized by calling the
+ * le_dualSys_GetSyncState() API.
+ * This API can be used before calling le_dualSys_DownloadAndWait() in order to check that the
+ * download can be treated.
+ * The user can request a SYNC operation by calling le_dualSys_Sync().
+ *
+ * @section Reset Reset APIs
+ *
+ * The user can use a reset API to initiate a partition swap or a swap and synchronization.
+ * See le_dualSys_ResetSwap() and le_dualSys_ResetSwapAndSync().
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_dualSys_interface.h
+ *
+ * Legato @ref c_dualSys include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function starts a package download to the device.
+ *
+ * @warning This API is a blocking API. It needs to be called in a dedicated thread.
+ *
+ * @note This API treatment can be aborted by calling le_dualSys_RejectUpdate()
+ * in a dedicated thread.
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_BAD_PARAMETER The parameter is invalid (needs to be positive)
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_BUSY          A download is already ongoing
+ *      - LE_FAULT         The function failed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DownloadAndWait
+(
+    file fd IN   ///< File descriptor of the file to be downloaded
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used by the Service User after the package download to accept the SW update.
+ * Accepting the SW update will lead to swap ACTIVE and UPDATE systems. In this case, the device
+ * initiates a reset when this API is called.
+ * @note When this API is correctly treated, a device reboot is initiated without returning any
+ * value.
+ *
+ * @return
+ *      - LE_NOT_POSSIBLE  The action is not compliant with the SW update state (no downloaded pkg)
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         If an error occurs
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AcceptUpdate
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used by the Service User during the package download in order to abort it, or
+ * after the package download to reject the SW update.
+ * Rejecting the SW update will lead to synchronize ACTIVE and UPDATE systems with ACTIVE one.
+ * @note When this API is correctly treated, a device reboot is initiated without returning any
+ * value.
+ *
+ * @return
+ *      - LE_NOT_POSSIBLE  The action is not compliant with the SW update state (no downloaded pkg)
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         If an error occurs
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RejectUpdate
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function which indicates if Active and Update systems are synchronized
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_UNSUPPORTED   The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSyncState
+(
+    bool isSync OUT ///< true if both systems are synchronized, false otherwise
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request a full system reset with a systems swap.
+ *
+ * After the reset, the UPDATE and ACTIVE systems will be swapped.
+ * @note When this API is correctly treated, a device reboot is initiated without returning any
+ * value.
+ *
+ * @return
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetSwap
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request a systems SYNC.
+ *
+ * The UPDATE system will be synchronised with the ACTIVE one.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Sync
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request a full system reset with a systems SWAP and systems SYNC.
+ *
+ * After the reset, the UPDATE and ACTIVE systems will be swapped and synchronized.
+ * @note When this API is correctly treated, a device reboot is initiated without returning any
+ * value.
+ *
+ * @return
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ResetSwapAndSync
+(
+);
+
