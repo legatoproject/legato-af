@@ -6,7 +6,7 @@ types.
 @ref apiFilesSyntax_function "Functions" are similar to C functions.
 They can take input and output parameters, and can return a result.
 
-A @ref apiFilesSyntax_handler "handler" is a callback function, which can be passed
+A @ref apiFilesSyntax_handler "handler" is a callback function that can be passed
 as a parameter to a function and can be registered to be called when
 @ref apiFilesSyntax_event "events" occur.
 
@@ -180,7 +180,7 @@ if there are no parameters.  These parameters types are supported:
        function implemention, a shorter OUT string can be used.
      - string length is given as number of characters, excluding any terminating characters
 
-- <tt> "handler" \<name\> "</tt>
+@code <handlerType> <name> @endcode
      - a handler (callback) function.
      - see @ref apiFilesSyntax_handler for info on how to declare a handler.
 
