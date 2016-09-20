@@ -4,9 +4,9 @@
  *
  * @ref le_atClient_interface.h "API Reference"
  *
- * @warning Some AT commands may conflict with Legato APIs; using both may cause problems that can be
- * difficult to diagnose. AT commands should be avoided whenever possible, and should only be used
- * with great care.
+ * @warning Some AT commands may conflict with Legato APIs; using both may cause problems that can
+ * be difficult to diagnose. AT commands should be avoided whenever possible, and should only be
+ * used with great care.
  *
  * The AT Client Service handles the AT commands sent to the modem on a specified
  * serial device. It also supports getting AT command responses (intermediate, final or
@@ -68,8 +68,7 @@
  * - le_atClient_GetFinalResponse() is used to get the final responses
  * - le_atClient_GetFirstIntermediateResponse() is used to get the first intermediate result code.
  * Other intermediate result codes can be obtained by calling
- * le_atClient_GetNextIntermediateResponse(). Returns LE_NOT_FOUND when there are no further
- * results.
+ * le_atClient_GetNextIntermediateResponse().Returns LE_NOT_FOUND when there are no further results.
  *
  * When a response has been set in the AT command declaration, the AT command response returned by
  * these APIs start with the given pattern, and ends when a <CR><LF> is detected.
@@ -232,7 +231,6 @@ FUNCTION Cmd Create
  * This function must be called to delete an AT command reference.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -249,7 +247,6 @@ FUNCTION le_result_t Delete
  * This function must be called to set the AT command string to be sent.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -270,7 +267,6 @@ FUNCTION le_result_t SetCommand
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -291,7 +287,6 @@ FUNCTION le_result_t SetIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -310,7 +305,6 @@ FUNCTION le_result_t SetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -328,7 +322,6 @@ FUNCTION le_result_t SetText
  * This function must be called to set the timeout of the AT command execution.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -347,7 +340,6 @@ FUNCTION le_result_t SetTimeout
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -366,7 +358,6 @@ FUNCTION le_result_t SetDevice
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
@@ -385,7 +376,6 @@ FUNCTION le_result_t Send
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -403,8 +393,7 @@ FUNCTION le_result_t GetFirstIntermediateResponse
  * This function is used to get the next intermediate response.
  *
  * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
+ *      - LE_NOT_FOUND when there are no further results
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -424,7 +413,6 @@ FUNCTION le_result_t GetNextIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -443,7 +431,6 @@ FUNCTION le_result_t GetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
@@ -460,7 +447,8 @@ FUNCTION le_result_t SetCommandAndSend
                                                                          ///< response
     string                         finalResp[CMD_RSP_MAX_LEN]    IN,     ///< Expected final
                                                                          ///< response
-    uint32                         timeout                       IN      ///< Timeout value in milliseconds.
+    uint32                         timeout                       IN      ///< Timeout value in
+                                                                         ///< milliseconds.
 );
 
 //--------------------------------------------------------------------------------------------------

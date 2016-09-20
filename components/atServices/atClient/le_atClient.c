@@ -1353,7 +1353,6 @@ le_atClient_CmdRef_t le_atClient_Create
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1374,7 +1373,7 @@ le_result_t le_atClient_SetDevice
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     DeviceContext_t* interfacePtr = le_ref_Lookup(DevicesRefMap, devRef);
@@ -1395,7 +1394,6 @@ le_result_t le_atClient_SetDevice
  * This function must be called to delete an AT command reference.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1412,7 +1410,7 @@ le_result_t le_atClient_Delete
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     le_ref_DeleteRef(CmdRefMap, cmdRef);
@@ -1427,7 +1425,6 @@ le_result_t le_atClient_Delete
  * This function must be called to set the AT command string to be sent.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1447,7 +1444,7 @@ le_result_t le_atClient_SetCommand
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     strncpy(cmdPtr->cmd, commandPtr, sizeof(cmdPtr->cmd));
@@ -1463,7 +1460,6 @@ le_result_t le_atClient_SetCommand
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1476,14 +1472,14 @@ le_result_t le_atClient_SetIntermediateResponse
         ///< [IN] AT Command
 
     const char* intermediatePtr
-        ///< [IN] Set InterLE_NOT_FOUNDmediate
+        ///< [IN] Set Intermediate
 )
 {
     AtCmd_t* cmdPtr = le_ref_Lookup(CmdRefMap, cmdRef);
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     char *interPtr = strdup(intermediatePtr);
@@ -1534,7 +1530,6 @@ le_result_t le_atClient_SetIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1554,7 +1549,7 @@ le_result_t le_atClient_SetFinalResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     char *respPtr = strdup(responsePtr);
@@ -1594,7 +1589,6 @@ le_result_t le_atClient_SetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1614,7 +1608,7 @@ le_result_t le_atClient_SetText
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     if (textPtr)
@@ -1641,7 +1635,6 @@ le_result_t le_atClient_SetText
  * This function must be called to set the timeout of the AT command execution.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1661,7 +1654,7 @@ le_result_t le_atClient_SetTimeout
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     cmdPtr->timeout = timer;
@@ -1674,7 +1667,6 @@ le_result_t le_atClient_SetTimeout
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
@@ -1692,7 +1684,7 @@ le_result_t le_atClient_Send
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     if (cmdPtr->interfacePtr == NULL)
@@ -1740,7 +1732,6 @@ le_result_t le_atClient_Send
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1764,7 +1755,7 @@ le_result_t le_atClient_GetFirstIntermediateResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     cmdPtr->responsesCount = le_dls_NumLinks(&cmdPtr->responseList);
@@ -1790,8 +1781,7 @@ le_result_t le_atClient_GetFirstIntermediateResponse
  * This function is used to get the next intermediate response.
  *
  * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
+ *      - LE_NOT_FOUND when there are no further results.
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1814,7 +1804,7 @@ le_result_t le_atClient_GetNextIntermediateResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     cmdPtr->intermediateIndex += 1;
@@ -1831,7 +1821,7 @@ le_result_t le_atClient_GetNextIntermediateResponse
         }
     }
 
-    return LE_FAULT;
+    return LE_NOT_FOUND;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1840,7 +1830,6 @@ le_result_t le_atClient_GetNextIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1863,7 +1852,7 @@ le_result_t le_atClient_GetFinalResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     le_dls_Link_t* linkPtr;
@@ -1890,7 +1879,6 @@ le_result_t le_atClient_GetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
