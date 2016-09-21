@@ -7,6 +7,7 @@
 
 export LEGATO_QMI_MODEM_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa/mdm9x15/le_pa
 export LEGATO_QMI_AUDIO_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_audio/mdm9x15/le_pa_audio
+export LEGATO_QMI_FWUPDATE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_fwupdate/mdm9x15/le_pa_fwupdate
 export LEGATO_QMI_UTIL_SRC = $(PA_DIR)/qmi/src/components/swiQmi/mdm9x15/swiQmi
 
 include targetDefs.mdm9xxx

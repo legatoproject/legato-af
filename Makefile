@@ -218,8 +218,13 @@ $(PLANTUML_JAR):
 	wget -L -O $(PLANTUML_JAR) http://sourceforge.net/projects/plantuml/files/plantuml.$(PLANTUML_VERSION).jar/download
 
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost $(PLANTUML_JAR) build/localhost/Makefile
-	java  -Djava.awt.headless=true -jar $(PLANTUML_JAR) -o $(LEGATO_ROOT)/build/doc/implementation/html $(LEGATO_ROOT)/components/doc/*
+plantuml_docs: $(PLANTUML_JAR)
+	for dir in components/doc platformAdaptor/qmi/src/components/doc; do \
+		files=`ls $(LEGATO_ROOT)/$$dir/*` ; \
+		java -Djava.awt.headless=true -jar $(PLANTUML_JAR) -o $(LEGATO_ROOT)/build/doc/implementation/html $$files ; \
+	done
+
+implementation_docs: localhost plantuml_docs build/localhost/Makefile
 	$(MAKE) -C build/localhost implementation_docs
 
 implementation_pdf: localhost build/localhost/Makefile

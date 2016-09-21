@@ -16,7 +16,7 @@ export LEGATO_QMI_MODEM_PA_ECALL_SRC := $(PA_DIR)/qmi/src/components/le_pa_ecall
 export LEGATO_QMI_GNSS_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_gnss
 export LEGATO_QMI_AVC_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_avc
 export LEGATO_QMI_SECSTORE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_secStore
-export LEGATO_QMI_FWUPDATE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_fwupdate
+#export LEGATO_QMI_FWUPDATE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_fwupdate
 export LEGATO_QMI_UARTMODE_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa_uartMode
 export LEGATO_QMI_UTIL_SRC_FILES = $(PA_DIR)/qmi/src/components/swiQmi
 

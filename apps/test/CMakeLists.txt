@@ -93,3 +93,8 @@ add_subdirectory(ifgen/test2)
 add_subdirectory(atServices/atClientTest)
 add_subdirectory(atServices/atServerIntegrationTest)
 add_subdirectory(atServices/atServerUnitTest)
+
+# Fw update
+add_subdirectory(fwupdate/fwupdateUnitTest)
+add_subdirectory(fwupdate/fwupdateIntegrationTest)
+

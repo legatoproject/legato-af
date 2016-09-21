@@ -41,6 +41,19 @@
 
 #include "legato.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumerate all SW update states (used by pa_fwupdate_SetState)
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum pa_fwupdate_state
+{
+    PA_FWUPDATE_STATE_NORMAL = 1, ///< Normal state
+    PA_FWUPDATE_STATE_SYNC,       ///< Synchronization state
+    PA_FWUPDATE_STATE_INVALID     ///< Invalid entry;
+}
+pa_fwupdate_state_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -105,6 +118,92 @@ LE_SHARED le_result_t pa_fwupdate_GetBootloaderVersion
 (
     char* versionPtr,        ///< [OUT] Firmware version string
     size_t versionSize       ///< [IN] Size of version buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Program a synchronization between active and update systems
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_DualSysSync
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Program a swap between active and update systems
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_DualSysSwap
+(
+    bool isSyncReq      ///< [IN] Indicate if a synchronization is requested after the swap
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function which indicates if Active and Update systems are synchronized
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_UNSUPPORTED   the feature is not supported
+ *      - LE_FAULT         else
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_DualSysGetSyncState
+(
+    bool *isSync ///< Indicates if both systems are synchronized
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to reset the device. This function does not return any error code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_fwupdate_Reset
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function which indicates if a Sync operation is needed (swap & sync operation)
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_UNSUPPORTED   the feature is not supported
+ *      - LE_FAULT         else
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_DualSysCheckSync
+(
+    bool *isSyncReq ///< Indicates if synchronization is requested
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This API is to be called at the beginning of a SYNC operation.
+ * It updates the SW update state field in SSDATA
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_SetState
+(
+    pa_fwupdate_state_t state   ///< [IN] state to set
 );
 
 

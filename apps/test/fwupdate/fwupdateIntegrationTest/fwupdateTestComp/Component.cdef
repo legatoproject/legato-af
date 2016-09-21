@@ -1,0 +1,12 @@
+sources:
+{
+    main.c
+}
+
+requires:
+{
+    api:
+    {
+        le_fwupdate.api
+    }
+}

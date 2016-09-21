@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Généré par Microsoft Visio, SVG Export le_dualSys_ResetSwapAndSync.svg Page 1 -->
+<!-- Généré par Microsoft Visio, SVG Export le_fwupdate_DualSysSwapAndSync.svg Page 1 -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
 		xmlns:v="http://schemas.microsoft.com/visio/2003/SVGExtensions/" height="11.664cm"
 		viewBox="0 0 1308.71 397.771" xml:space="preserve" color-interpolation-filters="sRGB" class="st16">
@@ -449,7 +449,7 @@
 		</g>
 		<g id="shape395-131" v:mID="395" v:groupContext="shape" transform="translate(780.966,615.421) rotate(180)">
 			<title>Flèche simple.395</title>
-			<desc>le_dualSys_ResetSwapAndSync</desc>
+			<desc>le_fwupdate_DualSysSwapAndSync</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				<v:ud v:nameU="ArrowType" v:prompt="" v:val="VT0(2):26"/>
@@ -458,6 +458,6 @@
 			<v:textRect cx="126.177" cy="397.771" width="252.36" height="0" transform="rotate(180)"/>
 			<path d="M0 397.77 L54 343.77 L54 370.77 L252.35 370.77 L252.35 397.77 L252.35 424.77 L54 424.77 L54 451.77 L0 397.77
 						 Z" class="st1"/>
-			<text x="-248.35" y="-393.57" transform="rotate(180)" class="st15" v:langID="1036"><v:paragraph/><v:tabList/>le_dualSys_ResetSwapAndSync</text>		</g>
+			<text x="-248.35" y="-393.57" transform="rotate(180)" class="st15" v:langID="1036"><v:paragraph/><v:tabList/>le_fwupdate_DualSysSwapAndSync</text>		</g>
 	</g>
 </svg>
