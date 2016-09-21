@@ -1181,7 +1181,7 @@ static le_result_t GetPropulsionType
 {
     uint8_t i=0;
     char cfgNodeLoc[8] = {0};
-    char configPath[LIMIT_MAX_PATH_BYTES];
+    char configPath[LE_CFG_STR_LEN_BYTES];
     char propStr[PROPULSION_MAX_BYTES] = {0};
     le_result_t res = LE_OK;
     msd_VehiclePropulsionStorageType_t  vehPropulsionStorageType;
@@ -1247,7 +1247,7 @@ static le_result_t LoadECallSettings
 )
 {
     le_result_t res = LE_OK;
-    char configPath[LIMIT_MAX_PATH_BYTES];
+    char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
 
     LE_DEBUG("Start reading eCall information in ConfigDB");
@@ -4156,7 +4156,7 @@ le_result_t le_ecall_SetPropulsionType
 {
     uint8_t i=0;
     char cfgNodeLoc[8] = {0};
-    char configPath[LIMIT_MAX_PATH_BYTES];
+    char configPath[LE_CFG_STR_LEN_BYTES];
     le_result_t res = LE_OK;
 
     snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_ECALL_PATH, CFG_NODE_PROP);

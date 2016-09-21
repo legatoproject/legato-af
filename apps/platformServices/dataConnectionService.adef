@@ -26,7 +26,10 @@ bindings:
 
 requires:
 {
-    configTree: { [w] system }
+    configTree:
+    {
+        [r] .
+    }
 }
 
 extern:

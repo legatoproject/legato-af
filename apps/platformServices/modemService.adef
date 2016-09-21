@@ -25,7 +25,10 @@ bindings:
 
 requires:
 {
-    configTree: { [w] system }
+    configTree:
+    {
+        [w] .
+    }
 }
 
 

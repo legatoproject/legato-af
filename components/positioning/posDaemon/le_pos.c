@@ -739,12 +739,7 @@ static void AcquitisionRateUpdate
 {
     LE_DEBUG("Acquisition Rate changed");
 
-    char configPath[LIMIT_MAX_PATH_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%s",
-             LEGATO_CONFIG_TREE_ROOT_DIR,
-             CFG_NODE_POSITIONING);
-
-    le_cfg_IteratorRef_t posCfg = le_cfg_CreateReadTxn(configPath);
+    le_cfg_IteratorRef_t posCfg = le_cfg_CreateReadTxn(CFG_POSITIONING_PATH);
 
     AcqRate = le_cfg_GetInt(posCfg, CFG_NODE_RATE, DEFAULT_ACQUISITION_RATE);
 

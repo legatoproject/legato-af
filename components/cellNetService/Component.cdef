@@ -13,6 +13,7 @@ requires:
         le_sim.api
         le_mrc.api
         le_cfg.api
+        le_secStore.api
     }
 }
 

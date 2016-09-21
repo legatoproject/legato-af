@@ -48,11 +48,11 @@
  * The config tree path and node definitions.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_PATH_DCS            "/dataConnectionService"
-#define CFG_PATH_WIFI           "wifi"
-#define CFG_NODE_SSID           "SSID"
-#define CFG_NODE_SECPROTOCOL    "secProtocol"
-#define CFG_NODE_PASSPHRASE     "passphrase"
+#define DCS_CONFIG_TREE_ROOT_DIR    "dataConnectionService:"
+#define CFG_PATH_WIFI               "wifi"
+#define CFG_NODE_SSID               "SSID"
+#define CFG_NODE_SECPROTOCOL        "secProtocol"
+#define CFG_NODE_PASSPHRASE         "passphrase"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -643,7 +643,7 @@ static bool IsApnEmpty
     le_mdc_ProfileRef_t profileRef  ///< [IN] Modem data connection profile reference
 )
 {
-    char apnName[LIMIT_MAX_PATH_BYTES] = {0};
+    char apnName[LE_CFG_STR_LEN_BYTES] = {0};
 
     if (LE_OK != le_mdc_GetAPN(profileRef, apnName, sizeof(apnName)))
     {
@@ -744,8 +744,9 @@ static void LoadSelectedTechProfile
             // connection. This is a temporary solution until the Wifi client API is improved.
 
             // Retrieve Access Point data from config tree
-            char configPath[LIMIT_MAX_PATH_BYTES];
-            snprintf(configPath, sizeof(configPath), "%s/%s", CFG_PATH_DCS, CFG_PATH_WIFI);
+            char configPath[LE_CFG_STR_LEN_BYTES];
+            snprintf(configPath, sizeof(configPath), "%s/%s",
+                     DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_WIFI);
 
             le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
 

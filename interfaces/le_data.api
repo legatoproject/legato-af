@@ -84,15 +84,14 @@
  *
  * @section c_le_data_configdb Configuration tree
  *
- * The configuration of the Wi-Fi access point is stored in the configuration database under the
- * following path:
+ * The configuration of the Wi-Fi access point is stored in the configuration database of the
+ * @c dataConnectionService under the following path:
  * @verbatim
-    /
-        dataConnectionService/
-            wifi/
-                SSID<string> == TestSsid
-                secProtocol<int> == 3
-                passphrase<string> == Passw0rd
+    dataConnectionService:/
+        wifi/
+            SSID<string> == TestSsid
+            secProtocol<int> == 3
+            passphrase<string> == Passw0rd
    @endverbatim
  *
  * @note The security protocol is one of the supported protocols defined in the

@@ -135,9 +135,10 @@
 /**
  * @interface le_smsInbox_configdbPage_Hide
  *
- * The configuration database path for the SMS Inbox Service is:
+ * The configuration database for the SMS Inbox Service is stored in the @c smsInboxService config
+ * tree:
  * @verbatim
-   /
+   smsInboxService:/
        smsInbox/
            apps/
                appA<uint> = <# of messages>
