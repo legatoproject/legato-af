@@ -40,6 +40,15 @@
 #define DEFAULT_DIR_ACCURACY    360
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Define if the GNSS service shall be used for the eCallDemo test:
+ * - true GNSS service is used.
+ * - false GNSS service is not used.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TEST_GNSS_SERVICE_USED  true
+
+//--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
 
@@ -288,36 +297,29 @@ static void StartSession
 
     LE_DEBUG("StartSession called");
 
-    if (ECallRef)
-    {
-        LE_WARN("End and Delete previous eCall session.");
-        le_ecall_End(ECallRef);
-        le_ecall_Delete(ECallRef);
-        ECallRef = NULL;
-    }
-
     ECallRef=le_ecall_Create();
     LE_FATAL_IF((!ECallRef), "Unable to create an eCall object, exit the app!");
     LE_DEBUG("Create eCallRef.%p",  ECallRef);
 
     // Get the position data
-    if ((le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy) == LE_OK) &&
-        (le_pos_GetDirection(&direction, &dirAccuracy) == LE_OK))
+    if (TEST_GNSS_SERVICE_USED)
     {
-        if ((hAccuracy < hMinAccuracy) && (dirAccuracy < dirMinAccuracy))
+        if ((le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy) == LE_OK) &&
+                        (le_pos_GetDirection(&direction, &dirAccuracy) == LE_OK))
         {
-            isPosTrusted = true;
-            LE_INFO("Position can be trusted.");
-        }
-        else
-        {
-            LE_WARN("Position can't be trusted!");
+            if ((hAccuracy < hMinAccuracy) && (dirAccuracy < dirMinAccuracy))
+            {
+                isPosTrusted = true;
+                LE_INFO("Position can be trusted.");
+            }
         }
     }
-    else
+
+    if (isPosTrusted == false)
     {
         LE_WARN("Position can't be trusted!");
     }
+
 
     LE_ERROR_IF((le_ecall_SetMsdPosition(ECallRef,
                                          isPosTrusted,
@@ -391,6 +393,14 @@ void ecallApp_StartSession
     int32_t  hMinAccuracy = 0;
     int32_t  dirMinAccuracy = 0;
 
+    if (ECallRef)
+    {
+        LE_WARN("End and Delete previous eCall session.");
+        le_ecall_End(ECallRef);
+        le_ecall_Delete(ECallRef);
+        ECallRef = NULL;
+    }
+
     LoadECallSettings(&hMinAccuracy, &dirMinAccuracy);
 
     LE_DEBUG("Start eCall session with %d passengers, hMinAccuracy.%d, dirMinAccuracy.%d",
@@ -416,7 +426,11 @@ COMPONENT_INIT
     signal(SIGINT, SigHandler);
     signal(SIGTERM, SigHandler);
 
-    le_posCtrl_Request();
+    if (TEST_GNSS_SERVICE_USED)
+    {
+        le_posCtrl_Request();
+        LE_INFO("Positioning service Started");
+    }
 
     LE_ERROR_IF((NULL == le_ecall_AddStateChangeHandler(ECallStateHandler, NULL)),
                 " Unable to add an eCall state change handler!");
