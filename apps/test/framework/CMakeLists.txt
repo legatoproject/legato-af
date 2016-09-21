@@ -3,6 +3,7 @@
 #--------------------------------------------------------------------------------------------------
 
 add_subdirectory(args)
+add_subdirectory(atomFile)
 add_subdirectory(c++)
 add_subdirectory(configTree)
 add_subdirectory(eventLoop)

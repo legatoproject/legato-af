@@ -22,6 +22,7 @@
 #include "properties.h"
 #include "json.h"
 #include "pipeline.h"
+#include "atomFile.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -64,6 +65,7 @@ __attribute__((constructor)) void _legato_InitFramework
     properties_Init(); // Uses memory pools and safe references.
     json_Init();       // Uses memory pools.
     pipeline_Init();   // Uses memory pools and FD Monitors.
+    atomFile_Init();     // Uses memory pools.
 
     // This must be called last, because it calls several subsystems to perform the
     // thread-specific initialization for the main thread.

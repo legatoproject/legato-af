@@ -1,0 +1,16 @@
+sandboxed: false
+start: manual
+
+executables:
+{
+    fileAtomTest = ( fileAtomTest )
+}
+
+processes:
+{
+    run:
+    {
+        (fileAtomTest)
+    }
+    maxFileBytes: 35000K
+}
