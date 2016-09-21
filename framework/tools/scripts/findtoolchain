@@ -36,7 +36,7 @@ wp85 | wp750x)
         /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         )
     ;;
-ar758x)
+ar758x | wp76xx)
     TOOLCHAIN_DIRS=(
         /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
         )

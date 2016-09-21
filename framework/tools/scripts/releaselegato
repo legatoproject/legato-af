@@ -24,7 +24,7 @@ help_long_description=(
 "        for all supported targets."
 )
 
-TARGETS="ar7,ar758x,ar759x,wp85,wp750x"
+TARGETS="ar7,ar758x,ar759x,wp85,wp750x,wp76xx"
 
 CheckForHelp $@
 
@@ -153,18 +153,18 @@ StagePaComponent() {
     StageComponent $comp_name $comp_src "${@:3}"
 }
 
-StagePaComponent swiQmi          modemService        ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa_audio     audioService        ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa           modemService        ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa_ecall     modemService        ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa_gnss      positioningService  ar7 wp85 wp750x ar758x ar759x
+StagePaComponent swiQmi          modemService        ar7 wp85 wp750x ar758x ar759x wp76xx
+StagePaComponent le_pa_audio     audioService        ar7 wp85 wp750x ar758x ar759x wp76xx
+StagePaComponent le_pa           modemService        ar7 wp85 wp750x ar758x ar759x wp76xx
+StagePaComponent le_pa_ecall     modemService        ar7 wp85 wp750x ar758x ar759x wp76xx
+StagePaComponent le_pa_gnss      positioningService  ar7 wp85 wp750x ar758x ar759x wp76xx
 StagePaComponent le_pa_avc       avcService          ar7 wp85 wp750x
 StagePaComponent le_pa_secStore  secStore            ar7 wp85 wp750x
 StagePaComponent le_pa_fwupdate  fwupdateService     ar7 wp85 wp750x
 
 StageComponent  le_pa_uartMode \
                 "system/staging/lib/libComponent_le_pa_uartMode.so" \
-                ar7 wp85 wp750x ar758x ar759x
+                ar7 wp85 wp750x ar758x ar759x wp76xx
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR

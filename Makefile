@@ -37,7 +37,7 @@
 
 # List of target devices needed by the release process:
 ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x
+  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x wp76xx
 endif
 
 # List of target devices supported:
@@ -327,8 +327,8 @@ stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 stage_mk
 stage_9x28:
 	install targetFiles/shared/bin/start build/$(TARGET)/staging
 
-.PHONY: stage_ar758x
-stage_ar758x: stage_embedded stage_9x28 stage_mklegatoimg
+.PHONY: stage_ar758x stage_wp76xx
+stage_ar758x stage_wp76xx: stage_embedded stage_9x28 stage_mklegatoimg
 
 # ==== AR759X (9x40-based Sierra Wireless modules) ====
 

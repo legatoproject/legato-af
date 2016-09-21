@@ -1,0 +1,60 @@
+# --------------------------------------------------------------------------------------------------
+# make definitions specific to Sierra Wireless WP76xx modules.
+#
+# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# --------------------------------------------------------------------------------------------------
+
+include targetDefs.mdm9x28
+
+export TARGET := wp76xx
+
+ifndef WP76XX_TOOLCHAIN_DIR
+  $(warning WP76XX_TOOLCHAIN_DIR not defined.  Using default.)
+  export WP76XX_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) wp76xx dir)
+endif
+ifndef WP76XX_TOOLCHAIN_PREFIX
+  export WP76XX_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) wp76xx prefix)
+endif
+export TOOLCHAIN_PREFIX = $(WP76XX_TOOLCHAIN_PREFIX)
+export TOOLCHAIN_DIR = $(WP76XX_TOOLCHAIN_DIR)
+
+export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
+
+# Use simu PAs temporarily
+export LEGATO_AVC_PA = $(PA_DIR)/simu/components/le_pa_avc
+export LEGATO_SECSTORE_PA = $(PA_DIR)/simu/components/le_pa_secStore
+export LEGATO_FWUPDATE_PA = $(PA_DIR)/simu/components/le_pa_fwupdate
+
+# QMI PAs
+export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
+export LEGATO_AUDIO_PA_PCM = $(PA_DIR)/audio/pcm/alsa-intf
+export LEGATO_AUDIO_PA_AMR = $(PA_DIR)/audio/amr/opencore-amr
+export LEGATO_UTIL_PA = $(LEGATO_QMI_UTIL)
+export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
+ifeq ($(INCLUDE_ECALL),1)
+  export LEGATO_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL)
+endif
+export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
+#export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
+#export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
+#export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
+export LEGATO_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA)
+
+export MKSYS_FLAGS += -C "-DSIERRA_MDM9X28"
+export MKEXE_FLAGS += -C "-DSIERRA_MDM9X28"
+
+# Audio HW settings
+MKSYS_FLAGS += -C "-DPCM_IF="SEC_AUX""
+MKSYS_FLAGS += -C "-DI2S_IF="SEC_MI2S""
+MKSYS_FLAGS += -C "-DUSB_IF="AFE_PCM""
+MKSYS_FLAGS += -C "-DCODEC_IF="PRI_MI2S""
+
+# ALSA Multimedia devices and hardware index settings for playback and recording
+MKSYS_FLAGS += -C "-DMM_1_ALSA_MIXER_CTRL="MultiMedia1""
+MKSYS_FLAGS += -C "-DMM_1_ALSA_PCM_DEVICE_ID=0"
+MKSYS_FLAGS += -C "-DMM_2_ALSA_MIXER_CTRL="MultiMedia2""
+MKSYS_FLAGS += -C "-DMM_2_ALSA_PCM_DEVICE_ID=13"
+
+# External ADCs
+MKSYS_FLAGS += -C "-DADC_BEGIN_NUM=0"
+MKSYS_FLAGS += -C "-DADC_COUNT=4"
