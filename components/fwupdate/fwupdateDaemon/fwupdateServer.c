@@ -18,21 +18,20 @@
  * Function to be treated at device init
  */
 //--------------------------------------------------------------------------------------------------
-void SyncAtStartupCheck
+static void SyncAtStartupCheck
 (
-    void* param1,   ///< Not used
-    void *param2    ///< Not used
+    void
 )
 {
     bool sync;
     le_result_t result;
     /* Check if a SYNC operation needs to be made */
     result = pa_fwupdate_DualSysCheckSync (&sync);
-    LE_DEBUG ("SyncAtStartupCheck pa_fwupdate_DualSysCheckSync %d sync %d", result, sync);
+    LE_DEBUG ("pa_fwupdate_DualSysCheckSync %d sync %d", result, sync);
     if ((result == LE_OK) && sync)
     {
         /* Make a sync operation */
-        result = pa_fwupdate_DualSysSync();
+        result = le_fwupdate_DualSysSync();
         if (result != LE_OK)
         {
             LE_ERROR ("FW update component init: Sync failure %d", result);
@@ -142,7 +141,7 @@ le_result_t le_fwupdate_DualSysSyncState
     /* Get the dual system synchronization state from PA */
     result = pa_fwupdate_DualSysGetSyncState( isSync );
 
-    LE_DEBUG ("le_fwupdate_DualSysSyncState: result %d, isSync %d", result, *isSync);
+    LE_DEBUG ("result %d, isSync %d", result, *isSync);
     return result;
 }
 
@@ -173,7 +172,7 @@ le_result_t le_fwupdate_DualSysSwap
         /* at this point the system is reseting */
     }
 
-    LE_DEBUG ("le_fwupdate_DualSysSwap result %d", result);
+    LE_DEBUG ("result %d", result);
     return result;
 }
 
@@ -198,10 +197,10 @@ le_result_t le_fwupdate_DualSysSync
     le_result_t result = pa_fwupdate_DualSysSync();
     if (result == LE_FAULT)
     {
-        LE_DEBUG ("le_fwupdate_DualSysSync sync failure --> pass SW update to NORMAL");
+        LE_DEBUG ("sync failure --> pass SW update to NORMAL");
         result = pa_fwupdate_SetState (PA_FWUPDATE_STATE_NORMAL);
     }
-    LE_DEBUG ("le_fwupdate_DualSysSync result %d", result);
+    LE_DEBUG ("result %d", result);
     return result;
 }
 
@@ -233,8 +232,8 @@ le_result_t le_fwupdate_DualSysSwapAndSync
         pa_fwupdate_Reset();
         /* at this point the system is reseting */
     }
-    
-    LE_DEBUG ("le_fwupdate_DualSysSwapAndSync result %d", result);
+
+    LE_DEBUG ("result %d", result);
     return result;
 }
 
@@ -245,6 +244,6 @@ le_result_t le_fwupdate_DualSysSwapAndSync
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_event_QueueFunction (SyncAtStartupCheck, NULL, NULL);
+    SyncAtStartupCheck();
 }
 

@@ -15,11 +15,7 @@
 #include "log.h"
 #include "args.h"
 
-extern void SyncAtStartupCheck
-(
-    void* param1,   ///< Not used
-    void *param2    ///< Not used
-);
+extern void _fwupdateComp_COMPONENT_INIT(void);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -49,7 +45,7 @@ static void Testle_fwupdate_Download
 {
     le_result_t result = LE_FAULT;
     int fd;
-    
+
     LE_INFO ("======== Test: le_fwupdate_Download ========");
 
     /* Test invalid file descriptor: API needs to return LE_BAD_PARAMETER */
@@ -71,7 +67,7 @@ static void Testle_fwupdate_Download
     result = le_fwupdate_Download (fd);
     /* Check required values */
     LE_ASSERT (result == LE_FAULT);
-    
+
     /* Systems are not synchronized: API needs to return LE_NOT_POSSIBLE */
     /* Set returned error code for PA function: LE_OK */
     pa_fwupdateSimu_SetReturnCode (LE_OK);
@@ -81,7 +77,7 @@ static void Testle_fwupdate_Download
     result = le_fwupdate_Download (fd);
     /* Check required values */
     LE_ASSERT (result == LE_NOT_POSSIBLE);
-    
+
     /* Valid treatment: API needs to return LE_OK */
     /* Set returned error code for PA function: LE_OK */
     pa_fwupdateSimu_SetReturnCode (LE_OK);
@@ -91,7 +87,7 @@ static void Testle_fwupdate_Download
     result = le_fwupdate_Download (fd);
     /* Check required values */
     LE_ASSERT (result == LE_OK);
-    
+
     LE_INFO ("======== Test: le_fwupdate_Download PASSED ========");
 }
 
@@ -121,7 +117,7 @@ void Testle_fwupdate_GetFirmwareVersion
     result = le_fwupdate_GetFirmwareVersion (Version, 20);
     /* Check required values */
     LE_ASSERT (result == LE_NOT_FOUND);
-    
+
     /* Test LE_OVERFLOW error if version string to big to fit in provided buffer:
      * API needs to return LE_OVERFLOW
      */
@@ -131,7 +127,7 @@ void Testle_fwupdate_GetFirmwareVersion
     result = le_fwupdate_GetFirmwareVersion (Version, 2);
     /* Check required values */
     LE_ASSERT (result == LE_OVERFLOW);
-    
+
     /* Test LE_FAULT error for any other errors : API needs to return LE_FAULT */
     /* Set returned error code for PA function: LE_FAULT */
     pa_fwupdateSimu_SetReturnCode (LE_FAULT);
@@ -179,7 +175,7 @@ void Testle_fwupdate_GetBootloaderVersion
     result = le_fwupdate_GetBootloaderVersion (Version, 20);
     /* Check required values */
     LE_ASSERT (result == LE_NOT_FOUND);
-    
+
     /* Test LE_OVERFLOW error if version string to big to fit in provided buffer:
      * API needs to return LE_OVERFLOW
      */
@@ -189,7 +185,7 @@ void Testle_fwupdate_GetBootloaderVersion
     result = le_fwupdate_GetBootloaderVersion (Version, 2);
     /* Check required values */
     LE_ASSERT (result == LE_OVERFLOW);
-    
+
     /* Test LE_FAULT error for any other errors: API needs to return LE_FAULT */
     /* Set returned error code for PA function: LE_FAULT */
     pa_fwupdateSimu_SetReturnCode (LE_FAULT);
@@ -297,7 +293,7 @@ static void Testle_fwupdate_DualSysSwap
     pa_fwupdateSimu_GetResetState( &isResetRequested);
     LE_ASSERT (result == LE_FAULT);
     LE_ASSERT (isResetRequested == false);
-    
+
     /* Simulate swap acceptance: API needs to return LE_OK */
     /* Set returned error code for PA function: LE_OK */
     pa_fwupdateSimu_SetReturnCode (LE_OK);
@@ -383,7 +379,7 @@ static void Testle_fwupdate_DualSysSwapAndSync
 {
     le_result_t result = LE_FAULT;
     bool isResetRequested = false;
-    
+
     LE_INFO ("======== Test: le_fwupdate_DualSysSwapAndSync ========");
 
     /* Simulate unsupported API: API needs to return LE_UNSUPPORTED */
@@ -403,7 +399,7 @@ static void Testle_fwupdate_DualSysSwapAndSync
     pa_fwupdateSimu_GetResetState( &isResetRequested);
     LE_ASSERT (result == LE_FAULT);
     LE_ASSERT (isResetRequested == false);
-    
+
     /* Simulate swap acceptance: API needs to return LE_OK */
     /* Set returned error code for PA function: LE_OK */
     pa_fwupdateSimu_SetReturnCode (LE_OK);
@@ -445,7 +441,8 @@ static void TestSyncAtStartupCheck
     /* Set the simulated SW update state value: PA_FWUPDATE_STATE_INVALID */
     pa_fwupdateSimu_setSwUpdateState (PA_FWUPDATE_STATE_INVALID);
     /* Call the function to be tested */
-    SyncAtStartupCheck (NULL, NULL);
+    /* SyncAtStartupCheck() is a static function so we call the COMPONENT_INIT which is calling it */
+    _fwupdateComp_COMPONENT_INIT();
     /* Get the the simulated SW update value */
     pa_fwupdateSimu_GetSwUpdateState (&state);
     /* Check that the SW update state wasn't updated meaning that a SYNC operation was not called */
@@ -459,12 +456,13 @@ static void TestSyncAtStartupCheck
     /* Set the simulated SW update state value: PA_FWUPDATE_STATE_INVALID */
     pa_fwupdate_SetState (PA_FWUPDATE_STATE_INVALID);
     /* Call the function to be tested */
-    SyncAtStartupCheck (NULL, NULL);
+    /* SyncAtStartupCheck() is a static function so we call the COMPONENT_INIT which is calling it */
+    _fwupdateComp_COMPONENT_INIT();
     /* Get the the simulated SW update value */
     pa_fwupdateSimu_GetSwUpdateState (&state);
     /* Check that the SW update state was updated meaning that a SYNC operation was called */
     LE_ASSERT (state == PA_FWUPDATE_STATE_SYNC);
-    
+
     LE_INFO ("======== Test: SyncAtStartupCheck PASSED ========");
 }
 
@@ -502,7 +500,7 @@ COMPONENT_INIT
     TestSyncAtStartupCheck();
     Testle_fwupdate_GetFirmwareVersion();
     Testle_fwupdate_GetBootloaderVersion();
-    
+
 
     LE_INFO ("======== Test FW update implementation Tests SUCCESS ========");
     exit(0);

@@ -184,7 +184,7 @@ le_result_t le_fwupdate_DualSysSwapAndSync
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_UNSUPPORTED;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
