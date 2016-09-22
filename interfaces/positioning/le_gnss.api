@@ -433,10 +433,15 @@ ENUM Constellation
 {
     SV_CONSTELLATION_UNDEFINED,        ///< GNSS constellation field not defined.
     SV_CONSTELLATION_GPS,              ///< Satellite Vehicle of GPS constellation.
+                                       ///< North American satellite navigation system
     SV_CONSTELLATION_SBAS,             ///< Satellite Vehicle of SBAS constellation.
+                                       ///< Satellite-based augmentation system
     SV_CONSTELLATION_GLONASS,          ///< Satellite Vehicle of Glonass constellation.
+                                       ///< Russian satellite navigation system
     SV_CONSTELLATION_GALILEO,          ///< Satellite Vehicle of Galileo constellation.
+                                       ///< European Union satellite navigation system
     SV_CONSTELLATION_BEIDOU,           ///< Satellite Vehicle of Beidou constellation.
+                                       ///< Chinese satellite navigation system
     SV_CONSTELLATION_MAX               ///< Maximum value.
 };
 
@@ -462,9 +467,13 @@ ENUM AssistedMode
 BITMASK ConstellationBitMask
 {
     CONSTELLATION_GPS,                      ///< GPS constellation used in solution.
+                                            ///< North American satellite navigation system
     CONSTELLATION_GLONASS,                  ///< GLONASS constellation used in solution.
+                                            ///< Russian satellite navigation system
     CONSTELLATION_BEIDOU,                   ///< BEIDOU constellation used in solution.
+                                            ///< Chinese satellite navigation system
     CONSTELLATION_GALILEO                   ///< GALILEO constellation used in solution.
+                                            ///< European Union satellite navigation system
 };
 
 //--------------------------------------------------------------------------------------------------

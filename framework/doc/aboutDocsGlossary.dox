@@ -1,79 +1,38 @@
 /** @page aboutDocsGlossary Glossary
 
-These are some common terms we use in Legato.
+Common Legato Terms:
 
-| Term (aka) | Definition |
-| ------------- | ------------- |
-| adef | application definition file used to define the external interfaces and internal content of apps that can be built, installed, and run on target devices |
-| AirVantage | Sierra Wireless cloud |
-| Application (app) | a collection of one or more processes running one or more executables |
-| Application core | application processor, usually embedded inside the same chip set as a cellular modem |
-| API | Application Programming Interface - set of routines, protocols, and tools for building software applications |
-| .api | API file extension |
-| AT | see Open At |
-| Beidou | Chinese GNSS |
-| BSP | Board Support Package |
-| Build Environment | Legato's application framework |
-| Build Tools | pre-built scripts, executuables, etc to build Legato |
-| C language | the C programming language |
-| Runtime Library | Legato C Runtime Library |
-| cdef | Component definition file used to define the external interfaces and internal content of reusable software components |
-| CDC | Communication Device Class specification |
-| CDMA | Code Division Multiple Access - channel access method used by radio communication technologies |
-| CID | Packet Data Protocol (PDP) Context Identifier |
-| CLIP/CLIR | Calling Line Identification Presentation/Restriction |
-| Component | collection of code and other files that are functionally related for reuse and sharing |
-| Config Tree | device configuration database |
-| Definition Files (def files) | define system, application, and component files used as input to build tools |
-| Device (target) | modem, GPS, dev kit or any other hardware |
-| Dev Kit Board | Sierra Wireless' developer hardware |
-| Developer Studio | Sierra Wireless Windows-based IDE |
-| DTMF | dual-tone multi-frequency signaling |
-| event-driven | programming where flow is determined by events like sensor outputs |
-| ECM | Ethernet Control Modem (subclass of CDC) |
-| Firmware (fw) | permanent software programmed into read-only memory |
-| Framework (a-f) | software framework used to implement a standardized code structure |
-| Galileo | European Union's GNSS |
-| Gateway | a node (router) on a TCP/IP network that serves as an access point to another network |
-| Git | distributed revision control and source code management system |
-| GitHub | web-based hosting service for Git repositories |
-| GLONASS | Russian GNSS |
-| GNSS | Global Navigation Satellite System, generic name for systems like GPS |
-| GPIO | General Purpose Input/Output, a generic pin on a chip |
-| GPRS | General packet radio service, a packet oriented mobile data service |
-| GPS | Global Positioning System, satellite navigation system |
-| Host |  omputer that hosts Legato development: the dev host |
-| IDE | Integrated Development Environment |
-| Interface | software to communicate between devices or programs, or computers and users |
-| IMEI | International Mobile Equipment Identity, a number to identify 3GPP devices |
-| IPC | inter-process communication |
-| Kernel | Core of an operating system (hardware abstraction, security, and software abstraction) |
-| language independent | Legato's interface definition language (IDL), similar to C |
-| le_@c * | C runtime library source files |
-| MAC | Media Access control - MAC address |
-| MSD | Minimum Set of Data |
-| Modem | Integrated telecom processor or external modem |
-| NMEA | National Marine Electronics Association used to communicate between marine navigation and control devices |
-| Open AT | Sierra Wireless application framework and operating system for M2M communication |
-| PLMN | Public Land Mobile Network |
-| Process | virutal memory address space executing one or more threads |
-| Root File System | file system contained on the same partition on which the root directory is located |
-| Runtime Environment | a standardized configuration for environment variables |
-| Sandbox | security mechanism for separating running programs |
-| sdef | system definition files are use to interconnect apps with each other and with the target's runtime environment (e.g., hardware devices) |
-| Service | ready to use IPC APIs |
-| Source | Sierra Wireless resource hub |
-| Supervisor | privileged process running on the target |
-| SSH | Secure Shell |
-| smack | utility to spoof MAC address |
-| stack | hardware register that holds the address of a memory location |
-| TAIP | Trimble ASCII Interface Protocol, common for vehicle monitoring |
-| Target (device) | an embedded wireless module |
-| thread | thread of execution - sequence of prgrammed instructions |
-| Tools | Target, Host, and Build tools |
-| Toolchain | development toolset linked (or chained) together |
-| xdef | all definition files: adef, cdef, sdef |
-| Yocto | Yocto open source project for BSPs |
+| Term                                                  | Definition |
+| ----------------------                                | ------------- |
+| @ref defFilesAdef "adef"                              | Application definition file - defines the external interfaces and internal content of apps including bindings, bundles, components and system settings |
+| .api files                                            | Interface definition language (IDL) file for defining function-call-oriented APIs that are used over IPC by programs written in different programming languages than the language used to implement the API. (e.g., the functions defined in the API are implemented in C while a program that calls the API is written in Java) |
+| @ref howToAV "AirVantage"                             | Sierra Wireless' IoT cloud that allows management of a fleet of remote machines|
+| @ref platformConstraintsATCommand "AT"                | Instruction set to send commands to a modem - AT Commands |
+| Build Environment                                     | Collection of tools and environment variables to build and deploy applications on the Legato AF |
+| @ref defFilesCdef "cdef"                              | Component definition file - defines the external interfaces and internal content of software components |
+| @ref basicComponents "Component"                      | Collection of functionally-related source code and other files that are grouped into a single, reusable unit for sharing between projects |
+| @ref legatoServicesConfigTree "Config Tree"           | Non-volatile data structure that stores configuration values. The trees are accessible through the Config Tree API or the Legato AF config tool |
+| @ref defFiles "Definition Files"                      | Configuration files that define the system, application, APIs, kernel module or component pieces needed to build your code within the Legato AF |
+| Development Host (Host)                               | Computer system operated by a human developer to develop (write, build, test, debug) software |
+| Device (target)                                       | Modem, GPS, mangOH, Raspberry Pi, dev kit or any hardware that the Legato AF is deployed on |
+| Developer Studio                                      | Sierra Wireless' Integrated Development Environment |
+| Firmware                                              | Any binary image stored in the target's non-volatile storage; read-only accessible by the device's own software during normal operation.  Reboots are required to update firmware on the target |
+| FOTA                                                  | Firmware Over the Air - service to upgrade the firmware from a remote location |
+| @ref buildToolsifgen "ifgen"                          | Code generation tool that parses API files and generates include files and IPC code |
+| Legato Application Framework (Legato AF)              | Open source application framework designed to encourage reuse and increased speed of development by providing solutions for commonly recurring embedded computing problems |
+| Legato Linux Distribution                             | Formal Linux distribution including Legato AF, Linux, Yocto, Userland, toolchain, utilities and selected services; everything that Legato depends on in Linux that could be useful to apps, targets or the developer |
+| Legato Platform                                       | Open source platform that includes tools to start development on an embedded system, including standard BSP packages, tools, IDE and the Legato AF |
+| Legato Reference BSP                                  | Software package consisting of kernel, kernel modules, complier and boot-loader for a specific FS/OS/HW target that is currently used to run the Legato platform.  Mostly open source, but could include binary or proprietary components depending on the target |
+| <a href="http://mangoh.io" target="_blank">mangOH</a> | Sierra Wireless' open hardware platform for IoT |
+| @ref defFilesMdef "mdef"                              | Module definition file - bundles Linux Kernel Modules for the Legato AF |
+| @ref howToSecurity "Sandbox"                          | The core security mechanism for running applications in separate secure containers |
+| @ref defFilesSdef "sdef"                              | System definition file - builds and interconnects apps with each other and within the runtime environment |
+| SOTA                                                  | Software Over the Air - service to update software from a remote location |
+| @ref legatoServicesSupervisor "Supervisor"            | Daemon process that supervises Legato apps running on the target device; controls the startup, shutdown, and fault recovery of apps; creates and destroys Sandboxes |
+| @ref basicSecuritySmack "SMACK"                       | Simplified Mandatory Access Control Kernel - Built-in Linux solution for mandatory access control |
+| Target (device)                                       | Device that the Legato AF is installed onto (e.g. mangOH or Raspberry Pi) |
+| Toolchain                                             | Collection of build tools, including compilers and linkers needed to build programs to run on a target device |
+| <a href="https://www.yoctoproject.org/" target="_blank">Yocto</a> | Open source collaboration project that provides templates, tools and methods to help create custom Linux-based systems for embedded products regardless of the hardware architecture |
 
 <HR>
 
