@@ -1,5 +1,3 @@
-sandboxed: false
-
 executables:
 {
     atServerTest = ( atServerTestComp )
@@ -15,6 +13,14 @@ processes:
     run:
     {
         ( atServerTest )
+    }
+}
+
+requires:
+{
+    device:
+    {
+        [rw]    /dev/ttyAT    /dev/ttyAT
     }
 }
 

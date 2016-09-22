@@ -207,7 +207,8 @@ static void* TestHandler
     le_thread_Ref_t AtCmdThreadRef = le_thread_Create("TestThread", AtCmdThreadHandler, NULL);
     le_thread_Start(AtCmdThreadRef);
 
-    le_atServer_DeviceRef_t devRef = le_atServer_Start("/dev/ttyS0");
+    // Unit test, we are using a fake device
+    le_atServer_DeviceRef_t devRef = le_atServer_Start(1);
     LE_ASSERT(devRef != NULL);
 
     struct

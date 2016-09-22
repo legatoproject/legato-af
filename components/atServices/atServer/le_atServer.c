@@ -1412,11 +1412,15 @@ static void *DeviceThread
 
     if (devPtr->device.fdMonitor)
     {
-        LE_ERROR("Interface %s already started",devPtr->device.path);
+        LE_ERROR("Interface already monitored %d", devPtr->device.fd);
         return NULL;
     }
 
-    le_dev_Open(&devPtr->device, RxNewData, devPtr);
+    if (le_dev_AddFdMonitoring(&devPtr->device, RxNewData, devPtr) != LE_OK)
+    {
+        LE_ERROR("Error during adding the fd monitoring");
+        return NULL;
+    }
 
     le_sem_Post(devPtr->semaphore);
 
@@ -1486,34 +1490,19 @@ static void FirstLayerAtCmdHandler
 //--------------------------------------------------------------------------------------------------
 le_atServer_DeviceRef_t le_atServer_Start
 (
-    const char* devicePathPtr
-        ///< [IN] device path which has to be used for the AT parser
+    int32_t              fd          ///< The file descriptor
 )
 {
     char name[THREAD_NAME_MAX_LENGTH];
     static uint32_t threatCounter = 1;
 
     // Search if the device is already opened
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(DevicesRefMap);
-
-     while (le_ref_NextNode(iterRef) == LE_OK)
-     {
-        DeviceContext_t* devPtr = (DeviceContext_t*) le_ref_GetValue(iterRef);
-
-        if (le_path_IsEquivalent(devicePathPtr, devPtr->device.path, "/") == true)
-        {
-            le_mem_AddRef(devPtr);
-            return devPtr->ref;
-        }
-    }
-
     DeviceContext_t* devPtr = le_mem_ForceAlloc(DevicesPool);
 
     memset(devPtr,0,sizeof(DeviceContext_t));
 
-    le_utf8_Copy(devPtr->device.path,devicePathPtr,LE_ATSERVER_PATH_MAX_LEN,0);
-
-    LE_DEBUG("Create a new interface for '%s'", devicePathPtr);
+    LE_DEBUG("Create a new interface for %d", fd);
+    devPtr->device.fd = fd;
 
     snprintf(name,THREAD_NAME_MAX_LENGTH,"atCommandServer-%d",threatCounter);
     devPtr->threadRef = le_thread_Create(name,DeviceThread,devPtr);

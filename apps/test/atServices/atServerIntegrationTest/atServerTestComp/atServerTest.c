@@ -1,13 +1,19 @@
 /**
  * This module implements the integration tests for AT commands server API.
  *
- * This is using the uart serial port.
- * First, unbind the linux console on the uart:
- * 1. in /etc/inittab, comment line which starts getty
- * 2. relaunch init: kill -HUP 1
- * 3. kill getty
- * 4. On PC side, open a terminal on the plugged uart console
- * 5. Send AT commands. Accepted AT commands: AT, ATA, ATE, AT+ABCD
+ * 2 ways to connect to a bearer:
+ *
+ * - Using UART:
+ * 1. Define __UART__ flag
+ * 2. First, unbind the linux console on the uart:
+ *      a. in /etc/inittab, comment line which starts getty
+ *      b. relaunch init: kill -HUP 1
+ *      c. kill getty
+ *      d. On PC side, open a terminal on the plugged uart console
+ *      e. Send AT commands. Accepted AT commands: AT, ATA, ATE, AT+ABCD
+ *
+ * - Using TCP socket:
+ * Open a connection (with telnet for instance) on port 1234
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
@@ -15,10 +21,18 @@
 
 #include "legato.h"
 #include "interfaces.h"
-
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #define PARAM_MAX 10
 
+le_atServer_DeviceRef_t DevRef = NULL;
+
+// Define __UART__ flag if AT commands server is bound on the UART.
+// Undefine it for TCP socket binding.
+//#define __UART__
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -108,6 +122,19 @@ static void AtCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The signal event handler function for SIGINT/SIGTERM when process dies.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigHandler
+(
+    int sigNum
+)
+{
+    le_atServer_Stop(DevRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * main of the test
  *
  */
@@ -121,20 +148,60 @@ COMPONENT_INIT
 
     LE_INFO("AT server test starts");
 
-    le_atServer_DeviceRef_t devRef = le_atServer_Start("/dev/ttyHSL1");
-    LE_ASSERT(devRef != NULL);
+    // Register a signal event handler for SIGINT when user interrupts/terminates process
+    signal(SIGINT, SigHandler);
+    signal(SIGTERM, SigHandler);
+
+#ifdef __UART__
+    // UART connection
+    int fd = open("/dev/ttyHSL1", O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (fd < 0)
+    {
+        LE_ERROR("Error in opening the device errno = %d", errno);
+        return;
+    }
+#else
+    // Create the socket
+    int socketFd = socket (AF_INET, SOCK_STREAM, 0);
+    int fd;
+
+    LE_ASSERT(socketFd > 0);
+
+    struct sockaddr_in myAddress, clientAddress;
+
+    memset(&myAddress,0,sizeof(myAddress));
+
+    myAddress.sin_port = htons(1234);
+    myAddress.sin_family = AF_INET;
+    myAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    // Bind server - socket
+    LE_ASSERT( bind(socketFd,(struct sockaddr_in *)&myAddress,sizeof(myAddress)) == 0 );
+
+    // Listen on the socket
+    listen(socketFd,1);
+
+    socklen_t addressLen = sizeof(clientAddress);
+
+    fd = accept(socketFd,
+                          (struct sockaddr *)&clientAddress,
+                          &addressLen);
+#endif // __UART__
+
+    DevRef = le_atServer_Start(fd);
+    LE_ASSERT(DevRef != NULL);
 
     struct
     {
         const char* atCmdPtr;
         le_atServer_CmdRef_t cmdRef;
-    } atCmdCreation[] =     {
-                                { "AT+ABCD",    atCmdRef    },
-                                { "AT",         atRef       },
-                                { "ATA",        atARef      },
-                                { "ATE",        atERef      },
-                                { NULL,         NULL        }
-                            };
+    } atCmdCreation[] = {
+                            { "AT+ABCD",    atCmdRef    },
+                            { "AT",         atRef       },
+                            { "ATA",        atARef      },
+                            { "ATE",        atERef      },
+                            { NULL,         NULL        }
+                        };
 
     int i=0;
 
@@ -148,6 +215,4 @@ COMPONENT_INIT
 
         i++;
     }
-
-    LE_INFO("AT server test started");
 }

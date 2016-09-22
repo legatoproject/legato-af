@@ -4,24 +4,21 @@
  *
  * @ref le_atServer_interface.h "API Reference"
  *
- * @warning Some AT commands may conflict with Legato APIs; using both may cause problems that can be
- * difficult to diagnose. AT commands should be avoided whenever possible, and should only be used
- * with great care.
- *
  * The AT Commands Server handles AT commands' subscriptions on a requested serial device. The server
  * is compliant with 3GPP 27.007, paragraph 4.0, 4.1 and 4.2.
  *
  * @section atServer_binding Device Binding
  *
- * le_atServer_Start() must be called to bind a specific device with the AT commands server.
+ * le_atServer_Start() must be called to bind the file descriptor of the device with the AT commands
+ * server. Note that a socket can also be bound.
  * Multiple devices can be bound.
- * A device can be unbound using le_atServer_Stop().
+ * A file descriptor can be unbound using le_atServer_Stop().
  *
  * @section atServer_subscription Subscription
  *
  * A new AT command can be added into the parser using le_atServer_Create(), and it can be deleted
  * using le_atServer_Delete().
- * An AT command can be available only on one dedicated device, or on all bound AT devices, using
+ * An AT command can be available only on one dedicated device, or on all bound devices, using
  * le_atServer_SetDevice().
  *
  * @section atServer_handler Handler
@@ -37,8 +34,9 @@
  * The app has can send intermediate responses through
  * le_atServer_SendIntermediateResponse().
  * In all cases, the app must send a final response using
- * le_atServer_SendFinalResponse(). The AT device will be locked until the final response is sent.
- * If no answer is sent, the AT device will not accept any new AT commands (an error will be
+ * le_atServer_SendFinalResponse(). The corresponding device will be locked until the final response
+ * is sent.
+ * If no answer is sent, the device will not accept any new AT commands (an error will be
  * returned).
  *
  * The app can also send unsolicited responses to warn a host
@@ -46,7 +44,7 @@
  * This response is sent when no AT command is being processing on the device (i.e. unsolicited
  * response is sent between the latest final response and the next reception of an AT command).
  * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
- * is buffered and sent as soon as the AT device becomes available (i.e., the processing AT command
+ * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
  * sends its final response).
  *
  * <HR>
@@ -63,8 +61,6 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
-
-USETYPES le_atClient.api;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -109,21 +105,6 @@ DEFINE PARAMETER_MAX_LEN = (20);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE PARAMETER_MAX_BYTES = (PARAMETER_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Device name maximum length.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PATH_MAX_LEN = le_atClient.PATH_MAX_LEN;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Device name maximum length.
- * One extra byte is added for the null character.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE DEVICE_NAME_MAX_BYTES = (PATH_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -188,7 +169,7 @@ ENUM AvailableDevice
 //--------------------------------------------------------------------------------------------------
 FUNCTION Device Start
 (
-    string devicePath[PATH_MAX_LEN] IN   ///< device path which has to be used for the AT parser
+    file   fd                       IN  ///< File descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------

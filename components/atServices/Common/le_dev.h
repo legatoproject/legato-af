@@ -16,8 +16,7 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct Device
 {
-    char               path[LE_ATCLIENT_PATH_MAX_BYTES]; ///< Path of the device
-    uint32_t           handle;                           ///< Handle of the device.
+    int32_t            fd;                               ///< The file descriptor.
     le_fdMonitor_Ref_t fdMonitor;                        ///< fd event monitor associated to Handle
 }
 Device_t;
@@ -52,11 +51,12 @@ int32_t le_dev_Write
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to open a device (or port)
+ * This function must be called to monitor the specified file descriptor in the calling thread event
+ * loop.
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_Open
+le_result_t le_dev_AddFdMonitoring
 (
     Device_t *devicePtr,    ///< device pointer
     le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
@@ -65,11 +65,11 @@ le_result_t le_dev_Open
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to close a device (or port)
+ * This function must be called to remove the file descriptor monitoring from the event loop.
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_Close
+le_result_t le_dev_RemoveFdMonitoring
 (
     Device_t *devicePtr
 );

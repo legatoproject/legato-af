@@ -113,11 +113,11 @@ int32_t le_dev_Write
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to open a device (or port)
+ * Stub for fd monitoring function
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_Open
+le_result_t le_dev_AddFdMonitoring
 (
     Device_t *devicePtr,    ///< device pointer
     le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
@@ -133,11 +133,11 @@ le_result_t le_dev_Open
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to close a device (or port)
+ * Stub for fd monitoring removal
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_Close
+le_result_t le_dev_RemoveFdMonitoring
 (
     Device_t *devicePtr
 )

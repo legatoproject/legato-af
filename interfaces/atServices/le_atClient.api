@@ -56,9 +56,10 @@
  * When the AT command declaration is complete, it can be sent using le_atClient_Send(). This API is
  * synchronous (blocking until final response is detected, or timeout reached).
  *
- * le_atClient_SetCommandAndSend() is equivalent to le_atClient_Start(), le_atClient_SetCommand(),
+ * le_atClient_SetCommandAndSend() is equivalent to le_atClient_Create(), le_atClient_SetCommand(),
  * le_atClient_SetDevice(), le_atClient_SetTimeout(), le_atClient_SetIntermediateResponse() and
- * le_atClient_SetFinalResponse() in one API call.
+ * le_atClient_SetFinalResponse() in one API call. The AT command reference is created and returned
+ * by this API.
  *
  * @section atClient_responses Responses
  *
@@ -170,20 +171,6 @@ DEFINE TEXT_MAX_BYTES = (TEXT_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum number of characters permitted for a path.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PATH_MAX_LEN = 30;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of characters permitted for a path (including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PATH_MAX_BYTES = (PATH_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Command default timeout (in ms)
  */
 //--------------------------------------------------------------------------------------------------
@@ -198,7 +185,7 @@ DEFINE CMD_DEFAULT_TIMEOUT = 30000;
 //--------------------------------------------------------------------------------------------------
 FUNCTION Device Start
 (
-    string devicePath[PATH_MAX_LEN] IN  ///< Device path
+    file   fd  IN  ///< File descriptor.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -436,6 +423,10 @@ FUNCTION le_result_t GetFinalResponse
  *
  * @note If the AT command is invalid, a fatal error occurs,
  *       the function won't return.
+ *
+ * @note The AT command reference is created and returned by this API, there's no need to call
+ * le_atClient_Create() first.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommandAndSend
