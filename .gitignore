@@ -21,6 +21,8 @@ binaries
 
 # Vim
 *.swp
+*.swo
+*.swn
 
 # Eclipse / Developer Studio
 .cproject

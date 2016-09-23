@@ -177,8 +177,11 @@ FUNCTION Device Start
  * This function stops the AT server session on the requested device.
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to stop the AT server session.
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_BUSY           The requested device is busy.
+ *      - LE_FAULT          Failed to stop the server, check logs
+ *                              for more information.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Stop
@@ -207,6 +210,10 @@ FUNCTION Cmd Create
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to delete the command.
+ *      - LE_BUSY          Command is in progress.
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 

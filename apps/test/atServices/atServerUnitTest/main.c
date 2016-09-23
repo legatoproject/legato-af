@@ -10,6 +10,7 @@
 #include "log.h"
 
 #define PARAM_MAX 10
+#define DESC_MAX_LENGTH 512
 
 static le_sem_Ref_t    ThreadSemaphore;
 static le_sem_Ref_t    HandlerSemaphore;
@@ -18,6 +19,7 @@ extern void le_dev_Init(void);
 extern void le_dev_NewData(char* stringPtr,uint32_t len);
 void le_dev_WaitSemaphore(void);
 void le_dev_ExpectedResponse(char* rspPtr);
+void le_dev_Done(void);
 
 static uint32_t ExpectedParametersNumber = 0;
 static char* ExpectedAtCommandPtr;
@@ -209,6 +211,7 @@ static void* TestHandler
 
     // Unit test, we are using a fake device
     le_atServer_DeviceRef_t devRef = le_atServer_Start(1);
+
     LE_ASSERT(devRef != NULL);
 
     struct
@@ -661,6 +664,18 @@ static void* TestHandler
     le_sem_Wait(HandlerSemaphore);
 
     le_dev_WaitSemaphore();
+
+    le_dev_Done();
+    // test deletion command
+    // delete created commands
+    i = 0;
+    while ( atCmdCreation[i].atCmdPtr != NULL )
+    {
+        LE_ASSERT(le_atServer_Delete(atCmdCreation[i].cmdRef) == LE_OK);
+        i++;
+    }
+    // test stopping the server
+    LE_ASSERT(le_atServer_Stop(devRef) == LE_OK);
 
     exit(0);
 
