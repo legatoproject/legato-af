@@ -719,7 +719,7 @@ static void TestLeGnssConstellations
                                     LE_GNSS_CONSTELLATION_GLONASS))
     sleep(2);
 
-    // test4: error test (GPS constallation is not set)
+    // test4: error test (GPS constellation is not set)
     //        and Beidou is unknown for mdm9x15
     constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
 #if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
@@ -727,14 +727,15 @@ static void TestLeGnssConstellations
 #else
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
 #endif
+
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     // test constellationMask has not changed after error
     LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS))
+                                    LE_GNSS_CONSTELLATION_GLONASS));
     sleep(2);
 
     // next tests have same results as test4 for mdm9x15
-#if defined(SIERRA_MDM9X40)
+#if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
 
     // test5: Gps+Glonass+Beidou selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
@@ -776,7 +777,7 @@ static void TestLeGnssConstellations
                         LE_GNSS_CONSTELLATION_GLONASS |
                         LE_GNSS_CONSTELLATION_BEIDOU |
                         LE_GNSS_CONSTELLATION_GALILEO |
-                        LE_GNSS_CONSTELLATION_GALILEO+5;
+                        LE_GNSS_CONSTELLATION_GALILEO | 5;
 
     LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
@@ -784,7 +785,6 @@ static void TestLeGnssConstellations
                                     LE_GNSS_CONSTELLATION_GLONASS |
                                     LE_GNSS_CONSTELLATION_BEIDOU |
                                     LE_GNSS_CONSTELLATION_GALILEO))
-
 #endif
 }
 
