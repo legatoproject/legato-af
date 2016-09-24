@@ -47,12 +47,13 @@ BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
 BIN_DIR := $(BUILD_DIR)/bin
 LIB_DIR := $(BUILD_DIR)/lib
 
-MKEXE_FLAGS += -w $(BUILD_DIR)/tools/$@ -l $(LIB_DIR) -t $(TARGET)
+LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
+LOCAL_MKEXE_FLAGS += -w $(BUILD_DIR)/tools/$@ -l $(LIB_DIR) -t $(TARGET)
 
 # Do not be verbose by default.
 VERBOSE ?= 0
 ifeq ($(VERBOSE),1)
-  MKEXE_FLAGS += -v
+  LOCAL_MKEXE_FLAGS += -v
 endif
 
 # Do not use clang by default.
@@ -72,7 +73,7 @@ config:
 			-i $(LEGATO_ROOT)/framework/c/src \
 			--ldflags=-L$(LIB_DIR) \
 			--ldflags=-ljansson \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 execInApp:
 	mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/execInApp \
@@ -86,21 +87,21 @@ execInApp:
 			-i $(LEGATO_INTERFACES_DIR)/supervisor \
 			-i $(FRAMEWORK_SRC_DIR)/serviceDirectory \
 			-s $(FRAMEWORK_SRC_DIR) \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 log:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/logTool/logTool.c \
 			-i $(FRAMEWORK_SRC_DIR) \
 			-i $(FRAMEWORK_SRC_DIR)/logDaemon \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 sdir:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/sdirTool \
 			-i $(FRAMEWORK_SRC_DIR) \
 			-i $(FRAMEWORK_SRC_DIR)/serviceDirectory \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 gdbCfg:
 	ln -sf debugCfg $(BIN_DIR)/gdbCfg
@@ -114,30 +115,30 @@ inspect:
 			--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
 			--cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="$(LE_SVCDIR_CLIENT_SOCKET_NAME)" \
 			-i $(FRAMEWORK_SRC_DIR) \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 xattr:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/xattr/xattr.c \
 			-i $(FRAMEWORK_SRC_DIR) \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 app:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/appCtrl \
 			-i $(LEGATO_INTERFACES_DIR)/supervisor \
 			-i $(FRAMEWORK_SRC_DIR) \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 update:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/$@ \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 uartMode:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/uartMode \
-			$(MKEXE_FLAGS)
+			$(LOCAL_MKEXE_FLAGS)
 
 scripts:
 	cp -u -P --preserve=all $(wildcard targetFiles/shared/bin/*) $(BIN_DIR)
