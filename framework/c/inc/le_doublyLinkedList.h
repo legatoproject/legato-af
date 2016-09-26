@@ -161,9 +161,11 @@
  *
  * @section dls_synch Thread Safety and Re-Entrancy
  *
- * All linked list function calls are re-entrant and thread safe. If the nodes and/or list
- * object is shared by multiple threads, explicit steps must be taken to maintain mutual
- * exclusion of access.
+ * All linked list function calls are re-entrant and thread safe themselves, but if the nodes and/or
+ * list object are shared by multiple threads, explicit steps must be taken to maintain mutual
+ * exclusion of access. If you're accessing the same list from multiple threads, you @e must use a
+ * @ref c_mutex "mutex" or some other form of thread synchronization to ensure only one thread
+ * accesses the list at a time.
  *
  * <HR>
  *
