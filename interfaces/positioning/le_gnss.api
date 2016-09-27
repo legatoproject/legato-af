@@ -2,7 +2,8 @@
 /**
  * @page c_gnss GNSS
  *
- * @ref le_gnss_interface.h "API Reference"
+ * @ref le_gnss_interface.h "API Reference" <br>
+ * @ref platformConstraintsGnss page
  *
  * @ref howToGNSS
  *
@@ -105,7 +106,7 @@
  *
  * @subsection le_gnss_AcquisitionRate Acquisition rate
  * The GNSS position is computed and delivered each acquisition rate. Default value is 1 second.
- * The application can configure/retreive the GNSS device acquisition rate with the
+ * The application can configure/retrieve the GNSS device acquisition rate with the
  * le_gnss_SetAcquisitionRate() / le_gnss_GetAcquisitionRate() functions.
  *
  * Please refer to @ref le_gnss_APIcallsRequirements.
@@ -672,6 +673,9 @@ FUNCTION le_result_t Disable
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ *
+ * @warning This function may be subject to limitation depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetAcquisitionRate
