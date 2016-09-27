@@ -300,7 +300,7 @@ le_result_t le_ref_NextNode
  *
  */
 //--------------------------------------------------------------------------------------------------
-void const * le_ref_GetSafeRef
+const void* le_ref_GetSafeRef
 (
     le_ref_IterRef_t iteratorRef ///< [IN] Reference to the iterator.
 );
@@ -316,7 +316,7 @@ void const * le_ref_GetSafeRef
  *          ready.
  */
 //--------------------------------------------------------------------------------------------------
-void const * le_ref_GetValue
+void* le_ref_GetValue
 (
     le_ref_IterRef_t iteratorRef ///< [IN] Reference to the iterator.
 );
