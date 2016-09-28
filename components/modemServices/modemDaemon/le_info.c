@@ -430,6 +430,34 @@ le_result_t le_info_GetPriId
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the product stock keeping unit number (SKU) string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The SKU number string length exceeds the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetSku
+(
+    char* skuIdStr,
+        ///< [OUT] Product SKU ID string.
+
+    size_t skuIdStrNumElements
+        ///< [IN]
+)
+{
+    if (skuIdStr == NULL)
+    {
+        LE_KILL_CLIENT("skuIdStr is NULL.");
+        return LE_FAULT;
+    }
+
+    return pa_info_GetSku(skuIdStr, skuIdStrNumElements);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the Platform Serial Number (PSN) string.
  *
  * @return

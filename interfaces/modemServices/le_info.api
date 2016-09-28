@@ -57,6 +57,8 @@
  * The Part number is a 7-digit string. Revision Number string contains 2-digit major
  *  version + '.' char + 2-digit minor version (xx.xx).
  *
+ * le_info_GetSku() is used to retrieve the product stock keeping unit number (SKU).
+ *
  * le_info_GetPlatformSerialNumber() is used to retrieve the Platform Serial Number (PSN) string.
  *
  * le_info_GetRfDeviceStatus() is used to retrieve the RF devices working status (i.e. working or
@@ -261,7 +263,7 @@ DEFINE MAX_PSN_LEN   = 14;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum length of an Platform Serial Number (PSN) string.
+ * Maximum length of the Platform Serial Number (PSN) string.
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
@@ -276,13 +278,29 @@ DEFINE RF_DEVICES_STATUS_MAX = 10;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum length of the product stock keeping unit number (SKU) string, excluding any termination
+ * character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SKU_LEN   = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the product stock keeping unit number (SKU) string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_SKU_BYTES = (MAX_SKU_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Retrieve the International Mobile Equipment Identity (IMEI).
  *
  * @return LE_FAULT       Function failed to retrieve the IMEI.
  * @return LE_OVERFLOW     IMEI length exceed the maximum length.
  * @return LE_OK          Function succeeded.
  *
- * @note If the caller passes a bad pointer into this function, it's a fatal error; the
+ * @note If the caller passes a bad pointer into this function, it's a fatal error the
  *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -530,3 +548,19 @@ FUNCTION le_result_t GetRfDeviceStatus
                                                         ///< 0 means something wrong
                                                         ///< 1 means no error found
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the product stock keeping unit number (SKU) string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The SKU number string length exceeds the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSku
+(
+    string skuIdStr[MAX_SKU_LEN] OUT                   ///< Product SKU ID string.
+);
+
