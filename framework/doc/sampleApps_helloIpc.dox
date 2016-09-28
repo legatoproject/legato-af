@@ -10,19 +10,16 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/helloIpc
 $ make wp85
-$ instapp helloIpc.wp85.update <ip address>
+$ update helloIpc.wp85.update <ip address>
 @endverbatim
 
-If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
+If you're not using a Sierra Wireless WP85xx module, replace @c wp85 with the appropriate
+identifier for your target.
 
 @ref sampleApps_startApp
 
-<HR>
-
 See <br>
 @ref basicAppsIPC
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

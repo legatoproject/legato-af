@@ -85,10 +85,10 @@ processes:
 $ mkapp -t wp85 legacyProgram.adef
 @endcode
 
-@c 3. Install the app bundle on the target using @c instapp:
+@c 3. Install the app bundle on the target using @c update:
 
 @code
-$ instapp legacyProgram.wp85.update
+$ update legacyProgram.wp85.update
 Installing application 'legacyProgram' from file 'legacyProgram.wp85'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
@@ -222,7 +222,7 @@ to explicitly grant access permission so access is never unknowingly granted.
 
 @code
 $ mkapp -t wp85 legacyProgram.adef
-$ instapp legacyProgram.update.wp85 192.168.2.2
+$ update legacyProgram.update.wp85 192.168.2.2
 Installing application 'legacyProgram' from file 'legacyProgram.wp85'.
 Removing app 'legacyProgram'...
 Deleted user 'applegacyProgram'.

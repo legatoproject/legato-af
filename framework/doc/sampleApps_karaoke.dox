@@ -18,10 +18,11 @@ Run this to install the sample app:
 @code
 $ cd apps/sample/karaoke
 $ make wp85
-$ instapp karaoke.wp85.update <ip address>
+$ update karaoke.wp85.update <ip address>
 @endcode
 
-If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
+If you're not using a Sierra Wireless WP85xx module, replace @c wp85 with the appropriate
+identifier for your target.
 
 Run the app with the player process's standard out connected to the terminal:
 @code

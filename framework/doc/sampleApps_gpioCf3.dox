@@ -36,17 +36,13 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/gpioCf3Demo
 $ make wp85
-$ instapp gpioCf3Demo.wp85.update <ip address>
+$ update gpioCf3Demo.wp85.update <ip address>
 @endverbatim
 
 @ref sampleApps_startApp
 
-<HR>
-
 See <br>
 @ref basicAppsCreate
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

@@ -11,12 +11,10 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/lwm2mAirVantageControl
 $ make wp85
-$ instapp lwm2mAirVantageControl.wp85.update <ip address>
+$ update lwm2mAirVantageControl.wp85.update <ip address>
 @endverbatim
 
 @ref sampleApps_startApp
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

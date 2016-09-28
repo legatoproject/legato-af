@@ -15,12 +15,13 @@ Run this to install the sample app:
 @verbatim
 $ cd apps/sample/modemDemo
 $ make wp85
-$ instapp modemDemo.wp85.update <ip address>
+$ update modemDemo.wp85.update <ip address>
 @endverbatim
 
 where <i>ip address</i> is the address of your target device.
 
-If you're using an AR7 module in your target, substitute @c ar7 for @c wp85.
+If you're not using a Sierra Wireless WP85xx module, replace @c wp85 with the appropriate
+identifier for your target.
 
 @ref sampleApps_startApp
 
@@ -60,8 +61,6 @@ In @c modemDemo/demo.c, it's also possible to extend the list of processed comma
 
 See <br>
 @ref c_mdc
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

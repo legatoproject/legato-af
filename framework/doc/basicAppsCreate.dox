@@ -146,7 +146,7 @@ Use the @c -t option to build for a target other than the default "localhost"
 target.
 
 This is how to build the helloWorld app to install on the
-Sierra Wireless WP85 module:
+Sierra Wireless WP85xx module:
 
 @code
 $ mkapp -t wp85 helloWorld.adef
@@ -156,10 +156,10 @@ $ mkapp -t wp85 helloWorld.adef
 
 @section basicAppsCreate_instTarget Install App to Target
 
-@c 6. Use @c instapp to install the app on your target:
+@c 6. Use @c update to install the app on your target:
 
 @code
-$ instapp helloWorld.wp85.update <ip addr>
+$ update helloWorld.wp85.update <ip addr>
 @endcode
 
 The second argument is the target device's IP address where to install the app.

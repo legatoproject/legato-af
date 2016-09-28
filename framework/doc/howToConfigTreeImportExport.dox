@@ -9,7 +9,7 @@ Legato automatically creates copies of config trees during
 An import/export script is an easy way to create a copy of your config trees in case you want to
 reinstate without rebuilding them.
 
-This code sample shows how you can wrap @c instapp in a shell script that will automate the
+This code sample shows how you can wrap @c update in a shell script that will automate the
 import/export functions:
 
 @code
@@ -47,7 +47,7 @@ function cfg
 
 
 cfg export
-instapp $APP_NAME.wp85.update $DEVICE_IP
+update $APP_NAME.wp85.update $DEVICE_IP
 cfg import
 
 @endcode

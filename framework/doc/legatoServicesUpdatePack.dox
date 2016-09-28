@@ -91,6 +91,11 @@ Code sample:
 }
 @endverbatim
 
+@note It's @b strongly recommended to use system updates be used instead of individual app
+changes. System updates are applied atomically preventing problems that can result from
+a multi-app update being interrupted before all the changes could be applied (e.g., by a power
+loss, reset, or loss of connectivity).
+
 @subsection updatePack_removeApp Remove App
 
 Removes an app from the system.
@@ -114,6 +119,11 @@ Code sample:
     "name":"helloWorld"
 }
 @endverbatim
+
+@note It's @b strongly recommended to use system updates be used instead of individual app
+changes. System updates are applied atomically preventing problems that can result from
+a multi-app update being interrupted before all the changes could be applied (e.g., by a power
+loss, reset, or loss of connectivity).
 
 @subsection updatePack_updateFirmware Update Firmware
 
