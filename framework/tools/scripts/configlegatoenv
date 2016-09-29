@@ -9,4 +9,5 @@ else
     export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/bin
 
     source $LEGATO_ROOT/framework/tools/scripts/configToolchainDirEnvVars
+    source $LEGATO_ROOT/framework/tools/autocomplete/init.sh
 fi
