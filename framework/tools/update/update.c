@@ -152,7 +152,7 @@ static void MarkGood
     switch (result)
     {
         case LE_OK:
-            printf("System is now marked 'Good'");
+            printf("System is now marked 'Good'.\n");
             exit(EXIT_SUCCESS);
             break;
 
