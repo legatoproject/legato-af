@@ -24,6 +24,7 @@ BUILD_PRODUCTS = 	config		\
 					app \
 					update \
 					uartMode \
+					sbtrace \
 					scripts
 
 .PHONY: all $(BUILD_PRODUCTS)
@@ -138,6 +139,12 @@ update:
 uartMode:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/uartMode \
+			$(LOCAL_MKEXE_FLAGS)
+
+sbtrace:
+	mkexe -o $(BIN_DIR)/$@ \
+			$(TOOLS_SRC_DIR)/$@ \
+			-i $(FRAMEWORK_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 scripts:

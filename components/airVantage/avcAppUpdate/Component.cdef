@@ -7,8 +7,9 @@ requires:
         le_update.api
         le_instStat.api
         le_appRemove.api
-        supervisor/le_sup_ctrl.api
-        supervisor/le_appInfo.api
+        le_appCtrl.api
+        le_framework.api
+        le_appInfo.api
 
         le_cfg.api
     }

@@ -1,0 +1,34 @@
+start: manual
+
+executables:
+{
+    threadAccess = (threadAccess)
+    fileAccess1 = (fileAccess1)
+    fileAccess2 = (fileAccess2)
+}
+
+processes:
+{
+    run:
+    {
+        // threadAccess spawns a thread that calls exec().  This tests the case where exec() is
+        // called from a subthread, destroying the main thread.
+        (threadAccess)
+        (fileAccess2)
+    }
+
+    faultAction: stopApp
+}
+
+// Include this incomplete requires section to test that the tool does not duplicate these.
+requires:
+{
+    file:
+    {
+        /bin/cat                                           	/bin/cat
+    }
+    device:
+    {
+        [r] /dev/random                                        	/dev/random
+    }
+}

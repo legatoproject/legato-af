@@ -21,7 +21,7 @@ requires:
 
     api:
     {
-        supervisor/le_appInfo.api
+        le_appInfo.api
         le_update.api
     }
 }

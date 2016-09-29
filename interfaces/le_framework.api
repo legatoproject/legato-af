@@ -1,0 +1,69 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_framework Framework Control API
+ *
+ * @ref le_framework_interface.h "API Reference"
+ *
+ * API for controlling the framework. This API should only be made available to privileged users.
+ *
+ * @section legatoServicesSupervisor_binding Binding
+ *
+ * You can use a definition @c .adef file to bind your client-side app and component to the
+ * server-side Framework Control service.
+ *
+ * This code sample shows how to bind an app to this service:
+ * @code
+ * bindings
+ * {
+ *     myExe.myComp.le_framework -> <root>.le_framework
+ * }
+ * @endcode
+ *
+ * See @ref defFilesAdef for details.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_framework_interface.h
+ *
+ * Legato @ref c_framework include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stops the Legato framework.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_DUPLICATE if the framework is in the process of shutting down (perhaps someone else has
+ *                   already requested the framework be stopped or restarted).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restarts the Legato framework.
+ *
+ * @return
+ *      LE_OK if the request was accepted and the restart procedure has begun.
+ *      LE_DUPLICATE if the framework is already in the process of shutting down (perhaps someone
+ *                   else has already requested the framework be stopped or restarted).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Restart
+(
+    bool manualRestart IN           ///< Was the restart manually triggered e.g. "legato restart"
+);

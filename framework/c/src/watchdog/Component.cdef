@@ -11,7 +11,7 @@ requires:
     api:
     {
         le_cfg.api
-        supervisor/le_sup_wdog.api [manual-start]
+        supervisor/wdog.api [manual-start]
     }
 }
 

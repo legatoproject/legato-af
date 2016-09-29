@@ -4,6 +4,8 @@
  *
  * @ref le_sup_ctrl_interface.h "API Reference"
  *
+ * THIS API IS DEPRECATED, use le_appCtrl.api and le_framework.api instead.
+ *
  * Supervisor API for controlling the framework and applications. This API is only available to
  * privileged users.
  *

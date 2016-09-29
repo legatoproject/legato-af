@@ -594,7 +594,7 @@ static void LegatoStatusObjectHandler
             {
                 LE_WARN("Legato OTA restart requested.");
 
-                if (le_sup_ctrl_RestartLegato(false) != LE_OK)
+                if (le_framework_Restart(false) != LE_OK)
                 {
                     LE_WARN("Legato restart request rejected.  Shutdown must be underway already.");
                 }

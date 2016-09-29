@@ -1,0 +1,110 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+"
+
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
+
+help_short_desc="Helps create a sandboxed app."
+help_long_description=(
+"When building sandboxed apps, it can be tedious to figure out all of the files that"
+"the app requires.  This tool helps with doing this by dynamically tracing the app to"
+"determine the files that the app is trying to access.  To use this tool create your app"
+"like you normally would by filling in all the sections in the app's adef file except"
+"the 'requires' section.  Then run this tool by specifying the app name, target type"
+"and the IP address (DEST_IP) of the target device.  If DEST_IP is not specified on"
+"the command line, the contents of the DEST_IP environment variable will be used."
+""
+"This tool will build the app, install it on the target, trace the app on the target to"
+"determine the required files.  The set of required files is then appended to the the"
+"app's adef file.  The app is then rebuilt and re-installed on the target."
+""
+"Note that this tool currently has some limitations:"
+"   - This tool cannot guarantee that all code paths are traced and so there may be"
+"     required files that are not caught."
+"   - This tool cannot determine if the app is functioning as the developer intended"
+"     so you must check that the resulting app is working properly."
+"   - Automatically determining resource limits is not yet supported."
+)
+
+help_usage=(
+"<appName> <targetType> [DEST_IP]"
+)
+
+CheckForHelp $@
+
+# Check if last argument is an IP address
+ip=${@: -1}
+if [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SetTargetIP $ip
+    # unset last argument by setting the argument list to a subset of the original
+    set -- "${@:1:$(($#-1))}"
+else
+    SetTargetIP
+fi
+
+# Check if at least one argument was provided
+if [[ -z $2 ]]; then
+    PrintAvailableUsage
+    exit 1
+fi
+
+# Get the app name and target type.
+APP_NAME=$1
+TARGET_TYPE=$2
+
+# Checks the return value of the last executed command.  Exits if there is a failure.
+CheckRet()
+{
+    RETVAL=$?
+
+    if [ $RETVAL -ne 0 ]; then
+        exit $RETVAL
+    fi
+}
+
+echo "Building app $APP_NAME."
+mkapp $APP_NAME.adef -t $TARGET_TYPE
+
+CheckRet
+
+echo "Installing app $APP_NAME on the target."
+app install $APP_NAME.$TARGET_TYPE.update $TARGET_IP
+
+CheckRet
+
+echo "Tracing app $APP_NAME on the target."
+# -t to create a remote interactive shell.  Make the shell trap the SIGINT so that ctrl-c does not
+# kill the shell but does get passed to sbtrace.
+SshToTarget -t "trap '' 2; $BIN_PATH/sbtrace $APP_NAME -o /tmp/traceReq"
+
+CheckRet
+
+# Check if the file exists.
+SshToTarget "test -e /tmp/traceReq"
+
+if [ $? -eq 0 ]; then
+    echo "Appending result of trace to adef file." &&
+    printf "\n" >> $APP_NAME.adef &&
+    SshToTarget "cat /tmp/traceReq" >> $APP_NAME.adef
+
+    CheckRet
+
+    echo "Rebuilding app $APP_NAME."
+    mkapp $APP_NAME.adef -t $TARGET_TYPE
+
+    CheckRet
+
+    echo "Re-installing app $APP_NAME on the target."
+    app install $APP_NAME.$TARGET_TYPE.update $TARGET_IP
+
+    CheckRet
+
+    echo "Done tracing and rebuilding app $APP_NAME."
+    echo "Please check if the app is running properly."
+else
+    echo "Nothing to add to the app's sandbox."
+fi
+
+echo ""
+

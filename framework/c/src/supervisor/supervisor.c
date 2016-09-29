@@ -237,10 +237,19 @@ AppStartMode = APP_START_AUTO;   // Default is to start apps.
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Command reference for asynchronous le_sup_ctrl API commands (like le_sup_ctrl_StopLegato()).
+ * Command reference for asynchronous API commands le_framework_Stop(), le_framework_Restart().
  */
 //--------------------------------------------------------------------------------------------------
-static le_sup_ctrl_ServerCmdRef_t AsyncApiCmdRef = NULL;
+static le_framework_ServerCmdRef_t StopApiCmdRef = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Flag to indicate whether the deprecated API is being used.  Delete this flag when the deprecated
+ * API is deleted.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool UsingDeprecatedSupCtrlApi = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -390,7 +399,9 @@ static void StartFramework
     // Advertise services.
     LE_DEBUG("---- Advertising the Supervisor's APIs ----");
     le_sup_ctrl_AdvertiseService();
-    le_sup_wdog_AdvertiseService();
+    le_appCtrl_AdvertiseService();
+    le_framework_AdvertiseService();
+    wdog_AdvertiseService();
     le_appInfo_AdvertiseService();
     le_appProc_AdvertiseService();
 
@@ -474,17 +485,31 @@ static void PrepareFullShutdown
     void
 )
 {
-    if (AsyncApiCmdRef != NULL)
+    if (StopApiCmdRef != NULL)
     {
         if (State == STATE_STOPPING)
         {
             // Respond to the requesting process to tell it that the Legato framework has stopped.
-            le_sup_ctrl_StopLegatoRespond(AsyncApiCmdRef, LE_OK);
+            if (UsingDeprecatedSupCtrlApi)
+            {
+                le_sup_ctrl_StopLegatoRespond((le_sup_ctrl_ServerCmdRef_t)StopApiCmdRef, LE_OK);
+            }
+            else
+            {
+                le_framework_StopRespond(StopApiCmdRef, LE_OK);
+            }
         }
         else if (State == STATE_RESTARTING || State == STATE_RESTARTING_MANUAL)
         {
             // Respond to the requesting process to tell it that the Legato framework has stopped.
-            le_sup_ctrl_RestartLegatoRespond(AsyncApiCmdRef, LE_OK);
+            if (UsingDeprecatedSupCtrlApi)
+            {
+                le_sup_ctrl_RestartLegatoRespond((le_sup_ctrl_ServerCmdRef_t)StopApiCmdRef, LE_OK);
+            }
+            else
+            {
+                le_framework_RestartRespond(StopApiCmdRef, LE_OK);
+            }
         }
         else
         {
@@ -494,7 +519,9 @@ static void PrepareFullShutdown
 
     // Close services that we've advertised before the Service Directory dies.
     le_msg_HideService(le_sup_ctrl_GetServiceRef());
-    le_msg_HideService(le_sup_wdog_GetServiceRef());
+    le_msg_HideService(le_appCtrl_GetServiceRef());
+    le_msg_HideService(le_framework_GetServiceRef());
+    le_msg_HideService(wdog_GetServiceRef());
     le_msg_HideService(le_appInfo_GetServiceRef());
     le_msg_HideService(le_appProc_GetServiceRef());
 }
@@ -659,24 +686,26 @@ static void SigChildHandler
 /**
  * Stops the Legato framework.
  *
- * Async API function.  Calls le_sup_ctrl_StopLegatoRespond() to report results.
+ * Async API function.  Calls le_framework_StopRespond() to report results.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_StopLegato
+void le_framework_Stop
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef
+    le_framework_ServerCmdRef_t cmdRef
 )
 {
+    UsingDeprecatedSupCtrlApi = false;
+
     LE_DEBUG("Received request to stop Legato.");
 
     if (State != STATE_NORMAL)
     {
-        le_sup_ctrl_StopLegatoRespond(cmdRef, LE_DUPLICATE);
+        le_framework_StopRespond(cmdRef, LE_DUPLICATE);
     }
     else
     {
         // Save the command reference to use in the response later.
-        AsyncApiCmdRef = cmdRef;
+        StopApiCmdRef = cmdRef;
 
         State = STATE_STOPPING;
 
@@ -690,21 +719,23 @@ void le_sup_ctrl_StopLegato
 /**
  * Restarts the Legato framework.
  *
- * Async API function.  Calls le_sup_ctrl_RestartLegatoRespond() to report results.
+ * Async API function.  Calls le_framework_RestartRespond() to report results.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_RestartLegato
+void le_framework_Restart
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef,
+    le_framework_ServerCmdRef_t cmdRef,
     bool manualRestart
 )
 {
+    UsingDeprecatedSupCtrlApi = false;
+
     LE_DEBUG("Received request to restart Legato.");
 
     if (State == STATE_NORMAL)
     {
         // Save the command reference to use in the response later.
-        AsyncApiCmdRef = cmdRef;
+        StopApiCmdRef = cmdRef;
 
         if (manualRestart)
         {
@@ -722,7 +753,7 @@ void le_sup_ctrl_RestartLegato
     {
         LE_DEBUG("Ignoring request to restart Legato in state %d.", State);
 
-        le_sup_ctrl_RestartLegatoRespond(cmdRef, LE_DUPLICATE);
+        le_framework_RestartRespond(cmdRef, LE_DUPLICATE);
     }
 }
 
@@ -815,4 +846,84 @@ COMPONENT_INIT
     // from contending with us for resources like CPU and flash memory bandwidth.
     LE_FATAL_IF(freopen("/dev/null", "r", stdin) == NULL,
                 "Failed to redirect stdin to /dev/null.  %m.");
+}
+
+
+//----------------------- Deprecated Functions -----------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stops the Legato framework.
+ *
+ * Async API function.  Calls le_sup_ctrl_StopLegatoRespond() to report results.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_StopLegato
+(
+    le_sup_ctrl_ServerCmdRef_t cmdRef
+)
+{
+    LE_WARN("This API is deprecated.  Please use le_framework.api instead.");
+    UsingDeprecatedSupCtrlApi = true;
+
+    LE_DEBUG("Received request to stop Legato.");
+
+    if (State != STATE_NORMAL)
+    {
+        le_sup_ctrl_StopLegatoRespond(cmdRef, LE_DUPLICATE);
+    }
+    else
+    {
+        // Save the command reference to use in the response later.
+        StopApiCmdRef = (le_framework_ServerCmdRef_t)cmdRef;
+
+        State = STATE_STOPPING;
+
+        // Start the process of shutting down the framework.
+        BeginShutdown();
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restarts the Legato framework.
+ *
+ * Async API function.  Calls le_sup_ctrl_RestartLegatoRespond() to report results.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_RestartLegato
+(
+    le_sup_ctrl_ServerCmdRef_t cmdRef,
+    bool manualRestart
+)
+{
+    LE_WARN("This API is deprecated.  Please use le_framework.api instead.");
+    UsingDeprecatedSupCtrlApi = true;
+
+    LE_DEBUG("Received request to restart Legato.");
+
+    if (State == STATE_NORMAL)
+    {
+        // Save the command reference to use in the response later.
+        StopApiCmdRef = (le_framework_ServerCmdRef_t)cmdRef;
+
+        if (manualRestart)
+        {
+            State = STATE_RESTARTING_MANUAL;
+        }
+        else
+        {
+            State = STATE_RESTARTING;
+        }
+
+        // Start the process of shutting down the framework.
+        BeginShutdown();
+    }
+    else
+    {
+        LE_DEBUG("Ignoring request to restart Legato in state %d.", State);
+
+        le_sup_ctrl_RestartLegatoRespond(cmdRef, LE_DUPLICATE);
+    }
 }

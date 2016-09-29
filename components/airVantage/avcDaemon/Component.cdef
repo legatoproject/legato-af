@@ -34,7 +34,7 @@ requires:
     api:
     {
         le_cfg.api
-        supervisor/le_appInfo.api
+        le_appInfo.api
     }
 
     component:

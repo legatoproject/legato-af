@@ -1,0 +1,12 @@
+sources:
+{
+    sbtrace.c
+}
+
+requires:
+{
+    api:
+    {
+        le_appCtrl.api      [manual-start]
+    }
+}

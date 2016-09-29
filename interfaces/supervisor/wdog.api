@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_sup_wdog Supervisor Watchdog API
+ * @page c_wdog Supervisor Watchdog API
  *
- * @ref le_sup_wdog_interface.h "API Reference"
+ * @ref wdog_interface.h "API Reference"
  *
  * A Supervisor API used by the Watchdog daemon to let the Supervisor know that a watched
  * process has timed out
@@ -15,9 +15,9 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * @file le_sup_wdog_interface.h
+ * @file wdog_interface.h
  *
- * Legato @ref c_sup_wdog include file.
+ * Legato @ref c_wdog include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */

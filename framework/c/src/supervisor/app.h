@@ -41,6 +41,20 @@ typedef void (*app_Proc_StopHandlerFunc_t)
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prototype for a handler that is called when an application's process is blocked just before it
+ * has called exec().
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*app_BlockFunc_t)
+(
+    pid_t pid,                      ///< [IN] PID of the blocked process.
+    const char* procNamePtr,        ///< [IN] Name of the blocked process.
+    void* contextPtr                ///< [IN] Context pointer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Fault actions to take when a process experiences a fault (terminated abnormally).
  */
 //--------------------------------------------------------------------------------------------------
@@ -577,6 +591,87 @@ void app_DeleteProc
 (
     app_Ref_t appRef,                           ///< [IN] App reference.
     app_Proc_Ref_t appProcRef                   ///< [IN] Process reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a new link to a file for the app.  A link to the file will be created in the app's working
+ * directory under the same path.  For example, if the path is /bin/ls then a link to the file will
+ * be created at appsSandboxRoot/bin/ls.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_DUPLICATE if the link could not be created because the path conflicts with an existing
+ *                   item already in the app.
+ *      LE_NOT_FOUND if the source path does not point to a valid file.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_AddLink
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    const char* pathPtr                         ///< [IN] Absolute path to the file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove all links added using app_AddLink().
+ */
+//--------------------------------------------------------------------------------------------------
+void app_RemoveAllLinks
+(
+    app_Ref_t appRef                            ///< [IN] App reference.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the permissions for a device file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the source path does not point to a valid device.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_SetDevPerm
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    const char* pathPtr,                        ///< [IN] Absolute path to the device.
+    const char* permissionPtr                   ///< [IN] Permission string, "r", "w", "rw".
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Blocks each app process on startup, after the process is forked and initialized but before it has
+ * execed.  The specified callback function will be called when the process has blocked.  Clearing
+ * the callback function means processes should not block on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetBlockCallback
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    app_BlockFunc_t blockCallback,              ///< [IN] Callback function.  NULL to clear.
+    void* contextPtr                            ///< [IN] Context pointer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unblocks a process that was blocked on startup.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the process could not be found in the app.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_Unblock
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    pid_t pid                                   ///< [IN] Process to unblock.
 );
 
 

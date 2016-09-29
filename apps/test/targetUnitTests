@@ -48,7 +48,7 @@ function RunTest()
     fi
 }
 
-# Run tests.  All tests should take the target's IP address as the first parameter.
+# Run tests.
 #RunTest framework/supervisor/supervisorTest.sh
 #RunTest framework/watchdog/watchdogTest.sh
 #RunTest framework/configTree/configTargetTests.sh
@@ -56,10 +56,11 @@ RunTest framework/smackAPI/smackApiTest.sh ## OK
 #RunTest framework/smack/smackTest.sh ## Error assert of fileServer
 #RunTest framework/sandboxLimits/limitsTest.sh ## Error
 #RunTest framework/updateDaemon/updateDaemonTest.sh ## Target reboots on app install
-RRunTest framework/installStatus/installStatusTest.sh ## OK
+RunTest framework/installStatus/installStatusTest.sh ## OK
 RunTest framework/inspect/inspectTest.sh ## OK
 RunTest framework/appInfo/appInfoTest.sh ## OK
 RunTest framework/appFallBack/appFallBackTest.sh ## OK but corrupt .ar7 package should be generated on the fly (and is not a update package)
 RunTest framework/secStore/secStoreTest.sh ## OK
+RunTest framework/sbhelper/sbHelperTest.sh ## OK
 
 cd $ORIG_DIR

@@ -16,7 +16,8 @@ requires:
         le_cfg.api
         le_cfgAdmin.api
         le_fwupdate.api  [manual-start]
-        supervisor/le_sup_ctrl.api [manual-start]
+        le_appCtrl.api [manual-start]
+        le_framework.api [manual-start]
     }
 
     component:

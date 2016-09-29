@@ -16,10 +16,12 @@ provides:
 {
     api:
     {
-        le_sup_ctrl.api [async] [manual-start]
-        le_sup_wdog.api [async] [manual-start]
-        le_appInfo.api          [manual-start]
-        le_appProc.api          [manual-start]
+        le_appCtrl.api      [async] [manual-start]
+        le_framework.api    [async] [manual-start]
+        wdog.api            [async] [manual-start]
+        le_appInfo.api              [manual-start]
+        le_appProc.api              [manual-start]
+        le_sup_ctrl.api     [async] [manual-start]
     }
 }
 

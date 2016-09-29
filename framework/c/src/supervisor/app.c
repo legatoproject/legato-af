@@ -57,6 +57,7 @@
 #include "dir.h"
 #include "fileDescriptor.h"
 #include "fileSystem.h"
+#include "file.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -327,6 +328,8 @@ typedef struct app_Ref
     le_dls_List_t   procs;              // List of processes in this application.
     le_dls_List_t   auxProcs;           // List of auxiliary processes in this application.
     le_timer_Ref_t  killTimer;          // Timeout timer for killing processes.
+    le_sls_List_t   additionalLinks;    // List of additional links that are temporarily added to
+                                        // the app.
 }
 App_t;
 
@@ -337,6 +340,27 @@ App_t;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t AppPool;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * A file link in the app's working directory.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char fileLink[LIMIT_MAX_PATH_BYTES];    ///< File link in the app's working directory.
+    le_sls_Link_t link;                     ///< Link in the list of file links.
+}
+FileLinkNode_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for file link nodes.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t FileLinkNodePool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -619,7 +643,7 @@ static le_result_t GetDevID
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sets DAC and SMACK permissions for device files needed by this app.
+ * Sets DAC and SMACK permissions for a device file.
  *
  * @return
  *      LE_OK if successful.
@@ -627,6 +651,59 @@ static le_result_t GetDevID
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetDevicePermissions
+(
+    const char* appSmackLabelPtr,   ///< [IN] SMACK label of the app.
+    const char* devPathPtr,         ///< [IN] Source path.
+    const char* permPtr             ///< [IN] Permissions.
+)
+{
+    // Check that the source is a device file.
+    dev_t devId;
+
+    if (GetDevID(devPathPtr, &devId) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // TODO: Disallow device files that are security risks, such as block flash devices.
+
+    // Assign a SMACK label to the device file.
+    char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    le_result_t result = devSmack_GetLabel(devId, devLabel, sizeof(devLabel));
+
+    LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
+
+    if (result != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    if (smack_SetLabel(devPathPtr, devLabel) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    // Set the SMACK rule to allow the app to access the device.
+    smack_SetRule(appSmackLabelPtr, permPtr, devLabel);
+
+    // Set the DAC permissions to be permissive.
+    LE_EMERG_IF(chmod(devPathPtr, S_IROTH | S_IWOTH) == -1,
+                "Could not set permissions for file '%s'.  %m.", devPathPtr);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets DAC and SMACK permissions for device files in the app's configuration.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetCfgDevicePermissions
 (
     app_Ref_t appRef                ///< [IN] The application.
 )
@@ -640,6 +717,10 @@ static le_result_t SetDevicePermissions
 
     if (le_cfg_GoToFirstChild(appCfg) == LE_OK)
     {
+        // Get the app's SMACK label.
+        char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+        smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+
         do
         {
             // Get source path.
@@ -650,49 +731,15 @@ static le_result_t SetDevicePermissions
                 return LE_FAULT;
             }
 
-            // Check that the source is a device file.
-            dev_t devId;
-
-            if (GetDevID(srcPath, &devId) != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            // TODO: Disallow device files that are security risks, such as block flash devices.
-
-            // Assign a SMACK label to the device file.
-            char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            le_result_t result = devSmack_GetLabel(devId, devLabel, sizeof(devLabel));
-
-            LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
-
-            if (result != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            if (smack_SetLabel(srcPath, devLabel) != LE_OK)
-            {
-                le_cfg_CancelTxn(appCfg);
-                return LE_FAULT;
-            }
-
-            // Get the app's SMACK label.
-            char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-            smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
-
             // Get the required permissions for the device.
             char permStr[MAX_DEVICE_PERM_STR_BYTES];
             GetCfgPermissions(appCfg, permStr, sizeof(permStr));
 
-            // Set the SMACK rule to allow the app to access the device.
-            smack_SetRule(appLabel, permStr, devLabel);
-
-            // Set the DAC permissions to be permissive.
-            LE_FATAL_IF(chmod(srcPath, S_IROTH | S_IWOTH) == -1,
-                        "Could not set permissions for file '%s'.  %m.", srcPath);
+            if (SetDevicePermissions(appLabel, srcPath, permStr) != LE_OK)
+            {
+                le_cfg_CancelTxn(appCfg);
+                return LE_FAULT;
+            }
         }
         while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
 
@@ -843,7 +890,7 @@ static le_result_t SetSmackRules
 
     SetSmackRulesForBindings(appRef, appLabel);
 
-    return SetDevicePermissions(appRef);
+    return SetCfgDevicePermissions(appRef);
 }
 
 
@@ -1344,7 +1391,7 @@ static le_result_t CreateDirLink
             return LE_FAULT;
         }
 
-        // Bind mount file into the sandbox.
+        // Bind mount into the sandbox.
         if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
         {
             LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
@@ -2146,6 +2193,149 @@ static le_result_t SetupAppArea
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Checks whether the destination path conflicts with anything under the specified working
+ * directory.
+ *
+ * @return
+ *      LE_OK if there are no conflicts.
+ *      LE_DUPLICATE if there is a conflict.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckPathConflict
+(
+    const char* destPathPtr,                ///< [IN] Dest path relative to the working directory.
+    const char* workingDirPtr               ///< [IN] Working directory to check.
+)
+{
+    // Iterate through the nodes of the specified path checking if there are conflicts.
+    le_pathIter_Ref_t pathIter = le_pathIter_CreateForUnix(destPathPtr);
+
+    if (le_pathIter_GoToStart(pathIter) != LE_OK)
+    {
+        return LE_DUPLICATE;
+    }
+
+    char currPath[LIMIT_MAX_PATH_BYTES] = "";
+    LE_FATAL_IF(le_utf8_Copy(currPath, workingDirPtr, sizeof(currPath), NULL) != LE_OK,
+                "Path '%s...' is too long.", workingDirPtr);
+
+    while (1)
+    {
+        // Get the current path.
+        char currNode[LIMIT_MAX_PATH_BYTES] = "";
+        le_result_t r = le_pathIter_GetCurrentNode(pathIter, currNode, sizeof(currNode));
+        LE_FATAL_IF(r == LE_OVERFLOW, "Path '%s...' is too long.", currNode);
+
+        if (r == LE_NOT_FOUND)
+        {
+            // This is the last node of the destination path so there must be a conflict.
+            le_pathIter_Delete(pathIter);
+            return LE_DUPLICATE;
+        }
+
+        LE_FATAL_IF(le_path_Concat("/", currPath, sizeof(currPath), currNode, NULL) != LE_OK,
+                    "Path '%s...' is too long.", currPath);
+
+        // Check the sandbox for items at the current path.
+        struct stat statBuf;
+
+        if (lstat(currPath, &statBuf) == -1)
+        {
+            if (errno == ENOENT)
+            {
+                // Current path does not exist so there are no conflicts.
+                le_pathIter_Delete(pathIter);
+                return LE_OK;
+            }
+            LE_FATAL("Could not stat path '%s'.  %m.", currPath);
+        }
+
+        if (!S_ISDIR(statBuf.st_mode))
+        {
+            // Conflict.
+            le_pathIter_Delete(pathIter);
+            return LE_DUPLICATE;
+        }
+
+        if (le_pathIter_GoToNext(pathIter) == LE_NOT_FOUND)
+        {
+            // This is the last node of the destination path so there must be a conflict.
+            le_pathIter_Delete(pathIter);
+            return LE_DUPLICATE;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if the path refers to a directory.
+ *
+ * @return
+ *      true if the path refers to a directory.  false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDir
+(
+    const char* pathNamePtr     ///< [IN] The path to the directory.
+)
+{
+    struct stat stats;
+    if (lstat(pathNamePtr, &stats) == -1)
+    {
+        if ( (errno == ENOENT) || (errno == ENOTDIR) )
+        {
+            return false;
+        }
+
+        LE_FATAL("Could not stat path '%s'.  %m", pathNamePtr);
+    }
+
+    return S_ISDIR(stats.st_mode);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Recursively removes all links under the specified path.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveLinks
+(
+    app_Ref_t appRef,                           ///< [IN] Application reference.
+    const char* pathPtr                         ///< [IN] Path to link to remove.
+)
+{
+    char fullPath[LIMIT_MAX_PATH_BYTES] = "";
+
+    LE_FATAL_IF(le_path_Concat("/", fullPath, sizeof(fullPath),
+                               appRef->workingDir, pathPtr, NULL) != LE_OK,
+                "Path '%s...' is too long.", fullPath);
+
+    LE_INFO("Removing link %s from %s.", pathPtr, appRef->name);
+
+    if (appRef->sandboxed)
+    {
+        fs_TryLazyUmount(fullPath);
+    }
+
+    // For unsandboxed apps delete the symlink.  For sandboxed apps delete the mount point.
+    if (IsDir(fullPath))
+    {
+        if (rmdir(fullPath) != 0)
+        {
+            LE_ERROR("Could not delete directory %s.  %m.", fullPath);
+        }
+    }
+    else
+    {
+        file_Delete(fullPath);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the application system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2155,6 +2345,7 @@ void app_Init
 )
 {
     AppPool = le_mem_CreatePool("Apps", sizeof(App_t));
+    FileLinkNodePool = le_mem_CreatePool("Links", sizeof(FileLinkNode_t));
     ProcContainerPool = le_mem_CreatePool("ProcContainers", sizeof(ProcContainer_t));
 
     proc_Init();
@@ -2268,6 +2459,7 @@ app_Ref_t app_Create
     // Initialize the other parameters.
     appPtr->procs = LE_DLS_LIST_INIT;
     appPtr->auxProcs = LE_DLS_LIST_INIT;
+    appPtr->additionalLinks = LE_SLS_LIST_INIT;
     appPtr->state = APP_STATE_STOPPED;
     appPtr->killTimer = NULL;
 
@@ -3426,4 +3618,220 @@ void app_DeleteProc
         proc_Delete(appProcRef->procRef);
         le_mem_Release(appProcRef);
     }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds a new link to a file for the app.  A link to the file will be created in the app's working
+ * directory under the same path.  For example, if the path is /bin/ls then a link to the file will
+ * be created at appsSandboxRoot/bin/ls.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_DUPLICATE if the link could not be created because the path conflicts with an existing
+ *                   item already in the app.
+ *      LE_NOT_FOUND if the source path does not point to a valid file.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_AddLink
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    const char* pathPtr                         ///< [IN] Absolute path to the file.
+)
+{
+    // Check that the source path points to an existing file.
+    struct stat statBuf;
+
+    if (lstat(pathPtr, &statBuf) != 0)
+    {
+        if ( (errno == ENOENT) || (errno == ENOTDIR) )
+        {
+            return LE_NOT_FOUND;
+        }
+
+        LE_FATAL("Could not stat path %s.  %m.", pathPtr);
+    }
+
+    if (S_ISDIR(statBuf.st_mode))
+    {
+        return LE_NOT_FOUND;
+    }
+
+    // Construct the destination path.
+    const char* destPathPtr = pathPtr;
+    bool isDir = false;
+
+    if ( le_path_IsEquivalent("/proc", pathPtr, "/") ||
+         le_path_IsSubpath("/proc", pathPtr, "/") )
+    {
+        // Treat files in /proc differently because /proc contains dynamic files created by the
+        // kernel that may be addressed differently (ie. /proc/self/...).
+        // Just import the entire directory.
+        destPathPtr = "/proc";
+        isDir = true;
+    }
+    else if ( le_path_IsEquivalent("/sys", pathPtr, "/") ||
+              le_path_IsSubpath("/sys", pathPtr, "/") )
+    {
+        // Treat files in /sys differently because /sys contains dynamic files created by the
+        // kernel.  Just import the entire directory.
+        destPathPtr = "/sys";
+        isDir = true;
+    }
+
+    // Check that the dest path does not conflict with anything already in the app's
+    // working directory.
+    if (CheckPathConflict(destPathPtr, appRef->workingDir) != LE_OK)
+    {
+        return LE_DUPLICATE;
+    }
+
+    // Get the SMACK label for the folders we create.
+    char appDirLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppAccessLabel(app_GetName(appRef), S_IRWXU, appDirLabel, sizeof(appDirLabel));
+
+    // Create the link.
+    le_result_t result = LE_FAULT;
+
+    if (isDir)
+    {
+        result = CreateDirLink(appRef, appDirLabel, destPathPtr, destPathPtr);
+    }
+    else
+    {
+        result = CreateFileLink(appRef, appDirLabel, pathPtr, destPathPtr);
+    }
+
+    // Store a record of the new link.
+    FileLinkNode_t* fileLinkNodePtr = le_mem_ForceAlloc(FileLinkNodePool);
+    fileLinkNodePtr->link = LE_SLS_LINK_INIT;
+
+    LE_FATAL_IF(le_utf8_Copy(fileLinkNodePtr->fileLink, destPathPtr,
+                             sizeof(fileLinkNodePtr->fileLink), NULL) != LE_OK,
+                "Dest path '%s...' is too long.", destPathPtr);
+
+    le_sls_Queue(&(appRef->additionalLinks), &(fileLinkNodePtr->link));
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove all links added using app_AddLink().
+ */
+//--------------------------------------------------------------------------------------------------
+void app_RemoveAllLinks
+(
+    app_Ref_t appRef                            ///< [IN] App reference.
+)
+{
+    // Remove all additional file links for this app.
+    le_sls_Link_t* nodeLinkPtr = le_sls_Pop(&(appRef->additionalLinks));
+
+    while (nodeLinkPtr != NULL)
+    {
+        FileLinkNode_t* fileLinkNodePtr = CONTAINER_OF(nodeLinkPtr, FileLinkNode_t, link);
+
+        RemoveLinks(appRef, fileLinkNodePtr->fileLink);
+
+        le_mem_Release(fileLinkNodePtr);
+
+        nodeLinkPtr = le_sls_Pop(&(appRef->additionalLinks));
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the permissions for a device file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the source path does not point to a valid device.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_SetDevPerm
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    const char* pathPtr,                        ///< [IN] Absolute path to the device.
+    const char* permissionPtr                   ///< [IN] Permission string, "r", "w", "rw".
+)
+{
+    // Get the app's SMACK label.
+    char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+    smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
+
+    return SetDevicePermissions(appLabel, pathPtr, permissionPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Blocks each app process on startup, after the process is forked and initialized but before it has
+ * execed.  The specified callback function will be called when the process has blocked.  Clearing
+ * the callback function means processes should not block on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_SetBlockCallback
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    app_BlockFunc_t blockCallback,              ///< [IN] Callback function.  NULL to clear.
+    void* contextPtr                            ///< [IN] Context pointer.
+)
+{
+    // Set the callback for each process in the app.
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        proc_SetBlockCallback(procContainerPtr->procRef, blockCallback, contextPtr);
+
+        procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
+    }
+
+    // Set the callback for each aux process in the app.
+    procLinkPtr = le_dls_Peek(&(appRef->auxProcs));
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        proc_SetBlockCallback(procContainerPtr->procRef, blockCallback, contextPtr);
+
+        procLinkPtr = le_dls_PeekNext(&(appRef->auxProcs), procLinkPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unblocks a process that was blocked on startup.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the process could not be found in the app.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t app_Unblock
+(
+    app_Ref_t appRef,                           ///< [IN] App reference.
+    pid_t pid                                   ///< [IN] Process to unblock.
+)
+{
+    ProcContainer_t* procContainerPtr = FindProcContainer(appRef, pid);
+
+    if (procContainerPtr == NULL)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    proc_Unblock(procContainerPtr->procRef);
+
+    return LE_OK;
 }

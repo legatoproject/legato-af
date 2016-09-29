@@ -297,13 +297,13 @@ static void StartApp
     void
 )
 {
-    le_sup_ctrl_ConnectService();
+    le_appCtrl_ConnectService();
 
     // Determine if any options are specified. If so, get the app ref and set the options. If not,
     // simply start the app.
 
     // Get the app ref by the app name.
-    le_sup_ctrl_AppRef_t appRef = le_sup_ctrl_GetAppRef(AppNamePtr);
+    le_appCtrl_AppRef_t appRef = le_appCtrl_GetRef(AppNamePtr);
 
     if (appRef == NULL)
     {
@@ -320,7 +320,7 @@ static void StartApp
         {
             ProcName_t* procNamePtr = CONTAINER_OF(procNameLinkPtr, ProcName_t, link);
 
-            le_sup_ctrl_SetRun(appRef, procNamePtr->procName, false);
+            le_appCtrl_SetRun(appRef, procNamePtr->procName, false);
 
             procNameLinkPtr = le_sls_PeekNext(&ProcNameList, procNameLinkPtr);
         }
@@ -328,11 +328,11 @@ static void StartApp
 
 
     // Start the application.
-    le_result_t startAppResult = le_sup_ctrl_StartApp(AppNamePtr);
+    le_result_t startAppResult = le_appCtrl_Start(AppNamePtr);
 
 
     // Release the app ref.
-    le_sup_ctrl_ReleaseAppRef(appRef);
+    le_appCtrl_ReleaseRef(appRef);
 
 
     // Print msg and exit based on the result of the StartApp request.
@@ -368,10 +368,10 @@ static void StopApp
     void
 )
 {
-    le_sup_ctrl_ConnectService();
+    le_appCtrl_ConnectService();
 
     // Stop the application.
-    switch (le_sup_ctrl_StopApp(AppNamePtr))
+    switch (le_appCtrl_Stop(AppNamePtr))
     {
         case LE_OK:
             // If this function is not called from CommandFunc, it could be part of another
@@ -412,7 +412,7 @@ static void RestartApp
 )
 {
     StopApp();
-    le_sup_ctrl_DisconnectService();
+    le_appCtrl_DisconnectService();
     StartApp();
 }
 
@@ -470,10 +470,10 @@ static void StopLegato
     void
 )
 {
-    le_sup_ctrl_ConnectService();
+    le_framework_ConnectService();
 
     // Stop the framework.
-    le_result_t result = le_sup_ctrl_StopLegato();
+    le_result_t result = le_framework_Stop();
     switch (result)
     {
         case LE_OK:
@@ -501,8 +501,8 @@ static void RestartLegato
     void
 )
 {
-    le_sup_ctrl_ConnectService();
-    le_result_t result = le_sup_ctrl_RestartLegato(true);
+    le_framework_ConnectService();
+    le_result_t result = le_framework_Restart(true);
     switch (result)
     {
         case LE_OK:

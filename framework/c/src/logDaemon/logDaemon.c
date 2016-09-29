@@ -1410,9 +1410,10 @@ static void RegComponent
             // The process ID should already be associated with this process name.
             // If not, then either a client process is sending bogus registration requests
             // or there's a bug in the Log Control Daemon (probably in this very function).
+            // This can also happen if the process exec's another legato process.
             if (runningProcObjPtr->procNameObjPtr != procNameObjPtr)
             {
-                LE_CRIT("Process with PID %d associated with unexpected process name '%s'.",
+                LE_WARN("Process with PID %d associated with unexpected process name '%s'.",
                         pid,
                         runningProcObjPtr->procNameObjPtr->name);
                 return;
@@ -1421,7 +1422,7 @@ static void RegComponent
             // Check for a duplicate log session registration.
             if (FindLogSession(runningProcObjPtr, componentName) != NULL)
             {
-                LE_ERROR("Duplicate registration of '%s/%s' by PID %d.",
+                LE_WARN("Duplicate registration of '%s/%s' by PID %d.",
                          processName,
                          componentName,
                          pid);

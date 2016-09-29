@@ -129,12 +129,16 @@ typedef struct _appContainerRef
 {
     app_Ref_t               appRef;         // Reference to the app.
     AppStopHandler_t        stopHandler;    // Handler function that gets called when the app stops.
-    le_sup_ctrl_ServerCmdRef_t  stopCmdRef; // Stores the reference to the command that requested
+    le_appCtrl_ServerCmdRef_t stopCmdRef;   // Stores the reference to the command that requested
                                             // this app be stopped.  This reference must be sent in
                                             // the response to the stop app command.
     le_dls_Link_t           link;           // Link in the list of apps.
     bool                    isActive;       // true if the app is on the active list.  false if it
                                             // is on the inactive list.
+    le_msg_SessionRef_t     clientRef;      // Stores the reference to the client that has a
+                                            // reference to this app. NULL means no connected client.
+    le_appCtrl_TraceAttachHandlerFunc_t traceAttachHandler; // Client's trace attach handler.
+    void* traceAttachContextPtr;            // Context for the client's trace attach handler.
 }
 AppContainer_t;
 
@@ -153,6 +157,14 @@ static le_mem_PoolRef_t AppContainerPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t AppMap;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe reference map for application attach handlers.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t AppAttachHandlerMap;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -278,6 +290,9 @@ static void DeleteApp
     // Delete any app procs containers in this app.
     DeleteAppProcs(appContainerPtr->appRef, NULL);
 
+    // Reset the additional link overrides here too because it is persistent in the file system.
+    app_RemoveAllLinks(appContainerPtr->appRef);
+
     app_Delete(appContainerPtr->appRef);
 
     le_mem_Release(appContainerPtr);
@@ -351,7 +366,7 @@ static void RespondToStopAppCmd
     DeactivateAppContainer(appContainerRef);
 
     // Respond to the requesting process.
-    le_sup_ctrl_StopAppRespond(cmdRef, LE_OK);
+    le_appCtrl_StopRespond(cmdRef, LE_OK);
 }
 
 
@@ -553,6 +568,9 @@ static AppContainer_t* CreateApp
     appContainerPtr->appRef = appRef;
     appContainerPtr->link = LE_DLS_LINK_INIT;
     appContainerPtr->stopHandler = NULL;
+    appContainerPtr->clientRef = NULL;
+    appContainerPtr->traceAttachHandler = NULL;
+    appContainerPtr->traceAttachContextPtr = NULL;
 
     // Add this app to the inactive list.
     le_dls_Queue(&InactiveAppsList, &(appContainerPtr->link));
@@ -885,6 +903,85 @@ static le_result_t GetAppNameFromPid
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Release an application reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReleaseAppRef
+(
+    void* appSafeRef,                       ///< [IN] Safe reference for the app.
+    AppContainer_t* appContainerPtr         ///< [IN] App container the safe reference points to.
+)
+{
+    // Reset the overrides.
+    app_SetRunForAllProcs(appContainerPtr->appRef, true);
+    app_RemoveAllLinks(appContainerPtr->appRef);
+    app_SetBlockCallback(appContainerPtr->appRef, NULL, NULL);
+
+    // Remove the safe ref.
+    le_ref_DeleteRef(AppMap, appSafeRef);
+
+    appContainerPtr->clientRef = NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes all application process containers for either an application or a client.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReleaseClientAppRefs
+(
+    le_msg_SessionRef_t sessionRef,         ///< Session reference of the client.
+    void*               contextPtr          ///< Not used.
+)
+{
+    // Iterate over the safe references to find all application containers for this client.
+    le_ref_IterRef_t iter = le_ref_GetIterator(AppMap);
+
+    while (le_ref_NextNode(iter) == LE_OK)
+    {
+        // Get the app container.
+        AppContainer_t* appContainerPtr = (AppContainer_t*)le_ref_GetValue(iter);
+
+        LE_ASSERT(appContainerPtr != NULL);
+
+        if (appContainerPtr->clientRef == sessionRef)
+        {
+            void* safeRef = (void*)le_ref_GetSafeRef(iter);
+            LE_ASSERT(safeRef != NULL);
+
+            ReleaseAppRef(safeRef, appContainerPtr);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process block handler.  Called when a process has blocked on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ProcBlockHandler
+(
+    pid_t pid,                          ///< [IN] PID of the blocked process.
+    const char* procNamePtr,            ///< [IN] Name of the blocked process.
+    void* appSafeRef                    ///< [IN] Safe ref app pointer.
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appSafeRef);
+
+    LE_FATAL_IF(appContainerPtr == NULL, "Invalid application reference.");
+
+    if (appContainerPtr->traceAttachHandler != NULL)
+    {
+        appContainerPtr->traceAttachHandler(appSafeRef, pid, procNamePtr,
+                                            appContainerPtr->traceAttachContextPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the applications system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -901,11 +998,14 @@ void apps_Init
 
     AppProcMap = le_ref_CreateMap("AppProcs", 5);
     AppMap = le_ref_CreateMap("App", 5);
+    AppAttachHandlerMap = le_ref_CreateMap("AppAttachHandlers", 5);
 
     le_instStat_AddAppUninstallEventHandler(DeletesInactiveApp, NULL);
     le_instStat_AddAppInstallEventHandler(DeletesInactiveApp, NULL);
 
     le_msg_AddServiceCloseHandler(le_appProc_GetServiceRef(), DeleteClientAppProcs, NULL);
+
+    le_msg_AddServiceCloseHandler(le_appCtrl_GetServiceRef(), ReleaseClientAppRefs, NULL);
 }
 
 
@@ -1099,13 +1199,17 @@ le_result_t apps_SigChildHandler
  *      NULL if the app is not installed.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_GetAppRef
+static void* appCtrl_GetRef
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef,       ///< [IN] Command reference that must be passed to this
-                                             ///       command's response function.
-    const char* appName                      ///< [IN] Name of the app to get the ref for.
+    const char* appName                     ///< [IN] Name of the app to get the ref for.
 )
 {
+    if (!IsAppNameValid(appName))
+    {
+        LE_KILL_CLIENT("Invalid app name.");
+        return NULL;
+    }
+
     le_result_t result;
 
     // Get a ref for an app with the app name.
@@ -1113,35 +1217,22 @@ void le_sup_ctrl_GetAppRef
 
     if (appContainerPtr == NULL)
     {
-        le_sup_ctrl_GetAppRefRespond(cmdRef, NULL);
-        return;
+        return NULL;
     }
 
-    // Get the existing safe ref or create a new one.
-    void* appSafeRef = NULL;
-
-    le_ref_IterRef_t iter = le_ref_GetIterator(AppMap);
-
-    while (le_ref_NextNode(iter) == LE_OK)
+    // Check if someone is already holding a reference to this app.
+    if (appContainerPtr->clientRef != NULL)
     {
-        AppContainer_t* currAppContainerPtr = (AppContainer_t*)le_ref_GetValue(iter);
-
-        if (appContainerPtr == currAppContainerPtr)
-        {
-            appSafeRef = (void*)le_ref_GetSafeRef(iter);
-            LE_ASSERT(appSafeRef != NULL);
-
-            // No need to look further since app names are unique.
-            break;
-        }
+        LE_KILL_CLIENT("Application %s is already referenced by a client.", appName);
+        return NULL;
     }
 
-    if (appSafeRef == NULL)
-    {
-        appSafeRef = le_ref_CreateRef(AppMap, appContainerPtr);
-    }
+    void* appSafeRef = le_ref_CreateRef(AppMap, appContainerPtr);
 
-    le_sup_ctrl_GetAppRefRespond(cmdRef, appSafeRef);
+    // Store the client reference.
+    appContainerPtr->clientRef = le_appCtrl_GetClientSessionRef();
+
+    return appSafeRef;
 }
 
 
@@ -1150,11 +1241,9 @@ void le_sup_ctrl_GetAppRef
  * Release the reference to an application.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_ReleaseAppRef
+static void appCtrl_ReleaseRef
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef, ///< [IN] Command reference that must be passed to this
-                                       ///       command's response function.
-    le_sup_ctrl_AppRef_t appRef        ///< [IN] Ref to the app.
+    le_appCtrl_AppRef_t appRef          ///< [IN] Ref to the app.
 )
 {
     AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
@@ -1165,13 +1254,7 @@ void le_sup_ctrl_ReleaseAppRef
         return;
     }
 
-    // Reset the overrides.
-    app_SetRunForAllProcs(appContainerPtr->appRef, true);
-
-    // Remove the safe ref.
-    le_ref_DeleteRef(AppMap, appRef);
-
-    le_sup_ctrl_ReleaseAppRefRespond(cmdRef);
+    ReleaseAppRef(appRef, appContainerPtr);
 }
 
 
@@ -1182,15 +1265,19 @@ void le_sup_ctrl_ReleaseAppRef
  * If there is an error this function will kill the calling client.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_SetRun
+static void appCtrl_SetRun
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
-                                        ///       command's response function.
-    le_sup_ctrl_AppRef_t appRef,        ///< [IN] Ref to the app.
+    le_appCtrl_AppRef_t appRef,         ///< [IN] Ref to the app.
     const char* procName,               ///< [IN] Process name to set the run flag for.
     bool run                            ///< [IN] Flag to run the process or not.
 )
 {
+    if (!IsProcNameValid(procName))
+    {
+        LE_KILL_CLIENT("Invalid process name.");
+        return;
+    }
+
     AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
 
     if (appContainerPtr == NULL)
@@ -1209,7 +1296,6 @@ void le_sup_ctrl_SetRun
     }
 
     app_SetRun(procContainerPtr, run);
-    le_sup_ctrl_SetRunRespond(cmdRef);
 }
 
 
@@ -1218,32 +1304,27 @@ void le_sup_ctrl_SetRun
  * Starts an app.  This function is called by the event loop when a separate process requests to
  * start an app.
  *
- * @note
- *   The result code for this command should be sent back to the requesting process via
- *   le_sup_ctrl_StartAppRespond().  The possible result codes are:
- *
+ * @return
  *      LE_OK if the app is successfully started.
  *      LE_DUPLICATE if the app is already running.
  *      LE_NOT_FOUND if the app is not installed.
  *      LE_FAULT if there was an error and the app could not be launched.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_StartApp
+static le_result_t appCtrl_Start
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
-                                        ///       command's response function.
     const char* appName                 ///< [IN] Name of the application to start.
 )
 {
     if (!IsAppNameValid(appName))
     {
         LE_KILL_CLIENT("Invalid app name.");
-        return;
+        return LE_FAULT;
     }
 
     LE_DEBUG("Received request to start application '%s'.", appName);
 
-    le_sup_ctrl_StartAppRespond(cmdRef, LaunchApp(appName));
+    return LaunchApp(appName);
 }
 
 
@@ -1252,25 +1333,27 @@ void le_sup_ctrl_StartApp
  * Stops an app. This function is called by the event loop when a separate process requests to stop
  * an app.
  *
- * @note
- *   The result code for this command should be sent back to the requesting process via
- *   le_sup_ctrl_StopAppRespond(). The possible result codes are:
+ * @note If this function returns LE_OK that does not mean the app has necessarily stopped yet
+ *       because stopping apps is asynchronous.  When the app actually stops the stopHandler will be
+ *       called.
  *
+ * @return
  *      LE_OK if successful.
  *      LE_NOT_FOUND if the app could not be found.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_ctrl_StopApp
+static le_result_t appCtrl_Stop
 (
-    le_sup_ctrl_ServerCmdRef_t cmdRef,  ///< [IN] Command reference that must be passed to this
-                                        ///       command's response function.
-    const char* appName                 ///< [IN] Name of the application to stop.
+    le_appCtrl_ServerCmdRef_t cmdRef,       ///< [IN] Command reference that must be passed to this
+                                            ///       command's response function.
+    const char* appName,                ///< [IN] Name of the application to stop.
+    AppStopHandler_t stopHandler        ///< [IN] Handler to use to report when the app has stopped.
 )
 {
     if (!IsAppNameValid(appName))
     {
         LE_KILL_CLIENT("Invalid app name.");
-        return;
+        return LE_NOT_FOUND;
     }
 
     LE_DEBUG("Received request to stop application '%s'.", appName);
@@ -1282,8 +1365,7 @@ void le_sup_ctrl_StopApp
     {
         LE_WARN("Application '%s' is not running and cannot be stopped.", appName);
 
-        le_sup_ctrl_StopAppRespond(cmdRef, LE_NOT_FOUND);
-        return;
+        return LE_NOT_FOUND;
     }
 
     // Save this commands reference in this app.
@@ -1291,7 +1373,7 @@ void le_sup_ctrl_StopApp
 
     // Set the handler to be called when this app stops.  This handler will also respond to the
     // process that requested this app be stopped.
-    appContainerPtr->stopHandler = RespondToStopAppCmd;
+    appContainerPtr->stopHandler = stopHandler;
 
     // Stop the process.  This is an asynchronous call that returns right away.
     app_Stop(appContainerPtr->appRef);
@@ -1301,6 +1383,346 @@ void le_sup_ctrl_StopApp
     if (app_GetState(appContainerPtr->appRef) == APP_STATE_STOPPED)
     {
         appContainerPtr->stopHandler(appContainerPtr);
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to an application.
+ *
+ * @return
+ *      Reference to the named app.
+ *      NULL if the app is not installed.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_GetRef
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,       ///< [IN] Command reference that must be passed to this
+                                            ///       command's response function.
+    const char* appName                     ///< [IN] Name of the app to get the ref for.
+)
+{
+    le_appCtrl_GetRefRespond(cmdRef, appCtrl_GetRef(appName));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the reference to an application.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_ReleaseRef
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    le_appCtrl_AppRef_t appRef          ///< [IN] Ref to the app.
+)
+{
+    appCtrl_ReleaseRef(appRef);
+
+    le_appCtrl_ReleaseRefRespond(cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_SetRun
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    le_appCtrl_AppRef_t appRef,         ///< [IN] Ref to the app.
+    const char* procName,               ///< [IN] Process name to set the run flag for.
+    bool run                            ///< [IN] Flag to run the process or not.
+)
+{
+    appCtrl_SetRun(appRef, procName, run);
+    le_appCtrl_SetRunRespond(cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import a file into the app's working directory.
+ *
+ * @note
+ *   The result code for this command should be sent back to the requesting process via
+ *   le_appCtrl_ImportRespond().  The possible result codes are:
+ *
+ * @return
+ *      LE_OK if successfully imported the file.
+ *      LE_DUPLICATE if the path conflicts with items already in the app's working directory.
+ *      LE_NOT_FOUND if the path does not point to a valid file.
+ *      LE_BAD_PARAMETER if the path is formatted incorrectly.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_Import
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    le_appCtrl_AppRef_t appRef,         ///< [IN] Ref to the app.
+    const char* path                    ///< [IN] Absolute path to the file to import.
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        le_appCtrl_ImportRespond(cmdRef, LE_FAULT);
+        LE_KILL_CLIENT("Invalid application reference.");
+        return;
+    }
+
+    // Check that the path is valid.
+    if ( (path == NULL) || (strlen(path) == 0) )
+    {
+        LE_ERROR("Import path cannot be empty.");
+        le_appCtrl_ImportRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+    else if (strlen(path) >= LIMIT_MAX_PATH_BYTES)
+    {
+        LE_ERROR("Import path '%s' is too long.", path);
+        le_appCtrl_ImportRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+    else if (strlen(path) >= LIMIT_MAX_PATH_BYTES)
+    {
+        LE_ERROR("Import path '%s' is too long.", path);
+        le_appCtrl_ImportRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+
+    le_appCtrl_ImportRespond(cmdRef, app_AddLink(appContainerPtr->appRef, path));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets a device file's permissions.
+ *
+ * @note
+ *   The result code for this command should be sent back to the requesting process via
+ *   le_appCtrl_SetDevicePermRespond().  The possible result codes are:
+ *
+ * @return
+ *      LE_OK if successfully set the device's permissions.
+ *      LE_NOT_FOUND if the path does not point to a valid device.
+ *      LE_BAD_PARAMETER if the path is formatted incorrectly.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_SetDevicePerm
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    le_appCtrl_AppRef_t appRef,         ///< [IN] Reference to the app.
+    const char* path,                   ///< [IN] Absolute path to the device.
+    const char* permissions             ///< [IN] Permission to apply to the device.
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        le_appCtrl_SetDevicePermRespond(cmdRef, LE_FAULT);
+        LE_KILL_CLIENT("Invalid application reference.");
+        return;
+    }
+
+    // Check that the path is valid.
+    if ( (path == NULL) || (strlen(path) == 0) )
+    {
+        LE_ERROR("Device path cannot be empty.");
+        le_appCtrl_SetDevicePermRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+    else if (strlen(path) >= LIMIT_MAX_PATH_BYTES)
+    {
+        LE_ERROR("Device path '%s' is too long.", path);
+        le_appCtrl_SetDevicePermRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+    else if (strlen(path) >= LIMIT_MAX_PATH_BYTES)
+    {
+        LE_ERROR("Device path '%s' is too long.", path);
+        le_appCtrl_SetDevicePermRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+
+    // Check that the permissions are valid.
+    if ( (strcmp(permissions, "r") != 0) &&
+         (strcmp(permissions, "w") != 0) &&
+         (strcmp(permissions, "rw") != 0) )
+    {
+        LE_ERROR("Invalid permissions string %s.", permissions);
+        le_appCtrl_SetDevicePermRespond(cmdRef, LE_BAD_PARAMETER);
+        return;
+    }
+
+    le_appCtrl_SetDevicePermRespond(cmdRef, app_SetDevPerm(appContainerPtr->appRef,
+                                                           path,
+                                                           permissions));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_appCtrl_TraceAttach'
+ *
+ * Event that indicates the process that can be attached to in the application being traced.
+ */
+//--------------------------------------------------------------------------------------------------
+le_appCtrl_TraceAttachHandlerRef_t le_appCtrl_AddTraceAttachHandler
+(
+    le_appCtrl_AppRef_t appRef,
+        ///< [IN] Ref to the app.
+
+    le_appCtrl_TraceAttachHandlerFunc_t attachToPidPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid application reference.");
+        return NULL;
+    }
+
+    // Check if a handler is already registered for this app.
+    if (appContainerPtr->traceAttachHandler != NULL)
+    {
+        LE_KILL_CLIENT("An attach handler for %s is already registered.",
+                        app_GetName(appContainerPtr->appRef));
+        return NULL;
+    }
+
+    // Store the client's handler and context pointer.
+    appContainerPtr->traceAttachHandler = attachToPidPtr;
+    appContainerPtr->traceAttachContextPtr = contextPtr;
+
+    // Set our generic handler function in the app.
+    app_SetBlockCallback(appContainerPtr->appRef, ProcBlockHandler, appRef);
+
+    void* handlerSafeRef = le_ref_CreateRef(AppAttachHandlerMap, appContainerPtr);
+
+    // Get a seperate safe reference for this app container that is used as the handler safe ref.
+    return handlerSafeRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_appCtrl_TraceAttach'
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_RemoveTraceAttachHandler
+(
+    le_appCtrl_TraceAttachHandlerRef_t addHandlerRef
+        ///< [IN]
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppAttachHandlerMap, addHandlerRef);
+
+    if (appContainerPtr != NULL)
+    {
+        le_ref_DeleteRef(AppAttachHandlerMap, addHandlerRef);
+
+        app_SetBlockCallback(appContainerPtr->appRef, NULL, NULL);
+        appContainerPtr->traceAttachHandler = NULL;
+        appContainerPtr->traceAttachContextPtr = NULL;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unblocks the traced process.  This should normally be done once the tracer has successfully
+ * attached to the process.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_TraceUnblock
+(
+    le_appCtrl_ServerCmdRef_t _cmdRef,
+    le_appCtrl_AppRef_t appRef,
+    int32_t pid
+)
+{
+    AppContainer_t* appContainerPtr = le_ref_Lookup(AppMap, appRef);
+
+    if (appContainerPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid application reference.");
+        return;
+    }
+
+    app_Unblock(appContainerPtr->appRef, pid);
+
+    le_appCtrl_TraceUnblockRespond(_cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts an app.  This function is called by the event loop when a separate process requests to
+ * start an app.
+ *
+ * @note
+ *   The result code for this command should be sent back to the requesting process via
+ *   le_appCtrl_StartRespond().  The possible result codes are:
+ *
+ *      LE_OK if the app is successfully started.
+ *      LE_DUPLICATE if the app is already running.
+ *      LE_NOT_FOUND if the app is not installed.
+ *      LE_FAULT if there was an error and the app could not be launched.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_Start
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    const char* appName                 ///< [IN] Name of the application to start.
+)
+{
+    le_appCtrl_StartRespond(cmdRef, appCtrl_Start(appName));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stops an app. This function is called by the event loop when a separate process requests to stop
+ * an app.
+ *
+ * @note
+ *   The result code for this command should be sent back to the requesting process via
+ *   le_appCtrl_StopRespond(). The possible result codes are:
+ *
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the app could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_appCtrl_Stop
+(
+    le_appCtrl_ServerCmdRef_t cmdRef,   ///< [IN] Command reference that must be passed to this
+                                        ///       command's response function.
+    const char* appName                 ///< [IN] Name of the application to stop.
+)
+{
+    if (appCtrl_Stop(cmdRef, appName, RespondToStopAppCmd) != LE_OK)
+    {
+        le_appCtrl_StopRespond(cmdRef, LE_NOT_FOUND);
     }
 }
 
@@ -1529,14 +1951,14 @@ le_result_t le_appInfo_GetHash
  * or not appropriate for lower layers are handled here.
  */
 //--------------------------------------------------------------------------------------------------
-void le_sup_wdog_WatchdogTimedOut
+void wdog_WatchdogTimedOut
 (
-    le_sup_wdog_ServerCmdRef_t cmdRef,
+    wdog_ServerCmdRef_t cmdRef,
     uint32_t userId,
     uint32_t procId
 )
 {
-    le_sup_wdog_WatchdogTimedOutRespond(cmdRef);
+    wdog_WatchdogTimedOutRespond(cmdRef);
     LE_INFO("Handling watchdog expiry for: userId %d, procId %d", userId, procId);
 
     // Search for the process in the list of apps.
@@ -2164,4 +2586,154 @@ void le_appProc_Delete
     app_DeleteProc(appProcContainerPtr->appContainerPtr->appRef, appProcContainerPtr->procRef);
 
     le_mem_Release(appProcContainerPtr);
+}
+
+
+// ---------------- Deprecated Functions -----------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Logs a deprecated API message.
+ */
+//--------------------------------------------------------------------------------------------------
+static void LogDeprecatedMsg
+(
+    void
+)
+{
+    LE_WARN("le_sup_ctrl.api is deprecated.  Please use le_appCtrl.api instead.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to an application.
+ *
+ * @return
+ *      Reference to the named app.
+ *      NULL if the app is not installed.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_GetAppRef
+(
+    le_sup_ctrl_ServerCmdRef_t _cmdRef,
+    const char* appName
+)
+{
+    LogDeprecatedMsg();
+    le_sup_ctrl_GetAppRefRespond(_cmdRef, appCtrl_GetRef(appName));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the reference to an application.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_ReleaseAppRef
+(
+    le_sup_ctrl_ServerCmdRef_t _cmdRef,
+    le_sup_ctrl_AppRef_t appRef
+)
+{
+    LogDeprecatedMsg();
+    appCtrl_ReleaseRef((le_appCtrl_AppRef_t)appRef);
+    le_sup_ctrl_ReleaseAppRefRespond(_cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_SetRun
+(
+    le_sup_ctrl_ServerCmdRef_t _cmdRef,
+    le_sup_ctrl_AppRef_t appRef,
+    const char* procName,
+    bool run
+)
+{
+    LogDeprecatedMsg();
+    appCtrl_SetRun((le_appCtrl_AppRef_t)appRef, procName, run);
+    le_sup_ctrl_SetRunRespond(_cmdRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts an app.  This function is called by the event loop when a separate process requests to
+ * start an app.
+ *
+ * @note
+ *   The result code for this command should be sent back to the requesting process via
+ *   le_sup_ctrl_StartAppRespond().  The possible result codes are:
+ *
+ *      LE_OK if the app is successfully started.
+ *      LE_DUPLICATE if the app is already running.
+ *      LE_NOT_FOUND if the app is not installed.
+ *      LE_FAULT if there was an error and the app could not be launched.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_StartApp
+(
+    le_sup_ctrl_ServerCmdRef_t _cmdRef,
+    const char* appName
+)
+{
+    LogDeprecatedMsg();
+    le_sup_ctrl_StartAppRespond(_cmdRef, appCtrl_Start(appName));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Responds to the stop app command.  Also deactivates the app container for the app that just
+ * stopped.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RespondToStopAppCmdDeprecated
+(
+    AppContainerRef_t appContainerRef           ///< [IN] App that stopped.
+)
+{
+    // Save command reference for later use.
+    void* cmdRef = appContainerRef->stopCmdRef;
+
+    DeactivateAppContainer(appContainerRef);
+
+    // Respond to the requesting process.
+    le_sup_ctrl_StopAppRespond(cmdRef, LE_OK);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stops an app. This function is called by the event loop when a separate process requests to stop
+ * an app.
+ *
+ * @note
+ *   The result code for this command should be sent back to the requesting process via
+ *   le_sup_ctrl_StopAppRespond(). The possible result codes are:
+ *
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the app could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sup_ctrl_StopApp
+(
+    le_sup_ctrl_ServerCmdRef_t _cmdRef,
+    const char* appName
+)
+{
+    LogDeprecatedMsg();
+
+    if (appCtrl_Stop((le_appCtrl_ServerCmdRef_t)_cmdRef, appName,
+                      RespondToStopAppCmdDeprecated) != LE_OK)
+    {
+        le_sup_ctrl_StopAppRespond(_cmdRef, LE_NOT_FOUND);
+    }
 }

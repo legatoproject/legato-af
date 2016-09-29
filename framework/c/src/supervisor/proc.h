@@ -38,6 +38,20 @@ proc_State_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prototype for callback functions that can be used to indicate when a process has blocked after it
+ * forks and initializes but before it has called exec().
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*proc_BlockCallback_t)
+(
+    pid_t pid,                  ///< [IN] The process that has blocked.
+    const char* namePtr,        ///< [IN] Name of the blocked process.
+    void* contextPtr            ///< [IN] Context pointer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the process system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -336,6 +350,32 @@ void proc_SetRun
 (
     proc_Ref_t procRef, ///< [IN] The process reference.
     bool run            ///< [IN] Run flag.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Blocks the process on startup, after it is forked and initialized but before it has execed.  The
+ * specified callback function will be called when the process has blocked.  Clearing the callback
+ * function means the process should not block on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetBlockCallback
+(
+    proc_Ref_t procRef,                     ///< [IN] The process reference.
+    proc_BlockCallback_t blockCallback,     ///< [IN] Callback to set.  NULL to clear.
+    void* contextPtr                        ///< [IN] Context pointer.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unblocks a process that was blocked on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_Unblock
+(
+    proc_Ref_t procRef                      ///< [IN] The process reference.
 );
 
 

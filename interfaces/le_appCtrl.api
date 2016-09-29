@@ -1,0 +1,219 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_appCtrl App Control API
+ *
+ * @ref le_appCtrl_interface.h "API Reference"
+ *
+ * API for controlling the applications. This API should only be made available to privileged users.
+ *
+ * @section legatoServicesSupervisor_binding Binding
+ *
+ * You can use a definition @c .adef file to bind your client-side app and component to the
+ * server-side App Control service.
+ *
+ * This code sample shows how to bind an app to this service:
+ * @code
+ * bindings
+ * {
+ *     myExe.myComp.le_appCtrl -> <root>.le_appCtrl
+ * }
+ * @endcode
+ *
+ * See @ref defFilesAdef for details.
+ *
+ * @section legatoServicesSupervisor_start Start App
+ *
+ * Use le_appCtrl_StartApp() (const char * appName) to start an app.
+ *
+ * The code sample shows how to use the App Control service to start an app:
+ *
+ * @code
+ *  le_result_t result = le_appCtrl_Start("myApp");
+ * @endcode
+ *
+ * where @c myApp is the name of the app.
+ *
+ * @section legatoServicesSupervisor_stop Stop App
+ *
+ * Use le_appCtrl_Stop() to stop an app.
+ *
+ * This code sample shows how to use the App Control service to stop an app.
+ *
+ * @code
+ * le_result_t result = le_appCtrl_Stop("myApp");
+ * @endcode
+ *
+ * where @c myApp is the name of the app.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_appCtrl_interface.h
+ *
+ * Legato @ref c_appCtrl include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+USETYPES le_limit.api;
+
+
+REFERENCE App;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets a reference to an application.
+ *
+ * @return
+ *      Reference to the named app.
+ *      NULL if the app is not installed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION App GetRef
+(
+    string appName[le_limit.APP_NAME_LEN] IN    ///< Name of the app to get the ref for.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the reference to an application.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ReleaseRef
+(
+    App appRef IN   ///< Ref to the app.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the run flag for a process in an application.
+ *
+ * If there is an error this function will kill the calling client.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetRun
+(
+    App appRef IN,                              ///< Ref to the app.
+    string procName[le_limit.PROC_NAME_LEN] IN, ///< Process name to set the run flag for.
+    bool run IN                                 ///< Flag to run the process or not.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Imports a file into the app's working directory.
+ *
+ * @return
+ *      LE_OK if successfully imported the file.
+ *      LE_DUPLICATE if the path conflicts with items already in the app's working directory.
+ *      LE_NOT_FOUND if the path does not point to a valid file.
+ *      LE_BAD_PARAMETER if the path is formatted incorrectly.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Import
+(
+    App appRef IN,                              ///< Ref to the app.
+    string path[le_limit.MAX_PATH_LEN] IN       ///< Absolute path to the file to import.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets a device file's permissions.
+ *
+ * @return
+ *      LE_OK if successfully set the device's permissions.
+ *      LE_NOT_FOUND if the path does not point to a valid device.
+ *      LE_BAD_PARAMETER if the path is formatted incorrectly.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDevicePerm
+(
+    App appRef IN,                              ///< Ref to the app.
+    string path[le_limit.MAX_PATH_LEN] IN,      ///< Absolute path to the device.
+    string permissions[2] IN                    ///< Permission string, "r", "w", "rw".
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for attaching to a process that is to be traced.  The process is blocked allowing the
+ * tracer to attach to it.  The tracer must call TraceUnblock() to unblock the traced process.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER TraceAttachHandler
+(
+    App appRef IN,                              ///< Ref to the app.
+    int pid IN,                                 ///< PID of a process that can be attached to.
+    string procName[le_limit.PROC_NAME_LEN] IN  ///< Name of the process name.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event that indicates the process is blocked and can be attached to.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT TraceAttach
+(
+    App appRef,                                 ///< Ref to the app.
+    TraceAttachHandler attachToPid              ///< Attach handler to register.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unblocks the traced process.  This should normally be done once the tracer has successfully
+ * attached to the process.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION TraceUnblock
+(
+    App appRef IN,                              ///< Ref to the app.
+    int pid IN                                  ///< PID of the process to unblock.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Starts an app.
+ *
+ * @return
+ *      LE_OK if the app is successfully started.
+ *      LE_DUPLICATE if the app is already running.
+ *      LE_NOT_FOUND if the app isn't installed.
+ *      LE_FAULT if there was an error and the app could not be launched.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Start
+(
+    string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the app to start.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stops an app.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the app could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Stop
+(
+    string appName[le_limit.APP_NAME_LEN] IN        ///< Name of the app to stop.
+);
+

@@ -257,7 +257,7 @@ static void WatchdogHandleExpiry
         }
 
         DeleteWatchdog(procId);
-        le_sup_wdog_WatchdogTimedOut(appId, procId);
+        wdog_WatchdogTimedOut(appId, procId);
     }
     else
     {
@@ -622,7 +622,7 @@ COMPONENT_INIT
 {
     InitializeTimerContainer();
     SystemProcessNotifySupervisor();
-    le_sup_wdog_ConnectService();
+    wdog_ConnectService();
 
     le_msg_AddServiceCloseHandler (le_wdog_GetServiceRef(), CleanUpClosedClient, NULL);
     LE_INFO("The watchdog service is ready");

@@ -11,8 +11,9 @@
 #include "appCfg.h"
 
 
-// Have I already connected the supervisor service?
-static bool ConnectedToSupervisor = false;
+// Have I already connected the supervisor services?
+static bool ConnectedToAppsService = false;
+static bool ConnectedToFrameworkService = false;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -50,23 +51,23 @@ le_result_t supCtrl_StartApp
     }
 
     // Connect to the supervisor and start the application.
-    if (!ConnectedToSupervisor)
+    if (!ConnectedToAppsService)
     {
-        le_sup_ctrl_ConnectService();
-        ConnectedToSupervisor = true;
+        le_appCtrl_ConnectService();
+        ConnectedToAppsService = true;
     }
 
     LE_INFO("Starting app '%s'.", appNamePtr);
 
-    le_result_t result = le_sup_ctrl_StartApp(appNamePtr);
+    le_result_t result = le_appCtrl_Start(appNamePtr);
 
     // The app is auto start, so attempt to start it now.
     if (result == LE_DUPLICATE)
     {
         // This means the app was previously installed and running, so we need to stop and start it
         // again to get the new version.
-        le_sup_ctrl_StopApp(appNamePtr);
-        result = le_sup_ctrl_StartApp(appNamePtr);
+        le_appCtrl_Stop(appNamePtr);
+        result = le_appCtrl_Start(appNamePtr);
     }
     else if (result == LE_NOT_FOUND)
     {
@@ -91,15 +92,15 @@ void supCtrl_StopApp
 //--------------------------------------------------------------------------------------------------
 {
     // Connect to the supervisor and start the application.
-    if (!ConnectedToSupervisor)
+    if (!ConnectedToAppsService)
     {
-        le_sup_ctrl_ConnectService();
-        ConnectedToSupervisor = true;
+        le_appCtrl_ConnectService();
+        ConnectedToAppsService = true;
     }
 
     LE_INFO("Stopping app '%s'.", appNamePtr);
 
-    le_sup_ctrl_StopApp(appNamePtr);
+    le_appCtrl_Stop(appNamePtr);
 }
 
 
@@ -115,15 +116,15 @@ void supCtrl_RestartLegato
 //--------------------------------------------------------------------------------------------------
 {
     // Connect to the supervisor.
-    if (!ConnectedToSupervisor)
+    if (!ConnectedToFrameworkService)
     {
-        le_sup_ctrl_ConnectService();
-        ConnectedToSupervisor = true;
+        le_framework_ConnectService();
+        ConnectedToFrameworkService = true;
     }
 
     LE_INFO("Requesting Legato restart.");
 
-    if (le_sup_ctrl_RestartLegato(false) != LE_OK)
+    if (le_framework_Restart(false) != LE_OK)
     {
         LE_INFO("Legato restart request rejected.  Shutdown must be underway already.");
     }

@@ -148,6 +148,11 @@ typedef struct proc_Ref
                                     ///  valid (possibly empty).
     FaultAction_t faultAction;      ///< Fault action override.
     bool    run;                    ///< run override.
+    int     blockPipe;              ///< Write end of a pipe to the actual child process.  Used to
+                                    ///  control blocking of the child process.
+    proc_BlockCallback_t  blockCallback;  ///< Callback function to indicate when the process is
+                                          ///  has been blocked after the fork but before the exec.
+    void* blockContextPtr;          ///< Context pointer for the blockCallback.
 }
 Process_t;
 
@@ -335,6 +340,9 @@ proc_Ref_t proc_Create
     procPtr->argsList = LE_SLS_LIST_INIT;
     procPtr->faultAction = FAULT_ACTION_NONE;
     procPtr->run = true;
+    procPtr->blockPipe = -1;
+    procPtr->blockCallback = NULL;
+    procPtr->blockContextPtr = NULL;
 
     return procPtr;
 }
@@ -369,6 +377,11 @@ void proc_Delete
     if (procRef->stdErrFd != -1)
     {
         fd_Close(procRef->stdErrFd);
+    }
+
+    if (procRef->blockPipe != -1)
+    {
+        fd_Close(procRef->blockPipe);
     }
 
     // Delete priority override string.
@@ -968,6 +981,40 @@ static void ConfineProcInSandbox
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Blocks the calling thread's execution by performing a blocking read on the read end of the pipe.
+ * This function will unblock and return once the other end of the pipe is closed.  This function
+ * is used to synchronize parent/child processes and assumes that both the parent and child have
+ * copies of the pipe.
+ *
+ * When this function exits both ends of the pipe are closed.
+ */
+//--------------------------------------------------------------------------------------------------
+static void BlockOnPipe
+(
+    int pipeFd[2]           ///< [IN]
+)
+{
+    // Don't need the write end of the pipe.
+    fd_Close(pipeFd[WRITE_PIPE]);
+
+    // Perform a blocking read on the read end of the pipe.  Once the other end of the pipe is
+    // closed this function will exit.
+    ssize_t numBytesRead;
+    int dummyBuf;
+    do
+    {
+        numBytesRead = read(pipeFd[READ_PIPE], &dummyBuf, 1);
+    }
+    while ( ((numBytesRead == -1)  && (errno == EINTR)) || (numBytesRead != 0) );
+
+    LE_FATAL_IF(numBytesRead == -1, "Could not read pipe.  %m.");
+
+    fd_Close(pipeFd[READ_PIPE]);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Starts a process.  If the process belongs to a sandboxed app the process will run in its sandbox,
  * otherwise the process will run in its working directory as root.
  *
@@ -997,6 +1044,15 @@ le_result_t proc_Start
     // Create a pipe for parent/child synchronization.
     int syncPipeFd[2];
     LE_FATAL_IF(pipe(syncPipeFd) == -1, "Could not create synchronization pipe.  %m.");
+
+    // Create a pipe that can be used to block the child after the fork and initialization but
+    // before the exec() call.
+    int blockPipeFd[2] = {-1, -1};
+
+    if (procRef->blockCallback != NULL)
+    {
+        LE_FATAL_IF(pipe(blockPipeFd) == -1, "Could not create block pipe.  %m.");
+    }
 
     // @Note The current IPC system does not support forking so any reads to the config DB must be
     //       done in the parent process.
@@ -1042,17 +1098,7 @@ le_result_t proc_Start
     {
         // Wait for the parent to allow us to continue by blocking on the read pipe until it
         // is closed.
-        fd_Close(syncPipeFd[WRITE_PIPE]);
-
-        ssize_t numBytesRead;
-        int dummyBuf;
-        do
-        {
-            numBytesRead = read(syncPipeFd[READ_PIPE], &dummyBuf, 1);
-        }
-        while ( ((numBytesRead == -1)  && (errno == EINTR)) || (numBytesRead != 0) );
-
-        LE_FATAL_IF(numBytesRead == -1, "Could not read synchronization pipe.  %m.");
+        BlockOnPipe(syncPipeFd);
 
         // The parent has allowed us to continue.
 
@@ -1097,6 +1143,14 @@ le_result_t proc_Start
             ConfigNonSandboxedProcess(app_GetWorkingDir(procRef->appRef));
         }
 
+        if (procRef->blockCallback != NULL)
+        {
+            // Call the block callback function.
+            procRef->blockCallback(getpid(), procRef->namePtr, procRef->blockContextPtr);
+
+            BlockOnPipe(blockPipeFd);
+        }
+
         // Launch the child program.  This should not return unless there was an error.
         LE_INFO("Execing '%s'", argsPtr[0]);
 
@@ -1105,9 +1159,12 @@ le_result_t proc_Start
 
         execvp(argsPtr[0], &(argsPtr[1]));
 
+        // Store the errno returned by exec().
+        int execErrno = errno;
+
         // The program could not be started.  Log an error message.
         log_ReInit();
-        LE_FATAL("Could not exec '%s'.  %m.", argsPtr[0]);
+        LE_FATAL("Could not exec '%s'.  %s.", argsPtr[0], strerror(execErrno));
     }
 
     procRef->pid = pID;
@@ -1134,6 +1191,16 @@ le_result_t proc_Start
 
     // Unblock the child process.
     fd_Close(syncPipeFd[WRITE_PIPE]);
+
+    // Check if the child process should be blocked.
+    if (procRef->blockCallback != NULL)
+    {
+        // Don't need the read end of this pipe.
+        fd_Close(blockPipeFd[READ_PIPE]);
+
+        // Store the write end in the process's data struct.
+        procRef->blockPipe = blockPipeFd[WRITE_PIPE];
+    }
 
     return LE_OK;
 }
@@ -1558,6 +1625,49 @@ void proc_SetFaultAction
 )
 {
     procRef->faultAction = faultAction;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Blocks the process on startup, after it is forked and initialized but before it has execed.  The
+ * specified callback function will be called when the process has blocked.  Clearing the callback
+ * function means the process should not block on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_SetBlockCallback
+(
+    proc_Ref_t procRef,                     ///< [IN] The process reference.
+    proc_BlockCallback_t blockCallback,     ///< [IN] Callback to set.  NULL to clear.
+    void* contextPtr                        ///< [IN] Context pointer.
+)
+{
+    procRef->blockCallback = blockCallback;
+    procRef->blockContextPtr = contextPtr;
+
+    // Clean up the fd if the block is not being used.
+    if (procRef->blockCallback == NULL)
+    {
+        proc_Unblock(procRef);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unblocks a process that was blocked on startup.
+ */
+//--------------------------------------------------------------------------------------------------
+void proc_Unblock
+(
+    proc_Ref_t procRef                      ///< [IN] The process reference.
+)
+{
+    if (procRef->blockPipe != -1)
+    {
+        fd_Close(procRef->blockPipe);
+        procRef->blockPipe = -1;
+    }
 }
 
 
