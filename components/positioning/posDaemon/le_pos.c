@@ -62,6 +62,7 @@ static int CurrentActivationsCount = 0;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_pos_Sample
 {
+    le_pos_FixState_t fixState;        ///< Position Fix state
     bool            latitudeValid;   ///< if true, latitude is set
     int32_t         latitude;        ///< altitude
     bool            longitudeValid;  ///< if true, longitude is set
@@ -112,11 +113,16 @@ typedef struct le_pos_SampleHandler
     le_pos_MovementHandlerFunc_t handlerFuncPtr;      ///< The handler function address.
     void*                        handlerContextPtr;   ///< The handler function context.
     uint32_t                     acquisitionRate;     ///< The acquisition rate for this handler.
-    uint32_t                     horizontalMagnitude; ///< The horizontal magnitude in meters for this handler.
-    uint32_t                     verticalMagnitude;   ///< The vertical magnitude in meters for this handler.
-    int32_t                      lastLat;             ///< The altitude associated with the last handler's notification.
-    int32_t                      lastLong;            ///< The longitude associated with the last handler's notification.
-    int32_t                      lastAlt;             ///< The altitude associated with the last handler's notification.
+    uint32_t                     horizontalMagnitude; ///< The horizontal magnitude in meters for
+                                                      ///  this handler.
+    uint32_t                     verticalMagnitude;   ///< The vertical magnitude in meters for this
+                                                      ///  handler.
+    int32_t                      lastLat;             ///< The altitude associated with the last
+                                                      ///  handler's notification.
+    int32_t                      lastLong;            ///< The longitude associated with the last
+                                                      ///  handler's notification.
+    int32_t                      lastAlt;             ///< The altitude associated with the last
+                                                      ///  handler's notification.
     le_dls_Link_t                link;                ///< Object node link
 }
 le_pos_SampleHandler_t;
@@ -294,7 +300,8 @@ static void PosSampleHandlerDestructor
         do
         {
             // Get the node from the list
-            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr, le_pos_SampleHandler_t, link);
+            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
+                                                                    le_pos_SampleHandler_t, link);
             // Check the node.
             if ( posSampleHandlerNodePtr == (le_pos_SampleHandler_t*)obj)
             {
@@ -334,8 +341,10 @@ static uint32_t CalculateAcquisitionRate
     }
 
     rate = 0;
-    while (! (((horizontalMagnitude >= (metersec + metersec*rate)) && (verticalMagnitude >= (metersec + metersec*rate))) &&
-             ((horizontalMagnitude < (metersec + metersec*(rate+1))) || (verticalMagnitude < (metersec + metersec*(rate+1))))))
+    while (! (((horizontalMagnitude >= (metersec + metersec*rate)) &&
+               (verticalMagnitude >= (metersec + metersec*rate))) &&
+             ((horizontalMagnitude < (metersec + metersec*(rate+1))) ||
+              (verticalMagnitude < (metersec + metersec*(rate+1))))))
     {
         rate++;
     }
@@ -430,7 +439,8 @@ static uint32_t ComputeCommonSmallestRate
         do
         {
             // Get the node from the list
-            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr, le_pos_SampleHandler_t, link);
+            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
+                                                                  le_pos_SampleHandler_t, link);
             // Check the node.
             if ( posSampleHandlerNodePtr->acquisitionRate < rate )
             {
@@ -544,7 +554,8 @@ static void PosSampleHandlerfunc
         {
             bool hflag, vflag;
             // Get the node from the list
-            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr, le_pos_SampleHandler_t, link);
+            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
+                                                                 le_pos_SampleHandler_t, link);
 
             if ((posSampleHandlerNodePtr->horizontalMagnitude != 0) && !locationValid)
             {
@@ -840,7 +851,8 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler( msgService, CloseSessionEventHandler, NULL);
 
     // Create a pool for Position Sample Handler objects
-    PosSampleHandlerPoolRef = le_mem_CreatePool("PosSampleHandlerPoolRef", sizeof(le_pos_SampleHandler_t));
+    PosSampleHandlerPoolRef = le_mem_CreatePool("PosSampleHandlerPoolRef",
+                                                sizeof(le_pos_SampleHandler_t));
     le_mem_SetDestructor(PosSampleHandlerPoolRef, PosSampleHandlerDestructor);
 
 
@@ -972,11 +984,11 @@ void le_posCtrl_Release
 le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
 (
     uint32_t                     horizontalMagnitude, ///< [IN] The horizontal magnitude in meters.
-                                                      ///       0 means that I don't care about
-                                                      ///       changes in the latitude and longitude.
+                                                      ///     0 means that I don't care about
+                                                      ///     changes in the latitude and longitude.
     uint32_t                     verticalMagnitude,   ///< [IN] The vertical magnitude in meters.
-                                                      ///       0 means that I don't care about
-                                                      ///       changes in the altitude.
+                                                      ///     0 means that I don't care about
+                                                      ///     changes in the altitude.
     le_pos_MovementHandlerFunc_t handlerPtr,          ///< [IN] The handler function.
     void*                        contextPtr           ///< [IN] The context pointer
 )
@@ -1050,7 +1062,8 @@ void le_pos_RemoveMovementHandler
         do
         {
             // Get the node from MsgList
-            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr, le_pos_SampleHandler_t, link);
+            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
+                                                             le_pos_SampleHandler_t, link);
             // Check the node.
             if ( (le_pos_MovementHandlerRef_t)posSampleHandlerNodePtr == handlerRef )
             {
@@ -1346,7 +1359,8 @@ le_result_t le_pos_sample_GetAltitude
  * Get the position sample's horizontal speed.
  *
  * @return LE_FAULT         Function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX, UINT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX,
+ *                          UINT32_MAX).
  * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing an invalid Position reference into this function,
@@ -1559,6 +1573,41 @@ le_result_t le_pos_sample_GetDirection
     }
     return result;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the position sample's fix state.
+ *
+ * @return LE_FAULT         Function failed to get the position sample's fix state.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_sample_GetFixState
+(
+    le_pos_SampleRef_t  positionSampleRef,    ///< [IN] The position sample's reference.
+    le_pos_FixState_t*  statePtr              ///< [OUT] Position fix state.
+)
+{
+    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    if (statePtr)
+    {
+        *statePtr = positionSamplePtr->fixState;
+    }
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1910,10 +1959,12 @@ le_result_t le_pos_GetDate
  * accuracy, Vertical Speed, Vertical Speed's accuracy).
  *
  * @return LE_FAULT         The function failed to get the motion's data.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX, UINT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX,
+ *                          UINT32_MAX).
  * @return LE_OK            The function succeeded.
  *
- * @note hSpeedPtr, hSpeedAccuracyPtr, vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not needed.
+ * @note hSpeedPtr, hSpeedAccuracyPtr, vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not
+ *       needed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_pos_GetMotion
@@ -2071,7 +2122,6 @@ le_result_t le_pos_GetDirection
 (
     int32_t* directionPtr,
         ///< [OUT] Direction indication in degrees (where 0 is True North).
-
     int32_t* directionAccuracyPtr
         ///< [OUT] Direction's accuracy estimate in degrees.
 )
@@ -2132,6 +2182,50 @@ le_result_t le_pos_GetDirection
     le_gnss_ReleaseSampleRef(positionSampleRef);
 
     return posResult;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position fix state
+ *
+ * @return LE_FAULT         Function failed to get the fix state.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note In case the function fails to get the fix state a fatal error occurs,
+ *       the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_pos_GetFixState
+(
+    le_pos_FixState_t* statePtr   ///< [OUT] Position fix state.
+)
+{
+    le_gnss_FixState_t gnssState;
+    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
+
+    // At least one valid pointer
+    if (NULL == statePtr)
+    {
+        LE_KILL_CLIENT("state pointer is NULL");
+        return LE_FAULT;
+    }
+
+    // Check position sample's reference
+    if (NULL == positionSampleRef)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p)",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Get position fix state.
+    le_gnss_GetPositionState( positionSampleRef, &gnssState);
+
+    *statePtr = (le_pos_FixState_t)gnssState;
+
+    // Release provided Position sample reference
+    le_gnss_ReleaseSampleRef(positionSampleRef);
+
+    return LE_OK;
 }
 
 // -------------------------------------------------------------------------------------------------
