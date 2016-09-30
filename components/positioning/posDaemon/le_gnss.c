@@ -88,7 +88,7 @@ le_gnss_SvMeas_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_gnss_PositionSample
 {
-    le_gnss_FixState_t fixState;        ///< Position Fix state
+    le_gnss_FixState_t fixState;     ///< Position Fix state
     bool            latitudeValid;   ///< if true, latitude is set
     int32_t         latitude;        ///< altitude
     bool            longitudeValid;  ///< if true, longitude is set
@@ -97,6 +97,8 @@ typedef struct le_gnss_PositionSample
     int32_t         hAccuracy;       ///< horizontal accuracy
     bool            altitudeValid;   ///< if true, altitude is set
     int32_t         altitude;        ///< altitude
+    bool            altitudeOnWgs84Valid; ///< if true, altitude with respect to the WGS-84 is set
+    int32_t         altitudeOnWgs84;      ///< altitude with respect to the WGS-84 ellipsoid
     bool            vAccuracyValid;  ///< if true, vertical accuracy is set
     int32_t         vAccuracy;       ///< vertical accuracy
     bool            hSpeedValid;     ///< if true, horizontal speed is set
@@ -111,42 +113,43 @@ typedef struct le_gnss_PositionSample
     int32_t         direction;       ///< direction
     bool            directionAccuracyValid; ///< if true, direction accuracy is set
     int32_t         directionAccuracy; ///< direction accuracy
-    bool            dateValid;          ///< if true, date is set
-    uint16_t        year;               ///< UTC Year A.D. [e.g. 2014].
-    uint16_t        month;              ///< UTC Month into the year [range 1...12].
-    uint16_t        day;                ///< UTC Days into the month [range 1...31].
-    bool            timeValid;          ///< if true, time is set
-    uint16_t        hours;              ///< UTC Hours into the day [range 0..23].
-    uint16_t        minutes;            ///< UTC Minutes into the hour [range 0..59].
-    uint16_t        seconds;            ///< UTC Seconds into the minute [range 0..59].
-    uint16_t        milliseconds;       ///< UTC Milliseconds into the second [range 0..999].
-    bool            gpsTimeValid;       ///< if true, GPS time is set
-    uint32_t        gpsWeek;            ///< GPS week number from midnight, Jan. 6, 1980.
-    uint32_t        gpsTimeOfWeek;      ///< Amount of time in milliseconds into the GPS week.
-    bool            timeAccuracyValid;  ///< if true, timeAccuracy is set
-    uint32_t        timeAccuracy;       ///< Estimated Accuracy for time in milliseconds
-    bool            positionLatencyValid;   ///< if true, positionLatency is set
-    uint32_t        positionLatency;        ///< Position measurement latency in milliseconds
-    bool            hdopValid;          ///< if true, horizontal dilution is set
-    uint16_t        hdop;               ///< The horizontal Dilution of Precision (DOP)
-    bool            vdopValid;          ///< if true, vertical dilition is set
-    uint16_t        vdop;               ///< The vertical Dilution of Precision (DOP)
-    bool            pdopValid;          ///< if true, position dilution is set
-    uint16_t        pdop;               ///< The Position dilution of precision (DOP)
+    bool            dateValid;       ///< if true, date is set
+    uint16_t        year;            ///< UTC Year A.D. [e.g. 2014].
+    uint16_t        month;           ///< UTC Month into the year [range 1...12].
+    uint16_t        day;             ///< UTC Days into the month [range 1...31].
+    bool            timeValid;       ///< if true, time is set
+    uint16_t        hours;           ///< UTC Hours into the day [range 0..23].
+    uint16_t        minutes;         ///< UTC Minutes into the hour [range 0..59].
+    uint16_t        seconds;         ///< UTC Seconds into the minute [range 0..59].
+    uint16_t        milliseconds;    ///< UTC Milliseconds into the second [range 0..999].
+    bool            gpsTimeValid;    ///< if true, GPS time is set
+    uint32_t        gpsWeek;         ///< GPS week number from midnight, Jan. 6, 1980.
+    uint32_t        gpsTimeOfWeek;   ///< Amount of time in milliseconds into the GPS week.
+    bool            timeAccuracyValid; ///< if true, timeAccuracy is set
+    uint32_t        timeAccuracy;      ///< Estimated Accuracy for time in milliseconds
+    bool            positionLatencyValid; ///< if true, positionLatency is set
+    uint32_t        positionLatency;      ///< Position measurement latency in milliseconds
+    bool            hdopValid;       ///< if true, horizontal dilution is set
+    uint16_t        hdop;            ///< The horizontal Dilution of Precision (DOP)
+    bool            vdopValid;       ///< if true, vertical dilition is set
+    uint16_t        vdop;            ///< The vertical Dilution of Precision (DOP)
+    bool            pdopValid;       ///< if true, position dilution is set
+    uint16_t        pdop;            ///< The Position dilution of precision (DOP)
+    bool            magneticDeviationValid; ///< if true, magnetic deviation is set
+    int32_t         magneticDeviation;  ///< The magnetic deviation
     // Satellite Vehicles information
-    bool                satsInViewCountValid;    ///< if true, satsInViewCount is set
-    uint8_t             satsInViewCount;         ///< Satellites in View count.
-    bool                satsTrackingCountValid;  ///< if true, satsTrackingCount is set
-    uint8_t             satsTrackingCount;       ///< Tracking satellites in View count.
-    bool                satsUsedCountValid;      ///< if true, satsUsedCount is set
-    uint8_t             satsUsedCount;           ///< Satellites in View used for Navigation.
-    bool                satInfoValid;       ///< if true, satInfo is set
-    le_gnss_SvInfo_t    satInfo[LE_GNSS_SV_INFO_MAX_LEN];
-                                            ///< Satellite Vehicle information.
-    bool                satMeasValid;       ///< if true, satMeas is set
-    le_gnss_SvMeas_t    satMeas[LE_GNSS_SV_INFO_MAX_LEN];
-                                            ///< Satellite Vehicle measurement information.
-    le_dls_Link_t   link;               ///< Object node link
+    bool             satsInViewCountValid;   ///< if true, satsInViewCount is set
+    uint8_t          satsInViewCount;        ///< Satellites in View count.
+    bool             satsTrackingCountValid; ///< if true, satsTrackingCount is set
+    uint8_t          satsTrackingCount;      ///< Tracking satellites in View count.
+    bool             satsUsedCountValid;     ///< if true, satsUsedCount is set
+    uint8_t          satsUsedCount;          ///< Satellites in View used for Navigation.
+    bool             satInfoValid;           ///< if true, satInfo is set
+    le_gnss_SvInfo_t satInfo[LE_GNSS_SV_INFO_MAX_LEN];
+    bool             satMeasValid;           ///< if true, satMeas is set
+    le_gnss_SvMeas_t satMeas[LE_GNSS_SV_INFO_MAX_LEN];
+                                             ///< Satellite Vehicle measurement information.
+    le_dls_Link_t   link;                    ///< Object node link
 }
 le_gnss_PositionSample_t;
 
@@ -509,7 +512,6 @@ static void GetPosSampleData
 )
 {
     uint8_t i;
-
     // Position information
     posSampleDataPtr->fixState = paPosDataPtr->fixState;
     posSampleDataPtr->latitudeValid = paPosDataPtr->latitudeValid;
@@ -520,6 +522,8 @@ static void GetPosSampleData
     posSampleDataPtr->hAccuracy = paPosDataPtr->hUncertainty;
     posSampleDataPtr->altitudeValid = paPosDataPtr->altitudeValid;
     posSampleDataPtr->altitude = paPosDataPtr->altitude;
+    posSampleDataPtr->altitudeOnWgs84Valid = paPosDataPtr->altitudeOnWgs84Valid;
+    posSampleDataPtr->altitudeOnWgs84 = paPosDataPtr->altitudeOnWgs84;
     posSampleDataPtr->vAccuracyValid = paPosDataPtr->vUncertaintyValid;
     posSampleDataPtr->vAccuracy = paPosDataPtr->vUncertainty;
     posSampleDataPtr->hSpeedValid = paPosDataPtr->hSpeedValid;
@@ -534,6 +538,8 @@ static void GetPosSampleData
     posSampleDataPtr->direction = paPosDataPtr->direction;
     posSampleDataPtr->directionAccuracyValid = paPosDataPtr->directionUncertaintyValid;
     posSampleDataPtr->directionAccuracy = paPosDataPtr->directionUncertainty;
+    posSampleDataPtr->magneticDeviationValid = paPosDataPtr->magneticDeviationValid;
+    posSampleDataPtr->magneticDeviation = paPosDataPtr->magneticDeviation;
     // Date
     posSampleDataPtr->dateValid = paPosDataPtr->dateValid;
     posSampleDataPtr->year = paPosDataPtr->date.year;
@@ -948,8 +954,6 @@ le_result_t le_gnss_GetPositionState
  *    Latitude +48858300 = 48.858300 degrees North
  *    Longitude +2294400 = 2.294400 degrees East
  *
- * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
- *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
  */
@@ -1033,6 +1037,8 @@ le_result_t le_gnss_GetLocation
  *  - LE_OK            Function succeeded.
  *
  * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
+ *
+ * @note For a 2D position fix, the altitude will be indicated as invalid and set to INT32_MAX
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1463,7 +1469,7 @@ le_result_t le_gnss_GetHorizontalSpeed
     if (hspeedPtr)
     {
         if (positionSamplePtr->hSpeedValid)
-    {
+        {
             *hspeedPtr = positionSamplePtr->hSpeed;
         }
         else
@@ -1475,7 +1481,7 @@ le_result_t le_gnss_GetHorizontalSpeed
     if (hspeedAccuracyPtr)
     {
         if (positionSamplePtr->hSpeedAccuracyValid)
-    {
+        {
             *hspeedAccuracyPtr = positionSamplePtr->hSpeedAccuracy;
         }
         else
@@ -2110,6 +2116,115 @@ le_result_t le_gnss_GetSatellitesLatency
     }
     return result;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's altitude with respect to the WGS-84 ellipsoid
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the altitude.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note altitudeOnWgs84 is in meters, between WGS-84 earth ellipsoid and mean sea level
+ *       with 3 decimal places (3047 = 3.047 meters).
+ *
+ * @note For a 2D position fix, the altitude with respect to the WGS-84 ellipsoid will be indicated
+ *       as invalid and set to INT32_MAX.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetAltitudeOnWgs84
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    int32_t* altitudeOnWgs84Ptr
+        ///< [OUT] Altitude in meters, between WGS-84 earth ellipsoid
+        ///<       and mean sea level [resolution 1e-3].
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t * positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    if (positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    if (altitudeOnWgs84Ptr)
+    {
+        if (positionSamplePtr->altitudeOnWgs84Valid)
+        {
+            *altitudeOnWgs84Ptr = positionSamplePtr->altitudeOnWgs84;
+        }
+        else
+        {
+            *altitudeOnWgs84Ptr = INT32_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's magnetic deviation. It is the difference between the bearing to
+ * true north and the bearing shown on a magnetic compass. The deviation is positive when the
+ * magnetic north is east of true north.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note magneticDeviation is in degrees, with 1 decimal places (47 = 4.7 degree).
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetMagneticDeviation
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    int32_t* magneticDeviationPtr
+        ///< [OUT] MagneticDeviation in degrees [resolution 1e-1].
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    if (magneticDeviationPtr)
+    {
+        if (positionSamplePtr->magneticDeviationValid)
+        {
+            *magneticDeviationPtr = positionSamplePtr->magneticDeviation;
+        }
+        else
+        {
+            *magneticDeviationPtr = UINT32_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+    return result;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

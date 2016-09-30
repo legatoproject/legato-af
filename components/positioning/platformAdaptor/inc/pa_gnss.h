@@ -114,6 +114,10 @@ typedef struct {
     int32_t            altitude;  ///< The Altitude in meters, above Mean Sea Level,
                                   ///  with 3 decimal places.
 
+    bool               altitudeOnWgs84Valid; ///< if true, altitudeOnWgs84 is set
+    int32_t            altitudeOnWgs84;  ///< The altitudeOnWgs84 in meters, between WGS-84 earth
+                                         ///  ellipsoid and mean sea level with 3 decimal places.
+
     bool               hSpeedValid; ///< if true, horizontal speed is set
     uint32_t           hSpeed;    ///< The horizontal Speed in m/sec, with 2 decimal places
                                   ///  (125 = 1.25m/sec).
@@ -153,6 +157,10 @@ typedef struct {
 
     bool               vSpeedUncertaintyValid; ///< if true, vertical speed uncertainty is set
     uint32_t           vSpeedUncertainty;  ///< The vertical speed uncertainty in m/sec,
+                                           ///  with 1 decimal place
+
+    bool               magneticDeviationValid; ///< if true, magnetic deviation is set
+    int32_t            magneticDeviation;  ///< The magnetic deviation in degrees,
                                            ///  with 1 decimal place
 
     bool               directionUncertaintyValid;   ///< if true, direction uncertainty is set

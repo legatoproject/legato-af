@@ -129,8 +129,10 @@ static void PositionHandlerFunction
     int32_t     latitude;
     int32_t     longitude;
     int32_t     altitude;
+    int32_t     altitudeOnWgs84;
     int32_t     hAccuracy;
     int32_t     vAccuracy;
+    int32_t     magneticDeviation;
     // DOP parameter
     uint16_t hdop;
     uint16_t vdop;
@@ -233,6 +235,22 @@ static void PositionHandlerFunction
                 , altitude, vAccuracy);
     }
 
+    // Get altitude on WGS-84
+    result = le_gnss_GetAltitudeOnWgs84( positionSampleRef
+                                       , &altitudeOnWgs84);
+    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+
+    if(result == LE_OK)
+    {
+         LE_INFO("altitude on WGS-84.%d"
+                , altitudeOnWgs84/1000);
+    }
+    else
+    {
+         LE_INFO("Altitude on WGS-84 unknown [%d]"
+                , altitudeOnWgs84);
+    }
+
     // Get DOP parameter
     result = le_gnss_GetDop( positionSampleRef
                             , &hdop
@@ -290,6 +308,21 @@ static void PositionHandlerFunction
         LE_INFO("direction unknown [%d,%d]"
                 , direction, directionAccuracy);
     }
+
+    // Get the magnetic deviation
+    result = le_gnss_GetMagneticDeviation( positionSampleRef
+                                         , &magneticDeviation);
+    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+
+    if(result == LE_OK)
+    {
+        LE_INFO("magnetic deviation %d", magneticDeviation/10);
+    }
+    else
+    {
+        LE_INFO("magnetic deviation unknown [%d]",magneticDeviation);
+    }
+
 
     /* Satellites status */
     uint8_t satsInViewCount;

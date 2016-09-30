@@ -119,8 +119,8 @@
  * The le_gnss_SetConstellation() function selects the GNSS constellation(s) used in solution.
  * If all GNSS constellations are disabled, the GNSS engine is disabled.
  *
- * @warning Your platform may require a reboot to take into account this change. Please refer to your
- * platform documentation for further details.
+ * @warning Your platform may require a reboot to take into account this change.
+ * Please refer to your platform documentation for further details.
  *
  * The following configurations are currently supported:
  *   - GPS
@@ -197,7 +197,9 @@
  * - le_gnss_GetSatellitesStatus()
  * - le_gnss_GetDop()
  * - le_gnss_GetSatellitesLatency()
- *
+ * - le_gnss_GetAltitudeOnWgs84()
+ * - le_gnss_GetMagneticDeviation()
+
  * The handler can be managed using le_gnss_AddPositionHandler()
  * and le_gnss_RemovePositionHandler().
  * When a position is computed, the handler is called.
@@ -758,8 +760,6 @@ FUNCTION le_result_t GetPositionState
  *    Latitude +48858300 = 48.858300 degrees North
  *    Longitude +2294400 = 2.294400 degrees East
  *
- * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
- *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
  */
@@ -1056,11 +1056,63 @@ FUNCTION le_result_t GetDop
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSatellitesLatency
 (
-    Sample positionSampleRef IN,  ///< Position sample's reference.
-    uint16  satId[SV_INFO_MAX_LEN] OUT,      ///< Satellites in View ID number, referring
-                                             ///< to NMEA standard.
+    Sample positionSampleRef IN,            ///< Position sample's reference.
+    uint16  satId[SV_INFO_MAX_LEN] OUT,     ///< Satellites in View ID number, referring
+                                            ///< to NMEA standard.
     int32  latency[SV_INFO_MAX_LEN] OUT     ///< Satellites latency measure in milliseconds
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's altitude with respect to the WGS-84 ellipsoid
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the altitude.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note altitudeOnWgs84 is in meters, between WGS-84 earth ellipsoid and mean sea level
+ *       with 3 decimal places (3047 = 3.047 meters).
+ *
+ * @note For a 2D position fix, the altitude with respect to the WGS-84 ellipsoid will be indicated
+ *       as invalid and set to INT32_MAX.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAltitudeOnWgs84
+(
+    Sample positionSampleRef  IN,  ///< Position sample's reference.
+    int32  altitudeOnWgs84 OUT     ///< Altitude in meters, between WGS-84 earth ellipsoid
+                                   ///< and mean sea level [resolution 1e-3].
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's magnetic deviation. It is the difference between the bearing to
+ * true north and the bearing shown on a magnetic compass. The deviation is positive when the
+ * magnetic north is east of true north.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note magneticDeviation is in degrees, with 1 decimal places (47 = 4.7 degree).
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMagneticDeviation
+(
+    Sample positionSampleRef IN,        ///< Position sample's reference.
+    int32  magneticDeviation OUT        ///< MagneticDeviation in degrees [resolution 1e-1].
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
