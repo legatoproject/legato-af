@@ -1,0 +1,6 @@
+preBuilt:	$LEGATO_ROOT/drivers/mangoh/mangoh.ko
+
+params:
+{
+	model = "green"
+}
