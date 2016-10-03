@@ -14,7 +14,8 @@ bundles:
 {
     file:
     {
-        [r] $LEGATO_ROOT/components/modemServices/modemDaemon/apns-full-conf.json     /usr/local/share/apns.json
+        [r] $LEGATO_ROOT/components/modemServices/modemDaemon/apns-iin-conf.json    /usr/local/share/apns-iin.json
+        [r] $LEGATO_ROOT/components/modemServices/modemDaemon/apns-full-conf.json   /usr/local/share/apns-mccmnc.json
     }
 }
 

@@ -6,7 +6,8 @@
 set(TEST_EXEC mdcUnitTest)
 
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
-set(APNFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-full-conf.json")
+set(IINFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-iin-conf.json")
+set(MCCMNCFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-full-conf.json")
 set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/framework/libjansson/include/")
 
 if(TEST_COVERAGE EQUAL 1)
@@ -28,4 +29,4 @@ mkexe(${TEST_EXEC}
     -L "-ljansson"
 )
 
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC}  ${APNFILE} )
+add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} ${IINFILE} ${MCCMNCFILE})

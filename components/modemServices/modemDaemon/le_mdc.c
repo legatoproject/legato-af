@@ -27,9 +27,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #ifdef LEGATO_EMBEDDED
-#define APN_FILE "/legato/systems/current/apps/modemService/read-only/usr/local/share/apns.json"
+#define APN_IIN_FILE    \
+    "/legato/systems/current/apps/modemService/read-only/usr/local/share/apns-iin.json"
+#define APN_MCCMNC_FILE \
+    "/legato/systems/current/apps/modemService/read-only/usr/local/share/apns-mccmnc.json"
 #else
-#define APN_FILE le_arg_GetArg(0)
+#define APN_IIN_FILE    le_arg_GetArg(0)
+#define APN_MCCMNC_FILE le_arg_GetArg(1)
 #endif
 // @TODO change the APN file when modemservices becomes a sandboxed app.
 //#define APN_FILE "/usr/local/share/apns.json"
@@ -372,20 +376,20 @@ static le_mdc_ProfileRef_t CreateModemProfile
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  This function will attempt to read apn definition for mcc/mnc in file apnFilePtr
+ *  This function will attempt to read APN definition for MCC/MNC in file apnFilePtr
  *
  * @return LE_OK        Function was able to find an APN
  * @return LE_NOT_FOUND Function was not able to find an APN for this (MCC,MNC)
  * @return LE_FAULT     There was an issue with the APN source
  */
 // -------------------------------------------------------------------------------------------------
-static le_result_t FindApnFromFile
+static le_result_t FindApnWithMccMncFromFile
 (
-    const char* apnFilePtr, ///< [IN] apn file
-    const char* mccPtr,     ///< [IN] mcc
-    const char* mncPtr,     ///< [IN] mnc
+    const char* apnFilePtr, ///< [IN]  apn file
+    const char* mccPtr,     ///< [IN]  mcc
+    const char* mncPtr,     ///< [IN]  mnc
     char * mccMncApnPtr,    ///< [OUT] apn for mcc/mnc
-    size_t mccMncApnSize    ///< [IN] size of mccMncApn buffer
+    size_t mccMncApnSize    ///< [IN]  size of mccMncApn buffer
 )
 {
     le_result_t result = LE_FAULT;
@@ -394,63 +398,80 @@ static le_result_t FindApnFromFile
     int i;
 
     root = json_load_file(apnFilePtr, 0, &error);
-    if (root == NULL ) {
-        LE_WARN("Document not parsed successfully. \n");
+    if (NULL == root)
+    {
+        LE_WARN("Document not parsed successfully (error '%s')", error.text);
         return result;
     }
 
-    apns = json_object_get( root, "apns" );
-    if ( !json_is_object(apns) )
+    apns = json_object_get(root, "apns");
+    if (!json_is_object(apns))
     {
-        LE_WARN("apns is not an object\n");
+        LE_WARN("apns is not an object");
         json_decref(root);
         return result;
     }
 
-    apnArray = json_object_get( apns, "apn" );
-    if ( !json_is_array(apnArray) )
+    apnArray = json_object_get(apns, "apn");
+    if (!json_is_array(apnArray))
     {
-        LE_WARN("apns is not an array\n");
+        LE_WARN("apns is not an array");
         json_decref(root);
         return result;
     }
 
     result = LE_NOT_FOUND;
-    for( i = 0; i < json_array_size(apnArray); i++ )
+
+    for (i = 0; i < json_array_size(apnArray); i++)
     {
-        json_t *data, *mcc, *mnc, *apn;
+        json_t *data, *mcc, *mnc, *apn, *type;
         const char* mccRead;
         const char* mncRead;
         const char* apnRead;
-        data = json_array_get( apnArray, i );
-        if ( !json_is_object( data ))
+        const char* typeRead;
+
+        data = json_array_get(apnArray, i);
+        if (!json_is_object(data))
         {
-            LE_WARN("data %d is not an object",i);
+            LE_WARN("data %d is not an object", i);
             result = LE_FAULT;
             break;
         }
 
-        mcc = json_object_get( data, "@mcc" );
+        mcc = json_object_get(data, "@mcc");
         mccRead = json_string_value(mcc);
 
-        mnc = json_object_get( data, "@mnc" );
+        mnc = json_object_get(data, "@mnc");
         mncRead = json_string_value(mnc);
 
-        if ( !(strcmp(mccRead,mccPtr))
-            &&
-             !(strcmp(mncRead,mncPtr))
+        type = json_object_get(data, "@type");
+        if (!json_is_string(type))
+        {
+            // No type set for this carrier, set it to "default"
+            typeRead = "default";
+        }
+        else
+        {
+            typeRead = json_string_value(type);
+        }
+
+        if (   (NULL != strstr(typeRead, "default"))    // Consider only "default" type for APN
+            && !(strcmp(mccRead, mccPtr))
+            && !(strcmp(mncRead, mncPtr))
            )
         {
-            apn = json_object_get( data, "@apn" );
+            apn = json_object_get(data, "@apn");
             apnRead = json_string_value(apn);
 
-            if ( le_utf8_Copy(mccMncApnPtr,apnRead,mccMncApnSize,NULL) != LE_OK)
+            if (LE_OK != le_utf8_Copy(mccMncApnPtr, apnRead, mccMncApnSize, NULL))
             {
-                LE_WARN("Apn buffer is too small");
+                LE_WARN("APN buffer is too small");
                 break;
             }
-            LE_INFO("[%s:%s] Got APN '%s'", mccPtr, mncPtr, mccMncApnPtr);
-            // @note Stop on the first json entry for mcc/mnc, need to be improved?
+            LE_INFO("Got APN '%s' for MCC/MNC [%s/%s]", mccMncApnPtr, mccPtr, mncPtr);
+
+            // @note Stop on the first JSON entry for MCC/MNC with type default:
+            // needs to be improved?
             result = LE_OK;
             break;
         }
@@ -460,6 +481,98 @@ static le_result_t FindApnFromFile
     return result;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  This function will attempt to read APN definition for ICCID in file apnFilePtr
+ *
+ * @return LE_OK        Function was able to find an APN
+ * @return LE_NOT_FOUND Function was not able to find an APN for this ICCID
+ * @return LE_FAULT     There was an issue with the APN source
+ */
+// -------------------------------------------------------------------------------------------------
+static le_result_t FindApnWithIccidFromFile
+(
+    const char* apnFilePtr, ///< [IN]  apn file
+    const char* iccidPtr,   ///< [IN]  iccid
+    char * iccidApnPtr,     ///< [OUT] apn for iccid
+    size_t iccidApnSize     ///< [IN]  size of iccidApn buffer
+)
+{
+    le_result_t result = LE_FAULT;
+    json_t *root, *apns, *apnArray;
+    json_error_t error;
+    int i;
+
+    root = json_load_file(apnFilePtr, 0, &error);
+    if (NULL == root)
+    {
+        LE_WARN("Document not parsed successfully (error '%s')", error.text);
+        return result;
+    }
+
+    apns = json_object_get(root, "apns");
+    if (!json_is_object(apns))
+    {
+        LE_WARN("apns is not an object");
+        json_decref(root);
+        return result;
+    }
+
+    apnArray = json_object_get(apns, "apn");
+    if (!json_is_array(apnArray))
+    {
+        LE_WARN("apns is not an array");
+        json_decref(root);
+        return result;
+    }
+
+    result = LE_NOT_FOUND;
+
+    for (i = 0; i < json_array_size(apnArray); i++)
+    {
+        json_t *data, *iin, *apn;
+        const char* iinRead;
+        const char* apnRead;
+
+        data = json_array_get(apnArray, i);
+        if (!json_is_object(data))
+        {
+            LE_WARN("data %d is not an object", i);
+            result = LE_FAULT;
+            break;
+        }
+
+        // Retrieve Issuer Identification Number (IIN), which is the beginning
+        // of the ICCID number and allows identifying an operator (cf. ITU Rec E.118)
+        iin = json_object_get(data, "@iin");
+        if (json_is_string(iin))
+        {
+            iinRead = json_string_value(iin);
+
+            // Check if IIN matches the beginning of ICCID
+            if (0 == strncmp(iccidPtr, iinRead, strlen(iinRead)))
+            {
+                apn = json_object_get(data, "@apn");
+                apnRead = json_string_value(apn);
+
+                if (LE_OK != le_utf8_Copy(iccidApnPtr, apnRead, iccidApnSize, NULL))
+                {
+                    LE_WARN("APN buffer is too small");
+                    break;
+                }
+                LE_INFO("Got APN '%s' for ICCID %s", iccidApnPtr, iccidPtr);
+
+                // @note Stop on the first JSON entry for IIN with type default:
+                // needs to be improved?
+                result = LE_OK;
+                break;
+            }
+        }
+    }
+
+    json_decref(root);
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1680,8 +1793,9 @@ le_result_t le_mdc_SetAPN
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the Access Point Name (APN) for the given profile according to the home network mcc/mnc.
- *
+ * Set the Access Point Name (APN) for the given profile according to the SIM identification
+ * number (ICCID). If no APN is found using the ICCID, fall back on the home network (MCC/MNC)
+ * to determine the default APN.
  *
  * @return
  *      - LE_OK on success
@@ -1689,7 +1803,7 @@ le_result_t le_mdc_SetAPN
  *      - LE_FAULT for all other errors
  *
  * @note
- *      The process exits, if an invalid profile object is given
+ *      The process exits if an invalid profile object is given
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_SetDefaultAPN
@@ -1698,38 +1812,54 @@ le_result_t le_mdc_SetDefaultAPN
 )
 {
     le_result_t error = LE_FAULT;
-    char mccString[LE_MRC_MCC_BYTES]={0};
-    char mncString[LE_MRC_MNC_BYTES]={0};
-    char mccMncApn[100+1] = {0};
+    char mccString[LE_MRC_MCC_BYTES]           = {0};
+    char mncString[LE_MRC_MNC_BYTES]           = {0};
+    char iccidString[LE_SIM_ICCID_BYTES]       = {0};
+    char defaultApn[LE_MDC_APN_NAME_MAX_BYTES] = {0};
 
     // Load SIM configuration from Config DB
     le_sim_Id_t simSelected = le_sim_GetSelectedCard();
 
-    // Get MCC/MNC
-    error = le_sim_GetHomeNetworkMccMnc(simSelected,
-                                    mccString,
-                                    LE_MRC_MCC_BYTES,
-                                    mncString,
-                                    LE_MRC_MNC_BYTES);
-
+    // Get ICCID
+    error = le_sim_GetICCID(simSelected, iccidString, sizeof(iccidString));
     if (error != LE_OK)
     {
-        LE_WARN("Could not find MCC/MNC");
-
+        LE_WARN("Could not retrieve ICCID");
         return LE_FAULT;
     }
 
-    LE_DEBUG("Search of [%s:%s] into file %s",mccString,mncString,APN_FILE);
+    LE_DEBUG("Search for ICCID %s in file %s", iccidString, APN_IIN_FILE);
 
-    // Find APN value for [MCC/MNC]
-    if ( FindApnFromFile(APN_FILE,mccString,mncString,mccMncApn,sizeof(mccMncApn)) != LE_OK )
+    // Try to find the APN with the ICCID first
+    if (LE_OK != FindApnWithIccidFromFile(APN_IIN_FILE, iccidString,
+                                          defaultApn, sizeof(defaultApn)))
     {
-        LE_WARN("Could not find %s/%s in %s",mccString,mncString,APN_FILE);
-        return LE_FAULT;
+        LE_WARN("Could not find ICCID %s in file %s", iccidString, APN_IIN_FILE);
+
+        // Fallback mechanism: try to find the APN with the MCC/MNC
+
+        // Get MCC/MNC
+        error = le_sim_GetHomeNetworkMccMnc(simSelected, mccString, sizeof(mccString),
+                                            mncString, sizeof(mncString));
+        if (error != LE_OK)
+        {
+            LE_WARN("Could not retrieve MCC/MNC");
+            return LE_FAULT;
+        }
+
+        LE_DEBUG("Search for MCC/MNC %s/%s in file %s", mccString, mncString, APN_MCCMNC_FILE);
+
+        if (LE_OK != FindApnWithMccMncFromFile(APN_MCCMNC_FILE, mccString, mncString,
+                                               defaultApn, sizeof(defaultApn)))
+        {
+            LE_WARN("Could not find MCC/MNC %s/%s in file %s",
+                    mccString, mncString, APN_MCCMNC_FILE);
+            return LE_FAULT;
+        }
     }
 
     // Save the APN value into the modem
-    return le_mdc_SetAPN(profileRef,mccMncApn);
+    return le_mdc_SetAPN(profileRef, defaultApn);
 }
 
 //--------------------------------------------------------------------------------------------------
