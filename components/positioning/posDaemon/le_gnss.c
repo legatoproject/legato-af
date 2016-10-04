@@ -382,7 +382,7 @@ static le_result_t OpenNmeaPipe
                                 O_WRONLY|O_APPEND|O_CLOEXEC|O_NONBLOCK)) == -1)
             && (errno != EINTR) )
         {
-            LE_WARN("Open %s failure: errno.%d (%s)"
+            LE_WARN_IF( errno != 6, "Open %s failure: errno.%d (%s)"
                     , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
             return LE_FAULT;
         }
