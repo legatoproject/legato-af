@@ -7,7 +7,7 @@ The Linux Yocto development host needs a few things to be set up.
 Run the following to install necessary packages:
 
 @verbatim
-$ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc git-core gitk graphviz help2man libgmp3-dev libmpfr-dev libreadline6-dev libsdl-dev libtool libxml2-dev libxml-libxml-perl make m4 ninja-build python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion texi2html texinfo unzip wget
+$ sudo apt-get install vim expect-dev build-essential cmake coreutils curl fakeroot sed git-core gawk unzip wget diffstat python python-jinja2 python-pip python-pyparsing python-pysqlite2 python-bs4 bison flex chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev libxml-libxml-perl m4 clang ninja-build autoconf pkg-config doxygen graphviz
 @endverbatim
 
 @section yoctoPrepDevHost_uninstCache Uninstall ccache

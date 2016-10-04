@@ -11,8 +11,8 @@ Welcome to Legato!
 ```
 $ sudo apt-get install vim expect-dev build-essential cmake coreutils curl \
     fakeroot sed git-core gawk unzip wget diffstat python python-jinja2 \
-    python-pip python-pyparsing python-pysqlite2 python-bs4 python-xmltodict \
-    bison flex chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev \
+    python-pip python-pyparsing python-pysqlite2 python-bs4 bison flex \
+    chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev \
     libxml-libxml-perl m4 clang ninja-build autoconf pkg-config doxygen graphviz
 ```
 
