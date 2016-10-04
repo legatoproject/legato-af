@@ -1,47 +1,30 @@
-/** @page aboutLegatoContributing Open Source Contribution
+/** @page aboutLegatoContributing Contributing
 
-This topic explains the process to contribute to the
-<a href="http://legato.io">Legato</a> open source project.
-Before we (Legato administrators) can accept your contribution to Legato, we
-need a signed @c Contribution Agreement on file.
+Thank you for your interest in connecting the world! You can contribute to Legato in different
+ways:
+- @ref aboutLegatoContributing_bugs "Report Bugs"
+- @ref aboutLegatoContributing_apps "Develop Apps"
+- @ref aboutLegatoContributing_contribute "Contribute to Source Code
 
-Download the
-<a href="https://github.com/legatoproject/legato-af/blob/master/CONTRIB_INDIVIDUAL.md">CONTRIB_INDIVIDUAL.md</a>.
-Print the agreement and complete and sign the designated area. Then send a scanned PDF copy to
-<a href="mailto:legal@legato.io">legal@legato.io</a>.
+@section aboutLegatoContributing_bugs Report Bugs
 
-You'll receive a confirmation email back from us that you're ready to go.
+The easiest way to contribute to Legato is by reporting bugs. We use GitHub's issue tracking
+for our bug reporting. Go to Legato
+<a href="https://github.com/legatoproject/legato-af/issues">Issues</a> for info.
 
-Thanks for helping connect the world!
+@section aboutLegatoContributing_apps Develop Apps
 
-@section aboutLegatoContributing_commitMsg Commit Message Format
+Legato is all about building and deploying apps quickly on an open platform.
+Write cool apps and share them to connect our world!
 
-If you're contributing to Legato's open source project, your commit messages
-must follow this format:
+Go to <a href="http://legato.io/legato-docs/latest/buildAppsConcepts.html">Build Apps->Concepts</a>
+for Legato overview info and details on how to start developing apps. 
 
-<b>Summary statement</b> Capitalized, 50 characters or less. Explain the
-problem this commit is solving; should clearly identify the issue without
-reading further.
+@section aboutLegatoContributing_contribute Contribute to Code
 
-<b>Body</b> Following the summary statement (and blank line), a paragraph
-can include more detailed explanations. Provide a general description of how
-the problem is solved including any important assumptions or consequences.
-The blank line separating the summary from the body is critical (unless you
-omit the body entirely) as tools like `log`, `shortlog` and `rebase` can get
-confused if you run the two together. Lines exceeding 72 characters in width
-(including whitespace) should be split into multiple lines.
-
-<b>Additional paragraphs</b> can come after blank lines. Use the imperative
-tense throughout the body so the commit convention matches commands like git
-merge and git revert (i.e., "Fix bug" not "Fixed bug" or "Fixes bug").
-
-- <b>Bullet points</b> are also permitted. Use a hanging indent.
-
-- Typically a hyphen or asterisk is used for the bullet, followed by a
-  single space, with blank lines in between.
-
-<b>Resolves: #xxx</b> Include the GitHub issue number in this format. <br>
-<b>Change-Id:</b> I02efa4a4875b8eeb1d9d6d386e8f7e21f2bb5bfc
+If you want to submit changes to the Legato source code for review,
+see @subpage aboutLegatoContributingCode "Contributing to the Legato open source project"
+for info on how to get started.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 **/
