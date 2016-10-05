@@ -150,7 +150,7 @@ static void MyMediaHandler
             TestCase = TEST_LAST;
         break;
         default:
-            LE_FATAL("Unexpected event");
+            LE_FATAL("Unexpected event %d", TestCase);
         break;
     }
 
@@ -238,8 +238,6 @@ static void* TestThread
             TestCase = TEST_PLAY_FILES_IN_PROGRESS;
             LE_ASSERT(le_audio_PlayFile(myStreamRef, FileFd) == LE_OK);
             LE_ASSERT(le_audio_Resume(myStreamRef) == LE_FAULT);
-            LE_ASSERT(le_audio_Pause(myStreamRef) == LE_OK);
-            LE_ASSERT(le_audio_Resume(myStreamRef) == LE_OK);
         break;
         case TEST_REC_SAMPLES:
             LE_ASSERT(le_audio_GetSamples(myStreamRef, Pipefd[1]) == LE_OK);

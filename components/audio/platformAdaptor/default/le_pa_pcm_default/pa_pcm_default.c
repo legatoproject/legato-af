@@ -34,17 +34,16 @@ COMPONENT_INIT
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Write PCM frames to sound driver.
+ * Start the recording.
+ * The function is asynchronous: it starts the recording thread, then returns.
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_pcm_Write
+le_result_t pa_pcm_Capture
 (
-    pcm_Handle_t pcmHandle,                 ///< [IN] Handle of the audio resource given by
+    pcm_Handle_t pcmHandle                 ///< [IN] Handle of the audio resource given by
                                             ///< pa_pcm_InitPlayback() / pa_pcm_InitCapture()
                                             ///< initialization functions
-    char* data,                             ///< [OUT] Write buffer
-    uint32_t bufsize                        ///< [IN] Buffer length
 )
 {
     LE_ERROR("Unsupported function called");
@@ -53,17 +52,16 @@ le_result_t pa_pcm_Write
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read PCM frames from sound driver.
+ * Start the playback.
+ * The function is asynchronous: it starts the playback thread, then returns.
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_pcm_Read
+le_result_t pa_pcm_Play
 (
-    pcm_Handle_t pcmHandle,                 ///< [IN] Handle of the audio resource given by
+    pcm_Handle_t pcmHandle                  ///< [IN] Handle of the audio resource given by
                                             ///< pa_pcm_InitPlayback() / pa_pcm_InitCapture()
                                             ///< initialization functions
-    char* data,                             ///< [IN] Read buffer
-    uint32_t bufsize                        ///< [IN] Buffer length
 )
 {
     LE_ERROR("Unsupported function called");
@@ -134,6 +132,29 @@ le_result_t pa_pcm_InitPlayback
                                             ///< further PA PCM functions call
     char* devicePtr,                        ///< [IN] Device to be initialized
     le_audio_SamplePcmConfig_t* pcmConfig   ///< [IN] Samples PCM configuration
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the callbacks called during a playback/recording to:
+ * - get/set PCM frames thanks to getFramesFunc callback: this callback will be called by the pa_pcm
+ * to get the next PCM frames to play (playback case), or to send back PCM frames to record
+ * (recording case).
+ * - get the playback/recording result thanks to setResultFunc callback: this callback will be
+ * called by the PA_PCM to inform the caller about the status of the playback or the recording.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_pcm_SetCallbackHandlers
+(
+    pcm_Handle_t pcmHandle,
+    GetSetFramesFunc_t getSetFramesFunc,
+    ResultFunc_t setResultFunc,
+    void* contextPtr
 )
 {
     LE_ERROR("Unsupported function called");
