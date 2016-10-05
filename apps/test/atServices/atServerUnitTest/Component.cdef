@@ -8,5 +8,6 @@ requires:
 
 sources:
 {
+    server.c
     main.c
 }

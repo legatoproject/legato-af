@@ -15,7 +15,7 @@ mkexe(${TEST_EXEC}
     atServerComp
     .
     -i ${LEGATO_ROOT}/framework/c/src
-    -i ${LEGATO_AT_SERVER}/Common
+    -i ${LEGATO_AT_SERVICES}/Common
     ${CFLAGS}
     ${LFLAGS}
     -C "-fvisibility=default -g"

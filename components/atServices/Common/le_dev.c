@@ -5,10 +5,113 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
+// make sure we're using the gnu version of strerror_r
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include <pwd.h>
+#include <grp.h>
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default buffer size for device information and error messages
+ */
+//--------------------------------------------------------------------------------------------------
+#define DSIZE   256
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * struct DevInfo contains useful information about the device in use
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int             fd;                 ///< file descriptor in use
+    char            linkName[DSIZE];    ///< device full path
+    char            fdSysPath[DSIZE];   ///< /proc/PID/fd/FD
+    unsigned int    major;              ///< device's major number
+    unsigned int    minor;              ///< device's minor number
+    char            uName[DSIZE];       ///< user name
+    char            gName[DSIZE];       ///< group name
+    char            devInfoStr[DSIZE];  ///< formatted string for all info
+}
+DevInfo_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * device information
+ */
+//--------------------------------------------------------------------------------------------------
+static DevInfo_t DevInfo;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get device information
+ *
+ * Warning: this function works only on *nix systems
+ *
+ * @return
+        LE_OK       things went Ok and information is printed
+ *      LE_FAULT    something wrong happened, check the logs
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetDeviceInformation
+(
+    void
+)
+{
+    if(le_log_GetFilterLevel() == LE_LOG_DEBUG)
+    {
+        struct stat fdStats;
+        struct passwd* passwd;
+        struct group* group;
+        char errMsg[DSIZE];
+
+        memset(DevInfo.fdSysPath, 0, DSIZE);
+        memset(DevInfo.linkName, 0, DSIZE);
+        memset(errMsg, 0, DSIZE);
+        memset(DevInfo.devInfoStr, 0, DSIZE);
+
+        // build the path to fd
+        snprintf(DevInfo.fdSysPath,
+            DSIZE, "/proc/%d/fd/%d", getpid(), DevInfo.fd);
+
+        // get device path
+        if (readlink(DevInfo.fdSysPath, DevInfo.linkName, DSIZE) == -1) {
+            LE_ERROR("readlink failed %s", strerror_r(errno, errMsg, DSIZE));
+            return LE_FAULT;
+        }
+        // try to get device stats
+        if (fstat(DevInfo.fd, &fdStats) == -1)
+        {
+            LE_ERROR("fstat failed %s", strerror_r(errno, errMsg, DSIZE));
+            return LE_FAULT;
+        }
+
+        passwd = getpwuid(fdStats.st_uid);
+        group = getgrgid(fdStats.st_gid);
+
+        DevInfo.major = major(fdStats.st_rdev);
+        DevInfo.minor = minor(fdStats.st_rdev);
+        snprintf(DevInfo.uName, DSIZE, "%s", passwd->pw_name);
+        snprintf(DevInfo.gName, DSIZE, "%s", group->gr_name);
+        snprintf(DevInfo.devInfoStr, DSIZE, "%s, %s [%u, %u], (u: %s, g: %s)",
+            DevInfo.fdSysPath,
+            DevInfo.linkName,
+            DevInfo.major,
+            DevInfo.minor,
+            DevInfo.uName,
+            DevInfo.gName);
+
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -19,28 +122,48 @@
 static void PrintBuffer
 (
     int32_t   fd,            ///< The file descriptor
-    uint8_t  *bufferPtr,     ///< the buffer to print
+    uint8_t*  bufferPtr,     ///< the buffer to print
     uint32_t  bufferSize     ///< Number of element to print
 )
 {
-    uint32_t i;
-    for(i=0;i<bufferSize;i++)
+    if(le_log_GetFilterLevel() == LE_LOG_DEBUG)
     {
-        if (bufferPtr[i] == '\r' )
+        uint32_t i;
+        char dev[DSIZE];
+
+        DevInfo.fd = fd;
+
+        if (GetDeviceInformation())
         {
-            LE_DEBUG("'%d' -> [%d] '0x%.2x' '%s'",fd,i,bufferPtr[i],"CR");
-        }
-        else if (bufferPtr[i] == '\n')
-        {
-            LE_DEBUG("'%d' -> [%d] '0x%.2x' '%s'",fd,i,bufferPtr[i],"LF");
-        }
-        else if (bufferPtr[i] == 0x1A)
-        {
-            LE_DEBUG("'%d' -> [%d] '0x%.2x' '%s'",fd,i,bufferPtr[i],"CTRL+Z");
+            snprintf(dev, DSIZE, "%d", fd);
         }
         else
         {
-            LE_DEBUG("'%d' -> [%d] '0x%.2x' '%c'",fd,i,bufferPtr[i],bufferPtr[i]);
+            snprintf(dev, DSIZE, "%s", DevInfo.linkName);
+        }
+
+        for(i=0; i<bufferSize; i++)
+        {
+            if (bufferPtr[i] == '\r' )
+            {
+                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",
+                    dev, i, bufferPtr[i], "CR");
+            }
+            else if (bufferPtr[i] == '\n')
+            {
+                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",
+                    dev, i, bufferPtr[i], "LF");
+            }
+            else if (bufferPtr[i] == 0x1A)
+            {
+                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",
+                    dev, i, bufferPtr[i], "CTRL+Z");
+            }
+            else
+            {
+                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%c'",
+                    dev, i, bufferPtr[i], bufferPtr[i]);
+            }
         }
     }
 }
@@ -57,18 +180,28 @@ static le_result_t SetSocketNonBlocking
 )
 {
     int flags;
+    char errMsg[DSIZE];
 
     flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0)
     {
-      LE_ERROR("fcntl error errno %d, %s", errno, strerror(errno));
-      return LE_FAULT;
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("fcntl failed, %s",
+            strerror_r(errno, errMsg, DSIZE));
+        return LE_FAULT;
+    }
+
+    if (flags & O_NONBLOCK)
+    {
+        return LE_OK;
     }
 
     flags |= O_NONBLOCK;
     if (fcntl(fd, F_SETFL, flags) < 0)
     {
-        LE_ERROR("fcntl error errno %d, %s", errno, strerror(errno));
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("fcntl failed, %s",
+            strerror_r(errno, errMsg, DSIZE));
         return LE_FAULT;
     }
 
@@ -84,47 +217,34 @@ static le_result_t SetSocketNonBlocking
 //--------------------------------------------------------------------------------------------------
 int32_t le_dev_Read
 (
-    Device_t  *devicePtr,    ///< device pointer
-    uint8_t   *rxDataPtr,    ///< Buffer where to read
+    Device_t*  devicePtr,    ///< device pointer
+    uint8_t*   rxDataPtr,    ///< Buffer where to read
     uint32_t   size          ///< size of buffer
 )
 {
-    int32_t status=1;
-    int32_t amount = 0;
+    int32_t status = 1;
+    char errMsg[DSIZE];
 
-    while ((status > 0) && size)
+    DevInfo.fd = devicePtr->fd;
+    if (!GetDeviceInformation())
     {
-        status = read(devicePtr->fd, rxDataPtr, size);
-
-        if (status > 0)
-        {
-            size      -= status;
-            rxDataPtr += status;
-            amount    += status;
-        }
-        else if (status < 0)
-        {
-            if (errno == EINTR)
-            {
-                // read again
-                status = 1;
-            }
-            else
-            {
-                LE_ERROR("read error, errno %d, %s", errno, strerror(errno));
-                return amount;
-            }
-        }
+        LE_INFO("%s", DevInfo.devInfoStr);
     }
 
-    LE_DEBUG("Read (%d) on %d",
-             amount,devicePtr->fd);
+    status = read(devicePtr->fd, rxDataPtr, size);
 
-    PrintBuffer(devicePtr->fd,
-                rxDataPtr-amount,
-                amount);
+    if (status < 0)
+    {
+        memset(errMsg, 0 , 256);
+        LE_ERROR("read error: %s", strerror_r(errno, errMsg, DSIZE));
+        return 0;
+    }
 
-    return amount;
+    LE_DEBUG("Read (%d) on %d", status, devicePtr->fd);
+
+    PrintBuffer(devicePtr->fd, rxDataPtr, status);
+
+    return status;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -137,16 +257,22 @@ int32_t le_dev_Read
 //--------------------------------------------------------------------------------------------------
 int32_t le_dev_Write
 (
-    Device_t *devicePtr,    ///< device pointer
-    uint8_t  *txDataPtr,    ///< Buffer to write
-    uint32_t  size          ///< size of buffer
+    Device_t*   devicePtr,    ///< device pointer
+    uint8_t*    txDataPtr,    ///< Buffer to write
+    uint32_t    size          ///< size of buffer
 )
 {
     int32_t amount = 0;
-
     size_t currentSize;
     size_t sizeToWrite;
     ssize_t sizeWritten;
+    char errMsg[DSIZE];
+
+    DevInfo.fd = devicePtr->fd;
+    if (!GetDeviceInformation())
+    {
+        LE_INFO("%s", DevInfo.devInfoStr);
+    }
 
     LE_FATAL_IF(devicePtr->fd==-1,"Write Handle error\n");
 
@@ -154,13 +280,16 @@ int32_t le_dev_Write
     {
         sizeToWrite = size - currentSize;
 
-        sizeWritten = write(devicePtr->fd, &txDataPtr[currentSize], sizeToWrite);
+        sizeWritten =
+            write(devicePtr->fd, &txDataPtr[currentSize], sizeToWrite);
 
         if (sizeWritten < 0)
         {
             if ((errno != EINTR) && (errno != EAGAIN))
             {
-                LE_ERROR("Cannot write on uart: errno=%d, %s", errno, strerror(errno));
+                memset(errMsg, 0, DSIZE);
+                LE_ERROR("Cannot write on fd: %s",
+                    strerror_r(errno, errMsg, DSIZE));
                 return currentSize;
             }
         }
@@ -176,8 +305,7 @@ int32_t le_dev_Write
         amount  += currentSize;
     }
 
-    LE_DEBUG("write (%d) on %d",
-             amount,devicePtr->fd);
+    LE_DEBUG("write (%d) on %d", amount, devicePtr->fd);
 
     PrintBuffer(devicePtr->fd,txDataPtr,amount);
 
@@ -186,20 +314,26 @@ int32_t le_dev_Write
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to monitor the specified file descriptor in the calling thread event
- * loop.
+ * This function must be called to monitor the specified file descriptor
+ * in the calling thread event loop.
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dev_AddFdMonitoring
 (
-    Device_t *devicePtr,    ///< device pointer
-    le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
-    void* contextPtr
+    Device_t*                   devicePtr,    ///< device pointer
+    le_fdMonitor_HandlerFunc_t  handlerFunc, ///< [in] Handler function.
+    void*                       contextPtr
 )
 {
     char monitorName[64];
     le_fdMonitor_Ref_t fdMonitorRef;
+
+    DevInfo.fd = devicePtr->fd;
+    if (!GetDeviceInformation())
+    {
+        LE_INFO("%s", DevInfo.devInfoStr);
+    }
 
     if (devicePtr->fdMonitor)
     {
@@ -213,7 +347,7 @@ le_result_t le_dev_AddFdMonitoring
         return LE_FAULT;
     }
 
-    // Create a File Descriptor Monitor object for the serial port's file descriptor.
+    // Create a File Descriptor Monitor object for the file descriptor.
     snprintf(monitorName,
              sizeof(monitorName),
              "Monitor-%d",
@@ -222,7 +356,7 @@ le_result_t le_dev_AddFdMonitoring
     fdMonitorRef = le_fdMonitor_Create(monitorName,
                                        devicePtr->fd,
                                        handlerFunc,
-                                       POLLIN);
+                                       POLLIN | POLLRDHUP);
 
     devicePtr->fdMonitor = fdMonitorRef;
 
@@ -245,19 +379,24 @@ le_result_t le_dev_AddFdMonitoring
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to remove the file descriptor monitoring from the event loop.
+ * This function must be called to remove the file descriptor
+ * monitoring from the event loop.
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_RemoveFdMonitoring
+void le_dev_RemoveFdMonitoring
 (
-    Device_t *devicePtr
+    Device_t*   devicePtr
 )
 {
+    DevInfo.fd = devicePtr->fd;
+    if (!GetDeviceInformation())
+    {
+        LE_INFO("%s", DevInfo.devInfoStr);
+    }
+
     if (devicePtr->fdMonitor)
     {
         le_fdMonitor_Delete(devicePtr->fdMonitor);
     }
-
-    return LE_OK;
 }

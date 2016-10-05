@@ -81,7 +81,7 @@ REFERENCE Device;
  * Command string maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE COMMAND_MAX_LEN = (100);
+DEFINE COMMAND_MAX_LEN = (127);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -96,7 +96,7 @@ DEFINE COMMAND_MAX_BYTES = (COMMAND_MAX_LEN+1);
  * Parameter string maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE PARAMETER_MAX_LEN = (20);
+DEFINE PARAMETER_MAX_LEN = (127);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -111,7 +111,7 @@ DEFINE PARAMETER_MAX_BYTES = (PARAMETER_MAX_LEN+1);
  * AT command response maximum length.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE  RESPONSE_MAX_LEN = (40);
+DEFINE  RESPONSE_MAX_LEN = (352);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -174,7 +174,7 @@ FUNCTION Device Start
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function stops the AT server session on the requested device.
+ * This function closes the AT server session on the requested device.
  *
  * @return
  *      - LE_OK             The function succeeded.

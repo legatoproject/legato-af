@@ -42,7 +42,7 @@
 //------------------------------------------------------------------------------
 struct AtCmd
 {
-    const char *atCmdPtr;
+    const char* atCmdPtr;
     le_atServer_CmdRef_t cmdRef;
     le_atServer_CommandHandlerFunc_t handlerPtr;
 };
@@ -126,9 +126,9 @@ static struct AtCmd AtCmdCreation[] =
  * Uppercase a string
  */
 //------------------------------------------------------------------------------
-static char *Uppercase
+static char* Uppercase
 (
-    char *strPtr
+    char* strPtr
 )
 {
     int i = 0;
@@ -148,7 +148,7 @@ static char *Uppercase
 //------------------------------------------------------------------------------
 static le_atServer_CmdRef_t GetRef
 (
-    const char *cmdName
+    const char* cmdName
 )
 {
     int i = 0;
@@ -303,7 +303,7 @@ static void DelHandler
     le_result_t result = LE_OK;
     le_atServer_CmdRef_t atCmdRef = NULL;
     struct AtCmdRetVals atCmdRetVals;
-    char *usrAtCmd;
+    char* usrAtCmd;
     int i = 0;
     le_atServer_FinalRsp_t finalRsp = LE_ATSERVER_OK;
 
@@ -353,38 +353,11 @@ static void StopHandler
     void* contextPtr
 )
 {
-    le_result_t result = LE_OK;
-    le_atServer_FinalRsp_t finalRsp = LE_ATSERVER_OK;
-
-    PrepareHandler(commandRef, type, parametersNumber, contextPtr);
-
     LE_INFO("Stopping the Server");
 
-    result = le_atServer_Stop(DevRef);
+    LE_ASSERT(le_atServer_Stop(DevRef) == LE_OK);
 
-    if (result)
-    {
-        LE_ERROR("Failed to stop AT Server with error: %d", result);
-        finalRsp = LE_ATSERVER_ERROR;
-    }
-
-    // do some cleanup
-    if (close(ConnFd))
-    {
-        LE_ERROR("failed to close connection: %m");
-        finalRsp = LE_ATSERVER_ERROR;
-    }
-
-    if (close(SockFd))
-    {
-        LE_ERROR("failed to close the socket: %m");
-        finalRsp = LE_ATSERVER_ERROR;
-    }
-
-    LE_ASSERT(
-        le_atServer_SendFinalResponse(
-            commandRef, finalRsp, false, "")
-        == LE_OK);
+    exit(0);
 }
 //------------------------------------------------------------------------------
 /**

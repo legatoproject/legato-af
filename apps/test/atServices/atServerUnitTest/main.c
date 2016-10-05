@@ -4,682 +4,446 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
-
 #include "legato.h"
-#include "interfaces.h"
-#include "log.h"
+#include "defs.h"
 
-#define PARAM_MAX 10
-#define DESC_MAX_LENGTH 512
-
-static le_sem_Ref_t    ThreadSemaphore;
-static le_sem_Ref_t    HandlerSemaphore;
-
-extern void le_dev_Init(void);
-extern void le_dev_NewData(char* stringPtr,uint32_t len);
-void le_dev_WaitSemaphore(void);
-void le_dev_ExpectedResponse(char* rspPtr);
-void le_dev_Done(void);
-
-static uint32_t ExpectedParametersNumber = 0;
-static char* ExpectedAtCommandPtr;
-static le_atServer_Type_t ExpectedType;
-static char* ExpectedParamPtr[PARAM_MAX] = {0};
-static bool SendRspCustom = false;
-static char* CustomFinalRspPtr = NULL;
-static bool ExpectedIntermediateRsp = false;
-static char* IntermediateRspPtr = NULL;
-static le_atServer_FinalRsp_t FinalRsp = LE_ATSERVER_OK;
+#define DSIZE           512     /* default buffer size */
+#define SERVER_TIMEOUT  2000    /* server timeout in milliseconds */
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set an expected response
+ * list of legato error messages
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void SetExpectedResponse
+static const char* ErrorMsg[] =
+{
+    [0] = "Successful.",
+    [1] = "Referenced item does not exist or could not be found.",
+    [2] = "LE_NOT_POSSIBLE",
+    [3] = "An index or other value is out of range.",
+    [4] = "Insufficient memory is available.",
+    [5] = "Current user does not have permission to perform requested action.",
+    [6] = "Unspecified internal error.",
+    [7] = "Communications error.",
+    [8] = "A time-out occurred.",
+    [9] = "An overflow occurred or would have occurred.",
+    [10] = "An underflow occurred or would have occurred.",
+    [11] = "Would have blocked if non-blocking behaviour was not requested.",
+    [12] = "Would have caused a deadlock.",
+    [13] = "Format error.",
+    [14] = "Duplicate entry found or operation already performed.",
+    [15] = "Parameter is invalid.",
+    [16] = "The resource is closed.",
+    [17] = "The resource is busy.",
+    [18] = "The underlying resource does not support this operation.",
+    [19] = "An IO operation failed.",
+    [20] = "Unimplemented functionality.",
+    [21] = "A transient or temporary loss of a service or resource.",
+    [22] = "The process, operation, data stream, session, etc. has stopped.",
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * shared data between threads
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static SharedData_t SharedData;
+
+void* AtServer(void* contextPtr);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * convert \r\n into <>
+ * example: at\r => at<
+ *          \r\nOK\r\n => <>OK<>
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static char* PrettyPrint
 (
-    char * rspPtr
+    char* strPtr
 )
 {
-    char rsp[LE_ATSERVER_COMMAND_MAX_BYTES];
-    memset(rsp,0,LE_ATSERVER_COMMAND_MAX_BYTES);
-    snprintf(rsp, LE_ATSERVER_COMMAND_MAX_BYTES, "\r\n%s\r\n", rspPtr);
-    le_dev_ExpectedResponse(rsp);
+    static char copy[DSIZE];
+    char* swapPtr;
+
+    memset(copy, 0, DSIZE);
+    strncpy(copy, strPtr, strlen(strPtr));
+
+    swapPtr = copy;
+
+    while(*swapPtr)
+    {
+        switch (*swapPtr) {
+        case '\r':
+            *swapPtr = '<';
+            break;
+        case '\n':
+            *swapPtr = '>';
+            break;
+        default: break;
+        }
+        swapPtr++;
+    }
+
+    return copy;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * AT command handler
+ * send an AT command and test on an expected result
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void AtCmdHandler
+static le_result_t SendCommandsAndTest
 (
-    le_atServer_CmdRef_t commandRef,
-    le_atServer_Type_t type,
-    uint32_t parametersNumber,
-    void* contextPtr
+    int fd,
+    int epollFd,
+    const char* commandsPtr,
+    const char* expectedResponsePtr
 )
 {
-    LE_INFO("commandRef %p", commandRef);
+    char errMsg[DSIZE];
+    char buf[DSIZE];
+    struct epoll_event ev;
+    int ret = 0;
+    int offset = 0;
+    int count = 0;
+    ssize_t size = 0;
 
-    le_sem_Wait(ThreadSemaphore);
 
-    LE_ASSERT(ExpectedParametersNumber == parametersNumber);
+    memset(buf, 0 , DSIZE);
 
-    char atCommandName[LE_ATSERVER_COMMAND_MAX_BYTES];
-    memset(atCommandName,0,LE_ATSERVER_COMMAND_MAX_BYTES);
-    LE_ASSERT(le_atServer_GetCommandName(commandRef,atCommandName,LE_ATSERVER_COMMAND_MAX_BYTES)
-                                                                                          == LE_OK);
-    LE_ASSERT(strncmp(atCommandName, ExpectedAtCommandPtr, strlen(atCommandName))==0);
-    LE_INFO("AT command name %s", atCommandName);
+    snprintf(buf, strlen(commandsPtr)+2, "%s\r", commandsPtr);
 
-    LE_ASSERT(ExpectedType == type);
-    switch (type)
+    LE_DEBUG("Commands: %s", PrettyPrint(buf));
+
+    if (write(fd, buf, (size_t) strlen(buf)) == -1)
     {
-        case LE_ATSERVER_TYPE_PARA:
-            LE_INFO("Type PARA");
-        break;
-
-        case LE_ATSERVER_TYPE_TEST:
-            LE_INFO("Type TEST");
-        break;
-
-        case LE_ATSERVER_TYPE_READ:
-            LE_INFO("Type READ");
-        break;
-
-        case LE_ATSERVER_TYPE_ACT:
-            LE_INFO("Type ACT");
-        break;
-
-        default:
-            LE_ASSERT(0);
-        break;
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("write failed: %s",
+            strerror_r(errno, errMsg, DSIZE));
+        return LE_IO_ERROR;
     }
 
-    char param[LE_ATSERVER_PARAMETER_MAX_BYTES];
+    count = strlen(expectedResponsePtr);
+    memset(buf, 0 , DSIZE);
 
-    if (parametersNumber)
+    while (count > 0)
     {
-        int i = 0;
-
-        for (; i < parametersNumber; i++)
+        ret = epoll_wait(epollFd, &ev, 1, SERVER_TIMEOUT);
+        if (ret == -1)
         {
-            memset(param,0,LE_ATSERVER_PARAMETER_MAX_BYTES);
-            LE_ASSERT(le_atServer_GetParameter( commandRef,
-                                                i,
-                                                param,
-                                                LE_ATSERVER_PARAMETER_MAX_BYTES) == LE_OK);
-            LE_INFO("param %d %s", i, param);
-            if (i < PARAM_MAX)
-            {
-                LE_ASSERT(strncmp(param, ExpectedParamPtr[i], strlen(param)) == 0);
-            }
-            else
-            {
-                LE_ASSERT(0);
-            }
+            memset(errMsg, 0, DSIZE);
+            LE_ERROR("epoll wait failed: %s",
+                strerror_r(errno, errMsg, DSIZE));
+            return LE_IO_ERROR;
+        }
+
+        if  (!ret)
+        {
+            LE_ERROR("Timed out waiting for server's response");
+            return LE_TIMEOUT;
+        }
+
+        if (ev.data.fd != fd)
+        {
+            LE_ERROR("%s", strerror_r(EBADF, errMsg, DSIZE));
+            return LE_IO_ERROR;
+        }
+
+        if (ev.events & EPOLLRDHUP)
+        {
+            LE_ERROR("%s", strerror_r(ECONNRESET, errMsg, DSIZE));
+            return LE_TERMINATED;
+        }
+
+        size = read(fd, buf+offset, DSIZE);
+        if (size == -1)
+        {
+            memset(errMsg, 0, DSIZE);
+            LE_ERROR("read failed: %s",
+                strerror_r(errno, errMsg, DSIZE));
+            return LE_IO_ERROR;
+        }
+
+        offset += (int)size;
+        count -= (int)size;
+    }
+
+    LE_DEBUG("Response: %s", PrettyPrint(buf));
+    LE_DEBUG("Expected: %s", PrettyPrint((char *)expectedResponsePtr));
+
+    if (expectedResponsePtr) {
+        if (strcmp(buf, expectedResponsePtr))
+        {
+            LE_ERROR("response %s", PrettyPrint(buf));
+            LE_ERROR("expected %s", PrettyPrint((char*)expectedResponsePtr));
+            return LE_FAULT;
         }
     }
 
-    LE_ASSERT(le_atServer_GetParameter( commandRef,
-                                        parametersNumber+1,
-                                        param,
-                                        LE_ATSERVER_PARAMETER_MAX_BYTES ) == LE_BAD_PARAMETER);
-
-    if (ExpectedIntermediateRsp)
-    {
-        LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, IntermediateRspPtr) == LE_OK);
-    }
-
-    if (SendRspCustom)
-    {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                FinalRsp,
-                                                true,
-                                                CustomFinalRspPtr) == LE_OK);
-    }
-    else
-    {
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, FinalRsp, false, "") == LE_OK);
-    }
-
-    le_sem_Post(HandlerSemaphore);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a command to the AT parser
+ * host thread function
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void AddAtCmdHandler
+static void* AtHost
 (
-    void* param1Ptr,
-    void* param2Ptr
+    void* contextPtr
 )
 {
-    le_atServer_CmdRef_t atCmdRef = param1Ptr;
-    le_atServer_CommandHandlerFunc_t cmdHandlerPtr = param2Ptr;
+    SharedData_t* sharedDataPtr;
+    char buf[DSIZE];
+    char errMsg[DSIZE];
+    struct sockaddr_un addr;
+    int socketFd;
+    int epollFd;
+    struct epoll_event event;
+    struct timespec ts;
+    int ret;
 
-    le_atServer_AddCommandHandler(atCmdRef, cmdHandlerPtr, NULL);
+    LE_DEBUG("Host Started");
 
-    le_sem_Post(ThreadSemaphore);
-}
+    sharedDataPtr = (SharedData_t *)contextPtr;
 
-//--------------------------------------------------------------------------------------------------
-/**
- * AT command thread handler
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void* AtCmdThreadHandler
-(
-    void* ctxPtr
-)
-{
-    le_event_RunLoop();
-    return NULL;
-}
+    memset(buf, 0, DSIZE);
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Test thread handler
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void* TestHandler
-(
-    void* ctxPtr
-)
-{
-    le_atServer_CmdRef_t atCmdRef = NULL;
-    le_atServer_CmdRef_t atRef = NULL;
-    le_atServer_CmdRef_t atARef = NULL;
-    le_atServer_CmdRef_t atAndFRef = NULL;
-    le_atServer_CmdRef_t atSRef = NULL;
-    le_atServer_CmdRef_t atVRef = NULL;
-    le_atServer_CmdRef_t atAndCRef = NULL;
-    le_atServer_CmdRef_t atAndDRef = NULL;
-    le_atServer_CmdRef_t atERef = NULL;
-    le_atServer_CmdRef_t atDlRef = NULL;
-
-    le_thread_Ref_t AtCmdThreadRef = le_thread_Create("TestThread", AtCmdThreadHandler, NULL);
-    le_thread_Start(AtCmdThreadRef);
-
-    // Unit test, we are using a fake device
-    le_atServer_DeviceRef_t devRef = le_atServer_Start(1);
-
-    LE_ASSERT(devRef != NULL);
-
-    struct
+    epollFd = epoll_create1(0);
+    if (epollFd == -1)
     {
-        const char* atCmdPtr;
-        le_atServer_CmdRef_t cmdRef;
-    } atCmdCreation[] =     {
-                                { "AT+ABCD",    atCmdRef    },
-                                { "AT",         atRef       },
-                                { "ATA",        atARef      },
-                                { "AT&F",       atAndFRef   },
-                                { "ATS",        atSRef      },
-                                { "ATV",        atVRef      },
-                                { "AT&C",       atAndCRef   },
-                                { "AT&D",       atAndDRef   },
-                                { "ATE",        atERef      },
-                                { "ATDL",       atDlRef     },
-                                { NULL,         NULL        }
-                            };
-
-    int i=0;
-
-    // AT commands subscriptions
-    while ( atCmdCreation[i].atCmdPtr != NULL )
-    {
-        atCmdCreation[i].cmdRef = le_atServer_Create(atCmdCreation[i].atCmdPtr);
-        LE_ASSERT(atCmdCreation[i].cmdRef != NULL);
-
-        le_event_QueueFunctionToThread( AtCmdThreadRef,
-                                        AddAtCmdHandler,
-                                        atCmdCreation[i].cmdRef,
-                                        AtCmdHandler );
-
-        le_sem_Wait(ThreadSemaphore);
-
-        i++;
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("epoll_create1 failed: %s",
+            strerror_r(errno, errMsg, DSIZE));
+        errno = LE_TERMINATED;
+        return (void *) &errno;
     }
 
-    // Send "AT" command
-    ExpectedParametersNumber = 0;
-    ExpectedAtCommandPtr = "AT";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    SendRspCustom = false;
-    ExpectedIntermediateRsp = false;
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse("OK");
-    le_dev_NewData("AT\r", 3);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    // Send ATA command, with one parameter
-    ExpectedParametersNumber = 1;
-    ExpectedAtCommandPtr = "ATA";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParamPtr[0] = "1";
-    SendRspCustom = true;
-    CustomFinalRspPtr = "ATA_REC";
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = "ATA_INTERMEDIATE_RSP";
-
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse(IntermediateRspPtr);
-    le_dev_NewData("ATA1\r", 6);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse(CustomFinalRspPtr);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    // Send ATAB command: ATA should be parsed correctly, ATB is unknown => error expected
-    ExpectedParametersNumber = 0;
-    ExpectedAtCommandPtr = "ATA";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = "ATA_INTERMEDIATE_RSP";
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse(IntermediateRspPtr);
-    le_dev_NewData("atab\r", 6);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("ERROR");
-    le_dev_WaitSemaphore();
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send AT&F
-    ExpectedParametersNumber = 0;
-    ExpectedAtCommandPtr = "AT&F";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    ExpectedIntermediateRsp = false;
-    SendRspCustom = false;
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse("OK");
-    le_dev_NewData("at&f\r", 5);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send ATS
-    ExpectedParametersNumber = 2;
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParamPtr[0] = "45";
-    ExpectedParamPtr[1] = "95";
-    ExpectedIntermediateRsp = false;
-    SendRspCustom = false;
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse("OK");
-    le_dev_NewData("ATS45=95\r", 9);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-    LE_ASSERT(le_sem_GetValue(HandlerSemaphore) == 0);
-
-    // Send ATS0?
-    ExpectedParametersNumber = 1;
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    ExpectedParamPtr[0] = "0";
-    ExpectedIntermediateRsp = false;
-    SendRspCustom = false;
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse("OK");
-    le_dev_NewData("ATS0?\r", 9);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-    LE_ASSERT(le_sem_GetValue(HandlerSemaphore) == 0);
-
-    // Send AT&FE0V1&C1&D2S95=47S0=0
-    ExpectedParametersNumber = 0;
-    ExpectedIntermediateRsp = false;
-    SendRspCustom = false;
-    ExpectedAtCommandPtr = "AT&F";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse("OK");
-    le_dev_NewData("AT&FE0V1&C1&D2S95=47S0=0\r", 25);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATE";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "0";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATV";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "1";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "AT&C";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "1";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "AT&D";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "2";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 2;
-    ExpectedParamPtr[0] = "95";
-    ExpectedParamPtr[1] = "47";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 2;
-    ExpectedParamPtr[0] = "0";
-    ExpectedParamPtr[1] = "0";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-    LE_ASSERT(le_sem_GetValue(HandlerSemaphore) == 0);
-
-    // Send AT+ABCD=0,,1,2,"3", command - Send a second command during the parsing
-    ExpectedParametersNumber = 6;
-    ExpectedAtCommandPtr = "AT+ABCD";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParamPtr[0] = "0";
-    ExpectedParamPtr[1] = "";
-    ExpectedParamPtr[2] = "1";
-    ExpectedParamPtr[3] = "2";
-    ExpectedParamPtr[4] = "3";
-    ExpectedParamPtr[5] = "";
-    SendRspCustom = false;
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = ExpectedAtCommandPtr;
-
-    SetExpectedResponse("ERROR");
-    le_dev_NewData("blabla", 6);
-    le_dev_NewData("ABCDAT+AB", 9);
-    le_dev_NewData("CD=0,,1,2,\"3\",", 14);
-    le_dev_NewData("\r", 1);
-    le_dev_NewData("AT+TOTO\r", 8);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("AT+ABCD");
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("OK");
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send AT+ABCD=,,1,,;+ABCD=,,;+ABCD=,,1 commandd
-    ExpectedParametersNumber = 5;
-    ExpectedAtCommandPtr = "AT+ABCD";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParamPtr[0] = "";
-    ExpectedParamPtr[1] = "";
-    ExpectedParamPtr[2] = "1";
-    ExpectedParamPtr[3] = "";
-    ExpectedParamPtr[4] = "";
-    SendRspCustom = false;
-    ExpectedIntermediateRsp = false;
-    SetExpectedResponse("OK");
-    le_sem_Post(ThreadSemaphore);
-    le_dev_NewData("AT+ABCD=,,1,,;+ABCD=,,;+ABCD=,,1\r", 33);
-    le_sem_Wait(HandlerSemaphore);
-
-    ExpectedParametersNumber = 3;
-    ExpectedParamPtr[0] = "";
-    ExpectedParamPtr[1] = "";
-    ExpectedParamPtr[2] = "";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-
-    ExpectedParametersNumber = 3;
-    ExpectedParamPtr[0] = "";
-    ExpectedParamPtr[1] = "";
-    ExpectedParamPtr[2] = "1";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send AT+ABCD=? command
-    ExpectedParametersNumber = 0;
-    ExpectedType = LE_ATSERVER_TYPE_TEST;
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = "+ABCD: TEST";
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse(IntermediateRspPtr);
-    le_dev_NewData("AT+ABCD=?\r", 10);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("OK");
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send AT+ABCD? command
-    ExpectedParametersNumber = 0;
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = "+ABCD: READ";
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse(IntermediateRspPtr);
-    le_dev_NewData("AT+ABCD?\r", 9);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("OK");
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send AT+ABCD? command
-    ExpectedParametersNumber = 0;
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = "+ABCD: ACT";
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse(IntermediateRspPtr);
-    le_dev_NewData("AT+ABCD\r",8);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("OK");
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-
-    // Send AT+ABCD;+ABCD=?;+ABCD? concatenated command
-    ExpectedParametersNumber = 0;
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    ExpectedIntermediateRsp = true;
-    IntermediateRspPtr = "+ABCD: ACT";
-    SetExpectedResponse(IntermediateRspPtr);
-    le_sem_Post(ThreadSemaphore);
-
-    le_dev_NewData("AT+ABCD;+ABCD=?;+ABCD?\r", 23);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    ExpectedType = LE_ATSERVER_TYPE_TEST;
-    IntermediateRspPtr = "+ABCD: TEST";
-    SetExpectedResponse(IntermediateRspPtr);
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    IntermediateRspPtr = "+ABCD: READ";
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    SetExpectedResponse(IntermediateRspPtr);
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("OK");
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-    LE_ASSERT(le_sem_GetValue(HandlerSemaphore) == 0);
-
-    // Send AT+ABCD;+ABCD=?;+ABCD? concatenated command (lower case)
-    IntermediateRspPtr = "+ABCD: ACT";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    SetExpectedResponse(IntermediateRspPtr);
-    le_sem_Post(ThreadSemaphore);
-    le_dev_NewData("at+abcd;+abcd=?;+abcd?\r", 23);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    ExpectedType = LE_ATSERVER_TYPE_TEST;
-    IntermediateRspPtr = "+ABCD: TEST";
-    SetExpectedResponse(IntermediateRspPtr);
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-
-    IntermediateRspPtr = "+ABCD: READ";
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    SetExpectedResponse(IntermediateRspPtr);
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("OK");
-    le_dev_WaitSemaphore();
-
-    // Try to send intermediate whereas no AT command is in progress
-    LE_ASSERT(le_atServer_SendIntermediateResponse(atCmdRef, "Blabla") == LE_FAULT);
-
-    // Send unsolicited
-    SetExpectedResponse("+UNSOL: 1");
-    le_atServer_SendUnsolicitedResponse("+UNSOL: 1", LE_ATSERVER_ALL_DEVICES, 0);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("+UNSOL: 2");
-    le_atServer_SendUnsolicitedResponse("+UNSOL: 2", LE_ATSERVER_SPECIFIC_DEVICE, devRef);
-    le_dev_WaitSemaphore();
-
-    // send unsolicited when at command in progress
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    ExpectedIntermediateRsp = false;
-    le_sem_Post(ThreadSemaphore);
-    SetExpectedResponse("OK");
-    le_dev_NewData("AT+ABCD?\r", 9);
-    le_atServer_SendUnsolicitedResponse("+UNSOL: 1", LE_ATSERVER_ALL_DEVICES, 0);
-    le_atServer_SendUnsolicitedResponse("+UNSOL: 2", LE_ATSERVER_SPECIFIC_DEVICE, devRef);
-    le_sem_Wait(HandlerSemaphore);
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("+UNSOL: 1");
-    le_dev_WaitSemaphore();
-    SetExpectedResponse("+UNSOL: 2");
-    le_dev_WaitSemaphore();
-
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
-    LE_ASSERT(le_sem_GetValue(HandlerSemaphore) == 0);
-
-    // Send ATE0S3?;+ABCD?;S0?S0=2E1;V0DLS0=\"3\"
-    ExpectedParametersNumber = 1;
-    ExpectedIntermediateRsp = false;
-    SendRspCustom = false;
-    ExpectedAtCommandPtr = "ATE";
-    ExpectedParamPtr[0] = "0";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    le_sem_Post(ThreadSemaphore);
-
-    SetExpectedResponse("OK");
-    le_dev_NewData("ATE0S3?;+ABCD?;S0?S0=2E1;V0DLS0=\"3\"+ABCD\r", 41);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "3";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "AT+ABCD";
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    ExpectedParametersNumber = 0;
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_READ;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "0";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 2;
-    ExpectedParamPtr[0] = "0";
-    ExpectedParamPtr[1] = "2";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATE";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "1";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATV";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 1;
-    ExpectedParamPtr[0] = "0";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATDL";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    ExpectedParametersNumber = 0;
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "ATS";
-    ExpectedType = LE_ATSERVER_TYPE_PARA;
-    ExpectedParametersNumber = 2;
-    ExpectedParamPtr[0] = "0";
-    ExpectedParamPtr[1] = "3";
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-    ExpectedAtCommandPtr = "AT+ABCD";
-    ExpectedType = LE_ATSERVER_TYPE_ACT;
-    ExpectedParametersNumber = 0;
-    le_sem_Post(ThreadSemaphore);
-    le_sem_Wait(HandlerSemaphore);
-
-    le_dev_WaitSemaphore();
-
-    le_dev_Done();
-    // test deletion command
-    // delete created commands
-    i = 0;
-    while ( atCmdCreation[i].atCmdPtr != NULL )
+    socketFd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (socketFd == -1)
     {
-        LE_ASSERT(le_atServer_Delete(atCmdCreation[i].cmdRef) == LE_OK);
-        i++;
-    }
-    // test stopping the server
-    LE_ASSERT(le_atServer_Stop(devRef) == LE_OK);
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("socket failed: %s",
+            strerror_r(errno, errMsg, DSIZE));
 
-    exit(0);
+        close(socketFd);
+        close(epollFd);
+        errno = LE_TERMINATED;
+        return (void *) &errno;
+    }
+
+    event.events = EPOLLIN | EPOLLRDHUP;
+    event.data.fd = socketFd;
+
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, socketFd, &event))
+    {
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("epoll_ctl failed: %s",
+            strerror_r(errno, errMsg, DSIZE));
+
+        close(socketFd);
+        close(epollFd);
+        errno = LE_TERMINATED;
+        return (void *) &errno;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, sharedDataPtr->devPathPtr, sizeof(addr.sun_path)-1);
+
+    /* wait for the server to bind to the socket */
+    pthread_mutex_lock(&sharedDataPtr->mutex);
+    while(!sharedDataPtr->ready)
+    {
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += SERVER_TIMEOUT/1000;
+
+        errno = pthread_cond_timedwait(
+                    &sharedDataPtr->cond, &sharedDataPtr->mutex, &ts);
+        if (errno)
+        {
+            memset(errMsg, 0, DSIZE);
+            LE_ERROR("pthread_cond_timedwait failed: %s",
+                strerror_r(errno, errMsg, DSIZE));
+
+            close(socketFd);
+            close(epollFd);
+            errno = LE_TIMEOUT;
+            return (void *) &errno;
+        }
+    }
+
+    pthread_mutex_unlock(&sharedDataPtr->mutex);
+
+    if (connect(socketFd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+    {
+        memset(errMsg, 0, DSIZE);
+        LE_ERROR("connect failed: %s",
+            strerror_r(errno, errMsg, DSIZE));
+
+        close(socketFd);
+        close(epollFd);
+        errno = LE_COMM_ERROR;
+        return (void *) &errno;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT",
+                "\r\n TYPE: ACT\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "ATI",
+                "\r\nManufacturer: Sierra Wireless, Incorporated\r\n"
+                "Model: WP8548\r\n"
+                "Revision: SWI9X15Y_07.10.04.00 "
+                "12c1700 jenkins 2016/06/02 02:52:45\r\n"
+                "IMEI: 359377060009700\r\n"
+                "IMEI SV: 42\r\n"
+                "FSN: LL542500111503\r\n"
+                "+GCAP: +CGSM\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "ATASVE",
+                "\r\nA TYPE: ACT\r\n"
+                "\r\nS TYPE: ACT\r\n"
+                "\r\nV TYPE: ACT\r\n"
+                "\r\nE TYPE: ACT\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "ATASVEB",
+                "\r\nA TYPE: ACT\r\n"
+                "\r\nS TYPE: ACT\r\n"
+                "\r\nV TYPE: ACT\r\n"
+                "\r\nE TYPE: ACT\r\n"
+                "\r\nERROR\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+ABCD;+ABCD=?;+ABCD?",
+                "\r\n+ABCD TYPE: ACT\r\n"
+                "\r\n+ABCD TYPE: TEST\r\n"
+                "\r\n+ABCD TYPE: READ\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd,
+                "ATE0S3?;+ABCD?;S0?S0=2E1;V0S0=\"3\"+ABCD",
+                "\r\nE TYPE: PARA\r\n"
+                "E PARAM 0: 0\r\n"
+                "\r\nS TYPE: READ\r\n"
+                "S PARAM 0: 3\r\n"
+                "\r\n+ABCD TYPE: READ\r\n"
+                "\r\nS TYPE: READ\r\n"
+                "S PARAM 0: 0\r\n"
+                "\r\nS TYPE: PARA\r\n"
+                "S PARAM 0: 0\r\n"
+                "S PARAM 1: 2\r\n"
+                "\r\nE TYPE: PARA\r\n"
+                "E PARAM 0: 1\r\n"
+                "\r\nV TYPE: PARA\r\n"
+                "V PARAM 0: 0\r\n"
+                "\r\nS TYPE: PARA\r\n"
+                "S PARAM 0: 0\r\n"
+                "S PARAM 1: 3\r\n"
+                "\r\n+ABCD TYPE: ACT\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd,"AT&FE0V1&C1&D2S95=47S0=0",
+                "\r\n&F TYPE: ACT\r\n"
+                "\r\nE TYPE: PARA\r\n"
+                "E PARAM 0: 0\r\n"
+                "\r\nV TYPE: PARA\r\n"
+                "V PARAM 0: 1\r\n"
+                "\r\n&C TYPE: PARA\r\n"
+                "&C PARAM 0: 1\r\n"
+                "\r\n&D TYPE: PARA\r\n"
+                "&D PARAM 0: 2\r\n"
+                "\r\nS TYPE: PARA\r\n"
+                "S PARAM 0: 95\r\n"
+                "S PARAM 1: 47\r\n"
+                "\r\nS TYPE: PARA\r\n"
+                "S PARAM 0: 0\r\n"
+                "S PARAM 1: 0\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+CBC=?",
+                "\r\n+CBC: (0-2),(1-100),(voltage)\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+CBC",
+                "\r\n+CBC: 1,50,4190\r\n"
+                "\r\nOK\r\n"
+                "\r\n+CBC: 1,70,4190\r\n"
+                "\r\n+CBC: 2,100,4190\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+DEL="
+                "\"AT\",\"ATI\",\"AT+CBC\",\"AT+ABCD\",\"ATA\",\"AT&F\","
+                "\"ATS\",\"ATV\",\"AT&C\",\"AT&D\",\"ATE\"",
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+STOP?",
+                "\r\nERROR\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+STOP",
+                "");
+    if (ret)
+    {
+        goto err;
+    }
 
     return NULL;
+
+    err:
+        close(socketFd);
+        close(epollFd);
+        errno = ret;
+        return (void *) &errno;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -690,15 +454,42 @@ static void* TestHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    le_thread_Ref_t atServerThread;
+    le_thread_Ref_t atHostThread;
+    int* retVal;
+
     // To reactivate for all DEBUG logs
+#ifdef DEBUG
+    LE_INFO("DEBUG MODE");
     le_log_SetFilterLevel(LE_LOG_DEBUG);
+#endif
 
-    // Create a semaphore to coordinate the test
-    ThreadSemaphore = le_sem_Create("ThreadSem",0);
-    HandlerSemaphore = le_sem_Create("HandlerSem",0);
+    SharedData.devPathPtr = "\0at-dev";
+    pthread_mutex_init(&SharedData.mutex, NULL);
+    pthread_cond_init(&SharedData.cond, NULL);
+    SharedData.ready = false;
 
-    le_dev_Init();
+    atServerThread = le_thread_Create(
+        "atServerThread", AtServer, (void *)&SharedData);
+    atHostThread = le_thread_Create(
+        "atHostThread", AtHost, (void *)&SharedData);
 
-    le_thread_Ref_t appThreadRef = le_thread_Create("TestThread", TestHandler, NULL);
-    le_thread_Start(appThreadRef);
+    le_thread_SetJoinable(atHostThread);
+
+    le_thread_Start(atServerThread);
+    le_thread_Start(atHostThread);
+
+    le_thread_Join(atHostThread, (void *) &retVal);
+
+    pthread_mutex_destroy(&SharedData.mutex);
+    pthread_cond_destroy(&SharedData.cond);
+
+    if (retVal)
+    {
+        LE_ERROR("atServer Unit Test: FAIL: %s", ErrorMsg[-(*retVal)]);
+        exit(*retVal);
+    }
+
+    LE_INFO("atServer Unit Test: PASS");
+    exit(0);
 }

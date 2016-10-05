@@ -10,11 +10,10 @@ requires:
 sources:
 {
     ${LEGATO_ROOT}/components/atServices/atServer/le_atServer.c
-    le_dev_simu.c
+    ${LEGATO_ROOT}/components/atServices/Common/le_dev.c
 }
 
 cflags:
 {
     -I${LEGATO_ROOT}/components/atServices/Common
-    -Dle_fdMonitor_GetContextPtr=My_fdMonitor_GetContextPtr
 }

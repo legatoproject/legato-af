@@ -30,9 +30,9 @@ Device_t;
 //--------------------------------------------------------------------------------------------------
 int32_t le_dev_Read
 (
-    Device_t  *devicePtr,    ///< device pointer
-    uint8_t   *rxDataPtr,    ///< Buffer where to read
-    uint32_t   size          ///< size of buffer
+    Device_t*   devicePtr,    ///< device pointer
+    uint8_t*    rxDataPtr,    ///< Buffer where to read
+    uint32_t    size          ///< size of buffer
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -44,9 +44,9 @@ int32_t le_dev_Read
 //--------------------------------------------------------------------------------------------------
 int32_t le_dev_Write
 (
-    Device_t *devicePtr,    ///< device pointer
-    uint8_t  *txDataPtr,    ///< Buffer to write
-    uint32_t  size          ///< size of buffer
+    Device_t*   devicePtr,    ///< device pointer
+    uint8_t*    txDataPtr,    ///< Buffer to write
+    uint32_t    size          ///< size of buffer
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -58,9 +58,9 @@ int32_t le_dev_Write
 //--------------------------------------------------------------------------------------------------
 le_result_t le_dev_AddFdMonitoring
 (
-    Device_t *devicePtr,    ///< device pointer
-    le_fdMonitor_HandlerFunc_t handlerFunc, ///< [in] Handler function.
-    void* contextPtr
+    Device_t*                   devicePtr,    ///< device pointer
+    le_fdMonitor_HandlerFunc_t  handlerFunc, ///< [in] Handler function.
+    void*                       contextPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -69,9 +69,9 @@ le_result_t le_dev_AddFdMonitoring
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_dev_RemoveFdMonitoring
+void le_dev_RemoveFdMonitoring
 (
-    Device_t *devicePtr
+    Device_t*   devicePtr
 );
 
 #endif
