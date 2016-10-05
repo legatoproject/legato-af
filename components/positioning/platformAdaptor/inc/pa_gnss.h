@@ -581,4 +581,33 @@ LE_SHARED le_result_t pa_gnss_DeleteSuplCertificate
                                 ///< Certificate ID range is 0 to 9
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the enabled NMEA sentences bit mask
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_SetNmeaSentences
+(
+    le_gnss_NmeaBitMask_t nmeaMask ///< [IN] Bit mask for enabled NMEA sentences.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the enabled NMEA sentences bit mask
+ *
+* @return
+*  - LE_OK on success
+*  - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetNmeaSentences
+(
+    le_gnss_NmeaBitMask_t* nmeaMaskPtr ///< [OUT] Bit mask for enabled NMEA sentences.
+);
+
 #endif // LEGATO_PA_GNSS_INCLUDE_GUARD

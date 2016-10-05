@@ -1,7 +1,8 @@
 /** @page platformConstraintsGnss GNSS platform constraints
 
+@section platformConstraintsGnss_acqRate Acquisition rate
 
-The le_gnss_SetAcquisitionRate() configures the GNSS device acquisition rate.
+The le_gnss_SetAcquisitionRate() function configures the GNSS device acquisition rate.
 
 On Qualcomm-based platform the “tracking” mode is selected for the “continuous” navigation.
 
@@ -68,7 +69,18 @@ $GPGGA,,,,,,0,,,,,,,,*66
 
 @endverbatim
 
+@section platformConstraintsGnss_nmeaMask Enabled NMEA sentences
 
+The le_gnss_SetNmeaSentences() and le_gnss_GetNmeaSentences() functions configure the enabled NMEA
+sentences in the NMEA flow. Please note that the Qualcomm-based firmware release
+<c>SWI9X15A_07.10.15.00</c> is subject to some limitations:
+- Not all NMEA sentences supported by the AT!GPSNMEASENTENCE can be (de)activated through
+the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not available.
+- The Galileo NMEA sentences always appear as not enabled when retrieving their status, even if
+they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
+NMEA sentences.
+
+@section References
 
 See @ref c_gnss API
 

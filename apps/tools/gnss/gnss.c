@@ -81,6 +81,7 @@ void PrintGnssHelp
                 gnss set constellation <ConstellationType>\n\
                 gnss set agpsMode <ModeType>\n\
                 gnss set acqRate <acqRate in milliseconds>\n\
+                gnss set nmeaSentences <nmeaMask>\n\
                 gnss watch [WatchPeriod in seconds]\n\
             \n\
             DESCRIPTION:\n\
@@ -109,27 +110,28 @@ void PrintGnssHelp
                 gnss get <parameter>\n\
                     - Used to get different gnss parameter. Parameters and their descriptions as follow:\n\
                          - ttff --> Time to First Fix (milliseconds)\n\
-                         - acqRate --> Acquisition Rate (unit milliseconds)\n\
-                         - agpsMode --> Agps Mode\n\
+                         - acqRate       --> Acquisition Rate (unit milliseconds)\n\
+                         - agpsMode      --> Agps Mode\n\
+                         - nmeaSentences --> Enabled NMEA sentences (bit mask)\n\
                          - constellation --> GNSS constellation\n\
-                         - posState --> Position fix state(no fix, 2D, 3D etc)\n\
-                         - loc2d --> 2D location (latitude, longitude, horizontal accuracy)\n\
-                         - alt --> Altitude (Altitude, Vertical accuracy)\n\
-                         - loc3d --> 3D location (latitude, longitude, altitude, horizontal accuracy,\n\
-                                     vertical accuracy)\n\
-                         - gpsTime --> Get last updated gps time\n\
-                         - time --> Time of the last updated location\n\
-                         - timeAcc --> Time accuracy in milliseconds\n\
-                         - date --> Date of the last updated location\n\
-                         - hSpeed --> Horizontal speed(Horizontal Speed, Horizontal Speed accuracy)\n\
-                         - vSpeed --> Vertical speed(Vertical Speed, Vertical Speed accuracy)\n\
-                         - motion --> Motion data (Horizontal Speed, Horizontal Speed accuracy,\n\
-                                     Vertical Speed, Vertical Speed accuracy)\n\
-                         - direction --> Direction indication\n\
-                         - satInfo --> Satellites Vehicle information\n\
-                         - satStat --> Satellites Vehicle status\n\
-                         - dop --> Dilution Of Precision for the fixed position\n\
-                         - posInfo--> Get all current position info of the device.\n\
+                         - posState      --> Position fix state(no fix, 2D, 3D etc)\n\
+                         - loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n\
+                         - alt           --> Altitude (Altitude, Vertical accuracy)\n\
+                         - loc3d         --> 3D location (latitude, longitude, altitude, horizontal accuracy,\n\
+                                             vertical accuracy)\n\
+                         - gpsTime       --> Get last updated gps time\n\
+                         - time          --> Time of the last updated location\n\
+                         - timeAcc       --> Time accuracy in milliseconds\n\
+                         - date          --> Date of the last updated location\n\
+                         - hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal Speed accuracy)\n\
+                         - vSpeed        --> Vertical speed(Vertical Speed, Vertical Speed accuracy)\n\
+                         - motion        --> Motion data (Horizontal Speed, Horizontal Speed accuracy,\n\
+                                             Vertical Speed, Vertical Speed accuracy)\n\
+                         - direction     --> Direction indication\n\
+                         - satInfo       --> Satellites Vehicle information\n\
+                         - satStat       --> Satellites Vehicle status\n\
+                         - dop           --> Dilution Of Precision for the fixed position\n\
+                         - posInfo       --> Get all current position info of the device.\n\
                 \n\
                 gnss set constellation <ConstellationType>\n\
                     - Used to set constellation. Allowed when device in 'ready' state. May require\n\
@@ -151,11 +153,15 @@ void PrintGnssHelp
                 gnss set acqRate <acqRate in milliseconds>\n\
                     - Used to set acquisition rate. Please note this is available when device is 'ready' state.\n\
                 \n\
+                gnss set nmeaSentences <nmeaMask>\n\
+                    - Used to set the enabled NMEA sentences. \n\
+                      Bit mask should be set with hexadecimal values, e.g. 7FFF\n\
+                \n\
                 gnss watch [WatchPeriod in seconds]\n\
                     - Used to monitor all gnss information(position, speed, satellites used etc).\n\
                       Here, WatchPeriod is optional. Default time(600s) will be used if not specified\n\
                 \n\
-            Please note, some commands require gnss device to be in specific state(and platform reboot)\n\
+            Please note, some commands require gnss device to be in specific state (and platform reboot)\n\
             to produce valid result. Please look http://legato.io/legato-docs/latest/howToGNSS.html,\n\
             http://legato.io/legato-docs/latest/c_gnss.html and platform documentation for more details.\n\
          ");
@@ -600,6 +606,58 @@ static int SetAgpsMode
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function sets the enabled NMEA sentences.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetNmeaSentences
+(
+    const char* nmeaMaskStr     ///< [IN] Enabled NMEA sentences bit mask.
+)
+{
+    int nmeaMask = le_hex_HexaToInteger(nmeaMaskStr);
+
+    if (nmeaMask < 0)
+    {
+        printf("Bad NMEA sentences mask: %s\n", nmeaMaskStr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetNmeaSentences(nmeaMask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Successfully set enabled NMEA sentences!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set enabled NMEA sentences. See logs for details\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Failed to set enabled NMEA sentences, incompatible bit mask\n");
+            break;
+        case LE_BUSY:
+            printf("Failed to set enabled NMEA sentences, service is busy\n");
+            break;
+        case LE_TIMEOUT:
+            printf("Failed to set enabled NMEA sentences, timeout error\n");
+            break;
+        default:
+            printf("Failed to set enabled NMEA sentences, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
+
+    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
+    return status;
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets ttff(Time to First Fix) value.
  *
  * @return
@@ -758,6 +816,108 @@ static int GetAcquisitionRate
     }
 
     int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
+    return status;
+}
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the enabled NMEA sentences.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetNmeaSentences
+(
+    void
+)
+{
+    le_gnss_NmeaBitMask_t nmeaMask;
+    le_result_t result = le_gnss_GetNmeaSentences(&nmeaMask);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Enabled NMEA sentences bit mask = 0x%08X\n", nmeaMask);
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGGA)
+            {
+                printf("\tGPGGA (GPS fix data) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGSA)
+            {
+                printf("\tGPGSA (GPS DOP and active satellites) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGSV)
+            {
+                printf("\tGPGSV (GPS satellites in view) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPRMC)
+            {
+                printf("\tGPRMC (GPS recommended minimum data) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPVTG)
+            {
+                printf("\tGPVTG (GPS vector track and speed over the ground) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GLGSV)
+            {
+                printf("\tGLGSV (GLONASS satellites in view) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GNGNS)
+            {
+                printf("\tGNGNS (GNSS fix data) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GNGSA)
+            {
+                printf("\tGNGSA (GNSS DOP and active satellites) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GAGGA)
+            {
+                printf("\tGAGGA (Galileo fix data) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GAGSA)
+            {
+                printf("\tGAGSA (Galileo DOP and active satellites) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GAGSV)
+            {
+                printf("\tGAGSV (Galileo satellites in view) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GARMC)
+            {
+                printf("\tGARMC (Galileo recommended minimum data) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GAVTG)
+            {
+                printf("\tGAVTG (Galileo vector track and speed over the ground) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_PSTIS)
+            {
+                printf("\tPSTIS (GPS session start indication) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_PQXFI)
+            {
+                printf("\tPQXFI (Proprietary Qualcomm eXtended Fix Information) enabled\n");
+            }
+            break;
+        case LE_FAULT:
+            printf("Failed to get enabled NMEA sentences. See logs for details\n");
+            break;
+        case LE_BUSY:
+            printf("Failed to get enabled NMEA sentences, service is busy\n");
+            break;
+        case LE_TIMEOUT:
+            printf("Failed to get enabled NMEA sentences, timeout error\n");
+            break;
+        default:
+            printf("Failed to get enabled NMEA sentences, error %d (%s)\n",
+                    result, LE_RESULT_TXT(result));
+            break;
+    }
+
+    int status = (LE_OK == result) ? EXIT_SUCCESS: EXIT_FAILURE;
     return status;
 }
 
@@ -1657,6 +1817,10 @@ static void GetGnssParams
     {
         exit(GetConstellation());
     }
+    else if (strcmp(params, "nmeaSentences") == 0)
+    {
+        exit(GetNmeaSentences());
+    }
     else if ((strcmp(params, "posState") == 0)  ||
              (strcmp(params, "loc2d") == 0)     ||
              (strcmp(params, "alt") == 0)       ||
@@ -1725,6 +1889,10 @@ static int SetGnssParams
     else if (strcmp(argNamePtr, "agpsMode") == 0)
     {
         status = SetAgpsMode(argValPtr);
+    }
+    else if (strcmp(argNamePtr, "nmeaSentences") == 0)
+    {
+        status = SetNmeaSentences(argValPtr);
     }
     else
     {

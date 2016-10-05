@@ -2971,6 +2971,9 @@ le_result_t le_gnss_Disable
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ *
+ * @warning This function may be subject to limitations depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetAcquisitionRate
@@ -3177,3 +3180,132 @@ le_result_t le_gnss_DeleteSuplCertificate
 {
     return pa_gnss_DeleteSuplCertificate(suplCertificateId);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the enabled NMEA sentences using a bit mask.
+ *
+ * @return
+ *  - LE_OK             Success
+ *  - LE_BAD_PARAMETER  Bit mask exceeds the maximal value
+ *  - LE_FAULT          Failure
+ *  - LE_BUSY           Service is busy
+ *  - LE_TIMEOUT        Timeout occurred
+ *  - LE_NOT_PERMITTED  GNSS device is not in "ready" state
+ *
+ * @warning This function may be subject to limitations depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetNmeaSentences
+(
+    le_gnss_NmeaBitMask_t nmeaMask ///< [IN] Bit mask for enabled NMEA sentences.
+)
+{
+    le_result_t result = LE_NOT_PERMITTED;
+
+    // Check if the bit mask is correct
+    if (nmeaMask & ~LE_GNSS_NMEA_SENTENCES_MAX)
+    {
+        LE_ERROR("Unable to set the enabled NMEA sentences, wrong bit mask 0x%08X", nmeaMask);
+        result = LE_BAD_PARAMETER;
+    }
+    else
+    {
+        // Check the GNSS device state
+        switch (GnssState)
+        {
+            case LE_GNSS_STATE_READY:
+            {
+                // Set the enabled NMEA sentences
+                result = pa_gnss_SetNmeaSentences(nmeaMask);
+
+                if (LE_OK != result)
+                {
+                    LE_ERROR("Unable to set the enabled NMEA sentences, error = %d (%s)",
+                              result, LE_RESULT_TXT(result));
+                }
+            }
+            break;
+            case LE_GNSS_STATE_UNINITIALIZED:
+            case LE_GNSS_STATE_ACTIVE:
+            case LE_GNSS_STATE_DISABLED:
+            {
+                LE_ERROR("Bad state for that request [%d]", GnssState);
+                result = LE_NOT_PERMITTED;
+            }
+            break;
+            default:
+            {
+                LE_ERROR("Unknown GNSS state %d", GnssState);
+                result = LE_FAULT;
+            }
+            break;
+        }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the bit mask for the enabled NMEA sentences.
+ *
+ * @return
+ *  - LE_OK             Success
+ *  - LE_FAULT          Failure
+ *  - LE_BUSY           Service is busy
+ *  - LE_TIMEOUT        Timeout occurred
+ *  - LE_NOT_PERMITTED  GNSS device is not in "ready" state
+ *
+ * @note If the caller is passing an null pointer to this function, it is a fatal error
+ *       and the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetNmeaSentences
+(
+    le_gnss_NmeaBitMask_t* nmeaMaskPtr ///< [OUT] Bit mask for enabled NMEA sentences.
+)
+{
+    if (NULL == nmeaMaskPtr)
+    {
+        LE_KILL_CLIENT("nmeaMaskPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    le_result_t result = LE_NOT_PERMITTED;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_READY:
+        {
+            // Get the enabled NMEA sentences
+            result = pa_gnss_GetNmeaSentences(nmeaMaskPtr);
+
+            if (LE_OK != result)
+            {
+                LE_ERROR("Unable to get the enabled NMEA sentences, error = %d (%s)",
+                          result, LE_RESULT_TXT(result));
+            }
+        }
+        break;
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_ACTIVE:
+        case LE_GNSS_STATE_DISABLED:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
