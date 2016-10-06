@@ -1,0 +1,26 @@
+provides:
+{
+    api:
+    {
+        le_spi.api
+    }
+}
+
+sources:
+{
+    spiService.c
+}
+
+cflags:
+{
+    -std=c99
+    -I$LEGATO_ROOT/components/spiLibrary
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_ROOT/components/spiLibrary
+    }
+}

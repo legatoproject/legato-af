@@ -1,0 +1,36 @@
+version: 0.1.0
+sandboxed: true
+start: auto
+
+executables:
+{
+    spiService = ( $LEGATO_ROOT/components/spiService )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = INFO
+    }
+
+    run:
+    {
+        (spiService)
+    }
+
+    faultAction: restart
+}
+
+requires:
+{
+    device:
+    {
+        [rw] /dev/spidev0.0 /dev/
+    }
+}
+
+extern:
+{
+    spiService.spiService.le_spi
+}

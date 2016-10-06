@@ -1,0 +1,222 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_spi SPI
+ *
+ * @ref le_spiLibrary.h "API Reference"
+ *
+ * <HR>
+ *
+ * @section Description
+ *
+ * This API is used by apps to control SPI interface.
+ *
+ * The SPI interace configured is a 4 wire interface
+ * - Clock - Serial Clock
+ * - MOSI - Master Output
+ * - MISO - Master Input
+ * - SS or CS - Chip select
+ *
+ * @section SPI API usage
+ *
+ * Following lines provide example on how to use the SPI API for a user space app
+ *
+ * Handle for passing to related functions to access the SPI device
+ * @code
+ * le_spi_DeviceHandleRef_t spiHandle;
+ * @endcode
+ *
+ * le_spi_Open() -  Opens the spi file handle
+ * @code
+ * le_result_t res;
+ * res = le_spi_Open("spidev0.0", &spiHandle);
+ * LE_FATAL_IF(res != LE_OK, "le_spi_Open failed with result=%s", LE_RESULT_TXT(res));
+ * @endcode
+ *
+ * le_spi_Configure()  - Initialize all the parameters on the master side based on the
+ * Implementation below uses mode = 0, 8 bit data, 960kbps and MSB first
+ * @code
+ * le_spi_Configure(spiHandle, 0, 8, 960000, 0);
+ * @endcode
+ *
+ * le_spi_WriteHD()  - Write  data to slave device in Half Duplex mode
+ * write_buffer_tx is an array. Example defined below:
+ * @code
+ * uinti8_t write_buffer_tx[] ={0xC7, 0x94, 0x80, 0x9A};
+ * le_result_t res;
+ * res = le_spi_WriteHD(spiHandle, write_buffer_tx, NUM_ARRAY_MEMBERS(write_buffer_tx));
+ * LE_FATAL_IF(res != LE_OK, "le_spi_WriteHD failed with result=%s", LE_RESULT_TXT(res));
+ * @endcode
+ *
+ * le_spi_WriteReadHD() - Write and then read to/from slave device in Half Duplex mode.
+ * @code
+ * le_result_t res;
+ * le_spi_WriteReadHD(spiHandle, read_ID_tx, NUM_ARRAY_MEMBERS(read_ID_tx), ID_rx,
+ *                    &readBufferSize);
+ * LE_FATAL_IF(res != LE_OK, "le_spi_WriteReadHD failed with result=%s", LE_RESULT_TXT(res));
+ * @endcode
+ * read_ID_tx is an array that is transmitter to slave and ID_rx is buffer reserved for
+ * data received from slave
+ *
+ * le_spi_WriteReadFD() - Write and read to/from slave in full duplex mode
+ * @code
+ * le_result_t res;
+ * res = le_spi_WriteReadHD(spiHandle, read_buffer_tx, read_rx, NUM_ARRAY_MEMBERS(read_buffer_tx);
+ * LE_FATAL_IF(res != LE_OK, "le_spi_WriteReadHD failed with result=%s", LE_RESULT_TXT(res));
+ * @endcode
+ * read_buffer_tx is an array that is transmitter to slave and read_rx is buffer reserved for
+ * data received from slave. Note buffer size of tx and rx is same
+
+ * le_spi_Close() - Close the spi handle
+ * @code
+ * le_spi_Close(spiHandle);
+ * @endcode
+ *
+ * <HR>
+ *
+ * @section License
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_spiLibrary.h
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max byte storage size for write buffer
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_WRITE_SIZE = 1024;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max byte storage size for read buffer
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_READ_SIZE  = 1024;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handle for passing to related functions to access the SPI device
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE DeviceHandle;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Opens an SPI device so that the attached device may be accessed.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the device name string is bad
+ *      - LE_NOT_FOUND if the SPI device file could not be found
+ *      - LE_NOT_PERMITTED if the SPI device file can't be opened for read/write
+ *      - LE_DUPLICATE if the given device file is already opened by another spiService client
+ *      - LE_FAULT for non-specific failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Open
+(
+    string deviceName [128] IN,  ///< Handle for the SPI master to  open
+    DeviceHandle handle OUT      ///<  Handle for passing to related functions in order to
+                                ///  access the SPI device
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Closes the device associated with the given handle and frees the associated resources.
+ *
+ * @note
+ *      Once a handle is closed, it is not permitted to use it for future SPI access without first
+ *      calling Open.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Close
+(
+    DeviceHandle handle IN  ///< Handle for the SPI master to close
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configures an SPI device
+ *
+ * @note
+ *      This function should be called before any of the Read/Write functions in order to ensure
+ *      that the SPI bus configuration is in a known state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Configure
+(
+    DeviceHandle handle IN,  ///< Handle for the SPI master to configure
+    int mode IN,  ///< Choose mode options for the bus as below
+                  ///< Mode = 0:  Clock polarity = 0, Clock phase = 0, Clock Edge = 1
+                  ///< Mode = 1:  Clock polarity = 0, Clock phase = 1, Clock Edge = 0
+                  ///< Mode = 2:  Clock polarity = 1, Clock phase = 0, Clock Edge = 1
+                  ///< Mode = 3:  Clock polarity = 1, Clock phase = 1, Clock Edge = 0
+    uint8 bits IN,  ///< bits per word, typically 8 bits per word
+    uint32 speed IN,  ///< max speed (Hz), this is slave dependant
+    int msb IN    ///< set as 0 for MSB as first bit or 1 for LSB as first bit
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Performs SPI WriteRead Half Duplex. You can send send Read command/ address of data to read.
+ *
+ * @return
+ *      LE_OK on success or LE_FAULT on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t WriteReadHD
+(
+    DeviceHandle handle IN,  ///< Handle for the SPI master to perform the write-read on
+    uint8 writeData [MAX_WRITE_SIZE] IN, ///< TX command/address being sent to slave with size
+    uint8 readData  [MAX_READ_SIZE] OUT ///< RX response from slave with number of bytes reserved
+                                       /// on master
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SPI Write for Half Duplex Communication
+ *
+ * @return
+ *      LE_OK on success or LE_FAULT on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t WriteHD
+(
+    DeviceHandle handle IN,  ///< Handle for the SPI master to perform the write on
+    uint8 writeData [MAX_WRITE_SIZE] IN  ///< TX command/address being sent to slave with size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SPI Read for Half Duplex Communication
+ *
+ * @return
+ *      LE_OK on success or LE_FAULT on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ReadHD
+(
+    DeviceHandle handle IN,  ///< Handle for the SPI master to perform the read from
+    uint8 readData [MAX_READ_SIZE] OUT  ///< RX response from slave with number of bytes reserved
+                                        ///  on master
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simultaneous SPI Write and  Read for full duplex communication
+ *
+ * @return
+ *      LE_OK on success or LE_FAULT on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t WriteReadFD
+(
+    DeviceHandle handle IN,   ///< Handle for the SPI master to perform full duplex write-read on
+    uint8 writeData [MAX_WRITE_SIZE] IN, ///< TX command/address being sent to slave with size
+    uint8 readData  [MAX_WRITE_SIZE] OUT ///< RX response from slave with same buffer size as TX
+);

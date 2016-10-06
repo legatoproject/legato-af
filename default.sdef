@@ -21,6 +21,7 @@ apps:
     $LEGATO_ROOT/apps/platformServices/gpioService
     $LEGATO_ROOT/apps/platformServices/atClient
     $LEGATO_ROOT/apps/platformServices/atServer
+    $LEGATO_ROOT/apps/platformServices/spiService
 
     // Command-line tools.
     $LEGATO_ROOT/apps/tools/tools
