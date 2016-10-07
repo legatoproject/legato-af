@@ -31,4 +31,9 @@ requires:
         $LEGATO_AUDIO_PA_AMR_DEFAULT
         $LEGATO_AUDIO_PA_AMR
     }
+
+    api:
+    {
+        le_pm.api
+    }
 }

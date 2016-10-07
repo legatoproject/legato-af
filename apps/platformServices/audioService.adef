@@ -21,3 +21,8 @@ extern:
 {
     audioDaemon.audio.le_audio
 }
+
+bindings:
+{
+    audioDaemon.audio.le_pm -> powerMgr.le_pm
+}

@@ -148,6 +148,14 @@ static le_mem_PoolRef_t PcmThreadContextPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Wake Lock for audio streams
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_pm_WakeupSourceRef_t MediaWakeLock;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reads a specified number of bytes from the provided file descriptor into the provided buffer.
  * This function will block until the specified number of bytes is read or an EOF is reached.
  *
@@ -1786,6 +1794,9 @@ le_result_t le_media_PlaySamples
     snprintf(deviceString,sizeof(deviceString),"hw:0,%d", streamPtr->hwDeviceId);
     LE_DEBUG("Hardware interface: %s", deviceString);
 
+    // Request a wakeup source for media streams
+    le_pm_StayAwake(MediaWakeLock);
+
     if ((pa_pcm_InitPlayback(&pcmHandle, deviceString, &(pcmContextPtr->pcmConfig)) != LE_OK)
                             || (pcmHandle == NULL))
     {
@@ -2000,6 +2011,9 @@ le_result_t le_media_Stop
                 streamPtr->mediaThreadRef = NULL;
             }
 
+            // Release the wakeup source for media streams
+            le_pm_Relax(MediaWakeLock);
+
             LE_DEBUG("Interface %d Stopped", streamPtr->audioInterface);
         }
         break;
@@ -2064,6 +2078,9 @@ le_result_t le_media_Capture
     snprintf(deviceString,sizeof(deviceString),"hw:0,%d", streamPtr->hwDeviceId);
     LE_DEBUG("Hardware interface: %s", deviceString);
 
+    // Request a wakeup source for media streams
+    le_pm_StayAwake(MediaWakeLock);
+
     if ((pa_pcm_InitCapture(&pcmHandle, deviceString, &(pcmContextPtr->pcmConfig)) != LE_OK) ||
         (pcmHandle == NULL))
     {
@@ -2078,7 +2095,6 @@ le_result_t le_media_Capture
                                 SetCaptureFrames,
                                 PlayCaptResult,
                                 streamPtr );
-
     if (pa_pcm_Capture(pcmHandle) != LE_OK)
     {
         LE_ERROR("PCM cannot be open");
@@ -2144,4 +2160,7 @@ void le_media_Init
     // Allocate the audio threads params pool.
     PcmThreadContextPool = le_mem_CreatePool("PcmThreadContextPool",
                                                                sizeof(le_audio_PcmContext_t));
+
+    // Create a Wakeup source for Media
+    MediaWakeLock = le_pm_NewWakeupSource( LE_PM_REF_COUNT, "MediaStream" );
 }
