@@ -36,7 +36,8 @@
  * @subpage c_threading <br>
  * @subpage c_timer <br>
  * @subpage c_test <br>
- * @subpage c_utf8
+ * @subpage c_utf8 <br>
+ * @subpage c_tty
  *
  * @section cApiOverview Overview
  * Here is some background info on Legato's C Language APIs.
@@ -205,6 +206,7 @@ extern "C" {
 #include "le_dir.h"
 #include "le_fileLock.h"
 #include "le_json.h"
+#include "le_tty.h"
 
 #ifdef __cplusplus
 }
