@@ -111,7 +111,7 @@ PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty
 PLANTUML_VERSION ?= 8047
 
 # PlantUML file definition
-PLANTUML_JAR = $(PLANTUML_PATH)/plantuml.$(PLANTUML_VERSION).jar
+export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
 
 # ========== TARGET-SPECIFIC VARIABLES ============
 
@@ -214,12 +214,11 @@ user_pdf: localhost build/localhost/Makefile
 	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
 
 # Download of plantuml.jar file
-$(PLANTUML_JAR):
-	wget -L -O $(PLANTUML_JAR) http://sourceforge.net/projects/plantuml/files/plantuml.$(PLANTUML_VERSION).jar/download
+$(PLANTUML_JAR_FILE):
+	wget -L -O $(PLANTUML_JAR_FILE) http://sourceforge.net/projects/plantuml/files/plantuml.$(PLANTUML_VERSION).jar/download
 
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost $(PLANTUML_JAR) build/localhost/Makefile
-	java  -Djava.awt.headless=true -jar $(PLANTUML_JAR) -o $(LEGATO_ROOT)/build/doc/implementation/html $(LEGATO_ROOT)/components/doc/*
+implementation_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
 	$(MAKE) -C build/localhost implementation_docs
 
 implementation_pdf: localhost build/localhost/Makefile
@@ -261,6 +260,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 		cmake ../.. \
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
+			-DPLANTUML_JAR_FILE=$(PLANTUML_JAR_FILE) \
 			-DPA_DIR=$(PA_DIR) \
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \

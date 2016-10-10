@@ -194,8 +194,8 @@ TAB_SIZE               = 4
 # will result in a user-defined paragraph with heading "Side Effects:".
 # You can put \n's in the value part of an alias to insert newlines.
 
-ALIASES                = "startuml{1}=\image html \1\n\image latex \1\n\if DontIgnorePlantUMLCode"
-ALIASES                += "enduml=\endif"
+ALIASES                =
+
 # This tag can be used to specify a number of word-keyword mappings (TCL only).
 # A mapping has the form "name=value". For example adding
 # "class=itcl::class" will allow you to use the command class in the
@@ -740,7 +740,7 @@ EXAMPLE_RECURSIVE      = NO
 # the \image command).
 
 IMAGE_PATH             = "@LEGATO_ROOT@/framework/doc/img" \
-                         "@DOCUMENTATION_OUTPUT_PATH@""
+                         "@DOCUMENTATION_OUTPUT_PATH@/implementation/html/"
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program
@@ -1791,3 +1791,7 @@ GENERATE_LEGEND        = YES
 # the various graphs.
 
 DOT_CLEANUP            = YES
+
+# PlantUML jar file path (used to generate PlantUML diagrams during doxygen generation)
+
+PLANTUML_JAR_PATH = "@PLANTUML_JAR_FILE@"
