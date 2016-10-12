@@ -48,6 +48,7 @@ extern:
     modemDaemon.modemDaemon.le_riPin
     modemDaemon.modemDaemon.le_adc
     modemDaemon.modemDaemon.le_rtc
+    modemDaemon.modemDaemon.le_rsim
 }
 
 executables:

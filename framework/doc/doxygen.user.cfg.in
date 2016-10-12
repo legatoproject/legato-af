@@ -1785,3 +1785,7 @@ GENERATE_LEGEND        = YES
 # the various graphs.
 
 DOT_CLEANUP            = YES
+
+# PlantUML jar file path (used to generate PlantUML diagrams during doxygen generation)
+
+PLANTUML_JAR_PATH = "@PLANTUML_JAR_FILE@"

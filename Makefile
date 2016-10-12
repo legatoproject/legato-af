@@ -203,7 +203,7 @@ package.properties: version sources.md5
 docs: $(PLANTUML_JAR_FILE) user_docs implementation_docs
 
 # Docs for people who don't want to be distracted by the internal implementation details.
-user_docs: localhost build/localhost/Makefile
+user_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
 	$(MAKE) -C build/localhost user_docs
 	rm -f Documentation
 	@if [ -e "docManagement/Makefile" ] ; then \

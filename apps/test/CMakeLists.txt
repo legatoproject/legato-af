@@ -48,6 +48,8 @@ add_subdirectory(modemServices/riPin/riPinIntegrationTest)
 add_subdirectory(modemServices/riPin/riPinUnitTest)
 add_subdirectory(modemServices/ecall/ecallUnitTest)
 add_subdirectory(modemServices/rtc/rtcUnitTest)
+add_subdirectory(modemServices/rsim/rsimIntegrationTest)
+add_subdirectory(modemServices/rsim/rsimUnitTest)
 
 if(    (INCLUDE_ECALL EQUAL 1)
    AND (   (LEGATO_TARGET MATCHES "ar7")

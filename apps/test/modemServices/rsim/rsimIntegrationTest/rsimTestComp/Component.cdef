@@ -1,0 +1,12 @@
+sources:
+{
+    rsimTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_rsim.api
+    }
+}

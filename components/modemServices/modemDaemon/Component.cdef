@@ -24,6 +24,7 @@ provides:
         modemServices/le_riPin.api
         modemServices/le_adc.api
         modemServices/le_rtc.api
+        modemServices/le_rsim.api
     }
 }
 
@@ -46,6 +47,7 @@ sources:
     le_riPin.c
     le_adc.c
     le_rtc.c
+    le_rsim.c
 }
 
 cflags:

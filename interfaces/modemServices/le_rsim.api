@@ -1,0 +1,191 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_rsim Remote SIM service
+ *
+ * @ref le_rsim_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The remote SIM (RSIM) service allows using a remote SIM instead of the internal SIM cards.
+ *
+ * This service allows a user application to convey APDU requests to the remote SIM and APDU
+ * responses to the modem through the RSIM service. The link between the application and the RSIM
+ * service is based on the SIM Access Profile (SAP) specification: the user application must
+ * therefore implement a remote SIM server supporting this specification to handle the remote
+ * SIM card.
+ *
+ * @startuml{le_rsim_Overview.png}
+    interface "Remote SIM card" as SIM
+    SIM <-> [Remote SIM Server application] : APDU
+    [Remote SIM Server application] <-d-> [Legato remote SIM service] : SAP messages
+    [Legato remote SIM service] <-r-> Modem : APDU
+   @enduml
+ *
+ * @note The remote SIM Server application is not part of the Legato implementation and
+ * should be developed by the user.
+ *
+ * @section le_rsim_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService application service.
+ *
+ * Here's a code sample binding to Data Connection services:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_rsim -> modemService.le_rsim
+   }
+   @endverbatim
+ *
+ * @section le_rsim_Communication Communication
+ *
+ * The communication between the application and the remote SIM service uses the SIM Access Profile
+ * (SAP) protocol.
+ *
+ * The latest <a href="https://www.bluetooth.org/DocMan/handlers/DownloadDoc.ashx?doc_id=158740">
+ * V11r00 SAP specification</a> is supported by the remote SIM service. All client-mandatory
+ * features and some optional features are supported. The table below summarizes all SAP messages
+ * supported by the remote SIM service.
+ * <table>
+ * <tr><th>Feature                                  <th>Associated SAP messages          <th>Support in SAP client <th>RSIM support
+ * <tr><td rowspan="5">Connection management        <td>CONNECT_REQ                      <td rowspan="5">Mandatory <td>Supported
+ * <tr>                                             <td>CONNECT_RESP                                               <td>Supported
+ * <tr>                                             <td>DISCONNECT_REQ                                             <td>Supported
+ * <tr>                                             <td>DISCONNECT_RESP                                            <td>Supported
+ * <tr>                                             <td>DISCONNECT_IND                                             <td>Supported
+ * <tr><td rowspan="2">Transfer APDU                <td>TRANSFER_APDU_REQ                <td rowspan="2">Mandatory <td>Supported
+ * <tr>                                             <td>TRANSFER_APDU_RESP                                         <td>Supported
+ * <tr><td rowspan="2">Transfer ATR                 <td>TRANSFER_ATR_REQ                 <td rowspan="2">Mandatory <td>Supported
+ * <tr>                                             <td>TRANSFER_ATR_RESP                                          <td>Supported
+ * <tr><td rowspan="2">Power SIM off                <td>POWER_SIM_OFF_REQ                <td rowspan="2">Optional  <td>Supported
+ * <tr>                                             <td>POWER_SIM_OFF_RESP                                         <td>Supported
+ * <tr><td rowspan="2">Power SIM on                 <td>POWER_SIM_ON_REQ                 <td rowspan="2">Mandatory <td>Supported
+ * <tr>                                             <td>POWER_SIM_ON_RESP                                          <td>Supported
+ * <tr><td rowspan="2">Reset SIM                    <td>RESET_SIM_REQ                    <td rowspan="2">Optional  <td>Supported
+ * <tr>                                             <td>RESET_SIM_RESP                                             <td>Supported
+ * <tr><td>Report Status                            <td>STATUS_IND                       <td>Mandatory             <td>Supported
+ * <tr><td rowspan="2">Transfer Card Reader Status  <td>TRANSFER_CARD_READER_STATUS_REQ  <td rowspan="2">Optional  <td>Not supported
+ * <tr>                                             <td>TRANSFER_CARD_READER_STATUS_RESP                           <td>Not supported
+ * <tr><td>Error handling                           <td>ERROR_RESP                       <td>Mandatory             <td>Supported
+ * <tr><td rowspan="2">Set Transport Protocol       <td>SET_TRANSPORT_PROTOCOL_REQ       <td rowspan="2">Optional  <td>Not supported
+ * <tr>                                             <td>SET_TRANSPORT_PROTOCOL_RESP                                <td>Not supported
+ * </table>
+ *
+ * The application must register a handler function with le_rsim_AddMessageHandler() in order
+ * to receive the SAP messages sent by the remote SIM service. Registering the handler indicates
+ * that the remote SIM server is ready to receive messages and that a remote SIM card is available.
+ * The handler can be deregistered through the le_rsim_RemoveMessageHandler() function when it is
+ * not needed anymore.
+ *
+ * The application can send SAP messages to the remote SIM service with the le_rsim_SendMessage()
+ * function. Message sending is an asynchronous process: a callback can therefore be passed to
+ * le_rsim_SendMessage() in order to receive the sending result for this message.
+ *
+ * @warning The remote SIM service supports only one remote SIM card and can therefore be
+ * connected with only one application.
+ *
+ * @note
+ * - The remote SIM service has to be supported by the modem to be used: check your platform
+ * documentation.
+ * - The remote SIM card should be selected in order to use the remote SIM service.
+ * - As runtime switch is not currently supported, the switch between local and remote SIM card
+ * requires a platform reset to take effect.
+ *
+ * A sample code of a basic remote SIM server is available in the following page:
+ * - @subpage c_rsimTest
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_rsimTest Sample code
+ *
+ * @include "apps/test/modemServices/rsim/rsimIntegrationTest/rsimTestComp/rsimTest.c"
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_rsim_interface.h
+ *
+ * Legato @ref c_rsim API.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remote SIM maximal message size
+ *
+ * @note
+ *  The maximal message size of 276 bytes is based on the longest possible SAP message.
+ *  This message is a @c TRANSFER_APDU_RESP composed of a 4-byte SAP header, a 8-byte ResultCode,
+ *  a 4-byte ResponseAPDU header, 256 bytes of APDU data, 2 status bytes and 2 padding bytes.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_MSG_SIZE = (276);
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Remote SIM minimal message size
+*
+* @note
+*  This minimal length is set to ensure that the communication with the remote SIM server
+*  can be effective.
+*/
+//--------------------------------------------------------------------------------------------------
+DEFINE MIN_MSG_SIZE = (200);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for message notification
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER MessageHandler
+(
+    uint8 message[MAX_MSG_SIZE]     IN  ///< Message to notify
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for message sending result
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CallbackHandler
+(
+    uint8 messageId     IN, ///< Message identifier
+    le_result_t result  IN  ///< Sending result
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event is used to notify and send a message
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Message
+(
+    MessageHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called by the application to send a message to the Legato remote SIM service
+ *
+ * @return
+ *  - LE_OK             Function succeeded
+ *  - LE_BAD_PARAMETER  Message is too long
+ *
+ * @warning The sending process is asynchronous: only the message length is checked by this function
+ * before returning a result. A callback function should be passed as a parameter in order to be
+ * notified of the message sending result.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendMessage
+(
+    uint8 message[MAX_MSG_SIZE]     IN, ///< Message to send
+    CallbackHandler callback        IN  ///< Callback for sending result
+);

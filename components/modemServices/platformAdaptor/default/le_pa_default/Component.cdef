@@ -31,6 +31,7 @@ sources:
     pa_adc_default.c
     pa_rtc_default.c
     pa_riPin_default.c
+    pa_rsim_default.c
 }
 
 cflags:

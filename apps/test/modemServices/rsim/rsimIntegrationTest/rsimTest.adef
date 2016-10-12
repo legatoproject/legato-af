@@ -1,0 +1,25 @@
+executables:
+{
+    rsimTest = ( rsimTestComp )
+}
+
+processes:
+{
+    run:
+    {
+        (rsimTest)
+    }
+
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    rsimTest.rsimTestComp.le_rsim -> modemService.le_rsim
+}
+
