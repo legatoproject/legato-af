@@ -1,23 +1,17 @@
 /** @page apiFilesSyntax Syntax
 
-Legato API files support defining functions, events, handlers (callback functions) and user-defined
-types.
+Legato API files support defining functions, events, handlers as well as custom user-defined types.
 
 @ref apiFilesSyntax_function "Functions" are similar to C functions.
-They can take input and output parameters, and can return a result.
-
-A @ref apiFilesSyntax_handler "handler" is a callback function that can be passed
-as a parameter to a function and can be registered to be called when
-@ref apiFilesSyntax_event "events" occur.
+They take input and output parameters, and return a result.
 
 The API file currently supports:
-- a limited number of pre-defined types
-- a number of different user-defined types.
-
+- pre-defined types
+- user-defined types
 
 @section apiFilesSyntax_types Type Support
 
-The API file currently supports a limited number of pre-defined types.  These are:
+@second Pre-defined Types:
 
 @verbatim
 uint8
@@ -30,18 +24,27 @@ int16
 int32
 int64
 
+double 
+
 string
+
 file
+
 handler
 @endverbatim
 
-The unsigned and signed integer types are self-explanatory.
-See @ref apiFilesSyntax_function for details on the @c string type.
-The @c file type is used to pass an open file descriptor (fd) as a parameter.  This is
-used for passing an fd between a client and server.
-The @c handler type is used for passing a handler as a parameter.
+The @c uint and @c int types are basic data integer types.
 
-The following user-defined types are supported:
+The @c double type is an 8 byte floating-point data type.
+
+The @c string type is a data type used to store text.
+
+The @c file type is used to pass an open file descriptor as a parameter between a client and server.
+
+A @ref apiFilesSyntax_handler "handler" is a callback function used when @ref apiFilesSyntax_event "events" occur.
+
+
+@second User-defined types:
 
  - DEFINE
  - ENUM
