@@ -1,4 +1,4 @@
-/** @page yoctoTargetIPv6 Config ECM IPv6
+/** @page basicTargetIPv6 Config ECM IPv6
 
 Setting up target networking for IPv6 on ECM can be done through the host
 or directly on the target.

@@ -1,0 +1,12 @@
+/** @page basicBuildLegato Build Legato
+
+After you've
+<a href="https://github.com/legatoproject/legato-af#clone-from-github">cloned the source code</a>,
+ensure you have all the @subpage basicBuildPrepDevHost
+"PC host prerequisite packages" installed before proceeding.
+
+Then you're ready to @subpage basicBuildLegato_make for your PC host and target device.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

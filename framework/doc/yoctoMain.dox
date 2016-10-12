@@ -3,7 +3,6 @@
 These topics contain Legato and Yocto platform-specific info:
 | Section                            | Description                                         |
 | ---------------------------------- | --------------------------------------------------- |
-| @subpage yoctoHowToLegato          | details on how to build Legato on the Yocto platform    |
 | @subpage yoctoLegatoOverview       |  Yocto distribution info and how to build an image          |
 | @subpage yoctoInstallNotes         | handy notes for working with the Legato Yocto dist  |
 | @subpage yoctoOutofTreeKernelModule | details on how to handle out-of-tree kernel modules       |

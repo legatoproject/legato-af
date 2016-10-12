@@ -1,10 +1,10 @@
-/** @page yoctoConfigIPusb USB
+/** @page basicTargetConfigIPusb USB
 
 The WP85 module on a mangOH board is pre-configured to use the USB cable.
 
 Connect serial, USB, and power cables.
 
-@section getstartedConfigIPusb_target Target
+@section basicTargetConfigIPusb_target Target
 
 In a terminal, run:
 @code minicom /dev/ttyUSB0 @endcode
@@ -38,7 +38,14 @@ usb0      Link encap:Ethernet  HWaddr 32:E4:5E:6F:C4:3C
           RX bytes:32111 (31.3 KiB)  TX bytes:6725 (6.5 KiB)
 @endcode
 
-Note that usb0 has an inet addr value. If it doesn't display an inet value, try rebooting the target and rerun @c ifconfig
+Note that usb0 has an inet addr value. If it doesn't display an inet value and it's already
+configred, try rebooting the target and rerun @c ifconfig.
+
+If  USB isn't configured on a WP target, then delete @c /mnt/flash/ufs/etc and reboot:
+@code
+ # rm -rf /mnt/flash/ufs/etc
+ # reboot
+@endcode
 
 @section getstartedConfigIPusb_host Host
 
@@ -46,7 +53,7 @@ Open a new terminal on the host.
 
 @c cd to your Legato directory.
 
-Run @ref yoctoBuildLegato_configShell_binlegs to set up your shell environment.
+Run @ref basicBuildLegato_configShell_binlegs to set up your shell environment.
 
 Run:
 @code

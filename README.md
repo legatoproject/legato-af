@@ -9,13 +9,14 @@ Welcome to Legato!
   - Install required packages:
 
 ```
-$ sudo apt-get install vim expect-dev build-essential cmake coreutils curl \
-    fakeroot sed git-core gawk unzip wget diffstat python python-jinja2 \
-    python-pip python-pyparsing python-pysqlite2 python-bs4 bison flex \
-    chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev \
-    libxml-libxml-perl m4 clang ninja-build autoconf pkg-config doxygen graphviz
+$ sudo apt-get build-essential \
+ python python-jinja2 \
+ git subversion libsdl-dev \
+ diffstat texinfo gawk chrpath wget cpio \
+ vim zsh icecc bash ninja-build screen sshpass \
+ bc python-git unzip libxml2-utils
 ```
-
+Optional packages: ```vim zsh icecc```
   - Cross-build toolchain(s)
     For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/resources/legato/downloads/
 
@@ -60,7 +61,8 @@ repositories.
 
   2. cd into that directory
 
-  3. run ```make```
+  3. run [make wp85](http://legato.io/legato-docs/latest/basicBuildLegato_make.html)
+     replace ```wp 85``` with the target type ID you're building.
 
   4. To configure your bash shell's environment for the Legato application build tools,
      source ```bin/configlegatoenv```:

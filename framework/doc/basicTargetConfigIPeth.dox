@@ -1,9 +1,12 @@
-/** @page yoctoConfigIPeth Ethernet
+/** @page basicTargetConfigIPeth Ethernet
+
+@warning @c ssh to Ethernet has temporarily been disabled in Legato 16.10.0. If you must enable
+your ssh to Ethernet, here are some @subpage basicTargetConfigIPethEnable "methods".
 
 The WP85 module on a MangOH board can use an Ethernet connection to a local area network to configure
 the IP addresses.
 
-Connect the serial, Ethernet, and power cables
+Connect the serial, Ethernet, and power cables.
 
 In a terminal, run:
 

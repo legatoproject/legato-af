@@ -1,9 +1,6 @@
-/** @page yoctoLegatoHostDirs Host Directories
+/** @page basicBuildLegatoHostDirs Host Directories
 
 These are the top level Legato Dev Host directories installed:
-
-<b>3rdParty </b> -
-CUnit system used for automated unit testing.
 
 <b>apps </b> -
 apps, including audio, data, modem and positioning services, samples and test apps.
@@ -26,11 +23,14 @@ pre-built audio, data, modem and positioning components.
 <b>framework</b> -
 source code for the Legato framework.
 
-<b>interfaces </b> -
-pre-built audio, data, modem and positioning interfaces.
-
 <b>targetFiles </b> -
 files for installation on target devices.
+
+<b>platformAdaptor</b> -
+components specific to certain platforms.
+
+<b>modules</b> -
+other repositories that extend Legato.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

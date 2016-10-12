@@ -1,9 +1,9 @@
-/** @page yoctoConfigIP Configure IP Address
+/** @page basicTargetConfigIP Configure IP Address
 
 There are a few ways to configure a target IP address:
 
-@subpage yoctoConfigIPusb <br>
-@subpage yoctoConfigIPeth
+@subpage basicTargetConfigIPusb <br>
+@subpage basicTargetConfigIPeth
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

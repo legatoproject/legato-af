@@ -1,9 +1,9 @@
-/** @page yoctoTargetSW Update Target Software
+/** @page basicTargetSW Update Target Software
 
 Your target device should have come with a working Legato framework installed on it already.
 
-To update the application and framework binaries on your target with the ones you built in
-@ref yoctoBuildLegato, use the @c update tool to pass the system update pack to the target
+To update the app and framework binaries on your target with the ones you built in
+@ref basicBuildLegato, use the @c update tool to pass the system update pack to the target
 device for installation.
 @code
 $ update build/wp85/system.wp85.update 192.168.2.2

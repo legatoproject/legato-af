@@ -21,7 +21,7 @@ On the host PC:
 - @ref howToDebugGDB_launchGDBhost "Launch" @c gdbserver on the host PC.
 - @ref howToDebugGDB_remoteConnect "Remote connect" to the target and run regular @c gdb commands.
 
-See @ref yoctoConfigIP if you need to setup your host/target communications.
+See @ref basicTargetConfigIP if you need to setup your host/target communications.
 
 @section howToDebugGDB_sampleCode Sample Code
 The following simple app sample code is used in this topic's examples.

@@ -1,0 +1,12 @@
+/** @page basicBuild Build Legato
+
+These topics contain info on how to build or uninstall Legato application framework:
+
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage basicBuildLegato |   how to build Legato   |
+| @subpage basicBuildUninstallLegato  |   remove Legato framework  |
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

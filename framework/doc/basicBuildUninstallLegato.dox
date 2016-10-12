@@ -1,4 +1,4 @@
-/** @page yoctoUninstallLegato Uninstall Legato
+/** @page basicBuildUninstallLegato Uninstall Legato
 
 
 To uninstall Legato from your dev host, delete the directory where you extracted

@@ -1,0 +1,14 @@
+/** @page basicTarget Configure Target
+
+These topics describe how to start working with a Legato host PC and a target device:
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage basicTargetHostCom  |  tips to communicate with target |
+| @subpage basicTargetConfigIP  | configure target IP address  |
+| @subpage basicTargetIPv6 |  configure target for IPv6    |
+| @subpage basicTargetSW | install software on target   |
+| @subpage basicTargetRecover   | restore target with Linux Android SDK   |
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
