@@ -65,6 +65,8 @@
  *
  * @warning Be sure check the supported antenna diagnostic limit for your specific platform.
  *
+ * @subpage platformConstraintsAntenna Platform Constraints
+ *
  * @subsection le_antenna_gnss_diag Diagnostics principle
  *
  * This functionality detects (or not) the presence of an antenna or a defective
