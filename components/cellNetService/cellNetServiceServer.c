@@ -483,6 +483,7 @@ static void* CellNetThread
     le_cfg_ConnectService();
     le_mrc_ConnectService();
     le_sim_ConnectService();
+    le_secStore_ConnectService();
 
     LE_INFO("CellNet Thread Started");
 
