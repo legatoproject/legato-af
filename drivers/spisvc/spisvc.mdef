@@ -1,0 +1,13 @@
+//-------------------------------------------------------------------------------------------------
+// Definition file for spisvc kernel module.
+//
+// Inserting this kernel module results in the creation of a spidev-type device /dev/spidev0.0.
+// Removing this module removes the device. The device uses CS0 so any other SPI driver attempting
+// to use the same chip-select would report a conflict.
+//
+// For use with a MangOH reference design, SPI device has to be plugged into IoT slot 0.
+//
+// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+//-------------------------------------------------------------------------------------------------
+
+preBuilt: $LEGATO_ROOT/drivers/spisvc/spisvc.ko
