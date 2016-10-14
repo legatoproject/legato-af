@@ -18,8 +18,15 @@ sources:
 
 cflags:
 {
+    $LEGATO_FEATURE_OBSERVE
+    $LEGATO_FEATURE_TIMESERIES
     -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
     -I${LEGATO_ROOT}/framework/c/src    // TODO: Remove this encapsulation breakage.
+}
+
+ldflags:
+{
+    ${LDFLAG_LEGATO_TIMESERIES}
 }
 
 requires:

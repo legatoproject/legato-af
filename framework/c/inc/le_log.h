@@ -418,6 +418,15 @@ void _le_log_SetFilterLevel
     le_log_Level_t level
 );
 
+void _le_LogData
+(
+    const uint8_t* dataPtr,             // The buffer address to be dumped
+    int dataLength,                     // The data length of buffer
+    const char* filenamePtr,            // The name of the source file that logged the message.
+    const char* functionNamePtr,        // The name of the function that logged the message.
+    const unsigned int lineNumber       // The line number in the source file that logged the message.
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -473,6 +482,8 @@ LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 /** @copydoc LE_LOG_DEBUG */
 #define LE_DEBUG(formatString, ...)     _LE_LOG_MSG(LE_LOG_DEBUG, formatString, ##__VA_ARGS__)
+/** @copydoc LE_LOG_DATA */
+#define LE_DUMP(dataPtr, dataLength)    _le_LogData(dataPtr, dataLength, STRINGIZE(LE_FILENAME), __func__, __LINE__)
 /** @copydoc LE_LOG_INFO */
 #define LE_INFO(formatString, ...)      _LE_LOG_MSG(LE_LOG_INFO, formatString, ##__VA_ARGS__)
 /** @copydoc LE_LOG_WARN */

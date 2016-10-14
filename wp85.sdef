@@ -101,9 +101,6 @@ buildVars:
 {
     LEGATO_FEATURE_AVMS_CONFIG = -DLEGATO_FEATURE_AVMS_CONFIG
 
-    // Uncomment the following line, if firmware supports block transfer mode.
-    // LEGATO_FEATURE_BLOCK_TRANSFER = -DLEGATO_FEATURE_BLOCK_TRANSFER
-
     // Uncomment the following line, if firmware supports lwm2m observe.
     // LEGATO_FEATURE_OBSERVE = -DLEGATO_FEATURE_OBSERVE
 

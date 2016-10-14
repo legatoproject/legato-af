@@ -77,6 +77,37 @@
  * notify if Observe is enabled on that asset. The notify contains only the value of the changed
  * field.
  *
+ * @section le_avdata_timeseries Time Series
+ *
+ * Time series is an Airvantage specific LWM2M feature built on top of LWM2M Observe.
+ * This feature enables user apps to collect sensor data when the device is offline. Starting and
+ * stopping time series data on a resource is controlled by user app. le_avData_StartTimeSeries()
+ * allows user app to start time series data on a resource and le_avData_StopTimeSeries() stops
+ * collecting time series data on a resource. User app can open an avms session and push the
+ * collected history data to cloud using le_avData_PushTimeSeries().
+ *
+ * The buffer size that can be allocated for history data is capped at 1024 bytes. Bytes transmitted
+ * over the air can be reduced by choosing an appropriate factor. For example if the sampled integer
+ * data is a multiple of 1000, the encoded data will be smaller if a factor of 0.001 is used.
+ * For float fields if a factor other than 1 is used the data will be encoded as integer to save
+ * bytes transported over the air. For example if the resolution of float data is 0.01
+ * a factor of 100 can be used to represent .01 as 1 and encoding this an integer thus saving memory.
+ *
+ * le_avdata_RecordInt(), le_avdata_RecordFloat(), le_avdata_RecordBool() and
+ * le_avdata_RecordString() can be used to pass a user specified time stamp. The user specified
+ * time stamp must be in milli seconds elapsed since epoch.
+ *
+ * @note Observe has to be enabled on the resource before time series can be enabled. User apps can
+ * use le_avData_IsObserve() to know if Observe is enabled on a resource before enabling time series.
+ *
+ * @note Sytem time is used as time stamp for history data if le_avData_Set(). It is up to the
+ * device administrator to make sure system time is up to date before starting time series.
+ * le_avData_Record() function can be used to pass a user specified timestamp.
+ *
+ * @note LEGATO_FEATURE_TIMESERIES has to be enabled in targetdefs to build avcService with
+ * time series. The time series feature depends on the cbor libraries in yocto; yocto image has to
+ * be updated on the device if time series is turned on in avcService.
+ *
  * @section le_avdata_fatal Fatal Behavior
  *
  * An invalid asset name or field name is treated as a fatal error (i.e. non-recoverable)
@@ -196,7 +227,7 @@ FUNCTION Delete
 /**
  * Get the value of an integer setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetInt
@@ -211,10 +242,18 @@ FUNCTION GetInt
 /**
  * Set the value of an integer variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetInt
+FUNCTION le_result_t SetInt
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
@@ -225,7 +264,7 @@ FUNCTION SetInt
 /**
  * Get the value of a float setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetFloat
@@ -240,10 +279,18 @@ FUNCTION GetFloat
 /**
  * Set the value of a float variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
- */
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetFloat
+FUNCTION le_result_t SetFloat
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
@@ -255,7 +302,7 @@ FUNCTION SetFloat
 /**
  * Get the value of a boolean setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetBool
@@ -270,10 +317,18 @@ FUNCTION GetBool
 /**
  * Set the value of a boolean variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetBool
+FUNCTION le_result_t SetBool
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
@@ -285,7 +340,7 @@ FUNCTION SetBool
 /**
  * Get the value of a string setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetString
@@ -300,10 +355,18 @@ FUNCTION GetString
 /**
  * Set the value of a string variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the stored string was truncated or
+ *                    if the current entry was NOT added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetString
+FUNCTION le_result_t SetString
 (
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
@@ -315,7 +378,7 @@ FUNCTION SetString
 /**
  * Get the value of a binary data setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION GetBinary
@@ -330,7 +393,7 @@ FUNCTION GetBinary
 /**
  * Set the value of a binary data variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION SetBinary
@@ -339,5 +402,224 @@ FUNCTION SetBinary
     string fieldName[FIELD_NAME_LEN] IN,
     uint8 value[BINARY_VALUE_LEN] IN
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate resources and set up cbor stream so that we can start accumulating time series
+ * data on the specified field.
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ *
+ * @note Currently the buffer size of time series data is limited to 1024 bytes. When the buffer
+ *       overflows the device has to push the buffer before recording new entries.
+ *
+ * @note Factor is applicable only for integer and float fields. For all other fields factor will be
+ *       silently ignored. Also a factor of "0" will be ignored for integer resources. The factor
+ *       will be applied (multiplication) before encoding the sample.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY if time series already enabled on this field
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartTimeSeries
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    double factor IN,
+    double timeStampFactor IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop time series on this field and free resources.
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_CLOSED if timeseries already stopped
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StopTimeSeries
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compress the accumulated CBOR encoded time series data and send it to server. After the data is
+ * pushed, time series will be stopped and not started again unless isRestartTimeSeries is true.
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_FAULT if any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PushTimeSeries
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    bool isRestartTimeSeries
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is time series enabled on this resource, if yes how many data points are recorded so far?
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if time series not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTimeSeriesStatus
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    bool isTimeSeries OUT,
+    int numDataPoint OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of an integer variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetInt() except that it provides an option to pass the
+ *       timestamp. SetInt() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordInt
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    int32 value IN,
+    uint64 timestamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a float variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetFloat() except that it provides an option to pass the
+ *       timestamp. SetFloat() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordFloat
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    double value IN,
+    uint64 timestamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a boolean variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetBool() except that it provides an option to pass the
+ *       timestamp. SetBool() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordBool
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    bool value IN,
+    uint64 timeStamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a string variable field in time series
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetString() except that it provides an option to pass the
+ *       timestamp. SetString() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the stored string was truncated or
+ *                    if the current entry was NOT added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordString
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] IN,
+    uint64 timeStamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is this resource enabled for observe notifications?
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t IsObserve
+(
+    AssetInstance instRef IN,
+    string fieldName[FIELD_NAME_LEN] IN,
+    bool isObserve OUT
+);
+
+
 
 

@@ -39,6 +39,23 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Number of maps (called objects in JSON) in the CBOR encoded data (header, factor & sample).
+ */
+//--------------------------------------------------------------------------------------------------
+#define NUM_TIME_SERIES_MAPS 3
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Number of bytes reserved in the CBOR stream. After all the samples are added to CBOR stream few
+ *  more bytes are needed to close the sample array and the stream.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CBOR_RESERVED_BYTES 32
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Actions that can happen on field or asset
  */
 //--------------------------------------------------------------------------------------------------
@@ -985,6 +1002,101 @@ void assetData_CancelAllObserve
 );
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate resources and start accumulating time series data on the specified field.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_BUSY if time series already enabled on this field
+ *      - LE_FAULT any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_StartTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to be accumulated
+    double factor,                              ///< [IN] Factor used for delta encoding of values
+    double timeStampFactor                      ///< [IN] Factor used for delta encoding of time stamp
+);
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop time series on this field and free resources.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_CLOSED if timeseries already stopped
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_StopTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId                                 ///< [IN] Field to be stopped from data accumulation
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compress the accumulated CBOR encoded time series data and send it to server.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_FAULT if any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_PushTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to be Flushed
+    bool isRestartTimeSeries                    ///< [IN] Restart time series after push?
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is time series enabled on this resource, if yes how many data points are recorded so far?
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_GetTimeSeriesStatus
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field id
+    bool* isTimeSeriesPtr,                      ///< [OUT] Is time series enabled on this field
+    int* numDataPointsPtr                       ///< [OUT] Number of data points recorded so far
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is this resource enabled for observe notifications?
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_IsObserve
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    bool *isObserve                             ///< [IN] Is observe enabled on this field?
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Sends a registration update to the server.
@@ -994,7 +1106,6 @@ LE_SHARED void assetData_RegistrationUpdate
 (
     void
 );
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1007,6 +1118,124 @@ LE_SHARED void assetData_RegUpdateIfNotObserved
 (
     assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
 );
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of an integer variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetInt() except that it provides an option to pass the
+ *       timestamp. SetInt() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t assetData_client_RecordInt
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    int value,                                  ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a float variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetFloat() except that it provides an option to pass the
+ *       timestamp. SetFloat() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t assetData_client_RecordFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    double value,                               ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a boolean variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetBool() except that it provides an option to pass the
+ *       timestamp. SetBool() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_FAULT on any other error
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t assetData_client_RecordBool
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    bool value,                                 ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a string variable field in time series
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetBool() except that it provides an option to pass the
+ *       timestamp. SetBool() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the stored string was truncated or
+ *                    if the current entry was NOT added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t assetData_client_RecordString
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    const char* strPtr,                         ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+);
+
 
 #endif // LEGATO_ASSET_DATA_INCLUDE_GUARD
 

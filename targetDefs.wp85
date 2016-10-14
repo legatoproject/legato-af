@@ -34,8 +34,13 @@ export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
 export LEGATO_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA)
 
 export LEGATO_FEATURE_AVMS_CONFIG = -DLEGATO_FEATURE_AVMS_CONFIG
-export LEGATO_FEATURE_BLOCK_TRANSFER = -DLEGATO_FEATURE_BLOCK_TRANSFER
 export LEGATO_FEATURE_OBSERVE = -DLEGATO_FEATURE_OBSERVE
+
+# Uncomment following lines to enable time series. LEGATO_FEATURE_OBSERVE has to be enabled
+# for time series to work. Yocto image has to be updated on device through FOTAto include the
+# libraries needed for time series.
+# export LEGATO_FEATURE_TIMESERIES = -DLEGATO_FEATURE_TIMESERIES
+# export LDFLAG_LEGATO_TIMESERIES = -lz -ltinycbor
 
 # Audio HW settings
 MKSYS_FLAGS += -C "-DPCM_IF="AUX""

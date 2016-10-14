@@ -602,6 +602,7 @@ pa_avc_LWM2MOperationDataRef_t pa_avc_CreateOpData
     int objInstId,
     int resourceId,
     pa_avc_OpType_t opType,
+    uint16_t contentType,
     uint8_t* tokenPtr,
     uint8_t tokenLength
 )
@@ -609,6 +610,8 @@ pa_avc_LWM2MOperationDataRef_t pa_avc_CreateOpData
     LE_ERROR("Unsupported function called.");
     return NULL;
 }
+
+
 
 //--------------------------------------------------------------------------------------------------
 /**

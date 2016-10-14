@@ -367,7 +367,7 @@ void le_avdata_Delete
 /**
  * Get the value of an integer setting field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 void le_avdata_GetInt
@@ -404,10 +404,18 @@ void le_avdata_GetInt
 /**
  * Set the value of an integer variable field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-void le_avdata_SetInt
+le_result_t le_avdata_SetInt
 (
     le_avdata_AssetInstanceRef_t instRef,
         ///< [IN]
@@ -419,6 +427,8 @@ void le_avdata_SetInt
         ///< [IN]
 )
 {
+    le_result_t result;
+
     // Map safeRef to desired data
     instRef = GetInstRefFromSafeRef(instRef, __func__);
 
@@ -429,10 +439,18 @@ void le_avdata_SetInt
         LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
     }
 
-    if ( assetData_client_SetInt(instRef, fieldId, value) != LE_OK )
+    result = assetData_client_SetInt(instRef, fieldId, value);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
     {
         LE_ERROR("Error setting field=%i", fieldId);
     }
+
+    return result;
 }
 
 
@@ -440,7 +458,8 @@ void le_avdata_SetInt
 /**
  * Get the value of a float setting field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
  */
 //--------------------------------------------------------------------------------------------------
 void le_avdata_GetFloat
@@ -477,10 +496,18 @@ void le_avdata_GetFloat
 /**
  * Set the value of a float variable field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-void le_avdata_SetFloat
+le_result_t le_avdata_SetFloat
 (
     le_avdata_AssetInstanceRef_t instRef,
         ///< [IN]
@@ -492,6 +519,8 @@ void le_avdata_SetFloat
         ///< [IN]
 )
 {
+    le_result_t result;
+
     // Map safeRef to desired data
     instRef = GetInstRefFromSafeRef(instRef, __func__);
 
@@ -502,10 +531,18 @@ void le_avdata_SetFloat
         LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
     }
 
-    if ( assetData_client_SetFloat(instRef, fieldId, value) != LE_OK )
+    result = assetData_client_SetFloat(instRef, fieldId, value);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
     {
         LE_ERROR("Error setting field=%i", fieldId);
     }
+
+    return result;
 }
 
 
@@ -513,7 +550,7 @@ void le_avdata_SetFloat
 /**
  * Get the value of a boolean setting field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 void le_avdata_GetBool
@@ -550,10 +587,18 @@ void le_avdata_GetBool
 /**
  * Set the value of a boolean variable field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-void le_avdata_SetBool
+le_result_t le_avdata_SetBool
 (
     le_avdata_AssetInstanceRef_t instRef,
         ///< [IN]
@@ -565,6 +610,8 @@ void le_avdata_SetBool
         ///< [IN]
 )
 {
+    le_result_t result;
+
     // Map safeRef to desired data
     instRef = GetInstRefFromSafeRef(instRef, __func__);
 
@@ -575,10 +622,18 @@ void le_avdata_SetBool
         LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
     }
 
-    if ( assetData_client_SetBool(instRef, fieldId, value) != LE_OK )
+    result = assetData_client_SetBool(instRef, fieldId, value);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
     {
         LE_ERROR("Error setting field=%i", fieldId);
     }
+
+    return result;
 }
 
 
@@ -586,7 +641,7 @@ void le_avdata_SetBool
 /**
  * Get the value of a string setting field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 void le_avdata_GetString
@@ -626,10 +681,18 @@ void le_avdata_GetString
 /**
  * Set the value of a string variable field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the stored string was truncated or
+ *                    if the current entry was NOT added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-void le_avdata_SetString
+le_result_t le_avdata_SetString
 (
     le_avdata_AssetInstanceRef_t instRef,
         ///< [IN]
@@ -641,6 +704,8 @@ void le_avdata_SetString
         ///< [IN]
 )
 {
+    le_result_t result;
+
     // Map safeRef to desired data
     instRef = GetInstRefFromSafeRef(instRef, __func__);
 
@@ -651,10 +716,18 @@ void le_avdata_SetString
         LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
     }
 
-    if ( assetData_client_SetString(instRef, fieldId, value) != LE_OK )
+    result = assetData_client_SetString(instRef, fieldId, value);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
     {
         LE_ERROR("Error setting field=%i", fieldId);
     }
+
+    return result;
 }
 
 
@@ -662,7 +735,7 @@ void le_avdata_SetString
 /**
  * Get the value of a binary data setting field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 void le_avdata_GetBinary
@@ -689,7 +762,7 @@ void le_avdata_GetBinary
 /**
  * Set the value of a binary data variable field
  *
- * @note It is a fatal error if the instRef is not valid, or the field does not exist
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
  */
 //--------------------------------------------------------------------------------------------------
 void le_avdata_SetBinary
@@ -708,6 +781,460 @@ void le_avdata_SetBinary
 )
 {
     LE_ERROR("Not implemented yet");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is this resource enabled for observe notifications?
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_IsObserve
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    bool* isObserve
+        ///< [IN]
+)
+{
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+       LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_IsObserve(instRef, fieldId, isObserve) != LE_OK )
+    {
+        LE_ERROR("Error getting field=%i", fieldId);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate resources and start accumulating time series data on the specified field.
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_StartTimeSeries
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    double factor,
+        ///< [IN]
+
+    double timeStampFactor
+        ///< [IN]
+)
+{
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_StartTimeSeries(instRef, fieldId, factor, timeStampFactor) != LE_OK )
+    {
+        LE_ERROR("Error setting time series on field =%i", fieldId);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop time series on this field and free resources.
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_StopTimeSeries
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName
+        ///< [IN]
+)
+{
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_StopTimeSeries(instRef, fieldId) != LE_OK )
+    {
+        LE_ERROR("Error stopping time series on field =%i", fieldId);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compress the accumulated CBOR encoded time series data and send it to server.
+ *
+ * @note client will be terminated if instRef isn't valid, or the field doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_PushTimeSeries
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    bool isRestartTimeSeries
+        ///< [IN]
+)
+{
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_PushTimeSeries(instRef, fieldId, isRestartTimeSeries) != LE_OK )
+    {
+        LE_ERROR("Error flushing time series on field =%i", fieldId);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of an integer variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetInt() except that it provides an option to pass the
+ *       timestamp. SetInt() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_RecordInt
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    int32_t value,
+        ///< [IN]
+
+    uint64_t timeStamp
+        ///< [IN]
+)
+{
+    le_result_t result;
+
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    result = assetData_client_RecordInt(instRef, fieldId, value, timeStamp);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
+    {
+        LE_ERROR("Error setting field=%i", fieldId);
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a float variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetFloat() except that it provides an option to pass the
+ *       timestamp. SetFloat() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_RecordFloat
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    double value,
+        ///< [IN]
+
+    uint64_t timeStamp
+        ///< [IN]
+)
+{
+    le_result_t result;
+
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    result = assetData_client_RecordFloat(instRef, fieldId, value, timeStamp);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
+    {
+        LE_ERROR("Error setting field=%i", fieldId);
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a boolean variable field in time series.
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetBool() except that it provides an option to pass the
+ *       timestamp. SetBool() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_RecordBool
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    bool value,
+        ///< [IN]
+
+    uint64_t timeStamp
+        ///< [IN]
+)
+{
+    le_result_t result;
+
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    result = assetData_client_RecordBool(instRef, fieldId, value, timeStamp);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
+    {
+        LE_ERROR("Error setting field=%i", fieldId);
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a string variable field in time series
+ *
+ * @note The client will be terminated if the instRef is not valid, or the field doesn't exist
+ *
+ * @note This function is the same as the SetString() except that it provides an option to pass the
+ *       timestamp. SetString() can be used to record time series with system time as the timestamp.
+ *       Timestamp should be in milli seconds elapsed since epoch.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the stored string was truncated or
+ *                    if the current entry was NOT added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_RecordString
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    const char* value,
+        ///< [IN]
+
+    uint64_t timeStamp
+        ///< [IN]
+)
+{
+    le_result_t result;
+
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    result = assetData_client_RecordString(instRef, fieldId, value, timeStamp);
+
+    if (result == LE_NO_MEMORY)
+    {
+        LE_WARN("Time series buffer full for field=%i", fieldId);
+    }
+    else if (result != LE_OK)
+    {
+        LE_ERROR("Error setting field=%i", fieldId);
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is time series enabled on this resource, if yes how many data points are recorded so far?
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT if time series not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avdata_GetTimeSeriesStatus
+(
+    le_avdata_AssetInstanceRef_t instRef,
+        ///< [IN]
+
+    const char* fieldName,
+        ///< [IN]
+
+    bool *isTimeSeriesPtr,
+        ///< [OUT],
+
+    int *numDataPointsPtr
+        ///< [OUT],
+)
+{
+    // Map safeRef to desired data
+    instRef = GetInstRefFromSafeRef(instRef, __func__);
+
+    int fieldId;
+
+    if ( assetData_GetFieldIdFromName(instRef, fieldName, &fieldId) != LE_OK )
+    {
+        LE_KILL_CLIENT("Invalid instance '%p' or unknown field name '%s'", instRef, fieldName);
+    }
+
+    if ( assetData_client_GetTimeSeriesStatus(instRef, fieldId,
+                                              isTimeSeriesPtr, numDataPointsPtr) != LE_OK )
+    {
+        LE_ERROR("Error reading time series status on field =%i", fieldId);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 
