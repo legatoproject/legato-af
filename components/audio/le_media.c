@@ -1790,8 +1790,7 @@ le_result_t le_media_PlaySamples
                             || (pcmHandle == NULL))
     {
         LE_ERROR("PCM cannot be open");
-        le_mem_Release(streamPtr->pcmContextPtr);
-        streamPtr->pcmContextPtr = NULL;
+        le_media_Stop(streamPtr);
         return LE_FAULT;
     }
 
@@ -1804,9 +1803,8 @@ le_result_t le_media_PlaySamples
 
     if (pa_pcm_Play(pcmHandle) != LE_OK)
     {
-        le_mem_Release(streamPtr->pcmContextPtr);
-        streamPtr->pcmContextPtr = NULL;
         LE_ERROR("Error in pa_pcm_Write");
+        le_media_Stop(streamPtr);
         return LE_FAULT;
     }
 
@@ -2070,7 +2068,7 @@ le_result_t le_media_Capture
         (pcmHandle == NULL))
     {
         LE_ERROR("PCM cannot be open");
-        le_mem_Release(pcmContextPtr);
+        le_media_Stop(streamPtr);
         return LE_FAULT;
     }
 
@@ -2084,7 +2082,7 @@ le_result_t le_media_Capture
     if (pa_pcm_Capture(pcmHandle) != LE_OK)
     {
         LE_ERROR("PCM cannot be open");
-        le_mem_Release(pcmContextPtr);
+        le_media_Stop(streamPtr);
         return LE_FAULT;
     }
 

@@ -2815,13 +2815,7 @@ le_result_t le_audio_PlayFile
         return res;
     }
 
-    if (le_media_PlaySamples(streamPtr, &samplePcmConfig) != LE_OK)
-    {
-        le_media_Stop(streamPtr);
-        return LE_FAULT;
-    }
-
-    return LE_OK;
+    return le_media_PlaySamples(streamPtr, &samplePcmConfig);
 }
 
 //--------------------------------------------------------------------------------------------------
