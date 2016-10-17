@@ -102,13 +102,19 @@
 #define LE_ECALL_SEM_TIMEOUT_SEC         3
 #define LE_ECALL_SEM_TIMEOUT_USEC        0
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Unlimited dial attempts for eCall session (used for PAN-European system)
  */
 //--------------------------------------------------------------------------------------------------
 #define UNLIMITED_DIAL_ATTEMPTS      UINT32_MAX
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Size of eCall events memory pool
+ */
+//--------------------------------------------------------------------------------------------------
+#define ECALL_EVENTS_POOL_SIZE      3
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -255,6 +261,18 @@ typedef struct
 ReportState_t;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Data associated with an eCall event passed to the main thread
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_ecall_State_t state;                     ///< New eCall state
+    bool             terminationReceived;       ///< End of call termination reason received
+}
+ECallEventData_t;
+
+//--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
 
@@ -313,6 +331,20 @@ static msd_EraGlonassData_t EraGlonassDataObj;
  */
 //--------------------------------------------------------------------------------------------------
 static le_sem_Ref_t SemaphoreRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Store the main thread, needed to queue a function treating eCall events to this thread.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t MainThread = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool used to pass eCall events to the main thread
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t ECallEventsPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1518,23 +1550,26 @@ static void FirstLayerECallStateChangeHandler
     clientHandlerFunc(reportStatePtr->ref, reportStatePtr->state, le_event_GetContextPtr());
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Internal eCall State handler function.
+ * Processing of new eCall state.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void ECallStateHandler
+static void ProcessECallState
 (
-    le_ecall_State_t* statePtr
+    void* param1Ptr,
+    void* param2Ptr
 )
 {
     bool endOfRedialPeriod = false;
+    ECallEventData_t* eCallEventDataPtr = (ECallEventData_t*) param1Ptr;
 
-    LE_DEBUG("Handler Function called with state %d. sessionState %d", *statePtr,
-                ECallObj.sessionState);
+    LE_DEBUG("Process new eCall state %d (sessionState %d)",
+             eCallEventDataPtr->state, ECallObj.sessionState);
 
-    switch (*statePtr)
+    switch (eCallEventDataPtr->state)
     {
         case LE_ECALL_STATE_STARTED: /* eCall session started */
         {
@@ -1550,20 +1585,10 @@ static void ECallStateHandler
 
         case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
         {
-            le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
-                                    .usec=LE_ECALL_SEM_TIMEOUT_USEC };
-            le_result_t semTerminationResult = LE_FAULT;
-
-            // Get call termination result
-            semTerminationResult = le_sem_WaitWithTimeOut(SemaphoreRef, timer);
-            if (LE_OK != semTerminationResult)
-            {
-                LE_ERROR("MCC notification timeout happen");
-            }
-            LE_DEBUG("Termination: %d, llackOrT5OrT7Received: %d, sem: %d",
+            LE_DEBUG("Termination reason: %d, llackOrT5OrT7Received: %d, terminationReceived: %d",
                      ECallObj.termination,
                      ECallObj.llackOrT5OrT7Received,
-                     semTerminationResult);
+                     eCallEventDataPtr->terminationReceived);
 
             // Update eCall session state
             switch(ECallObj.sessionState)
@@ -1571,7 +1596,7 @@ static void ECallStateHandler
                 case ECALL_SESSION_CONNECTED:
                 {
                     // Check redial condition (cf N16062:2014 7.9)
-                    if (   (LE_OK == semTerminationResult)
+                    if (   (true == eCallEventDataPtr->terminationReceived)
                         && (ECallObj.llackOrT5OrT7Received)
                         && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                        )
@@ -1613,7 +1638,7 @@ static void ECallStateHandler
                 case ECALL_SESSION_COMPLETED:
                 {
                     if (   (PA_ECALL_ERA_GLONASS == SystemStandard)
-                        && (   (LE_OK != semTerminationResult)
+                        && (   (true != eCallEventDataPtr->terminationReceived)
                             || (LE_MCC_TERM_REMOTE_ENDED != ECallObj.termination)
                            )
                        )
@@ -1757,7 +1782,7 @@ static void ECallStateHandler
             // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
             // After T7 timeout, IVS should redial in pull
             // mode if the connection is lost.
-            if (   (*statePtr == LE_ECALL_STATE_TIMEOUT_T7)
+            if (   (eCallEventDataPtr->state == LE_ECALL_STATE_TIMEOUT_T7)
                 && (SystemStandard == PA_ECALL_ERA_GLONASS)
                )
             {
@@ -1768,13 +1793,13 @@ static void ECallStateHandler
         case LE_ECALL_STATE_UNKNOWN: /* Unknown state */
         default:
         {
-            LE_ERROR("Unknown eCall indication %d", *statePtr);
+            LE_ERROR("Unknown eCall indication %d", eCallEventDataPtr->state);
             break;
         }
     }
 
     // Report the eCall state
-    ReportState(*statePtr);
+    ReportState(eCallEventDataPtr->state);
 
     // Report the End of Redial Period event
     if (endOfRedialPeriod)
@@ -1784,6 +1809,62 @@ static void ECallStateHandler
 
         // Update eCall session state
         ECallObj.sessionState = ECALL_SESSION_STOPPED;
+    }
+
+    // Release memory allocated for eCall event
+    le_mem_Release(eCallEventDataPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal eCall State handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ECallStateHandler
+(
+    le_ecall_State_t* statePtr
+)
+{
+    // Allocate and fill eCall event data
+    ECallEventData_t* eCallEventDataPtr = le_mem_ForceAlloc(ECallEventsPool);
+    eCallEventDataPtr->state = *statePtr;
+    eCallEventDataPtr->terminationReceived = false;
+
+    LE_DEBUG("Received new eCall state %d", eCallEventDataPtr->state);
+
+    // Disconnection of eCall notified, wait for the call
+    // termination reason notified by MCC
+    if (LE_ECALL_STATE_DISCONNECTED == *statePtr)
+    {
+        le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
+                                .usec=LE_ECALL_SEM_TIMEOUT_USEC };
+        le_result_t semTerminationResult = LE_FAULT;
+
+        // Get call termination result
+        semTerminationResult = le_sem_WaitWithTimeOut(SemaphoreRef, timer);
+        if (LE_OK != semTerminationResult)
+        {
+            LE_ERROR("MCC notification timeout happen");
+        }
+        else
+        {
+            eCallEventDataPtr->terminationReceived = true;
+        }
+        LE_DEBUG("Termination reason: %d, semaphore: %d",
+                 ECallObj.termination, semTerminationResult);
+    }
+
+    if (NULL != MainThread)
+    {
+        // Timers are linked to the thread originating their start or stop:
+        // the new eCall state processing should therefore be done in the same thread as
+        // the eCall initialization to be able to correctly start/stop the timers.
+        le_event_QueueFunctionToThread(MainThread, ProcessECallState, eCallEventDataPtr, NULL);
+    }
+    else
+    {
+        LE_ERROR("Main thread not stored!");
     }
 }
 
@@ -2020,6 +2101,16 @@ le_result_t le_ecall_Init
 
     // Register object, which also means it was initialized properly
     ECallObj.ref = le_ref_CreateRef(ECallRefMap, &ECallObj);
+
+    // Timers are linked to the thread originating their start or stop:
+    // as the current thread will be used to start the timers, store it to be able
+    // to use this thread to treat the eCall events and stop the timers later.
+    MainThread = le_thread_GetCurrent();
+
+    // Create pool to report eCall events to the handler
+    ECallEventsPool = le_mem_CreatePool("ECallEventsPool", sizeof(ECallEventData_t));
+    // Expand the pool to be able to store eCall events received almost at the same time
+    le_mem_ExpandPool(ECallEventsPool, ECALL_EVENTS_POOL_SIZE);
 
     // Start ECall thread
     le_thread_Start(le_thread_Create("ECallThread", ECallThread, NULL));
