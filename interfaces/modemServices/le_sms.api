@@ -97,7 +97,9 @@
  * code.
  *
  * Message object is never deleted regardless of the sending result. Caller has to
- * delete it.
+ * delete it. Message object once used for sending the message can not be reused to
+ * send another message regardless of success or failure. New object has to be created
+ * for new message.
  *
  * @section le_sms_ops_receiving Receiving a message
  * To receive SMS messages, register a handler function to obtain incoming
