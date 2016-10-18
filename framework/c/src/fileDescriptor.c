@@ -162,7 +162,8 @@ ssize_t fd_ReadSize
 
         bytesRd = read(fd, tempStr, rdReq);
 
-        if ((bytesRd == -1) && (errno != EINTR))
+        // If resource is temporarily unavailable, try again to read.
+        if ((bytesRd == -1) && (errno != EINTR) && (errno != EAGAIN))
         {
             LE_ERROR("Error while reading file, errno: %d (%m)", errno);
             return LE_FAULT;
@@ -173,13 +174,16 @@ ssize_t fd_ReadSize
         {
             return tempBufSize;
         }
-
-        tempBufSize += bytesRd;
-        LE_DEBUG("Iterating read, bufsize: %zd , Requested: %d Read: %d", bufSize, rdReq, bytesRd);
-
-        if (tempBufSize < bufSize)
+        else if (bytesRd > 0)
         {
-            rdReq = bufSize - tempBufSize;
+            tempBufSize += bytesRd;
+            LE_DEBUG("Iterating read, bufsize: %zd , Requested: %d Read: %d",
+                bufSize, rdReq, bytesRd);
+
+            if (tempBufSize < bufSize)
+            {
+                rdReq = bufSize - tempBufSize;
+            }
         }
     }
     while (tempBufSize < bufSize);
