@@ -27,29 +27,65 @@ The actions taken are described in the rest of this topic.
 
 @section howToCustomizeUSB_defaultEndpoints Default Endpoints
 
-The table shows all the possible USB interfaces available on the AR7 family.
+This table shows all the possible USB interfaces available on the AR7 family:
 
 @image html USB_interfaces_AR7.png
 
-These endpoints are grouped into compositions, and a fixed set of compositions is provided
-as shown in the next table. Switching between these compositions is done using the
-@c AT!USBCOMP command. The default composition for the AR7 is composition 2.
+On AR7 products, these endpoints are grouped into compositions. A fixed set of compositions is
+shown in the table below. You switch between these compositions using the @c AT!UDUSBCOMP command
+with this format:
+
+@code
+AT!UDUSBCOMP=<Composition>
+@endcode
+Where @c <Composition> is one of the composition numbers defined in this table (composition
+2 is default):
 
 @image html USB_endpointCompositions_AR7.png
 
+USB composition on WP75 and WP85 modules is set through the @c AT!USBCOMP command with
+this format:
+@code
+AT!USBCOMP=<Config Index>,<Config Type>,<Interface Bitmask>
+@endcode
+Where:
+
+@c <Config @c Index> Configuration index to which the composition applies (valid value: 1)
+
+@c <Config @c Type> Configuration type (valid value: 1 – Generic)
+
+@c <Interface  @c Bitmask> Bit field defining which interfaces/endpoints are enabled. To obtain a
+list of possible compositions for your target device, use @c AT!USBCOMP=?.
+
+Use @c AT!USBCOMP? to retrieve the current USB composition.
+
+The response format should be:
+@code
+at!usbcomp?
+Config Index: 1
+Config Type:  1 (Generic)
+Interface bitmask: 0008011E (adb,nmea,modem,at,rmnet0,ecm)
+@endcode
+
 @section howToCustomizeUSB_customizeEndpoints Customize Endpoints
 
-If none of the provided compositions meet your needs it's possible to fine-tune the USB configuration using a mechanism built into Legato.
-The first step is to create @c /etc/legato/usbmode. An example file is shipped in this directory in the default distribution, called @c usbmode.ex.
-@c usbmode contains a list, one per line, of the endpoints you wish to enumerate. For example, the default file contains
+If none of the provided compositions meet your needs, it's possible to override the USB
+configuration using a mechanism built into Legato. These are the steps:
 
-@verbatim
+- create or edit a @c usbmode file in the @c /etc/legato folder.
+- add one interface configuration per line
+- save the file and reboot.
+
+A sample file called @c usbmode.ex is provided in @c /etc/legato in the default Legato
+distribution with a list of sample endpoints, like this:
+
+@code
 ecm
 acm
 nmea
-@endverbatim
+@endcode
 
-The full list of supported modes is:
+This is the full list of supported modes:
 
 | Name     | Interface Type | Description                              |  Target endpoint  | Sample host endpoint   |
 | -------- | -------------- | ---------------------------------------- | ----------------- | ---------------------- |
@@ -59,9 +95,6 @@ The full list of supported modes is:
 | nmea     | serial         | NMEA strings when positioning is enabled | N/A               | /dev/ttyUSB0           |
 | audio    | USB audio      | Expose the target as a sound card        | N/A               | pcmC2D0c <br> pcmC2D0p |
 | serial   | serial         | A serial interface to the embedded Linux | /dev/ttyGS0       | /dev/ttyUSB0           |
-| usb_mbim | CDC-MBIM       | Mobile Broadband Interface Model <br> (an extension of CDC-NCM) | N/A | NIC (eg wwp0s20u6i12) <br> + cdc-wdm0 |
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
