@@ -33,4 +33,15 @@ void avData_Init
     void
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Called by avcServer when the session state is SESSION_STARTED or SESSION_STOPPED.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void avData_ReportSessionState
+(
+    le_avdata_SessionState_t sessionState
+);
+
 #endif // LEGATO_AVDATA_INCLUDE_GUARD

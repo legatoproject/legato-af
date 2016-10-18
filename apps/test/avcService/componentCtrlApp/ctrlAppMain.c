@@ -513,6 +513,32 @@ static void StatusHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Session handler
+ *
+ * Controls session open or close requests from user apps.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionController
+(
+    le_avc_SessionRequest_t request,
+    void* contextPtr
+)
+{
+    if (request == LE_AVC_SESSION_ACQUIRE)
+    {
+        LE_DEBUG("Request to open AV session from user app accepted.");
+        le_avc_StartSession();
+    }
+    else if (request == LE_AVC_SESSION_RELEASE)
+    {
+        LE_DEBUG("Request to close AV session from user app accepted.");
+        le_avc_StopSession();
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init the component
  */
 //--------------------------------------------------------------------------------------------------
@@ -537,6 +563,7 @@ COMPONENT_INIT
     if ( TestCase > 0 )
     {
         le_avc_AddStatusEventHandler(StatusHandler, NULL);
+        le_avc_AddSessionRequestEventHandler(SessionController, NULL);
     }
 
     le_result_t result = le_avc_StartSession();

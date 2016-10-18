@@ -64,6 +64,13 @@
  * reads the whole instance of an asset. Write action handlers are called on write
  * to asset instance or individual fields.
  *
+ * An app can request to open avms session and register a handler to get notified of avms session
+ * events. le_avdata_RequestSession() and le_avdata_ReleaseSession() can be used to
+ * open an avms session and close an avms session respectively. If the session was initiated by an
+ * user app, avms session will be closed when all apps release their session reference.
+ * le_avdata_AddSessionStateHandler() and le_avdata_RemoveSessionStateHandler() can be used to add
+ * and remove notification handlers.
+ *
  * Leaving it optional to register handlers for variable and setting fields allows an
  * app to decide how it wants to access variable and setting fields. It can decide to
  * only do something in response to the AV server, or it can work independently of the AV server
@@ -141,6 +148,14 @@ REFERENCE AssetInstance;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reference returned by RequestSession function and used by ReleaseSession function
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE RequestSessionObj;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Define the maximum length of an asset name (TODO: verify value)
  */
 //--------------------------------------------------------------------------------------------------
@@ -169,6 +184,18 @@ DEFINE STRING_VALUE_LEN = 255;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE BINARY_VALUE_LEN = 255;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AVMS session state
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SessionState
+{
+    SESSION_STARTED,        ///< AVMS session started
+    SESSION_STOPPED         ///< AVMS session stopped
+};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -476,6 +503,27 @@ FUNCTION le_result_t PushTimeSeries
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for AV session changes
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER SessionStateHandler
+(
+    SessionState sessionState IN            ///< Session started or stopped?
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on AV session state changes
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT SessionState
+(
+    SessionStateHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Is time series enabled on this resource, if yes how many data points are recorded so far?
  *
  * @return
@@ -623,5 +671,28 @@ FUNCTION le_result_t IsObserve
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the avcServer to open a session.
+ *
+ * @return
+ *      - SessionRef if session request succeeded
+ *      - NULL if session request failed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION RequestSessionObj RequestSession
+(
+);
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the avcServer to close a session.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ReleaseSession
+(
+    RequestSessionObj requestRef IN  ///< Reference to a previously opened AV session.
+);
 

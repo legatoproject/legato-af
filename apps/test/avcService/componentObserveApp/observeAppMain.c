@@ -17,6 +17,8 @@
 #include "le_print.h"
 
 
+static le_avdata_RequestSessionObjRef_t SessionReqRef;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Generate a random number between limits.
@@ -71,6 +73,28 @@ static void NotifyTimer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Receives notification from avdata about session state.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SessionHandler
+(
+    le_avdata_SessionState_t sessionState,
+    void* contextPtr
+)
+{
+    if (sessionState == LE_AVDATA_SESSION_STARTED)
+    {
+        LE_INFO("Airvantage session started.");
+    }
+    else
+    {
+        LE_INFO("Airvantage session stopped.");
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init the component
  */
 //--------------------------------------------------------------------------------------------------
@@ -85,6 +109,10 @@ COMPONENT_INIT
                                    ComputeBatteryHealthHandler,
                                    NULL);
 
+    le_avdata_AddSessionStateHandler(SessionHandler, NULL);
+
+    SessionReqRef = le_avdata_RequestSession();
+    LE_FATAL_IF(SessionReqRef == NULL, "Session request failed.");
 
     // Initialize a timer that checks the state of the car every minute.
     le_clk_Time_t timerInterval = { .sec = 60, .usec = 0 };

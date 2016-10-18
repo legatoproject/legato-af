@@ -4497,9 +4497,11 @@ le_result_t assetData_Init
                                        le_hashmap_EqualsString);
 
 
-    // Use a timer to delay reporting instance creation events to the modem for 1 second after
+    // Use a timer to delay reporting instance creation events to the modem for 2 second after
     // the last creation event.  The timer will only be started when the creation event happens.
-    le_clk_Time_t timerInterval = { .sec=1, .usec=0 };
+    // During an app restart two registration updates are sent: one after app stops and one when
+    // apps starts up. These two registration updates have to be spaced atleast 2 seconds apart.
+    le_clk_Time_t timerInterval = { .sec=2, .usec=0 };
 
     RegUpdateTimerRef = le_timer_Create("RegUpdate timer");
     le_timer_SetInterval(RegUpdateTimerRef, timerInterval);

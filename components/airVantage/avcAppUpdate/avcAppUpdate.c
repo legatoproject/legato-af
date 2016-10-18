@@ -34,8 +34,7 @@
  *  Config tree path where the state of the update process is backed up.
  */
 //--------------------------------------------------------------------------------------------------
-#define UPDATE_STATE_BACKUP "/apps/avcService/backup"
-
+#define UPDATE_STATE_BACKUP "avcService:/appUpdate"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1180,7 +1179,7 @@ void OnUriDownloadUpdate
         // Update the state when the first QMI message is received from the firmware indicating
         // download progress.
         case LE_AVC_DOWNLOAD_IN_PROGRESS:
-            if (GetOb9State(CurrentObj9) == US_INITIAL)
+            if ((CurrentObj9 != NULL) && (GetOb9State(CurrentObj9) == US_INITIAL))
             {
                 LE_DEBUG("Download started.");
                 SetObj9State(CurrentObj9, US_DOWNLOAD_STARTED, UR_DOWNLOADING, true);

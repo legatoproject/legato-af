@@ -32,6 +32,15 @@
 //--------------------------------------------------------------------------------------------------
 #define REGISTERED_HANDLER_REF ((le_avc_StatusEventHandlerRef_t)0x1234)
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This ref is returned when a session request handler is added/registered.  It is used when the
+ * handler is removed.  Only one ref is needed, because only one handler can be registered at a time.
+ */
+//--------------------------------------------------------------------------------------------------
+#define REGISTERED_SESSION_HANDLER_REF ((le_avc_SessionRequestEventHandlerRef_t)0xABCD)
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This is the default defer time (in minutes) if an install is blocked by a user app.  Should
@@ -111,6 +120,23 @@ static le_avc_UpdateType_t CurrentUpdateType = LE_AVC_UNKNOWN_UPDATE;
 //--------------------------------------------------------------------------------------------------
 static le_avc_StatusHandlerFunc_t StatusHandlerRef = NULL;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler registered by control app to receive session open or close requests.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_avc_SessionRequestHandlerFunc_t SessionRequestHandlerRef = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Context pointer associated with the above user registered handler to receive session open or
+ * close requests.
+ */
+//--------------------------------------------------------------------------------------------------
+static void* SessionRequestHandlerContextPtr = NULL;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Is there a control app installed?  If so, we don't want to take automatic actions, even if
@@ -123,6 +149,14 @@ static le_avc_StatusHandlerFunc_t StatusHandlerRef = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static bool IsControlAppInstalled = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is the current session owned by the control app?
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsControlAppSession = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -383,9 +417,11 @@ static void UpdateHandler
             {
                 pa_avc_StartModemActivityTimer();
             }
+            avData_ReportSessionState(LE_AVDATA_SESSION_STARTED);
             break;
 
         case LE_AVC_SESSION_STOPPED:
+            avData_ReportSessionState(LE_AVDATA_SESSION_STOPPED);
             // Retain CurrentState when session stops.
             break;
     }
@@ -524,6 +560,13 @@ static void ClientCloseSessionHandler
             le_ref_DeleteRef( BlockRefMap, (void*)le_ref_GetSafeRef(iterRef) );
             BlockRefCount--;
         }
+    }
+
+    // Release session owned by control app.
+    if (IsControlAppSession)
+    {
+        pa_avc_StopSession();
+        IsControlAppSession = false;
     }
 }
 
@@ -853,9 +896,84 @@ void avcServer_ReportInstallProgress
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Request the avcServer to open a AV session.
+ *
+ * @return
+ *      - LE_OK if able to initiate a session open
+ *      - LE_FAULT on error
+ *      - LE_BUSY if session is owned by control app
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t avcServer_RequestSession
+(
+    void
+)
+{
+    le_result_t result = LE_OK;
+
+    if ( SessionRequestHandlerRef != NULL )
+    {
+        // Notify registered control app.
+        LE_DEBUG("Forwarding session open request to control app.");
+        SessionRequestHandlerRef(LE_AVC_SESSION_ACQUIRE, SessionRequestHandlerContextPtr);
+    }
+    else if (!IsControlAppSession)
+    {
+        LE_DEBUG("Automatically accepting request to open session.");
+        result = pa_avc_StartSession();
+    }
+    else
+    {
+        LE_DEBUG("Session owned by control app.");
+        result = LE_BUSY;
+    }
+
+    return result;
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the avcServer to close a AV session.
+ *
+ * @return
+ *      - LE_OK if able to initiate a session close
+ *      - LE_FAULT on error
+ *      - LE_BUSY if session is owned by control app
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t avcServer_ReleaseSession
+(
+    void
+)
+{
+    le_result_t result = LE_OK;
+
+    if ( SessionRequestHandlerRef != NULL )
+    {
+        // Notify registered control app.
+        LE_DEBUG("Forwarding session release request to control app.");
+        SessionRequestHandlerRef(LE_AVC_SESSION_RELEASE, SessionRequestHandlerContextPtr);
+    }
+    else if (!IsControlAppSession)
+    {
+        LE_DEBUG("Releasing session opened by user app.");
+        result = pa_avc_StopSession();
+    }
+    else
+    {
+        LE_DEBUG("Session owned by control app.");
+        result = LE_BUSY;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
 // API functions
 //--------------------------------------------------------------------------------------------------
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -950,6 +1068,81 @@ void le_avc_RemoveStatusEventHandler
     StatusHandlerRef = NULL;
     StatusHandlerContextPtr = NULL;
     RegisteredControlAppRef = NULL;
+
+    // After the status handler is removed automatic (default) actions will be enabled.
+    IsControlAppInstalled = false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_avc_SessionRequestHandler handler ADD function
+ */
+//--------------------------------------------------------------------------------------------------
+le_avc_SessionRequestEventHandlerRef_t le_avc_AddSessionRequestEventHandler
+(
+    le_avc_SessionRequestHandlerFunc_t handlerPtr,
+        ///< [IN]
+
+    void* contextPtr
+        ///< [IN]
+)
+{
+    // handlerPtr must be valid
+    if ( handlerPtr == NULL )
+    {
+        LE_KILL_CLIENT("Null handlerPtr");
+    }
+
+    // Only allow the handler to be registered, if nothing is currently registered. In this way,
+    // only one user app is allowed to register at a time.
+    if ( SessionRequestHandlerRef == NULL )
+    {
+        SessionRequestHandlerRef = handlerPtr;
+        SessionRequestHandlerContextPtr = contextPtr;
+
+        return REGISTERED_SESSION_HANDLER_REF;
+    }
+    else
+    {
+        LE_KILL_CLIENT("Handler already registered");
+        return NULL;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * le_avc_SessionRequestHandler handler REMOVE function
+ */
+//--------------------------------------------------------------------------------------------------
+void le_avc_RemoveSessionRequestEventHandler
+(
+    le_avc_SessionRequestEventHandlerRef_t addHandlerRef
+        ///< [IN]
+)
+{
+    if ( addHandlerRef != REGISTERED_SESSION_HANDLER_REF )
+    {
+        if ( addHandlerRef == NULL )
+        {
+            LE_ERROR("NULL ref ignored");
+            return;
+        }
+        else
+        {
+            LE_KILL_CLIENT("Invalid ref = %p", addHandlerRef);
+        }
+    }
+
+    if ( SessionRequestHandlerRef == NULL )
+    {
+        LE_KILL_CLIENT("Handler not registered");
+    }
+
+    // Clear all info related to the registered handler.
+    SessionRequestHandlerRef = NULL;
+    SessionRequestHandlerContextPtr = NULL;
 }
 
 
@@ -972,6 +1165,7 @@ le_result_t le_avc_StartSession
     if ( ! IsValidControlAppClient() )
         return LE_FAULT;
 
+    IsControlAppSession = true;
     return pa_avc_StartSession();
 }
 
@@ -993,6 +1187,7 @@ le_result_t le_avc_StopSession
     if ( ! IsValidControlAppClient() )
         return LE_FAULT;
 
+    IsControlAppSession = false;
     return pa_avc_StopSession();
 }
 
