@@ -207,6 +207,8 @@ user_docs: localhost build/localhost/Makefile
 	rm -f Documentation
 	@if [ -e "docManagement/Makefile" ] ; then \
 		$(MAKE) -C docManagement ; \
+	fi
+	@if [ -d "build/doc/user/html_converted/" ] ; then \
 		ln -sf build/doc/user/html_converted Documentation ; \
 	else \
 		ln -sf build/doc/user/html Documentation ; \
