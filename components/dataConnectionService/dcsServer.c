@@ -592,14 +592,22 @@ static void WifiClientEventHandler
         case LE_WIFICLIENT_EVENT_CONNECTED:
             LE_INFO("Wifi client connected");
 
-            // Request an IP address through DHCP and update connection status
-            if (LE_OK == AskForIpAddress())
+            // Request an IP address through DHCP if DCS initiated the connection
+            // and update connection status
+            if ((LE_DATA_WIFI == CurrentTech) && (RequestCount > 0))
             {
-                IsConnected = true;
+                if (LE_OK == AskForIpAddress())
+                {
+                    IsConnected = true;
+                }
+                else
+                {
+                    IsConnected = false;
+                }
             }
             else
             {
-                IsConnected = false;
+                IsConnected = true;
             }
 
             // Send notification to registered applications
@@ -731,8 +739,8 @@ static void LoadSelectedTechProfile
             if (NULL == MobileSessionStateHandlerRef)
             {
                 MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
-                                                                             DataSessionStateHandler,
-                                                                             NULL);
+                                                                         DataSessionStateHandler,
+                                                                         NULL);
             }
         }
         break;
@@ -765,7 +773,7 @@ static void LoadSelectedTechProfile
             }
 
             // Security protocol
-            if (le_cfg_NodeExists(cfg, CFG_NODE_SSID))
+            if (le_cfg_NodeExists(cfg, CFG_NODE_SECPROTOCOL))
             {
                 SecProtocol = le_cfg_GetInt(cfg, CFG_NODE_SECPROTOCOL,
                                             LE_WIFICLIENT_SECURITY_WPA2_PSK_PERSONAL);
@@ -773,7 +781,7 @@ static void LoadSelectedTechProfile
             }
             else
             {
-                LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
+                LE_WARN("No value set for '%s'!", CFG_NODE_SECPROTOCOL);
             }
 
             // Passphrase
@@ -811,6 +819,13 @@ static void LoadSelectedTechProfile
             // Delete sensitive information
             memset(Ssid, '\0', sizeof(Ssid));
             memset(Passphrase, '\0', sizeof(Passphrase));
+
+            // Register for Wifi Client state changes if not already done
+            if (NULL == WifiEventHandlerRef)
+            {
+                WifiEventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler,
+                                                                       NULL);
+            }
         }
         break;
 
@@ -2501,9 +2516,6 @@ COMPONENT_INIT
     {
         LE_INFO("Wifi client is available");
         TechAvailability[LE_DATA_WIFI] = true;
-
-        // Register for Wifi Client state changes
-        WifiEventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler, NULL);
     }
     else
     {
