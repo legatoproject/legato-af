@@ -459,9 +459,10 @@ FUNCTION le_result_t StopTimeSeries
  *
  * @note client will be terminated if instRef isn't valid, or the field doesn't exist
  *
- * @return
+ * @return:
  *      - LE_OK on success
  *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_UNAVAILABLE if observe is not enabled on this field
  *      - LE_FAULT if any other error
  */
 //--------------------------------------------------------------------------------------------------

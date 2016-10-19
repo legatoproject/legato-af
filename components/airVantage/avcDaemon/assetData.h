@@ -1050,6 +1050,7 @@ le_result_t assetData_client_StopTimeSeries
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
  *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_UNAVAILABLE if observe is not enabled on this field
  *      - LE_FAULT if any other error
  */
 //--------------------------------------------------------------------------------------------------

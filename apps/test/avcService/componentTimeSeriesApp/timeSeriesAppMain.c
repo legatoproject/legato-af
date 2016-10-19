@@ -67,24 +67,6 @@ COMPONENT_INIT
     uint64_t utcMilliSec;
     struct timeval tv;
 
-    // Wait for Observe to be enabled.
-    while(1)
-    {
-        sleep(2);
-        result = le_avdata_IsObserve(instZeroRef, "Humidity", &isObserve);
-
-        if (result != LE_OK)
-        {
-            LE_FATAL("Not able to read observe status.");
-        }
-
-        if (isObserve)
-        {
-            LE_INFO("Observe enabled on object myHouse.");
-            break;
-        }
-    }
-
     // Start Time series, sampling every 100 msec i.e., a time stamp factor of .01.
     result = le_avdata_StartTimeSeries(instZeroRef, "Humidity", HUMIDITY_SCALE, SAMPLE_RATE );
     result = le_avdata_StartTimeSeries(instZeroRef, "Temperature", TEMPERATURE_SCALE, SAMPLE_RATE );
@@ -97,7 +79,6 @@ COMPONENT_INIT
     // Collect 1000 data points.
     for (i = 0; i < 1000; i++)
     {
-        //result = le_avdata_SetInt(instZeroRef, "Humidity", (int) RandBetween(0, 100));
         result = le_avdata_SetInt(instZeroRef, "Humidity", humidityCount);
         humidityCount = humidityCount + HUMIDITY_INCREMENT;
 
@@ -110,13 +91,16 @@ COMPONENT_INIT
 
         if (result == LE_OVERFLOW)
         {
-            PrintTimeSeriesStatus(instZeroRef, "Humidity");
-            le_avdata_PushTimeSeries(instZeroRef, "Humidity", true);
-            sleep(1);
+            result = le_avdata_IsObserve(instZeroRef, "Humidity", &isObserve);
+            if (result == LE_OK)
+            {
+                PrintTimeSeriesStatus(instZeroRef, "Humidity");
+                LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Humidity", true) != LE_OK,
+                            "Failed to push humidity history");
+                sleep(1);
+            }
         }
 
-        //result = le_avdata_SetFloat(instZeroRef, "Temperature", RandBetween(-35, 35));
-        //result = le_avdata_SetFloat(instZeroRef, "Temperature", temperatureCount);
         gettimeofday(&tv, NULL);
         utcMilliSec = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 
@@ -132,21 +116,36 @@ COMPONENT_INIT
 
         if (result == LE_OVERFLOW)
         {
-            PrintTimeSeriesStatus(instZeroRef, "Temperature");
-            le_avdata_PushTimeSeries(instZeroRef, "Temperature", true);
-            sleep(1);
+            result = le_avdata_IsObserve(instZeroRef, "Temperature", &isObserve);
+            if (result == LE_OK)
+            {
+                PrintTimeSeriesStatus(instZeroRef, "Temperature");
+                LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Temperature", true) != LE_OK,
+                            "Failed to push temperature history");
+                sleep(1);
+            }
         }
 
         usleep(SLEEP_USEC);
     }
 
     // Job is done! Push data and get out!
-    PrintTimeSeriesStatus(instZeroRef, "Humidity");
-    le_avdata_PushTimeSeries(instZeroRef, "Humidity", false);
+    result = le_avdata_IsObserve(instZeroRef, "Humidity", &isObserve);
+    if (result == LE_OK)
+    {
+        PrintTimeSeriesStatus(instZeroRef, "Humidity");
+        LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Humidity", true) != LE_OK,
+                    "Failed to push humidity history");
 
-    sleep(1);
+        sleep(1);
+    }
 
-    PrintTimeSeriesStatus(instZeroRef, "Temperature");
-    le_avdata_PushTimeSeries(instZeroRef, "Temperature", false);
+    result = le_avdata_IsObserve(instZeroRef, "Temperature", &isObserve);
+    if (result == LE_OK)
+    {
+        PrintTimeSeriesStatus(instZeroRef, "Temperature");
+        LE_FATAL_IF(le_avdata_PushTimeSeries(instZeroRef, "Temperature", true) != LE_OK,
+                    "Failed to push temperature history");
+    }
 }
 

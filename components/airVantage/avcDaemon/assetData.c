@@ -1314,13 +1314,6 @@ static le_result_t StartTimeSeries
         return LE_BUSY;
     }
 
-    // Check if observe is enabled on this field.
-    if (!fieldDataPtr->isObserve)
-    {
-        LE_ERROR("Observe not enabled on this field.");
-        return LE_FAULT;
-    }
-
     FormatString(headerId,
                  sizeof(headerId),
                  "/%i/%i",
@@ -1464,6 +1457,7 @@ static le_result_t StopTimeSeries
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
  *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_UNAVAILABLE if observe is not enabled on this field
  *      - LE_FAULT if any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -1506,7 +1500,7 @@ static le_result_t PushTimeSeries
     if (!fieldDataPtr->isObserve)
     {
         LE_ERROR("Observe not enabled on this field.");
-        return LE_FAULT;
+        return LE_UNAVAILABLE;
     }
 
     // Remember the factors used.
@@ -3890,6 +3884,7 @@ le_result_t assetData_client_StopTimeSeries
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
  *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_UNAVAILABLE if observe is not enabled on this field
  *      - LE_FAULT if any other error
  */
 //--------------------------------------------------------------------------------------------------
