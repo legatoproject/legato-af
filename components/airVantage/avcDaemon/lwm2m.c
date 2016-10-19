@@ -451,10 +451,11 @@ static void OperationHandler
 
             if ( resourceId == -1 )
             {
+                // Call back asset action handlers on a write to asset instance.
                 result = assetData_ReadFieldListFromTLV((uint8_t*)payloadPtr,
                                                         payloadLength,
                                                         instRef,
-                                                        false);
+                                                        true);
             }
             else
             {

@@ -58,10 +58,11 @@
  * - @c command called when the AV server wants to invoke a command. The
  * app should perform an appropriate action or call a function to execute this command.
  *
- * Registered handlers are only called when the server performs the associated activity on
- * a specific field of an asset instance. For example, a handler registered on a variable field will
- * be called if the server reads only that field of an instance; it will not be called if the
- * server reads the whole instance of an asset.
+ * Read action handlers are only called when the server performs the read on a specific
+ * field of an asset instance. i.e, a handler registered on a variable field will
+ * be called if the server reads only that field; it will not be called when the server
+ * reads the whole instance of an asset. Write action handlers are called on write
+ * to asset instance or individual fields.
  *
  * Leaving it optional to register handlers for variable and setting fields allows an
  * app to decide how it wants to access variable and setting fields. It can decide to
