@@ -375,11 +375,19 @@ int cm_data_SetProfileInUse
     int profileInUse
 )
 {
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(PROFILE_IN_USE);
+    if ( 0 == profileInUse )
+    {
+       printf("profile 0 is not valid!\n");
+       return EXIT_FAILURE;
+    }
+    else
+    {
+        le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(PROFILE_IN_USE);
 
-    le_cfg_SetInt(iteratorRef, "", profileInUse);
-    le_cfg_CommitTxn(iteratorRef);
-    return EXIT_SUCCESS;
+        le_cfg_SetInt(iteratorRef, "", profileInUse);
+        le_cfg_CommitTxn(iteratorRef);
+        return EXIT_SUCCESS;
+    }
 }
 
 
@@ -551,7 +559,9 @@ int cm_data_SetPdpType
     if (le_mdc_SetPDP(profileRef, pdp) != LE_OK)
     {
         printf("Could not set PDP '%s' for profile %u.\n"
-               "Maybe the profile is connected", pdpTypeToUpper, le_mdc_GetProfileIndex(profileRef));
+               "Maybe the profile is connected",
+               pdpTypeToUpper,
+               le_mdc_GetProfileIndex(profileRef));
         return EXIT_FAILURE;
     }
 
@@ -563,8 +573,8 @@ int cm_data_SetPdpType
 /**
  * This function will attempt to set the authentication information.
  *
- * @todo Hardcoded to set the authentication for "internet" profile. Will revisit when dcsDaemon allows us to start
- * a data connection on another profile.
+ * @todo Hardcoded to set the authentication for "internet" profile. Will revisit when dcsDaemon
+ * allows us to start a data connection on another profile.
  *
  * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
@@ -837,7 +847,9 @@ void cm_data_ProcessDataCommand
     }
     else if (strcmp(command, "profile") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(1, numArgs, "Profile index missing. e.g. cm data profile <index> (Use cm data list to show you valid indexes)"))
+        if (cm_cmn_CheckEnoughParams(1,
+                                     numArgs,
+                                     "Profile index missing. e.g. cm data profile <index>"))
         {
             exit(cm_data_SetProfileInUse(atoi(le_arg_GetArg(2))));
         }
@@ -854,7 +866,8 @@ void cm_data_ProcessDataCommand
         }
         else
         {
-            printf("Invalid argument when starting a data connection. e.g. cm data connect <optional timeout (secs)>\n");
+            printf("Invalid argument when starting a data connection. "
+                   "e.g. cm data connect <optional timeout (secs)>\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -867,7 +880,9 @@ void cm_data_ProcessDataCommand
     }
     else if (strcmp(command, "pdp") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(1, numArgs, "PDP type name missing. e.g. cm data pdp <pdp type>"))
+        if (cm_cmn_CheckEnoughParams(1,
+                                     numArgs,
+                                     "PDP type name missing. e.g. cm data pdp <pdp type>"))
         {
             exit(cm_data_SetPdpType(le_arg_GetArg(2)));
         }
@@ -886,7 +901,8 @@ void cm_data_ProcessDataCommand
         }
         else
         {
-            printf("Auth parameters incorrect. e.g. cm data auth <auth type> [<username>] [<password>]\n");
+            printf("Auth parameters incorrect. "
+                   "e.g. cm data auth <auth type> [<username>] [<password>]\n");
             exit(EXIT_FAILURE);
         }
     }

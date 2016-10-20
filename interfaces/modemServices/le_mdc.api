@@ -37,6 +37,8 @@
  *
  * @note le_mdc_GetProfile() creates a new profile if the profile's index can't be found.
  *
+ * @warning 0 is not a valid index.
+
  * A pre-defined data profile can be retrieved using le_mdc_GetProfileFromApn() thanks to its
  * APN.
  *
@@ -420,6 +422,8 @@ EVENT MtPdpSessionState
  * Get Profile Reference for index
  *
  * @note Create a new profile if the profile's index can't be found.
+ *
+ * @warning 0 is not a valid index.
  *
  * @warning Ensure to check the list of supported data profiles for your specific platform.
  *

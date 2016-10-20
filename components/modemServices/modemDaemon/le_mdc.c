@@ -712,6 +712,10 @@ void le_mdc_Init
  *
  * @note Create a new profile if the profile's index can't be found.
  *
+ * @warning 0 is not a valid index.
+ *
+ * @warning Ensure to check the list of supported data profiles for your specific platform.
+ *
  * @return
  *      - Reference to the data profile
  *      - NULL if the profile index does not exist
@@ -722,14 +726,19 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
     uint32_t index ///< index of the profile.
 )
 {
-    if ( index == LE_MDC_DEFAULT_PROFILE )
+    if ( 0 == index )
+    {
+       LE_ERROR("index 0 is not valid!");
+       return NULL;
+    }
+    else if ( LE_MDC_DEFAULT_PROFILE == index )
     {
         if (pa_mdc_GetDefaultProfileIndex(&index) != LE_OK)
         {
             return NULL;
         }
     }
-    else if ( index == LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE )
+    else if ( LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE == index )
     {
         if (pa_mdc_GetBipDefaultProfileIndex(&index) != LE_OK)
         {
