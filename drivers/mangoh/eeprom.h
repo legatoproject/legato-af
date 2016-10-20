@@ -15,6 +15,8 @@
 
 #include <linux/i2c.h>
 
+#define IRQ_GPIO_UNUSED (0xFF)
+
 #define EEPROM_GPIO_CFG_IN_OUT_MASK		(1 << 2)
 #define EEPROM_GPIO_CFG_PULL_MASK		(1 << 1)
 #define EEPROM_GPIO_CFG_HI_LO_MASK		(1 << 0)

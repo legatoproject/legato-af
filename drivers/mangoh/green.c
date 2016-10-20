@@ -212,11 +212,16 @@ static struct i2c_client *green_add_i2c(struct platform_device *pdev,
 {
 	struct i2c_adapter *adapter;
 	struct i2c_client *i2cdev;
-	struct i2c_board_info board;
+	struct i2c_board_info board = {};
 	struct slot_status *s = green_get_slot(pdev, slot);
+	uint8_t irq_gpio;
 
 	strncpy(board.type, eeprom_if_i2c_modalias(item), sizeof(board.type));
-	board.irq = gpio_to_irq(s->gpio[eeprom_if_i2c_irq_gpio(item)]);
+	irq_gpio = eeprom_if_i2c_irq_gpio(item);
+	if (irq_gpio != IRQ_GPIO_UNUSED)
+	{
+		board.irq = gpio_to_irq(s->gpio[irq_gpio]);
+	}
 	board.addr = eeprom_if_i2c_address(item);
 
 	/* TODO: Find intelligent way to assign platform data */
@@ -256,11 +261,16 @@ static struct spi_device *green_add_spi(struct platform_device *pdev,
 		.chip_select = 0,
 	};
 	struct spi_master *master;
+	uint8_t irq_gpio;
 
 	s = green_get_slot(pdev, slot);
 
 	/* Assign IRQ number */
-	board.irq = gpio_to_irq(s->gpio[eeprom_if_spi_irq_gpio(item)]);
+	irq_gpio = eeprom_if_spi_irq_gpio(item);
+	if (irq_gpio != IRQ_GPIO_UNUSED)
+	{
+		board.irq = gpio_to_irq(s->gpio[irq_gpio]);
+	}
 	strncpy(board.modalias, eeprom_if_spi_modalias(item),
 		sizeof(board.modalias));
 

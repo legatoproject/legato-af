@@ -326,7 +326,7 @@ int eeprom_if_spi_irq_gpio(struct list_head *item)
 	case EEPROM_VERSION(1, 0): {
 		eeprom_if_1v0 *eif = (eeprom_if_1v0*)m->contents;
 		BUG_ON(eeprom_if_spi != eif->type);
-		return (eif->ifc.spi.irq_gpio);
+		return eif->ifc.spi.irq_gpio;
 	}
 	default:
 		/* unsupported eeprom version */
@@ -358,7 +358,7 @@ int eeprom_if_i2c_irq_gpio(struct list_head *item)
 	case EEPROM_VERSION(1, 0): {
 		eeprom_if_1v0 *eif = (eeprom_if_1v0*)m->contents;
 		BUG_ON(eeprom_if_i2c != eif->type);
-		return (eif->ifc.i2c.irq_gpio);
+		return eif->ifc.i2c.irq_gpio;
 	}
 	default:
 		/* unsupported eeprom version */
