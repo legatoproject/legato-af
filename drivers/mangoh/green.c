@@ -506,10 +506,13 @@ static int green_probe_slots(struct platform_device *pdev)
 		if (s->present)
 			rv = scan_slot_eeprom(pdev, i);
 		/* Ignore slots where eeprom could not be parsed */
-		if (rv < 1)
+		if (rv < 1) {
 			s->present = false;
-		else
+			i++;    /* skip the slot with the unreadable eeprom */
+		}
+		else {
 			i += rv;    /* rv contains number of occupied slots */
+		}
 	}
 
 	return 0;
