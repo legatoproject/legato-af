@@ -382,19 +382,3 @@ uint8_t eeprom_if_i2c_address(struct list_head *item)
 		return -1;
 	}
 }
-
-int eeprom_if_sdio_irq_gpio(struct list_head *item)
-{
-	struct eeprom_if_map *m = to_eeprom_if_map(item);
-	switch (eeprom_version(m->eeprom)) {
-	case EEPROM_VERSION(1, 0): {
-		eeprom_if_1v0 *eif = (eeprom_if_1v0*)m->contents;
-		BUG_ON(eeprom_if_sdio != eif->type);
-		return (eif->ifc.sdio.irq_gpio);
-	}
-	default:
-		/* unsupported eeprom version */
-		BUG();
-		return -1;
-	}
-}

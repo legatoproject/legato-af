@@ -43,6 +43,5 @@ int eeprom_if_spi_irq_gpio(struct list_head *item);
 char *eeprom_if_i2c_modalias(struct list_head *item);
 int eeprom_if_i2c_irq_gpio(struct list_head *item);
 uint8_t eeprom_if_i2c_address(struct list_head *item);
-int eeprom_if_sdio_irq_gpio(struct list_head *item);
 #endif /* MANGOH_IOT_EEPROM_H */
 

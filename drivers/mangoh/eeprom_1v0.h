@@ -36,13 +36,8 @@ typedef struct eeprom_if_spi_1v0_ {
 	char reserved[29];
 } eeprom_if_spi_1v0;
 
-typedef struct eeprom_if_sdio_1v0_ {
-	uint8_t irq_gpio;
-	char modalias[32];
-	char reserved[30];
-} eeprom_if_sdio_1v0;
-
 typedef eeprom_if_reserved eeprom_if_usb_1v0;
+typedef eeprom_if_reserved eeprom_if_sdio_1v0;
 typedef eeprom_if_reserved eeprom_if_adc_1v0;
 typedef eeprom_if_reserved eeprom_if_pcm_1v0;
 typedef eeprom_if_reserved eeprom_if_clk_1v0;
