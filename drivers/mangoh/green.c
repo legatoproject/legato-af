@@ -112,7 +112,12 @@ static struct green_platform_data {
 	struct i2c_client *mux;
 	struct i2c_client *expander[ARRAY_SIZE(sx150x_data)];
 	struct slot_status {
-		int	gpio[8];	/* assigned GPIOs on IoT bus */
+		/*
+		 * Assigned GPIOs on IoT connector. Index 0-3 cover the
+		 * dedicated GPIO pins of the IoT card interface. Index 5 and 6
+		 * are for the card detect and card reset functions.
+		 */
+		int	gpio[6];
 		bool	present;			/* card present */
 		void	*busdev[mangoh_bus_last];	/* IoT bus devices */
 	} slot[3];
@@ -138,8 +143,9 @@ static struct green_platform_data {
 	},
 	13, 14, 15, 10, 11, 8, 12,
 };
-#define	det_gpio	gpio[4]		/* slot detect */
-#define rst_gpio	gpio[5]		/* slot reset */
+
+#define det_gpio	gpio[4] /* slot detect */
+#define rst_gpio	gpio[5] /* slot reset */
 
 #define i2cdev		busdev[mangoh_bus_i2c]
 #define spidev		busdev[mangoh_bus_spi]
