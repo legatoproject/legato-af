@@ -153,8 +153,8 @@ static void PositionHandlerFunction
     int32_t vSpeed;
     int32_t vSpeedAccuracy;
     // Direction
-    int32_t direction;
-    int32_t directionAccuracy;
+    uint32_t direction;
+    uint32_t directionAccuracy;
 
     if(positionSampleRef == NULL)
     {
@@ -277,12 +277,12 @@ static void PositionHandlerFunction
 
     if(result == LE_OK)
     {
-        LE_INFO("hSpeed %d - Accuracy %d"
+        LE_INFO("hSpeed %u - Accuracy %u"
                 , hSpeed/100, hSpeedAccuracy/10);
     }
     else
     {
-        LE_INFO("hSpeed unknown [%d,%d]"
+        LE_INFO("hSpeed unknown [%u,%u]"
                 , hSpeed, hSpeedAccuracy);
     }
 
@@ -309,12 +309,12 @@ static void PositionHandlerFunction
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
     if(result == LE_OK)
     {
-        LE_INFO("direction %d - Accuracy %d"
+        LE_INFO("direction %u - Accuracy %u"
                 , direction/10, directionAccuracy/10);
     }
     else
     {
-        LE_INFO("direction unknown [%d,%d]"
+        LE_INFO("direction unknown [%u,%u]"
                 , direction, directionAccuracy);
     }
 

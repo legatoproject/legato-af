@@ -57,13 +57,15 @@
  * - horizontal speed is in m/sec.
  * - vertical speed is in m/sec, positive up.
  *
- * The @c le_pos_GetHeading() function gets the last updated heading value in
- * degrees (where 0 is True North) and its associated accuracy value. Heading is the direction that
- * the vehicle/person is facing.
+ * The @c le_pos_GetHeading() function gets the last updated heading value in degrees and
+ * its associated accuracy value:
+ *  - Heading in degrees, ranges from 0 to 359, 0 being True North.
+ * Heading is the direction that the vehicle or person is facing.
  *
- * The @c le_pos_GetDirection() function gets the last updated direction value in
- * degrees (where 0 is True North) and its associated accuracy value. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * The @c le_pos_GetDirection() function gets the last updated direction value in degrees and
+ * its associated accuracy value:
+ *  - Direction in degrees, ranges from 0 to 359, 0 being True North.
+ * Direction of movement is the direction that the vehicle or person is actually moving.
 
  * The @c le_pos_GetFixState() function gets the position fix state. The fix state allows the user
  * to determine if it is a 2-Dimensional or a 3-Dimensional position fix.
@@ -289,34 +291,42 @@ FUNCTION le_result_t GetMotion
  * Get the heading indication.
  *
  * @return LE_FAULT         Function failed to get the heading indication.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  * @return LE_OK            Function succeeded.
+ *
+ * @note Heading is given in degrees.
+ *       Heading ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note headingPtr, headingAccuracyPtr can be set to NULL if not needed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetHeading
 (
-    int32 heading OUT,          ///< Heading in degrees (where 0 is True North).
-    int32 headingAccuracy OUT   ///< Heading's accuracy in degrees.
+    uint32 heading OUT,          ///< Heading in degrees.
+                                 ///< Range: 0 to 359, where 0 is True North.
+    uint32 headingAccuracy OUT   ///< Heading's accuracy in degrees.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the direction indication. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * Get the direction indication. Direction of movement is the direction that the vehicle or person
+ * is actually moving.
  *
  * @return LE_FAULT         Function failed to get the direction indication.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  * @return LE_OK            Function succeeded.
+ *
+ * @note Direction is given in degrees.
+ *       Direction ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetDirection
 (
-    int32 direction OUT,            ///< Direction indication in degrees (where 0 is True North).
-    int32 directionAccuracy OUT     ///< Direction's accuracy estimate in degrees.
+    uint32 direction OUT,           ///< Direction indication in degrees.
+                                    ///< Range: 0 to 359, where 0 is True North.
+    uint32 directionAccuracy OUT    ///< Direction's accuracy estimate in degrees.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -462,12 +472,14 @@ FUNCTION le_result_t sample_GetVerticalSpeed
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the position sample's heading. Heading is the direction that
- * the vehicle/person is facing.
+ * Get the position sample's heading. Heading is the direction that the vehicle or person is facing.
  *
  * @return LE_FAULT         Function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  * @return LE_OK            TFunction succeeded.
+ *
+ * @note Heading is given in degrees.
+ *       Heading ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -478,19 +490,23 @@ FUNCTION le_result_t sample_GetVerticalSpeed
 FUNCTION le_result_t sample_GetHeading
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    int32 heading OUT,                  ///< Heading in degrees (where 0 is True North).
-    int32 headingAccuracy OUT           ///< Heading's accuracy estimate in degrees.
+    uint32 heading OUT,                 ///< Heading in degrees.
+                                        ///< Range: 0 to 359, where 0 is True North.
+    uint32 headingAccuracy OUT          ///< Heading's accuracy estimate in degrees.
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the position sample's direction. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * Get the position sample's direction. Direction of movement is the direction that the vehicle or
+ * person is actually moving.
  *
  * @return LE_FAULT         Function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  * @return LE_OK            Function succeeded.
+ *
+ * @note Direction is given in degrees.
+ *       Direction ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -501,8 +517,9 @@ FUNCTION le_result_t sample_GetHeading
 FUNCTION le_result_t sample_GetDirection
 (
     Sample positionSampleRef,           ///< Position sample's reference.
-    int32 direction OUT,                ///< Direction in degrees (where 0 is True North).
-    int32 directionAccuracy OUT         ///< Direction's accuracy estimate in degrees.
+    uint32 direction OUT,               ///< Direction indication in degrees.
+                                        ///< Range: 0 to 359, where 0 is True North.
+    uint32 directionAccuracy OUT        ///< Direction's accuracy estimate in degrees.
 );
 
 //--------------------------------------------------------------------------------------------------

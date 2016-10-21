@@ -1258,7 +1258,7 @@ static int GetHorizontalSpeed
     }
     else if (result == LE_OUT_OF_RANGE)
     {
-        printf("hSpeed invalid [%d, %d]\n",
+        printf("hSpeed invalid [%u, %u]\n",
                 hSpeed,
                 hSpeedAccuracy);
     }
@@ -1329,12 +1329,12 @@ static int GetDirection
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    int32_t     direction;
-    int32_t     directionAccuracy=0;
+    uint32_t direction         = 0;
+    uint32_t directionAccuracy = 0;
 
-    le_result_t result = le_gnss_GetDirection( positionSampleRef,
-                                               &direction,
-                                               &directionAccuracy);
+    le_result_t result = le_gnss_GetDirection(positionSampleRef,
+                                              &direction,
+                                              &directionAccuracy);
 
     if (result == LE_OK)
     {
@@ -1345,7 +1345,7 @@ static int GetDirection
     }
     else if(result == LE_OUT_OF_RANGE)
     {
-        printf("Direction invalid [%d, %d]\n",
+        printf("Direction invalid [%u, %u]\n",
                direction,
                directionAccuracy);
     }

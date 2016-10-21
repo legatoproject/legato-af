@@ -82,13 +82,13 @@ typedef struct le_pos_Sample
     bool            vSpeedAccuracyValid; ///< if true, vertical speed accuracy is set
     int32_t         vSpeedAccuracy;  ///< vertical speed accuracy
     bool            headingValid;    ///< if true, heading is set
-    int32_t         heading;         ///< heading
+    uint32_t        heading;         ///< heading
     bool            headingAccuracyValid; ///< if true, heading accuracy is set
-    int32_t         headingAccuracy; ///< heading accuracy
+    uint32_t        headingAccuracy; ///< heading accuracy
     bool            directionValid;  ///< if true, direction is set
-    int32_t         direction;       ///< direction
+    uint32_t        direction;       ///< direction
     bool            directionAccuracyValid; ///< if true, direction accuracy is set
-    int32_t         directionAccuracy; ///< direction accuracy
+    uint32_t        directionAccuracy; ///< direction accuracy
     bool            dateValid;          ///< if true, date is set
     uint16_t        year;               ///< UTC Year A.D. [e.g. 2014].
     uint16_t        month;              ///< UTC Month into the year [range 1...12].
@@ -487,8 +487,8 @@ static void PosSampleHandlerfunc
     int32_t vSpeed;
     int32_t vSpeedAccuracy;
     // Direction
-    int32_t direction;
-    int32_t directionAccuracy;
+    uint32_t direction;
+    uint32_t directionAccuracy;
     // Date parameters
     uint16_t year;
     uint16_t month;
@@ -636,10 +636,10 @@ static void PosSampleHandlerfunc
                     le_gnss_GetHorizontalSpeed( positionSampleRef
                                                 , &hSpeed
                                                 , &hSpeedAccuracy);
-                    posSampleNodePtr->hSpeedValid = CHECK_VALIDITY(hSpeed,INT32_MAX);
+                    posSampleNodePtr->hSpeedValid = CHECK_VALIDITY(hSpeed,UINT32_MAX);
                     posSampleNodePtr->hSpeed = hSpeed;
                     posSampleNodePtr->hSpeedAccuracyValid =
-                                                        CHECK_VALIDITY(hSpeedAccuracy,INT32_MAX);
+                                                        CHECK_VALIDITY(hSpeedAccuracy,UINT32_MAX);
                     posSampleNodePtr->hSpeedAccuracy = hSpeedAccuracy;
 
                     // Get vertical speed
@@ -654,19 +654,19 @@ static void PosSampleHandlerfunc
 
                     // Heading not supported by GNSS engine
                     posSampleNodePtr->headingValid = false;
-                    posSampleNodePtr->heading = INT32_MAX;
+                    posSampleNodePtr->heading = UINT32_MAX;
                     posSampleNodePtr->headingAccuracyValid = false;
-                    posSampleNodePtr->headingAccuracy = INT32_MAX;
+                    posSampleNodePtr->headingAccuracy = UINT32_MAX;
 
                     // Get direction
                     le_gnss_GetDirection( positionSampleRef
                                         , &direction
                                         , &directionAccuracy);
 
-                    posSampleNodePtr->directionValid = CHECK_VALIDITY(direction,INT32_MAX);
+                    posSampleNodePtr->directionValid = CHECK_VALIDITY(direction,UINT32_MAX);
                     posSampleNodePtr->direction = direction;
                     posSampleNodePtr->directionAccuracyValid =
-                                                    CHECK_VALIDITY(directionAccuracy,INT32_MAX);
+                                                    CHECK_VALIDITY(directionAccuracy,UINT32_MAX);
                     posSampleNodePtr->directionAccuracy = directionAccuracy;
 
                     // Get UTC time
@@ -1469,11 +1469,14 @@ le_result_t le_pos_sample_GetVerticalSpeed
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the position sample's heading. Heading is the direction that
- * the vehicle/person is facing.
+ * the vehicle or person is facing.
  *
  * @return LE_FAULT         The function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to UINT32_MAX).
  * @return LE_OK            The function succeeded.
+ *
+ * @note Heading is given in degrees.
+ *       Heading ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1483,9 +1486,10 @@ le_result_t le_pos_sample_GetVerticalSpeed
 //--------------------------------------------------------------------------------------------------
 le_result_t le_pos_sample_GetHeading
 (
-    le_pos_SampleRef_t positionSampleRef, ///< [IN] The position sample's reference.
-    int32_t*           headingPtr,        ///< [OUT] The heading in degrees (where 0 is True North).
-    int32_t*           headingAccuracyPtr ///< [OUT] The heading's accuracy estimate.
+    le_pos_SampleRef_t positionSampleRef, ///< [IN]  The position sample's reference.
+    uint32_t*          headingPtr,        ///< [OUT] The heading in degrees.
+                                          ///<       Range: 0 to 359, where 0 is True North.
+    uint32_t*          headingAccuracyPtr ///< [OUT] The heading's accuracy estimate.
 )
 {
     le_result_t result = LE_OK;
@@ -1503,7 +1507,7 @@ le_result_t le_pos_sample_GetHeading
         {
             *headingPtr = positionSamplePtr->heading;
         } else {
-            *headingPtr = INT32_MAX;
+            *headingPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
@@ -1513,7 +1517,7 @@ le_result_t le_pos_sample_GetHeading
         {
             *headingAccuracyPtr = positionSamplePtr->headingAccuracy;
         } else {
-            *headingAccuracyPtr = INT32_MAX;
+            *headingAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
@@ -1523,11 +1527,14 @@ le_result_t le_pos_sample_GetHeading
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the position sample's direction. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * direction that the vehicle or person is actually moving.
  *
  * @return LE_FAULT         The function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to UINT32_MAX).
  * @return LE_OK            The function succeeded.
+ *
+ * @note Direction is given in degrees.
+ *       Direction ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1537,9 +1544,10 @@ le_result_t le_pos_sample_GetHeading
 //--------------------------------------------------------------------------------------------------
 le_result_t le_pos_sample_GetDirection
 (
-    le_pos_SampleRef_t  positionSampleRef,    ///< [IN] The position sample's reference.
-    int32_t*            directionPtr,         ///< [OUT] The direction.
-    int32_t*            directionAccuracyPtr  ///< [OUT] The direction's accuracy estimate.
+    le_pos_SampleRef_t  positionSampleRef,    ///< [IN]  The position sample's reference.
+    uint32_t*           directionPtr,         ///< [OUT] Direction indication in degrees.
+                                              ///<       Range: 0 to 359, where 0 is True North.
+    uint32_t*           directionAccuracyPtr  ///< [OUT] The direction's accuracy estimate.
 )
 {
     le_result_t result = LE_OK;
@@ -1557,7 +1565,7 @@ le_result_t le_pos_sample_GetDirection
         {
             *directionPtr = positionSamplePtr->direction/10; // Update resolution
         } else {
-            *directionPtr = INT32_MAX;
+            *directionPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
@@ -1567,7 +1575,7 @@ le_result_t le_pos_sample_GetDirection
         {
             *directionAccuracyPtr = positionSamplePtr->directionAccuracy/10; // Update resolution
         } else {
-            *directionAccuracyPtr = INT32_MAX;
+            *directionAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
@@ -2079,16 +2087,20 @@ le_result_t le_pos_GetMotion
  * This function must be called to get the heading indication.
  *
  * @return LE_FAULT         The function failed to get the heading indication.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to UINT32_MAX).
  * @return LE_OK            The function succeeded.
+ *
+ * @note Heading is given in degrees.
+ *       Heading ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note headingPtr, headingAccuracyPtr can be set to NULL if not needed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_pos_GetHeading
 (
-    int32_t*  headingPtr,        ///< [OUT] The heading in degrees(where 0 is True North).
-    int32_t*  headingAccuracyPtr ///< [OUT] The heading's accuracy.
+    uint32_t*  headingPtr,        ///< [OUT] The heading in degrees.
+                                  ///<       Range: 0 to 359, where 0 is True North.
+    uint32_t*  headingAccuracyPtr ///< [OUT] The heading's accuracy.
 )
 {
 
@@ -2101,34 +2113,37 @@ le_result_t le_pos_GetHeading
     }
 
     // Heading indication not supported by GNSS feature.
-    *headingPtr = INT32_MAX;
-    *headingAccuracyPtr = INT32_MAX;
+    *headingPtr = UINT32_MAX;
+    *headingAccuracyPtr = UINT32_MAX;
     return LE_OUT_OF_RANGE;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the direction indication. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * Get the direction indication. Direction of movement is the direction that the vehicle or person
+ * is actually moving.
  *
  * @return LE_FAULT         Function failed to get the direction indication.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  * @return LE_OK            Function succeeded.
+ *
+ * @note Direction is given in degrees.
+ *       Direction ranges from 0 to 359 degrees, where 0 is True North.
  *
  * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_pos_GetDirection
 (
-    int32_t* directionPtr,
-        ///< [OUT] Direction indication in degrees (where 0 is True North).
-    int32_t* directionAccuracyPtr
+    uint32_t* directionPtr,
+        ///< [OUT] Direction indication in degrees. Range: 0 to 359, where 0 is True North.
+    uint32_t* directionAccuracyPtr
         ///< [OUT] Direction's accuracy estimate in degrees.
 )
 {
     // Direction
-    int32_t direction;
-    int32_t directionAccuracy;
+    uint32_t direction;
+    uint32_t directionAccuracy;
     le_result_t gnssResult = LE_OK;
     le_result_t posResult = LE_OK;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
@@ -2150,7 +2165,7 @@ le_result_t le_pos_GetDirection
     {
         if (directionPtr)
         {
-            if (direction != INT32_MAX)
+            if (direction != UINT32_MAX)
             {
                 *directionPtr = direction/10; // Update resolution
             }
@@ -2162,7 +2177,7 @@ le_result_t le_pos_GetDirection
         }
         if (directionAccuracyPtr)
         {
-            if (directionAccuracy != INT32_MAX)
+            if (directionAccuracy != UINT32_MAX)
             {
                 *directionAccuracyPtr = directionAccuracy/10; // Update resolution
             }

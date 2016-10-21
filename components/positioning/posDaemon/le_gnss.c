@@ -110,9 +110,9 @@ typedef struct le_gnss_PositionSample
     bool            vSpeedAccuracyValid; ///< if true, vertical speed accuracy is set
     int32_t         vSpeedAccuracy;  ///< vertical speed accuracy
     bool            directionValid;  ///< if true, direction is set
-    int32_t         direction;       ///< direction
+    uint32_t        direction;       ///< direction
     bool            directionAccuracyValid; ///< if true, direction accuracy is set
-    int32_t         directionAccuracy; ///< direction accuracy
+    uint32_t        directionAccuracy; ///< direction accuracy
     bool            dateValid;       ///< if true, date is set
     uint16_t        year;            ///< UTC Year A.D. [e.g. 2014].
     uint16_t        month;           ///< UTC Month into the year [range 1...12].
@@ -1569,13 +1569,16 @@ le_result_t le_gnss_GetVerticalSpeed
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the position sample's direction. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * Get the position sample's direction. Direction of movement is the direction that the vehicle or
+ * person is actually moving.
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  *  - LE_OK            Function succeeded.
+ *
+ * @note Direction is given in degrees with 1 decimal place: 1755 = 175,5 degrees.
+ *       Direction ranges from 0 to 359.9 degrees, where 0 is True North.
  *
  * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
  *
@@ -1589,15 +1592,14 @@ le_result_t le_gnss_GetDirection
         ///< [IN]
         ///< Position sample's reference.
 
-    int32_t* directionPtr,
+    uint32_t* directionPtr,
         ///< [OUT]
         ///< Direction in degrees [resolution 1e-1].
-        ///< (where 0 is True North)
+        ///< Range: 0 to 359.9, where 0 is True North.
 
-    int32_t* directionAccuracyPtr
+    uint32_t* directionAccuracyPtr
         ///< [OUT]
-        ///< Direction's accuracy estimate
-        ///< in degrees [resolution 1e-1].
+        ///< Direction's accuracy estimate in degrees [resolution 1e-1].
 )
 {
     le_result_t result = LE_OK;
@@ -1619,7 +1621,7 @@ le_result_t le_gnss_GetDirection
         }
         else
         {
-            *directionPtr = INT32_MAX;
+            *directionPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
@@ -1631,7 +1633,7 @@ le_result_t le_gnss_GetDirection
         }
         else
         {
-            *directionAccuracyPtr = INT32_MAX;
+            *directionAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }

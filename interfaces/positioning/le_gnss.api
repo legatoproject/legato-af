@@ -995,13 +995,16 @@ FUNCTION le_result_t GetVerticalSpeed
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the position sample's direction. Direction of movement is the
- * direction that the vehicle/person is actually moving.
+ * Get the position sample's direction. Direction of movement is the direction that the vehicle or
+ * person is actually moving.
  *
  * @return
  *  - LE_FAULT         Function failed to find the positionSample.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT32_MAX).
  *  - LE_OK            Function succeeded.
+ *
+ * @note Direction is given in degrees with 1 decimal place: 1755 = 175,5 degrees.
+ *       Direction ranges from 0 to 359.9 degrees, where 0 is True North.
  *
  * @note directionPtr, directionAccuracyPtr can be set to NULL if not needed.
  *
@@ -1011,10 +1014,10 @@ FUNCTION le_result_t GetVerticalSpeed
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetDirection
 (
-    Sample positionSampleRef IN,        ///< Position sample's reference.
-    int32  direction OUT,               ///< Direction in degrees [resolution 1e-1].
-                                        ///< (where 0 is True North)
-    int32  directionAccuracy OUT        ///< Direction's accuracy estimate
+    Sample  positionSampleRef IN,       ///< Position sample's reference.
+    uint32  direction OUT,              ///< Direction in degrees [resolution 1e-1].
+                                        ///< Range: 0 to 359.9, where 0 is True North
+    uint32  directionAccuracy OUT       ///< Direction's accuracy estimate
                                         ///< in degrees [resolution 1e-1].
 );
 

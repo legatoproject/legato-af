@@ -59,16 +59,16 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
     LE_INFO("GetAltitude: alt.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
-    LE_INFO("GetHorizontalSpeed: hSpeed.%d, accuracy.%d", uval, uAccuracy);
+    LE_INFO("GetHorizontalSpeed: hSpeed.%u, accuracy.%u", uval, uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
     LE_INFO("GetVerticalSpeed: vSpeed.%d, accuracy.%d", val, accuracy);
 
-    le_pos_sample_GetHeading(positionSampleRef, &val, &accuracy);
-    LE_INFO("GetHeading: heading.%d, accuracy.%d", val, accuracy);
+    le_pos_sample_GetHeading(positionSampleRef, &uval, &uAccuracy);
+    LE_INFO("GetHeading: heading.%u, accuracy.%u", uval, uAccuracy);
 
-    le_pos_sample_GetDirection(positionSampleRef, &val, &accuracy);
-    LE_INFO("GetDirection: direction.%d, accuracy.%d", val, accuracy);
+    le_pos_sample_GetDirection(positionSampleRef, &uval, &uAccuracy);
+    LE_INFO("GetDirection: direction.%u, accuracy.%u", uval, uAccuracy);
 
     le_pos_sample_Release(positionSampleRef);
 }
@@ -104,16 +104,16 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
     LE_INFO("GetAltitude: alt.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
-    LE_INFO("GetHorizontalSpeed: hSpeed.%d, accuracy.%d", uval, uAccuracy);
+    LE_INFO("GetHorizontalSpeed: hSpeed.%u, accuracy.%u", uval, uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
     LE_INFO("GetVerticalSpeed: vSpeed.%d, accuracy.%d", val, accuracy);
 
-    le_pos_sample_GetHeading(positionSampleRef, &val, &accuracy);
-    LE_INFO("GetHeading: heading.%d, accuracy.%d", val, accuracy);
+    le_pos_sample_GetHeading(positionSampleRef, &uval, &uAccuracy);
+    LE_INFO("GetHeading: heading.%u, accuracy.%u", uval, uAccuracy);
 
-    le_pos_sample_GetDirection(positionSampleRef, &val, &accuracy);
-    LE_INFO("GetDirection: direction.%d, accuracy.%d", val, accuracy);
+    le_pos_sample_GetDirection(positionSampleRef, &uval, &uAccuracy);
+    LE_INFO("GetDirection: direction.%u, accuracy.%u", uval, uAccuracy);
 
     le_pos_sample_Release(positionSampleRef);
 }
@@ -162,10 +162,10 @@ void Testle_pos_GetInfo()
     uint32_t          hSpeedAccuracy;
     int32_t           vSpeed;
     int32_t           vSpeedAccuracy;
-    int32_t           heading;
-    int32_t           headingAccuracy=0;
-    int32_t           direction;
-    int32_t           directionAccuracy=0;
+    uint32_t          heading;
+    uint32_t          headingAccuracy=0;
+    uint32_t          direction;
+    uint32_t          directionAccuracy=0;
     uint16_t          year = 0;
     uint16_t          month = 0;
     uint16_t          day = 0;
@@ -212,21 +212,21 @@ void Testle_pos_GetInfo()
     LE_INFO("le_pos_GetMotion %s"
             , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
     LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d"
+    LE_INFO("Check le_pos_GetMotion hSpeed.%u, hSpeedAccuracy.%u, vSpeed.%d, vSpeedAccuracy.%d"
             , hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
 
     res= le_pos_GetHeading(&heading, &headingAccuracy);
     LE_INFO("le_pos_GetHeading %s"
             , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
     LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetHeading heading.%d, headingAccuracy.%d"
+    LE_INFO("Check le_pos_GetHeading heading.%u, headingAccuracy.%u"
             , heading, headingAccuracy);
 
     res= le_pos_GetDirection(&direction, &directionAccuracy);
     LE_INFO("le_pos_GetDirection %s"
             , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
     LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
-    LE_INFO("Check le_pos_GetDirection direction.%d, directionAccuracy.%d"
+    LE_INFO("Check le_pos_GetDirection direction.%u, directionAccuracy.%u"
             , direction, directionAccuracy);
 
 }

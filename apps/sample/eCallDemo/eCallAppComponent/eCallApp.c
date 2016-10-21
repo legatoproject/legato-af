@@ -69,7 +69,7 @@ static le_ecall_CallRef_t ECallRef;
 static void LoadECallSettings
 (
     int32_t*  hMinAccuracyPtr,
-    int32_t*  dirMinAccuracyPtr
+    uint32_t* dirMinAccuracyPtr
 )
 {
     char psapStr[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
@@ -285,15 +285,15 @@ static void StartSession
 (
     uint32_t paxCount,      ///< [IN] number of passengers
     int32_t  hMinAccuracy,  ///< [IN] minimum horizontal accuracy to trust the position (in meters)
-    int32_t  dirMinAccuracy ///< [IN] minimum direction accuracy to trust the position (in degrees)
+    uint32_t dirMinAccuracy ///< [IN] minimum direction accuracy to trust the position (in degrees)
 )
 {
     bool                              isPosTrusted = false;
     int32_t                           latitude = 0x7FFFFFFF;
     int32_t                           longitude = 0x7FFFFFFF;
     int32_t                           hAccuracy = 0;
-    int32_t                           direction = 0x7FFFFFFF;
-    int32_t                           dirAccuracy = 0;
+    uint32_t                          direction = 0xFFFFFFFF;
+    uint32_t                          dirAccuracy = 0;
 
     LE_DEBUG("StartSession called");
 
@@ -391,7 +391,7 @@ void ecallApp_StartSession
 )
 {
     int32_t  hMinAccuracy = 0;
-    int32_t  dirMinAccuracy = 0;
+    uint32_t dirMinAccuracy = 0;
 
     if (ECallRef)
     {
