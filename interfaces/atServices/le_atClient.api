@@ -58,8 +58,10 @@
  *
  * le_atClient_SetCommandAndSend() is equivalent to le_atClient_Create(), le_atClient_SetCommand(),
  * le_atClient_SetDevice(), le_atClient_SetTimeout(), le_atClient_SetIntermediateResponse() and
- * le_atClient_SetFinalResponse() in one API call. The AT command reference is created and returned
- * by this API.
+ * le_atClient_SetFinalResponse(), in case of an Error le_atClient_Delete(),
+ * in one API call.
+ * The AT command reference is created and returned by this API. When an error
+ * occurs the command reference is deleted and is not a valid reference anymore
  *
  * @section atClient_responses Responses
  *
@@ -421,11 +423,14 @@ FUNCTION le_result_t GetFinalResponse
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
- * @note If the AT command is invalid, a fatal error occurs,
- *       the function won't return.
+ * @note This command creates a command reference when called
  *
- * @note The AT command reference is created and returned by this API, there's no need to call
- * le_atClient_Create() first.
+ * @note In case of an Error the command reference will be deleted and though
+ *       not usable. Make sure to test the return code and not use the reference
+ *       in other functions.
+ *
+ * @note If the AT command is invalid, a fatal error occurs,
+ *        the function won't return.
  *
  */
 //--------------------------------------------------------------------------------------------------

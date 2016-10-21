@@ -1883,8 +1883,15 @@ le_result_t le_atClient_GetFinalResponse
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
+ * @note This command creates a command reference when called
+ *
+ * @note In case of an Error the command reference will be deleted and though
+ *       not usable. Make sure to test the return code and not use the reference
+ *       in other functions.
+ *
  * @note If the AT command is invalid, a fatal error occurs,
  *       the function won't return.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atClient_SetCommandAndSend
