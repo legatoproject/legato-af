@@ -79,6 +79,9 @@ REFERENCE Device;
 //--------------------------------------------------------------------------------------------------
 /**
  * Command string maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE COMMAND_MAX_LEN = (127);
@@ -94,6 +97,9 @@ DEFINE COMMAND_MAX_BYTES = (COMMAND_MAX_LEN+1);
 //--------------------------------------------------------------------------------------------------
 /**
  * Parameter string maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE PARAMETER_MAX_LEN = (127);
@@ -109,6 +115,9 @@ DEFINE PARAMETER_MAX_BYTES = (PARAMETER_MAX_LEN+1);
 //--------------------------------------------------------------------------------------------------
 /**
  * AT command response maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  RESPONSE_MAX_LEN = (352);
