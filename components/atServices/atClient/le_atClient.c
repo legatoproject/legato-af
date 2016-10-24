@@ -186,8 +186,8 @@ ClientState_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char            line[LE_ATCLIENT_CMD_RSP_MAX_BYTES];  ///< string value
-    le_dls_Link_t   link;                                 ///< link for list
+    char            line[LE_ATDEFS_RESPONSE_MAX_BYTES]; ///< string value
+    le_dls_Link_t   link;                               ///< link for list
 }
 RspString_t;
 
@@ -236,16 +236,16 @@ RxParser_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_atClient_UnsolicitedResponseHandlerFunc_t handlerPtr;        ///< Unsolicited handler
-    void*         contextPtr;                                       ///< User context
-    char          unsolRsp[LE_ATCLIENT_UNSOLICITED_MAX_BYTES];      ///< pattern to match
-    char          unsolBuffer[LE_ATCLIENT_UNSOLICITED_MAX_BYTES];   ///< Unsolicited buffer
-    uint32_t      lineCount;                                        ///< Unsolicited lines number
-    uint32_t      lineCounter;                                      ///< Received line counter
-    bool          inProgress;                                       ///< Reception in progress
-    le_atClient_UnsolicitedResponseHandlerRef_t ref;                ///< Unsolicited reference
-    DeviceContextPtr_t interfacePtr;                                ///< device context
-    le_dls_Link_t link;                                             ///< link in Unsolicited List
+    le_atClient_UnsolicitedResponseHandlerFunc_t handlerPtr;    ///< Unsolicited handler
+    void*         contextPtr;                                   ///< User context
+    char          unsolRsp[LE_ATDEFS_UNSOLICITED_MAX_BYTES];    ///< pattern to match
+    char          unsolBuffer[LE_ATDEFS_UNSOLICITED_MAX_BYTES]; ///< Unsolicited buffer
+    uint32_t      lineCount;                                    ///< Unsolicited lines number
+    uint32_t      lineCounter;                                  ///< Received line counter
+    bool          inProgress;                                   ///< Reception in progress
+    le_atClient_UnsolicitedResponseHandlerRef_t ref;            ///< Unsolicited reference
+    DeviceContextPtr_t interfacePtr;                            ///< device context
+    le_dls_Link_t link;                                         ///< link in Unsolicited List
 }
 Unsolicited_t;
 
@@ -278,24 +278,24 @@ DeviceContext_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct AtCmd
 {
-    char                   cmd[LE_ATCLIENT_CMD_MAX_BYTES];     ///< Command to send
-    le_dls_List_t          ExpectintermediateResponseList;     ///< List of string pattern for
-                                                               ///< intermediate response
-    le_dls_List_t          expectResponseList;                 ///< List of string pattern for final
-                                                               ///< response
-    char                   text[LE_ATCLIENT_TEXT_MAX_BYTES+1]; ///< text to be sent after >
-                                                               ///< +1 for ctrl-z
-    size_t                 textSize;                           ///< size of text to send
-    DeviceContext_t*       interfacePtr;                       ///< interface to send the command
-    uint32_t               timeout;                            ///< command timeout (in ms)
-    le_atClient_CmdRef_t   ref;                                ///< command reference
-    le_dls_List_t          responseList;                       ///< Responses list
-    uint32_t               intermediateIndex;                  ///< current index for intermediate
-                                                               ///< reponses reading
-    uint32_t               responsesCount;                     ///< responses count in responseList
-    le_sem_Ref_t           endSem;                             ///< end treatment semaphore
-    le_result_t            result;                             ///< result operation
-    le_dls_Link_t          link;                               ///< link in AT commands list
+    char                   cmd[LE_ATDEFS_COMMAND_MAX_BYTES];    ///< Command to send
+    le_dls_List_t          ExpectintermediateResponseList;      ///< List of string pattern for
+                                                                ///< intermediate response
+    le_dls_List_t          expectResponseList;                  ///< List of str  pattern for final
+                                                                ///< response
+    char                   text[LE_ATDEFS_TEXT_MAX_BYTES+1];    ///< text to be sent after >
+                                                                ///< +1 for ctrl-z
+    size_t                 textSize;                            ///< size of text to send
+    DeviceContext_t*       interfacePtr;                        ///< interface to send the command
+    uint32_t               timeout;                             ///< command timeout (in ms)
+    le_atClient_CmdRef_t   ref;                                 ///< command reference
+    le_dls_List_t          responseList;                        ///< Responses list
+    uint32_t               intermediateIndex;                   ///< current index for intermediate
+                                                                ///< reponses reading
+    uint32_t               responsesCount;                      ///< responses count in responseList
+    le_sem_Ref_t           endSem;                              ///< end treatment semaphore
+    le_result_t            result;                              ///< result operation
+    le_dls_Link_t          link;                                ///< link in AT commands list
 }
 AtCmd_t;
 
@@ -392,9 +392,9 @@ static void CheckUnsolicited
         {
             LE_DEBUG("unsol found");
             uint32_t len =
-                (stringSize < LE_ATCLIENT_UNSOLICITED_MAX_LEN-strlen(unsolPtr->unsolBuffer)) ?
+                (stringSize < LE_ATDEFS_UNSOLICITED_MAX_LEN-strlen(unsolPtr->unsolBuffer)) ?
                 stringSize :
-                LE_ATCLIENT_UNSOLICITED_MAX_LEN-strlen(unsolPtr->unsolBuffer);
+                LE_ATDEFS_UNSOLICITED_MAX_LEN-strlen(unsolPtr->unsolBuffer);
 
             strncpy(unsolPtr->unsolBuffer+strlen(unsolPtr->unsolBuffer), unsolRspPtr, len);
 
@@ -406,16 +406,16 @@ static void CheckUnsolicited
             if ( (unsolPtr->lineCount - unsolPtr->lineCounter) == 1 )
             {
                 unsolPtr->handlerPtr(unsolPtr->unsolBuffer, unsolPtr->contextPtr );
-                memset(unsolPtr->unsolBuffer,0,LE_ATCLIENT_UNSOLICITED_MAX_BYTES);
+                memset(unsolPtr->unsolBuffer,0,LE_ATDEFS_UNSOLICITED_MAX_BYTES);
                 unsolPtr->lineCounter = 0;
                 unsolPtr->inProgress = false;
             }
             else
             {
-                if (LE_ATCLIENT_UNSOLICITED_MAX_LEN - strlen(unsolPtr->unsolBuffer) >= 2)
+                if (LE_ATDEFS_UNSOLICITED_MAX_LEN - strlen(unsolPtr->unsolBuffer) >= 2)
                 {
                     snprintf( unsolPtr->unsolBuffer+strlen(unsolPtr->unsolBuffer),
-                    LE_ATCLIENT_UNSOLICITED_MAX_BYTES,
+                   LE_ATDEFS_UNSOLICITED_MAX_BYTES,
                     "\r\n" );
                 }
 
@@ -853,7 +853,7 @@ static bool CheckResponse
             RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
             memset(newStringPtr,0,sizeof(RspString_t));
 
-            if(lineSize>LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+            if(lineSize>LE_ATDEFS_RESPONSE_MAX_BYTES)
             {
                 LE_ERROR("string too long");
                 return false;
@@ -1338,7 +1338,7 @@ le_atClient_CmdRef_t le_atClient_Create
     cmdPtr->ExpectintermediateResponseList  = LE_DLS_LIST_INIT;
     cmdPtr->expectResponseList              = LE_DLS_LIST_INIT;
     cmdPtr->textSize                        = 0;
-    cmdPtr->timeout                         = LE_ATCLIENT_CMD_DEFAULT_TIMEOUT;
+    cmdPtr->timeout                         = LE_ATDEFS_COMMAND_DEFAULT_TIMEOUT;
     cmdPtr->interfacePtr                    = NULL;
     cmdPtr->ref                             = le_ref_CreateRef(CmdRefMap, cmdPtr);
     cmdPtr->intermediateIndex               = 0;
@@ -1495,14 +1495,14 @@ le_result_t le_atClient_SetIntermediateResponse
             RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
             memset(newStringPtr,0,sizeof(RspString_t));
 
-            if(strlen(interPtr)>LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+            if(strlen(interPtr)>LE_ATDEFS_RESPONSE_MAX_BYTES)
             {
                 LE_DEBUG("%s is too long (%zd): Max size %d",interPtr,strlen(interPtr),
-                         LE_ATCLIENT_CMD_RSP_MAX_BYTES);
+                         LE_ATDEFS_RESPONSE_MAX_BYTES);
                 return LE_FAULT;
             }
 
-            strncpy(newStringPtr->line,interPtr,LE_ATCLIENT_CMD_RSP_MAX_BYTES);
+            strncpy(newStringPtr->line,interPtr,LE_ATDEFS_RESPONSE_MAX_BYTES);
 
             newStringPtr->link = LE_DLS_LINK_INIT;
 
@@ -1564,14 +1564,14 @@ le_result_t le_atClient_SetFinalResponse
             RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
             memset(newStringPtr,0,sizeof(RspString_t));
 
-            if(strlen(respPtr)>LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+            if(strlen(respPtr)>LE_ATDEFS_RESPONSE_MAX_BYTES)
             {
                 LE_DEBUG("%s is too long (%zd): Max size %d",respPtr,strlen(respPtr),
-                            LE_ATCLIENT_CMD_RSP_MAX_BYTES);
+                            LE_ATDEFS_RESPONSE_MAX_BYTES);
                 return LE_FAULT;
             }
 
-            strncpy(newStringPtr->line,respPtr,LE_ATCLIENT_CMD_RSP_MAX_BYTES);
+            strncpy(newStringPtr->line,respPtr,LE_ATDEFS_RESPONSE_MAX_BYTES);
 
             newStringPtr->link = LE_DLS_LINK_INIT;
 
@@ -1614,9 +1614,9 @@ le_result_t le_atClient_SetText
 
     if (textPtr)
     {
-        if(strlen(textPtr)>LE_ATCLIENT_TEXT_MAX_LEN)
+        if(strlen(textPtr)>LE_ATDEFS_TEXT_MAX_LEN)
         {
-            LE_ERROR("Text is too long! (%zd>%d)",strlen(textPtr),LE_ATCLIENT_TEXT_MAX_LEN);
+            LE_ERROR("Text is too long! (%zd>%d)",strlen(textPtr),LE_ATDEFS_TEXT_MAX_LEN);
             return LE_FAULT;
         }
 

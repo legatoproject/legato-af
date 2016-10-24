@@ -68,48 +68,48 @@ static void AtCmdHandler
     void* contextPtr
 )
 {
-    char atCommandName[LE_ATSERVER_COMMAND_MAX_BYTES];
-    char rsp[LE_ATSERVER_RESPONSE_MAX_BYTES];
-    char param[LE_ATSERVER_PARAMETER_MAX_BYTES];
+    char atCommandName[LE_ATDEFS_COMMAND_MAX_BYTES];
+    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES];
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
     int i = 0;
 
     LE_DEBUG("commandRef %p", commandRef);
 
     // check whether command's name is registred on the server app
-    memset(atCommandName,0,LE_ATSERVER_COMMAND_MAX_BYTES);
+    memset(atCommandName,0,LE_ATDEFS_COMMAND_MAX_BYTES);
     LE_ASSERT(le_atServer_GetCommandName(commandRef,
-                atCommandName,LE_ATSERVER_COMMAND_MAX_BYTES)
+                atCommandName,LE_ATDEFS_COMMAND_MAX_BYTES)
             == LE_OK);
 
     LE_DEBUG("AT command name %s", atCommandName);
 
-    memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
-    snprintf(rsp, LE_ATSERVER_RESPONSE_MAX_BYTES, "%s TYPE: ", atCommandName+2);
+    memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
+    snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s TYPE: ", atCommandName+2);
 
     switch (type)
     {
         case LE_ATSERVER_TYPE_PARA:
             LE_DEBUG("Type PARA");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
         break;
 
         case LE_ATSERVER_TYPE_TEST:
             LE_DEBUG("Type TEST");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
         break;
 
         case LE_ATSERVER_TYPE_READ:
             LE_DEBUG("Type READ");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
         break;
 
         case LE_ATSERVER_TYPE_ACT:
             LE_DEBUG("Type ACT");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
         break;
 
         default:
@@ -125,16 +125,16 @@ static void AtCmdHandler
     // get the command parameters and send them in an intermediate response
     for (i = 0; i < parametersNumber && parametersNumber <= PARAM_MAX; i++)
     {
-        memset(param,0,LE_ATSERVER_PARAMETER_MAX_BYTES);
+        memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
         LE_ASSERT(le_atServer_GetParameter(commandRef,
                                         i,
                                         param,
-                                        LE_ATSERVER_PARAMETER_MAX_BYTES)
+                                        LE_ATDEFS_PARAMETER_MAX_BYTES)
                 == LE_OK);
         LE_DEBUG("Param %d: %s", i, param);
 
-        memset(rsp,0,LE_ATSERVER_RESPONSE_MAX_BYTES);
-        snprintf(rsp,LE_ATSERVER_RESPONSE_MAX_BYTES,
+        memset(rsp,0,LE_ATDEFS_RESPONSE_MAX_BYTES);
+        snprintf(rsp,LE_ATDEFS_RESPONSE_MAX_BYTES,
             "%s PARAM %d: %s", atCommandName+2, i, param);
 
         LE_ASSERT(
@@ -146,7 +146,7 @@ static void AtCmdHandler
     LE_ASSERT(le_atServer_GetParameter(commandRef,
                                     parametersNumber+1,
                                     param,
-                                    LE_ATSERVER_PARAMETER_MAX_BYTES )
+                                    LE_ATDEFS_PARAMETER_MAX_BYTES )
             == LE_BAD_PARAMETER);
 
     // send OK final response
@@ -175,7 +175,7 @@ static void AtiCmdHandler
     void* contextPtr
 )
 {
-    char rsp[LE_ATSERVER_RESPONSE_MAX_BYTES];
+    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES];
 
     switch (type)
     {
@@ -192,20 +192,20 @@ static void AtiCmdHandler
         // this is an action type command so send multiple intermediate
         // responses and an OK final response
         case LE_ATSERVER_TYPE_ACT:
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s",
                 "Manufacturer: Sierra Wireless, Incorporated");
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
                 == LE_OK);
 
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "Model: WP8548");
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
                 == LE_OK);
 
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s",
                 "Revision: SWI9X15Y_07.10.04.00 12c1700 jenkins"
                 " 2016/06/02 02:52:45");
@@ -213,25 +213,25 @@ static void AtiCmdHandler
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
                 == LE_OK);
 
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "IMEI: 359377060009700");
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
                 == LE_OK);
 
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "IMEI SV: 42");
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
                 == LE_OK);
 
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "FSN: LL542500111503");
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
                 == LE_OK);
 
-            memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
+            memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "+GCAP: +CGSM");
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef, rsp)
@@ -303,7 +303,7 @@ static void DelCmdHandler
     AtSession_t *AtSession = (AtSession_t *)contextPtr;
     le_atServer_FinalRsp_t finalRsp = LE_ATSERVER_OK;
     le_atServer_CmdRef_t cmdRef;
-    char param[LE_ATSERVER_PARAMETER_MAX_BYTES];
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
     int i = 0;
 
     switch (type)
@@ -313,13 +313,13 @@ static void DelCmdHandler
                 i < parametersNumber && parametersNumber <= PARAM_MAX;
                 i++)
             {
-                memset(param,0,LE_ATSERVER_PARAMETER_MAX_BYTES);
+                memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
                 // get the command to delete
                 LE_ASSERT(
                 le_atServer_GetParameter(commandRef,
                                         i,
                                         param,
-                                        LE_ATSERVER_PARAMETER_MAX_BYTES)
+                                        LE_ATDEFS_PARAMETER_MAX_BYTES)
                                     == LE_OK);
                 // get its refrence
                 cmdRef = GetRef(AtSession->atCmds, AtSession->cmdsCount, param);
@@ -355,16 +355,16 @@ static void DelCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * STOP command handler
+ * CLOSE command handler
  *
  * tests closing server session
  *
  * API tested:
  *      le_atServer_SendFinalResponse
- *      le_atServer_Stop
+ *      le_atServer_Close
  */
 //--------------------------------------------------------------------------------------------------
-static void StopCmdHandler
+static void CloseCmdHandler
 (
     le_atServer_CmdRef_t commandRef,
     le_atServer_Type_t type,
@@ -389,7 +389,7 @@ static void StopCmdHandler
     // in case of an action command just close the session
     // we cannot send a response, the closing is in progress
     case LE_ATSERVER_TYPE_ACT:
-        LE_ASSERT(le_atServer_Stop(AtSession->devRef) == LE_OK);
+        LE_ASSERT(le_atServer_Close(AtSession->devRef) == LE_OK);
         break;
 
     default:
@@ -476,7 +476,7 @@ static void CbcCmdHandler
  * initialize/create new commands and register them within the server app
  *
  * API tested:
- *      le_atServer_Start
+ *      le_atServer_Open
  *      le_atServer_Create
  *      le_atServer_AddCommandHandler
  *
@@ -512,9 +512,9 @@ void* AtServer
             .handlerPtr = DelCmdHandler,
         },
         {
-            .atCmdPtr = "AT+STOP",
+            .atCmdPtr = "AT+CLOSE",
             .cmdRef = NULL,
-            .handlerPtr = StopCmdHandler,
+            .handlerPtr = CloseCmdHandler,
         },
         {
             .atCmdPtr = "AT",
@@ -612,11 +612,11 @@ void* AtServer
     }
 
     // test for bad file descriptor
-    AtSession.devRef = le_atServer_Start(-1);
+    AtSession.devRef = le_atServer_Open(-1);
     LE_ASSERT(AtSession.devRef == NULL);
 
     // start the server
-    AtSession.devRef = le_atServer_Start(connFd);
+    AtSession.devRef = le_atServer_Open(connFd);
     LE_ASSERT(AtSession.devRef != NULL);
 
     AtSession.cmdsCount = NUM_ARRAY_MEMBERS(AtCmdCreation);

@@ -231,8 +231,8 @@ EventIdList_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char            param[LE_ATSERVER_PARAMETER_MAX_BYTES];  ///< string value
-    le_dls_Link_t   link;                                 ///< link for list
+    char            param[LE_ATDEFS_PARAMETER_MAX_BYTES];   ///< string value
+    le_dls_Link_t   link;                                   ///< link for list
 }
 ParamString_t;
 
@@ -244,8 +244,8 @@ ParamString_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char            resp[LE_ATSERVER_RESPONSE_MAX_BYTES];  ///< string value
-    le_dls_Link_t   link;                                 ///< link for list
+    char            resp[LE_ATDEFS_RESPONSE_MAX_BYTES];     ///< string value
+    le_dls_Link_t   link;                                   ///< link for list
 }
 RspString_t;
 
@@ -308,7 +308,7 @@ RspState_t;
 typedef struct
 {
     le_atServer_CmdRef_t    cmdRef;                                 ///< cmd refrence
-    char                    cmdName[LE_ATSERVER_COMMAND_MAX_BYTES]; ///< Command to send
+    char                    cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];   ///< Command to send
     le_event_Id_t           eventId;
     le_atServer_AvailableDevice_t availableDevice;                  ///< device to send unsol rsp
     le_atServer_Type_t      type;                                   ///< cmd type
@@ -326,7 +326,7 @@ ATCmdSubscribed_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    char                    foundCmd[LE_ATSERVER_COMMAND_MAX_LEN];  ///< cmd found in input string
+    char                    foundCmd[LE_ATDEFS_COMMAND_MAX_LEN];    ///< cmd found in input string
     RxParserState_t         rxState;                                ///< input string parser state
     CmdParserState_t        cmdParser;                              ///< cmd parser state
     CmdParserState_t        lastCmdParserState;
@@ -347,7 +347,7 @@ typedef struct
 {
     le_atServer_FinalRsp_t  final;
     bool                    customStringAvailable;
-    char                    resp[LE_ATSERVER_RESPONSE_MAX_BYTES];  ///< string value
+    char                    resp[LE_ATDEFS_RESPONSE_MAX_BYTES];  ///< string value
 }
 FinalRsp_t;
 
@@ -361,7 +361,7 @@ typedef struct
 {
     Device_t                device;             ///< data of the connected device
     le_atServer_DeviceRef_t ref;                ///< reference of the device context
-    char                    currentCmd[LE_ATSERVER_COMMAND_MAX_LEN];
+    char                    currentCmd[LE_ATDEFS_COMMAND_MAX_LEN];
     uint32_t                indexRead;
     uint32_t                parseIndex;
     CmdParser_t             cmdParser;
@@ -615,17 +615,17 @@ static void SendRspString
     const char* rspPtr
 )
 {
-    char string[LE_ATSERVER_RESPONSE_MAX_BYTES+4];
+    char string[LE_ATDEFS_RESPONSE_MAX_BYTES+4];
 
-    memset(string,0,LE_ATSERVER_RESPONSE_MAX_BYTES+4);
+    memset(string,0,LE_ATDEFS_RESPONSE_MAX_BYTES+4);
 
     switch (rspType)
     {
         case RSP_TYPE_OK:
-            snprintf(string,LE_ATSERVER_RESPONSE_MAX_BYTES,"\r\nOK\r\n");
+            snprintf(string,LE_ATDEFS_RESPONSE_MAX_BYTES,"\r\nOK\r\n");
             break;
         case RSP_TYPE_ERROR:
-            snprintf(string,LE_ATSERVER_RESPONSE_MAX_BYTES,"\r\nERROR\r\n");
+            snprintf(string,LE_ATDEFS_RESPONSE_MAX_BYTES,"\r\nERROR\r\n");
             break;
         case RSP_TYPE_RESPONSE:
             if ( (devPtr->rspState == AT_RSP_FINAL) ||
@@ -633,13 +633,13 @@ static void SendRspString
                 ((devPtr->rspState == AT_RSP_INTERMEDIATE) &&
                     devPtr->isFirstIntermediate) )
             {
-                snprintf(string, LE_ATSERVER_RESPONSE_MAX_BYTES+4, \
+                snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+4, \
                     "\r\n%s\r\n", rspPtr);
                 devPtr->isFirstIntermediate = false;
             }
             else
             {
-                snprintf(string, LE_ATSERVER_RESPONSE_MAX_BYTES+2, \
+                snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+2, \
                     "%s\r\n", rspPtr);
             }
             break;
@@ -1361,7 +1361,7 @@ static void ParseBuffer
                         LE_DEBUG("Command found %s", devPtr->currentCmd);
                         strncpy(devPtr->cmdParser.foundCmd,
                                 devPtr->currentCmd,
-                                LE_ATSERVER_COMMAND_MAX_LEN);
+                                LE_ATDEFS_COMMAND_MAX_LEN);
 
                         devPtr->cmdParser.currentCharPtr = devPtr->cmdParser.foundCmd;
                         devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd +
@@ -1419,7 +1419,7 @@ static void RxNewData
         // Read RX data on uart
         size = le_dev_Read(&devPtr->device,
                     (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
-                    (LE_ATSERVER_COMMAND_MAX_LEN - devPtr->indexRead));
+                    (LE_ATDEFS_COMMAND_MAX_LEN - devPtr->indexRead));
         devPtr->indexRead += (int)size;
         ParseBuffer(devPtr);
     }
@@ -1448,7 +1448,7 @@ static le_result_t SendUnsolicitedResponse
     }
 
     RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
-    strncpy(rspStringPtr->resp, unsolRsp, LE_ATSERVER_RESPONSE_MAX_BYTES);
+    strncpy(rspStringPtr->resp, unsolRsp, LE_ATDEFS_RESPONSE_MAX_BYTES);
 
     SendUnsolRsp(devPtr, rspStringPtr);
 
@@ -1478,14 +1478,14 @@ static void FirstLayerAtCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function starts an AT server session on the requested device.
+ * This function opens an AT server session on the requested device.
  *
  * @return
  *      - Reference to the requested device.
- *      - NULL if the device is not available.
+ *      - NULL if the device is not available or fd is a BAD FILE DESCRIPTOR.
  */
 //--------------------------------------------------------------------------------------------------
-le_atServer_DeviceRef_t le_atServer_Start
+le_atServer_DeviceRef_t le_atServer_Open
 (
     int32_t              fd          ///< The file descriptor
 )
@@ -1539,7 +1539,7 @@ le_atServer_DeviceRef_t le_atServer_Start
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function stops the AT server session on the requested device.
+ * This function closes the AT server session on the requested device.
  *
  * @return
  *      - LE_OK             The function succeeded.
@@ -1549,7 +1549,7 @@ le_atServer_DeviceRef_t le_atServer_Start
  *                              for more information.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atServer_Stop
+le_result_t le_atServer_Close
 (
     le_atServer_DeviceRef_t devRef
         ///< [IN] device to be unbinded
@@ -1631,7 +1631,7 @@ le_atServer_CmdRef_t le_atServer_Create
 
         memset(cmdPtr,0,sizeof(ATCmdSubscribed_t));
 
-        le_utf8_Copy(cmdPtr->cmdName, namePtr, LE_ATSERVER_COMMAND_MAX_BYTES,0);
+        le_utf8_Copy(cmdPtr->cmdName, namePtr, LE_ATDEFS_COMMAND_MAX_BYTES,0);
 
         cmdPtr->cmdRef = le_ref_CreateRef(SubscribedCmdRefMap, cmdPtr);
 
@@ -1910,7 +1910,7 @@ le_result_t le_atServer_SendIntermediateResponse
     }
 
     RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
-    strncpy(rspStringPtr->resp, intermediateRspPtr, LE_ATSERVER_RESPONSE_MAX_BYTES);
+    strncpy(rspStringPtr->resp, intermediateRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES);
 
     SendIntermediateRsp(devPtr, rspStringPtr);
 
@@ -1961,7 +1961,7 @@ le_result_t le_atServer_SendFinalResponse
 
     devPtr->finalRsp.final = final;
     devPtr->finalRsp.customStringAvailable = customStringAvailable;
-    strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATSERVER_RESPONSE_MAX_BYTES );
+    strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES );
 
     // clean AT command context, not in use now
     le_dls_Link_t* linkPtr;

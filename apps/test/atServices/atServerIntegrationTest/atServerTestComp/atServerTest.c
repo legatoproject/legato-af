@@ -58,7 +58,7 @@ struct AtCmd
 //------------------------------------------------------------------------------
 struct AtCmdRetVals
 {
-    char atCmdParams[PARAM_MAX][LE_ATSERVER_COMMAND_MAX_BYTES];
+    char atCmdParams[PARAM_MAX][LE_ATDEFS_COMMAND_MAX_BYTES];
 };
 
 static int SockFd;
@@ -80,7 +80,7 @@ static void DelHandler(
     void* contextPtr
 );
 
-static void StopHandler(
+static void CloseHandler(
     le_atServer_CmdRef_t commandRef,
     le_atServer_Type_t type,
     uint32_t parametersNumber,
@@ -95,9 +95,9 @@ static struct AtCmd AtCmdCreation[] =
         .handlerPtr = DelHandler,
     },
     {
-        .atCmdPtr = "AT+STOP",
+        .atCmdPtr = "AT+CLOSE",
         .cmdRef = NULL,
-        .handlerPtr = StopHandler,
+        .handlerPtr = CloseHandler,
     },
     {
         .atCmdPtr = "AT+ABCD",
@@ -178,55 +178,55 @@ static struct AtCmdRetVals PrepareHandler
     void* contextPtr
 )
 {
-    char rsp[LE_ATSERVER_RESPONSE_MAX_BYTES];
-    char atCommandName[LE_ATSERVER_COMMAND_MAX_BYTES];
-    char param[LE_ATSERVER_PARAMETER_MAX_BYTES];
+    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES];
+    char atCommandName[LE_ATDEFS_COMMAND_MAX_BYTES];
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
     struct AtCmdRetVals atCmdRetVals;
     int i = 0;
 
     LE_INFO("commandRef %p", commandRef);
 
-    memset(atCommandName, 0, LE_ATSERVER_COMMAND_MAX_BYTES);
+    memset(atCommandName, 0, LE_ATDEFS_COMMAND_MAX_BYTES);
 
     for (i=0; i<PARAM_MAX; i++)
     {
         memset(atCmdRetVals.atCmdParams[i],
-            0, LE_ATSERVER_PARAMETER_MAX_BYTES);
+            0, LE_ATDEFS_PARAMETER_MAX_BYTES);
     }
 
     // Get command name
     LE_ASSERT(le_atServer_GetCommandName(
-        commandRef,atCommandName,LE_ATSERVER_COMMAND_MAX_BYTES) == LE_OK);
+        commandRef,atCommandName,LE_ATDEFS_COMMAND_MAX_BYTES) == LE_OK);
 
     LE_INFO("AT command name %s", atCommandName);
 
-    memset(rsp, 0, LE_ATSERVER_RESPONSE_MAX_BYTES);
-    snprintf(rsp, LE_ATSERVER_RESPONSE_MAX_BYTES, "%s TYPE: ", atCommandName+2);
+    memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
+    snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s TYPE: ", atCommandName+2);
 
     switch (type)
     {
         case LE_ATSERVER_TYPE_PARA:
             LE_INFO("Type PARA");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
         break;
 
         case LE_ATSERVER_TYPE_TEST:
             LE_INFO("Type TEST");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
         break;
 
         case LE_ATSERVER_TYPE_READ:
             LE_INFO("Type READ");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
         break;
 
         case LE_ATSERVER_TYPE_ACT:
             LE_INFO("Type ACT");
             snprintf(rsp+strlen(rsp),
-                LE_ATSERVER_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
+                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
         break;
 
         default:
@@ -240,17 +240,17 @@ static struct AtCmdRetVals PrepareHandler
     // Send parameters into an intermediate response
     for (i = 0; i < parametersNumber && parametersNumber <= PARAM_MAX; i++)
     {
-        memset(param,0,LE_ATSERVER_PARAMETER_MAX_BYTES);
+        memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
         LE_ASSERT(
             le_atServer_GetParameter(commandRef,
                                     i,
                                     param,
-                                    LE_ATSERVER_PARAMETER_MAX_BYTES)
+                                    LE_ATDEFS_PARAMETER_MAX_BYTES)
             == LE_OK);
 
 
-        memset(rsp,0,LE_ATSERVER_RESPONSE_MAX_BYTES);
-        snprintf(rsp,LE_ATSERVER_RESPONSE_MAX_BYTES,
+        memset(rsp,0,LE_ATDEFS_RESPONSE_MAX_BYTES);
+        snprintf(rsp,LE_ATDEFS_RESPONSE_MAX_BYTES,
             "%s PARAM %d: %s", atCommandName+2, i, param);
 
         LE_ASSERT(
@@ -345,7 +345,7 @@ static void DelHandler
  *
  */
 //------------------------------------------------------------------------------
-static void StopHandler
+static void CloseHandler
 (
     le_atServer_CmdRef_t commandRef,
     le_atServer_Type_t type,
@@ -353,9 +353,9 @@ static void StopHandler
     void* contextPtr
 )
 {
-    LE_INFO("Stopping the Server");
+    LE_INFO("Closing Server Session");
 
-    LE_ASSERT(le_atServer_Stop(DevRef) == LE_OK);
+    LE_ASSERT(le_atServer_Close(DevRef) == LE_OK);
 
     exit(0);
 }
@@ -369,7 +369,7 @@ static void SigHandler
     int sigNum
 )
 {
-    le_atServer_Stop(DevRef);
+    le_atServer_Close(DevRef);
     exit(0);
 }
 
@@ -444,7 +444,7 @@ COMPONENT_INIT
         accept(SockFd, (struct sockaddr *)&clientAddress, &addressLen);
 #endif // __UART__
 
-    DevRef = le_atServer_Start(ConnFd);
+    DevRef = le_atServer_Open(ConnFd);
     LE_ASSERT(DevRef != NULL);
 
     // AT commands subscriptions

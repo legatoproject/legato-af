@@ -1,0 +1,104 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_atDefs_interface.h
+ *
+ * Definition file common to multiple AT commands related services.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command string maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMMAND_MAX_LEN = (127);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command string maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMMAND_MAX_BYTES = (COMMAND_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parameter string maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PARAMETER_MAX_LEN = (127);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parameter string maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PARAMETER_MAX_BYTES = (PARAMETER_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT command response maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  RESPONSE_MAX_LEN = (352);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT command response maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  RESPONSE_MAX_BYTES = (RESPONSE_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an unsolicited response (not including the null-terminator).
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UNSOLICITED_MAX_LEN = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an unsolicited response (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UNSOLICITED_MAX_BYTES = (UNSOLICITED_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in a text message (not including the null-terminator).
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_LEN = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an text message (including the null-terminator).
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_BYTES = (TEXT_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command default timeout (in ms)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMMAND_DEFAULT_TIMEOUT = 30000;

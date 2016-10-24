@@ -112,71 +112,10 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+USETYPES le_atDefs;
+
 REFERENCE Cmd;
 REFERENCE Device;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an AT command (not including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE CMD_MAX_LEN = 31;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an AT command (including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE CMD_MAX_BYTES = (CMD_MAX_LEN + 1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an AT Command response (not including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE CMD_RSP_MAX_LEN = 352;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an AT Command response (including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE CMD_RSP_MAX_BYTES = (CMD_RSP_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an unsolicited response (not including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE UNSOLICITED_MAX_LEN = 256;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an unsolicited response (including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE UNSOLICITED_MAX_BYTES = (UNSOLICITED_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an text message (not including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE TEXT_MAX_LEN = 256;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Maximum number of bytes in an text message (including the null-terminator).
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE TEXT_MAX_BYTES = (TEXT_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Command default timeout (in ms)
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE CMD_DEFAULT_TIMEOUT = 30000;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -244,8 +183,8 @@ FUNCTION le_result_t Delete
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommand
 (
-    Cmd     cmdRef                  IN,      ///< AT Command
-    string  command[CMD_MAX_LEN]    IN       ///< Set Command
+    Cmd     cmdRef                              IN, ///< AT Command
+    string  command[le_atDefs.COMMAND_MAX_LEN]  IN  ///< Set Command
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -264,8 +203,8 @@ FUNCTION le_result_t SetCommand
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetIntermediateResponse
 (
-    Cmd        cmdRef                           IN,   ///< AT Command
-    string     intermediate[CMD_RSP_MAX_LEN]    IN    ///< Set Intermediate
+    Cmd        cmdRef                                   IN,   ///< AT Command
+    string     intermediate[le_atDefs.RESPONSE_MAX_LEN] IN    ///< Set Intermediate
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -284,8 +223,8 @@ FUNCTION le_result_t SetIntermediateResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetFinalResponse
 (
-    Cmd     cmdRef                      IN,        ///< AT Command
-    string  response[CMD_RSP_MAX_LEN]   IN         ///< Set Response
+    Cmd     cmdRef                                  IN,     ///< AT Command
+    string  response[le_atDefs.RESPONSE_MAX_LEN]    IN      ///< Set Response
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -302,8 +241,8 @@ FUNCTION le_result_t SetFinalResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetText
 (
-    Cmd     cmdRef              IN,          ///< AT Command
-    string  text[TEXT_MAX_LEN]  IN           ///< The AT Data to send
+    Cmd     cmdRef                      IN,         ///< AT Command
+    string  text[le_atDefs.TEXT_MAX_LEN] IN         ///< The AT Data to send
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -373,8 +312,8 @@ FUNCTION le_result_t Send
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirstIntermediateResponse
 (
-    Cmd        cmdRef                           IN,     ///< AT Command
-    string     intermediateRsp[CMD_RSP_MAX_LEN] OUT     ///< First intermediate result code.
+    Cmd        cmdRef                                       IN, ///< AT Command
+    string     intermediateRsp[le_atDefs.RESPONSE_MAX_LEN]  OUT ///< First intermediate result code
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -391,9 +330,9 @@ FUNCTION le_result_t GetFirstIntermediateResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNextIntermediateResponse
 (
-    Cmd        cmdRef                           IN,              ///< AT Command
-    string     intermediateRsp[CMD_RSP_MAX_LEN] OUT              ///< Get Next intermediate result
-                                                                 ///< code.
+    Cmd        cmdRef                                       IN, ///< AT Command
+    string     intermediateRsp[le_atDefs.RESPONSE_MAX_LEN]  OUT ///< Get Next intermediate result
+                                                                ///< code.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -410,8 +349,8 @@ FUNCTION le_result_t GetNextIntermediateResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFinalResponse
 (
-    Cmd          cmdRef                    IN,              ///< AT Command
-    string       finalRsp[CMD_RSP_MAX_LEN] OUT              ///< Get Final Line
+    Cmd          cmdRef                                 IN, ///< AT Command
+    string       finalRsp[le_atDefs.RESPONSE_MAX_LEN]   OUT ///< Get Final Line
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -436,15 +375,12 @@ FUNCTION le_result_t GetFinalResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommandAndSend
 (
-    Cmd                            cmdRef                        OUT,    ///< Command reference
-    Device                         devRef                        IN,     ///< Device reference
-    string                         command[CMD_MAX_LEN]          IN,     ///< AT Command
-    string                         interResp[CMD_RSP_MAX_LEN]    IN,     ///< Expected intermediate
-                                                                         ///< response
-    string                         finalResp[CMD_RSP_MAX_LEN]    IN,     ///< Expected final
-                                                                         ///< response
-    uint32                         timeout                       IN      ///< Timeout value in
-                                                                         ///< milliseconds.
+    Cmd     cmdRef                                  OUT,    ///< Cmd reference
+    Device  devRef                                  IN,     ///< Dev reference
+    string  command[le_atDefs.COMMAND_MAX_LEN]      IN,     ///< AT Command
+    string  interResp[le_atDefs.RESPONSE_MAX_LEN]   IN,     ///< Expected intermediate response
+    string  finalResp[le_atDefs.RESPONSE_MAX_LEN]   IN,     ///< Expected final response
+    uint32  timeout                                 IN      ///< Timeout value in milliseconds.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -455,7 +391,7 @@ FUNCTION le_result_t SetCommandAndSend
 //--------------------------------------------------------------------------------------------------
 HANDLER UnsolicitedResponseHandler
 (
-    string unsolicitedRsp[UNSOLICITED_MAX_LEN] IN ///< The call reference.
+    string unsolicitedRsp[le_atDefs.UNSOLICITED_MAX_LEN] IN ///< The call reference.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -467,10 +403,9 @@ HANDLER UnsolicitedResponseHandler
 //--------------------------------------------------------------------------------------------------
 EVENT UnsolicitedResponse
 (
-    string                                  unsolRsp[CMD_RSP_MAX_LEN] IN,   ///< Pattern to match
-    Device                                  devRef                    IN,   ///< Device to listen
-    UnsolicitedResponseHandler              handler                   IN,   ///< unsolicited handler
-    uint32                                  lineCount                 IN    ///< Indicate the
-                                                                            ///< number of line of
-                                                                            ///< the unsolicited
+    string                      unsolRsp[le_atDefs.RESPONSE_MAX_LEN] IN,   ///< Pattern to match
+    Device                      devRef                    IN,   ///< Device to listen
+    UnsolicitedResponseHandler  handler                   IN,   ///< unsolicited handler
+    uint32                      lineCount                 IN    ///< Indicate the number of line of
+                                                                ///< the unsolicited
 );

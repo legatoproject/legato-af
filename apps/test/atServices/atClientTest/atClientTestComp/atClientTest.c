@@ -114,7 +114,7 @@ COMPONENT_INIT
 
     le_thread_Start(newThreadPtr);
 
-    char buffer[LE_ATCLIENT_CMD_RSP_MAX_BYTES];
+    char buffer[LE_ATDEFS_RESPONSE_MAX_BYTES];
     le_atClient_CmdRef_t cmdRef;
 
     // Get S/N
@@ -123,13 +123,13 @@ COMPONENT_INIT
     LE_ASSERT(le_atClient_SetCommand(cmdRef, "AT+CGSN") == LE_OK);
     LE_ASSERT(le_atClient_SetFinalResponse(cmdRef, "OK|ERROR|+CME ERROR") == LE_OK);
     LE_ASSERT(le_atClient_Send(cmdRef) == LE_OK);
-    LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
+    LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES) == LE_OK);
     LE_INFO("final rsp: %s", buffer);
     memset(buffer,0,50);
-    LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+    LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES)
                                                                                           == LE_OK);
     LE_INFO("inter rsp: %s", buffer);
-    LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+    LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES)
                                                                                    == LE_NOT_FOUND);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
 
@@ -139,14 +139,14 @@ COMPONENT_INIT
                                                 "AT+CGSN",
                                                 "",
                                                 "OK|ERROR|+CME ERROR",
-                                                LE_ATCLIENT_CMD_DEFAULT_TIMEOUT  ) == LE_OK);
-    LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
+                                                LE_ATDEFS_COMMAND_DEFAULT_TIMEOUT  ) == LE_OK);
+    LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES) == LE_OK);
     LE_INFO("final rsp: %s", buffer);
     memset(buffer,0,50);
-    LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+    LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES)
                                                                                           == LE_OK);
     LE_INFO("inter rsp: %s", buffer);
-    LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+    LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES)
                                                                                    == LE_NOT_FOUND);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
 
@@ -161,13 +161,13 @@ COMPONENT_INIT
     LE_ASSERT(le_atClient_Send(cmdRef) == LE_OK);
     //! [declarationFull]
     memset(buffer,0,50);
-    LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
+    LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES) == LE_OK);
     LE_INFO("final rsp: %s", buffer);
     memset(buffer,0,50);
-    LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+    LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES)
                                                                                           == LE_OK);
     LE_INFO("inter rsp: %s", buffer);
-    LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
+    LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES)
                                                                                    == LE_NOT_FOUND);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
 
@@ -177,7 +177,7 @@ COMPONENT_INIT
                                         "AT+CMGF=1",
                                         "",
                                         "OK|ERROR|+CME ERROR:|+CMS ERROR:",
-                                        LE_ATCLIENT_CMD_DEFAULT_TIMEOUT) == LE_OK);
+                                        LE_ATDEFS_COMMAND_DEFAULT_TIMEOUT) == LE_OK);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
 
     //! [declarationSimple]
@@ -186,12 +186,12 @@ COMPONENT_INIT
                                         "AT+CMGL=\"REC READ\"",
                                         "+CMGL:",
                                         "OK|ERROR|+CME ERROR:|+CMS ERROR:",
-                                        LE_ATCLIENT_CMD_DEFAULT_TIMEOUT) == LE_OK);
+                                        LE_ATDEFS_COMMAND_DEFAULT_TIMEOUT) == LE_OK);
     //! [declarationSimple]
 
     LE_ASSERT(le_atClient_GetFinalResponse(cmdRef,
                                        buffer,
-                                       LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
+                                       LE_ATDEFS_RESPONSE_MAX_BYTES) == LE_OK);
 
     LE_ASSERT(strcmp(buffer,"OK") == 0);
 
@@ -199,7 +199,7 @@ COMPONENT_INIT
     int intNumber = 1;
     le_result_t res = le_atClient_GetFirstIntermediateResponse(cmdRef,
                                                    buffer,
-                                                   LE_ATCLIENT_CMD_RSP_MAX_BYTES);
+                                                   LE_ATDEFS_RESPONSE_MAX_BYTES);
 
     while(res == LE_OK)
     {
@@ -208,7 +208,7 @@ COMPONENT_INIT
 
         res = le_atClient_GetNextIntermediateResponse(cmdRef,
                                                     buffer,
-                                                    LE_ATCLIENT_CMD_RSP_MAX_BYTES);
+                                                    LE_ATDEFS_RESPONSE_MAX_BYTES);
     }
     //! [responses]
 

@@ -62,6 +62,8 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+
+USETYPES le_atDefs;
 //--------------------------------------------------------------------------------------------------
 /**
  *  Reference type for an AT command.
@@ -75,60 +77,6 @@ REFERENCE Cmd;
  */
 //--------------------------------------------------------------------------------------------------
 REFERENCE Device;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Command string maximum length.
- *
- * @warning Special characters cost more than one byte
- *
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE COMMAND_MAX_LEN = (127);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Command string maximum length.
- * One extra byte is added for the null character.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE COMMAND_MAX_BYTES = (COMMAND_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Parameter string maximum length.
- *
- * @warning Special characters cost more than one byte
- *
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PARAMETER_MAX_LEN = (127);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Parameter string maximum length.
- * One extra byte is added for the null character.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PARAMETER_MAX_BYTES = (PARAMETER_MAX_LEN+1);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * AT command response maximum length.
- *
- * @warning Special characters cost more than one byte
- *
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE  RESPONSE_MAX_LEN = (352);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * AT command response maximum length.
- * One extra byte is added for the null character.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE  RESPONSE_MAX_BYTES = (RESPONSE_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,14 +117,14 @@ ENUM AvailableDevice
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function starts an AT server session on the requested device.
+ * This function opens an AT server session on the requested device.
  *
  * @return
  *      - Reference to the requested device.
- *      - NULL if the device is not available.
+ *      - NULL if the device is not available or fd is a BAD FILE DESCRIPTOR.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Device Start
+FUNCTION Device Open
 (
     file   fd                       IN  ///< File descriptor.
 );
@@ -193,7 +141,7 @@ FUNCTION Device Start
  *                              for more information.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Stop
+FUNCTION le_result_t Close
 (
     Device device IN   ///< device to be unbound
 );
@@ -209,7 +157,7 @@ FUNCTION le_result_t Stop
 //--------------------------------------------------------------------------------------------------
 FUNCTION Cmd Create
 (
-    string name[COMMAND_MAX_LEN] IN   ///< AT command name string
+    string name[le_atDefs.COMMAND_MAX_LEN] IN   ///< AT command name string
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -273,8 +221,8 @@ HANDLER CommandHandler
 //--------------------------------------------------------------------------------------------------
 EVENT Command
 (
-    Cmd            commandRef IN,   ///< AT command reference
-    CommandHandler handler IN       ///< Handler to called when the AT command is detected
+    Cmd            commandRef   IN,   ///< AT command reference
+    CommandHandler handler      IN       ///< Handler to called when the AT command is detected
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -289,9 +237,9 @@ EVENT Command
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetParameter
 (
-    Cmd    commandRef                    IN,             ///< AT command reference
-    uint32 index                         IN,             ///< agument index
-    string parameter[PARAMETER_MAX_LEN]  OUT             ///< parameter value
+    Cmd    commandRef                               IN, ///< AT command reference
+    uint32 index                                    IN, ///< agument index
+    string parameter[le_atDefs.PARAMETER_MAX_LEN]   OUT ///< parameter value
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -306,8 +254,8 @@ FUNCTION le_result_t GetParameter
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCommandName
 (
-    Cmd    commandRef            IN,         ///< AT command reference
-    string name[COMMAND_MAX_LEN] OUT         ///< AT command string
+    Cmd    commandRef            IN,            ///< AT command reference
+    string name[le_atDefs.COMMAND_MAX_LEN] OUT  ///< AT command string
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -322,8 +270,8 @@ FUNCTION le_result_t GetCommandName
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendIntermediateResponse
 (
-    Cmd      commandRef                             IN, ///< AT command reference
-    string   intermediateRsp[RESPONSE_MAX_BYTES]    IN  ///< Intermediate response to be sent
+    Cmd      commandRef                                     IN, ///< AT command reference
+    string   intermediateRsp[le_atDefs.RESPONSE_MAX_BYTES]  IN  ///< Intermediate rsp to be sent
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -338,11 +286,11 @@ FUNCTION le_result_t SendIntermediateResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendFinalResponse
 (
-    Cmd      commandRef                     IN,     ///< AT command reference
-    FinalRsp final                          IN,     ///< Final response to be sent
-    bool     customStringAvailable          IN,     ///< Custom finalRsp string has to be sent
-                                                    ///< instead of the default one.
-    string   finalRsp[RESPONSE_MAX_BYTES]   IN      ///< custom final response string
+    Cmd      commandRef                             IN, ///< AT command reference
+    FinalRsp final                                  IN, ///< Final response to be sent
+    bool     customStringAvailable                  IN, ///< Custom finalRsp str has to be sent
+                                                        ///< instead of the default one.
+    string   finalRsp[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< custom final response string
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -357,8 +305,8 @@ FUNCTION le_result_t SendFinalResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendUnsolicitedResponse
 (
-    string        unsolRsp[RESPONSE_MAX_BYTES]  IN, ///< Unsolicited response to be sent
-    AvailableDevice availableDevice             IN, ///< device to send the unsolicited response
-    Device          device                      IN  ///< device reference where the unsolicited
-                                                    ///< response has to be sent
+    string          unsolRsp[le_atDefs.RESPONSE_MAX_BYTES]      IN, ///< Unsolicited rsp to be sent
+    AvailableDevice availableDevice                             IN, ///< device to send unsol rsp
+    Device          device                                      IN  ///< device reference where the
+                                                                    ///< unsol rsp has to be sent
 );
