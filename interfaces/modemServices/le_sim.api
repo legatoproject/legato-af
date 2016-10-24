@@ -3,7 +3,7 @@
  * @page c_sim SIM
  *
  * @ref le_sim_interface.h "API Reference" <br>
- * @ref platformConstraintsSim Constraints
+ * @ref platformConstraintsSim "SIM constraints"
  *
  * <HR>
  *
@@ -151,6 +151,10 @@
  *
  * The application can uninstall the handler function by calling le_sim_RemoveNewStateHandler() API.
  *
+ * @warning Your platform might need a reboot to detect a SIM insertion or removal.
+ * Please refer to the @ref platformConstraintsSim "SIM constraints" page or your platform
+ * documentation for further details.
+ *
  * A sample code can be seen in the following page:
  * - @subpage c_simTestStates
  *
@@ -237,7 +241,8 @@
  * SIM database. The command is transmitted to the SIM, which gives information through swi1 and
  * swi2 about the execution of the command (see 3GPP recommendation previously mentioned for
  * their coding).
- * Some parameters are platform dependent, see @subpage platformConstraintsSim for their coding.
+ * Some parameters are platform dependent, see @subpage platformConstraintsSim "SIM constraints" for
+ * their coding.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_simTestApdu

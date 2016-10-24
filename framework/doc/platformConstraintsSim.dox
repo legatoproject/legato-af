@@ -1,5 +1,7 @@
 /** @page platformConstraintsSim SIM
 
+@section platformConstraintsSim_sendCmd Sending commands
+
 le_sim_SendCommand() supports sending commands to the SIM. The parameters
 of this API depend on the platform.
 
@@ -14,6 +16,26 @@ For AR755x, AR8652, and WP8548, these are the p1, p2, p3 parameters:
 
  - path parameter contains the path of the elementary file from the master file in hexadecimal
  (e.g. "3F007FFF", "3F007F20"). The path is mandatory for all commands.
+
+@section platformConstraintsSim_swap Hot-swap
+
+Your platform might need a reboot to detect a SIM card insertion or removal.
+
+@subsection platformConstraintsSim_swapMangOH mangOH&trade;
+
+As indicated in the mangOH&trade;
+<a href="http://mangoh.io/documentation/user-developer-guide.html">User Guide</a>:
+
+| SIM slot                          | Detection         |
+|                                   |                   |
+| LE_SIM_EXTERNAL_SLOT_1 (Mini-SIM) | Hot-swappable     |
+| LE_SIM_EXTERNAL_SLOT_2 (Micro-SIM)| Not hot-swappable |
+
+@subsection platformConstraintsSim_swapOtherPlatforms Other platforms
+
+Refer to your platform documentation.
+
+@section References
 
 See @ref c_sim API
 
