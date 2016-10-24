@@ -30,10 +30,9 @@ typedef struct eeprom_if_i2c_1v0_ {
 } eeprom_if_i2c_1v0;
 
 typedef struct eeprom_if_spi_1v0_ {
-	uint8_t srdy;
 	uint8_t irq_gpio;
 	char modalias[32];
-	char reserved[29];
+	char reserved[30];
 } eeprom_if_spi_1v0;
 
 typedef eeprom_if_reserved eeprom_if_usb_1v0;
