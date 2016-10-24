@@ -1,12 +1,20 @@
 /**
  * This module implements the Cellular Network Application Service tests.
  *
- * Pin code HAS TO BE SET in the config tree before running the test.
- * Three possiblities:
- * use two arguments  : <1> <simId> to retrieve PIN CODE from config tree.
- * use tree arguments : <2> <simId> <PIN CODE> to insert the PIN CODE to the config tree,
- *                      the cellular network service test will run afterward.
- * without arguments  : Running cellular network service test (Pin code is already set)
+ * Pin code HAS TO BE SET in the secure storage before running the test.
+ *
+ * Four tests can be run with this application:
+ * - Get PIN code: launch the application with arguments "1 <simId>" to retrieve PIN code from
+ *                 secure storage.
+ * - Set PIN code: launch the application with arguments "2 <simId> <PIN CODE>" to insert the PIN
+ *                 code in the secure storage, the cellular network service test will run afterwards.
+ * - Basic test:   launch the application without arguments to run cellular network service test,
+ *                 PIN code being already set.
+ * - SIM removal:  launch the application with arguments "3 <simId>" to test SIM detection removal
+ *                 and insertion. Tested platform should support hot-swap for this test.
+ *
+ * The tests can be launched with:
+ *  app runProc cellNetServiceTest --exe=cellNetServiceTest -- <testId> <simId> [<PIN>]
  *
  * API Tested:
  *  - le_cellnet_SetSimPinCode()
@@ -15,6 +23,7 @@
  *  - le_cellnet_Request()
  *  - le_cellnet_RemoveStateEventHandler()
  *  - le_cellnet_Release()
+ *  - le_cellnet_GetNetworkState()
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
@@ -26,7 +35,21 @@
 /* Cellular Network Services (Client) */
 #include "interfaces.h"
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Safety: maximal number of SIM identifiers
+ */
+// -------------------------------------------------------------------------------------------------
 #define MAX_SIM_IDENTIFIERS    4
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Test identifiers
+ */
+// -------------------------------------------------------------------------------------------------
+#define TEST_GET_PIN    1
+#define TEST_SET_PIN    2
+#define TEST_NO_SIM     3
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -53,14 +76,15 @@ static void SwitchOnCellNet
     void
 )
 {
-    if(RequestRef)
+    if (RequestRef)
     {
         LE_ERROR("A cellular network request already exist.");
-        return;
+        exit(EXIT_FAILURE);
     }
 
+    LE_INFO("Requesting the cellular network.");
     RequestRef = le_cellnet_Request();
-    LE_INFO("Requesting the cellular network: %p.", RequestRef);
+    LE_INFO("Received reference: %p.", RequestRef);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -73,15 +97,15 @@ static void SwitchOffCellNet
     void
 )
 {
-    if(!RequestRef)
+    if (!RequestRef)
     {
         LE_ERROR("Not existing cellular network reference.");
         LE_INFO("cellNetServiceTest FAILED");
         exit(EXIT_FAILURE);
     }
 
-    le_cellnet_Release(RequestRef);
     LE_INFO("Releasing the cellular network. %p", RequestRef);
+    le_cellnet_Release(RequestRef);
     RequestRef = NULL;
 }
 
@@ -97,22 +121,61 @@ static void CellNetStateHandler
 )
 {
     static le_cellnet_State_t oldState = LE_CELLNET_REG_UNKNOWN;
-    LE_INFO("Cellular Network state is %d", state);
 
-    if (state == LE_CELLNET_REG_HOME)
+    // Get current network state to test GetNetworkState API.
+    // Note: received and current state might differ if the state changed
+    // between the report sending and its treatment by the test application.
+    le_cellnet_State_t getState = LE_CELLNET_REG_UNKNOWN;
+    LE_ASSERT_OK(le_cellnet_GetNetworkState(&getState));
+
+    LE_INFO("Received Cellular Network state is %d", state);
+    LE_INFO("Current Cellular Network state is %d", getState);
+
+    if (   (LE_CELLNET_REG_HOME == state)
+        || (LE_CELLNET_REG_ROAMING == state)
+       )
     {
-        oldState = LE_CELLNET_REG_HOME;
-        SwitchOffCellNet();
-        LE_INFO("Verify that Cellular Network is OFF by checking CellNet events.");
+        if (   (le_arg_NumArgs() >= 2)
+            && (TEST_NO_SIM == atoi(le_arg_GetArg(0)))
+            && (LE_CELLNET_SIM_ABSENT != oldState)
+           )
+        {
+            LE_INFO("========  Remove SIM card ======== ");
+            LE_INFO("Verify that removal is detected.");
+        }
+        else
+        {
+            SwitchOffCellNet();
+            LE_INFO("Verify that Cellular Network is OFF by checking CellNet events.");
+        }
+
+        oldState = state;
     }
 
-    if ((oldState == LE_CELLNET_REG_HOME) && (state == LE_CELLNET_REG_EMERGENCY))
+    if (   (   (LE_CELLNET_REG_HOME == oldState)
+            || (LE_CELLNET_REG_ROAMING == oldState)
+           )
+        && (LE_CELLNET_RADIO_OFF == state)
+       )
     {
         LE_INFO("Cellular Network is OFF has been checked.");
         le_cellnet_RemoveStateEventHandler(StateHandlerRef);
         LE_INFO("StateHandlerRef (%p) removed", StateHandlerRef);
         LE_INFO("========  cellNetServiceTest TEST PASSED ======== ");
         exit(EXIT_SUCCESS);
+    }
+
+    if (   (le_arg_NumArgs() >= 2)
+        && (TEST_NO_SIM == atoi(le_arg_GetArg(0)))
+        && (   (LE_CELLNET_REG_HOME == oldState)
+            || (LE_CELLNET_REG_ROAMING == oldState)
+           )
+        && (LE_CELLNET_SIM_ABSENT == state)
+       )
+    {
+        oldState = state;
+        LE_INFO("SIM removal detection has been checked.");
+        LE_INFO("========  Insert SIM card ======== ");
     }
 }
 
@@ -129,13 +192,13 @@ COMPONENT_INIT
     if (le_arg_NumArgs() >= 2)
     {
         // ---------------------------------------------------------------------
-        // Test the Get/Set SIM pin code operation in the config Tree
+        // Test the Get/Set SIM pin code operation in the secure storage
         // ---------------------------------------------------------------------
         int testId = atoi(le_arg_GetArg(0));
         int simId =  atoi(le_arg_GetArg(1));
         le_result_t ret;
 
-        if (1 == testId)
+        if (TEST_GET_PIN == testId)
         {
             char simPin[LE_SIM_PIN_MAX_BYTES];
 
@@ -145,18 +208,22 @@ COMPONENT_INIT
 
             exit(EXIT_SUCCESS);
         }
-        else if (2 == testId)
+        else if (TEST_SET_PIN == testId)
         {
             const char* pinPtr = le_arg_GetArg(2);
-            // for caution; simId values greater than MAX_SIM_IDENTIFIERS are tracked in the function
+            // simId values greater than MAX_SIM_IDENTIFIERS are tracked in the function
             if (simId <= MAX_SIM_IDENTIFIERS)
             {
                 simId = 1;
             }
 
-            LE_INFO("========  Set PIN CODE  simId (%d) pinCode (%s) ======", simId, pinPtr);
+            LE_INFO("========  Set PIN CODE simId (%d) pinCode (%s) ======", simId, pinPtr);
             ret = le_cellnet_SetSimPinCode(simId, pinPtr);
             LE_INFO(" ********** le_cellnet_SetSimPinCode ret =%d", ret);
+        }
+        else if (TEST_NO_SIM == testId)
+        {
+            LE_INFO("========  Test SIM removal detection (hot-swap support necessary) ======== ");
         }
         else
         {
@@ -177,6 +244,4 @@ COMPONENT_INIT
     LE_INFO("CellNetStateHandler added %p", StateHandlerRef);
     SwitchOnCellNet();
     LE_INFO("Verify that Cellular Network is ON by checking CellNet events.");
-
-    exit(EXIT_SUCCESS);
 }

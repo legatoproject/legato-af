@@ -1996,6 +1996,7 @@ static void CellNetStateHandler
         case LE_CELLNET_RADIO_OFF:
         case LE_CELLNET_REG_EMERGENCY:
         case LE_CELLNET_REG_UNKNOWN:
+        case LE_CELLNET_SIM_ABSENT:
             break;
 
         case LE_CELLNET_REG_HOME:

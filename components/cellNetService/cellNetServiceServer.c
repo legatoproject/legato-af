@@ -57,6 +57,28 @@ static le_ref_MapRef_t RequestRefMap;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t CellNetStateEvent;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Current cellular network state
+ */
+//--------------------------------------------------------------------------------------------------
+static le_cellnet_State_t CurrentState = LE_CELLNET_REG_UNKNOWN;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * List of cellular network state strings
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* cellNetStateStr[] =
+{
+     "LE_CELLNET_RADIO_OFF",
+     "LE_CELLNET_REG_EMERGENCY",
+     "LE_CELLNET_REG_HOME",
+     "LE_CELLNET_REG_ROAMING",
+     "LE_CELLNET_REG_UNKNOWN",
+     "LE_CELLNET_SIM_ABSENT"
+};
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -125,7 +147,7 @@ static void LoadSimFromSecStore
             }
             case LE_SIM_BLOCKED:
             {
-                LE_EMERG("Be carefull the sim-%d is BLOCKED, need to enter PUK code",simId);
+                LE_EMERG("Be careful the sim-%d is BLOCKED, need to enter PUK code",simId);
                 attemptCounter = 1;
                 break;
             }
@@ -165,9 +187,19 @@ static void LoadSimFromSecStore
 //--------------------------------------------------------------------------------------------------
 static le_cellnet_State_t TranslateToCellNetState
 (
-    le_mrc_NetRegState_t  state
+    le_mrc_NetRegState_t state
 )
 {
+    le_sim_Id_t simSelected = le_sim_GetSelectedCard();
+
+    // Check if the SIM card is present
+    if (!le_sim_IsPresent(simSelected))
+    {
+        // SIM card absent
+        return LE_CELLNET_SIM_ABSENT;
+    }
+
+    // SIM card present, translate the MRC network state
     switch(state)
     {
         case LE_MRC_REG_NONE:
@@ -209,21 +241,51 @@ static le_cellnet_State_t TranslateToCellNetState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Report connection state event to the registered applications
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReportCellNetStateEvent
+(
+    le_cellnet_State_t state
+)
+{
+    LE_DEBUG("Report cellular network state %d (%s)", state, cellNetStateStr[state]);
+
+    // Send the event to interested applications
+    le_event_Report(CellNetStateEvent, &state, sizeof(state));
+
+    // Update current network cell state
+    CurrentState = state;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Send connection state event
  */
 //--------------------------------------------------------------------------------------------------
-static void SendCellNetStateEvent
+static void GetAndSendCellNetStateEvent
 (
     void
 )
 {
-    le_mrc_NetRegState_t  state;
-    le_mrc_GetNetRegState(&state);
-    le_cellnet_State_t cellNetState = TranslateToCellNetState(state);
-    LE_PRINT_VALUE("%i", cellNetState);
+    le_mrc_NetRegState_t state        = LE_MRC_REG_UNKNOWN;
+    le_cellnet_State_t   cellNetState = LE_CELLNET_REG_UNKNOWN;
 
-    // Send the event to interested applications
-    le_event_Report(CellNetStateEvent, &cellNetState, sizeof(cellNetState));
+    // Retrieve network registration state
+    if (LE_OK == le_mrc_GetNetRegState(&state))
+    {
+        cellNetState = TranslateToCellNetState(state);
+    }
+    else
+    {
+        LE_ERROR("Impossible to retrieve network registration state!");
+    }
+
+    LE_DEBUG("MRC network state %d translated to Cellular network state %d (%s)",
+             state, cellNetState, cellNetStateStr[cellNetState]);
+
+    // Send the state event to applications
+    ReportCellNetStateEvent(cellNetState);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -260,9 +322,10 @@ static void StartCellNetTimerHandler
             if (le_sim_IsPresent(simSelected))
             {
                 LoadSimFromSecStore(simSelected);
-                SendCellNetStateEvent();
             }
 
+            // Notify the applications even if the SIM is absent
+            GetAndSendCellNetStateEvent();
         }
         else
         {
@@ -296,9 +359,10 @@ static void StartCellularNetwork
         if (le_sim_IsPresent(simSelected))
         {
             LoadSimFromSecStore(simSelected);
-            SendCellNetStateEvent();
         }
 
+        // Notify the applications even if the SIM is absent
+        GetAndSendCellNetStateEvent();
     }
     else
     {
@@ -443,10 +507,16 @@ static void SimStateHandler
     void*           contextPtr
 )
 {
-    if (simState == LE_SIM_INSERTED)
+    if (LE_SIM_INSERTED == simState)
     {
+        // SIM card inserted: load the configuration and notify the applications
         LoadSimFromSecStore(simId);
-        SendCellNetStateEvent();
+        GetAndSendCellNetStateEvent();
+    }
+    else if (LE_SIM_ABSENT == simState)
+    {
+        // SIM card removed: notify the applications
+        GetAndSendCellNetStateEvent();
     }
 }
 
@@ -463,48 +533,12 @@ static void MrcNetRegHandler
 {
     le_cellnet_State_t cellNetState = TranslateToCellNetState(state);
 
-    LE_PRINT_VALUE("Cellular Network Registration state.%d", cellNetState);
+    LE_DEBUG("MRC network state %d translated to Cellular network state %d (%s)",
+             state, cellNetState, cellNetStateStr[cellNetState]);
 
     // Send the state event to applications
-    le_event_Report(CellNetStateEvent, &cellNetState, sizeof(cellNetState));
+    ReportCellNetStateEvent(cellNetState);
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This thread does the actual work of starting/stopping a cellular network
- */
-//--------------------------------------------------------------------------------------------------
-static void* CellNetThread
-(
-    void* contextPtr
-)
-{
-    // Connect to the services required by this thread
-    le_cfg_ConnectService();
-    le_mrc_ConnectService();
-    le_sim_ConnectService();
-    le_secStore_ConnectService();
-
-    LE_INFO("CellNet Thread Started");
-
-    // Register for command events
-    le_event_AddHandler("ProcessCommand",
-                        CommandEvent,
-                        ProcessCommand);
-
-
-    // Register for SIM state changes
-    le_sim_AddNewStateHandler(SimStateHandler, NULL);
-
-    // Register for MRC Network Registration state changes
-    le_mrc_AddNetRegStateEventHandler(MrcNetRegHandler, NULL);
-
-
-    // Run the event loop
-    le_event_RunLoop();
-    return NULL;
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -620,7 +654,7 @@ void le_cellnet_Release
  * Set the PIN code in the secure storage.
  *
  * @return
- *    LE_OUT_OF_RANGE    Invalid simId
+ *  - LE_OUT_OF_RANGE    Invalid simId
  *  - LE_FORMAT_ERROR    PIN code is not in string format.
  *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
  *  - LE_OK              The function succeeded.
@@ -702,7 +736,7 @@ le_result_t le_cellnet_SetSimPinCode
 
             // New SIM pincode is taken into account
             LoadSimFromSecStore(simId);
-            SendCellNetStateEvent();
+            GetAndSendCellNetStateEvent();
         }
         else
         {
@@ -720,7 +754,7 @@ le_result_t le_cellnet_SetSimPinCode
  * Retrieve the PIN code from the secure storage.
  *
  * @return
- *    LE_OUT_OF_RANGE    Invalid simId
+ *  - LE_OUT_OF_RANGE    Invalid simId
  *  - LE_NOT_FOUND       SIM PIN node isn't found in the secure storage.
  *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
  *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
@@ -796,15 +830,44 @@ le_result_t le_cellnet_GetSimPinCode
     return result;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the current cellular network state.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAILED         The function failed
+ *  - LE_BAD_PARAMETER  A bad parameter was passed.
+ *
+ * @note If the caller passes a null pointer to this function, this is a fatal error and the
+ *       function will not return.
+ */
+// -------------------------------------------------------------------------------------------------
+le_result_t le_cellnet_GetNetworkState
+(
+    le_cellnet_State_t* statePtr    ///< Cellular network state.
+)
+{
+    if (statePtr == NULL)
+    {
+        LE_KILL_CLIENT("statePtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    *statePtr = CurrentState;
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Server Init
+ *  Server Initialization
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    // Init the various events
+    // Initialize the various events
     CommandEvent = le_event_CreateId("CellNet Command", sizeof(uint32_t));
     CellNetStateEvent = le_event_CreateId("CellNet State", sizeof(le_cellnet_State_t));
 
@@ -812,8 +875,17 @@ COMPONENT_INIT
     // the expected number of simultaneous cellular network requests, so take a reasonable guess.
     RequestRefMap = le_ref_CreateMap("CellNet Requests", 5);
 
-    // Start the cellular network thread
-    le_thread_Start( le_thread_Create("CellNet Thread", CellNetThread, NULL) );
+    // Register for command events
+    le_event_AddHandler("ProcessCommand",
+                        CommandEvent,
+                        ProcessCommand);
+
+
+    // Register for SIM state changes
+    le_sim_AddNewStateHandler(SimStateHandler, NULL);
+
+    // Register for MRC Network Registration state changes
+    le_mrc_AddNetRegStateEventHandler(MrcNetRegHandler, NULL);
 
     LE_INFO("Cellular Network Server is ready");
 }

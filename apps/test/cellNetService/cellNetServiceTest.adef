@@ -1,6 +1,6 @@
 executables:
 {
-    cellNetServiceTest = ( cellNetServiceTest)
+    cellNetServiceTest = ( cellNetServiceTest )
 }
 
 start: manual
