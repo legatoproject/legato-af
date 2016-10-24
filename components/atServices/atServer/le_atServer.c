@@ -11,6 +11,12 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Max length for error string
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERR_MSG_MAX 256
+//--------------------------------------------------------------------------------------------------
+/**
  * Max length of thread name
  */
 //--------------------------------------------------------------------------------------------------
@@ -1484,7 +1490,16 @@ le_atServer_DeviceRef_t le_atServer_Start
     int32_t              fd          ///< The file descriptor
 )
 {
-    // Search if the device is already opened
+    char errMsg[ERR_MSG_MAX];
+
+    // check if the file descriptor is valid
+    if (fcntl(fd, F_GETFD) == -1)
+    {
+        memset(errMsg, 0, ERR_MSG_MAX);
+        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+        return NULL;
+    }
+
     DeviceContext_t* devPtr = le_mem_ForceAlloc(DevicesPool);
 
     memset(devPtr,0,sizeof(DeviceContext_t));
@@ -1542,8 +1557,7 @@ le_result_t le_atServer_Stop
 {
     ATCmdSubscribed_t* cmdPtr = NULL;
     le_dls_Link_t* linkPtr = NULL;
-    int errMsgLen = 512;
-    char errMsg[errMsgLen];
+    char errMsg[ERR_MSG_MAX];
 
     DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, devRef);
 
@@ -1560,8 +1574,8 @@ le_result_t le_atServer_Stop
     if (close(devPtr->device.fd))
     {
         // using thread safe strerror
-        memset(errMsg, 0, errMsgLen);
-        LE_ERROR("%s", strerror_r(errno, errMsg, errMsgLen));
+        memset(errMsg, 0, ERR_MSG_MAX);
+        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
         return LE_FAULT;
     }
 

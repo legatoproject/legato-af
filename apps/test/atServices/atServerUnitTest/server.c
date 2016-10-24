@@ -611,6 +611,10 @@ void* AtServer
         return NULL;
     }
 
+    // test for bad file descriptor
+    AtSession.devRef = le_atServer_Start(-1);
+    LE_ASSERT(AtSession.devRef == NULL);
+
     // start the server
     AtSession.devRef = le_atServer_Start(connFd);
     LE_ASSERT(AtSession.devRef != NULL);
