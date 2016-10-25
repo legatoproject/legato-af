@@ -181,20 +181,21 @@ static struct device *green_add_gpio(struct platform_device *pdev,
 		uint8_t cfg = eeprom_if_gpio_cfg(item, i);
 		switch (cfg)
 		{
-		case 0x4:	/* out, low */
-		case 0x5:	/* out, high */
-			gpio_direction_output(s->gpio[i],
-					      cfg & EEPROM_GPIO_CFG_HI_LO_MASK);
+		case EEPROM_GPIO_CFG_OUTPUT_LOW:
+			gpio_direction_output(s->gpio[i], 0);
 			break;
-		case 0x1:	/* in, pull up */
-		case 0x2:	/* in, pull down */
+		case EEPROM_GPIO_CFG_OUTPUT_HIGH:
+			gpio_direction_output(s->gpio[i], 1);
+			break;
+		case EEPROM_GPIO_CFG_INPUT_PULL_UP:
 			gpio_direction_input(s->gpio[i]);
-			if (cfg & EEPROM_GPIO_CFG_HI_LO_MASK)
-				gpio_pull_up(s->gpio[i]);
-			else
-				gpio_pull_down(s->gpio[i]);
+			gpio_pull_up(s->gpio[i]);
 			break;
-		case 0x3:	/* in, floating */
+		case EEPROM_GPIO_CFG_INPUT_PULL_DOWN:
+			gpio_direction_input(s->gpio[i]);
+			gpio_pull_down(s->gpio[i]);
+			break;
+		case EEPROM_GPIO_CFG_INPUT_FLOATING:
 			gpio_direction_input(s->gpio[i]);
 			break;
 		default:

@@ -15,11 +15,14 @@
 
 #include <linux/i2c.h>
 
+
 #define IRQ_GPIO_UNUSED (0xFF)
 
-#define EEPROM_GPIO_CFG_IN_OUT_MASK		(1 << 2)
-#define EEPROM_GPIO_CFG_PULL_MASK		(1 << 1)
-#define EEPROM_GPIO_CFG_HI_LO_MASK		(1 << 0)
+#define EEPROM_GPIO_CFG_INPUT_PULL_UP	(0x1)
+#define EEPROM_GPIO_CFG_INPUT_PULL_DOWN	(0x2)
+#define EEPROM_GPIO_CFG_INPUT_FLOATING	(0x3)
+#define EEPROM_GPIO_CFG_OUTPUT_LOW	(0x4)
+#define EEPROM_GPIO_CFG_OUTPUT_HIGH	(0x5)
 
 struct i2c_client *eeprom_load(int slot);
 void eeprom_unload(struct i2c_client *eeprom);
