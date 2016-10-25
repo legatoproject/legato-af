@@ -302,6 +302,14 @@ static void OperationHandler
     {
         LE_DEBUG("PA_AVC_OPTYPE_OBSERVE %s/%d", newPrefixPtr, objId);
 
+        // Observe not supported on object "/lwm2m/9".
+        if ( (strcmp(newPrefixPtr, "lwm2m") == 0) && (objId == 9) )
+        {
+            LE_DEBUG("Observe not supported on %s/%d/%d", newPrefixPtr, objId, objInstId);
+            pa_avc_OperationReportError(opRef, PA_AVC_OPERR_OP_UNSUPPORTED);
+            return;
+        }
+
         assetData_AssetDataRef_t assetRef;
 
         result = assetData_GetAssetRefById(newPrefixPtr, objId, &assetRef);
@@ -554,6 +562,14 @@ static void OperationHandler
 
         case PA_AVC_OPTYPE_OBSERVE:
             LE_DEBUG("PA_AVC_OPTYPE_OBSERVE %s/%d/%d", newPrefixPtr, objId, objInstId);
+
+            // Observe not supported on object "/lwm2m/9".
+            if ( (strcmp(newPrefixPtr, "lwm2m") == 0) && (objId == 9) )
+            {
+                LE_DEBUG("Observe not supported on %s/%d/%d", newPrefixPtr, objId, objInstId);
+                pa_avc_OperationReportError(opRef, PA_AVC_OPERR_OP_UNSUPPORTED);
+                return;
+            }
 
             result = assetData_SetObserve(instRef, true, (uint8_t*)tokenPtr, tokenLength);
 
