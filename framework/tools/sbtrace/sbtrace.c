@@ -129,10 +129,21 @@ static const FileAccessSysCall_t FileAccessSysCalls[] =
     {__NR_removexattr,      0,      "removexattr"},
     {__NR_lremovexattr,     0,      "lremovexattr"},
 
+#ifdef __NR_recvfrom
     {__NR_recvfrom,         4,      "recvfrom"},
+#endif
+
+#ifdef __NR_sendto
     {__NR_sendto,           4,      "sendto"},
+#endif
+
+#ifdef __NR_connect
     {__NR_connect,          1,      "connect"},
-    {__NR_bind,             1,      "bind "},
+#endif
+
+#ifdef __NR_bind
+    {__NR_bind,             1,      "bind"},
+#endif
 
 #ifdef __NR_truncate64
     {__NR_truncate64,       0,      "truncate64"},
@@ -421,6 +432,8 @@ static int Ptrace
 }
 
 
+#if defined(__NR_recvfrom) && defined(__NR_sendto) && defined(__NR_connect) && defined(__NR_bind)
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reads bufSize number of bytes from the tracee's memory starting at addr.
@@ -461,6 +474,7 @@ static le_result_t ReadTraceeBuf
     return LE_OK;
 }
 
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -540,6 +554,7 @@ static le_result_t GetAccessPath
 {
     switch (sysCallPtr->sysCallNum)
     {
+#if defined(__NR_recvfrom) && defined(__NR_sendto) && defined(__NR_connect) && defined(__NR_bind)
         case __NR_recvfrom:
         case __NR_sendto:
         case __NR_connect:
@@ -571,6 +586,7 @@ static le_result_t GetAccessPath
             }
             return LE_FAULT;
         }
+#endif
 
         default:
         {
