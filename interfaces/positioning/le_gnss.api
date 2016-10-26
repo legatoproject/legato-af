@@ -216,7 +216,6 @@
  * - le_gnss_GetSatellitesInfo()
  * - le_gnss_GetSatellitesStatus()
  * - le_gnss_GetDop()
- * - le_gnss_GetSatellitesLatency()
  * - le_gnss_GetAltitudeOnWgs84()
  * - le_gnss_GetMagneticDeviation()
 
@@ -1103,30 +1102,6 @@ FUNCTION le_result_t GetDop
     uint16 hdop OUT,                    ///< Horizontal Dilution of Precision [resolution 1e-3].
     uint16 vdop OUT,                    ///< Vertical Dilution of Precision [resolution 1e-3].
     uint16 pdop OUT                     ///< Position Dilution of Precision [resolution 1e-3].
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the satellites latency measures. That measure provides the time difference when the
- * satellite measurement is obtained relative to the time the position's sample is
- * provided. A positive value means the satellite measurement precedes the time reference of
- * position report.
- *
- * @return
- *  - LE_FAULT         Function failed to get the satellites latency measures.
- *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX or INT32_MAX).
- *  - LE_OK            Function succeeded.
- *
- * @note If the caller is passing an invalid Position sample reference into this function,
- *       it is a fatal error, the function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetSatellitesLatency
-(
-    Sample positionSampleRef IN,            ///< Position sample's reference.
-    uint16  satId[SV_INFO_MAX_LEN] OUT,     ///< Satellites in View ID number, referring
-                                            ///< to NMEA standard.
-    int32  latency[SV_INFO_MAX_LEN] OUT     ///< Satellites latency measure in milliseconds
 );
 
 

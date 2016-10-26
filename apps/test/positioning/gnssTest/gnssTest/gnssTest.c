@@ -35,7 +35,7 @@ static void TestLeGnssDevice
     uint32_t ttffValue;
     uint32_t acqRate;
     le_gnss_ConstellationBitMask_t constellationMask;
-    le_gnss_NmeaBitMask_t nmeaMask;
+    le_gnss_NmeaBitMask_t nmeaMask = 0;
 
     LE_INFO("Start Test Testle_gnss_DeviceTest");
     // GNSS device enabled by default
@@ -55,8 +55,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
-    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     // Enable GNSS device (READY state)
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
     LE_ASSERT((le_gnss_Disable()) == LE_OK);
@@ -82,8 +82,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
-    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     // Stop GNSS device (READY state)
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
     LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
@@ -391,29 +391,6 @@ static void PositionHandlerFunction
                     , satSnrPtr[i]
                     , satAzimPtr[i]
                     , satElevPtr[i]);
-        }
-    }
-
-    // Get satellites latency
-    int32_t latencyPtr[LE_GNSS_SV_INFO_MAX_LEN];
-    size_t latencyNumElements = sizeof(latencyPtr);
-    result = le_gnss_GetSatellitesLatency(positionSampleRef
-                                            , satIdPtr
-                                            , &satIdNumElements
-                                            , latencyPtr
-                                            , &latencyNumElements);
-
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-
-    // Satellite Vehicle information
-    for(i=0; i<latencyNumElements; i++)
-    {
-        if((satIdPtr[i] != 0)&&(satIdPtr[i] != UINT16_MAX))
-        {
-            LE_INFO("[%02d] SVid %03d - Latency %d"
-                    , i
-                    , satIdPtr[i]
-                    , latencyPtr[i]);
         }
     }
 
@@ -905,5 +882,6 @@ COMPONENT_INIT
      TestLeGnssConstellations();
      LE_INFO("======== GNSS NMEA sentences Test  ========");
      TestLeGnssNmeaSentences();
-     LE_INFO("======== GNSS device Start Test SUCCESS ========");
+     LE_INFO("======== GNSS Test SUCCESS ========");
+     exit(EXIT_SUCCESS);
 }
