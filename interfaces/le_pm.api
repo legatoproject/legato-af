@@ -37,6 +37,10 @@
  * are not reference-counted, which means multiple calls to le_pm_StayAwake() can be canceled
  * by a single call to le_pm_Relax().
  *
+ * To have a reference-counted wakeup-source, set the LE_PM_REF_COUNT bit in the opts argument.
+ * When this bit is set, each le_pm_StayAwake() increments a counter, and multiple calls to
+ * le_pm_Relax() is necessary to release the wakeup source.
+ *
  * Power Manager service will automatically release and delete all wakeup sources held on behalf
  * of an exiting or disconnecting client.
  *
@@ -83,6 +87,14 @@ DEFINE TAG_LEN_BYTES = TAG_LEN + 1;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Option LE_PM_REF_COUNT to manage a reference counted wakeup source
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE REF_COUNT = (1 << 0);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference to wakeup source used by StayAwake and Relax function
  */
 //--------------------------------------------------------------------------------------------------
@@ -101,7 +113,7 @@ REFERENCE WakeupSource;
 //--------------------------------------------------------------------------------------------------
 FUNCTION WakeupSource NewWakeupSource
 (
-    uint32 createOpts IN,       ///< Wakeup source options (always zero - usage reserved)
+    uint32 createOpts IN,       ///< Wakeup source options
     string wsTag[TAG_LEN] IN    ///< Context-specific wakeup source tag
 );
 

@@ -70,9 +70,10 @@
 typedef struct {
     uint32_t      cookie;   // used to validate pointer to WakeupSource_t
     char          name[LEGATO_WS_NAME_LEN];    // full wakeup source name
-    le_onoff_t    taken;    // lock status LE_ON = locked, LE_OFF = unlocked
+    uint32_t      taken;    // > 0 locked, 0 = unlocked
     pid_t         pid;      // client pid of wakeup source owner
     void          *wsref;   // back-pointer to safe reference
+    bool          isRef;     // true if reference counted, false if not
 }
 WakeupSource_t;
 #define PM_WAKEUP_SOURCE_COOKIE 0xa1f6337b
@@ -204,6 +205,8 @@ static void OnClientDisconnect
         if (ws->taken) {
             LE_WARN("Releasing wakeup source '%s' on behalf of pid %d.",
                     ws->name, ws->pid);
+            // Force the wakeup source to be released discarding the reference count
+            ws->isRef = false;
             le_pm_Relax((le_pm_WakeupSourceRef_t)ws->wsref);
         }
 
@@ -325,8 +328,10 @@ le_pm_WakeupSourceRef_t le_pm_NewWakeupSource(uint32_t opts, const char *tag)
     ws = (WakeupSource_t*)le_mem_ForceAlloc(PowerManager.lpool);
     ws->cookie = PM_WAKEUP_SOURCE_COOKIE;
     strcpy(ws->name, name);
-    ws->taken = LE_OFF;
+    ws->taken = 0;
     ws->pid = cl->pid;
+    ws->isRef = (opts & LE_PM_REF_COUNT ? true : false);
+
     ws->wsref = le_ref_CreateRef(PowerManager.refs, ws);
 
     // Store record in table of wakeup sources
@@ -360,8 +365,13 @@ void le_pm_StayAwake(le_pm_WakeupSourceRef_t w)
     if (!entry)
         LE_FATAL("Wakeup source '%s' not created.\n", ws->name);
 
-    if (entry->taken) {
-        LE_WARN("Wakeup source '%s' already acquired.", entry->name);
+    if (entry->taken++) {
+        if (!entry->isRef) {
+            LE_WARN("Wakeup source '%s' already acquired.", entry->name);
+        }
+        if (0 == entry->taken) {
+            LE_KILL_CLIENT("Wakeup source '%s' reference counter overlaps.", entry->name);
+        }
         return;
     }
 
@@ -369,8 +379,6 @@ void le_pm_StayAwake(le_pm_WakeupSourceRef_t w)
     if (0 > write(PowerManager.wl, entry->name, strlen(entry->name)))
         LE_FATAL("Error acquiring wakeup soruce '%s', errno = %d.",
             entry->name, errno);
-
-    entry->taken = LE_ON;
 
     return;
 }
@@ -402,12 +410,23 @@ void le_pm_Relax(le_pm_WakeupSourceRef_t w)
         return;
     }
 
+    entry->taken--;
+    if (entry->isRef) {
+        if (UINT_MAX == entry->taken) {
+            LE_KILL_CLIENT("Wakeup source '%s' reference counter overlaps.", entry->name);
+        }
+        if (entry->taken > 0) {
+           return;
+        }
+    }
+    else {
+        entry->taken = 0;
+    }
+
     // write to /sys/power/wake_unlock
     if (0 > write(PowerManager.wu, entry->name, strlen(entry->name)))
         LE_FATAL("Error releasing wakeup soruce '%s', errno = %d.",
             entry->name, errno);
-
-    entry->taken = LE_OFF;
 
     return;
 }
