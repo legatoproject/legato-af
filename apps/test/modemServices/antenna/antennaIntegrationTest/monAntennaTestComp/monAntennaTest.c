@@ -30,9 +30,10 @@
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
 
-#define NB_CHANGING_STATE_BEFORE_RELEASING 3
-#define PRIMARY_ANTENNA_SHORT_LIMIT 839
-#define PRIMARY_ANTENNA_OPEN_LIMIT 1088
+#define NB_CHANGING_STATE_BEFORE_RELEASING  3
+#define MAX_STRING_LEN                      50
+#define PRIMARY_ANTENNA_SHORT_LIMIT         839
+#define PRIMARY_ANTENNA_OPEN_LIMIT          1088
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -67,12 +68,82 @@ static struct
     le_antenna_ObjRef_t             antennaRef;
 }   AntennaCtxtText[LE_ANTENNA_MAX] = {{0}};
 
+//--------------------------------------------------------------------------------------------------
+/*
+ * Convert Antenna status value to Antenna status string
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConvertAntennaStatus
+(
+    char * statusStr,
+    size_t strLen,
+    le_antenna_Status_t status
+)
+{
+    switch(status)
+    {
+        case LE_ANTENNA_SHORT_CIRCUIT:
+            snprintf(statusStr, strLen, "LE_ANTENNA_SHORT_CIRCUIT");
+            break;
 
+        case LE_ANTENNA_CLOSE_CIRCUIT:
+            snprintf(statusStr, strLen, "LE_ANTENNA_CLOSE_CIRCUIT");
+            break;
+
+        case LE_ANTENNA_OPEN_CIRCUIT:
+            snprintf(statusStr, strLen, "LE_ANTENNA_OPEN_CIRCUIT");
+            break;
+
+        case LE_ANTENNA_OVER_CURRENT:
+            snprintf(statusStr, strLen, "LE_ANTENNA_OVER_CURRENT");
+            break;
+
+        case LE_ANTENNA_INACTIVE:
+            snprintf(statusStr, strLen, "LE_ANTENNA_INACTIVE");
+            break;
+
+        default:
+            snprintf(statusStr, strLen, "Unknown status");
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/*
+ * Convert Antenna type value to Antenna type string
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConvertAntennaType
+(
+    char * typeStr,
+    size_t strLen,
+    le_antenna_Type_t antennaType
+)
+{
+    switch(antennaType)
+    {
+        case LE_ANTENNA_PRIMARY_CELLULAR:
+            snprintf(typeStr, strLen, "LE_ANTENNA_PRIMARY_CELLULAR");
+            break;
+        case LE_ANTENNA_DIVERSITY_CELLULAR:
+            snprintf(typeStr, strLen, "LE_ANTENNA_DIVERSITY_CELLULAR");
+            break;
+        case LE_ANTENNA_GNSS:
+            snprintf(typeStr, strLen, "LE_ANTENNA_GNSS");
+            break;
+        default:
+            snprintf(typeStr, strLen, "Unknown type");
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 /*
  * Antenna state handler: after NB_CHANGING_STATE_BEFORE_RELEASING changing state, the handler is
  * released
  *
  */
+//--------------------------------------------------------------------------------------------------
 static void AntennaHandler
 (
     le_antenna_ObjRef_t antennaRef,
@@ -80,13 +151,12 @@ static void AntennaHandler
     void* contextPtr
 )
 {
-    char statusStr[50],typeStr[50];
+    char statusStr[MAX_STRING_LEN],typeStr[MAX_STRING_LEN];
     le_antenna_Type_t antennaType;
     le_result_t result = le_antenna_GetType( antennaRef, &antennaType );
 
     LE_ASSERT(result == LE_OK);
     LE_ASSERT(antennaType < LE_ANTENNA_MAX);
-
 
     AntennaCtxtText[antennaType].count++;
 
@@ -94,65 +164,28 @@ static void AntennaHandler
      * If the changing state thresholds is reached, remove the handler, and release the antenna
      * diagnotics
      */
+
+    ConvertAntennaType(typeStr, MAX_STRING_LEN, antennaType);
+    ConvertAntennaStatus(statusStr, MAX_STRING_LEN, status);
+
+    LE_INFO("Antenna %s status %s", typeStr, statusStr);
+
     if (AntennaCtxtText[antennaType].count == NB_CHANGING_STATE_BEFORE_RELEASING)
     {
         LE_INFO("Remove the handler");
         le_antenna_RemoveStatusEventHandler(AntennaCtxtText[antennaType].handlerRef);
-    }
-    else
-    {
-        switch(antennaType)
-        {
-            case LE_ANTENNA_PRIMARY_CELLULAR:
-                sprintf(typeStr, "LE_ANTENNA_PRIMARY_CELLULAR");
-                break;
-            case LE_ANTENNA_DIVERSITY_CELLULAR:
-                sprintf(typeStr, "LE_ANTENNA_DIVERSITY_CELLULAR");
-                break;
-            case LE_ANTENNA_GNSS:
-                sprintf(typeStr, "LE_ANTENNA_GNSS");
-                break;
-            default:
-                sprintf(typeStr, "ERROR");
-                break;
-        }
-
-        switch(status)
-        {
-            case LE_ANTENNA_SHORT_CIRCUIT:
-                sprintf(statusStr, "LE_ANTENNA_SHORT_CIRCUIT");
-                break;
-
-            case LE_ANTENNA_CLOSE_CIRCUIT:
-                sprintf(statusStr, "LE_ANTENNA_CLOSE_CIRCUIT");
-                break;
-
-            case LE_ANTENNA_OPEN_CIRCUIT:
-                sprintf(statusStr, "LE_ANTENNA_OPEN_CIRCUIT");
-                break;
-
-            case LE_ANTENNA_OVER_CURRENT:
-                sprintf(statusStr, "LE_ANTENNA_OVER_CURRENT");
-                break;
-
-            case LE_ANTENNA_INACTIVE:
-                sprintf(statusStr, "LE_ANTENNA_INACTIVE");
-                break;
-
-            default:
-                sprintf(statusStr, "ERROR");
-                break;
-        }
-        LE_INFO("Antenna %s status%s", typeStr, statusStr);
-    }
+        LE_INFO("======== Antenna diagnostic event handler Test finished for %s ========",
+            typeStr);
+     }
 }
 
-
+//--------------------------------------------------------------------------------------------------
 /*
  * Start test:
  * 'app start antennaTest'
  *
  */
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
     LE_INFO("======== Antenna diagnostic Test started  ========");
@@ -162,6 +195,7 @@ COMPONENT_INIT
     le_result_t result = LE_FAULT;
     int8_t antennaAdc;
     char modelDevice[256];
+    char statusStr[MAX_STRING_LEN];
 
     // Get the device model family (AR7, AR8, ...)
     result = le_info_GetDeviceModel(modelDevice, sizeof(modelDevice));
@@ -272,7 +306,8 @@ COMPONENT_INIT
      */
     result = le_antenna_GetStatus(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef, &status);
     LE_ASSERT(result == LE_OK);
-    LE_INFO("cellular antenna status %d", status);
+    ConvertAntennaStatus(statusStr, MAX_STRING_LEN, status);
+    LE_INFO("cellular antenna status %s", statusStr);
 
     /*
      * Subcribes to the status handler
@@ -287,6 +322,9 @@ COMPONENT_INIT
     LE_INFO("AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].handlerRef %p",
                                     AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].handlerRef);
     LE_ASSERT(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].handlerRef != 0);
+    LE_INFO("PRIMARY_ANTENNA Open Limit set %d, Close Limit set %d, Waiting for %d Antenna events",
+        PRIMARY_ANTENNA_OPEN_LIMIT, PRIMARY_ANTENNA_SHORT_LIMIT,
+        NB_CHANGING_STATE_BEFORE_RELEASING);
 
     /*
      * Request diversity antenna diagnostic
@@ -298,6 +336,8 @@ COMPONENT_INIT
         AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].antennaRef = le_antenna_Request(
                                    LE_ANTENNA_DIVERSITY_CELLULAR);
         LE_ASSERT(AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].antennaRef != 0);
+
+
         /*
          * Get the current limits
          */
@@ -345,6 +385,10 @@ COMPONENT_INIT
 
         LE_INFO("handlerRef %p", AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].handlerRef);
         LE_ASSERT(AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].handlerRef != 0);
+        LE_INFO("DIVERSITY_ANTENNA Open Limit set %d, Close Limit set %d,"
+            " Waiting for %d Antenna events",
+            PRIMARY_ANTENNA_OPEN_LIMIT, PRIMARY_ANTENNA_SHORT_LIMIT,
+            NB_CHANGING_STATE_BEFORE_RELEASING);
     }
     else
     {
@@ -445,7 +489,8 @@ COMPONENT_INIT
          */
         result = le_antenna_GetStatus(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &status);
         LE_ASSERT(result == LE_OK);
-        LE_INFO("GNSS antenna status %d", status);
+        ConvertAntennaStatus(statusStr, MAX_STRING_LEN, status);
+        LE_INFO("GNSS antenna status %s", statusStr);
 
         /*
          * Subscribe to the status handler
@@ -458,8 +503,9 @@ COMPONENT_INIT
 
         LE_INFO("GNSS antenna handlerRef %p", AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef);
         LE_ASSERT(AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef != 0);
-
+        LE_INFO("GNSS Open Limit set %d, Close Limit set %d, Waiting for %d Antenna events",
+            openLimit, shortLimit, NB_CHANGING_STATE_BEFORE_RELEASING);
     }
 
-    LE_INFO("======== Antenna diagnostic Test finished  ========");
+    LE_INFO("======== Antenna diagnostic Test finished ========");
 }
