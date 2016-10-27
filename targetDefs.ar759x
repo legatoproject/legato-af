@@ -43,18 +43,6 @@ export LEGATO_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA)
 export MKSYS_FLAGS += -C "-DSIERRA_MDM9X40"
 export MKEXE_FLAGS += -C "-DSIERRA_MDM9X40"
 
-# Audio HW settings
-MKSYS_FLAGS += -C "-DPCM_IF="AUX""
-MKSYS_FLAGS += -C "-DI2S_IF="PRI_MI2S""
-MKSYS_FLAGS += -C "-DUSB_IF="AFE_PCM""
-MKSYS_FLAGS += -C "-DCODEC_IF="""
-
-# ALSA Multimedia devices and hardware index settings for playback and recording
-MKSYS_FLAGS += -C "-DMM_1_ALSA_MIXER_CTRL="MultiMedia1""
-MKSYS_FLAGS += -C "-DMM_1_ALSA_PCM_DEVICE_ID=0"
-MKSYS_FLAGS += -C "-DMM_2_ALSA_MIXER_CTRL="MultiMedia2""
-MKSYS_FLAGS += -C "-DMM_2_ALSA_PCM_DEVICE_ID=13"
-
 # External ADCs
 MKSYS_FLAGS += -C "-DADC_BEGIN_NUM=1"
 MKSYS_FLAGS += -C "-DADC_COUNT=4"
