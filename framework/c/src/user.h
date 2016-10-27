@@ -26,33 +26,17 @@ void user_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Restores the passwd and/or group backup files if the backup files exist.  This function should be
- * called once on system startup.
- *
- * A backup copy of the passwd and/or group files is created when either of them is modified.  The
- * backups are automatically deleted when the modifications are completed.  If the modification is
- * interrupted by a power outage this function will restore the back up files.
- */
-//--------------------------------------------------------------------------------------------------
-void user_RestoreBackup
-(
-    void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Creates a user account with the specified name.  A group with the same name as the username will
  * also be created and the group will be set as the user's primary group.  If the user and group are
  * successfully created the user ID and group ID are stored at the location pointed to by uidPtr and
- * gidPtr respectively.  If the user account alread exists then LE_DUPLICATE will be returned and
+ * gidPtr respectively.  If the user account already exists then LE_DUPLICATE will be returned and
  * the user account's user ID and group ID are stored at the location pointed to by uidPtr and
  * gidPtr respectively.  If there is an error then LE_FAULT will be returned and the values at
  * uidPtr and gidPtr are undefined.
  *
  * @return
  *      LE_OK if successful.
- *      LE_DUPLICATE if the user or group alreadly exists.
+ *      LE_DUPLICATE if the user or group already exists.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------

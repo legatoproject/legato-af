@@ -3,27 +3,17 @@
  *
  * API for creating/deleting Linux users and groups.
  *
- * Users are created and deleted by modifying the /etc/passwd files.  When a function is called to
- * create or delete a user a backup of the passwd file is first created.  The passwd file is then
- * modified accordingly and then the backup file is deleted.  If the device is shutdown/restarted
- * while adding/deleting a user the passwd file may be partially modified and in a bad state.  The
- * system can recover from this by restoring the backup file using the user_RestoreBackup() call.
+ * Users are created and deleted by modifying the /etc/passwd files and this is done by using the
+ * atomic file access mechanism. This guarantees against corruption of passwd file on unclean reboot.
+ * Atomic access API also ensures file locking while opening for read or write.  This ensures that
+ * the file does not get corrupted due to multiple simultaneous access. Locking the file allows
+ * this API to be thread safe. However, the file locking mechanism provided by the atomic access API
+ * is advisory only which means that other threads may access the passwd file simultaneously if they
+ * are not using this API. The file locking mechanism used here is blocking so a deadlock will occur
+ * if an attempt is made to obtain a lock on a file that has already been locked in the same thread.
  *
- * The passwd file is always locked when they are opened for reading or writing.  This ensures that
- * the file does not get corrupted due to multiple simultaneous access.  Locking the file allows
- * this API to be thread safe.  However, the file locking mechanism used here is only advisory which
- * means that other threads may access the passwd file simultaneously if they are not using this
- * API.
- *
- * The file locking mechanism used here is blocking so a deadlock will occur if an attempt is made
- * to obtain a lock on a file that has already been locked in the same thread.  This API
- * implementation contains helper functions and API functions.  The API functions are responsible
- * for locking the file and calling the helper functions while the helper functions do the actual
- * work.  The helper functions never locks the file.  This allows helper functions to be re-used
- * without causing deadlocks.
- *
- * Groups are created and deleted by modifying the /etc/group file.  File backup and recover and
- * file locking is handled in the same way as the passwd file.
+ * Groups are created and deleted by modifying the /etc/group file.  File update and locking is
+ * handled in the same way as the passwd file.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -31,10 +21,10 @@
 #include "legato.h"
 #include "user.h"
 #include "limit.h"
+#include "file.h"
 #include <pwd.h>
 #include <grp.h>
 #include <sys/file.h>
-#include "fileDescriptor.h"
 #include <sys/sendfile.h>
 
 
@@ -149,37 +139,6 @@ static void DeleteFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Flushes the file stream.
- *
- * @return
- *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t FlushFile
-(
-    FILE* filePtr           ///< [IN] Pointer to the file stream to flush.
-)
-{
-    int result;
-    do
-    {
-        result = fflush(filePtr);
-    }
-    while ( (result != 0) && (errno == EINTR) );
-
-    if (result != 0)
-    {
-        LE_ERROR("Cannot flush stream.  %m.");
-        return LE_FAULT;
-    }
-
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Sets a file to a specified size.  If the size is smaller than the original file size, the file is
  * truncated and the extra data is lost.  If the size is larger than the original file size, the
  * file is extended and the extended portion is filled with NULLs ('\0').
@@ -198,8 +157,16 @@ static le_result_t SetFileLength
 )
 {
     // Flush the file stream so that we can start using low level file I/O functions.
-    if (FlushFile(filePtr) != LE_OK)
+    int result;
+    do
     {
+        result = fflush(filePtr);
+    }
+    while ( (result != 0) && (errno == EINTR) );
+
+    if (result != 0)
+    {
+        LE_ERROR("Cannot flush stream.  %m.");
         return LE_FAULT;
     }
 
@@ -208,7 +175,6 @@ static le_result_t SetFileLength
     LE_FATAL_IF(fd == -1, "Could not get the file descriptor for a stream.  %m.");
 
     // Truncate the file to the desired length.
-    int result;
     do
     {
         result = ftruncate(fd, size);
@@ -227,159 +193,153 @@ static le_result_t SetFileLength
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Copies the contents of original file to the new file.
+ * Create backup file. Copies the contents of the original file to backup file.
  *
  * @return
  *      LE_OK if successful.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t CopyFile
-(
-    FILE* origFilePtr,          ///< [IN] Pointer to the original file.
-    FILE* newFilePtr            ///< [IN] Pointer to the the new file.
-)
-{
-    // Start at the beginning of each file.
-    rewind(origFilePtr);
-    rewind(newFilePtr);
-
-    // Copy the contents of the orig file to the new file.
-    char buf[MaxPasswdEntrySize];
-    while(fgets(buf, sizeof(buf), origFilePtr) != NULL)
-    {
-        if (fputs(buf, newFilePtr) < 0)
-        {
-            LE_ERROR("Cannot copy file.  %m.");
-            return LE_FAULT;
-        }
-    }
-
-    if (FlushFile(newFilePtr) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
-    sync();
-
-    return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Make a backup file.  Creates a backup file and copies the contents of the original file into it.
- *
- * @return
- *      LE_OK if successful.
+ *      LE_NOT_FOUND if the original file could not be found.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t MakeBackup
 (
-    FILE* origFilePtr,                  ///< [IN] Pointer to the file that will be backed up.
-    const char* backupFileNamePtr       ///< [IN] Pointer to the file name of the backup file to
-                                        ///       create.
+    const char* origFileNamePtr,         ///< [IN] Pointer to the original file name.
+    const char* backupFileNamePtr        ///< [IN] Pointer to the backup file name.
 )
 {
-    // Create the backup file and open it for writing.
-    FILE* backupFilePtr = le_flock_CreateStream(backupFileNamePtr, LE_FLOCK_WRITE,
-                                                LE_FLOCK_REPLACE_IF_EXIST, S_IRUSR | S_IWUSR, NULL);
-
-    if (backupFilePtr == NULL)
+    // Delete old obsolete backup file if exists.
+    if (file_Exists(backupFileNamePtr))
     {
-        return LE_FAULT;
-    }
-
-    // Copy the orig file into the backup file.
-    if (CopyFile(origFilePtr, backupFilePtr) == LE_FAULT)
-    {
-        le_flock_CloseStream(backupFilePtr);
         DeleteFile(backupFileNamePtr);
+    }
 
+    struct stat fileStatus;
+    int backupFd;
+
+    // Open the original file for reading and create backup file for writing.
+
+    if (stat(origFileNamePtr, &fileStatus) == 0)
+    {
+        // File permission mode in backup file should be same as original file, so set the
+        // process umask to 0.
+        mode_t old_mode = umask((mode_t)0);
+
+        // Caution: Use atomic file operation, don't use regular file copy operation as it may lead
+        //          to corrupted backup in case of sudden power loss.
+        backupFd = le_atomFile_Create(backupFileNamePtr,
+                                      LE_FLOCK_WRITE,
+                                      LE_FLOCK_REPLACE_IF_EXIST,
+                                      fileStatus.st_mode);
+        umask(old_mode);
+
+        if (backupFd < 0)
+        {
+            return backupFd;
+        }
+    }
+    else
+    {
+        if (errno == ENOENT)
+        {
+            return LE_NOT_FOUND;
+        }
+        else
+        {
+            LE_CRIT("Error when trying to stat '%s'. (%m)", origFileNamePtr);
+            return LE_FAULT;
+        }
+    }
+
+    int origFd = le_flock_Open(origFileNamePtr, LE_FLOCK_READ);
+
+    if (origFd < 0)
+    {
+        le_atomFile_Cancel(backupFd);
+        return origFd;
+    }
+
+    ssize_t origFileSize = lseek(origFd, 0L, SEEK_END);
+
+    if (origFileSize < 0)
+    {
+        LE_CRIT("Error in getting size of '%s'. %m", origFileNamePtr);
+        le_atomFile_Cancel(backupFd);
+        le_flock_Close(origFd);
         return LE_FAULT;
     }
 
-    le_flock_CloseStream(backupFilePtr);
+    // Get the kernel to copy the data over.  It may or may not happen in one go, so keep trying
+    // until the whole file has been written or we error out.
+    ssize_t sizeWritten = 0;
+    off_t fileOffset = 0;
 
-    return LE_OK;
+    while (sizeWritten < origFileSize)
+    {
+        ssize_t nextWritten = sendfile(backupFd,
+                                       origFd,
+                                       &fileOffset,
+                                       origFileSize - sizeWritten);
+
+        if (nextWritten == -1)
+        {
+            LE_CRIT("Error while copying file '%s' from '%s'. (%m)",
+                    backupFileNamePtr,
+                    origFileNamePtr);
+            le_flock_Close(origFd);
+            le_atomFile_Cancel(backupFd);
+            return LE_FAULT;
+        }
+
+        sizeWritten += nextWritten;
+    }
+
+
+    le_result_t result = le_atomFile_Close(backupFd);
+    le_flock_Close(origFd);
+
+    if (LE_OK == result)
+    {
+        LE_DEBUG("Backed up original file '%s' to '%s'.", origFileNamePtr, backupFileNamePtr);
+    }
+
+    return result;
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Restore backup file.  Copies the contents of the backup file into the original file and then
- * deletes the backup file.
+ * Restore original file from backup file and removes the backup file.
  *
  * @return
  *      LE_OK if successful.
- *      LE_NOT_FOUND if the backup file could not be found.
+ *      LE_NOT_FOUND if the original file could not be found.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t RestoreBackup
 (
-    FILE* origFilePtr,                  ///< [IN] Pointer to the file that will be restored.
+    const char* origFileNamePtr,        ///< [IN] Pointer to the file name will be restored.
     const char* backupFileNamePtr       ///< [IN] Pointer to the file name of the backup file.
 )
 {
-    // Open the backup file for reading.
-    le_result_t result;
-    FILE* backupFilePtr = le_flock_OpenStream(backupFileNamePtr, LE_FLOCK_READ, &result);
+    // Lock the original file
+    int fd = le_flock_Open(origFileNamePtr, LE_FLOCK_WRITE);
 
-    if (backupFilePtr == NULL)
+    if (fd < 0)
     {
-        return result;
+        return fd;
     }
 
-    // Delete data that is currently in the file.
-    if (SetFileLength(origFilePtr, 0) == LE_FAULT)
+    // Now rename the backup file to original file
+    if (rename(backupFileNamePtr, origFileNamePtr))
     {
+        LE_CRIT("Failed restore '%s' from '%s' (%m).", origFileNamePtr, backupFileNamePtr);
+        le_flock_Close(fd);
         return LE_FAULT;
     }
 
-    // Copy the backup file into the orig file.
-    if (CopyFile(backupFilePtr, origFilePtr) == LE_FAULT)
-    {
-        le_flock_CloseStream(backupFilePtr);
-        return LE_FAULT;
-    }
-
-    LE_INFO("Restored backup file '%s'.", backupFileNamePtr);
-
-    le_flock_CloseStream(backupFilePtr);
-    DeleteFile(backupFileNamePtr);
-
+    le_flock_Close(fd);
     return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Restores a backup file if it exists.  If the backup file exists then it is copied over the
- * original file and the backup is deleted.
- */
-//--------------------------------------------------------------------------------------------------
-static void RestoreBackupFile
-(
-    const char* origFileNamePtr,        ///< [IN] Pointer to the file name of the file that may need
-                                        ///       to be restored.
-    const char* backupFileNamePtr       ///< [IN] Pointer to the file name of the backup file.
-)
-{
-    // Only restore backup if we have the write access to it.
-    if (-1 == access(origFileNamePtr, W_OK))
-    {
-        return;
-    }
-
-    // Open the original file for writing.
-    FILE* origFilePtr = le_flock_OpenStream(origFileNamePtr, LE_FLOCK_APPEND, NULL);
-    LE_ASSERT(origFilePtr != NULL);
-
-    LE_ASSERT(RestoreBackup(origFilePtr, backupFileNamePtr) != LE_FAULT);
-
-    le_flock_CloseStream(origFilePtr);
 }
 
 
@@ -470,22 +430,6 @@ void user_Init
     {
         MaxGroupEntrySize = buflen;
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Restores the passwd and/or group backup files if the backup files exist.  This function should be
- * called once on system startup.
- */
-//--------------------------------------------------------------------------------------------------
-void user_RestoreBackup
-(
-    void
-)
-{
-    RestoreBackupFile(PASSWORD_FILE, BACKUP_PASSWORD_FILE);
-    RestoreBackupFile(GROUP_FILE, BACKUP_GROUP_FILE);
 }
 
 
@@ -736,53 +680,6 @@ static le_result_t GetGid
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Checks to see if a user or group with the specified name already exits.
- *
- * @note Does not lock the group file.
- *
- * @return
- *      LE_NOT_FOUND if neither a user or group has name.
- *      LE_DUPLICATE if the name alreadly exists.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t CheckIfUserOrGroupExist
-(
-    const char* namePtr
-)
-{
-    // Check if the user already exists.
-    uid_t uid;
-
-    le_result_t result = GetUid(namePtr, &uid);
-
-    if (result == LE_OK)
-    {
-        LE_DEBUG("User '%s' already exists.", namePtr);
-        return LE_DUPLICATE;
-    }
-    else if (result == LE_FAULT)
-    {
-        return LE_FAULT;
-    }
-
-    // Check if the group name (same as the user name) already exists.
-    gid_t gid;
-
-    result = GetGid(namePtr, &gid);
-
-    if (result == LE_OK)
-    {
-        LE_DEBUG("Group '%s' already exists.", namePtr);
-        return LE_DUPLICATE;
-    }
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gets the first available user ID.
  *
  * @note Does not lock the passwd file.
@@ -882,12 +779,6 @@ static le_result_t CreateGroup
     FILE* groupFilePtr      ///< [IN] Pointer to the group file.
 )
 {
-    // Create a backup file for the group file.
-    if (MakeBackup(groupFilePtr, BACKUP_GROUP_FILE) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
     // Create the group entry for this user.
     struct group groupEntry = {.gr_name = (char*)namePtr,
                                .gr_passwd = "*",     // No password.
@@ -897,24 +788,8 @@ static le_result_t CreateGroup
     if (putgrent(&groupEntry, groupFilePtr) != 0)
     {
         LE_ERROR("Could not write to group file.  %m.");
-        DeleteFile(BACKUP_GROUP_FILE);
-
         return LE_FAULT;
     }
-
-    // Flush all data to the file system.
-    if (FlushFile(groupFilePtr) != LE_OK)
-    {
-        LE_ERROR("Could flush group file.  %m.");
-        DeleteFile(BACKUP_GROUP_FILE);
-
-        return LE_FAULT;
-    }
-
-    sync();
-
-    // Delete the backup file.
-    DeleteFile(BACKUP_GROUP_FILE);
 
     return LE_OK;
 }
@@ -947,12 +822,6 @@ static le_result_t CreateUser
         return LE_FAULT;
     }
 
-    // Create a backup file for the passwd file.
-    if (MakeBackup(passwdFilePtr, BACKUP_PASSWORD_FILE) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
     // Create the user entry.
     struct passwd passEntry = {.pw_name = (char*)namePtr,
                                .pw_passwd = "*",    // No password.
@@ -964,26 +833,8 @@ static le_result_t CreateUser
 
     if (putpwent(&passEntry, passwdFilePtr) == -1)
     {
-        DeleteFile(BACKUP_PASSWORD_FILE);
         LE_FATAL("Could not write to passwd file.  %m.");
     }
-
-    // Flush all passwd file stream to the file system.
-    if (FlushFile(passwdFilePtr) != LE_OK)
-    {
-        // Revert passwd file.
-        if (RestoreBackup(passwdFilePtr, BACKUP_PASSWORD_FILE) != LE_OK)
-        {
-            LE_FATAL("Could not restore the passwd file.");
-        }
-
-        return LE_FAULT;
-    }
-
-    sync();
-
-    // Delete the backup file.
-    DeleteFile(BACKUP_PASSWORD_FILE);
 
     return LE_OK;
 }
@@ -1001,7 +852,7 @@ static le_result_t CreateUser
  *
  * @return
  *      LE_OK if successful.
- *      LE_DUPLICATE if the user or group alreadly exists.
+ *      LE_DUPLICATE if the user or group already exists.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1017,8 +868,14 @@ le_result_t user_Create
     // Consider this a duplicate if either group or user do not exist
     bool isDuplicate = true;
 
+    // Create a backup file for the group file.
+    if (MakeBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
     // Lock the passwd file for reading and writing.
-    FILE* passwdFilePtr = le_flock_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* passwdFilePtr = le_atomFile_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
     if (passwdFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", PASSWORD_FILE);
@@ -1026,11 +883,11 @@ le_result_t user_Create
     }
 
     // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_flock_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
-        le_flock_CloseStream(passwdFilePtr);
+        le_atomFile_CancelStream(passwdFilePtr);
         return LE_FAULT;
     }
 
@@ -1097,24 +954,48 @@ le_result_t user_Create
             goto cleanup;
     }
 
-    LE_INFO("Created user '%s' with uid %d and gid %d.", usernamePtr, uid, gid);
+    result = le_atomFile_CloseStream(groupFilePtr);
 
-    if (uidPtr != NULL)
+    if (result != LE_OK)
     {
-        *uidPtr = uid;
+        DeleteFile(BACKUP_GROUP_FILE);
+        le_atomFile_CancelStream(passwdFilePtr);
+        return result;
     }
 
-    if (gidPtr != NULL)
-    {
-        *gidPtr = gid;
-    }
+    result = le_atomFile_CloseStream(passwdFilePtr);
 
-    result = (isDuplicate?LE_DUPLICATE:LE_OK);
+    if (result != LE_OK)
+    {
+        // Restore group file. If restoration succeed, it will automatically delete the backup file.
+        LE_FATAL_IF(RestoreBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK,
+                    "Can't restore group file from backup.");
+
+        return result;
+    }
+    else
+    {
+        DeleteFile(BACKUP_GROUP_FILE);
+        LE_INFO("Created user '%s' with uid %d and gid %d.", usernamePtr, uid, gid);
+
+        if (uidPtr != NULL)
+        {
+            *uidPtr = uid;
+        }
+
+        if (gidPtr != NULL)
+        {
+            *gidPtr = gid;
+        }
+
+        result = (isDuplicate ? LE_DUPLICATE : LE_OK);
+        return result;
+    }
 
 cleanup:
-    le_flock_CloseStream(passwdFilePtr);
-    le_flock_CloseStream(groupFilePtr);
-
+    DeleteFile(BACKUP_GROUP_FILE);
+    le_atomFile_CancelStream(passwdFilePtr);
+    le_atomFile_CancelStream(groupFilePtr);
     return result;
 }
 
@@ -1125,7 +1006,7 @@ cleanup:
  *
  * @return
  *      LE_OK if successful.
- *      LE_DUPLICATE if the group alreadly exists.  If the group already exists the gid of the group
+ *      LE_DUPLICATE if the group already exists.  If the group already exists the gid of the group
  *                   is still returned in *gidPtr.
  *      LE_FAULT if there was an error.
  */
@@ -1137,7 +1018,7 @@ le_result_t user_CreateGroup
 )
 {
     // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_flock_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
@@ -1151,14 +1032,14 @@ le_result_t user_CreateGroup
     if (result == LE_OK)
     {
         LE_WARN("Group '%s' already exists.", groupNamePtr);
-        le_flock_CloseStream(groupFilePtr);
+        le_atomFile_CancelStream(groupFilePtr);
 
         *gidPtr = gid;
         return LE_DUPLICATE;
     }
     else if (result == LE_FAULT)
     {
-        le_flock_CloseStream(groupFilePtr);
+        le_atomFile_CancelStream(groupFilePtr);
         return LE_FAULT;
     }
 
@@ -1167,17 +1048,21 @@ le_result_t user_CreateGroup
 
     if (result != LE_OK)
     {
-        le_flock_CloseStream(groupFilePtr);
+        le_atomFile_CancelStream(groupFilePtr);
         return LE_FAULT;
     }
 
     result = CreateGroup(groupNamePtr, gid, groupFilePtr);
-    le_flock_CloseStream(groupFilePtr);
 
     if (result == LE_OK)
     {
-        LE_INFO("Created group '%s' with gid %d.", groupNamePtr, gid);
-        *gidPtr = gid;
+        result = le_atomFile_CloseStream(groupFilePtr);
+
+        if (result == LE_OK)
+        {
+            LE_INFO("Created group '%s' with gid %d.", groupNamePtr, gid);
+            *gidPtr = gid;
+        }
     }
 
     return result;
@@ -1205,131 +1090,168 @@ static le_result_t DeleteGroup
     char groupBuf[MaxGroupEntrySize];
     struct group *groupEntryPtr;
 
-    // Create a backup file for the group file.
-    if (MakeBackup(groupFilePtr, BACKUP_GROUP_FILE) != LE_OK)
+    rewind(groupFilePtr);
+
+    long readPos = ftell(groupFilePtr);
+
+    if (readPos == -1)
     {
+        LE_ERROR("Failed to get current position of group file. %m");
         return LE_FAULT;
     }
 
-    // Open the back up file for reading.
-    FILE* backupFilePtr = le_flock_OpenStream(BACKUP_GROUP_FILE, LE_FLOCK_READ, NULL);
-    if (backupFilePtr == NULL)
-    {
-        LE_ERROR("Could not open file %s.  %m.", BACKUP_GROUP_FILE);
-
-        DeleteFile(BACKUP_GROUP_FILE);
-        return LE_FAULT;
-    }
-
-    // Delete data that is currently in the group file.
-    if (SetFileLength(groupFilePtr, 0) == LE_FAULT)
-    {
-        goto cleanup;
-    }
+    long writePos = readPos;
 
     // Read each entry in the backup file.
     int result;
+    bool skippedEntry = false;
 
-    while ( (result = fgetgrent_r(backupFilePtr, &groupEntry, groupBuf, sizeof(groupBuf), &groupEntryPtr)) == 0)
+    while ((result = fgetgrent_r(groupFilePtr, &groupEntry, groupBuf, sizeof(groupBuf), &groupEntryPtr)) == 0)
     {
-        if (strcmp(groupEntry.gr_name, namePtr) != 0)
+        if (strcmp(groupEntry.gr_name, namePtr) == 0)
         {
+            skippedEntry = true;
+        }
+        else if (skippedEntry)
+        {
+            if ((readPos = ftell(groupFilePtr)) == -1)
+            {
+                LE_ERROR("Failed to position of group file. %m");
+                return LE_FAULT;
+            }
+
+            if (fseek(groupFilePtr, writePos, SEEK_SET) == -1)
+            {
+                LE_ERROR("Can't set position in group file. %m");
+                return LE_FAULT;
+            }
+
             // Write the entry into the group file.
             if (putgrent(&groupEntry, groupFilePtr) == -1)
             {
                 LE_ERROR("Could not write into group file.  %m.");
-                goto cleanup;
+                return LE_FAULT;
+            }
+
+            if ((writePos = ftell(groupFilePtr)) == -1)
+            {
+                LE_ERROR("Failed to position of group file. %m");
+                return LE_FAULT;
+            }
+
+            if (fseek(groupFilePtr, readPos, SEEK_SET) == -1)
+            {
+                LE_ERROR("Can't set position in group file. %m");
+                return LE_FAULT;
             }
         }
+
+        if (!skippedEntry)
+        {
+            // No matched entry found yet, so update write position to current position in file.
+            if ((writePos = ftell(groupFilePtr)) == -1)
+            {
+                LE_ERROR("Failed to position of passwd file. %m");
+                return LE_FAULT;
+            }
+        }
+
     }
 
     if (result == ERANGE)
     {
         LE_ERROR("Could not read group file buffer size (%zd) is too small.", sizeof(groupBuf));
-        goto cleanup;
+        return LE_FAULT;
     }
 
-    // Flush all data to the file system.
-    if (FlushFile(groupFilePtr) != LE_OK)
-    {
-        goto cleanup;
-    }
-
-    sync();
-
-    LE_INFO("Successfully deleted group '%s'.", namePtr);
-    le_flock_CloseStream(backupFilePtr);
-    DeleteFile(BACKUP_GROUP_FILE);
-
-    return LE_OK;
-
-cleanup:
-    le_flock_CloseStream(backupFilePtr);
-
-    if (RestoreBackup(groupFilePtr, BACKUP_GROUP_FILE) != LE_OK)
-    {
-        LE_FATAL("Could not restore the group file.");
-    }
-
-    return LE_FAULT;
+    return SetFileLength(groupFilePtr, writePos);
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Deletes a user and their primary group of the same name.
- *
- * @note Does not lock the passwd or group file.
+ * Deletes a user.
  *
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t DeleteUserAndGroup
+static le_result_t DeleteUser
 (
     const char* namePtr,        ///< [IN] Pointer to the name of the user and group to delete.
-    FILE* passwdFilePtr,        ///< [IN] Pointer to the passwd file.
-    FILE* groupFilePtr          ///< [IN] Pointer to the group file.
+    FILE* passwdFilePtr         ///< [IN] Pointer to the passwd file.
 )
 {
     struct passwd passwdEntry;
     char buf[MaxPasswdEntrySize];
     struct passwd *passwdEntryPtr;
 
-    // Create a backup file for the passwd file.
-    if (MakeBackup(passwdFilePtr, BACKUP_PASSWORD_FILE) != LE_OK)
+    rewind(passwdFilePtr);
+
+    long readPos = ftell(passwdFilePtr);
+
+    if (readPos == -1)
     {
+        LE_ERROR("Failed to get current position of group file. %m");
         return LE_FAULT;
     }
 
-    // Open the back up file for reading.
-    FILE* backupFilePtr = le_flock_OpenStream(BACKUP_PASSWORD_FILE, LE_FLOCK_READ, NULL);
-    if (backupFilePtr == NULL)
-    {
-        LE_ERROR("Could not open file %s.  %m.", BACKUP_PASSWORD_FILE);
-
-        DeleteFile(BACKUP_PASSWORD_FILE);
-        return LE_FAULT;
-    }
-
-    // Delete data that is currently in the passwd file.
-    if (SetFileLength(passwdFilePtr, 0) == LE_FAULT)
-    {
-        goto cleanup;
-    }
+    long writePos = readPos;
 
     // Read each entry in the backup file.
     int result;
-    while ( (result = fgetpwent_r(backupFilePtr, &passwdEntry, buf, sizeof(buf), &passwdEntryPtr)) == 0)
+    bool skippedEntry = false;
+
+    while ((result = fgetpwent_r(passwdFilePtr, &passwdEntry, buf, sizeof(buf), &passwdEntryPtr)) == 0)
     {
-        if (strcmp(passwdEntry.pw_name, namePtr) != 0)
+
+        if (strcmp(passwdEntry.pw_name, namePtr) == 0)
         {
+            skippedEntry = true;
+
+        }
+        else if (skippedEntry)
+        {
+            if ((readPos = ftell(passwdFilePtr)) == -1)
+            {
+                LE_ERROR("Failed to position of passwd file. %m");
+                return LE_FAULT;
+            }
+
+            if (fseek(passwdFilePtr, writePos, SEEK_SET) == -1)
+            {
+                LE_ERROR("Can't set position in passwd file. %m");
+                return LE_FAULT;
+            }
+
             // Write the entry into the passwd file.
             if (putpwent(&passwdEntry, passwdFilePtr) == -1)
             {
                 LE_ERROR("Could not write into passwd file.  %m.");
-                goto cleanup;
+                return LE_FAULT;
+            }
+
+            if ((writePos = ftell(passwdFilePtr)) == -1)
+            {
+                LE_ERROR("Failed to position of passwd file. %m");
+                return LE_FAULT;
+            }
+
+            if (fseek(passwdFilePtr, readPos, SEEK_SET) == -1)
+            {
+                LE_ERROR("Can't set position in passwd file. %m");
+                return LE_FAULT;
+            }
+        }
+
+        if (!skippedEntry)
+        {
+            // No matched entry found yet, so update write position to current position in file.
+            if ((writePos = ftell(passwdFilePtr)) == -1)
+            {
+                LE_ERROR("Failed to position of passwd file. %m");
+                return LE_FAULT;
             }
         }
     }
@@ -1337,37 +1259,18 @@ static le_result_t DeleteUserAndGroup
     if (result == ERANGE)
     {
         LE_ERROR("Could not read passwd file buffer size (%zd) is too small.", sizeof(buf));
-        goto cleanup;
+        return LE_FAULT;
     }
 
-    if (DeleteGroup(namePtr, groupFilePtr) != LE_OK)
+    result = SetFileLength(passwdFilePtr, writePos);
+
+    if (result != LE_OK)
     {
-        goto cleanup;
+        LE_ERROR("Could not update password file. %m");
+        return LE_FAULT;
     }
 
-    // Flush all data to the file system.
-    if (FlushFile(passwdFilePtr) != LE_OK)
-    {
-        goto cleanup;
-    }
-
-    sync();
-
-    LE_INFO("Successfully deleted user '%s'.", namePtr);
-    le_flock_CloseStream(backupFilePtr);
-    DeleteFile(BACKUP_PASSWORD_FILE);
-
-    return LE_OK;
-
-cleanup:
-    le_flock_CloseStream(backupFilePtr);
-
-    if (RestoreBackup(passwdFilePtr, BACKUP_PASSWORD_FILE) != LE_OK)
-    {
-        LE_FATAL("Could not restore the passwd file.");
-    }
-
-    return LE_FAULT;
+    return result;
 }
 
 
@@ -1383,11 +1286,17 @@ cleanup:
 //--------------------------------------------------------------------------------------------------
 le_result_t user_Delete
 (
-    const char* usernamePtr     ///< [IN] Pointer to the name of the user to delete.
+    const char* namePtr     ///< [IN] Pointer to the name of the user to delete.
 )
 {
+    // Create a backup file for the group file.
+    if (MakeBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
     // Lock the passwd file for reading and writing.
-    FILE* passwdFilePtr = le_flock_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* passwdFilePtr = le_atomFile_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
     if (passwdFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", PASSWORD_FILE);
@@ -1395,27 +1304,108 @@ le_result_t user_Delete
     }
 
     // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_flock_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
-        le_flock_CloseStream(passwdFilePtr);
+        le_atomFile_CancelStream(passwdFilePtr);
         return LE_FAULT;
     }
 
-    // Check if the user already exists.
-    le_result_t result = CheckIfUserOrGroupExist(usernamePtr);
-    if (result != LE_DUPLICATE)
+    uid_t uid;
+    gid_t gid;
+    bool isDeleted = false;
+
+    le_result_t result = GetUid(namePtr, &uid);
+
+    switch (result)
     {
-        goto cleanup;
+        case LE_OK:
+            // User exists.
+            result = DeleteUser(namePtr, passwdFilePtr);
+
+            if(LE_OK != result)
+            {
+                LE_CRIT("Error (%s) while deleting user '%s'", LE_RESULT_TXT(result), namePtr);
+                goto cleanup;
+            }
+            isDeleted = true;
+            break;
+
+        case LE_NOT_FOUND:
+            // Group user doesn't exist, Log a warning message.
+            LE_WARN("User '%s' doesn't exist", namePtr);
+            break;
+
+        default:
+            LE_CRIT("Error (%s) checking if user '%s' exists", LE_RESULT_TXT(result), namePtr);
+            goto cleanup;
     }
 
-    result = DeleteUserAndGroup(usernamePtr, passwdFilePtr, groupFilePtr);
+    // Group name is same as username
+    result = GetGid(namePtr, &gid);
+
+    switch (result)
+    {
+        case LE_OK:
+            // Group exists.
+            result = DeleteGroup(namePtr, groupFilePtr);
+
+            if(LE_OK != result)
+            {
+                LE_CRIT("Error (%s) while deleting group '%s'", LE_RESULT_TXT(result), namePtr);
+                goto cleanup;
+            }
+            isDeleted = true;
+            break;
+
+        case LE_NOT_FOUND:
+            // Group does not exist, Log a warning message.
+            LE_WARN("Group '%s' doesn't exist", namePtr);
+            break;
+
+        default:
+            LE_CRIT("Error (%s) checking if group '%s' exists", LE_RESULT_TXT(result), namePtr);
+            goto cleanup;
+    }
+
+    result = le_atomFile_CloseStream(groupFilePtr);
+
+    if (result != LE_OK)
+    {
+        DeleteFile(BACKUP_GROUP_FILE);
+        le_atomFile_CancelStream(passwdFilePtr);
+        return result;
+    }
+
+    result = le_atomFile_CloseStream(passwdFilePtr);
+
+    if (result != LE_OK)
+    {
+        // Restore group file. If restoration succeed, it will automatically delete the backup file.
+        LE_FATAL_IF(RestoreBackup(GROUP_FILE, BACKUP_GROUP_FILE) != LE_OK,
+                    "Can't restore group file from backup.");
+        return result;
+    }
+    else
+    {
+        DeleteFile(BACKUP_GROUP_FILE);
+
+        if (isDeleted)
+        {
+            LE_INFO("Deleted user '%s'.", namePtr);
+            return LE_OK;
+        }
+        else
+        {
+            return LE_NOT_FOUND;
+        }
+    }
 
 cleanup:
-    le_flock_CloseStream(passwdFilePtr);
-    le_flock_CloseStream(groupFilePtr);
-
+    DeleteFile(BACKUP_GROUP_FILE);
+    le_atomFile_CancelStream(passwdFilePtr);
+    le_atomFile_CancelStream(groupFilePtr);
     return result;
 }
 
@@ -1436,7 +1426,7 @@ le_result_t user_DeleteGroup
 )
 {
     // Lock the group file for reading and writing.
-    FILE* groupFilePtr = le_flock_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
+    FILE* groupFilePtr = le_atomFile_OpenStream(GROUP_FILE, LE_FLOCK_READ_AND_WRITE, NULL);
     if (groupFilePtr == NULL)
     {
         LE_ERROR("Could not open file %s.  %m.", GROUP_FILE);
@@ -1449,13 +1439,29 @@ le_result_t user_DeleteGroup
 
     if (result != LE_OK)
     {
-        le_flock_CloseStream(groupFilePtr);
+        le_atomFile_CancelStream(groupFilePtr);
         return result;
     }
 
     result = DeleteGroup(groupNamePtr, groupFilePtr);
 
-    le_flock_CloseStream(groupFilePtr);
+    if (result != LE_OK)
+    {
+        le_atomFile_CancelStream(groupFilePtr);
+        return result;
+    }
+
+    result = le_atomFile_CloseStream(groupFilePtr);
+
+    if (result  == LE_OK)
+    {
+        LE_INFO("Successfully deleted group '%s'.", groupNamePtr);
+    }
+    else
+    {
+        LE_ERROR("Failed to delete group: '%s'", groupNamePtr);
+    }
+
     return result;
 }
 

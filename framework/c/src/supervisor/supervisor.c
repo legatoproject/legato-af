@@ -891,7 +891,6 @@ COMPONENT_INIT
 
     // Initialize sub systems.
     user_Init();
-    user_RestoreBackup();
     kernelModules_Init();
     smack_Init();
 
