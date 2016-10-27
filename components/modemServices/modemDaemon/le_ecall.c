@@ -1895,6 +1895,7 @@ static void CallEventHandler
     if (   (ECALL_SESSION_NOT_CONNECTED == eCallPtr->sessionState)
         || (ECALL_SESSION_CONNECTED == eCallPtr->sessionState)
         || (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)
+        || (ECALL_SESSION_STOPPED == eCallPtr->sessionState)
        )
     {
         le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
