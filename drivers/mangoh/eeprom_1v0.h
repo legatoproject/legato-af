@@ -15,25 +15,25 @@
 
 typedef struct eeprom_if_reserved_ {
 	char reserved[63];
-} eeprom_if_reserved;
+} __attribute__((packed)) eeprom_if_reserved;
 
 typedef struct eeprom_if_gpio_1v0_ {
 	uint8_t cfg[4];
 	char reserved[59];
-} eeprom_if_gpio_1v0;
+} __attribute__((packed)) eeprom_if_gpio_1v0;
 
 typedef struct eeprom_if_i2c_1v0_ {
 	uint8_t address;
 	uint8_t irq_gpio;
 	char modalias[32];
 	char reserved[29];
-} eeprom_if_i2c_1v0;
+} __attribute__((packed)) eeprom_if_i2c_1v0;
 
 typedef struct eeprom_if_spi_1v0_ {
 	uint8_t irq_gpio;
 	char modalias[32];
 	char reserved[30];
-} eeprom_if_spi_1v0;
+} __attribute__((packed)) eeprom_if_spi_1v0;
 
 typedef eeprom_if_reserved eeprom_if_usb_1v0;
 typedef eeprom_if_reserved eeprom_if_sdio_1v0;
@@ -46,7 +46,7 @@ typedef struct eeprom_if_plat_1v0_ {
 	uint8_t irq_gpio;
 	char modalias[32];
 	char reserved[30];
-} eeprom_if_plat_1v0;
+} __attribute__((packed)) eeprom_if_plat_1v0;
 
 typedef struct eeprom_if_1v0_ {
 	uint8_t type;
@@ -62,7 +62,7 @@ typedef struct eeprom_if_1v0_ {
 		eeprom_if_uart_1v0 uart;
 		eeprom_if_plat_1v0 plat;
 	} ifc;
-} eeprom_if_1v0;
+} __attribute__((packed)) eeprom_if_1v0;
 
 #define EEPROM_1V0_INTERFACE_OFFSET	192
 
