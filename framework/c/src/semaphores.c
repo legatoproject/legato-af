@@ -391,7 +391,7 @@ le_result_t le_sem_WaitWithTimeOut
     le_clk_Time_t currentUtcTime = le_clk_GetAbsoluteTime();
     le_clk_Time_t wakeUpTime = le_clk_Add(currentUtcTime,timeToWait);
     timeOut.tv_sec = wakeUpTime.sec;
-    timeOut.tv_nsec = wakeUpTime.usec;
+    timeOut.tv_nsec = wakeUpTime.usec * 1000;
 
     // Retrieve reference thread
     sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
