@@ -664,21 +664,33 @@ static void AttachHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Start tracing the app.
+ * Stores the application name from the command line.
  */
 //--------------------------------------------------------------------------------------------------
-static void StartAppTrace
+static void StoreAppName
 (
     const char* appNamePtr              ///< [IN] App name from the command line.
 )
 {
     AppNamePtr = appNamePtr;
+}
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start tracing the app.
+ */
+//--------------------------------------------------------------------------------------------------
+static void StartAppTrace
+(
+    void
+)
+{
     printf("Tracing app '%s'\n\n", AppNamePtr);
 
     // Get the app's working directory.
     INTERNAL_ERR_IF(le_path_Concat("/", AppWorkingDir, sizeof(AppWorkingDir),
-                                   appNamePtr, NULL) != LE_OK,
+                                   AppNamePtr, NULL) != LE_OK,
                     "Directory path '%s...' is too long.", AppWorkingDir);
 
     // Connect to the service.
@@ -708,7 +720,7 @@ static void StartAppTrace
 
     if (AppRef == NULL)
     {
-        fprintf(stderr, "Application not installed.");
+        fprintf(stderr, "Application not installed.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -1611,7 +1623,9 @@ COMPONENT_INIT
     le_arg_SetStringCallback(SetRequireFilePath, "o", "output");
 
     // Get the app to trace.
-    le_arg_AddPositionalCallback(StartAppTrace);
+    le_arg_AddPositionalCallback(StoreAppName);
 
     le_arg_Scan();
+    
+    StartAppTrace();
 }
