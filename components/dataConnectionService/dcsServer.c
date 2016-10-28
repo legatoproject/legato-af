@@ -690,13 +690,21 @@ static void DataSessionStateHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * Load the profile of the selected technology
+ *
+ * @return
+ *  - LE_OK             Success
+ *  - LE_FAULT          Failure
+ *  - LE_NOT_FOUND      Config tree item absent
+ *  - LE_OVERFLOW       Config tree item too long
  */
 //--------------------------------------------------------------------------------------------------
-static void LoadSelectedTechProfile
+static le_result_t LoadSelectedTechProfile
 (
     le_data_Technology_t technology     ///< [IN] Technology to use for the profile
 )
 {
+    le_result_t result = LE_OK;
+
     switch (technology)
     {
         // TODO: we only try to load the 1st profile stored in MDC database
@@ -707,7 +715,11 @@ static void LoadSelectedTechProfile
             LE_DEBUG("Use the default cellular profile");
             profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
 
-            LE_FATAL_IF(!profileRef, "Default profile not available");
+            if (!profileRef)
+            {
+                LE_ERROR("Default profile not available");
+                return LE_FAULT;
+            }
 
             // Updating profileRef
             if (profileRef != MobileProfileRef)
@@ -764,12 +776,14 @@ static void LoadSelectedTechProfile
                 if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_SSID, Ssid, sizeof(Ssid), "testSsid"))
                 {
                     LE_WARN("String value for '%s' too large", CFG_NODE_SSID);
+                    return LE_OVERFLOW;
                 }
                 LE_DEBUG("AP configuration, SSID: '%s'", Ssid);
             }
             else
             {
                 LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
+                return LE_NOT_FOUND;
             }
 
             // Security protocol
@@ -782,6 +796,7 @@ static void LoadSelectedTechProfile
             else
             {
                 LE_WARN("No value set for '%s'!", CFG_NODE_SECPROTOCOL);
+                return LE_NOT_FOUND;
             }
 
             // Passphrase
@@ -792,12 +807,14 @@ static void LoadSelectedTechProfile
                                               sizeof(Passphrase), "passphrase"))
                 {
                     LE_WARN("String value for '%s' too large", CFG_NODE_PASSPHRASE);
+                    return LE_OVERFLOW;
                 }
                 LE_DEBUG("AP configuration, Passphrase: '%s'", Passphrase);
             }
             else
             {
                 LE_WARN("No value set for '%s'!", CFG_NODE_PASSPHRASE);
+                return LE_NOT_FOUND;
             }
 
             le_cfg_CancelTxn(cfg);
@@ -810,31 +827,35 @@ static void LoadSelectedTechProfile
                 // Configure the Access Point
                 LE_ASSERT(LE_OK == le_wifiClient_SetSecurityProtocol(AccessPointRef, SecProtocol));
                 LE_ASSERT(LE_OK == le_wifiClient_SetPassphrase(AccessPointRef, Passphrase));
+
+                // Register for Wifi Client state changes if not already done
+                if (NULL == WifiEventHandlerRef)
+                {
+                    WifiEventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler,
+                                                                           NULL);
+                }
             }
             else
             {
                 LE_ERROR("Impossible to create Access Point");
+                result = LE_FAULT;
             }
 
             // Delete sensitive information
             memset(Ssid, '\0', sizeof(Ssid));
             memset(Passphrase, '\0', sizeof(Passphrase));
-
-            // Register for Wifi Client state changes if not already done
-            if (NULL == WifiEventHandlerRef)
-            {
-                WifiEventHandlerRef = le_wifiClient_AddNewEventHandler(WifiClientEventHandler,
-                                                                       NULL);
-            }
         }
         break;
 
         default:
         {
             LE_ERROR("Unknown technology %d", technology);
+            result = LE_FAULT;
         }
         break;
     }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1601,46 +1622,56 @@ static void TryStartWifiSession
 )
 {
     // Load Access Point configuration
-    LoadSelectedTechProfile(LE_DATA_WIFI);
-
-    // Start Wifi client
-    le_result_t result = le_wifiClient_Start();
-
-    if (LE_OK == result)
+    le_result_t result = LoadSelectedTechProfile(LE_DATA_WIFI);
+    if (LE_OK != result)
     {
-        LE_INFO("Wifi client started");
-
-        // Connect to the Access Point
-        if (NULL != AccessPointRef)
-        {
-            result = le_wifiClient_Connect(AccessPointRef);
-            if (result == LE_OK)
-            {
-                LE_INFO("Connecting to AP");
-            }
-            else
-            {
-                LE_ERROR("Impossible to connect to AP, result %d", result);
-
-                // Impossible to use this technology, try the next one
-                ConnectionStatusHandler(LE_DATA_WIFI, false);
-            }
-        }
-        else
-        {
-            LE_ERROR("No reference to AP");
-
-            // Impossible to use this technology, try the next one
-            ConnectionStatusHandler(LE_DATA_WIFI, false);
-        }
-    }
-    else
-    {
-        LE_ERROR("Wifi client not started, result %d", result);
+        LE_WARN("Impossible to use Wifi profile, result %d (%s)", result, LE_RESULT_TXT(result));
 
         // Impossible to use this technology, try the next one
         ConnectionStatusHandler(LE_DATA_WIFI, false);
+
+        return;
     }
+
+    // Start Wifi client
+    result = le_wifiClient_Start();
+
+    if (LE_OK != result)
+    {
+        LE_ERROR("Wifi client not started, result %d (%s)", result, LE_RESULT_TXT(result));
+
+        // Impossible to use this technology, try the next one
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+
+        return;
+    }
+
+    LE_INFO("Wifi client started");
+
+    // Check if the Access Point is created
+    if (NULL == AccessPointRef)
+    {
+        LE_ERROR("No reference to AP");
+
+        // Impossible to use this technology, try the next one
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+
+        return;
+    }
+
+    // Connect to the Access Point
+    result = le_wifiClient_Connect(AccessPointRef);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Impossible to connect to AP, result %d (%s)", result, LE_RESULT_TXT(result));
+
+        // Impossible to use this technology, try the next one
+        ConnectionStatusHandler(LE_DATA_WIFI, false);
+
+        return;
+    }
+
+    LE_INFO("Connecting to AP");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1669,14 +1700,26 @@ static void TryStartTechSession
         switch (technology)
         {
             case LE_DATA_CELLULAR:
+            {
                 // Load MobileProfileRef
-                LoadSelectedTechProfile(LE_DATA_CELLULAR);
+                le_result_t result = LoadSelectedTechProfile(LE_DATA_CELLULAR);
+                if (LE_OK == result)
+                {
+                    // Ensure that cellular network service is available.
+                    // Data connection will be started when cellular network registration
+                    // notification is received.
+                    le_cellnet_Request();
+                }
+                else
+                {
+                    LE_WARN("Impossible to use Cellular profile, error %d (%s)",
+                            result, LE_RESULT_TXT(result));
 
-                // Ensure that cellular network service is available.
-                // Data connection will be started when cellular network registration
-                // notification is received.
-                le_cellnet_Request();
-                break;
+                    // Impossible to use this technology, try the next one
+                    ConnectionStatusHandler(LE_DATA_CELLULAR, false);
+                }
+            }
+            break;
 
             case LE_DATA_WIFI:
                 // Try to establish the wifi connection
