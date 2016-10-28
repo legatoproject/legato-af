@@ -423,7 +423,7 @@ COMPONENT_INIT
 
     memset(&myAddress,0,sizeof(myAddress));
 
-    myAddress.sin_port = htons(1234);
+    myAddress.sin_port = htons(1235);
     myAddress.sin_family = AF_INET;
     myAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 

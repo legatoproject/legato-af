@@ -1,0 +1,24 @@
+executables:
+{
+    atServerApp = ( atServerApp )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( atServerApp )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    atServerApp.atServerApp.le_atServer -> atServer.le_atServer
+}

@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        atServices/le_atServer.api
+    }
+}
+
+sources:
+{
+    atServerApp.c
+    handlers/handlers.c
+}

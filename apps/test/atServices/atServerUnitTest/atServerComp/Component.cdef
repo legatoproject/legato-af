@@ -11,9 +11,12 @@ sources:
 {
     ${LEGATO_ROOT}/components/atServices/atServer/le_atServer.c
     ${LEGATO_ROOT}/components/atServices/Common/le_dev.c
+    atServer_stub.c
 }
 
 cflags:
 {
     -I${LEGATO_ROOT}/components/atServices/Common
+    -Dle_msg_AddServiceOpenHandler=AddServiceOpenHandler
+    -Dle_msg_AddServiceCloseHandler=AddServiceCloseHandler
 }

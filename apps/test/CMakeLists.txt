@@ -96,4 +96,5 @@ add_subdirectory(ifgen/test2)
 # AT Services
 add_subdirectory(atServices/atClientTest)
 add_subdirectory(atServices/atServerIntegrationTest)
+add_subdirectory(atServices/atServerMultipleAppsTest)
 add_subdirectory(atServices/atServerUnitTest)

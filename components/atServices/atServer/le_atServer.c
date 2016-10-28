@@ -175,6 +175,14 @@ static le_mem_PoolRef_t  RspStringPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The memory pool for EventIdList objects
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t EventIdPool;
+
+//--------------------------------------------------------------------------------------------------
+
+/**
  * Map for devices
  */
 //--------------------------------------------------------------------------------------------------
@@ -193,13 +201,6 @@ static le_ref_MapRef_t   SubscribedCmdRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_hashmap_Ref_t   CmdHashMap;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The memory pool for EventIdList objects
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t EventIdPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -315,6 +316,8 @@ typedef struct
     le_dls_List_t           paramList;                              ///< parameters list
     bool                    processing;                             ///< is command processing
     le_atServer_DeviceRef_t deviceRef;                              ///< device refrence
+    le_msg_SessionRef_t     sessionRef;                             ///< session reference
+    bool                    handlerExists;
 }
 ATCmdSubscribed_t;
 
@@ -370,6 +373,7 @@ typedef struct
     le_dls_List_t           unsolicitedList;
     bool                    isFirstIntermediate;
     RspState_t              rspState;
+    le_msg_SessionRef_t     sessionRef;         ///< session reference
 }
 DeviceContext_t;
 
@@ -1407,6 +1411,9 @@ static void RxNewData
 )
 {
     size_t size;
+    DeviceContext_t *devPtr;
+
+    devPtr = le_fdMonitor_GetContextPtr();
 
     if (events & POLLRDHUP)
     {
@@ -1414,7 +1421,6 @@ static void RxNewData
     }
     else if (events & POLLIN)
     {
-        DeviceContext_t *devPtr = le_fdMonitor_GetContextPtr();
 
         // Read RX data on uart
         size = le_dev_Read(&devPtr->device,
@@ -1478,67 +1484,6 @@ static void FirstLayerAtCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function opens an AT server session on the requested device.
- *
- * @return
- *      - Reference to the requested device.
- *      - NULL if the device is not available or fd is a BAD FILE DESCRIPTOR.
- */
-//--------------------------------------------------------------------------------------------------
-le_atServer_DeviceRef_t le_atServer_Open
-(
-    int32_t              fd          ///< The file descriptor
-)
-{
-    char errMsg[ERR_MSG_MAX];
-
-    // check if the file descriptor is valid
-    if (fcntl(fd, F_GETFD) == -1)
-    {
-        memset(errMsg, 0, ERR_MSG_MAX);
-        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
-        return NULL;
-    }
-
-    DeviceContext_t* devPtr = le_mem_ForceAlloc(DevicesPool);
-
-    memset(devPtr,0,sizeof(DeviceContext_t));
-
-    LE_DEBUG("Create a new interface for %d", fd);
-    devPtr->device.fd = fd;
-
-    if (devPtr->device.fdMonitor)
-    {
-        LE_ERROR("Interface already monitored %d", devPtr->device.fd);
-        return NULL;
-    }
-
-    if (le_dev_AddFdMonitoring(&devPtr->device, RxNewData, devPtr) != LE_OK)
-    {
-        LE_ERROR("Error during adding the fd monitoring");
-        return NULL;
-    }
-
-    devPtr->cmdParser.rxState = PARSER_SEARCH_A;
-    devPtr->parseIndex = 0;
-    devPtr->unsolicitedList = LE_DLS_LIST_INIT;
-    devPtr->isFirstIntermediate = true;
-
-    if (devPtr != NULL)
-    {
-        devPtr->ref = le_ref_CreateRef(DevicesRefMap, devPtr);
-        return devPtr->ref;
-    }
-    else
-    {
-        return NULL;
-    }
-
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function closes the AT server session on the requested device.
  *
  * @return
@@ -1549,7 +1494,7 @@ le_atServer_DeviceRef_t le_atServer_Open
  *                              for more information.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_atServer_Close
+static le_result_t CloseServer
 (
     le_atServer_DeviceRef_t devRef
         ///< [IN] device to be unbinded
@@ -1603,6 +1548,132 @@ le_result_t le_atServer_Close
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * handler function to the close session service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    le_ref_IterRef_t iter;
+    ATCmdSubscribed_t *cmdPtr = NULL;
+    DeviceContext_t *devPtr = NULL;
+
+    iter = le_ref_GetIterator(SubscribedCmdRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        cmdPtr = (ATCmdSubscribed_t *) le_ref_GetValue(iter);
+        if (cmdPtr)
+        {
+            if (sessionRef == cmdPtr->sessionRef)
+            {
+                LE_DEBUG("deleting %s", cmdPtr->cmdName);
+                le_mem_Release(cmdPtr);
+            }
+        }
+    }
+
+    iter = le_ref_GetIterator(DevicesRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        devPtr = (DeviceContext_t *) le_ref_GetValue(iter);
+        if (devPtr)
+        {
+            if (sessionRef == devPtr->sessionRef)
+            {
+                LE_DEBUG("deleting fd %d", devPtr->device.fd);
+                CloseServer(devPtr->ref);
+            }
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function opens an AT server session on the requested device.
+ *
+ * @return
+ *      - Reference to the requested device.
+ *      - NULL if the device is not available or fd is a BAD FILE DESCRIPTOR.
+ */
+//--------------------------------------------------------------------------------------------------
+le_atServer_DeviceRef_t le_atServer_Open
+(
+    int32_t              fd          ///< The file descriptor
+)
+{
+    char errMsg[ERR_MSG_MAX];
+
+    // check if the file descriptor is valid
+    if (fcntl(fd, F_GETFD) == -1)
+    {
+        memset(errMsg, 0, ERR_MSG_MAX);
+        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+        return NULL;
+    }
+
+
+    DeviceContext_t* devPtr = le_mem_ForceAlloc(DevicesPool);
+    if (!devPtr)
+    {
+        return NULL;
+    }
+
+    memset(devPtr,0,sizeof(DeviceContext_t));
+
+    LE_DEBUG("Create a new interface for %d", fd);
+    devPtr->device.fd = fd;
+
+    if (devPtr->device.fdMonitor)
+    {
+        LE_ERROR("Interface already monitored %d", devPtr->device.fd);
+        return NULL;
+    }
+
+    if (le_dev_AddFdMonitoring(&devPtr->device, RxNewData, devPtr) != LE_OK)
+    {
+        LE_ERROR("Error during adding the fd monitoring");
+        return NULL;
+    }
+
+    devPtr->cmdParser.rxState = PARSER_SEARCH_A;
+    devPtr->parseIndex = 0;
+    devPtr->unsolicitedList = LE_DLS_LIST_INIT;
+    devPtr->isFirstIntermediate = true;
+    devPtr->sessionRef = le_atServer_GetClientSessionRef();
+    devPtr->ref = le_ref_CreateRef(DevicesRefMap, devPtr);
+
+    LE_INFO("created device");
+
+    return devPtr->ref;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function closes the AT server session on the requested device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_BUSY           The requested device is busy.
+ *      - LE_FAULT          Failed to stop the server, check logs
+ *                              for more information.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_Close
+(
+    le_atServer_DeviceRef_t devRef
+        ///< [IN] device to be unbinded
+)
+{
+    return CloseServer(devRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function creates an AT command and registers it into the AT parser.
  *
  * @return
@@ -1619,30 +1690,34 @@ le_atServer_CmdRef_t le_atServer_Create
     // Search if the command already exists
     ATCmdSubscribed_t* cmdPtr = le_hashmap_Get(CmdHashMap, namePtr);
 
-    if (cmdPtr != NULL)
+    // if the command exists return its reference
+    if (cmdPtr)
     {
-        le_mem_AddRef(cmdPtr);
+        LE_INFO("command %s exists", cmdPtr->cmdName);
+        return cmdPtr->cmdRef;
     }
-    else
+
+    cmdPtr = le_mem_ForceAlloc(AtCommandsPool);
+    if (!cmdPtr)
     {
-        cmdPtr = le_mem_ForceAlloc(AtCommandsPool);
-
-        LE_DEBUG("Create: %s", namePtr);
-
-        memset(cmdPtr,0,sizeof(ATCmdSubscribed_t));
-
-        le_utf8_Copy(cmdPtr->cmdName, namePtr, LE_ATDEFS_COMMAND_MAX_BYTES,0);
-
-        cmdPtr->cmdRef = le_ref_CreateRef(SubscribedCmdRefMap, cmdPtr);
-
-        le_hashmap_Put(CmdHashMap, cmdPtr->cmdName, cmdPtr);
-
-        cmdPtr->availableDevice = LE_ATSERVER_ALL_DEVICES;
-
-        cmdPtr->paramList = LE_DLS_LIST_INIT;
-
-        cmdPtr->eventId = GetEventId();
+        return NULL;
     }
+
+    LE_DEBUG("Create: %s", namePtr);
+
+    memset(cmdPtr,0,sizeof(ATCmdSubscribed_t));
+
+    le_utf8_Copy(cmdPtr->cmdName, namePtr, LE_ATDEFS_COMMAND_MAX_BYTES,0);
+
+    cmdPtr->cmdRef = le_ref_CreateRef(SubscribedCmdRefMap, cmdPtr);
+
+    le_hashmap_Put(CmdHashMap, cmdPtr->cmdName, cmdPtr);
+
+    cmdPtr->availableDevice = LE_ATSERVER_ALL_DEVICES;
+    cmdPtr->paramList = LE_DLS_LIST_INIT;
+    cmdPtr->eventId = GetEventId();
+    cmdPtr->sessionRef = le_atServer_GetClientSessionRef();
+    cmdPtr->handlerExists = false;
 
     return cmdPtr->cmdRef;
 }
@@ -1735,9 +1810,15 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
     le_event_HandlerRef_t handlerRef = NULL;
     ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
 
-    if (cmdPtr == NULL)
+    if (!cmdPtr)
     {
         LE_ERROR("Bad command reference");
+        return NULL;
+    }
+
+    if (cmdPtr->handlerExists)
+    {
+        LE_INFO("Handler already exists");
         return NULL;
     }
 
@@ -1754,6 +1835,8 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
+    cmdPtr->handlerExists = true;
+
     return (le_atServer_CommandHandlerRef_t)(handlerRef);
 }
 
@@ -1764,10 +1847,14 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
 //--------------------------------------------------------------------------------------------------
 void le_atServer_RemoveCommandHandler
 (
-    le_atServer_CommandHandlerRef_t addHandlerRef
+    le_atServer_CommandHandlerRef_t handlerRef
         ///< [IN]
 )
 {
+    if (handlerRef)
+    {
+        le_event_RemoveHandler((le_event_HandlerRef_t) handlerRef);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2039,7 +2126,6 @@ le_result_t le_atServer_SendUnsolicitedResponse
         }
     }
 
-
     return LE_OK;
 }
 
@@ -2079,4 +2165,8 @@ COMPONENT_INIT
 
     // init EventIdList
     EventIdList = LE_DLS_LIST_INIT;
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler(
+        le_atServer_GetServiceRef(), CloseSessionEventHandler, NULL);
 }
