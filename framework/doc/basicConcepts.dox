@@ -1,5 +1,7 @@
 /** @page basicConcepts Overview
 
+These overview topics are available:
+
 @subpage basicRuntimeArch <br>
 @subpage basicSecurity <br>
 @subpage basicComponents <br>
@@ -12,7 +14,7 @@
 @subpage basicInternationalization <br>
 @subpage basicLog <br>
 @subpage basicLWM2MData <br>
-@subpage basicUpdate <br>
+@subpage basicUpdates <br>
 @subpage aboutDocsGlossary
 
 <h2>Overview</h2>
