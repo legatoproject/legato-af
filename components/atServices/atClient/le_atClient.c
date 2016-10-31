@@ -246,6 +246,7 @@ typedef struct
     le_atClient_UnsolicitedResponseHandlerRef_t ref;            ///< Unsolicited reference
     DeviceContextPtr_t interfacePtr;                            ///< device context
     le_dls_Link_t link;                                         ///< link in Unsolicited List
+    le_msg_SessionRef_t sessionRef;                             ///< client session reference
 }
 Unsolicited_t;
 
@@ -268,6 +269,7 @@ typedef struct DeviceContext
     le_dls_List_t   unsolicitedList;    ///< unsolicited command list
     le_sem_Ref_t    waitingSemaphore;   ///< semaphore used for synchronization
     le_atClient_DeviceRef_t ref;        ///< reference of the device context
+    le_msg_SessionRef_t sessionRef;     ///< client session reference
 }
 DeviceContext_t;
 
@@ -296,6 +298,7 @@ typedef struct AtCmd
     le_sem_Ref_t           endSem;                              ///< end treatment semaphore
     le_result_t            result;                              ///< result operation
     le_dls_Link_t          link;                                ///< link in AT commands list
+    le_msg_SessionRef_t    sessionRef;                          ///< client session reference
 }
 AtCmd_t;
 
@@ -675,8 +678,6 @@ static void DestroyDeviceThread
         le_dev_RemoveFdMonitoring(&interfacePtr->device);
         close(interfacePtr->device.fd);
     }
-
-    le_ref_DeleteRef(DevicesRefMap, interfacePtr->ref);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1170,21 +1171,6 @@ static void ReleaseRspStringList
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is to stop an AT command client session on a specified device
- *
- */
-//--------------------------------------------------------------------------------------------------
-void StopClient
-(
-    void *param1Ptr,
-    void *param2Ptr
-)
-{
-    le_thread_Exit(NULL);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function is to send a new AT command
  *
  */
@@ -1222,6 +1208,8 @@ static void AtCmdPoolDestructor
     ReleaseRspStringList(&(oldPtr->responseList));
     ReleaseRspStringList(&(oldPtr->expectResponseList));
     ReleaseRspStringList(&(oldPtr->ExpectintermediateResponseList));
+
+    le_ref_DeleteRef(CmdRefMap, oldPtr->ref);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1237,12 +1225,15 @@ static void DevicesPoolDestructor
 {
     DeviceContext_t* interfacePtr = ptr;
 
-    le_event_QueueFunctionToThread(interfacePtr->threadRef,
-                                   StopClient,
-                                   (void*) interfacePtr,
-                                   (void*) NULL);
+    if (le_thread_Cancel(interfacePtr->threadRef))
+    {
+        LE_ERROR("failed to Cancel device thread");
+        return;
+    }
 
     le_thread_Join(interfacePtr->threadRef,NULL);
+
+    le_ref_DeleteRef(DevicesRefMap, interfacePtr->ref);
 
 }
 
@@ -1258,10 +1249,18 @@ static void UnsolicitedPoolDestructor
 )
 {
     Unsolicited_t* unsolicitedPtr = ptr;
+    le_dls_List_t list;
+    le_dls_Link_t link;
+
+    list = unsolicitedPtr->interfacePtr->unsolicitedList;
+    link = unsolicitedPtr->link;
 
     LE_DEBUG("Destroy unsolicited %s", unsolicitedPtr->unsolRsp);
 
-    le_dls_Remove(&unsolicitedPtr->interfacePtr->unsolicitedList, &unsolicitedPtr->link);
+    if ( le_dls_IsInList(&list, &link) )
+    {
+        le_dls_Remove(&list, &link);
+    }
 
     le_ref_DeleteRef(UnsolRefMap, unsolicitedPtr->ref);
 }
@@ -1344,6 +1343,7 @@ le_atClient_CmdRef_t le_atClient_Create
     cmdPtr->intermediateIndex               = 0;
     cmdPtr->responseList                    = LE_DLS_LIST_INIT;
     cmdPtr->link                            = LE_DLS_LINK_INIT;
+    cmdPtr->sessionRef                      = le_atClient_GetClientSessionRef();
 
     return cmdPtr->ref;
 }
@@ -1413,8 +1413,6 @@ le_result_t le_atClient_Delete
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
         return LE_BAD_PARAMETER;
     }
-
-    le_ref_DeleteRef(CmdRefMap, cmdRef);
 
     le_mem_Release(cmdPtr);
 
@@ -2027,6 +2025,7 @@ le_atClient_UnsolicitedResponseHandlerRef_t le_atClient_AddUnsolicitedResponseHa
     unsolicitedPtr->ref = le_ref_CreateRef(UnsolRefMap, unsolicitedPtr);
     unsolicitedPtr->interfacePtr = interfacePtr;
     unsolicitedPtr->link = LE_DLS_LINK_INIT;
+    unsolicitedPtr->sessionRef = le_atClient_GetClientSessionRef();
 
     le_dls_Queue(&interfacePtr->unsolicitedList, &unsolicitedPtr->link);
 
@@ -2046,34 +2045,77 @@ void le_atClient_RemoveUnsolicitedResponseHandler
 {
     Unsolicited_t* unsolicitedPtr = le_ref_Lookup(UnsolRefMap, addHandlerRef);
 
-    if (unsolicitedPtr == NULL)
+    if (unsolicitedPtr)
     {
-        LE_ERROR("Invalid reference");
-        return ;
-    }
-
-    le_event_QueueFunctionToThread(unsolicitedPtr->interfacePtr->threadRef,
+        le_event_QueueFunctionToThread(unsolicitedPtr->interfacePtr->threadRef,
                                    RemoveUnsolicited,
                                    (void*) unsolicitedPtr,
                                    (void*) NULL);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to automatically set and send an AT Command.
+ * Handler function to the close session service
  *
- * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
- *      - LE_TIMEOUT when a timeout occur
- *      - LE_OK when function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    le_ref_IterRef_t iter;
+    AtCmd_t *cmdPtr = NULL;
+    DeviceContext_t *devPtr = NULL;
+    Unsolicited_t *unsolPtr  = NULL;
+
+    iter = le_ref_GetIterator(UnsolRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        unsolPtr = (Unsolicited_t *) le_ref_GetValue(iter);
+        if (unsolPtr)
+        {
+            if (sessionRef == unsolPtr->sessionRef)
+            {
+                le_mem_Release(unsolPtr);
+            }
+        }
+    }
+
+    iter = le_ref_GetIterator(CmdRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        cmdPtr = (AtCmd_t *) le_ref_GetValue(iter);
+        if (cmdPtr)
+        {
+            if (sessionRef == cmdPtr->sessionRef)
+            {
+                le_mem_Release(cmdPtr);
+            }
+        }
+    }
+
+    iter = le_ref_GetIterator(DevicesRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        devPtr = (DeviceContext_t *) le_ref_GetValue(iter);
+        if (devPtr)
+        {
+            if (sessionRef == devPtr->sessionRef)
+            {
+                le_mem_Release(devPtr);
+            }
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to start a ATClient session on a specified device.
  *
- * @note If the AT command is invalid, a fatal error occurs,
- *       the function won't return.
- *
- * @note The AT command reference is created and returned by this API, there's no need to call
- * le_atClient_Create() first.
- *
+ * @return reference on a device context
  */
 //--------------------------------------------------------------------------------------------------
 le_atClient_DeviceRef_t le_atClient_Start
@@ -2097,6 +2139,8 @@ le_atClient_DeviceRef_t le_atClient_Start
     memset(name,0,THREAD_NAME_MAX_LENGTH);
     snprintf(name,THREAD_NAME_MAX_LENGTH,"ItfWaitSemaphore-%d",threatCounter);
     newInterfacePtr->waitingSemaphore = le_sem_Create(name,0);
+
+    newInterfacePtr->sessionRef = le_atClient_GetClientSessionRef();
 
     threatCounter++;
 
@@ -2176,4 +2220,8 @@ COMPONENT_INIT
     le_mem_ExpandPool(UnsolicitedPool,UNSOLICITED_POOL_SIZE);
     le_mem_SetDestructor(UnsolicitedPool,UnsolicitedPoolDestructor);
     UnsolRefMap = le_ref_CreateMap("UnsolRefMap", UNSOLICITED_POOL_SIZE);
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler(
+        le_atClient_GetServiceRef(), CloseSessionEventHandler, NULL);
 }

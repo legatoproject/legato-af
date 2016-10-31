@@ -90,7 +90,8 @@ COMPONENT_INIT
     else
     {
         LE_INFO("Usage:");
-        LE_INFO("execInApp atClientTest atClientTest <phoneNumber>");
+        LE_INFO("app runProc atClientTest --exe=atClientTest"
+                " -- <phoneNumber>");
         exit(EXIT_FAILURE);
     }
 
