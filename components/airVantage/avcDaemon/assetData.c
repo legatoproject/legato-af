@@ -1743,7 +1743,7 @@ static le_result_t TimeSeriesAddEntry
             else
             {
                 LE_DEBUG("Float data encoded as integer.");
-                err = cbor_encode_int(&fieldDataPtr->timeSeriesPtr->sampleRef, (uint64_t)floatDelta);
+                err = cbor_encode_int(&fieldDataPtr->timeSeriesPtr->sampleRef, (int64_t)floatDelta);
             }
 
             fieldDataPtr->timeSeriesPtr->prevFloatValue = fieldDataPtr->floatValue;

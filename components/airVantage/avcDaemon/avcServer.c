@@ -542,10 +542,19 @@ static void ClientCloseSessionHandler
     void*               contextPtr
 )
 {
-    if ( sessionRef == NULL )
+    if (sessionRef == NULL)
     {
         LE_ERROR("sessionRef is NULL");
         return;
+    }
+
+    // Release session owned by control app (only when control app closes).
+    if ((RegisteredControlAppRef == sessionRef) &&
+         IsControlAppSession)
+    {
+        LE_DEBUG("Close session owned by control app.");
+        pa_avc_StopSession();
+        IsControlAppSession = false;
     }
 
     LE_INFO("Client %p closed, remove allocated resources", sessionRef);
@@ -553,20 +562,13 @@ static void ClientCloseSessionHandler
     // Search for the block reference(s) used by the closed client, and clean up any data.
     le_ref_IterRef_t iterRef = le_ref_GetIterator(BlockRefMap);
 
-    while ( le_ref_NextNode(iterRef) == LE_OK )
+    while (le_ref_NextNode(iterRef) == LE_OK)
     {
-        if ( le_ref_GetValue(iterRef) == sessionRef )
+        if (le_ref_GetValue(iterRef) == sessionRef)
         {
             le_ref_DeleteRef( BlockRefMap, (void*)le_ref_GetSafeRef(iterRef) );
             BlockRefCount--;
         }
-    }
-
-    // Release session owned by control app.
-    if (IsControlAppSession)
-    {
-        pa_avc_StopSession();
-        IsControlAppSession = false;
     }
 }
 
