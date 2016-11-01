@@ -92,29 +92,30 @@
  * stopping time series data on a resource is controlled by user app. le_avData_StartTimeSeries()
  * allows user app to start time series data on a resource and le_avData_StopTimeSeries() stops
  * collecting time series data on a resource. User app can open an avms session and push the
- * collected history data to cloud using le_avData_PushTimeSeries().
+ * collected history data using le_avData_PushTimeSeries().
  *
- * The buffer size that can be allocated for history data is capped at 1024 bytes. Bytes transmitted
+ * The buffer size allocated for history data per resource is 1024 bytes. Bytes transmitted
  * over the air can be reduced by choosing an appropriate factor. For example if the sampled integer
  * data is a multiple of 1000, the encoded data will be smaller if a factor of 0.001 is used.
  * For float fields if a factor other than 1 is used the data will be encoded as integer to save
  * bytes transported over the air. For example if the resolution of float data is 0.01
- * a factor of 100 can be used to represent .01 as 1 and encoding this an integer thus saving memory.
+ * a factor of 100 can be used to represent .01 as 1 and encoding this as integer thus saving memory.
+ *
+ * @note Sytem time is used as time stamp for history data in le_avData_Set(). It is up to the
+ * device administrator to make sure system time is up to date before starting time series.
+ * Alternatively, le_avData_Record() function can be used to pass a user specified timestamp.
  *
  * le_avdata_RecordInt(), le_avdata_RecordFloat(), le_avdata_RecordBool() and
- * le_avdata_RecordString() can be used to pass a user specified time stamp. The user specified
+ * le_avdata_RecordString() can be used to pass an user specified time stamp. The user specified
  * time stamp must be in milli seconds elapsed since epoch.
  *
- * @note Observe has to be enabled on the resource before time series can be enabled. User apps can
- * use le_avData_IsObserve() to know if Observe is enabled on a resource before enabling time series.
+ * @note Observe has to be enabled on the resource before time series can be pushed out. User apps can
+ * use le_avData_IsObserve() to know if Observe is enabled on a resource.
  *
- * @note Sytem time is used as time stamp for history data if le_avData_Set(). It is up to the
- * device administrator to make sure system time is up to date before starting time series.
- * le_avData_Record() function can be used to pass a user specified timestamp.
- *
- * @note LEGATO_FEATURE_TIMESERIES has to be enabled in targetdefs to build avcService with
- * time series. The time series feature depends on the cbor libraries in yocto; yocto image has to
- * be updated on the device if time series is turned on in avcService.
+ * @note LEGATO_FEATURE_TIMESERIES is enabled by default for the WP85 target (targetdefs.wp85).
+ * The time series feature depends on the cbor libraries in yocto. Hence, yocto image has to
+ * be updated on the device together with the legato image. Users who want to update
+ * legato only without the yocto image should turn off time series in targetdefs.
  *
  * @section le_avdata_fatal Fatal Behavior
  *
