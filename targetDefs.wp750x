@@ -37,6 +37,12 @@ export LEGATO_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA)
 export LEGATO_FEATURE_AVMS_CONFIG = -DLEGATO_FEATURE_AVMS_CONFIG
 export LEGATO_FEATURE_OBSERVE = -DLEGATO_FEATURE_OBSERVE
 
+# Comment following lines to disable time series. When time series is enabled,
+# Yocto image has to be updated on device through FOTA to include the libraries
+# needed for time series.
+export LEGATO_FEATURE_TIMESERIES = -DLEGATO_FEATURE_TIMESERIES
+export LDFLAG_LEGATO_TIMESERIES = -lz -ltinycbor
+
 # Audio HW settings
 MKSYS_FLAGS += -C "-DPCM_IF="AUX""
 MKSYS_FLAGS += -C "-DI2S_IF="PRI""

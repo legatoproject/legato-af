@@ -112,8 +112,8 @@
  * @note Observe has to be enabled on the resource before time series can be pushed out. User apps can
  * use le_avData_IsObserve() to know if Observe is enabled on a resource.
  *
- * @note LEGATO_FEATURE_TIMESERIES is enabled by default for the WP85 target (targetdefs.wp85).
- * The time series feature depends on the cbor libraries in yocto. Hence, yocto image has to
+ * @note LEGATO_FEATURE_TIMESERIES is enabled by default for all WP products. The time series
+ * feature depends on the cbor libraries in yocto. Hence, yocto image has to
  * be updated on the device together with the legato image. Users who want to update
  * legato only without the yocto image should turn off time series in targetdefs.
  *
