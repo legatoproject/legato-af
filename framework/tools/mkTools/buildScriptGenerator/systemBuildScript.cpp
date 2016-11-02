@@ -66,8 +66,8 @@ static void GenerateSystemBuildRules
     // Copy the framework bin and lib directories into the system's staging area.
     "            mkdir -p $stagingDir/bin && $\n"
     "            mkdir -p $stagingDir/lib && $\n"
-    "            find $$LEGATO_ROOT/build/$target/framework/bin/* -maxdepth 0 -print |"
-                       " xargs cp -r -P -t $stagingDir/bin && $\n"
+    "            find $$LEGATO_ROOT/build/$target/framework/bin/* -type d -prune -o"
+                                  " -print | xargs cp -P -t $stagingDir/bin && $\n"
     "            find $$LEGATO_ROOT/build/$target/framework/lib/* -type d -prune -o"
                        " \\( -type f -o -type l \\) -print | xargs cp -P -t $stagingDir/lib && $\n"
 

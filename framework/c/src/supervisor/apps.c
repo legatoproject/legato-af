@@ -1107,7 +1107,7 @@ void apps_Init
     // Specify the program to be run when the last process exits a freezer sub-group. This program
     // notifies the Supervisor which app has stopped.
     file_WriteStr("/sys/fs/cgroup/freezer/release_agent",
-                  "/legato/systems/current/bin/private/appStopClient", 0);
+                  "/legato/systems/current/bin/_appStopClient", 0);
 }
 
 
