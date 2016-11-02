@@ -251,11 +251,11 @@ static void ReportCellNetStateEvent
 {
     LE_DEBUG("Report cellular network state %d (%s)", state, cellNetStateStr[state]);
 
-    // Send the event to interested applications
-    le_event_Report(CellNetStateEvent, &state, sizeof(state));
-
     // Update current network cell state
     CurrentState = state;
+
+    // Send the event to interested applications
+    le_event_Report(CellNetStateEvent, &state, sizeof(state));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -859,7 +859,6 @@ le_result_t le_cellnet_GetNetworkState
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Server Initialization
@@ -879,7 +878,6 @@ COMPONENT_INIT
     le_event_AddHandler("ProcessCommand",
                         CommandEvent,
                         ProcessCommand);
-
 
     // Register for SIM state changes
     le_sim_AddNewStateHandler(SimStateHandler, NULL);

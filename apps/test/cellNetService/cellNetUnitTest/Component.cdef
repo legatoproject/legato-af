@@ -1,0 +1,14 @@
+requires:
+{
+    api:
+    {
+        le_cellnet.api              [types-only]
+        le_secStore.api             [types-only]
+        modemServices/le_mrc.api    [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+}

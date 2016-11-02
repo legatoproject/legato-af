@@ -1,0 +1,23 @@
+requires:
+{
+    api:
+    {
+        le_data.api                                         [types-only]
+        le_cellnet.api                                      [types-only]
+        le_cfg.api                                          [types-only]
+        modemServices/le_mdc.api                            [types-only]
+        ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api    [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/dataConnectionService/dcsServer.c
+    dataConnection_stub.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+    -Dsystem=MySystem
+}

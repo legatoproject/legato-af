@@ -11,8 +11,6 @@ requires:
     api:
     {
         modemServices/le_mdc.api
-        modemServices/le_mrc.api
-        modemServices/le_sim.api
         le_cellnet.api
         le_cfg.api
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]

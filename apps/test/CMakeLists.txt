@@ -79,11 +79,15 @@ add_subdirectory(audio/voicePromptMcc)
 add_subdirectory(audio/voicePromptMcc2)
 add_subdirectory(audio/audioUnitTest)
 
+## Cellular Network Service
+add_subdirectory(cellNetService/cellNetServiceTest)
+add_subdirectory(cellNetService/cellNetUnitTest)
+
 ## Data Connection Service
-add_subdirectory(dataConnectionService)
+add_subdirectory(dataConnectionService/dataConnectionServiceTest)
+add_subdirectory(dataConnectionService/dataConnectionUnitTest)
 
 ## Other Services ...
-add_subdirectory(cellNetService)
 add_subdirectory(voiceCallService/voiceCallServiceIntegrationTest)
 add_subdirectory(smsInboxService)
 
