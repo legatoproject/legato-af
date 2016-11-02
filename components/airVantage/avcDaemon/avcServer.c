@@ -417,10 +417,16 @@ static void UpdateHandler
             {
                 pa_avc_StartModemActivityTimer();
             }
+
+            // Report session state to avdata and other user apps bound to av data.
+            assetData_SessionStatus(ASSET_DATA_SESSION_AVAILABLE);
             avData_ReportSessionState(LE_AVDATA_SESSION_STARTED);
             break;
 
         case LE_AVC_SESSION_STOPPED:
+
+            // Report session state to avdata and other user apps bound to av data.
+            assetData_SessionStatus(ASSET_DATA_SESSION_UNAVAILABLE);
             avData_ReportSessionState(LE_AVDATA_SESSION_STOPPED);
             // Retain CurrentState when session stops.
             break;

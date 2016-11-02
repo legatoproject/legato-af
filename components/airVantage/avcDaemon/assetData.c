@@ -372,6 +372,21 @@ static ActionHandlerData_t AllAssetActionHandlerData = { .assetActionHandlerPtr 
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Is av session available?
+ */
+//--------------------------------------------------------------------------------------------------
+static assetData_SessionTypes_t CurrentAvSessionStatus = ASSET_DATA_SESSION_UNAVAILABLE;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is registration update triggered when the session is not open?
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsRegUpdatePending = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Declare this function here, until the QMI functions are moved out of this file.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2841,6 +2856,26 @@ static assetData_AssetActionHandlerRef_t AddAssetActionHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Update current status and send pending registration updates.
+ */
+//--------------------------------------------------------------------------------------------------
+void assetData_SessionStatus
+(
+    assetData_SessionTypes_t status
+)
+{
+    CurrentAvSessionStatus = status;
+
+    if ((CurrentAvSessionStatus == ASSET_DATA_SESSION_AVAILABLE)
+        && IsRegUpdatePending)
+    {
+        le_timer_Restart(RegUpdateTimerRef);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sends a registration update to the server and also used as a handler to receive
  * UpdateRequired indication. For create, RegistrationUpdate will be done by assetData create
  * function, but for delete, whoever deletes an instance has to explicitly call RegistrationUpdate.
@@ -2858,16 +2893,27 @@ void assetData_RegistrationUpdate
 
     le_result_t rc;
 
-    rc = GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
-    if (rc == LE_OK)
+    if (CurrentAvSessionStatus != ASSET_DATA_SESSION_AVAILABLE)
     {
-        LE_DEBUG("Reg Update.");
-        pa_avc_RegistrationUpdate(assetList, listSize, numAssets);
+        LE_DEBUG("Registration update can't be sent now.");
+        IsRegUpdatePending = true;
     }
     else
     {
-        //ToDo: Support REG_UPDATE of more than 4K
-        LE_ERROR("Asset data overflowed during registration update.");
+        rc = GetAssetList(assetList, sizeof(assetList), &listSize, &numAssets);
+
+        if (rc == LE_OK)
+        {
+            LE_DEBUG("Reg Update.");
+            pa_avc_RegistrationUpdate(assetList, listSize, numAssets);
+        }
+        else
+        {
+            //ToDo: Support REG_UPDATE of more than 4K
+            LE_ERROR("Asset data overflowed during registration update.");
+        }
+
+        IsRegUpdatePending = false;
     }
 
     // As a registration update already happened at this point, there is no need
@@ -4497,11 +4543,11 @@ le_result_t assetData_Init
                                        le_hashmap_EqualsString);
 
 
-    // Use a timer to delay reporting instance creation events to the modem for 2 second after
-    // the last creation event.  The timer will only be started when the creation event happens.
+    // Use a timer to delay reporting instance creation events to the modem for 15 seconds after
+    // the last creation event. This allows us to aggregate multiple registration updates together.
     // During an app restart two registration updates are sent: one after app stops and one when
     // apps starts up. These two registration updates have to be spaced atleast 2 seconds apart.
-    le_clk_Time_t timerInterval = { .sec=2, .usec=0 };
+    le_clk_Time_t timerInterval = { .sec=15, .usec=0 };
 
     RegUpdateTimerRef = le_timer_Create("RegUpdate timer");
     le_timer_SetInterval(RegUpdateTimerRef, timerInterval);

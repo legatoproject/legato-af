@@ -72,6 +72,19 @@ assetData_ActionTypes_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Session start information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    ASSET_DATA_SESSION_AVAILABLE,
+    ASSET_DATA_SESSION_UNAVAILABLE
+}
+assetData_SessionTypes_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference to asset data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1237,6 +1250,16 @@ LE_SHARED le_result_t assetData_client_RecordString
     uint64_t timeStamp                          ///< [IN] timestamp in msec
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Update current status and send pending registration updates.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void assetData_SessionStatus
+(
+    assetData_SessionTypes_t
+);
 
 #endif // LEGATO_ASSET_DATA_INCLUDE_GUARD
 
