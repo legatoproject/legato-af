@@ -937,16 +937,44 @@ static void MarkAppAsStopped
 
     if (app_HasConfRunningProc(appRef))
     {
-        RetryCount++;
-        LE_WARN("App %s still has configured running procs. Cannot yet mark app as stopped.",
-                app_GetName(appRef));
-        le_event_QueueFunction(MarkAppAsStopped, appRef, appContainerPtr);
+        // If there are configured procs in the proc lists but no actual running procs, we might be
+        // in a race condition with the sigchild handlers. Re-queue this function and let the try
+        // again later, hopefully at that time the sigchild handlers have run and set the proc state
+        // correctly, then we can proceed to set the app state as stopped.
+        if (cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, app_GetName(appRef)))
+        {
+            RetryCount++;
+            LE_WARN("App %s still has configured running procs. Cannot yet mark app as stopped.",
+                    app_GetName(appRef));
+            le_event_QueueFunction(MarkAppAsStopped, appRef, appContainerPtr);
+        }
+        // If there are configured procs in the proc lists and there are actual running procs, then
+        // we are in the middle of fault action "restart" which restarts the faulty process while
+        // keeping the app running. Therefore do not mark the app as stopped.
+        else
+        {
+            RetryCount = 0;
+            LE_DEBUG("Fault action 'restart' in action. Not marking app as stopped.");
+        }
     }
     else
     {
         RetryCount = 0;
-        app_StopComplete(appRef);
-        appContainerPtr->stopHandler(appContainerPtr);
+
+        // If there are no configured procs in the proc lists and there are no actual running procs,
+        // then the app has stopped. We can proceed to mark the app as stopped.
+        if (cgrp_IsEmpty(CGRP_SUBSYS_FREEZE, app_GetName(appRef)))
+        {
+            app_StopComplete(appRef);
+            appContainerPtr->stopHandler(appContainerPtr);
+        }
+        // If there are no configured procs in the proc lists but there are actual running procs,
+        // then this is an unexpected scenario. Maybe the cgroups "notify on release" behaviour has
+        // changed.
+        else
+        {
+            LE_FATAL("Unexpected scenario. Cgroups notify_on_release might not work as expected.");
+        }
     }
 }
 
