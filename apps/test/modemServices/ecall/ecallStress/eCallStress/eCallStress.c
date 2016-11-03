@@ -4,7 +4,7 @@
  * You must issue the following commands:
  * @verbatim
    $ app start eCallStress
-   $ execInApp eCallStress eCallStress <PSAP number>
+   $ app runProc eCallStress --exe=eCallStress -- <PSAP number>
    @endverbatim
 
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -105,6 +105,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_STOPPED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_STOPPED.");
+            le_sem_Post(ThreadSemaphore);
             break;
         }
         case LE_ECALL_STATE_RESET:
@@ -155,14 +156,16 @@ static void* ECallLoopThread
         le_sem_Wait(ThreadSemaphore);
         sleep(1);
 
-        if (LastECallState == LE_ECALL_STATE_STARTED)
+        if (LE_ECALL_STATE_STARTED == LastECallState)
         {
             LE_INFO("Take the semaphore, End eCall...");
             LE_ASSERT(le_ecall_End(MytECallRef) == LE_OK);
             le_ecall_Delete(MytECallRef);
             MytECallRef = NULL;
         }
-        else if (LastECallState == LE_ECALL_STATE_DISCONNECTED)
+        else if (   (LE_ECALL_STATE_DISCONNECTED == LastECallState)
+                 || (LE_ECALL_STATE_STOPPED == LastECallState)
+                )
         {
             TestCount++;
             LE_INFO("Take the semaphore, Start new eCall...");

@@ -4,7 +4,7 @@
  * You must issue the following commands:
  * @verbatim
    $ app start eCallTest
-   $ execInApp eCallTest eCallTest <PSAP number>
+   $ app runProc eCallTest --exe=eCallTest -- <PSAP number>
    @endverbatim
 
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -45,6 +45,13 @@ static uint8_t ImportedMsd[] ={0x01, 0x4C, 0x07, 0x80, 0xA6, 0x4D, 0x29, 0x25, 0
 
 static const char *         PsapNumber = NULL;
 static le_ecall_CallRef_t   LastTestECallRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dummy VIN number to set, with maximal number of characters.
+ */
+//--------------------------------------------------------------------------------------------------
+#define VIN_NUMBER  "12345678901234567"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -309,12 +316,11 @@ void Testle_ecall_ConfigSettings
     LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
     LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
 
-    char VinSet[LE_ECALL_VIN_MAX_BYTES] = "12345678901234567";
     char VinGet[LE_ECALL_VIN_MAX_BYTES] = { '\0' };
-    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
+    LE_ASSERT((LE_OK == le_ecall_SetVIN(VIN_NUMBER)));
 
-    LE_ASSERT((LE_OK == le_ecall_GetVIN(&VinGet[0], LE_ECALL_VIN_MAX_LEN)));
-    LE_ASSERT(( 0 == strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_LEN )));
+    LE_ASSERT((LE_OK == le_ecall_GetVIN(VinGet, LE_ECALL_VIN_MAX_LEN)));
+    LE_ASSERT(( 0 == strncmp(VIN_NUMBER, VinGet, LE_ECALL_VIN_MAX_LEN )));
 
     le_ecall_PropulsionTypeBitMask_t propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
 

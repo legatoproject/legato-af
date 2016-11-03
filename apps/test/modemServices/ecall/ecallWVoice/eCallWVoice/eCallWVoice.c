@@ -4,7 +4,7 @@
  * You must issue the following commands:
  * @verbatim
    $ app start eCallWVoice
-   $ execInApp eCallWVoice eCallWVoice <PSAP number>
+   $ app runProc eCallWVoice --exe=eCallWVoice -- <PSAP number>
    @endverbatim
 
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

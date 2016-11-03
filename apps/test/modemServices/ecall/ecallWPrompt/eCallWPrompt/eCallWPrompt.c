@@ -4,7 +4,7 @@
  * You must issue the following commands:
  * @verbatim
    $ app start eCallWPrompt
-   $ execInApp eCallWPrompt eCallWPrompt <PSAP number>
+   $ app runProc eCallWPrompt --exe=eCallWPrompt -- <PSAP number>
    @endverbatim
 
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
