@@ -167,6 +167,9 @@ le_result_t le_fwupdate_DualSysSwap
 
     if (result == LE_OK)
     {
+        /* request modem to check if there is NVUP files to apply
+         * no need to check the result as SSID are already modified we need to reset */
+        pa_fwupdate_NvupApply();
         /* make a system reset */
         pa_fwupdate_Reset();
         /* at this point the system is reseting */
@@ -228,6 +231,9 @@ le_result_t le_fwupdate_DualSysSwapAndSync
     result = pa_fwupdate_DualSysSwap (true);
     if (result == LE_OK)
     {
+        /* request modem to check if there is NVUP files to apply
+         * no need to check the result as SSID are already modified we need to reset */
+        pa_fwupdate_NvupApply();
         /* make a system reset */
         pa_fwupdate_Reset();
         /* at this point the system is reseting */

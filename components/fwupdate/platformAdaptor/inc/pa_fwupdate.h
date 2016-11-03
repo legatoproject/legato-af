@@ -206,5 +206,51 @@ LE_SHARED le_result_t pa_fwupdate_SetState
     pa_fwupdate_state_t state   ///< [IN] state to set
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * request to the modem to delete NVUP files
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_NvupDelete
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write a NVUP file in UD system
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_NvupWrite
+(
+    size_t length,                      ///< [IN] data length
+    uint8_t* data,                      ///< [IN] input data
+    bool isEnd                          ///< [IN] flag to indicate the end of the file
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * request the modem to apply the NVUP files in UD system
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_NvupApply
+(
+    void
+);
 
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD

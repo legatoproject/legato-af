@@ -143,7 +143,7 @@ void Testle_fwupdate_GetFirmwareVersion
     result = le_fwupdate_GetFirmwareVersion (Version, 20);
     /* Check required values */
     LE_ASSERT (result == LE_OK);
-    LE_ASSERT (0 == strncmp( Version, FW_VERSION_UT, strlen (FW_VERSION_UT)));
+    LE_ASSERT (0 == strncmp(Version, FW_VERSION_UT, strlen (FW_VERSION_UT)));
 
     LE_INFO ("======== Test: le_fwupdate_GetFirmwareVersion PASSED ========");
 }
@@ -201,7 +201,7 @@ void Testle_fwupdate_GetBootloaderVersion
     result = le_fwupdate_GetBootloaderVersion (Version, 20);
     /* Check required values */
     LE_ASSERT (result == LE_OK);
-    LE_ASSERT (0 == strncmp( Version, BOOT_VERSION_UT, strlen (BOOT_VERSION_UT)));
+    LE_ASSERT (0 == strncmp(Version, BOOT_VERSION_UT, strlen (BOOT_VERSION_UT)));
 
     LE_INFO ("======== Test: le_fwupdate_GetBootloaderVersion PASSED ========");
 }
@@ -234,7 +234,7 @@ static void Testle_fwupdate_DualSysSyncState
     /* Simulate unsynchronized systems: API needs to return LE_OK */
     /* Set returned error code for PA function: LE_OK */
     pa_fwupdateSimu_SetReturnCode (LE_OK);
-    /*/* Set the synchronization state to false */
+    /* Set the synchronization state to false */
     pa_fwupdateSimu_SetSyncState (false);
     /* Call the function to be tested */
     result = le_fwupdate_DualSysSyncState (&isSync);
@@ -271,6 +271,7 @@ static void Testle_fwupdate_DualSysSwap
 {
     le_result_t result = LE_FAULT;
     bool isResetRequested = false;
+    bool isNvupApplyRequested = false;
 
     LE_INFO ("======== Test: le_fwupdate_DualSysSwap ========");
 
@@ -280,9 +281,11 @@ static void Testle_fwupdate_DualSysSwap
     /* Call the function to be tested */
     result = le_fwupdate_DualSysSwap ();
     /* Check required values */
-    pa_fwupdateSimu_GetResetState( &isResetRequested);
+    pa_fwupdateSimu_GetResetState(&isResetRequested);
+    pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_UNSUPPORTED);
     LE_ASSERT (isResetRequested == false);
+    LE_ASSERT (isNvupApplyRequested == false);
 
     /* Simulate error: API needs to return LE_FAULT */
     /* Set returned error code for PA function: LE_FAULT */
@@ -290,9 +293,11 @@ static void Testle_fwupdate_DualSysSwap
     /* Call the function to be tested */
     result = le_fwupdate_DualSysSwap ();
     /* Check required values */
-    pa_fwupdateSimu_GetResetState( &isResetRequested);
+    pa_fwupdateSimu_GetResetState(&isResetRequested);
+    pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_FAULT);
     LE_ASSERT (isResetRequested == false);
+    LE_ASSERT (isNvupApplyRequested == false);
 
     /* Simulate swap acceptance: API needs to return LE_OK */
     /* Set returned error code for PA function: LE_OK */
@@ -300,11 +305,15 @@ static void Testle_fwupdate_DualSysSwap
     /* Call the function to be tested */
     result = le_fwupdate_DualSysSwap ();
     /* Check required values */
-    pa_fwupdateSimu_GetResetState( &isResetRequested);
+    pa_fwupdateSimu_GetResetState(&isResetRequested);
+    pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_OK);
     LE_ASSERT (isResetRequested == true);
+    LE_ASSERT (isNvupApplyRequested == true);
     /* Reset the reset flag */
     pa_fwupdateSimu_SetResetState();
+    /* Reset the nvup apply flag */
+    pa_fwupdateSimu_SetNvupApplyState();
 
     LE_INFO ("======== Test: le_fwupdate_DualSysSwap PASSED ========");
 }
@@ -379,6 +388,7 @@ static void Testle_fwupdate_DualSysSwapAndSync
 {
     le_result_t result = LE_FAULT;
     bool isResetRequested = false;
+    bool isNvupApplyRequested = false;
 
     LE_INFO ("======== Test: le_fwupdate_DualSysSwapAndSync ========");
 
@@ -396,9 +406,11 @@ static void Testle_fwupdate_DualSysSwapAndSync
     /* Call the function to be tested */
     result = le_fwupdate_DualSysSwapAndSync ();
     /* Check required values */
-    pa_fwupdateSimu_GetResetState( &isResetRequested);
+    pa_fwupdateSimu_GetResetState(&isResetRequested);
+    pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_FAULT);
     LE_ASSERT (isResetRequested == false);
+    LE_ASSERT (isNvupApplyRequested == false);
 
     /* Simulate swap acceptance: API needs to return LE_OK */
     /* Set returned error code for PA function: LE_OK */
@@ -406,11 +418,15 @@ static void Testle_fwupdate_DualSysSwapAndSync
     /* Call the function to be tested */
     result = le_fwupdate_DualSysSwapAndSync ();
     /* Check required values */
-    pa_fwupdateSimu_GetResetState( &isResetRequested);
+    pa_fwupdateSimu_GetResetState(&isResetRequested);
+    pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_OK);
     LE_ASSERT (isResetRequested == true);
+    LE_ASSERT (isNvupApplyRequested == true);
     /* Reset the reset flag */
     pa_fwupdateSimu_SetResetState();
+    /* Reset the nvup apply flag */
+    pa_fwupdateSimu_SetNvupApplyState();
 
 
     LE_INFO ("======== Test: le_fwupdate_DualSysSwapAndSync PASSED ========");
