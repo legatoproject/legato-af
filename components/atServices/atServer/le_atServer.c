@@ -1396,6 +1396,13 @@ static void ParseBuffer
     }
 
     devPtr->indexRead = devPtr->parseIndex;
+
+    if (devPtr->indexRead >= LE_ATDEFS_COMMAND_MAX_LEN)
+    {
+        devPtr->indexRead = devPtr->parseIndex = 0;
+        devPtr->cmdParser.rxState = PARSER_SEARCH_A;
+        SendRspString(devPtr, RSP_TYPE_ERROR, "");
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1410,7 +1417,6 @@ static void RxNewData
     short events ///< Event reported on fd (expect only POLLIN)
 )
 {
-    size_t size;
     DeviceContext_t *devPtr;
 
     devPtr = le_fdMonitor_GetContextPtr();
@@ -1421,12 +1427,12 @@ static void RxNewData
     }
     else if (events & POLLIN)
     {
-
+        ssize_t size;
         // Read RX data on uart
         size = le_dev_Read(&devPtr->device,
                     (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
                     (LE_ATDEFS_COMMAND_MAX_LEN - devPtr->indexRead));
-        devPtr->indexRead += (int)size;
+        devPtr->indexRead += size;
         ParseBuffer(devPtr);
     }
     else

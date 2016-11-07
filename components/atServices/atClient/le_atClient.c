@@ -606,7 +606,7 @@ static void RxNewData
         LE_CRIT("Unexpected event(s) on fd %d (0x%hX).", fd, events);
     }
 
-    int32_t size = 0;
+    ssize_t size = 0;
     DeviceContext_t *interfacePtr = le_fdMonitor_GetContextPtr();
 
     LE_DEBUG("Start read");

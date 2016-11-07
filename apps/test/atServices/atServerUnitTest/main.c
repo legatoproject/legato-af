@@ -414,6 +414,17 @@ static void* AtHost
         goto err;
     }
 
+    ret = SendCommandsAndTest(socketFd, epollFd, "ATEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+                "\r\nERROR\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
     ret = SendCommandsAndTest(socketFd, epollFd, "AT+DEL="
                 "\"AT\",\"ATI\",\"AT+CBC\",\"AT+ABCD\",\"ATA\",\"AT&F\","
                 "\"ATS\",\"ATV\",\"AT&C\",\"AT&D\",\"ATE\"",

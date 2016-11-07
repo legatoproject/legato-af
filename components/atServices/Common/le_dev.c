@@ -5,16 +5,11 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 
-// make sure we're using the gnu version of strerror_r
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
-#include <pwd.h>
-#include <grp.h>
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
+#include <pwd.h>
+#include <grp.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -50,6 +45,27 @@ static DevInfo_t DevInfo;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Return a description string of err
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static char* StrError
+(
+    int err
+)
+{
+    static char errMsg[DSIZE];
+
+#ifdef __USE_GNU
+    snprintf(errMsg, DSIZE, "%s", strerror_r(err, errMsg, DSIZE));
+#else /* XSI-compliant */
+    strerror_r(err, errMsg, DSIZE);
+#endif
+    return errMsg;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get device information
  *
  * Warning: this function works only on *nix systems
@@ -69,11 +85,9 @@ static le_result_t GetDeviceInformation
         struct stat fdStats;
         struct passwd* passwd;
         struct group* group;
-        char errMsg[DSIZE];
 
         memset(DevInfo.fdSysPath, 0, DSIZE);
         memset(DevInfo.linkName, 0, DSIZE);
-        memset(errMsg, 0, DSIZE);
         memset(DevInfo.devInfoStr, 0, DSIZE);
 
         // build the path to fd
@@ -82,13 +96,13 @@ static le_result_t GetDeviceInformation
 
         // get device path
         if (readlink(DevInfo.fdSysPath, DevInfo.linkName, DSIZE) == -1) {
-            LE_ERROR("readlink failed %s", strerror_r(errno, errMsg, DSIZE));
+            LE_ERROR("readlink failed %s", StrError(errno));
             return LE_FAULT;
         }
         // try to get device stats
         if (fstat(DevInfo.fd, &fdStats) == -1)
         {
-            LE_ERROR("fstat failed %s", strerror_r(errno, errMsg, DSIZE));
+            LE_ERROR("fstat failed %s", StrError(errno));
             return LE_FAULT;
         }
 
@@ -142,6 +156,8 @@ static void PrintBuffer
             snprintf(dev, DSIZE, "%s", DevInfo.linkName);
         }
 
+        LE_DEBUG("R/W (%d bytes) on %s", bufferSize, dev);
+
         for(i=0; i<bufferSize; i++)
         {
             if (bufferPtr[i] == '\r' )
@@ -180,14 +196,11 @@ static le_result_t SetSocketNonBlocking
 )
 {
     int flags;
-    char errMsg[DSIZE];
 
     flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0)
     {
-        memset(errMsg, 0, DSIZE);
-        LE_ERROR("fcntl failed, %s",
-            strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR("fcntl failed, %s", StrError(errno));
         return LE_FAULT;
     }
 
@@ -199,9 +212,7 @@ static le_result_t SetSocketNonBlocking
     flags |= O_NONBLOCK;
     if (fcntl(fd, F_SETFL, flags) < 0)
     {
-        memset(errMsg, 0, DSIZE);
-        LE_ERROR("fcntl failed, %s",
-            strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR("fcntl failed, %s", StrError(errno));
         return LE_FAULT;
     }
 
@@ -215,15 +226,14 @@ static le_result_t SetSocketNonBlocking
  * @return byte number read
  */
 //--------------------------------------------------------------------------------------------------
-int32_t le_dev_Read
+ssize_t le_dev_Read
 (
-    Device_t*  devicePtr,    ///< device pointer
-    uint8_t*   rxDataPtr,    ///< Buffer where to read
-    uint32_t   size          ///< size of buffer
+    Device_t*   devicePtr,    ///< device pointer
+    uint8_t*    rxDataPtr,    ///< Buffer where to read
+    ssize_t     size          ///< size of buffer
 )
 {
-    int32_t status = 1;
-    char errMsg[DSIZE];
+    ssize_t count;
 
     DevInfo.fd = devicePtr->fd;
     if (!GetDeviceInformation())
@@ -231,20 +241,16 @@ int32_t le_dev_Read
         LE_INFO("%s", DevInfo.devInfoStr);
     }
 
-    status = read(devicePtr->fd, rxDataPtr, size);
-
-    if (status < 0)
+    count = read(devicePtr->fd, rxDataPtr, size);
+    if (count == -1)
     {
-        memset(errMsg, 0 , 256);
-        LE_ERROR("read error: %s", strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR("read error: %s", StrError(errno));
         return 0;
     }
 
-    LE_DEBUG("Read (%d) on %d", status, devicePtr->fd);
+    PrintBuffer(devicePtr->fd, rxDataPtr, count);
 
-    PrintBuffer(devicePtr->fd, rxDataPtr, status);
-
-    return status;
+    return count;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -266,7 +272,6 @@ int32_t le_dev_Write
     size_t currentSize;
     size_t sizeToWrite;
     ssize_t sizeWritten;
-    char errMsg[DSIZE];
 
     DevInfo.fd = devicePtr->fd;
     if (!GetDeviceInformation())
@@ -287,9 +292,7 @@ int32_t le_dev_Write
         {
             if ((errno != EINTR) && (errno != EAGAIN))
             {
-                memset(errMsg, 0, DSIZE);
-                LE_ERROR("Cannot write on fd: %s",
-                    strerror_r(errno, errMsg, DSIZE));
+                LE_ERROR("Cannot write on fd: %s", StrError(errno));
                 return currentSize;
             }
         }
@@ -304,8 +307,6 @@ int32_t le_dev_Write
         size  -= currentSize;
         amount  += currentSize;
     }
-
-    LE_DEBUG("write (%d) on %d", amount, devicePtr->fd);
 
     PrintBuffer(devicePtr->fd,txDataPtr,amount);
 

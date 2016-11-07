@@ -28,11 +28,11 @@ Device_t;
  * @return byte number read
  */
 //--------------------------------------------------------------------------------------------------
-int32_t le_dev_Read
+ssize_t le_dev_Read
 (
     Device_t*   devicePtr,    ///< device pointer
     uint8_t*    rxDataPtr,    ///< Buffer where to read
-    uint32_t    size          ///< size of buffer
+    ssize_t     size          ///< size of buffer
 );
 
 //--------------------------------------------------------------------------------------------------
