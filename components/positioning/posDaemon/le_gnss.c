@@ -596,6 +596,27 @@ static void GetPosSampleData
     return;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The signal event handler function for SIGPIPE called from the Legato event loop.
+ *
+ * If the read end of a pipe is closed, then a write to the pipe will cause a SIGPIPE signal for the
+ * calling process and this process will be killed.
+ * By catching the SIGPIPE signal, the write to the pipe will only cause a write error.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigPipeHandler
+(
+    int sigNum
+)
+{
+    LE_FATAL_IF(sigNum != SIGPIPE, "Unknown signal %s.", strsignal(sigNum));
+    LE_INFO("%s received through SigPipeHandler.", strsignal(sigNum));
+}
+
+
+
 //--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
@@ -720,6 +741,12 @@ le_result_t gnss_Init
         }
         break;
     }
+
+    // Block signals.  All signals that are to be used in signal events must be blocked.
+    le_sig_Block(SIGPIPE);
+
+    // Register a signal event handler for SIGPIPE signal.
+    le_sig_SetEventHandler(SIGPIPE, SigPipeHandler);
 
     // Create a pool for Position  Handler objects
     PositionHandlerPoolRef = le_mem_CreatePool("PositionHandlerPoolRef"
