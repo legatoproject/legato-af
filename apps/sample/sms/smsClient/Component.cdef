@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-        le_sms.api
+        modemServices/le_sms.api
     }
 }
 
