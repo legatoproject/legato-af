@@ -212,6 +212,7 @@
 #include "wait.h"
 #include "fileSystem.h"
 #include "sysStatus.h"
+#include "fileDescriptor.h"
 
 
 //--------------------------------------------------------------------------------------------------
