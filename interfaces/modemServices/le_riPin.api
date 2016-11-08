@@ -56,7 +56,7 @@
  * @return
  *      - LE_OK           The function succeeded.
  *      - LE_FAULT        The function failed.
- *      - LE_UNSUPPORTED  The platform does not support this operation failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AmIOwnerOfRingSignal
@@ -72,7 +72,7 @@ FUNCTION le_result_t AmIOwnerOfRingSignal
  * @return
  *      - LE_OK           The function succeeded.
  *      - LE_FAULT        The function failed.
- *      - LE_UNSUPPORTED  The platform does not support this operation failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t TakeRingSignal
@@ -86,7 +86,7 @@ FUNCTION le_result_t TakeRingSignal
  * @return
  *      - LE_OK           The function succeeded.
  *      - LE_FAULT        The function failed.
- *      - LE_UNSUPPORTED  The platform does not support this operation failed.
+ *      - LE_UNSUPPORTED  The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ReleaseRingSignal
