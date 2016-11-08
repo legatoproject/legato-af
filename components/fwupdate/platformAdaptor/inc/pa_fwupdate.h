@@ -29,9 +29,9 @@
  */
 
 //--------------------------------------------------------------------------------------------------
-/** @file pa_mdc.h
+/** @file pa_fwupdate.h
  *
- * Legato @ref c_pa_mdc include file.
+ * Legato @ref c_pa_fwupdate include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */

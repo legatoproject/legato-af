@@ -20,7 +20,8 @@ arbitration among apps (so multiple apps can share the same resources).
 | @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data                  | x  |
 | @subpage legatoServicesSMS            | SMS and SMS Inbox                                  | x  |
 | @subpage legatoServicesSupervisor     | Control framework and apps                         |    |
-| @subpage legatoServicesUpdateMain     | Update modem firmware and apps                     |    |
+| @subpage legatoServicesUpdateMain     | Legato update service                              |    |
+| @subpage c_le_fwupdate                | Firmware update                                    | x  |
 | @subpage c_le_voicecall               | Voice communications                               | x  |
 | @subpage legatoServicesWiFi           | WiFi                                               |    |
 | @subpage legatoAtServices             | AT commands services                               | x  |

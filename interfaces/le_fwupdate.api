@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_fwupdate Modem Firmware Update
+ * @page c_le_fwupdate Modem Firmware Update
  *
  * @ref le_fwupdate_interface.h "API Reference"
  *
@@ -52,6 +52,16 @@
  * application processor has restarted, the @ref le_info_version APIs can be used to determine
  * whether the firmware has been updated to the new version.
  *
+ * @section le_fwupdate_downloader Downloader
+ *
+ * The firmware update process can be invoked remotely by sending an update package on
+ * the TCP port 5000.
+ * For example by using netcat:
+ * @verbatim
+      nc <target_ip> 5000 < <spkg_name.cwe>
+   @endverbatim
+ * @note The default port is 5000 but it can be changed in the source code.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -62,7 +72,7 @@
 /**
  * @file le_fwupdate_interface.h
  *
- * Legato @ref c_fwupdate include file.
+ * Legato @ref c_le_fwupdate include file.
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */

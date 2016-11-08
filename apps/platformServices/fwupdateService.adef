@@ -3,6 +3,7 @@ sandboxed: false
 
 executables:
 {
+    fwupdateDownloader = ( $LEGATO_ROOT/components/fwupdate/fwupdateDownloader )
     fwupdateDaemon = ( $LEGATO_ROOT/components/fwupdate/fwupdateDaemon )
 }
 
@@ -10,6 +11,7 @@ processes:
 {
     run:
     {
+        (fwupdateDownloader)
         (fwupdateDaemon)
     }
 
@@ -21,3 +23,7 @@ extern:
     fwupdateDaemon.fwupdateDaemon.le_fwupdate
 }
 
+bindings:
+{
+    fwupdateDownloader.fwupdateDownloader.le_fwupdate -> fwupdateDaemon.fwupdateDaemon.le_fwupdate
+}
