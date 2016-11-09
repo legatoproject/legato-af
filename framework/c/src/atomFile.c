@@ -37,6 +37,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Extension used for lock file
+ */
+//--------------------------------------------------------------------------------------------------
+#define LOCK_FILE_EXTENSION       ".lock~~XXXXXX"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Mutex used to protect shared data structures in this module.
  */
 //--------------------------------------------------------------------------------------------------
@@ -58,9 +66,9 @@ static pthread_mutex_t Mutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" mute
 typedef struct
 {
     le_dls_Link_t   link;                 ///< Used to link into the FileAccessList.
-    int tempFd;                           ///< File descriptor of temp file. Used as search key.
+    int tempFd;                           ///< File descriptor of temp file.
     int originFd;                         ///< File descriptor of original file.
-    le_flock_AccessMode_t accessMode;     ///< Access mode used to open the file.
+    int lockFd;                           ///< File descriptor for lock file.
     char filePath[PATH_MAX];              ///< Original file path
 }
 FileAccess_t;
@@ -105,7 +113,8 @@ static FileAccess_t* GetFileData
         FileAccess_t* accessPtr = CONTAINER_OF(linkPtr, FileAccess_t, link);
 
         if ((accessPtr->tempFd == fd) ||
-            ((accessPtr->originFd == fd) && (accessPtr->accessMode == LE_FLOCK_READ)))
+            ((accessPtr->originFd == fd) && (accessPtr->tempFd == -1)))  // This is for READ_ONLY
+                                                                         // file check.
         {
             UNLOCK
             return accessPtr;
@@ -128,8 +137,8 @@ static FileAccess_t* GetFileData
 static void SaveFileData
 (
     int fd,                   ///< File descriptor of atomically accessed file.
+    int lockFd,               ///< File descriptor of lock file.
     int tempFd,               ///< File descriptor of temporary file.
-    le_flock_AccessMode_t accessMode, ///< Access mode to open the file.
     const char* pathNamePtr   ///< Path to atomically accessed file.
 )
 {
@@ -139,8 +148,8 @@ static void SaveFileData
 
     accessPtr->link = LE_DLS_LINK_INIT;
     accessPtr->originFd = fd;
+    accessPtr->lockFd = lockFd;
     accessPtr->tempFd = tempFd;
-    accessPtr->accessMode = accessMode;
     LE_ASSERT_OK(le_utf8_Copy(accessPtr->filePath, pathNamePtr, sizeof(accessPtr->filePath), NULL));
     le_dls_Queue(&FileAccessList, &accessPtr->link);
 
@@ -194,13 +203,14 @@ static le_result_t DeleteFile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get path of temporary file.
+ * Get file path with file extension appended.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GetTempFilePath
+static void GetFilePath
 (
     const char* originFilePath,     ///< [IN] Path of original file.
-    char* tempFilePath,             ///< [OUT] Path of the temporary file
+    const char* fileExtension,      ///< [IN] Extension that should be appended with file path
+    char* outFilePath,              ///< [OUT] Path of appended file extension
     size_t filePathSize             ///< [IN] File path length
 )
 {
@@ -209,14 +219,14 @@ static void GetTempFilePath
 
     if (le_dir_IsDir(basePath))
     {
-        LE_ASSERT(snprintf(tempFilePath, filePathSize, "%s%s", originFilePath, TEMP_FILE_EXTENSION)
+        LE_ASSERT(snprintf(outFilePath, filePathSize, "%s%s", originFilePath, fileExtension)
                       < filePathSize);
     }
     else
     {
         // Origin path only file name., i.e. something like "fileName.extension". Consider it is
         // in current directory, so add "./" in path
-        LE_ASSERT(snprintf(tempFilePath, filePathSize, "./%s%s", originFilePath, TEMP_FILE_EXTENSION)
+        LE_ASSERT(snprintf(outFilePath, filePathSize, "./%s%s", originFilePath, fileExtension)
                       < filePathSize);
     }
 
@@ -236,7 +246,7 @@ static void GetTempFilePath
 //--------------------------------------------------------------------------------------------------
 static le_result_t CheckIfRegFileExist
 (
-    const char* filePath  ///< [IN] Path to the file in question.
+    const char* filePath    ///< [IN] Path to the file in question.
 )
 {
     struct stat fileStatus;
@@ -275,74 +285,43 @@ static le_result_t CheckIfRegFileExist
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates temporary file for doing all intermediate operations. This function is used to create
- * temporary file when original file doesn't exist.
+ * Open lock file for the file which will do atomic operation. If there is no lock file, this
+ * function will create and open lock file
  *
  * @return
  *      A file descriptor for doing atomic operation.
- *      LE_NOT_FOUND if the file does not exist.
  *      LE_WOULD_BLOCK if there is already an incompatible lock on the file.
  *      LE_FAULT if there was an error.
  **/
 //--------------------------------------------------------------------------------------------------
-static int CreateTempFromScratch
+static int OpenLockFile
 (
-    const char* tempPathPtr,             ///< [IN] Path to temporary file.
+    const char* pathNamePtr,             ///< [IN] Path of the file for which lockfile should be open
     le_flock_AccessMode_t accessMode,    ///< [IN] The access mode to open the file with.
-    mode_t permissions,                  ///< [IN] The file permissions used when creating the file.
     bool blocking                        ///< [IN] true if blocking, false if non-blocking.
 )
 {
-    int tempfd;
+    char lockFilePath[PATH_MAX];
+    GetFilePath(pathNamePtr, LOCK_FILE_EXTENSION, lockFilePath, sizeof(lockFilePath));
 
-    tempfd = blocking ? le_flock_Create(tempPathPtr,
-                                        accessMode,
-                                        LE_FLOCK_REPLACE_IF_EXIST,
-                                        permissions) :
-                        le_flock_TryCreate(tempPathPtr,
-                                        accessMode,
-                                        LE_FLOCK_REPLACE_IF_EXIST,
-                                        permissions);
-    return tempfd;
-}
+    int lockFd;
 
+    if (blocking)
+    {
+        lockFd = le_flock_Create(lockFilePath,
+                                 accessMode,
+                                 LE_FLOCK_OPEN_IF_EXIST,
+                                 S_IRUSR | S_IWUSR);
+    }
+    else
+    {
+        lockFd = le_flock_TryCreate(lockFilePath,
+                                    accessMode,
+                                    LE_FLOCK_OPEN_IF_EXIST,
+                                    S_IRUSR | S_IWUSR);
+    }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Creates temporary file stream for doing all intermediate operations. This function is used to
- * create temporary file when original file doesn't exist.
- *
- * If there was an error NULL is returned and resultPtr is set to:
- *      LE_WOULD_BLOCK if there is already an incompatible lock on the file.
- *      LE_FAULT if there was an error.
- *
- * @return
- *      Buffered file stream handle to the file if successful.
- *      NULL if there was an error.
- **/
-//--------------------------------------------------------------------------------------------------
-static FILE* CreateTempStreamFromScratch
-(
-    const char* tempPathPtr,             ///< [IN] Path to temporary file.
-    le_flock_AccessMode_t accessMode,    ///< [IN] The access mode to open the file with.
-    mode_t permissions,                  ///< [IN] The file permissions used when creating the file.
-    bool blocking,                       ///< [IN] true if blocking, false if non-blocking.
-    le_result_t* resultPtr               ///< [OUT] A pointer to result code
-)
-{
-    FILE* tmpfile;
-
-    tmpfile = blocking ? le_flock_CreateStream(tempPathPtr,
-                                               accessMode,
-                                               LE_FLOCK_REPLACE_IF_EXIST,
-                                               permissions,
-                                               resultPtr) :
-                         le_flock_TryCreateStream(tempPathPtr,
-                                               accessMode,
-                                               LE_FLOCK_REPLACE_IF_EXIST,
-                                               permissions,
-                                               resultPtr);
-    return tmpfile;
+    return lockFd;
 }
 
 
@@ -508,7 +487,7 @@ static FILE* CreateTempStreamFromOriginal
 //--------------------------------------------------------------------------------------------------
 static int Open
 (
-    const char* pathNamePtr,             ///< [IN] Path of the file to open..
+    const char* pathNamePtr,             ///< [IN] Path of the file to open.
     le_flock_AccessMode_t accessMode,    ///< [IN] The access mode to open the file with.
     bool blocking                        ///< [IN] true if blocking, false if non-blocking.
 )
@@ -518,55 +497,78 @@ static int Open
 
     // High level algorithm:
     // if (Read-Only access requested)
-    //     1. Lock the file and return the file descriptor
+    //     1. Lock the lockfile
+    //     2. Lock the file and return the file descriptor
     // else
-    //     1. Lock the file.
-    //     2. Create a temp copy of the file.
-    //     3. Lock the temp copy
+    //     1. Lock the lockfile.
+    //     2. Lock the original file.
+    //     3. Create a temp copy of the file and lock that temp copy
     //     4. Open the temp copy and return the file descriptor.
+
+    // Open(or lock) the lockfile.
+    int lockFd = OpenLockFile(pathNamePtr, accessMode, blocking);
+
+    if (lockFd < 0)
+    {
+        return lockFd;
+    }
 
     if (accessMode == LE_FLOCK_READ)
     {
+        // Note: Even for read access we need to put lock the lockfile. This should be done to avoid
+        // a race condition (e.g. Process A requests write access to an existing file named abc.txt
+        // and it's access request is granted, now process B requests read access to abc.txt, so
+        // process B opens abc.txt but it is blocked when it tries to acquire read lock. Now when
+        // process A commits all its changes, it renames the temporary file to abc.txt, hence
+        // process B is pointing to wrong inode)
+
+        // We need to consider blocking here as well, otherwise this api call will be blocked if
+        // file is already opened by using le_flock api.
         int fd = blocking ? le_flock_Open(pathNamePtr, accessMode) :
                             le_flock_TryOpen(pathNamePtr, accessMode);
+
         if (fd < 0)
         {
+            le_flock_Close(lockFd);
             return fd;
         }
 
         // Store info about this file in the File Access List.
-        SaveFileData(fd, -1, LE_FLOCK_READ, pathNamePtr);
+        SaveFileData(fd, lockFd, -1, pathNamePtr);
 
         return fd;
     }
     else
     {
-        // Lock original file and create a temporary copy.
-        int fd = blocking ? le_flock_Open(pathNamePtr, accessMode)  :
+        // We need to consider blocking here as well, otherwise this api call will be blocked if
+        // file is already opened by using le_flock api.
+        int fd = blocking ? le_flock_Open(pathNamePtr, accessMode):
                             le_flock_TryOpen(pathNamePtr, accessMode);
 
         if (fd < 0)
         {
+            le_flock_Close(lockFd);
             return fd;
         }
 
         char tempFilePath[PATH_MAX];
-        GetTempFilePath(pathNamePtr, tempFilePath, sizeof(tempFilePath));
+        GetFilePath(pathNamePtr, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
 
-        // Now open and lock the temporary file.
+        // Now open the temporary file.
         int tempfd = CreateTempFromOriginal(pathNamePtr,
                                             tempFilePath,
                                             accessMode,
-                                            true);  // Copy the content of original file
+                                            true);
 
         if (tempfd < 0)
         {
            le_flock_Close(fd);
+           le_flock_Close(lockFd);
            return tempfd;
         }
 
         // Store info about this file in the File Access List.
-        SaveFileData(fd, tempfd, accessMode, pathNamePtr);
+        SaveFileData(fd, lockFd, tempfd, pathNamePtr);
 
         return tempfd;
     }
@@ -586,7 +588,7 @@ static int Open
 //--------------------------------------------------------------------------------------------------
 static int Create
 (
-    const char* pathNamePtr,            ///< [IN] Path of the file to open..
+    const char* pathNamePtr,            ///< [IN] Path of the file to open.
     le_flock_AccessMode_t accessMode,   ///< [IN] The access mode to open the file with.
     le_flock_CreateMode_t createMode,   ///< [IN] The action to take if the file already exists.
     mode_t permissions,                 ///< [IN] The file permissions used when creating the file.
@@ -599,14 +601,28 @@ static int Create
     // High level algorithm:
     //
     // if (file exists)
-    //      1. Lock the file.
-    //      2. Create a temp copy of the file.
-    //      3. Lock the temp copy
-    //      4. Open the temp copy and return the file descriptor.
+    //     if (Read-Only access requested)
+    //         1. Lock the lockfile
+    //         2. Lock the file and return the file descriptor
+    //     else
+    //         1. Lock the lockfile.
+    //         2. Lock the original file.
+    //         3. Create a temp copy of the file and lock that temp copy
+    //         4. Open the temp copy and return the file descriptor.
     //  else
-    //      1. Create a temp copy of the file.
-    //      2. Lock the temp copy
-    //      3. Open the temp copy and return the file descriptor.
+    //     1. Lock the lockfile.
+    //     2. Create a temp copy and lock that temp copy
+    //     3. Open the temp copy and return the file descriptor.
+
+    char tempFilePath[PATH_MAX];
+    GetFilePath(pathNamePtr, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
+
+    int lockFd = OpenLockFile(pathNamePtr, accessMode, blocking);
+
+    if (lockFd < 0)
+    {
+        return lockFd;
+    }
 
     // Check whether pathNamePtr points to an existent regular file.
     le_result_t fileExistResult = CheckIfRegFileExist(pathNamePtr);
@@ -615,95 +631,78 @@ static int Create
     if (fileExistResult == LE_FAULT)
     {
         // No need to print any error message as it was done in CheckRegFile() function.
+        le_flock_Close(lockFd);
         return LE_FAULT;
     }
 
-    char tempFilePath[PATH_MAX];
-    GetTempFilePath(pathNamePtr, tempFilePath, sizeof(tempFilePath));
-
     int fd = -1;
     int tempfd;
+    bool copy;
 
-    switch(createMode)
+    if ((accessMode == LE_FLOCK_READ) && (fileExistResult == LE_OK))
     {
-        case LE_FLOCK_OPEN_IF_EXIST:
+        // We need to consider blocking here as well, otherwise this api call will be
+        // blocked if file is already opened by using le_flock api
+        fd = blocking ? le_flock_Create(pathNamePtr, accessMode, createMode, permissions) :
+                        le_flock_TryCreate(pathNamePtr, accessMode, createMode, permissions);
+        if (fd < 0)
+        {
+            le_flock_Close(lockFd);
+            return fd;
+        }
 
-            if (fileExistResult == LE_OK)
-            {
-                // Lock original file and create a temporary copy.
-                fd = blocking ? le_flock_Open(pathNamePtr, accessMode)  :
-                                le_flock_TryOpen(pathNamePtr, accessMode);
+        // Store info about this file in the File Access List.
+        SaveFileData(fd, lockFd, -1, pathNamePtr);
 
-                if (fd < 0)
-                {
-                    return fd;
-                }
-
-                // Now open and lock the temporary file.
-                tempfd = CreateTempFromOriginal(pathNamePtr,
-                                                tempFilePath,
-                                                accessMode,
-                                                true);   // Copy the content of existing file
-
-            }
-            else          // File doesn't exist
-            {
-                fd = -1;
-                // File doesn't exists, parameter blocking should be used for creating temp file.
-                tempfd = CreateTempFromScratch(tempFilePath,
-                                               accessMode,
-                                               permissions,
-                                               blocking);
-            }
-            break;
-
-        case LE_FLOCK_REPLACE_IF_EXIST:
-
-            if (fileExistResult == LE_OK)
-            {
-                // Lock original file and create a temporary copy.
-                fd = blocking ? le_flock_Open(pathNamePtr, accessMode)  :
-                                le_flock_TryOpen(pathNamePtr, accessMode);
-
-                if (fd < 0)
-                {
-                    return fd;
-                }
-
-                // Now open and lock the temporary file.
-                tempfd = CreateTempFromOriginal(pathNamePtr,
-                                                tempFilePath,
-                                                accessMode,
-                                                false);   // Replace requested, no need to copy
-            }
-            else          // File doesn't exist
-            {
-                fd = -1;
-                // File doesn't exists, parameter blocking should be used for creating temp file.
-                tempfd = CreateTempFromScratch(tempFilePath,
-                                               accessMode,
-                                               permissions,
-                                               blocking);
-            }
-            break;
-
-        case LE_FLOCK_FAIL_IF_EXIST:
-
-            if (fileExistResult == LE_OK)
-            {
-                return LE_DUPLICATE;
-            }
-            else          // File doesn't exist
-            {
-                fd = -1;
-                // File doesn't exists, parameter blocking should be used for creating temp file.
-                tempfd = CreateTempFromScratch(tempFilePath,
-                                               accessMode,
-                                               permissions,
-                                               blocking);
-            }
-            break;
+        return fd;
     }
+
+    if (fileExistResult == LE_OK)
+    {
+        switch(createMode)
+        {
+            case LE_FLOCK_OPEN_IF_EXIST:
+            case LE_FLOCK_REPLACE_IF_EXIST:
+                // We need to consider blocking here as well, otherwise this api call will be
+                // blocked if file is already opened by using le_flock api.
+                fd = blocking ? le_flock_Open(pathNamePtr, accessMode) :
+                                le_flock_TryOpen(pathNamePtr, accessMode);
+
+                if (fd < 0)
+                {
+                    le_flock_Close(lockFd);
+                    return fd;
+                }
+
+                copy = (createMode == LE_FLOCK_OPEN_IF_EXIST);   // Copy if LE_FLOCK_OPEN_IF_EXIST
+                                                                 // specified.
+                // Now open and lock the temporary file.
+                tempfd = CreateTempFromOriginal(pathNamePtr,
+                                                tempFilePath,
+                                                accessMode,
+                                                copy);
+                break;
+
+            case LE_FLOCK_FAIL_IF_EXIST:
+                le_flock_Close(lockFd);
+                return LE_DUPLICATE;
+        }
+    }
+    else          // File doesn't exist
+    {
+        fd = -1;
+        // Unlink the temp file, this is needed to avoid a bug (old temp file exists and creation
+        // of new file requested with different permission mode. In this case, new permission mode
+        // will be discarded)
+        unlink(tempFilePath);
+
+        // No need to use TryCreate as we already opened (i.e. locked) the lockfile
+        tempfd = le_flock_Create(tempFilePath,
+                                 accessMode,
+                                 LE_FLOCK_REPLACE_IF_EXIST,
+                                 permissions);
+    }
+
 
     if (tempfd < 0)
     {
@@ -711,11 +710,12 @@ static int Create
         {
             le_flock_Close(fd);
         }
+        le_flock_Close(lockFd);
         return tempfd;
     }
 
     // Store info about this file in the File Access List.
-    SaveFileData(fd, tempfd, accessMode, pathNamePtr);
+    SaveFileData(fd, lockFd, tempfd, pathNamePtr);
 
     return tempfd;
 }
@@ -827,15 +827,16 @@ static le_result_t Close
 
     le_result_t result = LE_OK;
 
-    if ((accessPtr->accessMode == LE_FLOCK_READ) &&
+    if ((accessPtr->originFd == fd) &&
         (accessPtr->tempFd < 0))
     {
         le_flock_Close(fd);
+        le_flock_Close(accessPtr->lockFd);
     }
     else
     {
         char tempFilePath[PATH_MAX];
-        GetTempFilePath(accessPtr->filePath, tempFilePath, sizeof(tempFilePath));
+        GetFilePath(accessPtr->filePath, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
 
         if (commit)  // Commit all the necessary changes.
         {
@@ -855,6 +856,8 @@ static le_result_t Close
         {
             le_flock_Close(accessPtr->originFd);
         }
+
+        le_flock_Close(accessPtr->lockFd);
     }
 
     // Release memory.
@@ -862,6 +865,78 @@ static le_result_t Close
 
     return result;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Atomically and safely deletes a file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if file doesn't exists.
+ *      LE_WOULD_BLOCK if file is already locked (i.e. someone is using it).
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t Delete
+(
+    const char* pathNamePtr,            ///< [IN] Path of the file to delete.
+    bool blocking                       ///< [IN] True if blocking, false if non-blocking.
+)
+{
+    // High level algorithm:
+    //    1. Lock the lockfile.
+    //    2. Lock the original file.
+    //    3. Rename original file to a temporary file
+    //    4. Unlink the temporary file and unlock lockfile.
+
+    int lockFd = OpenLockFile(pathNamePtr, LE_FLOCK_APPEND, blocking);
+
+    if (lockFd < 0)
+    {
+        return lockFd;
+    }
+
+    // This locking is needed to avoid some unexpected race condition (e.g. process A opens a file
+    // using le_flock_Open() api and starts writing on this file. Process B calls
+    // le_atomFile_Delete() function to delete the same file. If no locking mechanism is used here,
+    // process B will delete the file while process A is writing on this file.)
+    int fd = blocking ? le_flock_Open(pathNamePtr, LE_FLOCK_WRITE) :
+                        le_flock_TryOpen(pathNamePtr, LE_FLOCK_WRITE);
+
+    if (fd < 0)
+    {
+        le_flock_Close(lockFd);
+        return fd;
+    }
+
+    char lockFilePath[PATH_MAX];
+    char tempFilePath[PATH_MAX];
+    GetFilePath(pathNamePtr, LOCK_FILE_EXTENSION, lockFilePath, sizeof(lockFilePath));
+    GetFilePath(pathNamePtr, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
+
+    if (rename(pathNamePtr, tempFilePath) == -1)
+    {
+        LE_CRIT("Failed rename '%s' to '%s' (%m).", pathNamePtr, tempFilePath);
+        le_flock_Close(fd);
+        le_flock_Close(lockFd);
+        return LE_FAULT;
+    }
+
+    DeleteFile(tempFilePath);
+
+    le_flock_Close(fd);
+
+    // Note: Don't unlink the lockfile, it may lead to race condition (e.g. process B opens lockfile
+    // but can't lock as process A is on the way to delete lockfile, when process A closes lockfile
+    // descriptor, process B can lock the lockfile, now if process C checks lockfile it won't find
+    // any lockfile and can create and lock the lockfile).
+    // Size of lockfile is zero, so it won't matter much.
+    le_flock_Close(lockFd);
+
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1046,31 +1121,48 @@ static FILE* OpenStream
 
     // High level algorithm:
     // if (Read-Only access requested)
-    //     1. Lock the file and return the file stream.
+    //     1. Lock the lockfile
+    //     2. Lock the file and return the file stream
     // else
-    //     1. Lock the file.
-    //     2. Create a temp copy of the file.
-    //     3. Lock the temp copy
-    //     4. Open the temp copy and return the file stream.
+    //     1. Lock the lockfile
+    //     2. Lock the original file
+    //     3. Create a temp copy of the file and lock that temp copy
+    //     4. Open the temp copy and return the file stream
+
+    int lockFd = OpenLockFile(pathNamePtr, accessMode, blocking);
+
+    if (lockFd < 0)
+    {
+        if (resultPtr != NULL)
+        {
+            *resultPtr = lockFd;
+        }
+        return NULL;
+    }
 
     if (accessMode == LE_FLOCK_READ)
     {
+        // We need to consider blocking here as well, otherwise this api call will be blocked if
+        // file is already opened by using le_flock api.
         FILE* file = blocking ? le_flock_OpenStream(pathNamePtr, accessMode, resultPtr) :
                                 le_flock_TryOpenStream(pathNamePtr, accessMode, resultPtr);
+
         if (file == NULL)
         {
+            le_flock_Close(lockFd);
             return file;
         }
 
         // Store info about this file in the File Access List.
-        SaveFileData(fileno(file), -1, LE_FLOCK_READ, pathNamePtr);
+        SaveFileData(fileno(file), lockFd, -1, pathNamePtr);
 
         return file;
     }
     else
     {
-        // Lock original file and create a temporary copy.
-        int fd = blocking ? le_flock_Open(pathNamePtr, accessMode)  :
+        // We need to consider blocking here as well, otherwise this api call will be blocked if
+        // file is already opened by using le_flock api.
+        int fd = blocking ? le_flock_Open(pathNamePtr, accessMode) :
                             le_flock_TryOpen(pathNamePtr, accessMode);
 
         if (fd < 0)
@@ -1079,11 +1171,12 @@ static FILE* OpenStream
             {
                 *resultPtr = fd;
             }
+            le_flock_Close(lockFd);
             return NULL;
         }
 
         char tempFilePath[PATH_MAX];
-        GetTempFilePath(pathNamePtr, tempFilePath, sizeof(tempFilePath));
+        GetFilePath(pathNamePtr, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
 
         // Now open and lock the temporary file.
         FILE* file = CreateTempStreamFromOriginal(pathNamePtr,
@@ -1095,11 +1188,12 @@ static FILE* OpenStream
         if (file == NULL)
         {
             le_flock_Close(fd);
+            le_flock_Close(lockFd);
             return NULL;
         }
 
         // Store info about this file in the File Access List.
-        SaveFileData(fd, fileno(file), accessMode, pathNamePtr);
+        SaveFileData(fd, lockFd, fileno(file), pathNamePtr);
 
         return file;
     }
@@ -1137,16 +1231,41 @@ static FILE* CreateStream
     // High level algorithm:
     //
     // if (file exists)
-    //      1. Lock the file.
-    //      2. Create a temp copy of the file.
-    //      3. Lock the temp copy
-    //      4. Open the temp copy and return the file stream.
+    //     if (Read-Only access requested)
+    //         1. Lock the lockfile
+    //         2. Lock the file and return the file stream.
+    //     else
+    //         1. Lock the lockfile.
+    //         2. Lock the original file.
+    //         3. Create a temp copy of the file and lock that temp copy
+    //         4. Open the temp copy and return the file stream.
     //  else
-    //      1. Create a temp copy of the file.
-    //      2. Lock the temp copy
-    //      3. Open the temp copy and return the file stream.
+    //     1. Lock the lockfile.
+    //     2. Create a temp copy and lock that temp copy
+    //     3. Open the temp copy and return the file stream.
 
-    // Check whether pathNamePtr points to an existent regular file.
+    char tempFilePath[PATH_MAX];
+    GetFilePath(pathNamePtr, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
+
+    int lockFd = OpenLockFile(pathNamePtr, accessMode, blocking);
+
+    if (lockFd < 0)
+    {
+        if (resultPtr != NULL)
+        {
+            *resultPtr = lockFd;
+        }
+        return NULL;
+    }
+
+    FILE* file;
+    int fd = -1;
+    bool copy;
+
+    // Check whether pathNamePtr points to an existent regular file. This one has to be done after
+    // lock is acquired to avoid race condition (e.g. process A checks existence of file abc.txt
+    // then block on locking lockfile, where as in the mean time process B rename/delete abc.txt.
+    // In this case process A has old stale information)
     le_result_t fileExistResult = CheckIfRegFileExist(pathNamePtr);
 
     // Something error happened, so return immediately
@@ -1157,23 +1276,46 @@ static FILE* CreateStream
         {
             *resultPtr = LE_FAULT;
         }
+
+        le_flock_Close(lockFd);
         return NULL;
     }
 
-    char tempFilePath[PATH_MAX];
-    GetTempFilePath(pathNamePtr, tempFilePath, sizeof(tempFilePath));
-
-    FILE* file;
-    int fd = -1;
-
-    switch(createMode)
+    if ((accessMode == LE_FLOCK_READ) && (fileExistResult == LE_OK))
     {
-        case LE_FLOCK_OPEN_IF_EXIST:
+        // We need to consider blocking here as well, otherwise this api call will be
+        // blocked if file is already opened by using le_flock api
+        file = blocking ? le_flock_CreateStream(pathNamePtr,
+                                                accessMode,
+                                                createMode,
+                                                permissions,
+                                                resultPtr) :
+                          le_flock_TryCreateStream(pathNamePtr,
+                                                   accessMode,
+                                                   createMode,
+                                                   permissions,
+                                                   resultPtr);
+        if (file == NULL)
+        {
+            le_flock_Close(lockFd);
+            return file;
+        }
 
-            if (fileExistResult == LE_OK)
-            {
-                // Lock original file and create a temporary copy.
-                fd = blocking ? le_flock_Open(pathNamePtr, accessMode)  :
+        // Store info about this file in the File Access List.
+        SaveFileData(fileno(file), lockFd, -1, pathNamePtr);
+
+        return file;
+    }
+
+    if (fileExistResult == LE_OK)
+    {
+        switch(createMode)
+        {
+            case LE_FLOCK_OPEN_IF_EXIST:
+            case LE_FLOCK_REPLACE_IF_EXIST:
+                // We need to consider blocking here as well, otherwise this api call will be blocked if
+                // file is already opened by using le_flock api.
+                fd = blocking ? le_flock_Open(pathNamePtr, accessMode) :
                                 le_flock_TryOpen(pathNamePtr, accessMode);
 
                 if (fd < 0)
@@ -1182,85 +1324,46 @@ static FILE* CreateStream
                     {
                         *resultPtr = fd;
                     }
+
+                    le_flock_Close(lockFd);
                     return NULL;
                 }
 
+                copy = (createMode == LE_FLOCK_OPEN_IF_EXIST);   // Copy if LE_FLOCK_OPEN_IF_EXIST
+                                                                 // specified.
                 // Now open and lock the temporary file.
                 file = CreateTempStreamFromOriginal(pathNamePtr,
                                                     tempFilePath,
                                                     accessMode,
-                                                    true,       // Copy the content of original file
+                                                    copy,
                                                     resultPtr);
-            }
-            else          // File doesn't exist
-            {
-                fd = -1;
-                // File doesn't exists, parameter blocking should be used for creating temp file.
-                file = CreateTempStreamFromScratch(tempFilePath,
-                                                   accessMode,
-                                                   permissions,
-                                                   blocking,
-                                                   resultPtr);
-            }
-            break;
+                break;
 
-        case LE_FLOCK_REPLACE_IF_EXIST:
+            case LE_FLOCK_FAIL_IF_EXIST:
 
-            if (fileExistResult == LE_OK)
-            {
-                // Lock original file and create a temporary copy.
-                fd = blocking ? le_flock_Open(pathNamePtr, accessMode)  :
-                                le_flock_TryOpen(pathNamePtr, accessMode);
-
-                if (fd < 0)
-                {
-                    if (resultPtr != NULL)
-                    {
-                        *resultPtr = fd;
-                    }
-                    return NULL;
-                }
-
-                // Now open and lock the temporary file.
-                file = CreateTempStreamFromOriginal(pathNamePtr,
-                                                    tempFilePath,
-                                                    accessMode,
-                                                    false,     // Replace requested, no need to copy
-                                                    resultPtr);
-            }
-            else          // File doesn't exist
-            {
-                fd = -1;
-                // File doesn't exists, parameter blocking should be used for creating temp file.
-                file = CreateTempStreamFromScratch(tempFilePath,
-                                                   accessMode,
-                                                   permissions,
-                                                   blocking,
-                                                   resultPtr);
-            }
-            break;
-
-        case LE_FLOCK_FAIL_IF_EXIST:
-
-            if (fileExistResult == LE_OK)
-            {
                 if (resultPtr != NULL)
                 {
                     *resultPtr = LE_DUPLICATE;
                 }
+                le_flock_Close(lockFd);
+
                 return NULL;
-            }
-            else         // File doesn't exist
-            {
-                fd = -1;
-                // File doesn't exists, parameter blocking should be used for creating temp file.
-                file = CreateTempStreamFromScratch(tempFilePath,
-                                                   accessMode,
-                                                   permissions,
-                                                   blocking,
-                                                   resultPtr);
-            }
-            break;
+        }
+    }
+    else          // File doesn't exist
+    {
+        fd = -1;
+        // Unlink the temp file, this is needed to avoid a bug (old temp file exists and creation
+        // of new file requested with different permission mode. In this case, new permission mode
+        // will be discarded)
+        unlink(tempFilePath);
+
+        // No need to use TryCreate as it is a temp file and we already locked the lockfile.
+        file =  le_flock_CreateStream(tempFilePath,
+                                      accessMode,
+                                      LE_FLOCK_REPLACE_IF_EXIST,
+                                      permissions,
+                                      resultPtr);
     }
 
     if (file == NULL)
@@ -1269,11 +1372,12 @@ static FILE* CreateStream
         {
             le_flock_Close(fd);
         }
+        le_flock_Close(lockFd);
         return NULL;
     }
 
     // Store info about this file in the File Access List.
-    SaveFileData(fd, fileno(file), accessMode, pathNamePtr);
+    SaveFileData(fd, lockFd, fileno(file), pathNamePtr);
 
     return file;
 }
@@ -1316,15 +1420,16 @@ static le_result_t CloseStream
 
     le_result_t result = LE_OK;
 
-    if ((accessPtr->accessMode == LE_FLOCK_READ) &&
-        (accessPtr->tempFd < 0))
+    if ((accessPtr->tempFd < 0) &&  // Negative tempfd implies READ_ONLY access requested.
+        (accessPtr->originFd == fd))
     {
         le_flock_CloseStream(file);
+        le_flock_Close(accessPtr->lockFd);
     }
     else
     {
         char tempFilePath[PATH_MAX];
-        GetTempFilePath(accessPtr->filePath, tempFilePath, sizeof(tempFilePath));
+        GetFilePath(accessPtr->filePath, TEMP_FILE_EXTENSION, tempFilePath, sizeof(tempFilePath));
 
         if (commit)  // Commit all the necessary changes.
         {
@@ -1364,6 +1469,8 @@ static le_result_t CloseStream
         {
             le_flock_Close(accessPtr->originFd);
         }
+
+        le_flock_Close(accessPtr->lockFd);
     }
 
     // Release allocated memory
@@ -1544,6 +1651,48 @@ le_result_t le_atomFile_CloseStream
 )
 {
     return CloseStream(fileStreamPtr, true);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Atomically deletes a file. This function also ensures safe deletion of file (i.e. if any other
+ * process/thread is using the file by acquiring file lock, it won't delete the file unless lock is
+ * released). This is a blocking call. It will block until lock on file is released.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if file doesn't exists.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atomFile_Delete
+(
+    const char* pathNamePtr            ///< [IN] Path of the file to delete
+)
+{
+    return Delete(pathNamePtr, true);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Same as @c le_atomFile_Delete() except that it is non-blocking function and it will fail and
+ * return LE_WOULD_BLOCK immediately if target file is locked.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if file doesn't exists.
+ *      LE_WOULD_BLOCK if file is already locked (i.e. someone is using it).
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atomFile_TryDelete
+(
+    const char* pathNamePtr            ///< [IN] Path of the file to delete
+)
+{
+    return Delete(pathNamePtr, false);
 }
 
 

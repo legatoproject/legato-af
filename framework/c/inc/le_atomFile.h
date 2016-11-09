@@ -15,9 +15,9 @@
  *
  * An atomic file operation is an operation that cannot be partially performed. Either the entire
  * operation is performed or the operation fails. Any unclean reboot or power-cut should not lead to
- * corruption or inconsistency of file. Also when a process is performing atomic write on a file,
- * other process should not be able modify that file, i.e. there should be some file locking
- * mechanism there.
+ * corruption or inconsistency of the file. Also when a process is performing an atomic write on a
+ * file, other processes should not be able modify that file, i.e. some file locking mechanism
+ * should be there.
  *
  * Use @c le_atomFile_Open() to open a file for atomic access. This API uses @ref c_flock_cooperative
  * mechanism while opening a file, i.e. if file already has an incompatible lock on it,
@@ -25,7 +25,7 @@
  * @c le_atomFile_Close() or @c le_atomFile_Cancel() api. Both @c le_atomFile_Close() and
  * @c le_atomFile_Close() closes the file and releases the acquired resources. However,
  * @c le_atomFile_Close() transfers all changes to disk, @c le_atomFile_Cancel() no change is
- * reflected on file.
+ * reflected on file. A file can be deleted atomically using @c le_atomFile_Delete() api.
  *
  * For opening C standard file stream, please see @ref c_atomFile_streams section.
  *
@@ -91,7 +91,8 @@
  *
  * @endcode
  *
- * An example illustrating usage of le_atomFile_Close() and le_atomFile_Cancel() function.
+ * An example illustrating usage of le_atomFile_Close(), le_atomFile_Cancel() and
+ * le_atomFile_Delete() function.
  *
  * @code
  *
@@ -126,6 +127,19 @@
  *          le_atomFile_Cancel(fd); // Discard all changes and close the file descriptor.
  *      }
  *
+ *
+ *      // Now do some additional stuff with file myfile.txt
+ *      // .........Code.........
+ *      // .........Code.........
+ *
+ *
+ *      // Now delete file myfile.txt
+ *      le_result_t result = le_atomFile_Delete("./myfile.txt");
+ *      if (result != LE_OK)
+ *      {
+ *          // Print error message.
+ *      }
+ *
  * @endcode
  *
  * The le_atomFile_Create() function can be used to create, lock and open a file in one function
@@ -142,10 +156,11 @@
  *
  * @section c_atomFile_nonblock Non-blocking
  *
- * Functions le_atomFile_Open(), le_atomFile_Create(), le_atomFile_OpenStream() and
- * le_atomFile_CreateStream() always block if there is an incompatible lock on the file. Functions
- * le_atomFile_TryOpen(), le_atomFile_TryCreate(), le_atomFile_TryOpenStream() and
- * le_atomFile_TryCreateStream() are their non-blocking counterparts.
+ * Functions le_atomFile_Open(), le_atomFile_Create(), le_atomFile_OpenStream(),
+ * le_atomFile_CreateStream() and le_atomFile_Delete() always block if there is an incompatible lock
+ * on the file. Functions le_atomFile_TryOpen(), le_atomFile_TryCreate(),
+ * le_atomFile_TryOpenStream(), le_atomFile_TryCreateStream() and le_atomFile_TryDelete() are their
+ * non-blocking counterparts.
  *
  * @section c_atomFile_threading Multiple Threads
  *
@@ -534,6 +549,42 @@ void le_atomFile_CancelStream
 le_result_t le_atomFile_CloseStream
 (
     FILE* fileStreamPtr             ///< [IN] File stream pointer to close
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Atomically deletes a file. This function also ensures safe deletion of file (i.e. if any other
+ * process/thread is using the file by acquiring file lock, it won't delete the file unless lock is
+ * released). This is a blocking call. It will block until lock on file is released.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if file doesn't exists.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atomFile_Delete
+(
+    const char* pathNamePtr            ///< [IN] Path of the file to delete
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Same as @c le_atomFile_Delete() except that it is non-blocking function and it will fail and
+ * return LE_WOULD_BLOCK immediately if target file is locked.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if file doesn't exists.
+ *      LE_WOULD_BLOCK if file is already locked (i.e. someone is using it).
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atomFile_TryDelete
+(
+    const char* pathNamePtr            ///< [IN] Path of the file to delete
 );
 
 

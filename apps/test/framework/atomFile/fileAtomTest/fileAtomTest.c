@@ -15,7 +15,7 @@ const char* TestFileList[][3] =
 #define PRINT_ERR_IF       LE_FATAL_IF
 //#define PRINT_ERR_IF       LE_ERROR_IF
 
-#define NUM_WRITE       2*1024
+#define NUM_WRITE       1024/2
 
 static const char WriteStr[] = "This string is for atomic writing";
 
@@ -592,14 +592,9 @@ static void TestTryApis
                                            inAccessMode,
                                            LE_FLOCK_FAIL_IF_EXIST,
                                            S_IRWXU);
-                if (file_Exists(filePath))
-                {
-                    LE_ASSERT(infd == LE_DUPLICATE);
-                }
-                else
-                {
-                    LE_ASSERT(infd == LE_WOULD_BLOCK);
-                }
+
+                LE_ASSERT(infd == LE_WOULD_BLOCK);
+
             }
         }
         le_atomFile_Close(fd);
@@ -640,14 +635,8 @@ static void TestTryApis
                                                    &result);
                 LE_ASSERT(infile == NULL);
 
-                if (file_Exists(filePath))
-                {
-                    LE_ASSERT(result == LE_DUPLICATE);
-                }
-                else
-                {
-                    LE_ASSERT(result == LE_WOULD_BLOCK);
-                }
+                LE_ASSERT(result == LE_WOULD_BLOCK);
+
             }
         }
         le_atomFile_CloseStream(file);
@@ -816,6 +805,223 @@ static void CheckFlags
     le_atomFile_CloseStream(filePtr);
 }
 
+void TestMultiProcessAccess
+(
+    const char* filePath
+)
+{
+
+    // Do create test for non-existing file
+    unlink(filePath);
+    pid_t childPID = fork();
+
+    // child
+    if (childPID == 0)
+    {
+        // sleep for a while to make sure that parent process can put a write lock to the file
+        sleep(5);
+        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        LE_INFO("the lock is released!!!!!!!++++++++++++++");
+        LE_INFO("Child is writing");
+        while (true)
+        {
+            write(childFD, "child process write", sizeof("child process write"));
+        }
+    }
+    // parent
+    else if (childPID > 0)
+    {
+
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        WriteString(parentFD, NUM_WRITE);
+        LE_INFO("Parent Finished writing");
+        sleep(5);
+        le_atomFile_Close(parentFD);
+        LE_INFO("Parent closed file");
+        sleep(5);
+        kill(childPID, SIGKILL);
+        LE_INFO("Parent killed child");
+        IfNumStringWritten(NUM_WRITE, filePath);
+    }
+
+    // Do create test(READ_ONLY for non-existing file)
+    unlink(filePath);
+    childPID = fork();
+
+    // child
+    if (childPID == 0)
+    {
+        LE_INFO("Performing create test for LE_FLOCK_READ, file: %s", filePath);
+        int childFD1 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        int childFD2 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        LE_INFO("Child opened file: %s with read-only access", filePath);
+        LE_INFO("Child is trying to write");
+        LE_ASSERT(fd_WriteSize(childFD1, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
+        LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
+        LE_INFO("Child canceling file creation");
+        le_atomFile_Cancel(childFD1);
+        le_atomFile_Cancel(childFD2);
+        LE_ASSERT(file_Exists(filePath) == false);
+
+        childFD2 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        LE_INFO("Child opened file: %s with read-only access", filePath);
+        LE_INFO("Child is trying to write");
+        LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
+        //Sleep for very long time, and parent will kill it by kill signal
+        sleep(2000);
+    }
+    // parent
+    else if (childPID > 0)
+    {
+        sleep(5);
+        LE_INFO("Parent killing child");
+        kill(childPID, SIGKILL);
+        LE_ASSERT(file_Exists(filePath) == false);
+
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        LE_INFO("Parent opened file: %s with read-only access", filePath);
+        LE_INFO("Parent is trying to write");
+        LE_ASSERT(fd_WriteSize(parentFD, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
+        le_atomFile_Close(parentFD);
+        LE_ASSERT(file_Exists(filePath) == true);
+        LE_INFO("----Passed create test for LE_FLOCK_READ, file: %s ----------", filePath);
+    }
+
+    // Do open test for existing file.
+
+    childPID = fork();
+
+    // child
+    if (childPID == 0)
+    {
+        // sleep for a while to make sure that parent process can put a write lock to the file
+        sleep(5);
+        int childFD = le_atomFile_Open(filePath, LE_FLOCK_WRITE);
+        LE_INFO("the lock is released!!!!!!!++++++++++++++");
+        LE_INFO("Child is writing");
+        while (true)
+        {
+            write(childFD, "child process write", sizeof("child process write"));
+        }
+    }
+    // parent
+    else if (childPID > 0)
+    {
+
+        int parentFD = le_atomFile_Open(filePath, LE_FLOCK_WRITE);
+        WriteString(parentFD, NUM_WRITE);
+        LE_INFO("Parent Finished writing");
+        sleep(5);
+        le_atomFile_Close(parentFD);
+        LE_INFO("Parent closed file");
+        sleep(5);
+        kill(childPID, SIGKILL);
+        LE_INFO("Parent killed child");
+        IfNumStringWritten(NUM_WRITE, filePath);
+    }
+
+    // Do create test for existing file.
+    childPID = fork();
+
+    // child
+    if (childPID == 0)
+    {
+        // sleep for a while to make sure that parent process can put a write lock to the file
+        sleep(5);
+        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);
+        LE_INFO("the lock is released!!!!!!!++++++++++++++");
+        LE_INFO("Child is writing");
+        while (true)
+        {
+            write(childFD, "child process write", sizeof("child process write"));
+        }
+    }
+    // parent
+    else if (childPID > 0)
+    {
+
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);;
+        WriteString(parentFD, NUM_WRITE);
+        LE_INFO("Parent Finished writing");
+        sleep(5);
+        le_atomFile_Close(parentFD);
+        LE_INFO("Parent closed file");
+        sleep(5);
+        kill(childPID, SIGKILL);
+        LE_INFO("Parent killed child");
+        IfNumStringWritten(NUM_WRITE, filePath);
+    }
+
+    // Now check file permission retention
+
+    // first unlink file
+    unlink(filePath);
+    childPID = fork();
+
+    // child
+    if (childPID == 0)
+    {
+        // sleep for a while to make sure that parent process can put a write lock to the file
+        mode_t old_mode = umask(0);
+        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU | S_IRWXG | S_IRWXO);
+        WriteString(childFD, NUM_WRITE);
+        LE_INFO("Child is write finished, now exiting without committing file changes");
+        umask(old_mode);
+        exit(EXIT_SUCCESS);
+    }
+    // parent
+    else if (childPID > 0)
+    {
+        sleep(5);
+        mode_t old_mode = umask(0);
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);
+        LE_INFO("Parent process unblocked and started writing");
+        WriteString(parentFD, NUM_WRITE/2);
+        le_atomFile_Close(parentFD);
+        LE_INFO("Parent closed file");
+        IfNumStringWritten(NUM_WRITE/2, filePath);
+        umask(old_mode);
+
+        struct stat fileStatus;
+        stat(filePath, &fileStatus);
+        mode_t origMode = fileStatus.st_mode;
+        LE_ASSERT((origMode & (S_IRWXU|S_IRWXG|S_IRWXO)) == S_IRWXU);
+    }
+
+
+    // Now check the file deletion.
+
+    LE_INFO("Doing file deletion API test");
+    childPID = fork();
+    // child
+    if (childPID == 0)
+    {
+        // sleep for a while to make sure that parent process can put a write lock to the file
+        sleep(5);
+        LE_INFO("Child is trying to delete file: %s", filePath);
+        le_result_t result = le_atomFile_TryDelete(filePath);
+        LE_ASSERT(result == LE_WOULD_BLOCK);
+        result = le_atomFile_Delete(filePath);
+        LE_ASSERT(result == LE_OK);
+        LE_INFO("the lock is released!! and file deleted !!!");
+        exit(EXIT_SUCCESS);
+    }
+    // parent
+    else if (childPID > 0)
+    {
+
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);
+        LE_INFO("Parent writing in file: %s", filePath);
+        WriteString(parentFD, NUM_WRITE);
+        sleep(10);
+        le_atomFile_Close(parentFD);
+        LE_INFO("Parent Closed file: %s", filePath);
+        sleep(5);
+        le_result_t result = le_atomFile_Delete(filePath);
+        LE_ASSERT(result == LE_NOT_FOUND);
+    }
+}
+
 
 void TestAccessMode
 (
@@ -914,6 +1120,7 @@ void TestAccessMode
 
 COMPONENT_INIT
 {
+
     LE_INFO("======== Starting Atomic File Access API Test ========");
 
     int i = 0;
@@ -936,6 +1143,10 @@ COMPONENT_INIT
         LE_INFO("======== Starting permission mode test for file: %s ========", TestFileList[i][2]);
         TestAccessMode(TestFileList[i][2]);
         LE_INFO("======== Permission test done ========");
+
+        LE_INFO("======== Starting multi process test for file: %s ========", TestFileList[i][2]);
+        TestMultiProcessAccess(TestFileList[i][2]);
+        LE_INFO("======== Multi process test done ========");
 
         int j = 0;
         for (j = 0; j < 3; j++)

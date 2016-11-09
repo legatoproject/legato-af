@@ -413,9 +413,17 @@ static le_result_t CopyXattrs
         // Set the extended attribute in the destination file.
         if (setxattr(destPathPtr, namePtr, value, valueSize, 0) == -1)
         {
-            LE_ERROR("Could not set extended attribute %s for file %s.  %m.",
-                     namePtr, srcPathPtr);
-            return LE_IO_ERROR;
+            if (errno == EPERM)
+            {
+                // TODO: This workaround is for sandboxed app. Change it later.
+                LE_DEBUG("Permission denied to set smack label");
+            }
+            else
+            {
+                LE_ERROR("Could not set extended attribute %s for file %s.  %m.",
+                          namePtr, srcPathPtr);
+                return LE_IO_ERROR;
+            }
         }
 
         ssize_t nameLen = strlen(namePtr) + 1;
