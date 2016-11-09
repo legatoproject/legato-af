@@ -2,43 +2,44 @@
 /**
  * @page c_spi SPI
  *
- * @ref le_spiLibrary.h "API Reference"
+ * @ref le_spi_interface.h "API Reference" <br>
+ * @ref howToSPI "How To Setup SPI"
  *
  * <HR>
  *
- * @section Description
+ * @section spi_overview Overview
  *
- * This API is used by apps to control SPI interface.
+ * This API is used by apps to control a Serial Peripheral Interface (SPI).
  *
- * The SPI interace configured is a 4 wire interface
+ * The SPI API is configured as a four wire interface:
  * - Clock - Serial Clock
  * - MOSI - Master Output
  * - MISO - Master Input
  * - SS or CS - Chip select
  *
- * @section SPI API usage
+ * @section spi_usage Usage
  *
- * Following lines provide example on how to use the SPI API for a user space app
+ * The sample code in this section shows how to use the SPI API for a user space app.
  *
- * Handle for passing to related functions to access the SPI device
+ * Handle for passing to related functions to access the SPI device:
  * @code
  * le_spi_DeviceHandleRef_t spiHandle;
  * @endcode
  *
- * le_spi_Open() -  Opens the spi file handle
+ * le_spi_Open() opens the @c spi file handle:
  * @code
  * le_result_t res;
  * res = le_spi_Open("spidev0.0", &spiHandle);
  * LE_FATAL_IF(res != LE_OK, "le_spi_Open failed with result=%s", LE_RESULT_TXT(res));
  * @endcode
  *
- * le_spi_Configure()  - Initialize all the parameters on the master side based on the
- * Implementation below uses mode = 0, 8 bit data, 960kbps and MSB first
+ * le_spi_Configure() initializes all the parameters on the master side based on the
+ * implementation below uses mode = 0, 8 bit data, 960kbps and MSB first
  * @code
  * le_spi_Configure(spiHandle, 0, 8, 960000, 0);
  * @endcode
  *
- * le_spi_WriteHD()  - Write  data to slave device in Half Duplex mode
+ * le_spi_WriteHD() writes data to slave device in half-duplex mode:
  * write_buffer_tx is an array. Example defined below:
  * @code
  * uinti8_t write_buffer_tx[] ={0xC7, 0x94, 0x80, 0x9A};
@@ -47,40 +48,41 @@
  * LE_FATAL_IF(res != LE_OK, "le_spi_WriteHD failed with result=%s", LE_RESULT_TXT(res));
  * @endcode
  *
- * le_spi_WriteReadHD() - Write and then read to/from slave device in Half Duplex mode.
+ * le_spi_WriteReadHD() writes and reads to/from slave device in half-duplex mode:
  * @code
  * le_result_t res;
  * le_spi_WriteReadHD(spiHandle, read_ID_tx, NUM_ARRAY_MEMBERS(read_ID_tx), ID_rx,
  *                    &readBufferSize);
  * LE_FATAL_IF(res != LE_OK, "le_spi_WriteReadHD failed with result=%s", LE_RESULT_TXT(res));
  * @endcode
- * read_ID_tx is an array that is transmitter to slave and ID_rx is buffer reserved for
- * data received from slave
+ * read_ID_tx is an array that is transmitted to the device. ID_rx is a buffer reserved for
+ * data received from  the device.
  *
- * le_spi_WriteReadFD() - Write and read to/from slave in full duplex mode
+ * le_spi_WriteReadFD() writes and reads to/from slave in full-duplex mode:
  * @code
  * le_result_t res;
  * res = le_spi_WriteReadHD(spiHandle, read_buffer_tx, read_rx, NUM_ARRAY_MEMBERS(read_buffer_tx);
  * LE_FATAL_IF(res != LE_OK, "le_spi_WriteReadHD failed with result=%s", LE_RESULT_TXT(res));
  * @endcode
- * read_buffer_tx is an array that is transmitter to slave and read_rx is buffer reserved for
- * data received from slave. Note buffer size of tx and rx is same
-
- * le_spi_Close() - Close the spi handle
+ * read_buffer_tx is an array transmitted to the device. read_rx is a buffer reserved for
+ * data received from the device. Buffer size for tx and rx must be the same.
+ *
+ * le_spi_Close() closes the spi handle:
  * @code
  * le_spi_Close(spiHandle);
  * @endcode
  *
- * <HR>
- *
- * @section License
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------------
 /**
- * @file le_spiLibrary.h
+ * @file le_spi_interface.h
+ *
+ * Legato @ref c_le_spi include file.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -130,7 +132,7 @@ FUNCTION le_result_t Open
  * Closes the device associated with the given handle and frees the associated resources.
  *
  * @note
- *      Once a handle is closed, it is not permitted to use it for future SPI access without first
+ *      Once a handle is closed, it's not permitted to use it for future SPI access without first
  *      calling Open.
  */
 //--------------------------------------------------------------------------------------------------
@@ -144,8 +146,8 @@ FUNCTION Close
  * Configures an SPI device
  *
  * @note
- *      This function should be called before any of the Read/Write functions in order to ensure
- *      that the SPI bus configuration is in a known state.
+ *      This function should be called before any of the Read/Write functions to ensure
+ *      the SPI bus configuration is in a known state.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Configure

@@ -3,7 +3,7 @@
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
 | @subpage c_sms                     | SMS messaging                                      |                           |
-| @subpage c_smsInbox                | SMS Inbox Service                                  | @image html green_dot.png |
+| @subpage c_smsInbox                | SMS Inbox Service                                  |   x    |
 
  <br>
 

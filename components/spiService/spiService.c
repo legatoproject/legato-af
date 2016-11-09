@@ -1,6 +1,6 @@
 /**
  *
- * This file provides implementation of le_spi.api using spidev linux kernel driver
+ * This file provides the implementation of @ref c_spi using the @c spidev Linux kernel driver.
  *
  *
  * <hr>

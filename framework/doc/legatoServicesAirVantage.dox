@@ -2,12 +2,10 @@
 
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_le_avc                  | AirVantage server communication                    | @image html green_dot.png |
-| @subpage c_le_avdata               | AirVantage server data                             | @image html green_dot.png |
+| @subpage c_le_avc                  | AirVantage server communication                    |   x   |
+| @subpage c_le_avdata               | AirVantage server data                             |    x    |
 
  <br>
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
