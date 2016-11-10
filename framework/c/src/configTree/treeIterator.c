@@ -208,6 +208,41 @@ static void FindLoadedTrees
 
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Check whether a directory entry is a regular file or not.
+ *
+ *  @return
+ *       True if specified entry is a regular file
+ *       False otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsRegularFile
+(
+    struct dirent* dirEntryPtr              ///< [IN] Directory entry in question.
+)
+{
+    if (dirEntryPtr->d_type == DT_REG)
+    {
+        return true;
+    }
+    else if (dirEntryPtr->d_type == DT_UNKNOWN)
+    {
+        // As per man page (http://man7.org/linux/man-pages/man3/readdir.3.html), DT_UNKNOWN
+        // should be handled properly for portability purpose. Use stat(2) to check file info.
+        struct stat stbuf;
+
+        if (stat(dirEntryPtr->d_name, &stbuf) != 0)
+        {
+            LE_ERROR("Error when trying to stat '%s'. (%m)", dirEntryPtr->d_name);
+            return false;
+        }
+
+        return S_ISREG(stbuf.st_mode);
+    }
+
+    return false;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -238,35 +273,33 @@ static void FindFileTrees
 
     while ((dirEntryPtr = readdir(dirPtr)) != NULL)
     {
-        if (dirEntryPtr->d_type != DT_REG)
+        if (IsRegularFile(dirEntryPtr))
         {
-            continue;
-        }
+            char* dotStrPtr = strrchr(dirEntryPtr->d_name, '.');
 
-        char* dotStrPtr = strrchr(dirEntryPtr->d_name, '.');
+            if (   (strcmp(dotStrPtr, ".rock") != 0)
+                && (strcmp(dotStrPtr, ".paper") != 0)
+                && (strcmp(dotStrPtr, ".scissors") != 0))
+            {
+                continue;
+            }
 
-        if (   (strcmp(dotStrPtr, ".rock") != 0)
-            && (strcmp(dotStrPtr, ".paper") != 0)
-            && (strcmp(dotStrPtr, ".scissors") != 0))
-        {
-            continue;
-        }
+            char treeName[MAX_TREE_NAME_BYTES] = "";
 
-        char treeName[MAX_TREE_NAME_BYTES] = "";
-
-        if (le_utf8_CopyUpToSubStr(treeName,
-                                   dirEntryPtr->d_name,
-                                   dotStrPtr,
-                                   sizeof(treeName),
-                                   NULL) == LE_OK)
-        {
-            InsertTreeName(treeIteratorPtr, treeName);
-        }
-        else
-        {
-            LE_ERROR("Ignoring configTree file '%s' during iteration because "
-                     "the name is too large.",
-                     dirEntryPtr->d_name);
+            if (le_utf8_CopyUpToSubStr(treeName,
+                                       dirEntryPtr->d_name,
+                                       dotStrPtr,
+                                       sizeof(treeName),
+                                       NULL) == LE_OK)
+            {
+                InsertTreeName(treeIteratorPtr, treeName);
+            }
+            else
+            {
+                LE_ERROR("Ignoring configTree file '%s' during iteration because "
+                         "the name is too large.",
+                         dirEntryPtr->d_name);
+            }
         }
     }
 

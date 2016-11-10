@@ -112,6 +112,43 @@ static inline bool DirExists
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Check whether a directory entry is a directory or not.
+ *
+ *  @return
+ *        True if specified entry is a directory
+ *        False otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsDir
+(
+    struct dirent* dirEntryPtr              ///< [IN] Directory entry in question.
+)
+{
+    if (dirEntryPtr->d_type == DT_DIR)
+    {
+        return true;
+    }
+    else if (dirEntryPtr->d_type == DT_UNKNOWN)
+    {
+        // As per man page (http://man7.org/linux/man-pages/man3/readdir.3.html), DT_UNKNOWN
+        // should be handled properly for portability purpose. Use stat(2) to check file info.
+        struct stat stbuf;
+
+        if (stat(dirEntryPtr->d_name, &stbuf) != 0)
+        {
+            LE_ERROR("Error when trying to stat '%s'. (%m)", dirEntryPtr->d_name);
+            return false;
+        }
+
+        return S_ISDIR(stbuf.st_mode);
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Recursively remove a directory but don't follow links and don't cross mount points.
  */
 //--------------------------------------------------------------------------------------------------
@@ -548,7 +585,7 @@ static void DeleteAllButCurrent
         }
 
         // For every directory other than "current" or anything starting with a '.',
-        if (   (DT_DIR == entry->d_type)
+        if (   (IsDir(entry))
             && (entry->d_name[0] != '.')
             && (strcmp(entry->d_name, "current") != 0))
         {
@@ -1107,7 +1144,7 @@ static int FindNewestSystemIndex
         }
 
         // For every directory other than "unpack" or anything starting with a '.',
-        if (   (DT_DIR == entry->d_type)
+        if (   (IsDir(entry))
             && (entry->d_name[0] != '.')
             && (strcmp(entry->d_name, "unpack") != 0))
         {
