@@ -776,6 +776,7 @@ static le_result_t LoadSelectedTechProfile
                 if (LE_OK != le_cfg_GetString(cfg, CFG_NODE_SSID, Ssid, sizeof(Ssid), "testSsid"))
                 {
                     LE_WARN("String value for '%s' too large", CFG_NODE_SSID);
+                    le_cfg_CancelTxn(cfg);
                     return LE_OVERFLOW;
                 }
                 LE_DEBUG("AP configuration, SSID: '%s'", Ssid);
@@ -783,6 +784,7 @@ static le_result_t LoadSelectedTechProfile
             else
             {
                 LE_WARN("No value set for '%s'!", CFG_NODE_SSID);
+                le_cfg_CancelTxn(cfg);
                 return LE_NOT_FOUND;
             }
 
@@ -796,6 +798,7 @@ static le_result_t LoadSelectedTechProfile
             else
             {
                 LE_WARN("No value set for '%s'!", CFG_NODE_SECPROTOCOL);
+                le_cfg_CancelTxn(cfg);
                 return LE_NOT_FOUND;
             }
 
@@ -807,6 +810,7 @@ static le_result_t LoadSelectedTechProfile
                                               sizeof(Passphrase), "passphrase"))
                 {
                     LE_WARN("String value for '%s' too large", CFG_NODE_PASSPHRASE);
+                    le_cfg_CancelTxn(cfg);
                     return LE_OVERFLOW;
                 }
                 LE_DEBUG("AP configuration, Passphrase: '%s'", Passphrase);
@@ -814,6 +818,7 @@ static le_result_t LoadSelectedTechProfile
             else
             {
                 LE_WARN("No value set for '%s'!", CFG_NODE_PASSPHRASE);
+                le_cfg_CancelTxn(cfg);
                 return LE_NOT_FOUND;
             }
 
