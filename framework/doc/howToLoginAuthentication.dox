@@ -1,0 +1,53 @@
+/** @page howToLoginAuthentication Login Authentication
+
+This topic provides the recommended login authentication credential setup options for Sierra Wireless 
+modules that are using serial console or secure shell interfaces for target device access.
+
+Starting with Legato 16.10.0 (and SWI9X15Y_07.11.18.00), when you access your module using a serial
+console or SSH shell connection, new login authentication menus will display providing these
+credential setup options:
+
+@verbatim
+It is strongly recommended to setup credentials for remote login.
+Please select one of the following options:
+1) Setup ssh keys and disable passwords-based authentication via ssh (the most secure)
+2) Setup password (better than nothing)
+3) Do nothing
+@endverbatim
+
+@section howToLoginAuthentication_option1 Option 1 - Setup SSH Keys
+
+@note This is the method we @e strongly recommend!
+
+@c 1. On the target, choose @c 1 to setup ssh keys.
+
+@c 2. On the host PC, run @ref toolsHost_configtargetssh (ensure you run
+bin/legs first to set your environment). You can manually setup ssh keys using @c ssh-keygen, and
+copy the public key to the target's ssh directory; but @c configtargetssh will handle this for
+you.
+
+@c 3. After @c configtargetssh finishes, choose @c 1 (Done), and answer the "are you sure"
+questions. The configure local console menu will then display:
+@verbatim
+1) Disable console access (the most secure)
+2) Disable password-based authentication for root user account
+       but leave the console for debug messages (less secure)
+       WARNING: This will disable password-based authentication for
+       root user account completely (even over ssh).
+3) Enable password-based authentication for root user account
+@endverbatim
+
+@c 4. Choose @c 1 to done setting up ssh keys. If local access through the serial console isn't
+needed, it's recommended to completely disable console access.
+
+@section howToLoginAuthentication_option2 Option 2 - Setup Password
+
+If you choose @c 2 Setup password, ensure you use a strong password that can't
+be easily guessed.
+
+@warning Please test your ssh keys and/or passwords in a separate terminal before logging off from
+all terminals to ensure you don't lose access to your target device.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
