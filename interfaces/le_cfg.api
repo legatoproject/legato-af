@@ -3,185 +3,164 @@
  * @page c_config Config Tree API
  *
  * @ref le_cfg_interface.h "API Reference" <br>
- * @ref howToConfigTree
  *
- * <HR>
+ * The Config Tree is a non-volatile noSQL database that stores configuration values for apps.
+ * By default each app is given read access to a single tree that has the same name as the app.
+ * Any other access permissions (read access for any other tree, or write access to any tree at all)
+ * must be explicitly granted in the app's @ref defFilesAdef_requiresConfigTree ".adef file".
  *
- * The Config Tree API is used by apps to read and write their specific configurations.
- * Each app is given an isolated tree. The system utilities
- * store their configuration in the @c root tree.
- * Trees are created when they are first accessed by a user or component/process etc.
- * Apps automatically get read access to a tree with the same name as the app.
- * Apps can also be granted read or write access to any other tree with any other name (e.g., a tree
- * named @c foo can be shared with @e appA and @e appB).
+ * Trees are created automatically the first time that they are accessed by an app or a component.
+ * The apps tree will be named the same as the name of the app. It is possible for apps to be given
+ * access to other apps tree's or for multiple apps to share one tree.
  *
- * Paths in the tree look like traditional Unix style paths like this:
+ * @note If your app is running as root then the configuration will get added to the
+ * System Tree by default. System utilities also use the Config Tree and store their
+ * configurations in the @c system tree.
  *
- * @code /path/to/my/value @endcode
+ * Apps are able to search over the tree for data, although it's generally expected that the location
+ * will be known to the app and that the app will point to the right node to retrieve the value.
  *
- * The path root is the root of the tree where the app has been given access. If the
- * app has permission to access another tree, the path can also include the name
- * of the other tree, followed by a colon.
+ * More on the @ref basicConfig "Config Strategy" for the Legato AF.
  *
- * @code secondTree:/path/to/my/value @endcode
- *
- * In this case, a value named @c value is read from the tree named @c secondTree
+ * @section cfg_Overview Overview
  *
  * The tree is broken down into stems and leaves.
  *
- * A stem is a node that has at least one child
- * node. A leaf has no children, but can hold a value.
- *
- * The config tree supports string, signed integer, boolean, floating point, and empty
- * values. It's recommended to store anything more complex using stems and leaves, which enhances
- * readablity and debugging. It also sidesteps nasty cross platform alignment issues.
- *
- * @todo Talk about the treeConfig, user limits, tree name, tree access. Global timeouts.
- *
- * @section cfg_transaction Read and Write Transactions
- *
- * The config tree uses simple transactions to work with its data. Both read
- * and write transactions are supported. Use read transactions to ensure you can
- * atomically read multiple values from your configuration while keeping consistency
- * with third parties trying to write data.
- *
- * To prevent a single client from locking out other clients, read and
- * write transactions have their own configurable timeout.
- *
- * During a write transaction, both reading and writing are allowed. If you
- * write a value during a transaction and read from that value again, you will get the same value
- * you wrote. Third party clients will continue to see the old value. It's not until you commit
- * your transaction that third parties will begin to see your updated value.
- *
- * During read transactions, writes are not permitted and are thrown away.
- *
- * Transactions are started by creating an iterator. Either a read or write iterator can be
- * created. To end the transaction, you can  delete the iterator, cancelling the
- * transaction. Or,for write transactions, you can commit the iterator.
- *
- * You can have multiple read transactions against the tree. They won't
- * block other transactions from being creating. A read transaction won't block creating a write
- * transaction either. A read transaction only blocks a write transaction from being
- * comitted to the tree.
- *
- * A write transaction in progress will also block creating another write transaction.
- * If a write transaction is in progress when the request for another write transaction comes in,
- * the secondary request will be blocked. This secondary request will remain blocked until the
- * first transaction has been comitted or has timed out. The transaction timeout default is 30
- * seconds. You can extend the timeout by setting a value (in seconds) in
- * @c configTree/transactionTimeout.
- *
- * @section cfg_iteration Iterating the Tree
- *
- * This code sample shows how to iterate a specified node and print its contents:
+ * A stem is a node that has at least one child node. A leaf has no children and holds a value.
  *
  * @code
- * static void PrintNode(le_cfg_IteratorRef_t iteratorRef)
- * {
- *     do
- *     {
- *         char stringBuffer[MAX_CFG_STRING] = { 0 };
- *
- *         le_cfg_GetNodeName(iteratorRef, "", stringBuffer, sizeof(stringBuffer));
- *
- *         switch (le_cfg_GetNodeType(iteratorRef, ""))
- *         {
- *             case LE_CFG_TYPE_STEM:
- *                 {
- *                     printf("%s/\n", stringBuffer);
- *
- *                     if (le_cfg_GoToFirstChild(iteratorRef) == LE_OK)
- *                     {
- *                         PrintNode(iteratorRef);
- *                         le_cfg_GoToNode(iteratorRef, "..");
- *                     }
- *                 }
- *                 break;
- *
- *             case LE_CFG_TYPE_EMPTY:
- *                 printf("%s = *empty*\n", stringBuffer);
- *                 break;
- *
- *             case LE_CFG_TYPE_BOOL:
- *                 printf("%s = %s\n",
- *                        stringBuffer,
- *                        (le_cfg_GetBool(iteratorRef, "", false) ? "true" : "false"));
- *                 break;
- *
- *             case LE_CFG_TYPE_INT:
- *                 printf("%s = %d\n", stringBuffer, le_cfg_GetInt(iteratorRef, "", 0));
- *                 break;
- *
- *             case LE_CFG_TYPE_FLOAT:
- *                 printf("%s = %f\n", stringBuffer, le_cfg_GetFloat(iteratorRef, "", 0.0));
- *                 break;
- *
- *             case LE_CFG_TYPE_STRING:
- *                 printf("%s = ", stringBuffer);
- *                 LE_ASSERT(le_cfg_GetString(iteratorRef,
- *                                            "",
- *                                            stringBuffer,
- *                                            sizeof(stringBuffer),
- *                                            "") == LE_OK);
- *                 printf("%s\n", stringBuffer);
- *                 break;
- *
- *             case LE_CFG_TYPE_DOESNT_EXIST:
- *                 printf("%s = ** DENIED **\n", stringBuffer);
- *                 break;
- *         }
- *     }
- *     while (le_cfg_GoToNextSibling(iteratorRef) == LE_OK);
- * }
- *
- *
- * le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("/path/to/my/location");
- *
- * PrintNode(iteratorRef);
- * le_cfg_CancelTxn(iteratorRef);
- *
- *
+ *        +tree
+ *            |
+ *            +--stem
+ *            |   |
+ *            |   +--leaf (value)
+ *            |
+ *            +-stem
+ *               |
+ *               +--leaf (value)
+ *               |
+ *               +--leaf (value)
  * @endcode
  *
+ * Paths in the tree are traditional Unix style paths and each node is separated by a /:
  *
- * @section cfg_transactWrite Writing Configuration Data
+ * @code /stem/stem/leaf @endcode
  *
- * This code sample uses a write transaction to update a target's IP address
- * so the data is written atomically.
+ * If no app is specified as the root of the tree, then the app will search in it's own tree.
+ * To get to another tree reference that tree followed by a colon.
+ *
+ * @verbatim
+ * /path/to/my/tree/value                   # references the default apps tree
+ * secondTree:/path/to/secondTree/value    # references the second tree
+ * @endverbatim
+ *
+ * @note It's recommended to store anything complex using stems and leaves, this enhances
+ * readability and debugging. It also helps to sidestep nasty cross platform alignment issues.
+ *
+ * Apps must explicitly give permissions to other apps before they can access their Config Tree data.
+ * This is done in the @ref defFilesAdef_requiresConfigTree ".adef file".
+ * Each transaction is only able to iterate over one tree at a time, each tree that you want to read
+ * or write to must be created as a separate transaction.
+ *
+ * The Config Tree supports storing the following types of data and each has their own get/set
+ * function as well as a quick set/get function (see @ref cfg_quick):
+ * -  string
+ * -  signed integer
+ * -  boolean
+ * -  64bit floating point
+ * -  empty values.
+ *
+ * Each transaction has a global timeout setting (default is 30s). The configuration is
+ * located in the System Tree and may be configured with the @ref toolsTarget_config "config"
+ * target tool.
+ *
+ * @verbatim
+ * config /configTree/transactionTimeout 10 int         #changes the timeout to 10s
+ * @endverbatim
+ *
+ * @section cfg_trans Transactions
+ *
+ * @subsection cfg_transConcepts Key Transaction Concepts
+ *
+ * -  All transactions are sent to a queue and processed in a sequence.
+ * -  Only one write transaction may be active at a time and subsequent writes are queued
+ *    until the first is finished processing.
+ * -  Transactions may contain multiple read or write requests within a single transaction.
+ * -  Multiple read transactions may be processed while a write transaction is active.
+ * -  Quick(implicit) read/writes can be created and are also sequentially queued.
+ *
+ * @subsection cfg_createTrans Create Transactions
+ *
+ * To make a change to the tree, you must Create a write transaction, call one or more Set
+ * functions, and Commit the transaction.  If a write transaction is canceled instead of committed,
+ * then the changes will be discarded and the tree will remain unchanged.
+ *
+ * To read from a tree without making any changes, you should:
+ * - create a read transaction,
+ * - call the Get functions,
+ * - cancel the transaction when finished.
+ *
+ * You could also:
+ * - create a write transaction,
+ * - perform only Get operations,
+ * - cancel the transaction
+ *
+ * @note It's safer to use a read transaction when there is no intention to change the tree.
+ *
+ * Transactions must not be kept open for extended periods of time.  If a transaction is kept open
+ * for longer than the transaction time limit (default is 30 seconds), then the Config Tree will
+ * cancel the transaction and drop the connection to the offending client (most likely causing the
+ * client process to terminate).
+ *
+ * | Function                  | Action                                                            |
+ * | --------------------------| ------------------------------------------------------------------|
+ * | @c le_cfg_CreateReadTxn() | Opens the transaction                                             |
+ * | @c le_cfg_CancelTxn()     | Closes a read/write transaction and does not write it to the tree |
+ * | @c le_cfg_CommitTxn()     | Closes a write transaction and queues it for commit               |
+ *
+ * @subsection cfg_transNavigate Navigating the Tree
+ *
+ * To move around within the Tree you can move directly to a specific node(leaf or stem) and then
+ * do your read or write from that point.  Functions have been added to easily navigate through
+ * Tree. All nodes can be referenced either by their absolute or relative paths.
+ *
+ * | Function                    | Action                                                                         |
+ * | ----------------------------| -------------------------------------------------------------------------------|
+ * | @c le_cfg_GoToNode()        | Moves to the location specified                                                |
+ * | @c le_cfg_GoToParent()      | Moves to the parent of the current node (moves up the Tree)                    |
+ * | @c le_cfg_GoToFirstChild()  | Moves to the first node from the current location (moves down the Tree)        |
+ * | @c le_cfg_GoToNextSibling() | Moves to the next node on the same level as the current node (moves laterally) |
+ *
+ * @subsection cfg_transGetInfo Retrieving Node Information
+ *
+ * The Config tree also contains functions to help you identify your current location in the tree,
+ * what node you are currently pointing at, and what type of data is contained in the current node.
+ *
+ * | Function                | Action                                                                          |
+ * | ------------------------| ------------------------------------------------------------------------------- |
+ * | @c le_cfg_GetPath()     | Gets the location of where you are in the Tree                                  |
+ * | @c le_cfg_GetNodeType() | Gets the data type of the node where you are currently located                  |
+ * | @c le_cfg_GetNodeName() | Gets the name of the node where you are in the Tree (does not include the path) |
+ *
+ * @subsection cfg_read Read Transactions
+ *
+ * Each data type has it's own get function to read a value from a node within the Tree.
+ *
+ * | Function                | Action                                   |
+ * | ------------------------| -----------------------------------------|
+ * | @c le_cfg_GetString()   | Reads the string's value                 |
+ * | @c le_cfg_GetInt()      | Reads the integer's value                |
+ * | @c le_cfg_GetFloat()    | Reads the floating point value           |
+ * | @c le_cfg_GetBool()     | Reads the boolean value                  |
+ *
+ * To perform a read from a Tree, we need to open a transaction, move to the node that you want to
+ * read from, read the node and then cancel the transaction.
+ *
+ * Sample read transaction (with error checking):
  *
  * @code
- * void SetIp4Static
+ * le_result_t GetIp4Static  //reads the IP address values from the Config Tree
  * (
- *     le_cfg_IteratorRef_t iteratorRef,
- *     const char* interfaceNamePtr,
- *     const char* ipAddrPtr,
- *     const char* netMaskPtr
- * )
- * {
- *     // Change current tree position to the base ip4 node.
- *     char nameBuffer[MAX_CFG_STRING] = { 0 };
- *
- *     int r = snprintf(nameBuffer, sizeof(nameBuffer), "/system/%s/ip4", interfaceNamePtr);
- *     LE_ASSERT((r >= 0) && (r < sizeof(nameBuffer));
- *
- *     le_cfg_GoToNode(iteratorRef, nameBuffer);
- *
- *     le_cfg_SetString(iteratorRef, "addr", ipAddrPtr);
- *     le_cfg_SetString(iteratorRef, "mask", netMaskPtr);
- *
- *     le_cfg_CommitTxn(iteratorRef);
- * }
- * @endcode
- *
- *
- * @section cfg_transactRead Reading Configuration Data
- *
- * This is a code sample of a read transaction.
- *
- * @code
- * le_result_t GetIp4Static
- * (
- *     le_cfg_IteratorRef_t iteratorRef,
  *     const char* interfaceNamePtr,
  *     char* ipAddrPtr,
  *     size_t ipAddrSize,
@@ -190,8 +169,9 @@
  * )
  * {
  *     // Change current tree position to the base ip4 node.
- *     char nameBuffer[MAX_CFG_STRING] = { 0 };
+ *     char nameBuffer[LE_CFG_STR_LEN_BYTES] = { 0 };
  *
+ *     // Returns errors for out of bounds exceptions
  *     int r = snprintf(nameBuffer, sizeof(nameBuffer), "/system/%s/ip4", interfaceNamePtr);
  *     if (r < 0)
  *     {
@@ -202,36 +182,114 @@
  *         return LE_OVERFLOW;
  *     }
  *
- *     if (le_cfg_NodeExists(iteratorRef, nameBuffer) == false)
+ *     // Open up a read transaction on the Config Tree.
+ *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn(nameBuffer);
+ *
+ *     if (le_cfg_NodeExists(iteratorRef, "") == false)
  *     {
  *         LE_WARN("Configuration not found.");
+ *         le_cfg_CancelTxn(iteratorRef);
  *         return LE_NOT_FOUND;
  *     }
  *
- *     le_cfg_GoToNode(iteratorRef, nameBuffer);
+ *     // Returns the IP Address value stored in the Config Tree.
+ *     le_result_t result = le_cfg_GetString(iteratorRef, "addr", ipAddrPtr, ipAddrSize, "");
+ *     if (result != LE_OK)
+ *     {
+ *         le_cfg_CancelTxn(iteratorRef);
+ *         return result;
+ *     }
  *
- *     le_cfg_GetString(iteratorRef, "addr", ipAddrPtr, ipAddrSize, "");
- *     le_cfg_GetString(iteratorRef, "mask", netMaskPtr, netMaskSize, "");
+ *     // Returns the NetMask value stored in the Config Tree.
+ *     result = le_cfg_GetString(iteratorRef, "mask", netMaskPtr, netMaskSize, "");
+ *     if (result != LE_OK)
+ *     {
+ *         le_cfg_CancelTxn(iteratorRef);
+ *         return result;
+ *     }
+ *
+ *     // Close the transaction and return success.
+ *     le_cfg_CancelTxn(iteratorRef);
  *
  *     return LE_OK;
  * }
  * @endcode
  *
+ * @note Any writes done will be discarded at the end of the read transaction.
  *
- * @section cfg_quick Working without Transactions
+ * @subsection cfg_write Write Transactions
  *
- * It's possible to ignore iterators and transactions entirely (e.g., if all you need to do
- * is read or write some simple values in the tree).
+ * Each data type has it's own set function, to write a value to a node within the Tree. Before you
+ * are able to write to a tree, permissions must be set in the apps
+ * @ref defFilesAdef_requiresConfigTree ".adef's requires section" or with the
+ * @ref toolsTarget_config tool.
  *
- * The non-transactional reads and writes work almost identically to the transactional versions.
- * They just don't explictly take an iterator object. The "quick" functions internally use an
+ * | Function                | Action                                   |
+ * | ------------------------| -----------------------------------------|
+ * | @c le_cfg_SetString()   | Writes the string's value                |
+ * | @c le_cfg_SetInt()      | Writes the integer's value               |
+ * | @c le_cfg_SetFloat()    | Writes the floating point value          |
+ * | @c le_cfg_SetBool()     | Writes the boolean value                 |
+ *
+ * To perform a write to a Tree, we need to open a transaction, move to the node that you want to
+ * write to, write to the node and then commit the transaction.
+ *
+ * Sample write transaction (with error checking):
+ *
+ * @code
+ * void SetIp4Static
+ * (
+ *     const char* interfaceNamePtr,
+ *     const char* ipAddrPtr,
+ *     const char* netMaskPtr
+ * )
+ * {
+ *     // Change current tree position to the base ip4 node.
+ *     char nameBuffer[LE_CFG_STR_LEN_BYTES] = { 0 };
+ *
+ *     int r = snprintf(nameBuffer, sizeof(nameBuffer), "/system/%s/ip4", interfaceNamePtr);
+ *     LE_ASSERT((r >= 0) && (r < sizeof(nameBuffer));
+ *
+ *     // Create a write transaction so that we can update the tree.
+ *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(nameBuffer);
+ *
+ *     le_cfg_SetString(iteratorRef, "addr", ipAddrPtr);
+ *     le_cfg_SetString(iteratorRef, "mask", netMaskPtr);
+ *
+ *     // Commit the transaction to make sure these new settings get written to the tree.
+ *     le_cfg_CommitTxn(iteratorRef);
+ * }
+ * @endcode
+ *
+ * @note Creating write transactions creates a temporary working copy of the tree for use within the
+ * transaction. All read transactions running in the meantime see the committed state, without any
+ * of the changes that have been made within the write transaction.
+ *
+ * @subsection cfg_transDelete Deleting a Node
+ *
+ * You can also delete a node from the tree.  A word of caution as deleting a node will
+ * automatically delete all children nodes as well.
+ *
+ * | Function                 | Action                                   |
+ * | -------------------------| -----------------------------------------|
+ * | @c le_cfg_DeleteNode()   | Deletes the node and all children        |
+ *
+ * @section cfg_quick Quick Read/Writes
+ *
+ * Another option is to perform quick read/write which implicitly wraps functions with in an
+ * internal transaction. This is ideal if all you need to do is read or write some simple values
+ * to the default app tree.
+ *
+ * The quick reads and writes work almost identically to the transactional version except quick
+ * reads don't explicitly take an iterator object. The quick functions internally use an
  * implicit transaction. This implicit transaction wraps one get or set, and does not protect
  * your code from other activity in the system.
  *
- * Because these functions don't take an explicit transaction, they can't work with relative
- * paths. If a relative path is given, the path will be considered relative to the tree's root.
+ * Because quick read/write functions don't get created within a transaction, there is no option to
+ * traverse to a specific node.
+ * All values that are read or written must be referenced from the root of the tree.
  *
- * Translating this to a "quick" (non-transactional) example looks like this:
+ * A quick delete example:
  *
  * @code
  * void ClearIpInfo
@@ -241,18 +299,15 @@
  * {
  *     char pathBuffer[MAX_CFG_STRING] = { 0 };
  *
+ *     // Removes the node from the tree.
  *     snprintf(pathBuffer, sizeof(pathBuffer), "/system/%s/ip4/", interfaceNamePtr);
  *     le_cfg_QuickDeleteNode(pathBuffer);
  * }
  * @endcode
  *
- * @note Because each read is independant, there's no guarantee of
- * consistency between them. If another process changes one of the values while you
- * read/write the other, the two values could be read out of sync.
- *
- * You'll also need to set @ref howToConfigTree_nonTxn.
- *
- * <HR>
+ * @warning Because each quick function is independent, there's no guarantee of consistency between
+ * them.  If another process changes one of the values while you read/write the other,
+ * the two values could be read out of sync.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -277,7 +332,7 @@ REFERENCE Iterator;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Identifies the type of node.
+ * Identifies the data type of node.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM nodeType
@@ -324,14 +379,14 @@ DEFINE NAME_LEN_BYTES = NAME_LEN + 1;
 /**
  * Create a read transaction and open a new iterator for traversing the config tree.
  *
- * @note This action creates a read lock on the given tree, which will start a read-timeout.
- *        Once the read timeout expires, all active read iterators on that tree will be
- *        expired and the clients will be killed.
+ * This action creates a read lock on the given tree, which will start a read-timeout.
+ * Once the read timeout expires, all active read iterators on that tree will be
+ * expired and their clients will be killed.
  *
  * @note A tree transaction is global to that tree; a long-held read transaction will block other
- *        user's write transactions from being comitted.
+ *        user's write transactions from being committed.
  *
- * @return This will return a newly created iterator reference.
+ * @return This will return the newly created iterator reference.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION Iterator CreateReadTxn
@@ -344,10 +399,9 @@ FUNCTION Iterator CreateReadTxn
 /**
  * Create a write transaction and open a new iterator for both reading and writing.
  *
- * @note This action creates a write transaction. If the app holds the iterator for
- *        longer than the configured write transaction timeout, the iterator will cancel the
- *        transaction. Other reads will fail to return data, and all writes will be thrown
- *        away.
+ * This action creates a write transaction. If the app holds the iterator for
+ * longer than the configured write transaction timeout, the iterator will cancel the
+ * transaction. Other reads will fail to return data, and all writes will be thrown away.
  *
  * @note A tree transaction is global to that tree; a long-held write transaction will block
  *       other user's write transactions from being started. Other trees in the system
@@ -364,8 +418,8 @@ FUNCTION Iterator CreateWriteTxn
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Close the write iterator and commit the write transaction. This updates the config tree
- * with all of the writes that occured using the iterator.
+ * Closes the write iterator and commits the write transaction. This updates the config tree
+ * with all of the writes that occurred within the iterator.
  *
  * @note This operation will also delete the iterator object.
  */
@@ -378,8 +432,9 @@ FUNCTION CommitTxn
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Close and free the given iterator object. If the iterator is a write iterator, the transaction
- * will be canceled. If the iterator is a read iterator, the transaction will be closed.
+ * Closes and frees the given iterator object. If the iterator is a write iterator, the transaction
+ * will be canceled. If the iterator is a read iterator, the transaction will be closed. No data is
+ * written to the tree
  *
  * @note This operation will also delete the iterator object.
  */
@@ -392,10 +447,10 @@ FUNCTION CancelTxn
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Change the node where the iterator is pointing. The path passed can be an absolute or a
+ * Changes the location of iterator. The path passed can be an absolute or a
  * relative path from the iterators current location.
  *
- * The target node does not need to exist. Writing a value to a non-existant node will
+ * The target node does not need to exist. Writing a value to a non-existent node will
  * automatically create that node and any ancestor nodes (parent, parent's parent, etc.) that
  * also don't exist.
  */
@@ -409,7 +464,7 @@ FUNCTION GoToNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Move the iterator to the parent of the node.
+ * Move the iterator to the parent of the current node (moves up the tree).
  *
  * @return Return code will be one of the following values:
  *
@@ -425,12 +480,12 @@ FUNCTION le_result_t GoToParent
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Move the iterator to the the first child of the node where the iterator is currently pointed.
+ * Moves the iterator to the the first child of the node from the current location.
  *
  * For read iterators without children, this function will fail. If the iterator is a write
  * iterator, then a new node is automatically created. If this node or newly created
  * children of this node are not written to, then this node will not persist even if the iterator is
- * comitted.
+ * committed.
  *
  * @return Return code will be one of the following values:
  *
@@ -446,13 +501,16 @@ FUNCTION le_result_t GoToFirstChild
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Jump the iterator to the next child node of the current node. Assuming the following tree:
+ * Jumps the iterator to the next child node of the current node. Assuming the following tree:
  *
  * @code
- * baseNode/
- *   childA/
- *     valueA
- *     valueB
+ * baseNode
+ *      |
+ *      +childA
+ *          |
+ *          +valueA
+ *          |
+ *          +valueB
  * @endcode
  *
  * If the iterator is moved to the path, "/baseNode/childA/valueA". After the first
@@ -479,10 +537,13 @@ FUNCTION le_result_t GoToNextSibling
  * Assuming the following tree:
  *
  * @code
- * baseNode/
- *   childA/
- *     valueA
- *     valueB
+ * baseNode
+ *      |
+ *      +childA
+ *          |
+ *          +valueA
+ *          |
+ *          +valueB
  * @endcode
  *
  * If the iterator was currently pointing at valueA, GetPath would return the following path:
@@ -493,7 +554,7 @@ FUNCTION le_result_t GoToNextSibling
  *
  * Optionally, a path to another node can be supplied to this function. So, if the iterator is
  * again on valueA and the relative path ".." is supplied then this function will return the
- * following path:
+ * the path relative to the node given:
  *
  * @code
  * /baseNode/childA/
@@ -514,7 +575,7 @@ FUNCTION le_result_t GetPath
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Get the type of node where the iterator is currently pointing.
+ * Get the data type of node where the iterator is currently pointing.
  *
  * @return le_cfg_nodeType_t value indicating the stored value.
  */
@@ -588,12 +649,12 @@ EVENT Change
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Delete the node specified by the path. If the node doesn't exist, nothing happens. All child
+ * Deletes the node specified by the path. If the node doesn't exist, nothing happens. All child
  * nodes are also deleted.
  *
  * If the path is empty, the iterator's current node is deleted.
  *
- * Only valid during a write transaction.
+ * This function is only valid during a write transaction.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION DeleteNode
@@ -626,7 +687,7 @@ FUNCTION bool IsEmpty
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Clear out the nodes's value. If it doesn't exist it will be created, but have no value.
+ * Clears out the node's value. If the node doesn't exist it will be created, and have no value.
  *
  * If the path is empty, the iterator's current node will be cleared. If the node is a stem
  * then all children will be removed from the tree.
@@ -644,7 +705,7 @@ FUNCTION SetEmpty
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Check to see if a given node in the config tree exists.
+ * Checks to see if a given node in the config tree exists.
  *
  * @return True if the specified node exists in the tree. False if not.
  */
@@ -659,7 +720,7 @@ FUNCTION bool NodeExists
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a string value from the config tree. If the value isn't a string, or if the node is
+ * Reads a string value from the config tree. If the value isn't a string, or if the node is
  * empty or doesn't exist, the default value will be returned.
  *
  * Valid for both read and write transactions.
@@ -684,7 +745,7 @@ FUNCTION le_result_t GetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a string value to the config tree. Only valid during a write
+ * Writes a string value to the config tree. Only valid during a write
  * transaction.
  *
  * If the path is empty, the iterator's current node will be set.
@@ -701,7 +762,7 @@ FUNCTION SetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a signed integer value from the config tree.
+ * Reads a signed integer value from the config tree.
  *
  * If the underlying value is not an integer, the default value will be returned instead. The
  * default value is also returned if the node does not exist or if it's empty.
@@ -725,7 +786,7 @@ FUNCTION int32 GetInt
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a signed integer value to the config tree. Only valid during a
+ * Writes a signed integer value to the config tree. Only valid during a
  * write transaction.
  *
  * If the path is empty, the iterator's current node will be set.
@@ -742,7 +803,7 @@ FUNCTION SetInt
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a 64-bit floating point value from the config tree.
+ * Reads a 64-bit floating point value from the config tree.
  *
  * If the value is an integer then the value will be promoted to a float. Otherwise, if the
  * underlying value is not a float or integer, the default value will be returned.
@@ -764,7 +825,7 @@ FUNCTION double GetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a 64-bit floating point value to the config tree. Only valid
+ * Writes a 64-bit floating point value to the config tree. Only valid
  * during a write transaction.
  *
  * If the path is empty, the iterator's current node will be set.
@@ -783,7 +844,7 @@ FUNCTION SetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a value from the tree as a boolean. If the node is empty or doesn't exist, the default
+ * Reads a value from the tree as a boolean. If the node is empty or doesn't exist, the default
  * value is returned. Default value is also returned if the node is a different type than
  * expected.
  *
@@ -804,7 +865,7 @@ FUNCTION bool GetBool
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a boolean value to the config tree. Only valid during a write
+ * Writes a boolean value to the config tree. Only valid during a write
  * transaction.
  *
  * If the path is empty, the iterator's current node will be set.
@@ -830,7 +891,7 @@ FUNCTION SetBool
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Delete the node specified by the path. If the node doesn't exist, nothing happens. All child
+ * Deletes the node specified by the path. If the node doesn't exist, nothing happens. All child
  * nodes are also deleted.
  */
 // -------------------------------------------------------------------------------------------------
@@ -842,8 +903,8 @@ FUNCTION QuickDeleteNode
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Make a given node empty. If the node doesn't currently exist then it is created as a new empty
- * node.
+ * Clears the current value of a node. If the node doesn't currently exist then it is created as a
+ * new empty node.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION QuickSetEmpty
@@ -854,7 +915,7 @@ FUNCTION QuickSetEmpty
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a string value from the config tree. If the value isn't a string, or if the node is
+ * Reads a string value from the config tree. If the value isn't a string, or if the node is
  * empty or doesn't exist, the default value will be returned.
  *
  * @return - LE_OK       - Commit was completed successfully.
@@ -871,7 +932,7 @@ FUNCTION le_result_t QuickGetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a string value to the config tree.
+ * Writes a string value to the config tree.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION QuickSetString
@@ -883,7 +944,7 @@ FUNCTION QuickSetString
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a signed integer value from the config tree. If the value is a floating point
+ * Reads a signed integer value from the config tree. If the value is a floating point
  * value, then it will be rounded and returned as an integer. Otherwise If the underlying value is
  * not an integer or a float, the default value will be returned instead.
  *
@@ -899,7 +960,7 @@ FUNCTION int32 QuickGetInt
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a signed integer value to the config tree.
+ * Writes a signed integer value to the config tree.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION QuickSetInt
@@ -911,7 +972,7 @@ FUNCTION QuickSetInt
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a 64-bit floating point value from the config tree. If the value is an integer,
+ * Reads a 64-bit floating point value from the config tree. If the value is an integer,
  * then it is promoted to a float. Otherwise, if the underlying value is not a float, or an
  * integer the default value will be returned.
  *
@@ -929,7 +990,7 @@ FUNCTION double QuickGetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a 64-bit floating point value to the config tree.
+ * Writes a 64-bit floating point value to the config tree.
  *
  * @note Floating point values will only be stored up to 6 digits of precision.
  */
@@ -943,7 +1004,7 @@ FUNCTION QuickSetFloat
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Read a value from the tree as a boolean. If the node is empty or doesn't exist, the default
+ * Reads a value from the tree as a boolean. If the node is empty or doesn't exist, the default
  * value is returned. This is also true if the node is a different type than expected.
  *
  * If the value is empty or the node doesn't exist, the default value is returned instead.
@@ -958,7 +1019,7 @@ FUNCTION bool QuickGetBool
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Write a boolean value to the config tree.
+ * Writes a boolean value to the config tree.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION QuickSetBool

@@ -2,12 +2,10 @@
 
 Use the Config tool to change a target's configuration database.
 
-Also see @ref howToConfigTree
-
 Functions supported include: inspect a tree, read/write values, and import/export
-enitre tree sections.
+entire tree sections.
 
-<h1>Usage</h1>
+@section toolsTarget_config_usage Usage
 
 <b><c> config [OPTIONS] </c></b>
 
@@ -44,7 +42,7 @@ enitre tree sections.
 @verbatim config help @endverbatim
 > Display help.
 
-<h2>Options</h2>
+@subsection toolsTarget_config_options Options
 
 @verbatim <tree path> @endverbatim
 > Path to the tree and node to configure.
@@ -73,20 +71,19 @@ A tree path is specified similar to a @c *nix path. With the beginning slash bei
 
     For example:
 
-        /a/path/to/somewhere
+      @c /a/path/to/somewhere
     or
-        a/path/to/somewhere
+      @c a/path/to/somewhere
 
-The configTree supports multiple trees: a default tree is assigned per user.
+The configTree supports multiple trees, a default tree is assigned per user.
 If the config tool is run as root, then alternative trees can be specified
 in the path by entering a tree name, then a colon and the value path.
 
 Here's an example using the tree named 'foo' instead of the default tree:
 
-      foo:/a/path/to/somewhere
+     @c foo:/a/path/to/somewhere
 
-
-@subsection configtoolsTarget_config_TreeLocation Tree location
+@subsection configtoolsTarget_config_TreeLocation Tree Location
 
 The trees themselves are stored in the file system at:
 @verbatim /legato/systems/current/configTree @endverbatim
@@ -98,7 +95,7 @@ A listing for /legato/systems/current/configTree where the system tree and the u
 like this:
 
 @verbatim
-$ ls /legato/systems/current/configTree/ -l
+# ls /legato/systems/current/config/ -l
 total 32
 -rw------- 1 user user  3456 May 12 11:02 bar.rock
 -rw------- 1 user user  3456 May  9 11:04 foo.scissors
@@ -113,10 +110,12 @@ To dump a tree, run this to get the default tree for the current user:
 
 @verbatim config get / @endverbatim
 
+@note if running as root @c config @c get @c / will return the @b System Tree
+
 Or to get a specific tree:
 
 @verbatim
-$ config get foo:/
+# config get foo:/
 /
   helloWorld/
     greeted<bool> == true
@@ -127,13 +126,13 @@ The config tool can also read and write individual values.  You can read the val
 this:
 
 @verbatim
-$ config get /helloWorld/greeted
+# config get /helloWorld/greeted
 true
 @endverbatim
 
 If you want to see everything under helloWorld:
 @verbatim
-$ config get /helloWorld
+# config get /helloWorld
 helloWorld/
   greeted<bool> == true
   ignored<bool> == false
@@ -141,12 +140,12 @@ helloWorld/
 
 If you want to change the value of ignored:
 @verbatim
-$ config set /helloWorld/ignored true bool
+# config set /helloWorld/ignored true bool
 @endverbatim
 
 You can check it by running:
 @verbatim
-$ config get /helloWorld/ignored
+# config get /helloWorld/ignored
 true
 @endverbatim
 
@@ -165,7 +164,9 @@ name and actual value:
     afloatValue<float> == 10.24
 @endverbatim
 
-<HR>
+The @config tool is designed to be easily used in external scripts.  The
+@ref howToUpgradeAppConfigTree is a good example of using the @c config tool to backup and restore
+an app's config tool
 
 Copyright (C) Sierra Wireless Inc.
 

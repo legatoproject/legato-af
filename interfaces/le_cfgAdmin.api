@@ -4,35 +4,111 @@
  *
  * @ref le_cfgAdmin_interface.h "API Reference"
  *
- * This API includes functions for importing and exporting subsections of the config tree to and
- * from a file.
+ * The Config Tree Admin API is intended to provide tools help with administration of Trees.  These
+ * administration functions are provided as a separate API for security reasons. The Admin API needs
+ * to be explicitly included to use these admin functions keeping access separate from the main app
+ * permissions.
  *
- * This API also includes an iterator object that can be used to iterate over the list of trees
- * currently known by the system.
+ * The API includes the following functions:
+ * - an iterator function to walk the current list of trees.
+ * - an import function to bulk load the data (full or partial) into a tree.
+ * - an export function to save the contents of a tree.
+ * - a delete function to remove a tree and all its objects.
  *
- * An example of printing the list of trees in a system:
+ * Example of @b Iterating the List of Trees:
  *
  * @code
- * le_cfgAdmin_IteratorRef_t iteratorRef = le_cfgAdmin_CreateTreeIterator();
- *
- * while (le_cfgAdmin_NextTree(iteratorRef) == LE_OK)
+ * void ListTrees(void)
  * {
- *    char treeName[MAX_TREE_NAME] = { 0 };
+ *     // Open a tree iterator.  Note that this isn't the same iterator that you would be using for
+ *     // read and write transactions.
+ *     le_cfgAdmin_IteratorRef_t iteratorRef = le_cfgAdmin_CreateTreeIterator();
  *
- *    if (le_cfgAdmin_GetTreeName(iteratorRef, treeName, sizeof(treeName)) == LE_OK)
- *    {
- *        printf("Tree: \"%s\"\n", treeName);
- *    }
- *    else
- *    {
- *        printf("Tree: \"%s\", truncated.\n", treeName);
- *    }
+ *     LE_INFO("Listing configuration Trees in the current system...");
+ *
+ *     // The iteratorRef starts at item -1, so we need to start with calling NextTree in our loop.
+ *     while (le_cfgAdmin_NextTree(iteratorRef) == LE_OK)
+ *     {
+ *         // Simply extract the name of the tree and dump it to the device log.
+ *         char treeName[MAX_TREE_NAME_BYTES] = "";
+ *
+ *         if (le_cfgAdmin_GetTreeName(iteratorRef, treeName, sizeof(treeName)) == LE_OK)
+ *         {
+ *             LE_INFO("Tree: '%s'", treeName);
+ *         }
+ *     }
+ *
+ *     // Again, this isn't a regular config node iterator, so you need to use the cfgAdmin
+ *     // release on the tree iterator.
+ *     le_cfgAdmin_ReleaseTreeIterator(iteratorRef);
  * }
- *
- * le_cfgAdmin_ReleaseTreeIterator(iteratorRef);
  * @endcode
  *
- * <HR>
+ * Example of @b Importing a Tree:
+ *
+ * @code
+ * void ImportMyTree(const char* filePath)
+ * {
+ *     static char resolvedPath[PATH_MAX] = "";
+ *
+ *     // Because the configTree is a seperate process, we need to make sure that the path we
+ *     // received is an absolute path.
+ *     LE_FATAL_IF(realpath(filePath, resolvedPath) == NULL, "Could not resolve filePath: %m");
+ *
+ *     // Open a write transaction on /myData, as we will be writing to the configTree.
+ *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("/myData");
+ *
+ *     // Our iterator is currently on /myData, so everything under that node is replaced.  If we
+ *     // want to replace the whole tree we could supply a "/" here instead of using the iterator's
+ *     // current location.  Alternativly, we could have opened or moved the iterator to "/" in the
+ *     // first place.
+ *     LE_FATAL_IF(le_cfgAdmin_ExportTree(iteratorRef, resolvedPath, "") != LE_OK,
+ *                 "Error occured while writing config data.");
+ *
+ *     // Close up the iterator,free it's resources, and commit the new data to the configTree.
+ *     le_cfg_CommitTxn(iteratorRef);
+ * }
+ *
+ * // To import the config data back from ./myData.cfg:
+ * ImportMyData("./myData.cfg");
+ * @endcode
+ *
+ * Example of @b Exporting a Tree
+ *
+ * @code
+ * void ExportMyData(const char* filePath)
+ * {
+ *     static char resolvedPath[PATH_MAX] = "";
+ *
+ *     // Because the configTree is a seperate process, we need to make sure that the path we
+ *     // received is an absolute path.
+ *     LE_FATAL_IF(realpath(filePath, resolvedPath) == NULL, "Could not resolve filePath: %m");
+ *
+ *     // Open a read transaction on /myData.
+ *     le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateReadTxn("/myData");
+ *
+ *     // Our iterator is currently on /myData, so everything under that node is exported.  If we
+ *     // want to export the whole tree we could supply a "/" here instead of using the iterator's
+ *     // current location.  Alternativly, we could have opened or moved the iterator to "/" in the
+ *     // first place.
+ *     LE_FATAL_IF(le_cfgAdmin_ExportTree(iteratorRef, resolvedPath, "") != LE_OK,
+ *                 "Error occured while writing config data.");
+ *
+ *     // Close up the iterator and free it's resources.
+ *     le_cfg_CancelTxn(iteratorRef);
+ * }
+ *
+ * // To export the config tree to ./myData.cfg:
+ * ExportMyData("./myData.cfg");
+ * @endcode
+ *
+ * Example of @b Deleting a Tree
+ *
+ * @code
+ * // To delete a tree simply call le_cfgAdmin_DeleteTree.  For example to delete the tree foo,
+ * // call as follows:
+ * le_cfgAdmin_DeleteTree("foo");
+ * @endcode
  *
  * Copyright (C) Sierra Wireless Inc.
  */

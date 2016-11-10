@@ -1,10 +1,6 @@
-/** @page basicConfig Configuration
+/** @page basicConfig App/System Configuration
 
-This topic describes how target device configuration works in Legato. We'll shorten it to 'config'
-from here on.
-
-Also see @ref howToConfigTree
-
+This topic describes how application and system configuration works in Legato AF.
 
 Device config data is vital for most apps. Seldom are all devices
 in an application identical.  Usually, there's some kind of customization on each
@@ -13,27 +9,55 @@ Regardless of the device's customization, the device needs to be:
  - stored somewhere it can be retrieved quickly
  - easy to modify programmatically from within the device application code
  - easy to view and modify remotely via generic network or managed portal service
- - protected from
-   - malicious snooping and vandalizm
+ - protected from:
+   - malicious snooping and vandalism
    - multi-threaded race conditions
    - untimely device reset or power loss
 
-@todo Update this section and its subsections to match implementation.
+@section basicConfig_treestructs Tree Structure
 
-@section Tree Structure
+Config data is stored in a tree structure, where each node is made up of a stem or a leaf.  Stem
+nodes can contain any number of child nodes, each with its own name. Leaf nodes can either be empty
+or contain data.
 
-Config data is stored in a tree structure, where each non-leaf node can contain any number
-of child nodes, each with its own name. At the leaves of the tree, the nodes can contain data.
+@verbatim
+       +tree
+           |
+           +--stem
+           |   |
+           |   +--leaf (value)
+           |
+           +-stem
+           |  |
+           |  +--leaf (value)
+           |  |
+           |  +--leaf (value)
+           |
+           +--stem
+               |
+               +stem
+               |  |
+               |  +leaf (value)
+               |  |
+               |  +stem
+               |    |
+               |    +stem
+               |       |
+               |       +leaf (value)
+               |
+               +leaf (value)~
+
+@endverbatim
 
 This tree structure allows config data items to be uniquely identified using path names,
 much like file system paths, which makes it much easier to access config data via HTTP,
 SNMP, OMA-DM, and other protocols. It also allows the config database to be explored using
 tree walking algorithms and tools.
 
-@section Transactions
+@section basicConfig_trans Transactions
 
-Config data can be shared by multiple processes and threads. This can sometimes result in race conditions
-that can threaten data integrity. For example, if threads A and B both use data
+Config data can be shared by multiple processes and threads. This can sometimes result in race
+conditions that can threaten data integrity. E.g., if threads A and B both use data
 fields X and Y, it could be bad if thread A interrupts thread B to read those fields just
 after thread B has updated field X and is about to update field Y to be consistent with the new
 value of field X.
@@ -47,7 +71,7 @@ sorts of problems.
 Before a change can be made to config data, a write transaction must be started. All
 changes are made in the context of such a transaction, and when the changes are complete, the
 transaction can be "committed". If a fault prevents the entire set of changes from being applied
-on commit, or if the transaction is cancelled before it is committed, then none of that
+on commit, or if the transaction is canceled before it is committed, then none of that
 transaction's changes will be applied.
 
 Transactions can also be started for reading only.  A write transaction will be allowed to start
@@ -57,48 +81,50 @@ data fields will see only field values that are consistent.
 
 To prevent denial of service problems (either accidental or malicious), transactions have a
 limited lifetime. If a transaction remains open for too long, it will be automatically terminated;
-the configration database will drop its connection to the offending client.
+the configuration database will drop its connection to the offending client.
 
-@section backForwardCompatibility Backward/Forward Compatibility
+@section basicConfig_growth Config Data Growth
 
-For example, for a new recurring wake-up schedule that supports waking on particular days of the
-week, the wake schedule config data may need to be completely re-structured.
-There are several ways to do this.
+Config structure will change over time as your app is developed and new features are added.  Config
+tree changes need to be managed in a way that supports the growth and the upgrades.
 
-One approach is to have a "config data upgrade" utility
-run when the new software is installed. However, if the new software upgrades the config
-data and then fails to fully boot, and the device is forced to fall-back to the old software,
-then the old software won't be able to read its config data anymore. This can be mitigated
-by keeping a complete backup copy of the config data prior to the software upgrade, but
-this either consumes space in the device's non-volatile memory or it consumes time and over-the-air
-bandwidth to make backup copies elsewhere in the network.
-
-However, the recommended approach is to:
- - have newer software understand the config data structure used by previous versions of
+Recommended strategies when upgrading your app's tree:
+ - Have newer software understand the config data structure used by previous versions of
    the software;
- - never write to the config data unless settings are being changed;
- - when changing settings, write the config data using the newest format;
- - leave the older version of the config data along-side the newer version (in case of
-   later software "downgrade");
- - if both multiple versions of the same config data are found, use only the newest that is
-   understood by the current running software.
+ - Never write to the config data unless settings are being changed;
+ - When changing settings, write the config data using the newest format;
+ - If both multiple versions of the same config data are found, use only the newest that is
+   understood by the current running software;
+ - If you are backing up the original config tree keep in mind the limited space requirements of the
+   non-volatile memory, or the time and data cost of over-the-air bandwidth.
 
-@section configChangeNotification Config Change Notifications
+@section basicConfig_updateRollback Software Updates and Roll-Back
+
+When you update apps that use Config Trees, and the upgrade is done using the @ref c_update API:
+- the updated new system automatically inherits (copies) the trees from the old system.
+- if a roll-back happens, the updated system trees (possibly corrupted) are deleted,
+and the old system is restored (along with the old config trees in the same state as
+before the update).
+
+@note The @ref toolsTarget_update tool uses the @ref c_update API.
+
+@section basicconfig_changeNotif Config Change Notifications
 
 Sometimes, action needs to be taken whenever a config data field changes value. The
 @ref c_config allows client software to register for notification when changes are committed to
 a particular branch of the config tree.
 
-@section accessControl Access Control
+@section basicConfig_accessControl Access Control
 
-Because the behaviour of apps can be affected by the config data that they use,
+Because the behavior of apps can be affected by the config data that they use,
 config data can be used as an attack vector for malicious software. As a result,
 access to config data must be strictly controlled when there is any possibility that
 malicious software may be allowed to run on a device.
 
-The Config Tree system separates each apps' configration data only allowing access to its own data.
+The Config Tree system separates each apps' configuration data only allowing access to its own data.
 
-@todo Document how config data access control lists are specified.
+See @ref defFilesAdef_requiresConfigTree ".adef requires section" for details about setting
+permissions for your trees.
 
 Copyright (C) Sierra Wireless Inc.
 
