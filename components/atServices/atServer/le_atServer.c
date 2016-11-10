@@ -374,6 +374,7 @@ typedef struct
     bool                    isFirstIntermediate;
     RspState_t              rspState;
     le_msg_SessionRef_t     sessionRef;         ///< session reference
+    bool                    suspended;          /// is device in data mode?
 }
 DeviceContext_t;
 
@@ -768,7 +769,7 @@ static void SendUnsolRsp
         return;
     }
 
-    if (!devPtr->processing)
+    if (!devPtr->processing && !devPtr->suspended)
     {
         SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
         le_mem_Release(rspStringPtr);
@@ -1599,6 +1600,96 @@ static void CloseSessionEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Suspend server / enter data mode
+ *
+ * When this function is called the server stops monitoring the fd for events
+ * hence no more I/O operations are done on the fd by the server.
+ *
+ * @return
+ *      - LE_OK             Success.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_FAULT          Device not monitored
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_Suspend
+(
+    le_atServer_DeviceRef_t devRef ///< [IN] device to be unbinded
+)
+{
+    DeviceContext_t* devPtr;
+    Device_t *devicePtr;
+
+    devPtr = le_ref_Lookup(DevicesRefMap, devRef);
+    devicePtr = &devPtr->device;
+
+    if (!devPtr)
+    {
+        LE_ERROR("Invalid device");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!devicePtr || !devicePtr->fdMonitor)
+    {
+        LE_ERROR("Device is not monitored");
+        return LE_FAULT;
+    }
+
+    le_dev_RemoveFdMonitoring(devicePtr);
+
+    devPtr->suspended = true;
+
+    LE_INFO("server suspended");
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume server / enter command mode
+ *
+ * When this function is called the server resumes monitoring the fd for events
+ * and is able to interpret AT commands again.
+ *
+ * @return
+ *      - LE_OK             Success.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_FAULT          Device not monitored
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_Resume
+(
+    le_atServer_DeviceRef_t devRef ///< [IN] device to be unbinded
+)
+{
+    DeviceContext_t* devPtr;
+    Device_t *devicePtr;
+
+    devPtr = le_ref_Lookup(DevicesRefMap, devRef);
+    devicePtr = &devPtr->device;
+
+    if (!devPtr || !devicePtr)
+    {
+        LE_ERROR("Invalid device");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (le_dev_AddFdMonitoring(devicePtr, RxNewData, devPtr) != LE_OK)
+    {
+        LE_ERROR("Error during adding the fd monitoring");
+        return LE_FAULT;
+    }
+
+    devPtr->suspended = false;
+
+    LE_INFO("server resumed");
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function opens an AT server session on the requested device.
  *
  * @return
@@ -1651,6 +1742,7 @@ le_atServer_DeviceRef_t le_atServer_Open
     devPtr->isFirstIntermediate = true;
     devPtr->sessionRef = le_atServer_GetClientSessionRef();
     devPtr->ref = le_ref_CreateRef(DevicesRefMap, devPtr);
+    devPtr->suspended = false;
 
     LE_INFO("created device");
 
@@ -1737,8 +1829,6 @@ le_atServer_CmdRef_t le_atServer_Create
  *      - LE_FAULT         The function failed to delete the command.
  *      - LE_BUSY          Command is in progress.
  *
- * @note If the AT Command reference is invalid, a fatal error occurs,
- *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_Delete

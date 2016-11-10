@@ -7,10 +7,23 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "defs.h"
+#include "strerror.h"
 
-#define DSIZE           512     /* default buffer size */
 #define COMMANDS_MAX    50
 #define PARAM_MAX       24
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ServerData_t definition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int socketFd;
+    int connFd;
+}
+ServerData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -28,25 +41,18 @@ AtCmd_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * struct AtSession definition
+ * AtSession_t definition
  *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
     le_atServer_DeviceRef_t devRef;
+    int fd;
     int cmdsCount;
     AtCmd_t atCmds[COMMANDS_MAX];
 }
 AtSession_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * at server session
- *
- */
-//--------------------------------------------------------------------------------------------------
-static AtSession_t AtSession;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -464,7 +470,109 @@ static void CbcCmdHandler
     // send an OK final response
     LE_ASSERT(le_atServer_SendFinalResponse(commandRef, finalRsp, false, "")
         == LE_OK);
+}
 
+//------------------------------------------------------------------------------
+/**
+ * Data command handler
+ *
+ * tests suspend/resume functions
+ *
+ * API tested:
+ *      le_atServer_Suspend
+ *      le_atServer_Resume
+ *      le_atServer_SendIntermediateResponse
+ *      le_atServer_SendFinalResponse
+ *      le_atServer_SendUnsolicitedResponse, specific device
+ *
+ */
+//------------------------------------------------------------------------------
+static void DataCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    int i;
+    AtSession_t* AtSession = (AtSession_t *)contextPtr;
+
+    switch (type)
+    {
+        // send an ERROR final response
+        case LE_ATSERVER_TYPE_READ:
+        case LE_ATSERVER_TYPE_PARA:
+            LE_ASSERT(
+                le_atServer_SendFinalResponse(commandRef,
+                    LE_ATSERVER_ERROR, false, "")
+                == LE_OK);
+            break;
+        // send an OK final response
+        case LE_ATSERVER_TYPE_TEST:
+            LE_ASSERT(
+                le_atServer_SendFinalResponse(commandRef,
+                    LE_ATSERVER_OK, false, "")
+                == LE_OK);
+            break;
+        case LE_ATSERVER_TYPE_ACT:
+            LE_ASSERT(
+                le_atServer_SendIntermediateResponse(commandRef,
+                    "CONNECT")
+                == LE_OK);
+
+            LE_ASSERT(le_atServer_Suspend(AtSession->devRef) == LE_OK);
+
+            for (i=0; i<3; i++)
+            {
+                LE_ASSERT(le_atServer_SendUnsolicitedResponse("CONNECTED",
+                            LE_ATSERVER_SPECIFIC_DEVICE, AtSession->devRef)
+                    == LE_OK);
+            }
+
+            if (write(AtSession->fd, "testing the data mode", 21) == -1)
+            {
+                LE_ERROR("write failed: %s", strerror(errno));
+            }
+
+            LE_ASSERT(le_atServer_Resume(AtSession->devRef) == LE_OK);
+
+            LE_ASSERT(
+                le_atServer_SendFinalResponse(commandRef,
+                    LE_ATSERVER_OK, true, "NO CARRIER")
+                == LE_OK);
+            break;
+
+        default:
+            LE_ASSERT(0);
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cleanup thread function
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CleanUp
+(
+    void *contextPtr
+)
+{
+    ServerData_t *serverData;
+
+    serverData = (ServerData_t *)contextPtr;
+
+    if (close(serverData->connFd) == -1)
+    {
+        LE_ERROR("close failed %s", strerror(errno));
+    }
+
+    if (close(serverData->socketFd) == -1)
+    {
+        LE_ERROR("close failed %s", strerror(errno));
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -488,14 +596,18 @@ void* AtServer
 )
 {
     SharedData_t* sharedDataPtr;
-    char errMsg[DSIZE];
+    static ServerData_t serverData;
+    static AtSession_t AtSession;
     struct sockaddr_un addr;
-    int socketFd;
-    int connFd;
     int i = 0;
 
     AtCmd_t AtCmdCreation[] =
     {
+        {
+            .atCmdPtr = "AT+DATA",
+            .cmdRef = NULL,
+            .handlerPtr = DataCmdHandler,
+        },
         {
             .atCmdPtr = "ATI",
             .cmdRef = NULL,
@@ -567,14 +679,14 @@ void* AtServer
 
     LE_DEBUG("Server Started");
 
+    le_thread_AddDestructor(CleanUp,(void *)&serverData);
+
     pthread_mutex_lock(&sharedDataPtr->mutex);
 
-    socketFd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (socketFd == -1)
+    serverData.socketFd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (serverData.socketFd == -1)
     {
-        memset(errMsg, 0, DSIZE);
-        LE_ERROR("socket failed: %s",
-            strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR("socket failed: %s", strerror(errno));
         return NULL;
     }
 
@@ -582,19 +694,15 @@ void* AtServer
     addr.sun_family= AF_UNIX;
     strncpy(addr.sun_path, sharedDataPtr->devPathPtr, sizeof(addr.sun_path)-1);
 
-    if (bind(socketFd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
+    if (bind(serverData.socketFd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
     {
-        memset(errMsg, 0, DSIZE);
-        LE_ERROR(" bind failed: %s",
-            strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR(" bind failed: %s", strerror(errno));
         return NULL;
     }
 
-    if (listen(socketFd, 1) == -1)
+    if (listen(serverData.socketFd, 1) == -1)
     {
-        memset(errMsg, 0, DSIZE);
-        LE_ERROR("listen failed: %s",
-            strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR("listen failed: %s", strerror(errno));
         return NULL;
     }
 
@@ -602,12 +710,10 @@ void* AtServer
     pthread_cond_signal(&sharedDataPtr->cond);
     pthread_mutex_unlock(&sharedDataPtr->mutex);
 
-    connFd = accept(socketFd, NULL, NULL);
-    if (connFd == -1)
+    serverData.connFd = accept(serverData.socketFd, NULL, NULL);
+    if (serverData.connFd == -1)
     {
-        memset(errMsg, 0, DSIZE);
-        LE_ERROR("accept failed: %s",
-            strerror_r(errno, errMsg, DSIZE));
+        LE_ERROR("accept failed: %s", strerror(errno));
         return NULL;
     }
 
@@ -615,8 +721,15 @@ void* AtServer
     AtSession.devRef = le_atServer_Open(-1);
     LE_ASSERT(AtSession.devRef == NULL);
 
+    /*
+     * save a copy of fd and duplicate it before Opening the server
+     * after a call to le_atServer_Open the file descriptor will be closed
+     */
+
+    AtSession.fd = serverData.connFd;
+
     // start the server
-    AtSession.devRef = le_atServer_Open(connFd);
+    AtSession.devRef = le_atServer_Open(dup(serverData.connFd));
     LE_ASSERT(AtSession.devRef != NULL);
 
     AtSession.cmdsCount = NUM_ARRAY_MEMBERS(AtCmdCreation);

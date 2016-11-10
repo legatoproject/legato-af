@@ -400,4 +400,6 @@ void le_dev_RemoveFdMonitoring
     {
         le_fdMonitor_Delete(devicePtr->fdMonitor);
     }
+
+    devicePtr->fdMonitor = NULL;
 }

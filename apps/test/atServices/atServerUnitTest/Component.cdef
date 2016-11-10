@@ -8,6 +8,7 @@ requires:
 
 sources:
 {
+    strerror.c
     server.c
     main.c
 }

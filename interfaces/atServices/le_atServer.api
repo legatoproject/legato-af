@@ -14,6 +14,13 @@
  * Multiple devices can be bound.
  * A file descriptor can be unbound using le_atServer_Stop().
  *
+ * The server can be suspended using le_atServer_Suspend() in order to use the
+ * opened fd for other purposes like starting a ppp service on the opened fd.
+ * For that a fd dup needs to be done before opening a server session.
+ * When needed, the server can be resumed using le_atServer_Resume(). Make sure
+ * to close the fd when the app exists or you may get too many open files error.
+ *
+ * used before opening a server session
  * @section atServer_subscription Subscription
  *
  * A new AT command can be added into the parser using le_atServer_Create(), and it can be deleted
@@ -117,11 +124,53 @@ ENUM AvailableDevice
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Suspend server / enter data mode
+ *
+ * When this function is called the server stops monitoring the fd for events
+ * hence no more I/O operations are done on the fd by the server.
+ *
+ * @return
+ *      - LE_OK             Success.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_FAULT          Device not monitored
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Suspend
+(
+    Device device IN   ///< device to be suspended
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume server / enter command mode
+ *
+ * When this function is called the server resumes monitoring the fd for events
+ * and is able to interpret AT commands again.
+ *
+ * @return
+ *      - LE_OK             Success.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_FAULT          Device not monitored
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Resume
+(
+    Device device IN   ///< device to be resumed
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function opens an AT server session on the requested device.
  *
  * @return
  *      - Reference to the requested device.
  *      - NULL if the device is not available or fd is a BAD FILE DESCRIPTOR.
+ *
+ * @note Make sure to duplicate (man dup) your file descriptor before opening
+ *       a server session to be able to use the suspend/resume feature
+ *
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Device Open
@@ -169,8 +218,6 @@ FUNCTION Cmd Create
  *      - LE_FAULT         The function failed to delete the command.
  *      - LE_BUSY          Command is in progress.
  *
- * @note If the AT Command reference is invalid, a fatal error occurs,
- *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 

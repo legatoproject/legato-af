@@ -4,8 +4,8 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
-#ifndef DEFS_H
-#define DEFS_H
+#ifndef _DEFS_H
+#define _DEFS_H
 
 #include "legato.h"
 
