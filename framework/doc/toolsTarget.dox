@@ -11,6 +11,7 @@ Legato has these tools to run on the target:
 | @subpage toolsTarget_inspect       | examine running Legato processes and memory pools  |
 | @subpage toolsTarget_legato        | run Legato framework                               |
 | @subpage toolsTarget_log           | set logging variables for components               |
+| @subpage toolsTarget_sbtrace  |  help import files into sandboxed app        |
 | @subpage toolsTarget_sdir          | control IPC bindings and troubleshoot              |
 | @subpage toolsTarget_setNet        | set your MAC address or static IP                  |
 | @subpage toolsTarget_pmTool        | set power manager target options                   |
