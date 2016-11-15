@@ -3,7 +3,8 @@
  * @page c_spi SPI
  *
  * @ref le_spi_interface.h "API Reference" <br>
- * @ref howToSPI "How To Setup SPI"
+ * @ref howToSPI "How To Setup SPI" <br>
+ * @ref yoctoOutofTreeKernelModule
  *
  * <HR>
  *
@@ -34,7 +35,7 @@
  * @endcode
  *
  * le_spi_Configure() initializes all the parameters on the master side based on the
- * implementation below uses mode = 0, 8 bit data, 960kbps and MSB first
+ * implementation below uses mode = 0, 8 bit data, 960kbps and MSB first:
  * @code
  * le_spi_Configure(spiHandle, 0, 8, 960000, 0);
  * @endcode
@@ -143,7 +144,17 @@ FUNCTION Close
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Configures an SPI device
+ * Configures an SPI device's data sample settings. The required values should be
+ * included in your target's datasheet. Most common @c Mode values are
+ * @c 0 and @c 3. 
+ *
+ * These are the SPI Mode options:
+ * |   Mode  |   Clock Polarity   |  Clock Phase   |   Clock Edge   |
+ * | :-----: | :----------------: | :------------: | :------------: |
+ * |   0     |       0            |   0            |    1           |
+ * |   1     |       0            |   1            |    0           |
+ * |   2     |       1            |   0            |    1           |
+ * |   3     |       1            |   1            |    0           |
  *
  * @note
  *      This function should be called before any of the Read/Write functions to ensure
@@ -153,11 +164,7 @@ FUNCTION Close
 FUNCTION Configure
 (
     DeviceHandle handle IN,  ///< Handle for the SPI master to configure
-    int mode IN,  ///< Choose mode options for the bus as below
-                  ///< Mode = 0:  Clock polarity = 0, Clock phase = 0, Clock Edge = 1
-                  ///< Mode = 1:  Clock polarity = 0, Clock phase = 1, Clock Edge = 0
-                  ///< Mode = 2:  Clock polarity = 1, Clock phase = 0, Clock Edge = 1
-                  ///< Mode = 3:  Clock polarity = 1, Clock phase = 1, Clock Edge = 0
+    int mode IN,  ///< Choose mode options for the bus per above table
     uint8 bits IN,  ///< bits per word, typically 8 bits per word
     uint32 speed IN,  ///< max speed (Hz), this is slave dependant
     int msb IN    ///< set as 0 for MSB as first bit or 1 for LSB as first bit

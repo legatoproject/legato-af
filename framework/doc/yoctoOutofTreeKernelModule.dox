@@ -141,9 +141,48 @@ running on the target.
 
 @section howToAddKernelDriver_loadDriver Load Driver
 
-This is how to load the custom kernel module (driver) onto a target device using Legato.
+You can load the driver onto the target device
+@ref howToAddKernelDriver_loadDriver_manualLoad "manually" or use Legato's
+@ref howToAddKernelDriver_loadDriver_mDefFile.
 
-@subsection howToAddKernelDriver_loadDriver_mDefFile mdef File
+@subsection howToAddKernelDriver_loadDriver_manualLoad Manual Load
+
+This section shows how to:
+- copy a module to a target
+- manually install a module on a target
+- remove a module from a target
+
+This is how to use @c scp to copy a kernel module (driver) onto the
+target:
+@code
+scp ktest_module.ko root@$target_IP:/home/root/ktest_dir
+@endcode
+
+This is how to install a module, and check it installed:
+@code
+root@swi-mdm9x15:~/ktest_dir# insmod ktest_module.ko
+root@swi-mdm9x15:~/ktest_dir# lsmod |grep ktest
+ktest_module 648 0 - Live 0xbf0eb000 (PO)
+@endcode
+
+This is how to check the log file:
+@code
+root@swi-mdm9x15:~/ktest_dir# logread |tail -n 2
+Nov 10 18:16:30 swi-mdm9x15 user.info kernel: [88600.728022] Driver version 1.0.0
+Nov 10 18:16:30 swi-mdm9x15 user.info kernel: [88600.728053] Buona Sera :)
+@endcode
+
+This is how to remove the module, and check the log that it was removed:
+@code
+root@swi-mdm9x15:~/ktest_dir# rmmod ktest_module.ko
+root@swi-mdm9x15:~/ktest_dir# logread |tail -n 2
+Nov 10 18:16:30 swi-mdm9x15 user.info kernel: [88600.728053] Buona Sera :)
+Nov 10 18:19:38 swi-mdm9x15 user.info kernel: [88789.028495] Ciao!
+root@swi-mdm9x15:~/ktest_dir#
+@endcode
+
+@subsection howToAddKernelDriver_loadDriver_mDefFile mdef File Load
+You can also use Legato's @c mdef to load the pre-built kernel module.
 
 Create @ref defFilesMdef @c hello.mdef file in any location with this @c preBuilt section:
 @code

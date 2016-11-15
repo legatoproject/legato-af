@@ -5,13 +5,13 @@ This topic provides details on how to setup the @ref c_spi Service.
 To be able to use the @ref c_spi Service, you need to install the @c spidev and @c spisvc modules on
 the target.
 
-Check if the @c spidev doesn't exist in the /dev directory:
+Verify if @c spidev isn't already in the /dev directory:
 @code
 root@swi-mdm9x15:~# ls /dev/spi*
 ls: /dev/spi*: No such file or directory
 @endcode
 
-Check @c spidev and @c spisvc modules are installed on the target. It should show something like:
+Then verify the @c spidev and @c spisvc modules aren't already installed, like this:
 @code
 root@swi-mdm9x15:~# lsmod
     Not tainted
@@ -40,8 +40,16 @@ sd_mod 29459 0 - Live 0xbf03f000
 scsi_mod 131955 2 usb_storage,sd_mod, Live 0xbf00d000
 unix 28948 625 - Live 0xbf000000
 @endcode
- 
-Next, install @c spisvc module:
+
+Next, you'll need to create a kernel module @c .ko file. Follow the instructions in
+Out of Tree Kernel Module topic @ref howToAddKernelDriver_makeKernel. Your @c .ko file should use
+the code in the files located in <c>legato/drivers/spisvc: Makefile, spisvc.c, and spisvc.mdef</c>.
+Use @c scp to copy your  kernel module (driver) onto the target like this:
+@code
+scp ktest_module.ko root@$target_IP:/home/root/ktest_dir
+@endcode
+
+After you've copied your kernel module @c .ko file, install it like this:
 @code
 root@swi-mdm9x15:~/ktest_dir# insmod spisvc.ko
 @endcode
@@ -64,6 +72,11 @@ Check the target to ensure @c spidev0.0 now exists:
 @code
 root@swi-mdm9x15:~/ktest_dir# ls /dev/*spi*
 /dev/spidev0.0
+@endcode
+
+Start the @c spisvc:
+@code
+root@swi-mdm9x15:~/ktest_dir# app start spisvc
 @endcode
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
