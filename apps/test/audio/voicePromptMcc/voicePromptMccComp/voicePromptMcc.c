@@ -16,8 +16,8 @@
  * You must issue the following commands:
  * @verbatim
    $ app start voicePromptMcc
-   $ execInApp voicePromptMcc voicePromptMcc <phone number>
-   $ execInApp voicePromptMcc voicePromptMcc <phone number> AMR-NB for playing AMR-NB encoded voice
+   $ app runProc voicePromptMcc --exe=voicePromptMcc -- <phone number>
+   $ app runProc voicePromptMcc --exe=voicePromptMcc -- <phone number> AMR-NB for playing AMR-NB encoded voice
    prompts
    @endverbatim
  *
@@ -712,8 +712,8 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the voicePromptMcc test is:",
-            "   \"execInApp voicePromptMcc voicePromptMcc <phone number>\" with wav file",
-            "   \"execInApp voicePromptMcc voicePromptMcc <phone number> AMR-NB\" with AMR-NB \
+            "   \"app runProc voicePromptMcc --exe=voicePromptMcc -- <phone number>\" with wav file",
+            "   \"app runProc voicePromptMcc --exe=voicePromptMcc -- <phone number> AMR-NB\" with AMR-NB \
 decoding file"
     };
 
@@ -754,7 +754,7 @@ static void SigHandler
 /**
  * Initialize the test component.
  * Start application with 'app start voicePromptMcc' command
- * Execute application with 'execInApp voicePromptMcc voicePromptMcc (see PrintUsage())'
+ * Execute application with 'app runProc voicePromptMcc --exe=voicePromptMcc (see PrintUsage())'
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT

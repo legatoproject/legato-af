@@ -701,8 +701,8 @@ static void SigHandler
  * Test application delete all Rx SM
  * Check "logread -f | grep sms" log
  * Start app : app start smsCBTest
- * Execute app : execInApp smsCBTest smsCBTest
- * or Execute app : execInApp smsCBTest smsCBTest < cdma | gsm |   >
+ * Execute app : app runProc smsCBTest --exe=smsCBTest
+ * or Execute app : app runProc smsCBTest --exe=smsCBTest -- < cdma | gsm |   >
  * Wait for SMS Cell broadcast reception on the INFO trace Level.
  * Execute CTRL + C to exit from application
  */
@@ -719,7 +719,7 @@ COMPONENT_INIT
     le_log_EnableTrace(TraceRefPdu);
     le_log_EnableTrace(TraceRefSms);
 
-    LE_INFO("PRINT USAGE => execInApp smsCBTest smsCBTest < cdma | gsm |   >");
+    LE_INFO("PRINT USAGE => app runProc smsCBTest --exe=smsCBTest -- < cdma | gsm |   >");
 
     if (le_arg_NumArgs() == 1)
     {

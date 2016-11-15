@@ -14,7 +14,7 @@ OnFail() {
 OnExit() {
     # Uninstall all the apps.
     for app in $appList; do
-        rmapp ${app} $targetAddr
+        app remove ${app} $targetAddr
     done
 }
 

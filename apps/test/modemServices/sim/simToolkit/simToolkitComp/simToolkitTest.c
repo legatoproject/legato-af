@@ -4,7 +4,7 @@
 * You must issue the following commands:
 * @verbatim
   $ app start simToolkit
-  $ execInApp simToolkit simToolkit <accept/reject/none> [<APN> <UserName> <Password>]
+  $ app runProc simToolkit --exe=simToolkit -- <accept/reject/none> [<APN> <UserName> <Password>]
  @endverbatim
 * Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
 *
@@ -95,7 +95,7 @@ static void PrintUsage
     const char * usagePtr[] =
     {
             "Usage of the simToolkit app is:",
-            "   execInApp simToolkit simToolkit <accept/reject/none> [<APN> <UserName> <Password>]",
+            "   app runProc simToolkit --exe=simToolkit -- <accept/reject/none> [<APN> <UserName> <Password>]",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)

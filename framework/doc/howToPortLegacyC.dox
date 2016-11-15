@@ -229,7 +229,7 @@ Deleted user 'applegacyProgram'.
 Installing app 'legacyProgram'...
 Created user 'applegacyProgram' (uid 1011, gid 1011).
 DONE
-$ startapp legacyProgram 192.168.2.2
+$ app start legacyProgram 192.168.2.2
 @endcode
 
 @section howtoPortingLegacyC_handlers Callbacks from Legato APIs

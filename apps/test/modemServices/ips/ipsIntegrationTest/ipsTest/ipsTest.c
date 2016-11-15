@@ -11,7 +11,7 @@
  * 1) install application test.
  * 2) Start log trace 'logread -f | grep 'ips'
  * 3) Start application 'app start ipsTest'
- * 4) Execute application 'execInApp ipsTest ipsTest [command..] see PrintUsage()'
+ * 4) Execute application 'app runProc ipsTest --exe=ipsTest -- [command..] see PrintUsage()'
  * 5) check trace for the following INFO  trace:
  */
 
@@ -54,7 +54,7 @@ static void PrintUsage()
     int idx;
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
-                    "execInApp ipsTest ipsTest <option> ..:",
+                    "app runProc ipsTest --exe=ipsTest -- <option> ..:",
                     "<option>:"
                     "  ALL  : Execute all test",
                     "  HANDLER : Install a Input Voltage monitoring handler to monitor events.",

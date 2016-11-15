@@ -7,7 +7,7 @@ There are various tools available to determine why your app is failing or blocki
 - @ref howToLogs to set filters, tracing, etc.
 - @ref howToDebug_appStatus for current app info.
 - @ref howToDebug_sdir to check if your app is connected.
-- @ref howToDebug_execInApp to rerun the app.
+- @ref howToDebug_appRunProc to run or rerun a process in an app.
 - @ref howToDebug_inspect to review memory pool details.
 - @ref howToDebug_appCrashLogs to analysis system crash logs or core dumps.
 - @ref howToDebug_openTools can help, too.
@@ -27,10 +27,11 @@ connecting). This helps if your client is waiting for a service to appear or
 a binding to be created. @c sdir can also list apps or users offering
 services.  See @ref toolsTarget_sdir
 
-@section howToDebug_execInApp Run exeInApp
-Run <code> execInApp [procName=NAME] execPath [ARGS]</code> to execute a
-specific process in a running app's sandbox. @c execInApp can also set
-process priority. See @ref toolsTarget_execInApp
+@section howToDebug_appRunProc Run Process in App
+Run <code>app runProc <appName> <procName> [options]</code> or
+<code>app runProc <appName> [<procName>] --exe=<exePath> [options]</code> to execute a
+specific process in a running app's sandbox. <code>app runProc</code> can also set
+process priority. See @ref toolsTarget_app
 
 @section howToDebug_inspect Inspect App
 

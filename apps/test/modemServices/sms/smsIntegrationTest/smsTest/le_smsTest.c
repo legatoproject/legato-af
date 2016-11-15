@@ -1483,7 +1483,7 @@ static le_result_t Testle_sms_Storage
  * Test application delete all Rx SM
  * Check "logread -f | grep sms" log
  * Start app : app start smsTest
- * Execute app : execInApp smsTest smsTest <Phone number>
+ * Execute app : app runProc smsTest --exe=smsTest -- <Phone number>
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
@@ -1523,7 +1523,7 @@ COMPONENT_INIT
     }
     else
     {
-        LE_ERROR("PRINT USAGE => execInApp smsTest smsTest <SIM Phone Number>");
+        LE_ERROR("PRINT USAGE => app runProc smsTest --exe=smsTest -- <SIM Phone Number>");
     }
 
     exit(EXIT_SUCCESS);

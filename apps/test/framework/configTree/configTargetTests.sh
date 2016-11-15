@@ -23,7 +23,7 @@ OnExit() {
     echo "##########  Removing the apps."
     for app in $appList
     do
-        rmapp $app $targetAddr
+        app remove $app $targetAddr
     done
 }
 
@@ -83,7 +83,7 @@ done
 
 
 echo "##########  Listing apps on device '$targetAddr'."
-lsapp $targetAddr
+app list $targetAddr
 
 
 runApps

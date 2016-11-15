@@ -114,7 +114,7 @@ function cleanup
     # remove installed test apps
     for app in $app_installed_list
     do
-        rmapp $app ${TARGET_ADDR}
+        app remove $app ${TARGET_ADDR}
     done
 }
 

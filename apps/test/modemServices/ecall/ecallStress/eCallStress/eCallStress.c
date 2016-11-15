@@ -254,7 +254,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the eCallStress is:",
-            "   execInApp eCallStress eCallStress <PSAP number>",
+            "   app runProc eCallStress --exe=eCallStress -- <PSAP number>",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)

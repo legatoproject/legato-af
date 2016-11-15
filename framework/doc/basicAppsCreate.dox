@@ -211,10 +211,10 @@ $ ssh root@192.168.2.2 '/sbin/logread -f'
 
 @subsection basicAppsCreate_usageRmApp Remove App
 
-From the host PC, run @c rmapp to uninstall the app:
+From the host PC, run <code>app remove</code>  to uninstall the app:
 
 @code
-$ rmapp helloWorld.wp85 <ip addr>
+$ app remove helloWorld.wp85 <ip addr>
 @endcode
 
 From the target run:
@@ -224,10 +224,10 @@ From the target run:
 
 @subsection basicAppsCreate_usageLsApp List App
 
-Use @c lsapp to list the apps installed on a target.
+Use <code>app list</code> to list the apps installed on a target.
 
 @code
-$ lsapp <ip addr>
+$ app list <ip addr>
 @endcode
 
 <HR>

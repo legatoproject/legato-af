@@ -3,7 +3,7 @@
  *
  * On the target, you must issue the following commands:
  * $ app start audioMccTest
- * $ execInApp audioMccTest audioMccTest <Phone number> <test case> [main audio path] [file's name]
+ * $ app runProc audioMccTest --exe=audioMccTest -- <Phone number> <test case> [main audio path] [file's name]
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *

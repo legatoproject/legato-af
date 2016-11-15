@@ -4,7 +4,7 @@
 * You must issue the following commands:
 * @verbatim
   $ app start smsInboxTest
-  $ execInApp smsInboxTest smsInboxTest <read/receive>
+  $ app runProc smsInboxTest --exe=smsInboxTest -- <read/receive>
  @endverbatim
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -235,7 +235,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the smsInboxTest app is:",
-            "   execInApp smsInboxTest smsInboxTest <read/receive>"};
+            "   app runProc smsInboxTest --exe=smsInboxTest -- <read/receive>"};
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
     {

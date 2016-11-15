@@ -21,7 +21,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the riPinTest app is:",
-            "   execInApp riPinTest riPinTest <take/release/pulse> [pulse duration in ms]"};
+            "   app runProc riPinTest --exe=riPinTest -- <take/release/pulse> [pulse duration in ms]"};
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
     {

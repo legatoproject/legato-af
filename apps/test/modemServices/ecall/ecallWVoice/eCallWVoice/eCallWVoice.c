@@ -358,7 +358,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the eCallWVoice is:",
-            "   execInApp eCallWVoice eCallWVoice <PSAP number>",
+            "   app runProc eCallWVoice --exe=eCallWVoice -- <PSAP number>",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)

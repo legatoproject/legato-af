@@ -1,3 +1,0 @@
-#!/bin/bash
-echo "`basename "$0"` has been deprecated and is scheduled to be removed in the next release. Please use 'app start' instead."
-app start "$@"

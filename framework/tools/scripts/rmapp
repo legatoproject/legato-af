@@ -1,3 +1,0 @@
-#!/bin/bash
-echo "`basename "$0"` has been deprecated. Please use 'app remove' instead."
-app remove "$@"

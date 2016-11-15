@@ -6,7 +6,7 @@
  *
  * You can call the utility by issuing the command:
  * @verbatim
-   $ execInApp eCallDemo trig <number of passengers>
+   $ app runProc eCallDemo --exe=trig -- <number of passengers>
    @endverbatim
  *
  *

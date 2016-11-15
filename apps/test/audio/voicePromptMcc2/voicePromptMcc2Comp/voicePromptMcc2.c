@@ -16,7 +16,7 @@
  * You must issue the following commands:
  * @verbatim
    $ app start voicePromptMcc2
-   $ execInApp voicePromptMcc2 voicePromptMcc2 <phone number> [AMR]
+   $ app runProc voicePromptMcc2 --exe=voicePromptMcc2 -- <phone number> [AMR]
    @endverbatim
  *
  * @note If Ctrl-C is issued while the call is connected, the last voice prompt (VOICE_PROMPT_END)
@@ -309,8 +309,8 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the voicePromptMcc2 test is:",
-            "   \"execInApp voicePromptMcc2 voicePromptMcc2 <phone number>\" with .wav file",
-            "   \"execInApp voicePromptMcc2 voicePromptMcc2 <phone number> AMR\" with .amr file"
+            "   \"app runProc voicePromptMcc2 --exe=voicePromptMcc2 -- <phone number>\" with .wav file",
+            "   \"app runProc voicePromptMcc2 --exe=voicePromptMcc2 -- <phone number> AMR\" with .amr file"
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
@@ -353,7 +353,7 @@ static void SigHandler
 /**
  * Initialize the test component.
  * Start application with 'app start voicePromptMcc2' command
- * Execute application with 'execInApp voicePromptMcc2 voicePromptMcc2 (see PrintUsage())'
+ * Execute application with 'app runProc voicePromptMcc2 --exe=voicePromptMcc2 (see PrintUsage())'
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT

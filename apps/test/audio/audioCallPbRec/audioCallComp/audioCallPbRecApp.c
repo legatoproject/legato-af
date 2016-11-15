@@ -8,7 +8,7 @@
  * number, you must issue the folllowing command:
  * @verbatim
     $ app start audioCallPbRecApp
-    $ execInApp audioCallPbRecApp audioCallPbRecApp <tel number>
+    $ app runProc audioCallPbRecApp --exe=audioCallPbRecApp -- <tel number>
  *  @endverbatim
  *
  * Once you have started the app with 'app start audioCallPbRecApp', the app will automatically
@@ -419,7 +419,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the 'audioCallPbRecApp' tool is:",
-            "   execInApp audioCallPbRecApp audioCallPbRecApp <tel number>",
+            "   app runProc audioCallPbRecApp --exe=audioCallPbRecApp -- <tel number>",
             "",
     };
 

@@ -8,8 +8,8 @@ processes:
 {
     run:
     {
-        // Normally should be executed with 'execInApp' using:
-        //     execInApp avcCtrlApp /bin/avcCtrlApp x
+        // Normally should be executed with 'app runProc' using:
+        //     app runProc avcCtrlApp --exe=/bin/avcCtrlApp -- x
         // where x is the test case number.
         // (avcCtrlApp)
     }

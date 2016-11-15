@@ -372,7 +372,7 @@ static le_result_t Testle_voicecall_start
  * ME must be registered on Network with the SIM in ready state.
  * Check "logread -f | grep voice" log
  * Start app : app start voiceCallTest
- * Execute app : execInApp voiceCallTest voiceCallTest <Destination phone number>
+ * Execute app : app runProc voiceCallTest --exe=voiceCallTest -- <Destination phone number>
  * Follow INFO instruction in traces.
  */
 //--------------------------------------------------------------------------------------------------
@@ -399,7 +399,7 @@ COMPONENT_INIT
     }
     else
     {
-        LE_ERROR("PRINT USAGE => execInApp voiceCallTest voiceCallTest <Destination phone number>");
+        LE_ERROR("PRINT USAGE => app runProc voiceCallTest --exe=voiceCallTest -- <Destination phone number>");
         exit(EXIT_SUCCESS);
     }
 }

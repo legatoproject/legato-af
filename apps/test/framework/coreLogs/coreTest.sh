@@ -17,8 +17,8 @@ OnFail() {
     echo "Core Test Failed!"
 # Try to remove apps we may have installed
 # No checking returns. We are already dead.
-    rmapp badAppNSB $targetAddr
-    rmapp badAppSB $targetAddr
+    app remove badAppNSB $targetAddr
+    app remove badAppSB $targetAddr
 }
 
 function RemoteCmd
@@ -44,7 +44,7 @@ function uninst
     appName=$1
 
     echo "Removing test app $appName."
-    rmapp "$appName" $targetAddr
+    app remove "$appName" $targetAddr
     CheckRet
 }
 
@@ -62,7 +62,7 @@ function testApp
     tempFiles+="$logLoc "
 
     echo "Now running $appName."
-    startapp $appName $targetAddr
+    app start $appName $targetAddr
     CheckRet
 
     CheckLogfileStr "$logLoc" "==" 1 "Something wicked this way comes."

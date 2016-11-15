@@ -296,7 +296,7 @@ static le_result_t Testle_mcc_HangUpAll
  * ME must be registered on Network with the SIM in ready state.
  * Check "logread -f | grep mcc" log
  * Start app : app start mccTest
- * Execute app : execInApp mccTest mccTest <Destination phone number> <CLIR_ON | CLIR_OFF>
+ * Execute app : app runProc mccTest --exe=mccTest -- <Destination phone number> <CLIR_ON | CLIR_OFF>
  *  - CLIR_ON to activate the Calling line identification restriction. Phone Number is not
  * displayed on the remote side.
  *  - CLIR_OFF to deactivate the Calling line identification restriction. Phone Number can be
@@ -354,7 +354,7 @@ COMPONENT_INIT
     }
     else
     {
-        LE_ERROR("PRINT USAGE => execInApp mccTest mccTest <Destination phone number>"
+        LE_ERROR("PRINT USAGE => app runProc mccTest --exe=mccTest -- <Destination phone number>"
                         " <CLIR_ON | CLIR_OFF>");
         exit(EXIT_SUCCESS);
     }

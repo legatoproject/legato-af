@@ -5,7 +5,7 @@
  * 1) install application test.
  * 2) Start log trace 'logread -f | grep 'temp'
  * 3) Start application 'app start tempTest'
- * 4) Start sequence execInApp tempTest tempTest <sequence number>
+ * 4) Start sequence app runProc tempTest --exe=tempTest -- <sequence number>
  *
  *       "Sequence <id>"
  *                 "    : Display Help"
@@ -17,7 +17,7 @@
  *          Restart target
  *          Start log trace 'logread -f | grep 'temp'
  *          Start application 'app start tempTest'
- *          Start sequence execInApp tempTest tempTest <sequence number>
+ *          Start sequence app runProc tempTest --exe=tempTest -- <sequence number>
  *                 "  5 : Test Thresolds event, (use CTR+C to exit before first Critical Event)
  *          Change temeparture to check differrent events.
  *                 "  6 : Set default Power Amplifier temperature Thresolds"

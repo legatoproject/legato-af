@@ -90,7 +90,7 @@ CheckRet
 printBanner "Cleaning up after the Inspector Tests"
 for app in ${targetTestApps[@]}
 do
-    rmapp $app $targetAddr
+    app remove $app $targetAddr
     CheckRet
 done
 

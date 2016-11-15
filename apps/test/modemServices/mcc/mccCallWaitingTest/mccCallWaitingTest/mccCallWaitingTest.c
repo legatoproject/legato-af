@@ -649,7 +649,7 @@ COMPONENT_INIT
     }
     else
     {
-        LE_ERROR("PRINT USAGE => execInApp mccCallWaitingTest mccCallWaitingTest \
+        LE_ERROR("PRINT USAGE => app runProc mccCallWaitingTest --exe=mccCallWaitingTest -- \
                 <Destination phone number>");
         exit(EXIT_FAILURE);
     }

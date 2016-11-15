@@ -4,7 +4,7 @@
 * You must issue the following commands:
 * @verbatim
   $ app start simProfileSwap
-  $ execInApp simProfileSwap simProfileSwap <ext/esim> <gemalto/oberthur/gd/morpho> <ecs/commercial>
+  $ app runProc simProfileSwap --exe=simProfileSwap -- <ext/esim> <gemalto/oberthur/gd/morpho> <ecs/commercial>
  @endverbatim
 * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 *
@@ -186,7 +186,7 @@ static void PrintUsage
     const char * usagePtr[] =
     {
             "Usage of the simProfileSwap app is:",
-            "   execInApp simProfileSwap simProfileSwap <ext/esim>"
+            "   app runProc simProfileSwap --exe=simProfileSwap -- <ext/esim>"
               " <gemalto/oberthur/gd/morpho> <ecs/commercial>",
     };
 

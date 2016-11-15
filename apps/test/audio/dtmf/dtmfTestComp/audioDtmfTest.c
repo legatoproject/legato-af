@@ -3,7 +3,7 @@
  *
  * On the target, you must issue the following commands:
  * $ app start dtmfTest
- * $ execInApp dtmfTest dtmfTest <loc/rem> <dtmfs> <duration in ms> <pause in ms>
+ * $ app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <dtmfs> <duration in ms> <pause in ms>
  *   [<tel number> <inband/outband>]
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
@@ -381,7 +381,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the 'dtmfTest' app is:",
-            "   execInApp dtmfTest dtmfTest <loc/rem> <dtmfs> <duration in ms> <pause in ms> "
+            "   app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <dtmfs> <duration in ms> <pause in ms> "
             "[<tel number> <inband/outband>] ",
             "",
     };

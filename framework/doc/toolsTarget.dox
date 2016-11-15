@@ -7,7 +7,6 @@ Legato has these tools to run on the target:
 | @subpage toolsTarget_cm            | control modem functions                            |
 | @subpage toolsTarget_config        | change config database                             |
 | @subpage toolsTarget_configEcm     | setup an ECM interface                             |
-| @subpage toolsTarget_execInApp     | execute process in running app's sandbox           |
 | @subpage toolsTarget_fwUpdate      | download image files directly to                   |
 | @subpage toolsTarget_inspect       | examine running Legato processes and memory pools  |
 | @subpage toolsTarget_legato        | run Legato framework                               |
