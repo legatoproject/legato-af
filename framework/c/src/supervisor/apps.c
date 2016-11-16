@@ -1989,6 +1989,19 @@ le_result_t le_appInfo_GetName
     // Read the first line.
     LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
 
+    // Close the stream
+    if (fclose(cgroupFilePtr) != 0)
+    {
+        if (errno == EINTR)
+        {
+            LE_WARN("Closing '%s' caused EINTR. Proceeding anyway.", cgroupFilePath);
+        }
+        else
+        {
+            LE_FATAL("Failed to close '%s'. Errno = %d (%m).", cgroupFilePath, errno);
+        }
+    }
+
     // Remove the trailing newline char.
     size_t len = strlen(lineBuf);
 
