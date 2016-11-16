@@ -553,6 +553,34 @@ static void GetRfDeviceStatusTest
 
 
 /*
+ * This test BootloaderVersion and FirmwareVersion.
+ *
+ * API Tested:
+ *  - le_info_GetBootloaderVersion()
+ *  - le_info_GetFirmwareVersion()
+ */
+static void GetDeviceBootVersionTest
+(
+    void
+)
+{
+    char versionBootPtr[LE_INFO_MAX_VERS_BYTES] = {0};
+    char versionFWPtr[LE_INFO_MAX_VERS_BYTES] = {0};
+
+    LE_ASSERT(le_info_GetBootloaderVersion(versionBootPtr, 0) == LE_FAULT);
+    LE_ASSERT(le_info_GetBootloaderVersion(versionBootPtr, LE_INFO_MAX_VERS_BYTES+10) == LE_OK);
+    LE_ASSERT(le_info_GetBootloaderVersion(versionBootPtr, 2) == LE_OVERFLOW);
+    LE_ASSERT(le_info_GetBootloaderVersion(versionBootPtr, sizeof(versionBootPtr)) == LE_OK);
+    LE_INFO("le_info_GetBootloaderVersion get => %s", versionBootPtr);
+
+    LE_ASSERT(le_info_GetFirmwareVersion(versionFWPtr, 0) == LE_FAULT);
+    LE_ASSERT(le_info_GetFirmwareVersion(versionFWPtr, LE_INFO_MAX_VERS_BYTES+10) == LE_OK);
+    LE_ASSERT(le_info_GetFirmwareVersion(versionBootPtr, 2) == LE_OVERFLOW);
+    LE_ASSERT(le_info_GetFirmwareVersion(versionFWPtr, sizeof(versionFWPtr)) == LE_OK);
+    LE_INFO("le_info_GetFirmwareVersion get => %s", versionFWPtr);
+}
+
+/*
  * Test le_info_GetImei and le_info_GetImeiSv APIs.
  *
  * API Tested:
@@ -592,6 +620,8 @@ static void ImeiTest
 COMPONENT_INIT
 {
     LE_INFO("======== Start LE_INFO implementation Test ========");
+
+    GetDeviceBootVersionTest();
 
     ImeiTest();
 

@@ -59,8 +59,6 @@ le_result_t le_info_GetImei
     }
 }
 
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to retrieve the International Mobile Equipment Identity software
@@ -114,11 +112,14 @@ le_result_t le_info_GetImeiSv
  *      - LE_NOT_FOUND if the version string is not available
  *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetFirmwareVersion
 (
-    char* version,
+    char* versionPtr,
         ///< [OUT]
         ///< Firmware version string
 
@@ -126,7 +127,18 @@ le_result_t le_info_GetFirmwareVersion
         ///< [IN]
 )
 {
-    return pa_info_GetFirmwareVersion(version, versionNumElements);
+    // Check input parameters
+    if (versionPtr == NULL)
+    {
+        LE_KILL_CLIENT("versionPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (versionNumElements == 0)
+    {
+        LE_ERROR("parameter error");
+        return LE_FAULT;
+    }
+    return pa_info_GetFirmwareVersion(versionPtr, versionNumElements);
 }
 
 
@@ -139,11 +151,14 @@ le_result_t le_info_GetFirmwareVersion
  *      - LE_NOT_FOUND if the version string is not available
  *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetBootloaderVersion
 (
-    char* version,
+    char* versionPtr,
         ///< [OUT]
         ///< Bootloader version string
 
@@ -151,7 +166,18 @@ le_result_t le_info_GetBootloaderVersion
         ///< [IN]
 )
 {
-    return pa_info_GetBootloaderVersion(version, versionNumElements);
+    // Check input parameters
+    if (versionPtr == NULL)
+    {
+        LE_KILL_CLIENT("versionPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (versionNumElements == 0)
+    {
+        LE_ERROR("parameter error");
+        return LE_FAULT;
+    }
+    return pa_info_GetBootloaderVersion(versionPtr, versionNumElements);
 }
 
 

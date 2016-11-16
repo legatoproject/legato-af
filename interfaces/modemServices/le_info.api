@@ -353,6 +353,9 @@ FUNCTION le_result_t GetImeiSv
  *      - LE_NOT_FOUND if the version string is not available
  *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirmwareVersion
@@ -370,6 +373,9 @@ FUNCTION le_result_t GetFirmwareVersion
  *      - LE_NOT_FOUND if the version string is not available
  *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBootloaderVersion
