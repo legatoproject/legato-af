@@ -19,6 +19,32 @@
  * switches to use malloc/free per-block.  This way, tools like valgrind can be used on a Legato
  * executable.
  *
+ * @section bld_cfg_disable_SMACK LE_SMACK_DISABLE
+ *
+ * Legato provides the ability to disable the SMACK API. We don’t recommend disabling SMACK:
+ * users do so at their own risk.
+ *
+ * By disabling SMACK, you essentially render the SMACK APIs to do nothing; SMACK labels aren’t set
+ * during Legato runtime. On the Yocto side, disabling SMACK will not apply SMACK labels on certain
+ * processes, files, and directories.
+ *
+ * If Legato's SMACK API is disabled, users must set SMACK labels for their own runtime environment
+ * if they want to use SMACK security.
+ *
+ * To disable SMACK, follow these steps:
+ * - Edit "framework/c/inc/le_build_config.h" and uncomment "//#define LE_SMACK_DISABLE".
+ * - Build Legato.
+ * - Flash the resulting legato.cwe or legatoz.cwe with the fwupdate tool.  Do not install Legato with "instlegato".
+ * - After the target reboots, it should have the file "/legato/SMACK_DISABLED".
+ * - Reboot the target again.
+
+ * To re-enable SMACK, follow these steps:
+ * - Edit "framework/c/inc/le_build_config.h" and comment "#define LE_SMACK_DISABLE".
+ * - Build Legato.
+ * - Flash the resulting legato.cwe or legatoz.cwe with the fwupdate tool.  Do not install Legato with "instlegato".
+ * - After the target reboots, it should @b not have the file "/legato/SMACK_DISABLED".
+ * - Reboot the target again.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
