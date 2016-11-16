@@ -1371,8 +1371,10 @@ static le_result_t GetPlaybackFrames
             // reading file descriptor
             if (pcmContextPtr->pause)
             {
-                memset(bufferPtr, 0, *bufsizePtr);
-                len = *bufsizePtr;
+                amount = *bufsizePtr;
+                memset(bufferPtr, 0, amount);
+                // To exit of the loop
+                len = 0;
             }
             else
             {
