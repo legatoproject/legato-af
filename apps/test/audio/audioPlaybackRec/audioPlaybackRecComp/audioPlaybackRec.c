@@ -3,12 +3,11 @@
  *
 * You must issue the following commands:
 * @verbatim
-  $ app start audioPlaybackRec
-  $ execInApp audioPlaybackRec audioPlaybackRecTest <test case> [main audio path] [file's name] [option]
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- <test case> [main audio path] [file's name] [option]
 
   Example:
-  $ execInApp audioPlaybackRec audioPlaybackRecTest REC I2S /record/remote.wav WAV STOP=10
-  $ execInApp audioPlaybackRec audioPlaybackRecTest PB I2S /usr/share/sounds/0-to-9.wav
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- REC I2S /record/remote.wav WAV STOP=10
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- PB MIC /usr/share/sounds/0-to-9.wav
  @endverbatim
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
@@ -1173,7 +1172,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the audioPlaybackRec test is:",
-            "   execInApp audioPlaybackRec audioPlaybackRecTest <test case>"
+            "   app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- <test case>"
               "[main audio path] [file's name] [option]",
             "",
             "Test cases are:",
@@ -1244,8 +1243,9 @@ static void SigHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * Initialize the test component.
- * Start application with 'app start audioPlaybackRec' command
- * Execute application with 'execInApp audioPlaybackRec audioPlaybackRecTest (see PrintUsage())'
+ *
+ * Execute application with 'app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- [options]
+ * (see PrintUsage())'
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
