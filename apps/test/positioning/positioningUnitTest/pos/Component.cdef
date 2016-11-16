@@ -1,0 +1,17 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api [types-only]
+        positioning/le_gnss.api [types-only]
+        positioning/le_pos.api [types-only]
+        positioning/le_posCtrl.api [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/positioning/posDaemon/le_pos.c
+    gnss/le_gnss_simu.c
+    stubs.c
+}

@@ -1,0 +1,16 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api [types-only]
+        positioning/le_gnss.api [types-only]
+        positioning/le_pos.api [types-only]
+        positioning/le_posCtrl.api [types-only]
+    }
+
+}
+
+sources:
+{
+    main.c
+}

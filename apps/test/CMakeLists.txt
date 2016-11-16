@@ -65,6 +65,7 @@ add_subdirectory(positioning/gnssTest)
 add_subdirectory(positioning/gnssXtraTest)
 # To be implemented add_subdirectory(positioning/posDaemonTest)
 add_subdirectory(positioning/positioningTest)
+add_subdirectory(positioning/positioningUnitTest)
 
 ## Audio Services
 add_subdirectory(audio/pa)
