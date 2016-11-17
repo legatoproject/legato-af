@@ -105,10 +105,7 @@ ifeq ($(MAKECMDGOALS),release)
 endif
 
 # PlantUML file path
-PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty
-
-# PlantUML version
-PLANTUML_VERSION ?= 8047
+PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
 
 # PlantUML file definition
 export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
@@ -196,7 +193,7 @@ package.properties: version sources.md5
 
 # Goal for building all documentation.
 .PHONY: docs user_docs implementation_docs
-docs: user_docs implementation_docs
+docs: $(PLANTUML_JAR_FILE) user_docs implementation_docs
 
 # Docs for people who don't want to be distracted by the internal implementation details.
 user_docs: localhost build/localhost/Makefile
@@ -213,12 +210,8 @@ user_pdf: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_pdf
 	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
 
-# Download of plantuml.jar file
-$(PLANTUML_JAR_FILE):
-	wget -L -O $(PLANTUML_JAR_FILE) http://sourceforge.net/projects/plantuml/files/plantuml.$(PLANTUML_VERSION).jar/download
-
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost $(PLANTUML_JAR_FILE) build/localhost/Makefile
+implementation_docs: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost implementation_docs
 
 implementation_pdf: localhost build/localhost/Makefile
