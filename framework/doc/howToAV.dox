@@ -2,10 +2,15 @@
 
 These topics describe how to use AirVantage for remote administration of your Legato apps:
 
-@subpage howToAVConnect <br>
-@subpage howToAVInstallApp <br>
-@subpage howToAVData <br>
-@subpage howToAirVantageExchangeData
+| Section                            | Description                                        |
+| ---------------------------------- | -------------------------------------------------- |
+| @subpage howToAVTimeSeries | Time Series tips   |
+| @subpage howToAVConnect   |   connect AirVantage to Legato target device    |
+| @subpage howToAVInstallApp  |   install a Legato app through AirVantage   |
+| @subpage howToAVData  |  manage AirVantage data    |
+| @subpage howToAirVantageExchangeData | create app to exchange AirVantage data      |
+| @ref c_le_avc  |  API to configure AirVantage connectivity   |
+| @ref c_le_avdata  |  API to setup AirVantage data  |
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

@@ -1,0 +1,32 @@
+/** @page howToAVTimeSeries Time Series
+
+@warning Time Series features are experimental in Legato 16.10.0, and will change in the next
+release.
+
+Legato 16.10.0 introduces the initial release of AirVantage time series data feature. Time series
+provides the ability to collect an app data set periodically, store the data locally, and then send
+all data to the server based on a specified trigger event (e.g., collect driving behavior during
+a trip, and send all data only when the car is parked).
+
+@c LEGATO_FEATURE_TIMESERIES is enabled by default for all WP products. Before you can use time series
+data features, the target device image must be updated, and the @ref le_avdata_observe
+function must be turned on.
+
+@note You @b must use the 16.10.0 toolchain and Legato Linux source distribution (available from
+<a href="https://source.sierrawireless.com/resources/legato/downloads/">Legato Downloads</a>) so you
+have the required new @c cbor lib to build Legato. Using an old toolchain and Linux distribution
+will cause build failure.
+
+@section howToAVTimeSeries_turnOff Turn-off Time Series
+
+If you want to update to Legato 16.10.0 without updating your toolchain and Legato Linux source
+distribution, or if you don't want to use this alpha-release time series feature, you need to
+turn-off time series in the necessary @c targetdef files (i.e., comment starting at
+<c># export LEGATO_FEATURE_TIMESERIES = -DLEGATO_FEATURE_TIMESERIES</c> in
+@c targetdefs.wp85).
+
+For details on time series functions, see AirVantage Data API @ref le_avdata_timeseries, Legato
+16.10.0 Release Notes, and Legato 16.10.0 Upgrade Notes.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+**/
