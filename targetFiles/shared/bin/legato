@@ -4,9 +4,6 @@
 
 INSTALLED_VERSION=/legato/systems/current/version
 
-# Wait upto 10 seconds for the app tool to stop legato
-StopLegatoTimeout=10
-
 ACTION=$1
 
 # Make sure system/bin and /sbin is in the path.
@@ -114,7 +111,11 @@ StopLegato()
     then
         wasRunning="yes"
 
-        echo "Stopping Legato... "
+        # Scale StopLegatoTimeout according to the number of running apps.
+        # Estimate 5 seconds for the framework itself, and 3 seconds per app to shutdown.
+        StopLegatoTimeout=$(( 5 + $(app status | grep running | wc -l) * 3 ))
+
+        echo -n "Stopping Legato"
 
         # Tell the Supervisor to shutdown Legato.
         app "stopLegato" 2> /dev/null &
@@ -126,26 +127,54 @@ StopLegato()
         do
             if IsRunning supervisor
             then
+                echo -n "."
                 sleep 1
             else
                 break
             fi
             countDown=`expr $countDown - 1`
         done
+        echo
 
-        # make sure supervisor shut down
+        # make sure Legato shuts down
         if IsRunning supervisor
         then
-            if $PS | grep $appToolPid | grep app | grep -v grep > /dev/null
+            # Get the pgid of startSystem.
+            startSystemPgid=`ps -eo "%r %c" | grep startSystem | awk '{print $1}'`
+
+            # If startSystem isn't running, something is wrong. So reboot.
+            if [ -z $startSystemPgid ]
             then
-                echo "The app tool has tried to shut down Supervisor after $StopLegatoTimeout seconds."
-            else
-                wait $appToolPid
-                echo "The app tool exited with code $? and Supervisor is still running after $StopLegatoTimeout seconds."
+                echo "startSystem isn't running. Rebooting without attempting to hard-kill Legato."
+                reboot
             fi
 
-            echo "Killing Supervisor ..."
-            killall supervisor > /dev/null 2>&1
+            # Kill all processes with the same pgid as startSystem - hopefully that includes all
+            # Legato processes.
+            kill -9 -$startSystemPgid
+
+            # Wait for all killed processes to die before proceeding.
+            echo -n "Hard-killing Legato"
+            countDown=StopLegatoTimeout
+            while [ $countDown -ne 0 ]
+            do
+                if IsRunning startSystem
+                then
+                    echo -n "."
+                    sleep 1
+                else
+                    break
+                fi
+                countDown=`expr $countDown - 1`
+            done
+            echo
+
+            # If startSystem is still not dead, reboot
+            if IsRunning startSystem
+            then
+                echo "Legato may still be alive after attempt of hard-kill. Rebooting the system."
+                reboot
+            fi
         fi
     fi
 
