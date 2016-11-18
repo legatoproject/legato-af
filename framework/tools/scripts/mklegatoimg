@@ -117,6 +117,19 @@ echo "Output: $OUTPUT_DIR"
 
 echo "Version: $VERSION"
 
+StripExeAndLibs() {
+    if [ "$STRIP_STAGING_TREE" == "yes" ]; then
+        STRIP=${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}strip
+        test -x $STRIP || (echo "Executable ${TOOLCHAIN_PREFIX}strip is missing"; false)
+        CheckRet
+
+        for file in `find $STAGING_DIR -type f`; do
+            file ${file} | grep "ELF .* not stripped" >/dev/null
+            test $? -eq 0 && ${STRIP} ${file} && echo "Stripping $file"
+        done
+    fi
+}
+
 GenerateUbinizeCfg() {
     IMAGE_PATH=$1
     UBINIZE_CFG_PATH=$2
@@ -357,6 +370,8 @@ DefaultImg() {
         ln -sf legatoz-${cwe_suffix}.cwe $OUTPUT_DIR/legatoz.cwe
     fi
 }
+
+StripExeAndLibs
 
 case $TARGET in
     ar7 | ar86)

@@ -58,3 +58,6 @@ MKSYS_FLAGS += -C "-DMM_2_ALSA_PCM_DEVICE_ID=13"
 # External ADCs
 MKSYS_FLAGS += -C "-DADC_BEGIN_NUM=1"
 MKSYS_FLAGS += -C "-DADC_COUNT=4"
+
+# Set this variable to generate a tree with stripped executables and libraries
+export STRIP_STAGING_TREE=yes
