@@ -13,6 +13,7 @@ executables:
     secstore = (secstore)
     pmtool = (pmtool)
     gnss = (gnss)
+    uartMode = (uartMode)
 }
 
 bindings:

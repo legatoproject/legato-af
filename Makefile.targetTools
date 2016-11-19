@@ -23,7 +23,6 @@ BUILD_PRODUCTS = 	config		\
 					appStopClient	\
 					app \
 					update \
-					uartMode \
 					sbtrace \
 					scripts
 
@@ -127,11 +126,6 @@ app:
 update:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/$@ \
-			$(LOCAL_MKEXE_FLAGS)
-
-uartMode:
-	mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/uartMode \
 			$(LOCAL_MKEXE_FLAGS)
 
 sbtrace:

@@ -35,6 +35,7 @@ commands:
     secstore = tools:/bin/secstore
     pmtool = tools:/bin/pmtool
     gnss = tools:/bin/gnss
+    uartMode = tools:/bin/uartMode
 }
 
 bindings:
