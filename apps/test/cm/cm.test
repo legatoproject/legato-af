@@ -1,0 +1,241 @@
+################################################################################
+#                                                                              #
+# cm.test                                                                      #
+#                                                                              #
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.   #
+#                                                                              #
+################################################################################
+
+#!/bin/bash
+
+# prints test name and success or failure. On failure it exits immediately
+handle_err() {
+    local msg=$1
+    local err=$2
+    local expected=$3
+    local quit=0
+
+    echo -ne "\033[1m"
+    echo -n "$msg"
+
+    if [[ $err -ne $expected ]]; then
+        echo -n " failed"
+        quit=1
+    else
+        echo -n " success"
+    fi
+
+    echo -e "\033[0m"
+
+    if [[ $quit -ne 0 ]]; then
+        exit 1
+    fi
+}
+
+# a stubbed version of linux's ip tool
+# it returns a fake gateway address on route show and an exit code on route add
+ip_stub() {
+    if [[ "$@" == *"show"* ]]; then
+        if [[ $ROUTED -eq 1 ]]; then
+            echo "default via 10.134.198.60"
+        fi
+        return $IP_EXIT_CODE
+    fi
+
+    if [[ "$@" == *"add"* ]]; then
+        return $IP_EXIT_CODE
+    fi
+}
+export -f ip_stub
+export IP=ip_stub
+
+# a stubbed version of linux's ifconfig tool
+# it echoes interface name and returns an exit code
+ifconfig_stub() {
+    if [[ $IFCONFIG_EXIT_CODE -eq 0 ]]; then
+        echo "rmnet0"
+    fi
+
+    return $IFCONFIG_EXIT_CODE
+}
+export -f ifconfig_stub
+export IFCONFIG=ifconfig_stub
+
+# a stubbed version of linux's ping tool
+# it returns an exit code
+ping_stub() {
+    return $PING_EXIT_CODE
+}
+export -f ping_stub
+export PING=ping_stub
+
+# a stubbed version of cm data info command that returns the needed info
+data_info_stub() {
+    echo "Index:      $PROFILE"
+    echo "APN:        $APN"
+    echo "PDP Type:   $PDP"
+    echo "Connected:  $CONNECTED"
+    echo "Auth type:  $AUTH"
+    echo "User name:  $USR"
+    echo "Password:   $PASSWD"
+    echo "Interface:  $IFACE"
+    echo "Family:     $FAMILY"
+    echo "IP:         $IPADDR"
+    echo "Gateway:    $GW"
+    echo "Dns1:       $DNS1"
+    echo "Dns2:       $DNS2"
+}
+
+export -f data_info_stub
+
+# a stubbed version of cm data apn, returns an error code
+data_apn_stub() {
+    return $APN_EXIT_CODE
+}
+export -f data_apn_stub
+
+# a stubbed version of cm data pdp, returns an error code
+data_pdp_stub() {
+    return $PDP_EXIT_CODE
+}
+export -f data_pdp_stub
+
+# a stubbed version of cm data auth, returns an error code
+data_auth_stub() {
+    return $AUTH_EXIT_CODE
+}
+export -f data_auth_stub
+
+# a stubbed version of cm data connect, returns an error code or an invalid
+# argument msg
+data_connect_stub() {
+    if [[ $# -gt 3 ]]; then
+        echo "Invalid argument when starting a data connection. "`
+            `"e.g. cm data connect <optional timeout (secs)>"
+        return 1
+    fi
+
+    return $CONNECT_EXIT_CODE
+}
+export -f data_connect_stub
+
+# a stubbed version of cm binary
+# for now this stubbed version supports only the data option
+cm_stub() {
+    local opt=($@)
+
+    if [[ "${opt[0]}" != "data" ]]; then
+        echo "Not supported $@"
+        return 1
+    fi
+
+    case ${opt[1]} in
+        info)
+            data_info_stub
+            ;;
+        apn)
+            data_apn_stub
+            ;;
+        pdp)
+            data_pdp_stub
+            ;;
+        auth)
+            data_auth_stub
+            ;;
+        connect)
+            data_connect_stub $@
+            ;;
+        *);;
+    esac
+}
+export -f cm_stub
+export CM=cm_stub
+
+export RESOLV_CONF="$PWD/resolv.conf" LOG="$PWD/cm.log"
+
+export IP_EXIT_CODE=0 IFCONFIG_EXIT_CODE=0 PING_EXIT_CODE=0 APN_EXIT_CODE=0 \
+    PDP_EXIT_CODE=0 AUTH_EXIT_CODE=0 CONNECT_EXIT_CODE=0
+
+export PROFILE="2" APN="orange" PDP="IPV4" CONNECTED="no" AUTH="PAP" \
+    USR="orange" PASSWD="orange" IFACE="rmnet0" FAMILY="inet" \
+    IPADDR="10.134.198.59" GW="10.134.198.60" DNS1="192.168.10.110" \
+    DNS2="192.168.10.111" ROUTED=0
+
+LEGATO_ROOT=$(readlink -f $0 | \
+        cut -b -$(readlink -f $0 | grep -b -o "build" | sed 's/[^0-9]//g'))
+
+cd $LEGATO_ROOT
+
+# blocking connect
+apps/tools/scripts/cm data connect
+handle_err "blocking connect ..." $? 0
+rm $RESOLV_CONF
+
+# timed connect
+apps/tools/scripts/cm data connect 5
+handle_err "timed connect ..." $? 0
+rm $RESOLV_CONF
+
+# connected but not routed
+export CONNECTED="yes"
+apps/tools/scripts/cm data connect
+handle_err "connected but not routed ..." $? 0
+
+# connected and routed
+export CONNECTED="yes" ROUTED=1
+apps/tools/scripts/cm data connect
+handle_err "connected and routed ..." $? 0
+export ROUTED=0
+
+# disconnect
+apps/tools/scripts/cm data connect -1
+handle_err "disconnect ..." $? 0
+
+# wrong number of args
+apps/tools/scripts/cm data connect 5 3
+handle_err "wrong number of arguments ..." $? 1
+
+# apn setting failure
+export CONNECTED="no" APN_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "apn setting failure ..." $? 1
+export APN_EXIT_CODE=0
+
+# pdp setting failure
+export PDP_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "pdp setting failure ..." $? 1
+export PDP_EXIT_CODE=0
+
+# authentication failure
+export AUTH_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "authentication failure ..." $? 1
+export AUTH_EXIT_CODE=0
+
+# connection failure
+export CONNECT_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "connection failure ..." $? 1
+export CONNECT_EXIT_CODE=0
+
+# device not found
+export IFCONFIG_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "device not found ..." $? 1
+export IFCONFIG_EXIT_CODE=0
+
+# routing failure
+export CONNECTED="yes" IP_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "routing failure ..." $? 1
+export IP_EXIT_CODE=0
+
+# ping failure
+export PING_EXIT_CODE=1
+apps/tools/scripts/cm data connect
+handle_err "ping failure ..." $? 1
+export PING_EXIT_CODE=0
+
+# cleanup
+rm $RESOLV_CONF $LOG

@@ -38,6 +38,8 @@ void cm_data_PrintDataHelp
             "\tcm data auth <none/pap/chap> <username> <password>\n\n"
             "To start a data connection:\n"
             "\tcm data connect <optional timeout (secs)>\n\n"
+            "To stop a data connection:\n"
+            "\tcm data connect -1\n\n"
             "To monitor the data connection:\n"
             "\tcm data watch\n\n"
             "To start a data connection, please ensure that your profile has been configured correctly.\n"
@@ -54,20 +56,6 @@ typedef struct {
     le_mdc_DataBearerTechnology_t uplink;
     le_mdc_DataBearerTechnology_t downlink;
 } DataBearerTechnologies_t;
-
-//-------------------------------------------------------------------------------------------------
-/**
- * The data connection reference.
- */
-//-------------------------------------------------------------------------------------------------
-static le_data_RequestObjRef_t RequestRef = NULL;
-
-//-------------------------------------------------------------------------------------------------
-/**
- * Boolean to check whether if the data connection is connected or not.
- */
-//-------------------------------------------------------------------------------------------------
-static bool DataConnected = false;
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -93,6 +81,48 @@ static DataBearerTechnologies_t DataBearerTechnologies = {
  */
 //-------------------------------------------------------------------------------------------------
 #define PROFILE_IN_USE  "tools/cmodem/profileInUse"
+
+#define MAX_STR_SIZE    256
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Network configuration structure
+ */
+//-------------------------------------------------------------------------------------------------
+typedef struct {
+    le_mdc_ProfileRef_t profile;    ///< profile reference
+    char family[8];                 ///< ip family
+    char itfName[MAX_STR_SIZE];     ///< interface name
+    char ip[MAX_STR_SIZE];          ///< ip address
+    char gw[MAX_STR_SIZE];          ///< gateway address
+    char dns1[MAX_STR_SIZE];        ///< dns1 address
+    char dns2[MAX_STR_SIZE];        ///< dns2 address
+}
+NetConf_t;
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Handle result
+ */
+//-------------------------------------------------------------------------------------------------
+static void HandleResult
+(
+    const char *msg,
+    le_result_t result,
+    bool quit
+)
+{
+    FILE *stream;
+
+    result?(stream=stderr):(stream=stdout);
+
+    fprintf(stream, "%s: %s\n", msg, LE_RESULT_TXT(result));
+
+    if (quit)
+    {
+        exit(result);
+    }
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -137,6 +167,182 @@ static le_mdc_ProfileRef_t GetDataProfile
     return le_mdc_GetProfile( GetProfileInUse() );
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Get IPv4 Configuration
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t GetIPv4Configuration
+(
+    NetConf_t *netConf
+)
+{
+    le_result_t result;
+
+    if (!netConf)
+    {
+        return LE_FAULT;
+    }
+
+    result = le_mdc_GetIPv4Address(netConf->profile,
+                netConf->ip, sizeof(netConf->ip));
+    if (result)
+    {
+        HandleResult("Failed to get IP address",result, false);
+        sprintf(netConf->ip, "N/A");
+    }
+
+    result = le_mdc_GetIPv4GatewayAddress(netConf->profile,
+                netConf->gw, sizeof(netConf->gw));
+    if (result)
+    {
+        HandleResult("Failed to get Gateway address", result, false);
+        sprintf(netConf->gw, "N/A");
+    }
+
+    result = le_mdc_GetIPv4DNSAddresses(netConf->profile,
+                netConf->dns1, sizeof(netConf->dns1),
+                netConf->dns2, sizeof(netConf->dns2));
+    if (result)
+    {
+        HandleResult("Failed to get DNS addresses", result, false);
+        sprintf(netConf->dns1, "N/A");
+        sprintf(netConf->dns2, "N/A");
+    }
+
+    if (!strcmp(netConf->dns1, "\0"))
+    {
+        sprintf(netConf->dns1, "N/A");
+    }
+
+    if (!strcmp(netConf->dns2, "\0"))
+    {
+        sprintf(netConf->dns2, "N/A");
+    }
+
+    return LE_OK;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Get IPv6 Configuration
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t GetIPv6Configuration
+(
+    NetConf_t *netConf
+)
+{
+    le_result_t result;
+
+    if (!netConf)
+    {
+        return LE_FAULT;
+    }
+
+    result = le_mdc_GetIPv6Address(netConf->profile,
+                netConf->ip, sizeof(netConf->ip));
+    if (result)
+    {
+        HandleResult("Failed to get IP address", result, false);
+        sprintf(netConf->ip, "N/A");
+    }
+
+    result = le_mdc_GetIPv6GatewayAddress(netConf->profile,
+                netConf->gw, sizeof(netConf->gw));
+    if (result)
+    {
+        HandleResult("Failed to get Gateway address", result, false);
+        sprintf(netConf->gw, "N/A");
+    }
+
+    result = le_mdc_GetIPv6DNSAddresses(netConf->profile,
+                netConf->dns1, sizeof(netConf->dns1),
+                netConf->dns2, sizeof(netConf->dns2));
+    if (result)
+    {
+        HandleResult("Failed to get DNS addresses", result, false);
+        sprintf(netConf->dns1, "N/A");
+        sprintf(netConf->dns2, "N/A");
+    }
+
+    if (!strcmp(netConf->dns1, "\0"))
+    {
+        sprintf(netConf->dns1, "N/A");
+    }
+
+    if (!strcmp(netConf->dns2, "\0"))
+    {
+        sprintf(netConf->dns2, "N/A");
+    }
+
+    return LE_OK;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Get Network Configuration
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t GetNetworkConfiguration
+(
+    NetConf_t *netConf
+)
+{
+    le_result_t result;
+    le_mdc_ConState_t state;
+
+    if (!netConf)
+    {
+        return LE_FAULT;
+    }
+
+    if ( (result = le_mdc_GetSessionState(netConf->profile, &state)) )
+    {
+        HandleResult("Failed to get connection state", result, false);
+        return result;
+    }
+
+    if (state != LE_MDC_CONNECTED)
+    {
+        return LE_FAULT;
+    }
+
+    result = le_mdc_GetInterfaceName(netConf->profile,
+                netConf->itfName, sizeof(netConf->itfName));
+    if (result)
+    {
+        HandleResult("Failed to get interface name", result, false);
+        sprintf(netConf->itfName, "N/A");
+    }
+
+    if (le_mdc_IsIPv4(netConf->profile))
+    {
+        sprintf(netConf->family, "inet");
+
+        if (GetIPv4Configuration(netConf))
+        {
+            HandleResult("Failed to get IPv4 configuration", LE_FAULT, false);
+            return LE_FAULT;
+        }
+    }
+
+    if (le_mdc_IsIPv6(netConf->profile))
+    {
+        sprintf(netConf->family, "inet6");
+
+        if (GetIPv6Configuration(netConf))
+        {
+            HandleResult("Failed to get IPv6 configuration", LE_FAULT, false);
+            return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
+}
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to convert a le_mdc_DataBearerTechnology_t to a string
@@ -261,37 +467,16 @@ static void StopDataBearerMonitoring
 //--------------------------------------------------------------------------------------------------
 static void ConnectionStateHandler
 (
-    const char* intfName,
-    bool isConnected,
+    le_mdc_ProfileRef_t profileRef,
+    le_mdc_ConState_t state,
     void* contextPtr
 )
 {
-    bool withDataBearerMonitoring = (bool)contextPtr;
-
-    if (isConnected)
+    if (LE_MDC_DISCONNECTED == state)
     {
-        DataConnected = isConnected;
-        printf("Connected through interface '%s'\n", intfName);
-
-        if (withDataBearerMonitoring)
-        {
-            le_mdc_ProfileRef_t profileRef = GetDataProfile();
-            StartDataBearerMonitoring(profileRef);
-        }
-    }
-    else
-    {
-        printf("Disconnected\n");
-
-        if (withDataBearerMonitoring)
-        {
-            StopDataBearerMonitoring();
-        }
-
-        exit(EXIT_SUCCESS);
+        StopDataBearerMonitoring();
     }
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -300,14 +485,8 @@ static void ConnectionStateHandler
 //--------------------------------------------------------------------------------------------------
 static void ExpiryHandler(le_timer_Ref_t timerRef)
 {
-    if (!DataConnected)
-    {
-        fprintf(stderr, "Timed-out\n");
-        le_data_Release(RequestRef);
-        exit(2); // 2 signifies timeout
-    }
+    HandleResult("Timed out wating for data connection", LE_TIMEOUT, true);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -363,8 +542,6 @@ static le_result_t StartTimer
    return res;
 }
 
-
-
 //-------------------------------------------------------------------------------------------------
 /**
  * Set the profile in use in configDB
@@ -389,7 +566,6 @@ int cm_data_SetProfileInUse
         return EXIT_SUCCESS;
     }
 }
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -432,6 +608,28 @@ static const char* ConvertAuthentication
     return "ERROR"; // Should not happen
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Callback for the session Connection
+ */
+//-------------------------------------------------------------------------------------------------
+static void SessionHandler
+(
+    le_mdc_ProfileRef_t profile,
+    le_result_t result,
+    void* contextPtr
+)
+{
+    if (!result)
+    {
+        HandleResult("Connection Success", result, true);
+    }
+    else
+    {
+        HandleResult("Connection Failure", result, true);
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Start a data connection.
@@ -439,28 +637,40 @@ static const char* ConvertAuthentication
 //--------------------------------------------------------------------------------------------------
 void cm_data_StartDataConnection
 (
-    const char * timeout,           ///< [IN] Data connection timeout timer
-    bool withDataBearerMonitoring   ///< [IN] Monitor data bearer technology
+    const char * timeoutPtr    ///< [IN] Data connection timeout timer
 )
 {
-    // Register a call-back
-    le_data_AddConnectionStateHandler(ConnectionStateHandler, (void*)withDataBearerMonitoring);
+    le_mdc_ProfileRef_t profile;
+    le_result_t result;
 
-    // start data request timer
-    if (timeout != NULL)
+    profile = GetDataProfile();
+
+    if (!timeoutPtr)
     {
-        le_result_t res = StartTimer(timeout);
-
-        if (res != LE_OK)
+        if ( (result = le_mdc_StartSession(profile)) )
         {
-            exit(EXIT_FAILURE);
+            HandleResult("Connection Failure", result, true);
+        }
+
+        HandleResult("Connection Success", result, true);
+    }
+    else if (strtol(timeoutPtr, NULL, 10) == -1)
+    {
+        if ( (result = le_mdc_StopSession(profile)) )
+        {
+            HandleResult("Stop Failure", result, true);
+        }
+        HandleResult("Stop Success", result, true);
+    }
+    else
+    {
+        le_mdc_StartSessionAsync(profile, SessionHandler, NULL);
+        if ( (result = StartTimer(timeoutPtr)) )
+        {
+            HandleResult("Failed to start data session timer",result, true);
         }
     }
-
-    // Request data connection
-    RequestRef = le_data_Request();
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -472,10 +682,14 @@ void cm_data_MonitorDataConnection
     void
 )
 {
-    // Register a call-back
-    le_data_AddConnectionStateHandler(ConnectionStateHandler, (void*)true);
-}
+    le_mdc_ProfileRef_t profile;
 
+    profile = GetDataProfile();
+
+    StartDataBearerMonitoring(profile);
+
+    le_mdc_AddSessionStateHandler(profile, ConnectionStateHandler, NULL);
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -508,7 +722,6 @@ int cm_data_SetApnName
 
     return EXIT_SUCCESS;
 }
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -568,7 +781,6 @@ int cm_data_SetPdpType
     return EXIT_SUCCESS;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function will attempt to set the authentication information.
@@ -626,7 +838,6 @@ int cm_data_SetAuthentication
     return EXIT_SUCCESS;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function prints a profile index.
@@ -642,7 +853,6 @@ static void PrintProfileIndex
     snprintf(profileIndexStr, sizeof(profileIndexStr), "%u", profileIndex);
     cm_cmn_FormatPrint("Index", profileIndexStr);
 }
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -671,7 +881,6 @@ static le_result_t PrintApnName
     return res;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function will attempt to get the pdp type from a specified iterator.
@@ -693,7 +902,6 @@ static le_result_t PrintPdpType
 
     return res;
 }
-
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -734,7 +942,6 @@ static le_result_t PrintAuthentication
     return res;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function will attempt to print the state of the profile.
@@ -762,6 +969,35 @@ static le_result_t PrintIsConnected
     return res;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print Network Configuration
+ *
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t PrintNetworkConfiguration
+(
+    le_mdc_ProfileRef_t profile    ///< [IN] profile reference
+)
+{
+    le_result_t result;
+    NetConf_t netConf;
+
+    netConf.profile = profile;
+
+    result = GetNetworkConfiguration(&netConf);
+    if (result == LE_OK)
+    {
+        cm_cmn_FormatPrint("Interface", netConf.itfName);
+        cm_cmn_FormatPrint("Family", netConf.family);
+        cm_cmn_FormatPrint("IP", netConf.ip);
+        cm_cmn_FormatPrint("Gateway", netConf.gw);
+        cm_cmn_FormatPrint("Dns1", netConf.dns1);
+        cm_cmn_FormatPrint("Dns2", netConf.dns2);
+    }
+
+    return result;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -816,11 +1052,14 @@ int cm_data_GetProfileInfo
         exitStatus = EXIT_FAILURE;
     }
 
-    printf("\n");
+    res = PrintNetworkConfiguration(profileRef);
+    if (res != LE_OK)
+    {
+        exitStatus = EXIT_FAILURE;
+    }
 
     return exitStatus;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -843,7 +1082,6 @@ void cm_data_ProcessDataCommand
     else if (strcmp(command, "info") == 0)
     {
         exit(cm_data_GetProfileInfo());
-        exit(EXIT_SUCCESS);
     }
     else if (strcmp(command, "profile") == 0)
     {
@@ -856,20 +1094,14 @@ void cm_data_ProcessDataCommand
     }
     else if (strcmp(command, "connect") == 0)
     {
-        if (numArgs == 2)
-        {
-            cm_data_StartDataConnection(NULL, false);
-        }
-        else if (numArgs == 3)
-        {
-            cm_data_StartDataConnection(le_arg_GetArg(2), false);
-        }
-        else
+        if (numArgs > 3)
         {
             printf("Invalid argument when starting a data connection. "
                    "e.g. cm data connect <optional timeout (secs)>\n");
             exit(EXIT_FAILURE);
         }
+
+        cm_data_StartDataConnection(le_arg_GetArg(2));
     }
     else if (strcmp(command, "apn") == 0)
     {
@@ -916,4 +1148,3 @@ void cm_data_ProcessDataCommand
         exit(EXIT_FAILURE);
     }
 }
-

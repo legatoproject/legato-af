@@ -28,7 +28,7 @@ apps:
 
 commands:
 {
-    cm = tools:/bin/cm
+    cm = tools:/scripts/cm
     fwupdate = tools:/bin/fwupdate
     secstore = tools:/bin/secstore
     pmtool = tools:/bin/pmtool

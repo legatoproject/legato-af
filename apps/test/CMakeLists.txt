@@ -102,3 +102,6 @@ add_subdirectory(atServices/atClientTest)
 add_subdirectory(atServices/atServerIntegrationTest)
 add_subdirectory(atServices/atServerMultipleAppsTest)
 add_subdirectory(atServices/atServerUnitTest)
+
+# CM tool
+add_subdirectory(cm)

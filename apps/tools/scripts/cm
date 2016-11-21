@@ -1,0 +1,154 @@
+################################################################################
+#                                                                              #
+# cm is a shell script that wraps the cm binary in order to start a data       #
+# session based on cellular modem technology. It sets up the last registred    #
+# profile preferences, the ip routing table and tests the connection (just a   #
+# ping test to see if we can reach the outside world).                         #
+#                                                                              #
+# for more information cm help                                                 #
+#                                                                              #
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.   #
+#                                                                              #
+################################################################################
+
+#!/bin/sh
+
+CM=${CM:="/legato/systems/current/apps/tools/read-only/bin/cm"}
+IP=${IP:="/sbin/ip"}
+IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}
+PING=${PING:="/bin/ping"}
+RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
+LOG=${LOG:="/tmp/cm.log"}
+
+cm() {
+    $CM $@
+}
+
+ip() {
+    $IP $@
+}
+
+ifconfig() {
+    $IFCONFIG $@
+}
+
+ping() {
+    $PING $@
+}
+
+handle_err() {
+    local err=$1
+    local log=$LOG
+
+    sed -i "1s/^/$(date) - /" $log
+
+    if [[ $err -ne 0 ]]; then
+        echo "failed"
+        cat $log
+        exit 1
+    else
+        echo "ok"
+    fi
+}
+
+get_default_gw() {
+    local iface=$1
+    ip route show dev $iface | grep "default" | cut -d' ' -f3
+}
+
+update_dns() {
+    for i in $@; do
+        if [[ "$1" != "N/A" ]]; then
+            grep $1 $RESOLV_CONF > /dev/null 2>&1
+            if [[ $? -ne 0 ]]; then
+                echo -n "Updating /etc/resolv.conf ... "
+                echo "nameserver $1" >> $RESOLV_CONF
+                echo "ok"
+            fi
+        fi
+        shift 1
+    done
+}
+
+cm_data_get_param() {
+    local info=$1
+    local param=$2
+
+    echo "$info" | grep "^$param" | cut -d':' -f2 | sed -e s'/^[ \t]*//'
+}
+
+cm_data_connect () {
+    local opt=$1
+    local info=$(cm data info)
+    local index=$(cm_data_get_param "$info" "Index")
+    local apn=$(cm_data_get_param "$info" "APN")
+    local pdp=$(cm_data_get_param "$info" "PDP Type")
+    local status=$(cm_data_get_param "$info" "Connected")
+    local auth_type=$(cm_data_get_param "$info" "Auth type")
+    local usr=$(cm_data_get_param "$info" "User name")
+    local passwd=$(cm_data_get_param "$info" "Password")
+
+    if [[ "$opt" == "-1" ]]; then
+        echo -n "Disconnecting ... "
+        cm data connect $opt > $LOG 2>&1
+        handle_err $?
+        exit 0
+    fi
+
+    if [[ "$status" == "no" ]]; then
+        echo "Setting up profile $index"
+
+        echo -n "Setting access point name ... "
+        cm data apn "$apn" > $LOG 2>&1
+        handle_err $?
+
+        echo -n "Setting packet data protocol ... "
+        cm data pdp "$pdp" > $LOG 2>&1
+        handle_err $?
+
+        echo -n "Setting Authentication ... "
+        cm data auth "$auth_type" "$usr" "$passwd" > $LOG 2>&1
+        handle_err $?
+
+        echo -n "Connecting ... "
+        cm data connect $opt > $LOG 2>&1
+        handle_err $?
+
+        echo -n "Cheking if device is up ... "
+        ifconfig | grep "$iface" > /dev/null 2>&1
+        handle_err $?
+    fi
+
+    info=$(cm data info)
+
+    local iface=$(cm_data_get_param "$info" "Interface")
+    local family=$(cm_data_get_param "$info" "Family")
+    local gw=$(cm_data_get_param "$info" "Gateway")
+    local dns1=$(cm_data_get_param "$info" "Dns1")
+    local dns2=$(cm_data_get_param "$info" "Dns2")
+    local dgw=$(get_default_gw $iface)
+
+    if [[ -z "${dgw// }" ]]; then
+        echo -n "Routing ... "
+        ip -family $family route add default via $gw dev $iface \
+            > $LOG 2>&1
+        handle_err $?
+    fi
+
+    update_dns $dns1 $dns2
+
+    echo -n "Testing connection ... "
+    ping -c4 "www.google.com" > $LOG 2>&1
+    handle_err $?
+
+    exit 0
+}
+
+if [[ "$1" == "data" ]]; then
+    if [[ "$2" == "connect" ]] && [[ $# -le 3 ]]; then
+        shift 2
+        cm_data_connect $@
+    fi
+fi
+
+cm $@

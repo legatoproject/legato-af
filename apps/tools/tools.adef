@@ -42,3 +42,11 @@ bindings:
     pmtool.pmtool.le_ulpm -> powerMgr.le_ulpm
     pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
 }
+
+bundles:
+{
+    file:
+    {
+        [rx] scripts/cm /scripts/
+    }
+}
