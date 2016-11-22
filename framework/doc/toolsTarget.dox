@@ -9,6 +9,7 @@ Legato has these tools to run on the target:
 | @subpage toolsTarget_configEcm     | setup an ECM interface                             |
 | @subpage toolsTarget_fwUpdate      | download image files directly to                   |
 | @subpage toolsTarget_inspect       | examine running Legato processes and memory pools  |
+| @subpage toolsTarget_gnss           | monitor and debug GNSS        |
 | @subpage toolsTarget_legato        | run Legato framework                               |
 | @subpage toolsTarget_log           | set logging variables for components               |
 | @subpage toolsTarget_sbtrace  |  help import files into sandboxed app        |

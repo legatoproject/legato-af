@@ -1,0 +1,111 @@
+/** @page toolsTarget_gnss gnss
+
+Use the GLobal Navigation Satellite System (GNSS) @c gnss tool to monitor and debug a GNSS target
+device.
+
+Also see @ref c_gnss API
+
+<h1>Usage</h1>
+
+<b><c> gnss [commands]
+@code
+gnss <enable/disable>
+gnss <start/stop>
+gnss restart <RestartType>
+gnss fix [FixTime in seconds]
+gnss get <parameter>
+gnss get posInfo
+gnss set constellation <ConstellationType>
+gnss set agpsMode <ModeType>
+gnss set acqRate <acqRate in milliseconds>
+gnss set nmeaSentences <nmeaMask>
+gnss watch [WatchPeriod in seconds]
+gnss help
+@endcode
+
+@verbatim gnss <enable/disable>@endverbatim
+> Enable/disable gnss device.
+
+@verbatim gnss <start/stop>@endverbatim
+> Start/stop gnss device.
+
+@verbatim gnss restart <RestartType>@endverbatim
+> Restart gnss device. Allowed when device in 'active' state. Restart type can be:
+> - hot
+> - warm
+> - cold
+> - factory
+
+> See @ref c_gnss for more info on these restart types.
+
+@verbatim gnss fix [FixTime in seconds]@endverbatim
+> Loop for certain time for first position fix. FixTime is optional.
+> Default time(60s) will be used if not specified.
+
+@verbatim gnss get <parameter>@endverbatim
+> Used to get different gnss parameters:
+> - ttff: Time to First Fix (milliseconds)
+> - acqRate: Acquisition Rate (unit milliseconds)
+> - agpsMode: Agps Mode
+> - nmeaSentences: Enabled NMEA sentences (bit mask)
+> - constellation: GNSS constellation
+> - posState: Position fix state(no fix, 2D, 3D etc)
+> - loc2d: 2D location (latitude, longitude, horizontal accuracy)
+> - alt: Altitude (Altitude, Vertical accuracy)
+> - loc3d: 3D location (latitude, longitude, altitude, horizontal accuracy, vertical accuracy)
+> - gpsTime: Get last updated gps time
+> - time: Time of the last updated location
+> - timeAcc: Time accuracy in milliseconds
+> - date: Date of the last updated location
+> - hSpeed : Horizontal speed(Horizontal Speed, Horizontal Speed accuracy)
+> - vSpeed : Vertical speed(Vertical Speed, Vertical Speed accuracy)
+> - motion: Motion data (Horizontal Speed, Horizontal Speed accuracy, Vertical Speed, Vertical Speed
+>   accuracy)
+> - direction: Direction indication
+> - satInfo: Satellites Vehicle information
+> - satStat: Satellites Vehicle status
+> - dop: Dilution Of Precision for the fixed position
+> - posInfo: Get all current position info of the device.
+
+@verbatim gnss set constellation <ConstellationType>@endverbatim
+> Used to set constellation. Allowed when device in 'ready' state. May require
+> platform reboot. See @ref c_gnss for more details.
+
+> ConstellationType can be:
+> - 1: GPS
+> - 2: GLONASS
+> - 4: BEIDOU
+> - 8: GALILEO
+
+> Use sum of the values to set multiple constellation, e.g., 3 for GPS+GLONASS
+> 15 for GPS+GLONASS+BEIDOU+GALILEO.
+
+See @ref c_gnss for more details.
+
+@verbatim gnss set agpsMode <ModeType>@endverbatim
+> Used to set agps mode. ModeType can be:
+> - alone: Standalone agps mode
+> - msBase: MS-based agps mode
+> - msAssist: MS-assisted agps mode
+
+@verbatim gnss set acqRate <acqRate in milliseconds>@endverbatim
+> Used to set acquisition rate. Available when device is 'ready' state.
+
+@verbatim gnss set nmeaSentences <nmeaMask>@endverbatim
+> Used to set the enabled NMEA sentences.
+> Bit mask should be set with hexadecimal values (e.g., 7FFF).
+
+@verbatim gnss watch [WatchPeriod in seconds]@endverbatim
+> Used to monitor all gnss information (position, speed, satellites used, etc.).
+> WatchPeriod is optional. Default time(600s) will be used if not specified.
+
+@verbatim gnss help@endverbatim
+> Display help.
+
+@note Some commands require the gnss target to be in specific state (and platform reboot).
+
+See @ref howtoGNSS and @ref c_gnss for more info.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

@@ -101,7 +101,7 @@ void PrintGnssHelp
                          - warm\n\
                          - cold\n\
                          - factory\n\
-                    To know more about these restart types, please look http://legato.io/legato-docs/latest/c_gnss.html\n\
+                    See GNSS topics in the Legato docs for more info on these restart types.\n\
                 \n\
                 gnss fix [FixTime in seconds]\n\
                     - Loop for certain time for first position fix. Here, FixTime is optional.\n\
@@ -131,17 +131,17 @@ void PrintGnssHelp
                          - satInfo       --> Satellites Vehicle information\n\
                          - satStat       --> Satellites Vehicle status\n\
                          - dop           --> Dilution Of Precision for the fixed position\n\
-                         - posInfo       --> Get all current position info of the device.\n\
+                         - posInfo       --> Get all current position info of the device\n\
                 \n\
                 gnss set constellation <ConstellationType>\n\
                     - Used to set constellation. Allowed when device in 'ready' state. May require\n\
-                      platform reboot, please look platform documentation for details. ConstellationType\n\
+                      platform reboot, refer to platform documentation for details. ConstellationType\n\
                       can be as follows:\n\
                          - 1 --> GPS\n\
                          - 2 --> GLONASS\n\
                          - 4 --> BEIDOU\n\
                          - 8 --> GALILEO\n\
-                      Please use sum of the values to set multiple constellation, e.g. 3 for GPS+GLONASS\n\
+                      Please use sum of the values to set multiple constellation, e.g., 3 for GPS+GLONASS\n\
                       15 for GPS+GLONASS+BEIDOU+GALILEO\n\
                 \n\
                 gnss set agpsMode <ModeType>\n\
@@ -151,19 +151,18 @@ void PrintGnssHelp
                          - msAssist --> MS-assisted agps mode\n\
                 \n\
                 gnss set acqRate <acqRate in milliseconds>\n\
-                    - Used to set acquisition rate. Please note this is available when device is 'ready' state.\n\
+                    - Used to set acquisition rate. Available when device is in 'ready' state.\n\
                 \n\
                 gnss set nmeaSentences <nmeaMask>\n\
                     - Used to set the enabled NMEA sentences. \n\
-                      Bit mask should be set with hexadecimal values, e.g. 7FFF\n\
+                      Bit mask should be set with hexadecimal values, e.g., 7FFF\n\
                 \n\
                 gnss watch [WatchPeriod in seconds]\n\
-                    - Used to monitor all gnss information(position, speed, satellites used etc).\n\
-                      Here, WatchPeriod is optional. Default time(600s) will be used if not specified\n\
+                    - Used to monitor all gnss information (position, speed, satellites used, etc.).\n\
+                      Here, WatchPeriod is optional. Default time(600s) will be used if not specified.\n\
                 \n\
             Please note, some commands require gnss device to be in specific state (and platform reboot)\n\
-            to produce valid result. Please look http://legato.io/legato-docs/latest/howToGNSS.html,\n\
-            http://legato.io/legato-docs/latest/c_gnss.html and platform documentation for more details.\n\
+            to produce valid result. See GNSS topics in the Legato docs for more info.\n\
          ");
 }
 

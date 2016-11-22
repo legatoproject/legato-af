@@ -3,9 +3,9 @@
  * @page c_gnss GNSS
  *
  * @ref le_gnss_interface.h "API Reference" <br>
- * @ref platformConstraintsGnss page
- *
- * @ref howToGNSS
+ * @ref platformConstraintsGnss <br>
+ * @ref howToGNSS "How To Use GNSS" <br>
+ * @ref toolsTarget_gnss "GNSS target tool" <br>
  *
  * <HR>
  *
@@ -1243,7 +1243,9 @@ FUNCTION le_result_t SetSuplServerUrl
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function injects the SUPL certificate to be used in A-GNSS sessions.
+ * This function injects the SUPL certificate to be used in A-GNSS sessions. Certificates must
+ * be encoded in DER. Other certificate encryptions (e.g., PEM, CER and CRT)
+ * aren't supported.
  *
  * @return
  *  - LE_OK on success
