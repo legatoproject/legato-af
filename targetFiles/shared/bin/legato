@@ -191,7 +191,10 @@ StopLegato()
 
     # supervisor mounted smack. supervisor is dead now so unmount smack else it may
     # give us trouble if we need to unmount the things smack is mounted to
-    umount /legato/smack
+    if [ ! -e /legato/SMACK_DISABLED ]
+    then
+        umount /legato/smack
+    fi
 
     if [ $wasRunning = "yes" ]
     then
