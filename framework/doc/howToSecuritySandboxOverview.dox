@@ -1,7 +1,7 @@
 /** @page howToSecuritySandboxOverview Sandbox Overview
 
 To understand how Legato sandboxes are implemented, see @ref basicSecuritySandbox basics. <br>
-There's also an topic on how to @subpage howToSecuritySandboxUse.
+There's also an topic on how to @subpage howToSecuritySandboxConfigSample.
 
 @section howToSecuritySandbox_oveview Overview
 
@@ -23,7 +23,7 @@ to ensure permissions are valid.
 - you've reached a sanboxed app @ref howToSecuritySandboxLimits "limit".
 
 
-@ref howToSecuritySandboxUse contains detailed instructions on how to troubleshoot
+@ref howToSecuritySandboxConfigSample contains detailed instructions on how to troubleshoot
 sandbox problems.
 
 @section howToSecuritySandbox_sampleApps Sandbox Sample Apps

@@ -12,13 +12,16 @@ You @subpage howToSecuritySandboxOverview "configure" Legato sandboxes through @
 
 There are @subpage howToSecuritySandboxLimits you should understand.
 
-Here are some details on creating and building a @subpage howToSecuritySandboxUse.
+Legato also provides a @subpage howToSecuritySandboxHelper host tool to help trace your sandboxed
+apps.
+
+Here are some details on creating and building a
+@subpage howToSecuritySandboxConfigSample "sample sandbox".
 
 <HR>
 
 Legato also supports
 @subpage howToSecuritySmack
-
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

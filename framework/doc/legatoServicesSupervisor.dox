@@ -1,14 +1,19 @@
 /** @page legatoServicesSupervisor Supervisor
 
+Supervisor APIs provide services to monitor and/or control apps. These Supervisor Services are
+usually used in conjunction with running @ref toolsHost_sbhelper.
+
+These APIs are available:
+
 | Service                            | Description                                        | multi-app safe            |
 | ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage legatoServicesSupervisorMonitoring  | Monitor and control apps           | @image html green_dot.png |
-| @subpage c_appInfo                 | Application information retrieval                  |                           |
-| @subpage c_wdog                    | Kickable timeout                                   | @image html green_dot.png |
+| @subpage c_appCtrl                     | control Legato apps               |  x  |
+| @subpage c_appInfo                           |   Legato app info retrieval   |  x   | 
+| @subpage c_framework  | control the Legato Framework           | x  |
 
- <br>
-
-<HR>
+@warning Beware of the security risks associated with granting an app access to these services.
+Apps that can control the state of other apps can seriously interfere with system operation.
+Sometimes, even knowledge about which apps are running can reveal a vulnerability.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

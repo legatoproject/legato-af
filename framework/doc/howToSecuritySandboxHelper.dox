@@ -1,0 +1,34 @@
+/** @page howToSecuritySandboxHelper Sandbox Helper
+
+@ref toolsHost_sbhelper <br>
+@ref toolsTarget_sbtrace
+
+When building sandboxed apps, it can be tedious to determine all of the
+@ref defFilesAdef_requiresFile "files" that the app @ref defFilesAdef_requires "requires".
+The @ref toolsHost_sbhelper host tool dynamically traces an app to determine the files it's trying
+to access, and then prompts for permission for the app to use the missing files traced.
+
+To use @c sbhelper:
+- Create your app as usual filling in all the @ref defFilesAdef sections. Complete as
+much of the requires @ref defFilesAdef_requiresFile section as possible.  
+- Run @ref toolsHost_sbhelper specifying the target device app name, target type,
+and the IP address (DEST_IP).  If @c DEST_IP isn't specified on the command line,
+the contents of the @c DEST_IP environment variable will be used.
+
+@c sbhelper will:
+- Build the app.
+- Install it on the target.
+- @ref toolsTarget_sbtrace "Trace" the app on the target to determine any missing required files.
+- Append the set of required files to the the app's @c adef file.
+- Rebuild the app and reinstall on the target.
+
+<b>@c sbhelper currently has some limitations:</b>
+- it can't guarantee that all code paths are traced and so there may be
+required files that aren't caught.
+- it can't determine if the app is functioning as the developer intended
+so you must check the resulting app is working properly.
+- automatically determining resource limits isn't supported yet.
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/

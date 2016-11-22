@@ -2,7 +2,7 @@
 
 This topic provides details about Legato's System Definition files.
 
-See @ref howToSecurity for details on how to @ref howToSecuritySandboxUse and understand
+See @ref howToSecurity for details on how to @ref howToSecuritySandboxConfigSample and understand
 @ref howToSecuritySandboxLimits_app "app" and @ref howToSecuritySandboxLimits_process "process"
 limits.
 
