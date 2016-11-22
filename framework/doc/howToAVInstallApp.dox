@@ -13,7 +13,7 @@ Code sample:
 
 @verbatim
 $ mkapp -t wp85 helloWorld.adef
-$ av-pack -f helloWorld.wp85.update abcCo.jsmith.helloWorld _build_helloWorld/wp85
+$ av-pack -u helloWorld.wp85.update -b _build_helloWorld/wp85
 @endverbatim
 
 The first line builds the @c helloWorld app for the @c wp85 target. The update pack file
