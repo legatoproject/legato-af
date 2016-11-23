@@ -16,6 +16,8 @@ static le_gnss_PositionHandlerRef_t PositionHandlerRef = NULL;
 //Wait up to 60 seconds for a 3D fix
 #define GNSS_WAIT_MAX_FOR_3DFIX  60
 
+char ShortSuplCertificate[50]={0};
+
 //--------------------------------------------------------------------------------------------------
 //                                       Test Functions
 //--------------------------------------------------------------------------------------------------
@@ -885,12 +887,101 @@ static void TestLeGnssNmeaSentences
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: test SUPL certificate
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSuplCertificate
+(
+    void
+)
+{
+    le_gnss_AssistedMode_t gnssMode;
+
+    memset(&ShortSuplCertificate, 0x69, sizeof(ShortSuplCertificate));
+
+    //Gets the SUPL Assisted-GNSS LE_GNSS_STANDALONE_MODE mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+
+    //Set the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_STANDALONE_MODE)) == LE_OK);
+    LE_INFO("SUPL Stand alone mode set");
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_STANDALONE_MODE);
+
+    //Set the SUPL Assisted-GNSSLE_GNSS_MS_BASED_MODE mode.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_BASED_MODE)) == LE_OK);
+    LE_INFO("SUPL Ms based mode set");
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_MS_BASED_MODE);
+
+    //Set the SUPL Assisted-GNSS mode LE_GNSS_MS_ASSISTED_MODE.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE)) == LE_OK);
+    LE_INFO("SUPL Assisted mode set");
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_MS_ASSISTED_MODE);
+
+    //Set the SUPL Assisted-GNSS mode LE_GNSS_MS_ASSISTED_MODE.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE+10)) == LE_UNSUPPORTED);
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_MS_ASSISTED_MODE);
+
+    //Set the SUPL server URL
+    LE_ASSERT((le_gnss_SetSuplServerUrl("http://sls1.sirf")) == LE_OK);
+
+    //Set the SUPL server URL
+    LE_ASSERT((le_gnss_SetSuplServerUrl("http://sls1.sirf.com")) == LE_OK);
+    LE_INFO("le_gnss_SetSuplServerUrl OK");
+
+    //Injects the SUPL certificate with lenght zero :
+    //(won't be signaled as error (user must put the right size).
+    LE_ASSERT((le_gnss_InjectSuplCertificate(0,
+                               0,ShortSuplCertificate)) == LE_OK);
+    //Injects the SUPL certificate with ID error
+    LE_ASSERT((le_gnss_InjectSuplCertificate(10,
+                               strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_FAULT);
+
+    //Injects the SUPL certificate to be used in A-GNSS sessions
+    LE_ASSERT((le_gnss_InjectSuplCertificate(0,
+                               strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_OK);
+
+    // cannot test certificate with lenght greater than LE_GNSS_SUPL_CERTIFICATE_MAX_BYTES
+    // there is no return code in this case.
+    //Delete the SUPL certificate 10 (out of range)
+    LE_ASSERT((le_gnss_DeleteSuplCertificate(10)) == LE_FAULT);
+
+    //Delete a SUPL certificate not used in A-GNSS sessions
+    LE_ASSERT((le_gnss_DeleteSuplCertificate(1)) == LE_FAULT);
+
+    //Delete the SUPL certificate used in A-GNSS sessions
+    LE_ASSERT((le_gnss_DeleteSuplCertificate(0)) == LE_OK);
+
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * App init.
  *
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+     LE_INFO("======== Supl Certificate Test  ========");
+     TestSuplCertificate();
      LE_INFO("======== GNSS device Test  ========");
      TestLeGnssDevice();
      LE_INFO("======== GNSS device Start Test  ========");

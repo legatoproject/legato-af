@@ -286,7 +286,8 @@
  * The SUPL certificate to be used in A-GNSS sessions is injected through the
  * le_gnss_InjectSuplCertificate() function and deleted through the le_gnss_DeleteSuplCertificate()
  * function.
- *
+ * The SUPL certificate lenght given as parameter to le_gnss_InjectSuplCertificate() must be less
+ * than LE_GNSS_SUPL_CERTIFICATE_MAX_LEN.
  *
  * <HR>
  *
@@ -1263,6 +1264,9 @@ FUNCTION le_result_t SetSuplServerUrl
  *  - LE_FAULT on failure
  *  - LE_BUSY service is busy
  *  - LE_TIMEOUT a time-out occurred
+ *
+ * @note If the SUPL certificate size is bigger than the Maximum SUPL certificate size,
+ * it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t InjectSuplCertificate
