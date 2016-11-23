@@ -23,7 +23,6 @@ export TARGET_SANDBOX_IMPORT := TARGET_IMPORTS_ARMV7
 # Use simu PAs temporarily
 export LEGATO_AVC_PA = $(PA_DIR)/simu/components/le_pa_avc
 export LEGATO_SECSTORE_PA = $(PA_DIR)/simu/components/le_pa_secStore
-export LEGATO_FWUPDATE_PA = $(PA_DIR)/simu/components/le_pa_fwupdate
 
 # QMI PAs
 export LEGATO_AUDIO_PA = $(LEGATO_QMI_AUDIO_PA)
@@ -37,6 +36,8 @@ endif
 export LEGATO_GNSS_PA = $(LEGATO_QMI_GNSS_PA)
 #export LEGATO_AVC_PA = $(LEGATO_QMI_AVC_PA)
 #export LEGATO_SECSTORE_PA = $(LEGATO_QMI_SECSTORE_PA)
+export LEGATO_FWUPDATE_PA = $(LEGATO_QMI_FWUPDATE_PA)
+export LEGATO_FWUPDATE_PA_DUALSYS = $(PA_DIR)/fwupdate/mdm9x28/le_pa_fwupdate_dualsys
 export LEGATO_UARTMODE_PA = $(LEGATO_QMI_UARTMODE_PA)
 
 export MKSYS_FLAGS += -C "-DSIERRA_MDM9X28"
