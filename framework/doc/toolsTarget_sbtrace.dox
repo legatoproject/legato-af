@@ -1,15 +1,17 @@
 /** @page toolsTarget_sbtrace sbtrace
 
-Use the Sandbox Trace sbtrace tool to help import files into a Legato app's sandbox.
+The Sandbox Trace @c sbtrace tool helps import files into a Legato app's sandbox.
+It's usually run automatically through the host @ref toolsHost_sbhelper tool, but you can run
+it without using @c sbhelper.
 
 @c sbtrace starts the specified app and traces the app's system calls to dynamically determine the
-files the app is trying to access. Gives the user the option to allow or deny
+files the app is trying to access. It gives users the option to allow or deny
 access to files not already in the app's sandbox. If the app is granted access,
 then the file is automatically imported into the app's sandbox.
 
 The app access is temporary. The @c sbtrace tool doesn't modify the
-app's installation or config settings. However, a @c requires section
-can be added to the app's @ref defFilesAdef or @ref defFilesCdef.
+app's installation or config settings. The @c requires section should
+still be added to the app's @ref defFilesAdef or @ref defFilesCdef files.
 
 <h1>Usage</h1>
 
