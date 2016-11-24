@@ -125,6 +125,19 @@ pa_avc_OpErr_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Session status check flag.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    ASSET_DATA_SESSION_STATUS_IGNORE,
+    ASSET_DATA_SESSION_STATUS_CHECK
+}
+assetData_SessionStatusCheck_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference to LWM2M Operation Request
  */
 //--------------------------------------------------------------------------------------------------
@@ -177,7 +190,7 @@ typedef void (*pa_avc_LWM2MOperationHandlerFunc_t)
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_avc_LWM2MUpdateRequiredHandlerFunc_t)
 (
-    void
+    assetData_SessionStatusCheck_t status
 );
 
 

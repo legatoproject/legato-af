@@ -1118,7 +1118,7 @@ le_result_t assetData_client_IsObserve
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void assetData_RegistrationUpdate
 (
-    void
+    assetData_SessionStatusCheck_t status       ///< [IN] Session status check
 );
 
 
@@ -1130,7 +1130,8 @@ LE_SHARED void assetData_RegistrationUpdate
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void assetData_RegUpdateIfNotObserved
 (
-    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
+    assetData_InstanceDataRef_t instanceRef,    ///< The instance of object 9.
+    assetData_SessionStatusCheck_t status       ///< [IN] Session status check
 );
 
 

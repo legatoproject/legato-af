@@ -2883,7 +2883,7 @@ void assetData_SessionStatus
 //--------------------------------------------------------------------------------------------------
 void assetData_RegistrationUpdate
 (
-    void
+    assetData_SessionStatusCheck_t status    ///< [IN] Session status check
 )
 {
     // This size must the same as OBJ_PATH_MAX_LEN_V01 in qapi_lwm2m_v01.h
@@ -2893,7 +2893,8 @@ void assetData_RegistrationUpdate
 
     le_result_t rc;
 
-    if (CurrentAvSessionStatus != ASSET_DATA_SESSION_AVAILABLE)
+    if ( (CurrentAvSessionStatus != ASSET_DATA_SESSION_AVAILABLE) &&
+         (status != ASSET_DATA_SESSION_STATUS_IGNORE) )
     {
         LE_DEBUG("Registration update can't be sent now.");
         IsRegUpdatePending = true;
@@ -2931,7 +2932,8 @@ void assetData_RegistrationUpdate
 //--------------------------------------------------------------------------------------------------
 void assetData_RegUpdateIfNotObserved
 (
-    assetData_InstanceDataRef_t instanceRef    ///< The instance of object 9.
+    assetData_InstanceDataRef_t instanceRef,    ///< The instance of object 9.
+    assetData_SessionStatusCheck_t status       ///< [IN] Session status check
 )
 {
     // If observe is enabled for object 9 state and result, don't force a registration
@@ -2943,7 +2945,7 @@ void assetData_RegUpdateIfNotObserved
     }
     else
     {
-        assetData_RegistrationUpdate();
+        assetData_RegistrationUpdate(status);
     }
 }
 
@@ -4505,7 +4507,7 @@ static void RegUpdateTimerHandler
 {
     LE_INFO("RegUpdate timer expired; reporting REG_UPDATE");
 
-    assetData_RegistrationUpdate();
+    assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 }
 
 

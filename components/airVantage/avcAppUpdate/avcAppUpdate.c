@@ -981,7 +981,7 @@ static void AppInstallHandler
 
     // When assets are created a registration update is scheduled after 1 second. As the app
     // is installed successfully at this point, we can force a registration update.
-    assetData_RegistrationUpdate();
+    assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 }
 
 
@@ -1040,7 +1040,7 @@ static void AppUninstallHandler
     IsLocalUninstall = false;
 
     // Send registration update after the asset is removed.
-    assetData_RegistrationUpdate();
+    assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 }
 
 
@@ -1114,7 +1114,7 @@ static void UpdateProgressHandler
             SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
 
             le_update_End();
-            assetData_RegUpdateIfNotObserved(CurrentObj9);
+            assetData_RegUpdateIfNotObserved(CurrentObj9, ASSET_DATA_SESSION_STATUS_CHECK);
             CurrentObj9 = NULL;
 
             ClearInstallStarted();
@@ -1148,7 +1148,7 @@ void OnUriDownloadUpdate
         case LE_AVC_DOWNLOAD_COMPLETE:
             LE_DEBUG("Download complete.");
             SetObj9State(CurrentObj9, US_DELIVERED, UR_INITIAL_VALUE, true);
-            assetData_RegUpdateIfNotObserved(CurrentObj9);
+            assetData_RegUpdateIfNotObserved(CurrentObj9, ASSET_DATA_SESSION_STATUS_CHECK);
             CurrentObj9 = NULL;
 
             // Clear download requested flag.
@@ -1162,7 +1162,7 @@ void OnUriDownloadUpdate
             LE_DEBUG("Download failed.");
             // TODO: Find out the real reason this failed.
             SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
-            assetData_RegUpdateIfNotObserved(CurrentObj9);
+            assetData_RegUpdateIfNotObserved(CurrentObj9, ASSET_DATA_SESSION_STATUS_CHECK);
             CurrentObj9 = NULL;
 
             // Clear download requested flag.
@@ -1184,7 +1184,7 @@ void OnUriDownloadUpdate
                 LE_DEBUG("Download started.");
                 SetObj9State(CurrentObj9, US_DOWNLOAD_STARTED, UR_DOWNLOADING, true);
 
-                assetData_RegUpdateIfNotObserved(CurrentObj9);
+                assetData_RegUpdateIfNotObserved(CurrentObj9, ASSET_DATA_SESSION_STATUS_CHECK);
             }
             else
             {
@@ -1261,7 +1261,7 @@ static void StartInstall
         {
             LE_ERROR("Could not start update.");
             SetObj9State(CurrentObj9, US_INITIAL, UR_INSTALLATION_FAILURE, true);
-            assetData_RegUpdateIfNotObserved(CurrentObj9);
+            assetData_RegUpdateIfNotObserved(CurrentObj9, ASSET_DATA_SESSION_STATUS_CHECK);
             CurrentObj9 = NULL;
 
             ClearInstallStarted();
@@ -1302,7 +1302,7 @@ static void PrepareUninstall
     DeleteLegatoObjectsForApp(appName);
 
     // Send registration update after the asset is removed.
-    assetData_RegistrationUpdate();
+    assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 }
 
 
@@ -1411,7 +1411,7 @@ static void InstallFailure
 )
 {
     SetObj9State(instanceRef, US_INITIAL, UR_INSTALLATION_FAILURE, true);
-    assetData_RegUpdateIfNotObserved(instanceRef);
+    assetData_RegUpdateIfNotObserved(instanceRef, ASSET_DATA_SESSION_STATUS_CHECK);
 }
 
 
@@ -1972,7 +1972,7 @@ COMPONENT_INIT
     PopulateAppInfoObjects();
     InitLegatoObjects();
 
-    assetData_RegistrationUpdate();
+    assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 
     // Restore the state of the update process, if avcService was rebooted or interrupted
     // by a power failure while in the middle of a download process.

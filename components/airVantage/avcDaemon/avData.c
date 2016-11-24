@@ -207,7 +207,7 @@ static void ClientCloseSessionHandler
     }
 
     // Send registration update after the asset is removed.
-    assetData_RegistrationUpdate();
+    assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 
     // Search for the session request reference(s) used by the closed client, and clean up any data.
     iterRef = le_ref_GetIterator(AvSessionRequestRefMap);

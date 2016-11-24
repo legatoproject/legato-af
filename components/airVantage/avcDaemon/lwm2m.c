@@ -556,7 +556,7 @@ static void OperationHandler
             pa_avc_OperationReportSuccess(opRef, NULL, 0);
 
             // Send registration update after the instance is removed.
-            assetData_RegistrationUpdate();
+            assetData_RegistrationUpdate(ASSET_DATA_SESSION_STATUS_CHECK);
 
             break;
 
