@@ -219,13 +219,8 @@ function CreateAppPack()
 
             cat "$appManifest" > $appManifestDir/manifest.app
 
-            if [ -z "$TYPE" ]
-            then
-                TYPE="$appName-legato-system"
-            fi
-
             # Set type attribute in manifest
-            SetManifestField "$appManifestDir/manifest.app" "type" "$TYPE"
+            SetManifestField "$appManifestDir/manifest.app" "type" "$appName-$TYPE"
 
             # Check application version, if none, we will replace it with the applications hash
             appVersion=$(GetManifestField "$appManifest" "revision")
