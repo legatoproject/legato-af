@@ -275,24 +275,21 @@ def CreateExtractDirName(args, chunk):
 
     # prepend the given path name or the 'staging' path if not given and we are doing staging
     if args.outputPath:
-        outputPath = args.outputPath[0]
-        if not outputPath.endswith('/'):
-            outputPath = outputPath + '/'
-        DirName = outputPath + DirName
+        DirName = os.path.join(args.outputPath[0], DirName)
     else:
         if args.staging:
-            DirName = 'staging/' + DirName
+            DirName = os.path.join('staging', DirName)
 
     if args.staging:
         # use staging directory paths
         if chunk['jHead']['command'] == 'updateApp':
-            DirName = DirName + 'apps/' + chunk['jHead']['md5']
+            DirName = os.path.join(DirName, 'apps', chunk['jHead']['md5'])
         elif chunk['jHead']['command'] == 'updateSystem':
-            DirName = DirName + 'system/'
+            DirName = os.path.join(DirName, 'system')
     else:
-        DirName = DirName + chunk['jHead']['name']
+        DirName = os.path.join(DirName, chunk['jHead']['name'])
 
-    return DirName
+    return DirName.encode(sys.getfilesystemencoding())
 
 # unpack the chunk using the path it would have had in the staging directory
 def ExtractList(chunk, chunkNameList):
