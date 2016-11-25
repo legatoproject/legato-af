@@ -1,22 +1,23 @@
 /** @page howToMain How To
 
 This section contains topics about frequently needed tasks:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage howToCustomizeUART | customize UART on WP85 or WP75 module    |
-| @subpage howToDebug |  different ways to debug apps  |
-| @subpage howToLoginAuthentication  |  details on how to setup secure shell certifcation        |
-| @subpage howToConfigTree | info on how to manage target config tree   |
-| @subpage howToPowerMgmt | summary about how to manage device power   |
-| @subpage howToEcall |  PDF about general Legato eCall features |
-| @subpage howToGNSS |  summary about how to manage GNSS on target  |
-| @subpage howToSecurity |  info about sandboxes and SMACK  |
-| @subpage howToPortLegacyGen | details on how to port legacy apps to Legato  |
-| @subpage howToSetUserTimebase |  details on how to set user timebase  |
-| @subpage howToNMEA | summary about NMEA setup   |
-| @subpage howToAV | how to use AirVantage to remotely administer Legato apps   |
-| @subpage howToLogs | details on how to access and use Legato Logs   |
-| @subpage howToSoftwareUpdate | details on software update features   |
+| Section                            | Description                                                 |
+| ---------------------------------- | --------------------------------------------------          |
+| @subpage howToLoginAuthentication  | setting up secure shell with ssh keys and passwords         |
+| @subpage howToCustomizeUART        | UART customizations on WP85 or WP75 module                  |
+| @subpage howToDevMode              | managing Developer Mode                                     |
+| @subpage howToDebug                | debugging apps                                              |
+| @subpage howToConfigTree           | managing target Config Trees                                |
+| @subpage howToPowerMgmt            | managing device power                                       |
+| @subpage howToEcall                | PDF about general Legato eCall features                     |
+| @subpage howToGNSS                 | managing GNSS on target                                     |
+| @subpage howToSecurity             | sandboxes and SMACK                                         |
+| @subpage howToPortLegacyGen        | porting legacy apps to Legato                               |
+| @subpage howToSetUserTimebase      | setting up user timebase                                    |
+| @subpage howToNMEA                 | setting up NMEA                                             |
+| @subpage howToAV                   | using AirVantage to remotely administer apps                |
+| @subpage howToLogs                 | accessing and use Legato Logs                               |
+| @subpage howToSoftwareUpdate       | software update features                                    |
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
