@@ -398,7 +398,7 @@ make wp85
 After @c make completes, a software package will be generated: @c assetDataTutorial.wp85.update
 
 @code
-instapp <software package> <device_ip_address> @endcode
+update <software package> <device_ip_address> @endcode
 @endcode
 
 @section howToAirVantageExchangeData_uploadAV Upload and Run AirVantage

@@ -16,17 +16,16 @@ After you connect to your AirVantage account, you can create system and app.
  @section howToAVConnect_createSys Create System
 
 Create a new System in AirVantage Server:
-- From the `Inventory menu`, choose `Systems`.
-- Click the Create button (+ symbol): enter a Name (used for retrieval).
-- In the `Gateway` tab, click Create a New Gateway (+ symbol), a new windows will appear:
-enter your device's IMEI  and Serial Number.
-- Click `Create`.
+- Click "Register".
+- Enter in the Serial Number "FSN" and IMEI/ESN numbers. (Find them by typing @c cm info on the target)
+- Click "Register".
 
-- After you return to the system creation window, click the Application field and select
-the ‘Legato_LWM2M’ (firmware and application update over the air) application model. An application
-model is an XML file defining the communication contract between AirVantage and the embedded app.
-- Select "I want to activate my system after creating it".
-- Click `Create`.
+@note if you are Registering a device that is not a WP85 click "Select System Type" on the top left
+hand corner of the screen and choose your device.
+
+Once your device is registered, it will appear in the list, make note of the "Type" as that
+will need to be entered when you are building system bundles for updating your device. See
+@ref howToAvInstallSys
 
 @section howToAVConnect_lwm2m LWM2M
 
@@ -43,7 +42,12 @@ Check device status on the AirVantage Server:
 - Click Details.
 
 The `Last seen` field should be updated with a recent date.
-You can also see the initial data exchange in the Timeline screen.
+To see the details of the device click the "Monitor" menu.  To set up new monitors and alerts for
+the device see @ref howToUploadApp.
+
+Once the target is registered, it is then ready to have apps and systems updated over the air.
+See @ref howToAVInstallApp and howToAVInstallSys for details on installing App and System updates
+over the air.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

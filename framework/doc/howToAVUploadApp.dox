@@ -1,0 +1,48 @@
+/** @page howToAVUploadApp Uploading Apps/Systems
+This topic provides details on how to deploy and monitor bundles on your target through Air Vantage.
+
+To upload an app/system to Air Vantage you must of already registered your device with the Air
+Vantage platform.
+See @ref howToAVConnect.
+
+@section howToAVUploadApp_uploadApp Uploading an App or System Bundle
+
+You must first have created your App or System bundle in a zip file.  See @ref howToAVInstallApp and
+@ref howToAVInstallSystem for details on creating bundles.
+
+See
+<a href="http://source.sierrawireless.com/airvantage/av/howto/cloud/application_howto/">AirVantage Developing Apps</a>
+Develop+Activity :  "My Apps" Section -> Release ( select publish) for details.
+
+@section  howToAVUploadApp_createAppInstJob Create App/System Installation job
+
+You need to create the app/system install job on the platform:
+    - In your system `Monitor` view
+    - "More" menu
+    - App Install:
+        -  Choose "Install Application" and select the zip file created in the previous step.
+    - System Install:
+        -  Choose "Install Bundle" and select the zip file created in the previous step.
+
+@section howToAVInstallApp_rcvAppAgent Receive App/System on AirVantage Agent
+
+This requires an @c avc control app using the LWM2M AVC API that accepts the download and
+installation. See @ref c_le_avc API for details.
+
+@Section Check Success Status
+
+If the installation was successful, you should find @c helloWorld in the installed apps and
+on the targets' "Monitor" view app list in the AV UI.
+
+@section howToAVInstallApp_goingFurther Going Further
+
+Start, stop, un-install jobs can be created using corresponding UI buttons on the "Monitor" view for
+your system, in the "Applications" section next to your app name.
+
+For more information on Air Vantage Services see
+<a href="https://doc.airvantage.net/display/USERGUIDE/Getting+Started">AirVantage Getting Started</a>
+
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
