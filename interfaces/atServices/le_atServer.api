@@ -4,8 +4,54 @@
  *
  * @ref le_atServer_interface.h "API Reference"
  *
- * The AT Commands Server handles AT commands' subscriptions on a requested serial device. The server
- * is compliant with 3GPP 27.007, paragraph 4.0, 4.1 and 4.2.
+ * The AT commands Server handles AT commands' subscriptions on a requested serial device. The
+ * server is compliant with 3GPP 27.007, paragraphs 4.0, 4.1 and 4.2, and V25 ter, paragraphs 5.3,
+ * 5.4.
+ *
+ * @section atServer_syntax AT command syntax
+ *
+ * @subsection atServer_Syntax Syntax rules
+ *
+ * To be interpreted, the command line sent to the AT commands server must start by the pattern
+ * "AT" (mean ATtention command).<br>
+ * Lowercase characters are changed to their uppercase equivalents. Only characters between quotes
+ * are not replaced.
+ *
+ * The supported command formats are:
+ * - Basic syntax command:
+ *      - using the format AT<command>[<number>]<br>
+ * The command name is composed of one or several of those characters: A to Z, & and \\.
+ *      - the syntax of S command is also supported, like:
+ *          - ATS<parameter_number>?
+ *          - ATS<parameter_number>=\<value>
+ *      - D command syntax is a limitation right now, and is not supported.
+ *
+ * - Extended command format, with the following format:
+ *      - action command with no parameters: AT+<name>
+ *      - parameter command: AT+<name>=<value1>[,<value2>[,<value3>[...]]]<br>
+ *        Values must be separated by a coma. Some values may be optional: in that case, optional
+ *        value can be omitted in the AT command (e.g. AT+ABCD=,1).<br>
+ *        A value is a string composed of one or several of the following characters: 0 to 9,
+ *        A to F, H, z*, #, +, -. To set a value with other characters, the value has to be set
+ * between quote.
+ *      - test command (determine the supported values): AT+<name>=?
+ *      - read command (determine the current values, or stored values): AT+<name>?
+ *
+ * @note '+' AT command starting character shall be replaced by other symbol, not included into
+ * a to z, A to Z, & and \\.
+ *
+ * @subsection atServer_concate Concatenating commands
+ *
+ * Basic syntax command can be concatenated without a separator:<br>
+ * ATE1V1S95=47S0=0
+ *
+ * Additional commands (extended syntax command or basic syntax command) can be added after an
+ * extended syntax command with the insertion of a semicolon at the end of the command:<br>
+ * AT+CMDA=<param1>,<param2>;+CMDB?;+CMDC=?<br>
+ * AT+CMDA=<param1>,<param2>;E1V1
+ *
+ * Extended syntax command can be concatenated after basic syntax commands without a separator:<br>
+ * ATE1V1+CMD=<param1>
  *
  * @section atServer_binding Device Binding
  *
@@ -15,10 +61,10 @@
  * A file descriptor can be unbound using le_atServer_Stop().
  *
  * The server can be suspended using le_atServer_Suspend() in order to use the
- * opened fd for other purposes like starting a ppp service on the opened fd.
+ * opened fd for other purposes like starting a PPP service on the opened fd.
  * For that a fd dup needs to be done before opening a server session.
  * When needed, the server can be resumed using le_atServer_Resume(). Make sure
- * to close the fd when the app exists or you may get too many open files error.
+ * to close the fd when the application exists or you may get too many open files error.
  *
  * used before opening a server session
  * @section atServer_subscription Subscription
@@ -30,29 +76,60 @@
  *
  * @section atServer_handler Handler
  *
- * To handle the AT command, the app has to subscribe a handler using
- * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().
+ * To handle the AT command, the application has to subscribe a handler using
+ * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().<br>
  * The called handler (le_atServer_CommandHandlerRef_t prototype) can use
- * le_atServer_GetCommandName() to retrieve the received AT command string. It can also call
- * le_atServer_GetParameter() to retrieve a parameter of the AT command thanks to its index.
+ * le_atServer_GetCommandName() to retrieve the received AT command string.<br>
+ * It can also call le_atServer_GetParameter() to retrieve parameters of the AT command. This
+ * function gets the string sending through the AT command. If the parameter was sent between
+ * quotes, the quotes are removed. This API can be used for both formats:
+ * - In case of a basic format command, if exists, the parameter can be retrieved at the index 0.<br>
+ * For S command specific format (ATS<parameter_number>=\<value>), the <parameter_number> is
+ * retrieved at the index 0, the \<value> parameter at the index 1.
+ *
+ * - In case of an extended format command, parameters are retrieved thanks to their indexes,
+ * starting from 0. If the parameter is missed (e.g. "AT+CMD=,1"), the getting value is an empty
+ * string (i.e. '\0' with null length).
+ *
+ * The handler receives in argument the type of the AT command (of le_atServer_Type_t type).
+ * Even if these types are specific to the extended format commands according to the standards, they
+ * are also applicable here to basic format commands to detect commands with parameters, or read
+ * values (e.g. ATS<parameter_number>?).
  *
  * @section atServer_responses Responses
  *
- * The app has can send intermediate responses through
+ * @subsection intermediateRsp Intermediate response
+ *
+ * The application has can send intermediate responses through
  * le_atServer_SendIntermediateResponse().
- * In all cases, the app must send a final response using
+ *
+ * @subsection finalRsp Final response
+ *
+ * In all cases, the application must send a final response using
  * le_atServer_SendFinalResponse(). The corresponding device will be locked until the final response
  * is sent.
+ *
  * If no answer is sent, the device will not accept any new AT commands (an error will be
  * returned).
  *
- * The app can also send unsolicited responses to warn a host
- * app using le_atServer_SendUnsolicitedResponse().
+ * le_atServer_SendFinalResponse() has to inform of the result thanks to the argument of
+ * le_atServer_FinalRsp_t type. This argument permits to the AT command Server to:
+ * - create the result string if no custom string is provided
+ * - continue or stop the parsing of concatenated commands: if one command is failed, next commands
+ * are not executed, the final result of the concatenated AT command is the last error.
+ *
+ * @subsection unsolicitedRsp Unsolicited response
+ *
+ * The application can also send unsolicited responses to warn a host
+ * application using le_atServer_SendUnsolicitedResponse().
+ *
  * This response is sent when no AT command is being processing on the device (i.e. unsolicited
- * response is sent between the latest final response and the next reception of an AT command).
+ * response is sent between the latest final response and the next reception of an AT command).<br>
  * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
  * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
  * sends its final response).
+ *
+ * The application can send an unsolicited on all opened device, or only one on a dedicated deivce.
  *
  * <HR>
  *
@@ -88,6 +165,7 @@ REFERENCE Device;
 //--------------------------------------------------------------------------------------------------
 /**
  * Received AT command type.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 ENUM Type
@@ -113,7 +191,7 @@ ENUM FinalRsp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Device availabality.
+ * Device availability.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM AvailableDevice
