@@ -169,8 +169,14 @@ FRAMEWORK_SOURCES = framework \
 					$(wildcard targetDefs*) \
 					CMakeLists.txt
 
+# Error for missing platform adaptors
+platformAdaptor modules:
+	@echo -e "\033[1;31m'$@' directory is missing, which means these Legato sources have not been downloaded properly."
+	@echo -e "Please refer to https://github.com/legatoproject/legato-af#clone-from-github \033[0m"
+	@exit 1
+	
 .PHONY: sources.md5
-sources.md5:
+sources.md5: $(FRAMEWORK_SOURCES)
 	# Generate an MD5 hash of everything in the source directories.
 	find $(FRAMEWORK_SOURCES) -type f | grep -v ".git" | sort | while read filePath ; \
 	do \
