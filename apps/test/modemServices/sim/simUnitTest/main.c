@@ -466,11 +466,11 @@ static void TestSim_PinPuk
     LE_ASSERT(le_sim_Unblock(CurrentSimId, LongPuk, BadPin) == LE_OUT_OF_RANGE);
     LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, ShortPin) == LE_UNDERFLOW);
 
-    // The next operation unblocks the pin: we change the gloabal variable here to be ready when the
+    // The next operation unblocks the pin: we change the global variable here to be ready when the
     // handlers will be called
     CurrentSimState = LE_SIM_READY;
     // Unblock the SIM (OK expected)
-    LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk,Pin) == LE_OK);
+    LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, Pin) == LE_OK);
     // Get the remaining PIN tries
     LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == 3);
 

@@ -259,16 +259,16 @@ static void TestMdc_Connection ( void )
     le_result_t res;
     le_mdc_Pdp_t pdp = LE_MDC_PDP_IPV4;
     char ipAddrStrIpv4[]="192.168.1.100";
-    char dns1AddrStrIpv4[]="10.40.50.60.1";
-    char dns2AddrStrIpv4[]="10.40.50.60.2";
+    char dns1AddrStrIpv4[]="10.40.50.1";
+    char dns2AddrStrIpv4[]="10.40.50.2";
     char gatewayAddrStrIpv4[]="192.168.100.123";
     char ipAddrStrIpv6[]="2001:0000:3238:DFE1:63::FEFB";
     char dns1AddrStrIpv6[]="2001:4860:4860::8888";
     char dns2AddrStrIpv6[]="2001:4860:4860::8844";
     char gatewayAddrStrIpv6[]="2001:CDBA:0:0:0:0:3257:9652";
     char interfaceName[]="rmnet0";
-    char addr[40]="";
-    char addr2[40]="";
+    char addr[LE_MDC_IPV6_ADDR_MAX_BYTES]="";
+    char addr2[LE_MDC_IPV6_ADDR_MAX_BYTES]="";
 
     /* All profile are disconnected: check connectivities API returns LE_FAULT */
     for (i=0; i < NB_PROFILE; i++)
@@ -353,7 +353,7 @@ static void TestMdc_Connection ( void )
                 LE_ASSERT(le_mdc_GetIPv6DNSAddresses(ProfileRef[0], addr,
                                                                     sizeof(addr),
                                                                     addr2,
-                                                                    sizeof(addr2) ) == LE_OVERFLOW);
+                                                                    sizeof(addr2) ) == LE_FAULT);
 
                 LE_ASSERT(le_mdc_GetIPv6DNSAddresses(ProfileRef[0], addr,
                                                                     5,
