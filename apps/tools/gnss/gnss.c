@@ -132,6 +132,7 @@ void PrintGnssHelp
                          - satStat       --> Satellites Vehicle status\n\
                          - dop           --> Dilution Of Precision for the fixed position\n\
                          - posInfo       --> Get all current position info of the device\n\
+                         - status       --> Get gnss device's current status\n\
                 \n\
                 gnss set constellation <ConstellationType>\n\
                     - Used to set constellation. Allowed when device in 'ready' state. May require\n\
@@ -1791,6 +1792,45 @@ static int WatchGnssInfo
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * This function prints the GNSS device status.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetGnssDeviceStatus
+(
+void
+)
+{
+    le_gnss_State_t state;
+    const char *status;
+
+    state = le_gnss_GetState();
+
+    switch (state)
+    {
+        case LE_GNSS_STATE_UNINITIALIZED:
+            status = "not initialized";
+            break;
+        case LE_GNSS_STATE_READY:
+            status = "ready";
+            break;
+        case LE_GNSS_STATE_ACTIVE:
+            status = "active";
+            break;
+        case LE_GNSS_STATE_DISABLED:
+            status = "disabled";
+            break;
+        default:
+            status = "unknown";
+            break;
+    }
+
+    fprintf(stdout, "%s\n", status);
+
+    return 0;
+};
+
+//-------------------------------------------------------------------------------------------------
+/**
  * This function gets different gnss parameters.
  */
 //-------------------------------------------------------------------------------------------------
@@ -1854,6 +1894,10 @@ static void GetGnssParams
 
         PositionHandlerRef = le_gnss_AddPositionHandler(PositionHandlerFunction, NULL);
         LE_ASSERT((PositionHandlerRef != NULL));
+    }
+    else if (strcmp(params, "status") == 0)
+    {
+        exit(GetGnssDeviceStatus());
     }
     else
     {

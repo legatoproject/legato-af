@@ -201,8 +201,9 @@
  * updated position each @ref le_gnss_AcquisitionRate, returning a position sample object.
  *
  * The GNSS information commonly used such as
- * position, time and date, satellites information and accuracy
+ * device state, position, time and date, satellites information and accuracy
  * can be queried using the following functions:
+ * - le_gnss_GetState()
  * - le_gnss_GetPositionState()
  * - le_gnss_GetLocation()
  * - le_gnss_GetAltitude()
@@ -410,6 +411,20 @@ DEFINE SV_INFO_MAX_LEN = 80;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE NMEA_SENTENCES_MAX = 0x7FFF;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration for GNSS device state
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM State
+{
+    STATE_UNINITIALIZED,    ///< The GNSS device is not initialized
+    STATE_READY,            ///< The GNSS device is ready
+    STATE_ACTIVE,           ///< The GNSS device is active
+    STATE_DISABLED,         ///< The GNSS device is disabled
+    STATE_MAX               ///< Do not use
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1318,4 +1333,14 @@ FUNCTION le_result_t SetNmeaSentences
 FUNCTION le_result_t GetNmeaSentences
 (
     NmeaBitMask nmeaMaskPtr     OUT  ///< Bit mask for enabled NMEA sentences.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the status of the GNSS device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION State GetState
+(
 );

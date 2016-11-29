@@ -39,11 +39,13 @@ static void TestLeGnssDevice
 
     LE_INFO("Start Test Testle_gnss_DeviceTest");
     // GNSS device enabled by default
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
     LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
     // Disable GNSS device (DISABLED state)
     LE_ASSERT((le_gnss_Disable()) == LE_OK);
     LE_ASSERT((le_gnss_Disable()) == LE_DUPLICATE);
     // Check Disabled state
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_DISABLED);
     LE_ASSERT((le_gnss_Start()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_ForceHotRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_ForceWarmRestart()) == LE_NOT_PERMITTED);
@@ -59,8 +61,11 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     // Enable GNSS device (READY state)
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
     LE_ASSERT((le_gnss_Disable()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_DISABLED);
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
     LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_OK);
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_OK);
     LE_ASSERT(constellationMask == LE_GNSS_CONSTELLATION_GPS);
@@ -75,6 +80,7 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
     // Start GNSS device (ACTIVE state)
     LE_ASSERT((le_gnss_Start()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_ACTIVE);
     LE_ASSERT((le_gnss_Start()) == LE_DUPLICATE);
     LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
     LE_ASSERT((le_gnss_Disable()) == LE_NOT_PERMITTED);
@@ -86,9 +92,12 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     // Stop GNSS device (READY state)
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
     LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
     LE_ASSERT((le_gnss_Disable()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_DISABLED);
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
+    LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
     LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_OK);
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_OK);
     LE_ASSERT(constellationMask == LE_GNSS_CONSTELLATION_GPS);

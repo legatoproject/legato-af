@@ -66,6 +66,7 @@ gnss help
 > - satStat: Satellites Vehicle status
 > - dop: Dilution Of Precision for the fixed position
 > - posInfo: Get all current position info of the device.
+> - status: Get gnss device's current status.
 
 @verbatim gnss set constellation <ConstellationType>@endverbatim
 > Used to set constellation. Allowed when device in 'ready' state. May require

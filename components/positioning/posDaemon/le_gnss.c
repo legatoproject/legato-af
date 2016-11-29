@@ -37,22 +37,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumeration for GNSS device state
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    LE_GNSS_STATE_UNINITIALIZED = 0,    ///< The GNSS device is not initialized
-    LE_GNSS_STATE_READY,                ///< The GNSS device is ready
-    LE_GNSS_STATE_ACTIVE,               ///< The GNSS device is active
-    LE_GNSS_STATE_DISABLED,             ///< The GNSS device is disabled
-    LE_GNSS_STATE_MAX                   ///< Do not use
-}
-le_gnss_State_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Satellite Vehicle information.
  */
 //--------------------------------------------------------------------------------------------------
@@ -3217,3 +3201,16 @@ le_result_t le_gnss_GetNmeaSentences
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function returns the state of the GNSS device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_gnss_State_t le_gnss_GetState
+(
+    void
+)
+{
+    return GnssState;
+}
