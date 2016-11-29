@@ -494,6 +494,30 @@ static void* AtHost
         goto err;
     }
 
+    // ATD handler echoes the received parameter in intermediate response. The goal is to test
+    // here the expected parameter of dial command.
+    // AT server should bypass useless/unknown characters, and keep the ones belonging to the D
+    // command: T,P,W,!,@,>,',',;,0 to 9, A to D, I,i,G,g. It makes also the uppercase when
+    // possible.
+    ret = SendCommandsAndTest(socketFd, epollFd, "ATD.T(+-33)1,-23-P-45-67-W-890-!tABCDabcde*#2\
+                                                  pw@IiGg$:;",
+                "\r\nT+331,23P4567W890!TABCDABCD*#2PW@IiGg;\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "ATD>me\"John\"IG;D>1ig;D>ME1",
+                "\r\n>ME\"John\"IG;\r\n"
+                "\r\n>1ig;\r\n"
+                "\r\n>ME1\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
     ret = SendCommandsAndTest(socketFd, epollFd, "AT+STOP?",
                 "\r\nERROR\r\n");
     if (ret)

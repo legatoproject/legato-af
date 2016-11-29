@@ -3,6 +3,7 @@ requires:
     api:
     {
         atServices/le_atServer.api
+        le_mcc.api
     }
 }
 

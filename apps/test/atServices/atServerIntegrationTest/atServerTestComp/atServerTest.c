@@ -45,6 +45,7 @@ struct AtCmd
     const char* atCmdPtr;
     le_atServer_CmdRef_t cmdRef;
     le_atServer_CommandHandlerFunc_t handlerPtr;
+    void* contextPtr;
 };
 
 //------------------------------------------------------------------------------
@@ -61,10 +62,33 @@ struct AtCmdRetVals
     char atCmdParams[PARAM_MAX][LE_ATDEFS_COMMAND_MAX_BYTES];
 };
 
+//------------------------------------------------------------------------------
+/**
+ * Dial context
+ *
+ */
+//------------------------------------------------------------------------------
+typedef struct
+{
+    le_atServer_DeviceRef_t     devRef;
+    le_atServer_CmdRef_t        commandRef;
+    le_mcc_CallRef_t            testCallRef;
+    bool                        isCallRefCreated;
+    enum
+    {
+        TERMINATED_NO_CARRIER_UNSOL,
+        TERMINATED_NO_CARRIER_FINAL,
+        TERMINATED_OK
+    }                           terminatedRsp;
+    le_timer_Ref_t              timerRef;
+}
+DialContext_t;
+
 static int SockFd;
 static int ConnFd;
 
 static le_atServer_DeviceRef_t DevRef = NULL;
+static DialContext_t DialContext;
 
 static void AtCmdHandler(
     le_atServer_CmdRef_t commandRef,
@@ -74,6 +98,27 @@ static void AtCmdHandler(
 );
 
 static void DelHandler(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+);
+
+static void AtdCmdHandler(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+);
+
+static void AtaCmdHandler(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+);
+
+static void AthCmdHandler(
     le_atServer_CmdRef_t commandRef,
     le_atServer_Type_t type,
     uint32_t parametersNumber,
@@ -93,31 +138,50 @@ static struct AtCmd AtCmdCreation[] =
         .atCmdPtr = "AT+DEL",
         .cmdRef = NULL,
         .handlerPtr = DelHandler,
+        .contextPtr = NULL
     },
     {
         .atCmdPtr = "AT+CLOSE",
         .cmdRef = NULL,
         .handlerPtr = CloseHandler,
+        .contextPtr = NULL
     },
     {
         .atCmdPtr = "AT+ABCD",
         .cmdRef = NULL,
         .handlerPtr = AtCmdHandler,
+        .contextPtr = NULL
     },
     {
         .atCmdPtr = "AT",
         .cmdRef = NULL,
         .handlerPtr = AtCmdHandler,
+        .contextPtr = NULL
     },
     {
         .atCmdPtr = "ATA",
         .cmdRef = NULL,
-        .handlerPtr = AtCmdHandler,
+        .handlerPtr = AtaCmdHandler,
+        .contextPtr = &DialContext
     },
     {
         .atCmdPtr = "ATE",
         .cmdRef = NULL,
         .handlerPtr = AtCmdHandler,
+        .contextPtr = NULL
+    },
+    {
+        .atCmdPtr = "ATD",
+        .cmdRef = NULL,
+        .handlerPtr = AtdCmdHandler,
+        .contextPtr = &DialContext
+    },
+    {
+        .atCmdPtr = "ATH",
+        .cmdRef = NULL,
+        .handlerPtr = AthCmdHandler,
+        .contextPtr = &DialContext
+
     },
 };
 
@@ -283,7 +347,6 @@ static void AtCmdHandler
     LE_ASSERT(
         le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "")
         == LE_OK);
-
 }
 
 //------------------------------------------------------------------------------
@@ -359,6 +422,297 @@ static void CloseHandler
 
     exit(0);
 }
+
+static void StopTimer
+(
+    DialContext_t* dialCtxPtr
+)
+{
+    if(dialCtxPtr->timerRef)
+    {
+        le_timer_Stop(dialCtxPtr->timerRef);
+        le_timer_Delete(dialCtxPtr->timerRef);
+        dialCtxPtr->timerRef = NULL;
+    }
+}
+
+//------------------------------------------------------------------------------
+/**
+ * Incoming call timer handler
+ *
+ */
+//------------------------------------------------------------------------------
+static void IncomingCallTimerHandler
+(
+    le_timer_Ref_t timerRef
+)
+{
+    LE_ASSERT(le_atServer_SendUnsolicitedResponse("RING",
+                                      LE_ATSERVER_ALL_DEVICES,
+                                      NULL) == LE_OK);
+}
+
+//------------------------------------------------------------------------------
+/**
+ * ATD command handler
+ *
+ */
+//------------------------------------------------------------------------------
+static void AtdCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    LE_INFO("Dial command");
+    le_result_t res;
+    DialContext_t* dialCtxPtr = contextPtr;
+
+    char dialNumber[LE_ATDEFS_PARAMETER_MAX_BYTES];
+
+    memset(dialNumber, 0, LE_ATDEFS_PARAMETER_MAX_BYTES);
+
+    if (type != LE_ATSERVER_TYPE_PARA)
+    {
+        LE_ERROR("Bad type %d", type);
+        goto error;
+    }
+
+    if (parametersNumber != 1)
+    {
+        LE_ERROR("Bad param number %d", parametersNumber);
+        goto error;
+    }
+
+    LE_ASSERT(le_atServer_GetParameter(commandRef,
+                                       0,
+                                       dialNumber,
+                                       LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
+
+    LE_INFO("Dial %s", dialNumber);
+
+    // Check if CSD call
+    if ( dialNumber[strlen(dialNumber)-1] != ';' )
+    {
+        LE_ERROR("CSD call");
+        goto error;
+    }
+
+    int i;
+    for (i=0; i < strlen(dialNumber)-1; i++)
+    {
+        if (((dialNumber[i] < 0x30) || (dialNumber[i] > 0x39)) && (dialNumber[i] != '+'))
+        {
+            LE_ERROR("Invalid char %c", dialNumber[i]);
+            goto error;
+        }
+    }
+
+    dialCtxPtr->testCallRef = le_mcc_Create(dialNumber);
+
+    if (dialCtxPtr->testCallRef == NULL)
+    {
+        goto error;
+    }
+
+    dialCtxPtr->isCallRefCreated = true;
+
+    dialCtxPtr->terminatedRsp = TERMINATED_NO_CARRIER_UNSOL;
+
+    res = le_mcc_Start(dialCtxPtr->testCallRef);
+
+    if (res != LE_OK)
+    {
+        goto error;
+    }
+
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+
+    return;
+
+error:
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                            LE_ATSERVER_ERROR,
+                                            true,
+                                            "NO CARRIER") == LE_OK);
+
+}
+
+//------------------------------------------------------------------------------
+/**
+ * ATA command handler
+ *
+ */
+//------------------------------------------------------------------------------
+static void AtaCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    DialContext_t* dialCtxPtr = contextPtr;
+
+    if (dialCtxPtr->testCallRef == NULL)
+    {
+        goto error;
+    }
+    else
+    {
+        le_result_t res = le_mcc_Answer(dialCtxPtr->testCallRef);
+
+        if (res != LE_OK)
+        {
+            goto error;
+        }
+
+        LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                                LE_ATSERVER_OK,
+                                                false,
+                                                "") == LE_OK);
+
+        return;
+    }
+
+error:
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                            LE_ATSERVER_ERROR,
+                                            true,
+                                            "NO CARRIER") == LE_OK);
+}
+
+//------------------------------------------------------------------------------
+/**
+ * ATD command handler
+ *
+ */
+//------------------------------------------------------------------------------
+static void AthCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    DialContext_t* dialCtxPtr = contextPtr;
+
+    if (dialCtxPtr->testCallRef == NULL)
+    {
+        LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                                LE_ATSERVER_OK,
+                                                false,
+                                                "") == LE_OK);
+    }
+    else
+    {
+        StopTimer(dialCtxPtr);
+        dialCtxPtr->terminatedRsp = TERMINATED_OK;
+        dialCtxPtr->devRef = DevRef;
+        dialCtxPtr->commandRef = commandRef;
+        LE_ASSERT(le_mcc_HangUp(dialCtxPtr->testCallRef) == LE_OK);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for Call Event Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void MyCallEventHandler
+(
+    le_mcc_CallRef_t  callRef,
+    le_mcc_Event_t callEvent,
+    void* contextPtr
+)
+{
+    LE_INFO("callEvent %d", callEvent);
+    DialContext_t* dialCtxPtr = contextPtr;
+
+    if (callEvent == LE_MCC_EVENT_ALERTING)
+    {
+        LE_ASSERT(le_atServer_SendUnsolicitedResponse("DIAL: ALERTING",
+                                                      LE_ATSERVER_ALL_DEVICES,
+                                                      NULL) == LE_OK);
+
+    }
+    else if (callEvent == LE_MCC_EVENT_CONNECTED)
+    {
+        StopTimer(dialCtxPtr);
+
+        LE_ASSERT(le_atServer_SendUnsolicitedResponse("DIAL: CONNECTED",
+                                                      LE_ATSERVER_ALL_DEVICES,
+                                                      NULL) == LE_OK);
+    }
+    else if (callEvent == LE_MCC_EVENT_TERMINATED)
+    {
+        StopTimer(dialCtxPtr);
+
+        switch (dialCtxPtr->terminatedRsp)
+        {
+            case TERMINATED_NO_CARRIER_UNSOL:
+                LE_ASSERT(le_atServer_SendUnsolicitedResponse("NO CARRIER",
+                                                  LE_ATSERVER_ALL_DEVICES,
+                                                  NULL) == LE_OK);
+            break;
+            case TERMINATED_NO_CARRIER_FINAL:
+                    LE_ASSERT(le_atServer_SendFinalResponse(dialCtxPtr->commandRef,
+                                                LE_ATSERVER_OK,
+                                                true,
+                                                "NO CARRIER") == LE_OK);
+            break;
+            case TERMINATED_OK:
+                    LE_ASSERT(le_atServer_SendFinalResponse(dialCtxPtr->commandRef,
+                                    LE_ATSERVER_OK,
+                                    false,
+                                    "") == LE_OK);
+            break;
+        }
+
+        if (dialCtxPtr->isCallRefCreated)
+        {
+            le_mcc_Delete(dialCtxPtr->testCallRef);
+            dialCtxPtr->isCallRefCreated = false;
+        }
+
+        dialCtxPtr->testCallRef = NULL;
+        le_mcc_Delete(callRef);
+    }
+    else if (callEvent == LE_MCC_EVENT_INCOMING)
+    {
+        dialCtxPtr->testCallRef = callRef;
+        dialCtxPtr->isCallRefCreated = false;
+        dialCtxPtr->terminatedRsp = TERMINATED_NO_CARRIER_UNSOL;
+        dialCtxPtr->timerRef = le_timer_Create("IncomingCall");
+        le_timer_SetHandler(dialCtxPtr->timerRef, IncomingCallTimerHandler);
+        // Dispaly a RING every 3s
+        le_timer_SetMsInterval(dialCtxPtr->timerRef, 3000);
+        le_timer_SetRepeat(dialCtxPtr->timerRef, 0);
+        le_timer_Start(dialCtxPtr->timerRef);
+
+        LE_ASSERT(le_atServer_SendUnsolicitedResponse("RING",
+                                              LE_ATSERVER_ALL_DEVICES,
+                                              NULL) == LE_OK);
+    }
+    else if (callEvent == LE_MCC_EVENT_ORIGINATING)
+    {
+        LE_ASSERT(le_atServer_SendUnsolicitedResponse("DIAL: ORIGINATING",
+                                                      LE_ATSERVER_ALL_DEVICES,
+                                                      NULL) == LE_OK);
+    }
+    else if (callEvent == LE_MCC_EVENT_SETUP)
+    {
+        LE_ASSERT(le_atServer_SendUnsolicitedResponse("DIAL: SETUP",
+                                                      LE_ATSERVER_ALL_DEVICES,
+                                                      NULL) == LE_OK);
+    }
+}
+
+
 //------------------------------------------------------------------------------
 /**
  * The signal event handler function for SIGINT/SIGTERM when process dies.
@@ -454,8 +808,13 @@ COMPONENT_INIT
         LE_ASSERT(AtCmdCreation[i].cmdRef != NULL);
 
         le_atServer_AddCommandHandler(
-            AtCmdCreation[i].cmdRef, AtCmdCreation[i].handlerPtr, NULL);
+            AtCmdCreation[i].cmdRef, AtCmdCreation[i].handlerPtr, AtCmdCreation[i].contextPtr);
 
         i++;
     }
+
+    memset(&DialContext,0,sizeof(DialContext));
+
+    // Add a call handler
+    le_mcc_AddCallEventHandler(MyCallEventHandler, &DialContext);
 }

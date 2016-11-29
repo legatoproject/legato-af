@@ -24,8 +24,23 @@
  *      - the syntax of S command is also supported, like:
  *          - ATS<parameter_number>?
  *          - ATS<parameter_number>=\<value>
- *      - D command syntax is a limitation right now, and is not supported.
- *
+ *      - D command is supported. The characters which don't belong to the following list are
+ * ignore:
+ *              - V.250 dialing digits: 0 1 2 3 4 5 6 7 8 9 * # + A B C D
+ *              - V.250 modifier characters: , T P ! W @
+ *              - V.250 semicolon character: ;
+ *              - GSM/UMTS modifier characters:
+ *                  - I or i for CLIR supplementary service subscription
+ * (I=invocation, i=suppression)
+ *                  - G or g for CUG supplementary service subscription (G=invocation,
+ * g=suppression)
+ *                  - Direct dialing from phonebook: > (if follow by a string, it has to be put
+ * between quote)
+ *              .
+ * @if 0 doxygen comment: The dot above ends the sub item, and must be kept @endif
+ * All characters after the "D" are considered part of The D command parameter up to a semicolon or
+ * the end of command line.
+ * <br>
  * - Extended command format, with the following format:
  *      - action command with no parameters: AT+<name>
  *      - parameter command: AT+<name>=<value1>[,<value2>[,<value3>[...]]]<br>
@@ -396,7 +411,8 @@ FUNCTION le_result_t GetCommandName
 FUNCTION le_result_t SendIntermediateResponse
 (
     Cmd      commandRef                                     IN, ///< AT command reference
-    string   intermediateRsp[le_atDefs.RESPONSE_MAX_BYTES]  IN  ///< Intermediate rsp to be sent
+    string   intermediateRsp[le_atDefs.RESPONSE_MAX_BYTES]  IN  ///< Intermediate response to be
+                                                                ///< sent
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -413,7 +429,7 @@ FUNCTION le_result_t SendFinalResponse
 (
     Cmd      commandRef                             IN, ///< AT command reference
     FinalRsp final                                  IN, ///< Final response to be sent
-    bool     customStringAvailable                  IN, ///< Custom finalRsp str has to be sent
+    bool     customStringAvailable                  IN, ///< Custom final response has to be sent
                                                         ///< instead of the default one.
     string   finalRsp[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< custom final response string
 );
@@ -430,8 +446,11 @@ FUNCTION le_result_t SendFinalResponse
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendUnsolicitedResponse
 (
-    string          unsolRsp[le_atDefs.RESPONSE_MAX_BYTES]      IN, ///< Unsolicited rsp to be sent
-    AvailableDevice availableDevice                             IN, ///< device to send unsol rsp
+    string          unsolRsp[le_atDefs.RESPONSE_MAX_BYTES]      IN, ///< Unsolicited response to be
+                                                                    ///< sent
+    AvailableDevice availableDevice                             IN, ///< device to send the
+                                                                    ///< unsolicited response
     Device          device                                      IN  ///< device reference where the
-                                                                    ///< unsol rsp has to be sent
+                                                                    ///< unsolicited response has to
+                                                                    ///< be sent
 );

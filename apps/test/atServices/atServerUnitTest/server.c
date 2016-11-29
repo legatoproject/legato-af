@@ -551,6 +551,38 @@ static void DataCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Dial command handler
+ *
+ * tests parameter get fro an ATD command
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AtdCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
+
+    LE_ASSERT(parametersNumber == 1);
+    LE_ASSERT(type == LE_ATSERVER_TYPE_PARA);
+    // get the phone number
+    LE_ASSERT( le_atServer_GetParameter(commandRef,
+                                        0,
+                                        param,
+                                        LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
+
+    // echo the command in intermediate rsp
+    LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, param) == LE_OK);
+
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Cleanup thread function
  *
  */
@@ -672,6 +704,11 @@ void* AtServer
             .atCmdPtr = "ATE",
             .cmdRef = NULL,
             .handlerPtr = AtCmdHandler,
+        },
+        {
+            .atCmdPtr = "ATD",
+            .cmdRef = NULL,
+            .handlerPtr = AtdCmdHandler,
         },
     };
 

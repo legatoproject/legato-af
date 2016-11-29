@@ -3,5 +3,6 @@
 #*******************************************************************************
 
 mkapp(atServerIntegrationTest.adef
+    -i ${LEGATO_ROOT}/interfaces/modemServices
 )
 
