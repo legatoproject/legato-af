@@ -9,6 +9,9 @@ Go to http://www.oracle.com/technetwork/java/embedded/embedded-se/downloads/inde
 Dowload the Oracle bundle suitable for your target, and extract it.
 Use either compact1 or compact2 profile in the linux_arm_sflt sub-folder
 
+@note Sierra Wireless is not responsible for the Oracle license fees associated with using the
+Oracle Java Virtual Machine (JVM). Sierra Wireless doesn't distribute or maintain the Oracle JVM.
+
 @section javaBuild_envVars Environment Variables
 
 Before you can build Java support in Legato, your shell needs to be setup with
