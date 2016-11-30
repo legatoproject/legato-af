@@ -117,7 +117,7 @@ static void TestIntParsing(void)
 }
 
 
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
     size_t numBytesCopied;
     char asciiStr[] = "ASCII String";
@@ -153,31 +153,31 @@ int main(int argc, char *argv[])
     if (le_utf8_NumBytes(asciiStr) != sizeof(asciiStr) - 1)
     {
         printf("Num bytes incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumBytes(multiByteStr) != sizeof(multiByteStr) - 1)
     {
         printf("Num bytes incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumBytes(missLeadStr) != sizeof(missLeadStr) - 1)
     {
         printf("Num bytes incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumBytes(missContStr) != sizeof(missContStr) - 1)
     {
         printf("Num bytes incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumBytes(invalidStr) != sizeof(invalidStr) - 1)
     {
         printf("Num bytes incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     printf("Got number of bytes correctly.\n");
@@ -187,31 +187,31 @@ int main(int argc, char *argv[])
     if (le_utf8_NumChars(asciiStr) != sizeof(asciiStr) - 1)
     {
         printf("Num chars incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumChars(multiByteStr) != 4)
     {
         printf("Num chars incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumChars(missLeadStr) != LE_FORMAT_ERROR)
     {
         printf("Num chars incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumChars(missContStr) != LE_FORMAT_ERROR)
     {
         printf("Num chars incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_NumChars(invalidStr) != LE_FORMAT_ERROR)
     {
         printf("Num chars incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     printf("Got number of chars correctly.\n");
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, asciiStr, sizeof(asciiStr)) != 0) )
     {
         printf("Copy incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if ( (le_utf8_Copy(destBuffer, multiByteStr, 100, &numBytesCopied) != LE_OK) ||
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, multiByteStr, sizeof(multiByteStr)) != 0) )
     {
         printf("Copy incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
 
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, asciiStr, 7) != 0) ) // Don't compare the null char.
     {
         printf("Copy incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy multi-byte truncate with alignment
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, multiByteStr, 6) != 0) ) // Don't compare the null char.
     {
         printf("Copy incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy multi-byte truncate where the lead character is at the end of the buffer -1.
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, multiByteStr, 6) != 0) ) // Don't compare the null char.
     {
         printf("Copy incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy multi-byte truncate where the last character straddles the end of the buffer.
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, multiByteStr, 6) != 0) ) // Don't compare the null char.
     {
         printf("Copy incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     printf("Copies correct.\n");
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
          (!compareConCat(destBuffer, asciiStr, asciiStr2, 100)) )
     {
         printf("Append incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     le_utf8_Copy(destBuffer, multiByteStr, 100, NULL);
@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
          (!compareConCat(destBuffer, multiByteStr, multiByteStr2, 100)) )
     {
         printf("Append incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Append ascii truncate
@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
          (!compareConCat(destBuffer, asciiStr, asciiStr2, 15)) )
     {
         printf("Append incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Append multi-byte truncate with alignment
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
          (!compareConCat(destBuffer, multiByteStr, multiByteStr2, 16)) )
     {
         printf("Append incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Append multi-byte truncate where the lead character is at the end of the buffer -1.
@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
          (!compareConCat(destBuffer, multiByteStr, multiByteStr2, 16)) )
     {
         printf("Append incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Append multi-byte truncate where the last character straddles the end of the buffer.
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
          (!compareConCat(destBuffer, multiByteStr, multiByteStr2, 16)) )
     {
         printf("Append incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     printf("Appends correct.\n");
@@ -340,31 +340,31 @@ int main(int argc, char *argv[])
     if (le_utf8_IsFormatCorrect(asciiStr) == false)
     {
         printf("Format check incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_IsFormatCorrect(multiByteStr) == false)
     {
         printf("Format check incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_IsFormatCorrect(missLeadStr) == true)
     {
         printf("Format check incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_IsFormatCorrect(missContStr) == true)
     {
         printf("Format check incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     if (le_utf8_IsFormatCorrect(invalidStr) == true)
     {
         printf("Format check incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     printf("Format checks correct.\n");
@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, asciiStr, 7) != 0) )
     {
         printf("Copy up to incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy up to a multibyte substring in an ascii string.
@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
          (strcmp(destBuffer, asciiStr) != 0) )
     {
         printf("Copy up to incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy up to a multibyte substring in a multibyte string.
@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, multiByteStr2, 5) != 0) )
     {
         printf("Copy up to incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy up to a multibyte substring in a multibyte string.
@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, longMultiByteStr, 4) != 0) )
     {
         printf("Copy up to incorrect: %d, %zd\n", __LINE__, numBytesCopied);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy up to an ascii character in a multibyte string.
@@ -415,7 +415,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, multiByteStr2, 4) != 0) )
     {
         printf("Copy up to incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy up to a character in a multibyte string but not there.
@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
          (strcmp(destBuffer, multiByteStr2) != 0) )
     {
         printf("Copy up to incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     // Copy up to an ascii character so that the buffer is completely filled.
@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
          (strncmp(destBuffer, asciiStr, 5) != 0) )
     {
         printf("Copy up to incorrect: %d\n", __LINE__);
-        return LE_FAULT;
+        exit(EXIT_FAILURE);
     }
 
     printf("Copy Up To Substring correct.\n");
@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
     printf("*** Unit Test for le_utf8 module passed. ***\n");
     printf("\n");
 
-    return LE_OK;
+    exit(EXIT_SUCCESS);
 }
 
 

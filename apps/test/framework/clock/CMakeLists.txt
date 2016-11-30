@@ -1,14 +1,15 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-set(TEST_EXEC testFwMemPool)
+find_package(CUnit REQUIRED)
 
-add_executable(${TEST_EXEC} main.c)
+set(APP_TARGET testFwClock)
 
-target_link_libraries(${TEST_EXEC} legato)
+mkexe(  ${APP_TARGET}
+            main.c
+            -i ${CUNIT_INSTALL}/include
+            ${CUNIT_LIBRARIES}
+        )
 
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

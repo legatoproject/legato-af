@@ -1,14 +1,11 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#
-# Contributors:
-#     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-set(TEST_EXEC testFwUtf8)
+set(APP_TARGET testFwUtf8)
 
-add_executable(${TEST_EXEC} main.c)
+mkexe(  ${APP_TARGET}
+            main.c
+        )
 
-target_link_libraries(${TEST_EXEC} legato)
-
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})

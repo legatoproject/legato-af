@@ -5,10 +5,11 @@
 #     Sierra Wireless - initial API and implementation
 #*******************************************************************************
 
-set(TEST_EXEC testFwLists)
+set(APP_TARGET testFwMemPool)
 
-add_executable(${TEST_EXEC} main.c)
+mkexe(  ${APP_TARGET}
+            main.c
+        )
 
-target_link_libraries(${TEST_EXEC} legato)
+add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
 
-add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})

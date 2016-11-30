@@ -133,3 +133,4 @@ COMPONENT_INIT
     CU_cleanup_registry();
     exit(CU_get_error());
 }
+

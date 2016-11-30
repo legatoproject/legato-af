@@ -24,16 +24,15 @@
 static le_result_t TestDoublyLinkLists(size_t maxListSize);
 static le_result_t TestSinglyLinkLists(size_t maxListSize);
 
-
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
     uint32_t maxListSize = 0;
     le_result_t result;
 
-    //get the max size list
-    if (argc >= 2)
+    // Get the max size list
+    if (le_arg_NumArgs() >= 1)
     {
-        maxListSize = atoi(argv[1]);
+        maxListSize = atoi(le_arg_GetArg(1));
     }
 
     if (maxListSize <= 0)
@@ -46,10 +45,10 @@ int main(int argc, char *argv[])
 
     if (result != LE_OK)
     {
-        return result;
+        exit(result);
     }
 
-    return TestSinglyLinkLists(maxListSize);
+    exit(TestSinglyLinkLists(maxListSize));
 }
 
 

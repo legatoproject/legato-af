@@ -14,10 +14,8 @@
 #include <unistd.h>
 #include <ctype.h>
 
-// Header files for CUnit
-#include "Console.h"
-#include <Basic.h>
-
+#include <CUnit/Console.h>
+#include <CUnit/Basic.h>
 
 // These two macros are similar to CU_PASS and CU_FAIL, but allow an arbitrary value for the msg
 // parameter, rather than assuming a string literal.
@@ -256,7 +254,7 @@ void TestClockInteractive(void)
 }
 
 
-int main(int argc, char *argv[])
+COMPONENT_INIT
 {
     // Init the test case / test suite data structures
 
@@ -279,34 +277,26 @@ int main(int argc, char *argv[])
         CU_SUITE_INFO_NULL,
     };
 
-
     // Parse command line options
-    int opt;
-
-    while ((opt = getopt(argc, argv, "i")) != -1)
+    if (LE_OK == le_arg_GetFlagOption("i", "interactive"))
     {
-        switch (opt)
-        {
-            case 'i':
-                IsInteractive = true;
-                break;
-            default: /* '?' */
-                fprintf(stderr, "Usage: %s [-i]\n", argv[0]);
-                exit(EXIT_FAILURE);
-        }
+        IsInteractive = true;
     }
-
+    else if (0 != le_arg_NumArgs())
+    {
+        fprintf(stderr, "Usage: %s [-i]\n", le_arg_GetProgramName());
+        exit(EXIT_FAILURE);
+    }
 
     // Initialize the CUnit test registry and register the test suite
     if (CUE_SUCCESS != CU_initialize_registry())
-        return CU_get_error();
+        exit(CU_get_error());
 
     if ( CUE_SUCCESS != CU_register_suites(suites))
     {
         CU_cleanup_registry();
-        return CU_get_error();
+        exit(CU_get_error());
     }
-
 
     // Run either interactive or backgroud; default is background
     if ( IsInteractive )
@@ -325,7 +315,6 @@ int main(int argc, char *argv[])
         CU_basic_run_tests();
     }
 
-
     // Output summary of failures, if there were any
     if ( CU_get_number_of_failures() > 0 )
     {
@@ -335,7 +324,7 @@ int main(int argc, char *argv[])
     }
 
     CU_cleanup_registry();
-    return CU_get_error();
+    exit(CU_get_error());
 }
 
 
