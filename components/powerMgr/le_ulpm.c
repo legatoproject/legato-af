@@ -24,9 +24,13 @@
  * Ultra Low power Management sysfs interface.
  */
 //--------------------------------------------------------------------------------------------------
-#define GPIO_CFG_FILE           "/sys/module/swimcu_pm/boot_source/gpio%u/edge"
-#define TIMER_CFG_FILE          "/sys/module/swimcu_pm/boot_source/timer/timeout"
-#define SHUTDOWN_INIT_FILE      "/sys/module/swimcu_pm/boot_source/enable"
+#define GPIO_CFG_FILE          "/sys/module/swimcu_pm/boot_source/gpio%u/edge"
+#define TIMER_CFG_FILE         "/sys/module/swimcu_pm/boot_source/timer/timeout"
+#define SHUTDOWN_INIT_FILE     "/sys/module/swimcu_pm/boot_source/enable"
+#define ADC_POLL_INTERVAL_FILE "/sys/module/swimcu_pm/boot_source/adc/interval"
+#define ADC_BELOW_LEVEL_FILE   "/sys/module/swimcu_pm/boot_source/adc/adc%u/below"
+#define ADC_ABOVE_LEVEL_FILE   "/sys/module/swimcu_pm/boot_source/adc/adc%u/above"
+#define ADC_SELECT_FILE        "/sys/module/swimcu_pm/boot_source/adc/adc%u/select"
 ///@}
 
 
@@ -85,6 +89,9 @@ static void CloseFd
  *
  * @return
  *      - LE_OK if write is successful.
+ *      - LE_NOT_PERMITTED if permissions prevent writing to the given file.
+ *      - LE_NOT_FOUND if the sysfs file does not exist.
+ *      - LE_BAD_PARAMETER if the value written was not accepted.
  *      - LE_FAULT if failed to write.
  */
 //--------------------------------------------------------------------------------------------------
@@ -104,6 +111,26 @@ static le_result_t WriteToSysfs
         return LE_FAULT;
     }
 
+    if (fd == -1)
+    {
+        LE_ERROR(
+            "Unable to open file %s for writing (%m). Wrong Boot-source or Firmware", filePath);
+        switch (errno)
+        {
+            case EACCES:
+                return LE_NOT_PERMITTED;
+                break;
+
+            case ENOENT:
+                return LE_NOT_FOUND;
+                break;
+
+            default:
+                return LE_FAULT;
+                break;
+        }
+    }
+
     ssize_t result;
 
     do
@@ -117,7 +144,16 @@ static le_result_t WriteToSysfs
     if (result < 0)
     {
         LE_ERROR("Error writing to sysfs file '%s' (%m).", filePath);
-        return LE_FAULT;
+        switch (errno)
+        {
+            case EINVAL:
+                return LE_BAD_PARAMETER;
+                break;
+
+            default:
+                return LE_FAULT;
+                break;
+        }
     }
 
     return LE_OK;
@@ -125,19 +161,78 @@ static le_result_t WriteToSysfs
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Writes to one of the "above" or "below" files for configuring the ADC boot source parameters.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteAdcLevel
+(
+    const char* levelFile, ///< ADC level file to write the level to
+    double level           ///< ADC level parameter to configure
+)
+{
+    char value[16] = {0};
+    le_result_t sysfsWriteResult;
+    le_result_t result = LE_OK;
+
+    const int charsRequired = snprintf(value, sizeof(value), "%.4f", level);
+    if (charsRequired >= sizeof(value))
+    {
+        LE_ERROR("String conversion of (%f) is too large to fit in string buffer.", level);
+        return LE_OVERFLOW;
+    }
+
+    sysfsWriteResult = WriteToSysfs(levelFile, value);
+    if (sysfsWriteResult == LE_BAD_PARAMETER)
+    {
+        level = round(level);
+        if ((level > INT_MAX) || (level <= INT_MIN))
+        {
+            LE_ERROR("adc level (%f) doesn't fit in an int.", level);
+            result = LE_OVERFLOW;
+        }
+        else
+        {
+            snprintf(value, sizeof(value), "%d", (int)level);
+            sysfsWriteResult = WriteToSysfs(levelFile, value);
+            if (sysfsWriteResult != LE_OK)
+            {
+                LE_ERROR(
+                    "Failed while writing int conversion of level (%s) to \"%s\"",
+                    value,
+                    levelFile);
+                result = (sysfsWriteResult == LE_NOT_FOUND) ? LE_UNSUPPORTED : sysfsWriteResult;
+            }
+        }
+    }
+    else
+    {
+        if (sysfsWriteResult != LE_OK)
+        {
+            LE_ERROR("Failed while writing \"%s\"", levelFile);
+            result = (sysfsWriteResult == LE_NOT_FOUND) ? LE_UNSUPPORTED : sysfsWriteResult;
+        }
+    }
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
 // Public function definitions.
 //--------------------------------------------------------------------------------------------------
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Boot on changing of a gpio state. Gpio number is specified as parameter.
+ * Configure the system to boot based on a state change of a given GPIO.
  *
  * @return
  *      - LE_OK if specified gpio is configured as boot source.
- *      - LE_FAULT if failed to configure.
- *
- * @note The process exits if an invalid gpio number is passed.
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to configure the GPIO as a
+ *        boot source.
+ *      - LE_UNSUPPORTED if the device lacks the ability to boot based on the given GPIO.
+ *      - LE_BAD_PARAMETER if the state parameter was rejected.
+ *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ulpm_BootOnGpio
@@ -178,8 +273,18 @@ le_result_t le_ulpm_BootOnGpio
             return LE_FAULT;
     }
 
-    //Write to sysfs config file.
-    return  WriteToSysfs(gpioFilePath, gpioStateStr);
+    // Write to sysfs config file.
+    const le_result_t result = WriteToSysfs(gpioFilePath, gpioStateStr);
+    switch (result)
+    {
+        case LE_NOT_FOUND:
+            return LE_UNSUPPORTED;
+            break;
+
+        default:
+            return result;
+            break;
+    }
 }
 
 
@@ -189,23 +294,113 @@ le_result_t le_ulpm_BootOnGpio
  *
  * @return
  *      - LE_OK if timer is configured as boot source.
- *      - LE_FAULT if failed to configure.
- *
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to configure the timer as a
+ *        boot source.
+ *      - LE_UNSUPPORTED if the device lacks the ability to boot based on a timer.
+ *      - LE_BAD_PARAMETER if the state parameter was rejected.
+ *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ulpm_BootOnTimer
 (
-
     uint32_t expiryVal          ///< Expiration time(in second) to boot. This is relative time from
                                 ///< MDM shutdown.
 )
 {
-
     char expiryValStr[11] = "";
     snprintf(expiryValStr, sizeof(expiryValStr), "%u", expiryVal);
 
-    //Write to sysfs config file.
-    return WriteToSysfs(TIMER_CFG_FILE, expiryValStr);
+    // Write to sysfs config file.
+    const le_result_t result = WriteToSysfs(TIMER_CFG_FILE, expiryValStr);
+    switch (result)
+    {
+        case LE_NOT_FOUND:
+            return LE_UNSUPPORTED;
+            break;
+
+        default:
+            return result;
+            break;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure and enable an ADC as a boot source.
+ *
+ * It is possible to specify a single range of operation or two ranges of operation with a
+ * non-operational range in between.  When bootAboveAdcReading is less than bootBelowAdcReading,
+ * then a single range bootAboveReading to bootBelowReading is the configured operational range.
+ * However if bootAboveAdcReading is greater than bootBelowAdcReading, then there are two
+ * operational ranges.  The first is any reading less than bootBelowAdcReading and the second is any
+ * reading greater than bootAboveAdcReading.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to configure the adc as a
+ *        boot source.
+ *      - LE_OVERFLOW if the provided bootAboveAdcReading or bootBelowAdcReading are too large to
+ *        convert to fit in the internal string buffer.
+ *      - LE_BAD_PARAMETER if the pollIntervalInMs, bootAboveAdcReading or bootBelowAdcReading
+ *        parameter were rejected.
+ *      - LE_UNSUPPORTED if the device does not support using the given adc as a boot source.
+ *      - LE_FAULT if there is a non-specific failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ulpm_BootOnAdc
+(
+    uint32_t adcNum,             ///< [IN] Number of the ADC to configure
+    uint32_t pollIntervalInMs,   ///< [IN] How frequently to poll the ADC while sleeping
+    double bootAboveAdcReading,  ///< [IN] Reading above which the system should boot
+    double bootBelowAdcReading   ///< [IN] Reading below which the system should boot
+)
+{
+    char filePath[128] = {0};
+    char value[16] = {0};
+    le_result_t writeResult;
+
+    // NOTE: for both the above and below values below, the sysfs interface on the wp85 does not
+    // currently (as of Release 13.1) support writing floating point values. There is documentation
+    // in hwmon which suggests that the hwmon values should support floating point. There is an open
+    // issue (LXSWI9X1517-197) which suggests adding support for floating point values into the
+    // above/below files in sysfs.
+
+    // below
+    snprintf(filePath, sizeof(filePath), ADC_BELOW_LEVEL_FILE, adcNum);
+    writeResult = WriteAdcLevel(filePath, bootBelowAdcReading);
+    if (writeResult != LE_OK)
+    {
+        return writeResult;
+    }
+
+    // above
+    snprintf(filePath, sizeof(filePath), ADC_ABOVE_LEVEL_FILE, adcNum);
+    writeResult = WriteAdcLevel(filePath, bootAboveAdcReading);
+    if (writeResult != LE_OK)
+    {
+        return writeResult;
+    }
+
+    // interval
+    snprintf(value, sizeof(value), "%u", pollIntervalInMs);
+    writeResult = WriteToSysfs(ADC_POLL_INTERVAL_FILE, value);
+    if (writeResult != LE_OK)
+    {
+        LE_ERROR("Failed while writing interval.");
+        return (writeResult == LE_NOT_FOUND) ? LE_UNSUPPORTED : writeResult;
+    }
+
+    // select
+    snprintf(filePath, sizeof(filePath), ADC_SELECT_FILE, adcNum);
+    writeResult = WriteToSysfs(filePath, "1");
+    if (writeResult != LE_OK)
+    {
+        LE_ERROR("Failed while writing select.");
+        return (writeResult == LE_NOT_FOUND) ? LE_UNSUPPORTED : writeResult;
+    }
+
+    return LE_OK;
 }
 
 
@@ -300,8 +495,9 @@ le_result_t le_ulpm_GetFirmwareVersion
  * @return
  *      - LE_OK if entry to ultra low power mode initiates properly.
  *      - LE_NOT_POSSIBLE if shutting is not possible now. Try again.
- *      - LE_FAULT if failed to initiate.
- *
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a shutdown.
+ *      - LE_UNSUPPORTED if the device lacks the ability to shutdown via ULPM.
+ *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ulpm_ShutDown
@@ -315,6 +511,15 @@ le_result_t le_ulpm_ShutDown
         return LE_NOT_POSSIBLE;
     }
 
-    //No one holding the wakelock. Now write to sysfs file to enter ultra low power mode.
-    return WriteToSysfs(SHUTDOWN_INIT_FILE, ULPM_ENABLE_VAL);
+    // No one holding the wakelock. Now write to sysfs file to enter ultra low power mode.
+    le_result_t result = WriteToSysfs(SHUTDOWN_INIT_FILE, ULPM_ENABLE_VAL);
+
+    LE_FATAL_IF(result == LE_BAD_PARAMETER, "Shutdown value (%s) rejected", ULPM_ENABLE_VAL);
+
+    if (result == LE_NOT_FOUND)
+    {
+        result = LE_UNSUPPORTED;
+    }
+
+    return result;
 }

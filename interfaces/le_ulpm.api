@@ -9,7 +9,7 @@
  * This API is used to set the boot sources and switch the device to ultra-low power state. Ultra-
  * low power mode is achieved by shutting down major components (e.g. app processor, modem, etc.)
  * while keeping an ultra-low power component alive. This ultra-low power component is used to
- * monitor boot (or wakeup) sources that are set before switching to ultra-low power mode.
+ * monitor boot sources that are set before switching to ultra-low power mode.
  *
  * @section API_Usage_usage Typical Usage
  *
@@ -99,14 +99,15 @@ ENUM GpioState
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Boot on changing of a gpio state. Gpio number is specified as parameter.
+ * Configure the system to boot based on a state change of a given GPIO.
  *
  * @return
  *      - LE_OK if specified gpio is configured as boot source.
- *      - LE_FAULT if failed to configure.
- *
- * @note The process exits if invalid gpio number is passed.  Check corresponding device documents
- * for valid list of gpio.
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to configure the GPIO as a
+ *        boot source.
+ *      - LE_UNSUPPORTED if the device lacks the ability to boot based on the given GPIO.
+ *      - LE_BAD_PARAMETER if the state parameter was rejected.
+ *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t BootOnGpio
@@ -121,15 +122,50 @@ FUNCTION le_result_t BootOnGpio
  * Boot after expiration of timer interval.
  *
  * @return
- *      - LE_OK if specified timer is configured as boot source.
- *      - LE_FAULT if failed to configure.
- *
+ *      - LE_OK if timer is configured as boot source.
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to configure the timer as a
+ *        boot source.
+ *      - LE_UNSUPPORTED if the device lacks the ability to boot based on a timer.
+ *      - LE_BAD_PARAMETER if the state parameter was rejected.
+ *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t BootOnTimer
 (
     uint32 expiryVal IN       ///< Expiration time(in second) to boot. This is relative time from
                               ///< modem/app processor shutdown.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure and enable an ADC as a boot source.
+ *
+ * It is possible to specify a single range of operation or two ranges of operation with a
+ * non-operational range in between.  When bootAboveAdcReading is less than bootBelowAdcReading,
+ * then a single range bootAboveReading to bootBelowReading is the configured operational range.
+ * However if bootAboveAdcReading is greater than bootBelowAdcReading, then there are two
+ * operational ranges.  The first is any reading less than bootBelowAdcReading and the second is any
+ * reading greater than bootAboveAdcReading.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to configure the adc as a
+ *        boot source.
+ *      - LE_OVERFLOW if the provided bootAboveAdcReading or bootBelowAdcReading are too large to
+ *        convert to fit in the internal string buffer.
+ *      - LE_BAD_PARAMETER if the pollIntervalInMs, bootAboveAdcReading or bootBelowAdcReading
+ *        parameter were rejected.
+ *      - LE_UNSUPPORTED if the device does not support using the given adc as a boot source.
+ *      - LE_FAULT if there is a non-specific failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t BootOnAdc
+(
+    uint32 adcNum IN,              ///< Number of the ADC to configure
+    uint32 pollIntervalInMs IN,    ///< How frequently to poll the ADC while sleeping
+    double bootAboveAdcReading IN, ///< Reading above which the system should boot
+    double bootBelowAdcReading IN  ///< Reading below which the system should boot
 );
 
 
@@ -156,8 +192,9 @@ FUNCTION le_result_t GetFirmwareVersion
  * @return
  *      - LE_OK if entry to ultra low power mode initiates properly.
  *      - LE_NOT_POSSIBLE if shutting is not possible now. Try again.
- *      - LE_FAULT if failed to initiate.
- *
+ *      - LE_NOT_PERMITTED if the process lacks sufficient permissions to perform a shutdown.
+ *      - LE_UNSUPPORTED if the device lacks the ability to shutdown via ULPM.
+ *      - LE_FAULT if there is a non-specific failure.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ShutDown();

@@ -25,6 +25,7 @@
 //--------------------------------------------------------------------------------------------------
 #define GPIO_TRIGGER_FILE       "/sys/module/swimcu_pm/boot_source/gpio%u/triggered"
 #define TIMER_TRIGGER_FILE      "/sys/module/swimcu_pm/boot_source/timer/triggered"
+#define ADC_TRIGGER_FILE        "/sys/module/swimcu_pm/boot_source/adc/adc%u/triggered"
 ///@}
 
 
@@ -139,4 +140,31 @@ bool le_bootReason_WasGpio
 
     // Check the trigger file and return the result.
     return IsBootSourceTriggered(gpioTriggerPath);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether boot reason was due to the specified ADC having a reading above or below the
+ * configured limits.
+ *
+ * @return
+ *      true if boot reason was due to the given ADC or false otherwise.
+ *
+ * @note
+ *      The process exits if an invalid ADC number is passed. Check corresponding device documents
+ *      for valid list of ADC numbers.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_bootReason_WasAdc
+(
+    uint32_t adcNum
+)
+{
+    char adcTriggerPath[256] = "";
+    // Build ADC trigger path, i.e. "/sys/module/swimcu_pm/boot_source/adc/adc<adcNum>/triggered"
+    snprintf(adcTriggerPath, sizeof(adcTriggerPath), ADC_TRIGGER_FILE, adcNum);
+
+    // Check the trigger file and return the result.
+    return IsBootSourceTriggered(adcTriggerPath);
 }

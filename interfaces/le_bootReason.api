@@ -86,3 +86,21 @@ FUNCTION bool WasGpio
 (
     uint32 gpioNum  IN      ///< GPIO number.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether boot reason was due to the specified ADC having a reading above or below the
+ * configured limits.
+ *
+ * @return
+ *      true if boot reason was due to the given ADC or false otherwise.
+ *
+ * @note
+ *      The process exits if an invalid ADC number is passed. Check corresponding device documents
+ *      for valid list of ADC numbers.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool WasAdc
+(
+    uint32 adcNum IN        ///< ADC number
+);
