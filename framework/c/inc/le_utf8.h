@@ -41,6 +41,11 @@
  * UTF-8 strings are self-synchronized, allowing the start of a character to be found by backing up
  * at most three bytes.
  *
+ * @c le_utf8_EncodeUnicodeCodePoint() provides a function that is able to encode any unicode code
+ * point into a sequence of bytes that represents the utf-8 encoding of the codepoint.  The function
+ * @c le_utf8_DecodeUnicodeCodePoint() implements the inverse function.  It converts a UTF-8 encoded
+ * character into the corresponding unicode code point.
+ *
  *  @section utf8_copy Copy and Append
  *
  * @c le_utf8_Copy() copies a string to a specified buffer location.
@@ -328,5 +333,61 @@ le_result_t le_utf8_ParseInt
     const char* arg  ///< [IN] The string to parse.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode a unicode code point as UTF-8 into a buffer.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OUT_OF_RANGE if the code point supplied is outside the range of unicode code points
+ *      - LE_OVERFLOW if the out buffer is not large enough to store the UTF-8 encoding of the code
+ *        point
+ *
+ * @note
+ *      Not all code point values are valid unicode. This function does not validate whether the
+ *      code point is valid unicode.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_EncodeUnicodeCodePoint
+(
+    uint32_t codePoint, ///< [IN] Code point to encode as UTF-8
+    char* out,          ///< [OUT] Buffer to store the UTF-8 encoded value in.
+    size_t* outSize     ///< [IN/OUT] As an input, this value is interpreted as the size of the out
+                        ///  buffer.  As an output, it is updated to hold the size of the UTF-8
+                        ///  encoded value (in the case of an LE_OK return value) or size that would
+                        ///  be required to encode the code point (in the case or an LE_OVERFLOW
+                        ///  return value).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode the first unicode code point from the UTF-8 string src.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if byteLength points to 0
+ *      - LE_UNDERFLOW if src appears to be the beginning of a UTF-8 character which extends beyond
+ *        the end of the string as specified by byteLength.
+ *      - LE_FORMAT_ERROR if src is not valid UTF-8 encoded string data.
+ *
+ * @note
+ *      Not all code point values are valid unicode. This function does not validate whether the
+ *      code point is valid unicode.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_DecodeUnicodeCodePoint
+(
+    const char* src,     ///< [IN] UTF-8 encoded data to extract a code point from.
+    size_t* byteLength,  ///< [IN/OUT] As an input parameter, the value pointed to represents the
+                         ///  number of bytes in src. As an output parameter, the value pointed to
+                         ///  is the number of bytes from src that were consumed to decode the code
+                         ///  point (in the case of an LE_OK return value) or the number of bytes
+                         ///  that would have been consumed had src been long enough (in the case of
+                         ///  an LE_UNDERFLOW return value).
+    uint32_t* codePoint  ///< [OUT] Code point that was decoded from src.  This value is only valid
+                         ///  when the function returns LE_OK.
+);
 
 #endif  // LEGATO_UTF8_INCLUDE_GUARD

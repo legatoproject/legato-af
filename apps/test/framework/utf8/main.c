@@ -31,6 +31,8 @@
   *
   *  - Parsing of integers from strings.
   *
+  *  - Encoding/decoding of unicode code points into/from utf-8 data
+  *
   * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
   */
 
@@ -114,6 +116,198 @@ static void TestIntParsing(void)
 
     sprintf(s, "%lld", ((long long int)(INT_MIN)) - 1);
     LE_ASSERT(LE_OUT_OF_RANGE == le_utf8_ParseInt(&value, s));
+}
+
+static void TestEncodeDecodeCodePoint(void)
+{
+    uint32_t codePoint;
+    uint32_t decodedCodePoint;
+    char out[4];
+    size_t outSize;
+
+    // The utf-8 encoding of the lowest and highest values that fit in 1, 2, 3 and 4 bytes
+    const char lowOneEncoding[]       = {0x00};
+    const char highOneEncoding[]      = {0x7F};
+    const char lowTwoEncoding[]       = {0xC2, 0x80};
+    const char highTwoEncoding[]      = {0xDF, 0xBF};
+    const char lowThreeEncoding[]     = {0xE0, 0xA0, 0x80};
+    const char highThreeEncoding[]    = {0xEF, 0xBF, 0xBF};
+    const char lowFourEncoding[]      = {0xF0, 0x90, 0x80, 0x80};
+    const char highFourEncoding[]     = {0xF4, 0x8F, 0xBF, 0xBF};
+
+    // invalid continuation in byte 1
+    const char invalidTwoEncoding[]   = {0xC2, 0xFF};
+    // invalid continuation in byte 1
+    const char invalidThreeEncoding[] = {0xE1, 0xC0, 0x80};
+    // invalid continuation in byte 2
+    const char invalidFourEncoding1[] = {0xF0, 0x89, 0xC0, 0x80};
+    // invalid byte 0 (5 leading 1 bits)
+    const char invalidFourEncoding2[] = {0xF8, 0x80, 0x80, 0x80};
+
+    const char overlongTwoEncoding[] = {0xC0, 0x80};
+    const char overlongThreeEncoding[] = {0xE0, 0x80, 0x80};
+    const char overlongFourEncoding[] = {0xF0, 0x80, 0x80, 0x80};
+
+    const char tooBigEncoding[] = {0xF7, 0xBF, 0xBF, 0xBF};
+
+    // Encode and then decode all of the valid boundary conditions for encoding length
+    codePoint = 0x000000;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(lowOneEncoding));
+    LE_ASSERT(memcmp(out, lowOneEncoding, sizeof(lowOneEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 1);
+
+    codePoint = 0x00007F;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(highOneEncoding));
+    LE_ASSERT(memcmp(out, highOneEncoding, sizeof(highOneEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 1);
+
+    codePoint = 0x000080;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(lowTwoEncoding));
+    LE_ASSERT(memcmp(out, lowTwoEncoding, sizeof(lowTwoEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 2);
+
+    codePoint = 0x0007FF;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(highTwoEncoding));
+    LE_ASSERT(memcmp(out, highTwoEncoding, sizeof(highTwoEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 2);
+
+    codePoint = 0x000800;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(lowThreeEncoding));
+    LE_ASSERT(memcmp(out, lowThreeEncoding, sizeof(lowThreeEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 3);
+
+    codePoint = 0x00FFFF;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(highThreeEncoding));
+    LE_ASSERT(memcmp(out, highThreeEncoding, sizeof(highThreeEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 3);
+
+    codePoint = 0x010000;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(lowFourEncoding));
+    LE_ASSERT(memcmp(out, lowFourEncoding, sizeof(lowFourEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 4);
+
+    codePoint = 0x10FFFF;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OK);
+    LE_ASSERT(outSize == sizeof(highFourEncoding));
+    LE_ASSERT(memcmp(out, highFourEncoding, sizeof(highFourEncoding)) == 0);
+    LE_ASSERT(le_utf8_DecodeUnicodeCodePoint(out, &outSize, &decodedCodePoint) == LE_OK);
+    LE_ASSERT(decodedCodePoint == codePoint);
+    LE_ASSERT(outSize == 4);
+
+    // Encoding a code point value that is too large should fail
+    codePoint = UINT32_MAX;
+    outSize = 4;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OUT_OF_RANGE);
+
+    // Attempt to encode code points that would be too large to fit in the buffer
+    codePoint = 0x80;
+    outSize = 1;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OVERFLOW);
+    LE_ASSERT(outSize == 2);
+
+    codePoint = 0x800;
+    outSize = 2;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OVERFLOW);
+    LE_ASSERT(outSize == 3);
+
+    codePoint = 0x10000;
+    outSize = 3;
+    LE_ASSERT(le_utf8_EncodeUnicodeCodePoint(codePoint, out, &outSize) == LE_OVERFLOW);
+    LE_ASSERT(outSize == 4);
+
+    // Attempt to decode from a zero length input
+    outSize = 0;
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            lowOneEncoding, &outSize, &decodedCodePoint) == LE_BAD_PARAMETER);
+
+    // Attempt to decode from input that is too short
+    outSize = sizeof(lowTwoEncoding) - 1;
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            lowTwoEncoding, &outSize, &decodedCodePoint) == LE_UNDERFLOW);
+
+    outSize = sizeof(lowThreeEncoding) - 1;
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            lowThreeEncoding, &outSize, &decodedCodePoint) == LE_UNDERFLOW);
+
+    outSize = sizeof(lowFourEncoding) - 1;
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            lowFourEncoding, &outSize, &decodedCodePoint) == LE_UNDERFLOW);
+
+    // Attempt to decode from buffers which are not valid utf-8
+    outSize = sizeof(invalidTwoEncoding);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            invalidTwoEncoding, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    outSize = sizeof(invalidThreeEncoding);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            invalidThreeEncoding, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    outSize = sizeof(invalidFourEncoding1);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            invalidFourEncoding1, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    outSize = sizeof(invalidFourEncoding2);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            invalidFourEncoding2, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    // Attempt to decode overlong encoded data which is invalid utf-8
+    outSize = sizeof(overlongTwoEncoding);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            overlongTwoEncoding, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    outSize = sizeof(overlongThreeEncoding);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            overlongThreeEncoding, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    outSize = sizeof(overlongFourEncoding);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            overlongFourEncoding, &outSize, &decodedCodePoint) == LE_FORMAT_ERROR);
+
+    // decode codepoint > 0x10ffff which is the maximum allowed value in utf-8
+    outSize = sizeof(tooBigEncoding);
+    LE_ASSERT(
+        le_utf8_DecodeUnicodeCodePoint(
+            tooBigEncoding, &outSize, &decodedCodePoint) == LE_OUT_OF_RANGE);
 }
 
 
@@ -441,6 +635,10 @@ COMPONENT_INIT
     TestIntParsing();
 
     printf("Int parsing correct.\n");
+
+    printf("Testing encode/decode\n");
+    TestEncodeDecodeCodePoint();
+    printf("Completed testing encode/decode\n");
 
     printf("*** Unit Test for le_utf8 module passed. ***\n");
     printf("\n");

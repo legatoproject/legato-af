@@ -486,3 +486,217 @@ le_result_t le_utf8_ParseInt
 
     return LE_OK;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Encode a unicode code point as UTF-8 into a buffer.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OUT_OF_RANGE if the code point supplied is outside the range of unicode code points
+ *      - LE_OVERFLOW if the out buffer is not large enough to store the UTF-8 encoding of the code
+ *        point
+ *
+ * @note
+ *      Not all code point values are valid unicode. This function does not validate whether the
+ *      code point is valid unicode.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_EncodeUnicodeCodePoint
+(
+    uint32_t codePoint, ///< [IN] Code point to encode as UTF-8.
+    char* out,          ///< [OUT] Buffer to store the UTF-8 encoded value in.
+    size_t* outSize     ///< [IN/OUT] As an input, this value is interpreted as the size of the out
+                        ///  buffer.  As an output, it is updated to hold the size of the UTF-8
+                        ///  encoded value (in the case of an LE_OK return value) or size that would
+                        ///  be required to encode the code point (in the case or an LE_OVERFLOW
+                        ///  return value).
+)
+{
+    const size_t bufferSize = *outSize;
+    if (codePoint <= 0x00007F)
+    {
+        *outSize = 1;
+        if (bufferSize >= 1)
+        {
+            out[0] = codePoint;
+        }
+        else
+        {
+            return LE_OVERFLOW;
+        }
+    }
+    else if (codePoint <= 0x0007FF)
+    {
+        *outSize = 2;
+        if (bufferSize >= 2)
+        {
+            out[0] = (0xC0 | ((codePoint >>  6) & 0x1F));
+            out[1] = (0x80 | ((codePoint >>  0) & 0x3F));
+        }
+        else
+        {
+            return LE_OVERFLOW;
+        }
+    }
+    else if (codePoint <= 0x00FFFF)
+    {
+        *outSize = 3;
+        if (bufferSize >= 3)
+        {
+            out[0] = (0xE0 | ((codePoint >> 12) & 0x0F));
+            out[1] = (0x80 | ((codePoint >>  6) & 0x3F));
+            out[2] = (0x80 | ((codePoint >>  0) & 0x3F));
+        }
+        else
+        {
+            return LE_OVERFLOW;
+        }
+    }
+    else if (codePoint <= 0x10FFFF)
+    {
+        *outSize = 4;
+        if (bufferSize >= 4)
+        {
+            out[0] = (0xF0 | ((codePoint >> 18) & 0x07));
+            out[1] = (0x80 | ((codePoint >> 12) & 0x3F));
+            out[2] = (0x80 | ((codePoint >>  6) & 0x3F));
+            out[3] = (0x80 | ((codePoint >>  0) & 0x3F));
+        }
+        else
+        {
+            return LE_OVERFLOW;
+        }
+    }
+    else
+    {
+        return LE_OUT_OF_RANGE;
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode the first unicode code point from the UTF-8 string src.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if byteLength points to 0
+ *      - LE_UNDERFLOW if src appears to be the beginning of a UTF-8 character which extends beyond
+ *        the end of the string as specified by byteLength.
+ *      - LE_FORMAT_ERROR if src is not valid UTF-8 encoded string data.
+ *      - LE_OUT_OF_RANGE if src encodes a four byte character whose value is greater than what is
+ *        permitted in UTF-8.
+ *
+ * @note
+ *      Not all code point values are valid unicode. This function does not validate whether the
+ *      code point is valid unicode.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_DecodeUnicodeCodePoint
+(
+    const char* src,     ///< [IN] UTF-8 encoded data to extract a code point from.
+    size_t* byteLength,  ///< [IN/OUT] As an input parameter, the value pointed to represents the
+                         ///  number of bytes in src. As an output parameter, the value pointed to
+                         ///  is the number of bytes from src that were consumed to decode the code
+                         ///  point (in the case of an LE_OK return value) or the number of bytes
+                         ///  that would have been consumed had src been long enough (in the case of
+                         ///  an LE_UNDERFLOW return value).
+    uint32_t* codePoint  ///< [OUT] Code point that was decoded from src.  This value is only valid
+                         ///  when the function returns LE_OK.
+)
+{
+    const size_t bufferSize = *byteLength;
+    // Trying to decode a zero-length buffer is invalid
+    if (bufferSize == 0)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    if (IS_SINGLE_BYTE_CHAR(src[0]))
+    {
+        *byteLength = 1;
+        *codePoint = src[0];
+    }
+    else if (IS_TWO_BYTE_CHAR(src[0]))
+    {
+        *byteLength = 2;
+        if (bufferSize < 2)
+        {
+            return LE_UNDERFLOW;
+        }
+
+        if (!le_utf8_IsContinuationByte(src[1]))
+        {
+            return LE_FORMAT_ERROR;
+        }
+
+        *codePoint = (((src[0] & 0x1F) << 6) | ((src[1] & 0x3F) << 0));
+        if (*codePoint <= 0x7F)
+        {
+            // overlong encoding is invalid
+            return LE_FORMAT_ERROR;
+        }
+    }
+    else if (IS_THREE_BYTE_CHAR(src[0]))
+    {
+        *byteLength = 3;
+        if (bufferSize < 3)
+        {
+            return LE_UNDERFLOW;
+        }
+
+        if (!le_utf8_IsContinuationByte(src[1]) || !le_utf8_IsContinuationByte(src[2]))
+        {
+            return LE_FORMAT_ERROR;
+        }
+
+        *codePoint = (((src[0] & 0x0F) << 12) | ((src[1] & 0x3F) << 6) | ((src[2] & 0x3F) << 0));
+        if (*codePoint <= 0x7FF)
+        {
+            // overlong encoding is invalid
+            return LE_FORMAT_ERROR;
+        }
+    }
+    else if (IS_FOUR_BYTE_CHAR(src[0]))
+    {
+        *byteLength = 4;
+        if (bufferSize < 4)
+        {
+            return LE_UNDERFLOW;
+        }
+
+        if (!le_utf8_IsContinuationByte(src[1]) ||
+            !le_utf8_IsContinuationByte(src[2]) ||
+            !le_utf8_IsContinuationByte(src[3]))
+        {
+            return LE_FORMAT_ERROR;
+        }
+
+        *codePoint = (
+            ((src[0] & 0x07) << 18) |
+            ((src[1] & 0x3F) << 12) |
+            ((src[2] & 0x3F) << 6) |
+            ((src[3] & 0x3F) << 0));
+        if (*codePoint <= 0xFFFF)
+        {
+            // overlong encoding is invalid
+            return LE_FORMAT_ERROR;
+        }
+
+        if (*codePoint > 0x10FFFF)
+        {
+            return LE_OUT_OF_RANGE;
+        }
+    }
+    else
+    {
+        // src is not a valid UTF-8 character
+        return LE_FORMAT_ERROR;
+    }
+
+    return LE_OK;
+}
