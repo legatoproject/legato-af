@@ -510,6 +510,7 @@ void le_sig_InstallShowStackHandler
             return;
         }
     }
+    memset(&sa, 0, sizeof(sa));
     sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))ShowStackSignalHandler;
     sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND;
     ret = sigaction( SIGSEGV, &sa, NULL );

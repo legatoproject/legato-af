@@ -281,8 +281,8 @@ le_result_t le_tty_SetBaudRate
 {
     struct termios portSettings;
 
-    if (ttyRate > ARRAY_SIZE(SpeedTable)) {
-        LE_ERROR(" %d speed rate in not permited ", ttyRate);
+    if (ttyRate >= ARRAY_SIZE(SpeedTable)) {
+        LE_ERROR(" %d speed rate in not permitted ", ttyRate);
         return LE_NOT_FOUND;
     }
 

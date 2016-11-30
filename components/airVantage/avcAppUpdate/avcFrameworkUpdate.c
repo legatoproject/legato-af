@@ -611,14 +611,7 @@ static void LoadLegatoVersionStr
         LE_ERROR("Could not read Legato version.");
     }
 
-    int retVal = -1;
-
-    do
-    {
-        retVal = fclose(versionFile);
-    }
-    while (   (retVal == -1)
-           && (errno == EINTR));
+    fclose(versionFile);
 }
 
 

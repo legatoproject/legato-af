@@ -87,7 +87,7 @@ void file_Delete
  *
  * Will read up to size - 1 bytes from the file.
  *
- * The result will always be null-terminated.
+ * On success the output string will always be null-terminated.
  *
  * @return Number of bytes read (not including the null terminator) or -1 on failure.
  */

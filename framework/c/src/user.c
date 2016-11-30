@@ -427,13 +427,7 @@ void user_Init
         }
 
         // Close the file.
-        int r;
-        do
-        {
-            r = fclose(filePtr);
-        } while ( (r != 0) && (errno == EINTR) );
-
-        LE_FATAL_IF(r != 0, "Could not close open file.  %m.");
+        LE_FATAL_IF(fclose(filePtr) != 0, "Could not close open file.  %m.");
 
         // Check for errors.
         if (!gotMinUidValue)

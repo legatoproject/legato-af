@@ -539,8 +539,8 @@ static le_result_t GetProcessNameFromPid
     size_t length   ///< [IN] The size of the buffer that receives the name
 )
 {
-    char pathStr[LIMIT_MAX_PATH_BYTES] = "";
-    char procPathStr[LIMIT_MAX_PATH_BYTES] = "";
+    char pathStr[LIMIT_MAX_PATH_BYTES] = {0};
+    char procPathStr[LIMIT_MAX_PATH_BYTES] = {0};
 
     if (name != NULL)
     {
@@ -552,13 +552,27 @@ static le_result_t GetProcessNameFromPid
             return LE_NOT_FOUND;
         }
 
-        int fd = open(pathStr, O_RDONLY);
-        if (fd)
+        int fd = -1;
+
+        do
+        {
+            fd = open(pathStr, O_RDONLY);
+        }
+        while ((fd == -1) && (errno == EINTR));
+
+        if (fd < 0)
+        {
+            LE_ERROR("Unable to open '%s': %m", pathStr);
+            return LE_FAULT;
+        }
+        else
         {
             result = read (fd, procPathStr, LIMIT_MAX_PATH_BYTES);
             fd_Close(fd);
-            if (result == 0)
+
+            if (result <= 0)
             {
+                LE_ERROR("Unable to read '%s': %m", procPathStr);
                 return LE_FAULT;
             }
             else if (strnlen(procPathStr, LIMIT_MAX_PATH_BYTES) ==  LIMIT_MAX_PATH_BYTES)

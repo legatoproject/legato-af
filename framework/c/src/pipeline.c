@@ -670,10 +670,13 @@ void pipeline_Start
 
     // Walk the process list, from front to back, starting the processes with the appropriate
     // fds for their stdin and stdout.
-    le_sls_Link_t* linkPtr;
-    for (linkPtr = le_sls_Peek(&pipeline->processList);
-         linkPtr != NULL;
-         linkPtr = le_sls_PeekNext(&pipeline->processList, linkPtr))
+    le_sls_Link_t* linkPtr = le_sls_Peek(&pipeline->processList);
+
+    // A pipeline must have at least one process.
+    LE_FATAL_IF(linkPtr == NULL, "Pipeline has no processes.");
+
+    for ( ; linkPtr != NULL;
+            linkPtr = le_sls_PeekNext(&pipeline->processList, linkPtr))
     {
         Process_t* processPtr = CONTAINER_OF(linkPtr, Process_t, link);
 

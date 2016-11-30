@@ -324,6 +324,8 @@ static void WriteEntry
         fprintf(stderr, "Could not read from %s.  %m.\n", InputFilePtr);
         exit(EXIT_FAILURE);
     }
+
+    close(fd);
 }
 
 
@@ -500,14 +502,8 @@ static void ReadMeta
     }
 
     /* Close the temp file. */
-    int r;
-    do
-    {
-        r = fclose(tmpFilePtr);
-    }
-    while ( (r != 0) && (errno == EINTR) );
 
-    if (r != 0)
+    if (fclose(tmpFilePtr) != 0)
     {
         LE_EMERG("Could not close %s. %m.", tmpFilePath);
 

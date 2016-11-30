@@ -331,9 +331,9 @@ static le_result_t GetValue
     }
     while ( (numBytesRead == -1) && (errno == EINTR) );
 
-    // Check if the read value is valid.
-    le_result_t result;
+    le_result_t result = LE_FAULT;
 
+    // Check if the read value is valid.
     if (numBytesRead == -1)
     {
         LE_ERROR("Could not read file '%s' in cgroup '%s'.  %m.", fileNamePtr, cgroupNamePtr);
@@ -345,7 +345,7 @@ static le_result_t GetValue
         bufPtr[bufSize-1] = '\0';
         result = LE_OVERFLOW;
     }
-    else
+    else if ((numBytesRead >= 0) && (numBytesRead < bufSize))
     {
         // Null-terminate the string.
         bufPtr[numBytesRead] = '\0';
@@ -877,7 +877,7 @@ le_result_t cgrp_mem_SetLimit
     }
 
     // Read the limit to see if it was set properly.
-    char readLimitStr[MAX_DIGITS];
+    char readLimitStr[MAX_DIGITS] = {0};
 
     if (GetValue(CGRP_SUBSYS_MEM,
                  cgroupNamePtr,
@@ -1008,8 +1008,9 @@ ssize_t cgrp_GetMemUsed
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
-    char buffer[32];
+    char buffer[32] = {0};
     ssize_t result;
+
     if (GetValue(CGRP_SUBSYS_MEM,
                  cgroupNamePtr,
                  "memory.memsw.usage_in_bytes",
@@ -1040,8 +1041,9 @@ ssize_t cgrp_GetMaxMemUsed
     const char* cgroupNamePtr       ///< [IN] Name of the cgroup.
 )
 {
-    char buffer[32];
+    char buffer[32] = {0};
     ssize_t result;
+
     if (GetValue(CGRP_SUBSYS_MEM,
                  cgroupNamePtr,
                  "memory.memsw.max_usage_in_bytes",

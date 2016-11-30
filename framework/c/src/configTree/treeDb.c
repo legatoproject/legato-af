@@ -2737,16 +2737,7 @@ static void CloseFilePtr
 )
 // -------------------------------------------------------------------------------------------------
 {
-    int closeResult = EOF;
-
-    do
-    {
-        closeResult = fclose(filePtr);
-    }
-    while (   (closeResult == EOF)
-           && (errno == EINTR));
-
-    if (closeResult == EOF)
+    if (fclose(filePtr) == EOF)
     {
         LE_ERROR("Could not properly close file, reason: %s", strerror(errno));
     }

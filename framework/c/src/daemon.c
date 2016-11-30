@@ -11,6 +11,55 @@
 #include "daemon.h"
 #include "fileDescriptor.h"
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Redirect stderr to file specified in parameter.
+ *
+ * @return
+ *     - LE_OK if successful.
+ *     - LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RedirectStderr
+(
+    const char* filePathPtr          ///< [IN] File path where stderr should be redirected.
+)
+{
+    int fd;
+
+    do
+    {
+        fd = open(filePathPtr, O_WRONLY);
+    }
+    while ((fd == -1) && (errno == EINTR));
+
+    if (fd < 0)
+    {
+        LE_ERROR("Failed to open '%s'. %m", filePathPtr);
+        return LE_FAULT;
+    }
+    else
+    {
+        int dupfd;
+        do
+        {
+            dupfd = dup2(fd, fileno(stderr));
+        }
+        while((dupfd == -1) && (errno == EINTR));
+
+        fd_Close(fd);
+
+        if (dupfd < 0)
+        {
+            return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Daemonizes the calling process.
@@ -108,12 +157,14 @@ void daemon_Daemonize
     // up another filesystem and prevent it from being unmounted.
     LE_FATAL_IF(chdir("/") < 0, "Failed to set working directory to root.  %m.");
 
-    // Redirect stderr to /dev/console.
-    if (freopen("/dev/console", "w", stderr) == NULL)
+    // Redirect stderr to /dev/console. If failed then redirect it to /dev/null. Don't use freopen()
+    // function here, as freopen() closes the supplied stream regardless of whether freopen()
+    // succeeds (See: http://man7.org/linux/man-pages/man3/freopen.3p.html).
+    if (RedirectStderr("/dev/console") != LE_OK)
     {
-        LE_WARN("Could not redirect stderr to /dev/console, redirecting it to /dev/null instead.");
+        LE_WARN("Could not redirect stderr to /dev/console (%m), redirecting it to /dev/null.");
 
-        LE_FATAL_IF(freopen("/dev/null", "w", stderr) == NULL,
+        LE_FATAL_IF(RedirectStderr("/dev/null") != LE_OK,
                     "Failed to redirect stderr to /dev/null.  %m.");
     }
 

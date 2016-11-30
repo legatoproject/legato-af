@@ -1327,7 +1327,7 @@ void le_msg_AdvertiseService
     // Service Directory.
     if (fd < 3)
     {
-        const char* streamNameStr;
+        const char* streamNameStr = "<unknown>";
         switch (fd)
         {
             case 0:
@@ -1340,9 +1340,9 @@ void le_msg_AdvertiseService
                 streamNameStr = "stderr";
                 break;
             default:
-                streamNameStr = "<unknown>";
                 break;
         }
+
         LE_WARN("Service Directory connection mapped to %s.", streamNameStr);
     }
 

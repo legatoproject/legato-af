@@ -767,6 +767,7 @@ le_result_t system_Snapshot
         return LE_FAULT;
     }
 
+    le_result_t result = LE_OK;
 
     while (1)
     {
@@ -779,7 +780,7 @@ le_result_t system_Snapshot
             if (errno != 0)
             {
                 LE_ERROR("Error reading directory %s.  %m.", APPS_WRITEABLE_DIR);
-                return LE_FAULT;
+                result = LE_FAULT;
             }
 
             break;
@@ -795,7 +796,8 @@ le_result_t system_Snapshot
             if (le_path_Concat("/", sourceDir, sizeof(sourceDir), dirPtr->d_name, NULL) != LE_OK)
             {
                 LE_ERROR("Directory name '%s...' is too long.", sourceDir);
-                return LE_FAULT;
+                result = LE_FAULT;
+                break;
             }
 
             if (fs_IsMountPoint(sourceDir))
@@ -807,16 +809,30 @@ le_result_t system_Snapshot
                                    "appsWriteable", dirPtr->d_name, NULL) != LE_OK)
                 {
                     LE_ERROR("Directory name '%s...' is too long.", destDir);
-                    return LE_FAULT;
+                    result = LE_FAULT;
+                    break;
                 }
 
                 // Copy directories.
                 if (file_CopyRecursive(sourceDir, destDir, NULL) != LE_OK)
                 {
-                    return LE_FAULT;
+                    result = LE_FAULT;
+                    break;
                 }
             }
         }
+    }
+
+    // Now close the directory pointer
+    if (closedir(appsWriteableDir) != 0)
+    {
+        LE_ERROR("Failed to close dir '%s'. %m", APPS_WRITEABLE_DIR);
+        result = LE_FAULT;
+    }
+
+    if (result == LE_FAULT)
+    {
+        return LE_FAULT;
     }
 
     // Atomically rename the work dir to the proper index
@@ -887,20 +903,33 @@ void system_MarkModified
 
     // Update the version string.
     static const char modifiedStr[] = "_modified";
-    char versionBuffer[200] = "";
-    char newVersionBuffer[sizeof(versionBuffer) + sizeof(modifiedStr) + 1] = ""; // +1 for newline
+    char versionBuffer[200] = {0};
+    char newVersionBuffer[sizeof(versionBuffer) + sizeof(modifiedStr) + 1] = {0}; // +1 for newline
 
     // Get the old version.
     size_t versionLen = system_Version(versionBuffer, sizeof(versionBuffer));
 
-    // Remove newline if there is one.
-    if (versionBuffer[versionLen-1] == '\n')
+    if (versionLen > 0)
     {
-        versionBuffer[versionLen-1] = '\0';
+        // Remove newline if there is one.
+        if (versionBuffer[versionLen-1] == '\n')
+        {
+            versionBuffer[versionLen-1] = '\0';
+        }
+    }
+    else  // versionLen <= 0
+    {
+        LE_ERROR("Can not retrieve system version. Setting version to 'Unknown'");
+        snprintf(versionBuffer, sizeof(versionBuffer), "Unknown");
     }
 
     // Append "_modified".
-    snprintf(newVersionBuffer, sizeof(newVersionBuffer), "%s%s\n", versionBuffer, modifiedStr);
+    LE_ASSERT(snprintf(newVersionBuffer,
+                       sizeof(newVersionBuffer),
+                       "%s%s\n",
+                       versionBuffer,
+                       modifiedStr)
+                       < sizeof(newVersionBuffer));
 
     // Write the new version string.
     SetVersion(newVersionBuffer);

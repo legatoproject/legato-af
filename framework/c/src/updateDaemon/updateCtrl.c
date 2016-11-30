@@ -472,7 +472,7 @@ static bool LogLock
     if (result <=  LIMIT_MAX_PATH_BYTES)
     {
         int fd = open(pathStr, O_RDONLY);
-        if (fd)
+        if (fd >= 0)
         {
             result = read (fd, procNameBuffer, sizeof(procNameBuffer) - 1);
             close(fd);

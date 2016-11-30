@@ -673,17 +673,7 @@ void le_flock_CloseStream
     FILE* fileStreamPtr
 )
 {
-    int r;
-
     // Closing the file stream also closes the underlying file descriptor which releases the lock.
-    do
-    {
-        r = fclose(fileStreamPtr);
-    }
-    while ( (r != 0) && (errno == EINTR) );
+    LE_CRIT_IF(fclose(fileStreamPtr) != 0, "Failed to close file stream. %m.");
 
-    if (r != 0)
-    {
-        LE_CRIT("Failed to close file stream. %m.");
-    }
 }

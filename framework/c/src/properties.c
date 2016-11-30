@@ -260,15 +260,8 @@ void properties_DeleteIter
 )
 {
     // Close the file.
-    int r;
-
-    do
-    {
-        r = fclose(iteratorRef->streamPtr);
-    }
-    while ( (r != 0) && (errno == EINTR) );
-
-    LE_CRIT_IF(r != 0, "Failed to close file %s.  %m.", iteratorRef->fileName);
+    LE_CRIT_IF(fclose(iteratorRef->streamPtr) != 0,
+               "Failed to close file %s.  %m.", iteratorRef->fileName);
 
     // Release the memory.
     le_mem_Release(iteratorRef);
