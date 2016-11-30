@@ -1531,6 +1531,8 @@ static void* SmsSenderThread
     le_event_AddHandler("ProcessSmsSendingCommandHandler", SmsCommandEventId,
         ProcessSmsSendingCommandHandler);
 
+    le_sem_Post(SmsSem);
+
     // Run the event loop
     le_event_RunLoop();
     return NULL;
@@ -1591,6 +1593,8 @@ le_result_t le_sms_Init
     // Init the SMS command Event Id
     SmsCommandEventId = le_event_CreateId("SmsSendCmd", sizeof(CmdRequest_t));
     le_thread_Start(le_thread_Create("SmsSenderThread", SmsSenderThread, NULL));
+
+    le_sem_Wait(SmsSem);
 
     // Register a handler function for new message indication
     if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
