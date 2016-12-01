@@ -1,6 +1,9 @@
 /**
  * This module is for unit testing of the configuration Audio service.
  *
+ * On the target, you must issue the following commands:
+ * $ app runProc audioCfgTest --exe=audioCfgTest [-- <audio profile>]
+ *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
@@ -14,7 +17,7 @@ static le_audio_StreamRef_t MdmTxAudioRef = NULL;
 static le_audio_StreamRef_t I2sRxAudioRef = NULL;
 static le_audio_StreamRef_t I2sTxAudioRef = NULL;
 static uint32_t             ErrorCount;
-
+static uint32_t             AudioProfile;
 
 static void TestAudioCfgParamCheck
 (
@@ -145,19 +148,39 @@ static void TestAudioCfgEnable
 )
 {
     le_result_t          res;
-    uint32_t              profile=1;
+    uint32_t profil = 0;
 
     LE_INFO("Start TestAudioCfgEnable.");
 
+    if (le_audio_SetProfile(AudioProfile) != LE_OK)
+    {
+        LE_ERROR("le_audio_SetProfile failed!");
+        ErrorCount++;
+    }
+    else
+    {
+        LE_INFO("le_audio_SetProfile returns successfuly (%d)", AudioProfile);
+    }
+
     // Get/Set profile
-    if (le_audio_GetProfile(&profile) != LE_OK)
+    if (le_audio_GetProfile(&profil) != LE_OK)
     {
         LE_ERROR("le_audio_GetProfile failed!");
         ErrorCount++;
     }
     else
     {
-        LE_INFO("le_audio_GetProfile returns successfuly (%d)", profile);
+        LE_INFO("le_audio_GetProfile returns successfuly (%d)", AudioProfile);
+    }
+
+    if (profil != AudioProfile)
+    {
+        LE_ERROR("audio profil doesn't match!");
+        ErrorCount++;
+    }
+    else
+    {
+        LE_INFO("le_audio_GetProfile matches with le_audio_SetProfile (%d)", profil);
     }
 
     if (le_audio_SetProfile(1) != LE_OK)
@@ -374,10 +397,33 @@ static void TestAudioCfgDisable
     LE_INFO("End TestAudioCfgDisable.");
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test init.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    LE_INFO("Start AudioConfiguration Test!");
+    if (le_arg_NumArgs() == 1)
+    {
+        const char* audioProfileStr = le_arg_GetArg(0);
+        int value = atoi(audioProfileStr);
+        if (value < 0)
+        {
+            AudioProfile = 1;
+        }
+        else
+        {
+            AudioProfile = value;
+        }
+    }
+    else
+    {
+        AudioProfile = 1;
+    }
+
+    LE_INFO("Start AudioConfiguration Test audio profile %d!", AudioProfile);
 
     ErrorCount = 0;
 
@@ -397,10 +443,12 @@ COMPONENT_INIT
     if (ErrorCount == 0)
     {
         LE_INFO("AudioConfiguration test succeed.");
+        exit(0);
     }
     else
     {
         LE_ERROR("AudioConfiguration test failed: found %d failures, check the logs!", ErrorCount);
+        exit(1);
     }
 }
 

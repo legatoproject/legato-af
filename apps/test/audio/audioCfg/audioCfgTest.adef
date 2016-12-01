@@ -16,7 +16,7 @@ processes:
     maxFileBytes: 5000K
 }
 
-start: auto
+start: manual
 
 bindings:
 {

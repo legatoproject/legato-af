@@ -346,8 +346,8 @@ static void DisconnectAllAudio
 static void MyCallEventHandler
 (
     le_mcc_CallRef_t   callRef,
-    le_mcc_Event_t    callEvent,
-    void*                  contextPtr
+    le_mcc_Event_t     callEvent,
+    void*              contextPtr
 )
 {
     le_result_t         res;
@@ -379,6 +379,10 @@ static void MyCallEventHandler
                     LE_ERROR("Failed to play DTMF!");
                     return;
                 }
+            }
+            else
+            {
+                LE_ERROR("PlayerAudioRef or AudioInputConnectorRef is NULL");
             }
         }
         else if (strcmp(DtmfSendingCase,"outband")==0)
@@ -468,7 +472,7 @@ static void PlayLocalDtmf
     else if (strncmp(argString, "I2S", strlen("I2S")) == 0)
     {
         LE_INFO("Play DTMF on I2S output interface");
-        // Redirect audio to the PCM Tx.
+        // Redirect audio to the I2S Tx.
         FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
         LE_ERROR_IF((FeOutRef==NULL), "OpenI2STx returns NULL!");
     }
@@ -557,6 +561,7 @@ COMPONENT_INIT
         Pause = atoi(le_arg_GetArg(4));
         DestinationNumber = le_arg_GetArg(5);
         DtmfSendingCase = le_arg_GetArg(6);
+        LE_INFO("   Play DTMF on remote");
         LE_INFO("   DTMF to play.\"%s\"", DtmfString);
         LE_INFO("   Duration.%dms", Duration);
         LE_INFO("   Pause.%dms", Pause);
