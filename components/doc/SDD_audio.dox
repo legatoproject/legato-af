@@ -1,15 +1,63 @@
 /** @page c_SDD_audio Audio SDD
 
-The Audio API handles audio interfaces including play and record supported formats.
+@section Multimedia
 
-@section le_audio_PlayFile le_audio_PlayFile
+@subsection Overview Overview
+
+The Audio API handles audio interfaces including play and record supported formats.
+Four functionalities are proposed through the APIs:
+- file playback using le_audio_PlayFile() API
+- file recording using le_audio_RecordFile() API
+- PCM samples playback using le_audio_PlaySamples() API
+- PCM samples recording using le_audio_GetSamples() API
+
+To provide these functionalities, audio daemon relies on a HAL (Harware Abstraction Layer) calling
+Alsa-intf to communicate with the sound driver ALSA. The audio platform adaptor uses the Alsa-intf's
+open, read and write APIs.<br>
+For reading operation, Alsa-intf is configured in MMAP mode: Alsa-intf allocates a mmap buffer and
+provides it to the audio platform adaptor to get PCM frames to be played by ALSA.<br>
+For write operation, Alsa-intf is configured in NMMAP mode: audio platform adaptor provides its
+own buffer to the Alsa-intf.
+
+In play samples and get samples use cases, a pipe is created by the application to send/get
+audio samples to/from the audio daemon'threads in charge of the playback and the capture.
+To be generic, the same mechanism is re-used internally in the audio daemon for files playback and
+recording: a thread is in charge of sending and recording audio samples to the playback/capture
+threads through a pipe.
+
+Playbacks APIs are using the same PlaybackThread thread: its goal is to read audio samples from a
+pipe, and send them to Alsa-intf to be played on sound device.
+Recording APIs are using the same CaptureThread thread: its goal is to get audio samples from
+Alsa-intf, and write them into a pipe.
+These two threads are implemented in the audio platform adaptor. They are running until a stop
+operation is performed (by the application using the dedicated API le_audio_Stop(), or by the audio
+component when the end of the audio file is reached).
+
+On the other end of the pipe, file playback and recording are using the media thread. Its goal is
+to:
+- read samples and write into the pipe (playback file case). Read samples can be:
+    - read samples directly from a file (WAV files)
+    - get samples from the AMR decoder (AMR-NB/AMR-WB files)
+    - read samples from DTMF generator
+- read from the pipe and write into a file (capture case). Write samples can be:
+    - write samples directly into a file (WAV file)
+    - record samples in AMR format (AMR-NB/AMR-WB files)
+
+@subsection le_audio_PlayFile le_audio_PlayFile
+
+In play file use case, audio daemon starts the media and playback threads and creates a pipe to
+transfer PCM samples between both threads. Media thread is in charge of reading/decoding PCM frames
+and sending them on the pipe. Playback thread reads the PCM frames on the pipe and sends them
+to the sound driver through Alsa-intf.
 
 @startuml{le_audio_PlayFile.png}
 
 participant Application
-box "audioDaemon" #lightBlue
+box "audio component" #lightBlue
 participant mainThread
 participant mediaThread
+end box
+box "audio platform adaptor" #lightGreen
 participant playbackThread
 end box
 participant Alsa
@@ -69,13 +117,19 @@ mainThread -> Application: send LE_AUDIO_MEDIA_NO_MORE_SAMPLES event
 
 @enduml
 
-@section le_audio_PlaySamples le_audio_PlaySamples
+@subsection le_audio_PlaySamples le_audio_PlaySamples
+
+In play samples use case, the application creates a pipe and sends PCM samples on it. In audio
+daemon side, playback thread is started to get the PCM samples from the pipe and then send them to
+the sound driver through Alsa-intf.
 
 @startuml{le_audio_PlaySamples.png}
 
 participant Application
-box "audioDaemon" #lightBlue
+box "audio component" #lightBlue
 participant mainThread
+end box
+box "audio platform adaptor" #lightGreen
 participant playbackThread
 end box
 participant Alsa
@@ -123,13 +177,19 @@ Application -> Application: close(fd_out)
 
 @enduml
 
-@section le_audio_GetSamples le_audio_GetSamples
+@subsection le_audio_GetSamples le_audio_GetSamples
+
+In get samples use case, the application creates a pipe and gets PCM samples on it. In audio daemon
+side, capture thread is started to get the PCM samples from Alsa-intf and then send them on the
+pipe to the application.
 
 @startuml{le_audio_GetSamples.png}
 
 participant Application
-box "audioDaemon" #lightBlue
+box "audio component" #lightBlue
 participant mainThread
+end box
+box "audio platform adaptor" #lightGreen
 participant CaptureThread
 end box
 participant Alsa
@@ -174,14 +234,21 @@ Application -> Application: close(fd_out)
 
 @enduml
 
-@section le_audio_RecordFile le_audio_RecordFile
+@subsection le_audio_RecordFile le_audio_RecordFile
+
+In record file use case, audio daemon starts the media and capture threads, and creates a pipe to
+transfer PCM samples between both threads. PCM samples are got by the capture thread from the sound
+driver through Alsa-intf, and are sent to the media thread thanks to the pipe for recording in the
+requested format.
 
 @startuml{le_audio_RecordFile.png}
 
 participant Application
-box "audioDaemon" #lightBlue
+box "audio component" #lightBlue
 participant mainThread
 participant mediaThread
+end box
+box "audio platform adaptor" #lightGreen
 participant CaptureThread
 end box
 participant Alsa
