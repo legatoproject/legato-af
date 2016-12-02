@@ -839,6 +839,7 @@ FUNCTION le_result_t SetVIN
  *  - LE_OK on success
  *  - LE_NOT_FOUND if the value is not set.
  *  - LE_BAD_PARAMETER parameter is NULL or to small
+ *  - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetVIN

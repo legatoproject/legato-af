@@ -550,7 +550,6 @@ static void RedialClear
     void
 )
 {
-
     // Check redial state
     switch(ECallObj.redial.state)
     {
@@ -606,7 +605,6 @@ static void RedialStop
     RedialStopCause_t stopCause
 )
 {
-
     LE_DEBUG("Stop redial: cause %d, state %d", stopCause, ECallObj.redial.state);
 
     // Check redial state
@@ -4136,8 +4134,6 @@ le_result_t le_ecall_SetVIN
         return LE_BAD_PARAMETER;
     }
 
-    iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
-
     if (LE_ECALL_VIN_MAX_LEN > strnlen( vin, LE_ECALL_VIN_MAX_BYTES))
     {
         LE_WARN("SetVIN parameter vin is not big enough %zu. Should be least %d. '%s'",
@@ -4145,10 +4141,11 @@ le_result_t le_ecall_SetVIN
                 LE_ECALL_VIN_MAX_LEN,
                 vin);
         result = LE_FAULT;
-        le_cfg_CancelTxn( iteratorRef );
     }
     else
     {
+        iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
+
         le_cfg_SetString(iteratorRef, CFG_NODE_VIN, vin);
         LE_INFO("Set VIN to %s", vin);
         result = LE_OK;
@@ -4166,18 +4163,19 @@ le_result_t le_ecall_SetVIN
  *  - LE_OK on success
  *  - LE_NOT_FOUND if the value is not set.
  *  - LE_BAD_PARAMETER parameter is NULL or to small
+ *  - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetVIN
 (
     char* vin,
-        ///< [OUT] VIN size is 17 chars
+        ///< [OUT] VIN is gotten with a null termination.
 
     size_t vinNumElements
         ///< [IN]
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result = LE_OK;
     le_cfg_IteratorRef_t iteratorRef = NULL;
 
     if (NULL == vin)
@@ -4186,10 +4184,10 @@ le_result_t le_ecall_GetVIN
         return LE_BAD_PARAMETER;
     }
 
-
-    if (LE_ECALL_VIN_MAX_LEN > vinNumElements)
+    if (LE_ECALL_VIN_MAX_BYTES > vinNumElements)
     {
-        LE_ERROR("vinNumElements must be at least %d not %zu", LE_ECALL_VIN_MAX_LEN, vinNumElements);
+        LE_ERROR("vinNumElements must be at least %d not %zu",
+                 LE_ECALL_VIN_MAX_BYTES, vinNumElements);
         return LE_FAULT;
     }
 
@@ -4207,16 +4205,16 @@ le_result_t le_ecall_GetVIN
         }
         else if (strnlen( vinStr, LE_ECALL_VIN_MAX_BYTES) > 0)
         {
-            memcpy( &vin[0],
-                   (const void *)vinStr,
-                   strnlen( vinStr, LE_ECALL_VIN_MAX_BYTES));
-            result = LE_OK;
+            if (snprintf(vin, LE_ECALL_VIN_MAX_BYTES, "%s", vinStr) < 0)
+            {
+                LE_WARN("snprintf error");
+                result = LE_FAULT;
+            }
         }
         else
         {
             result = LE_NOT_FOUND;
         }
-        LE_DEBUG("eCall settings, VIN is %s", vinStr);
     }
     else
     {

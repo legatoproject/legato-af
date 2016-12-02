@@ -226,12 +226,14 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_WAITING_PSAP_START_IND:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_WAITING_PSAP_START_IND.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                     LE_ECALL_STATE_WAITING_PSAP_START_IND.");
             break;
         }
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                     LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
             LE_INFO("Send MSD...");
             LE_ASSERT(le_ecall_SendMsd(eCallRef) == LE_OK);
             break;
@@ -263,12 +265,14 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                                      LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE.");
             break;
         }
         case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                                      LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN.");
             break;
         }
         case LE_ECALL_STATE_STOPPED:
@@ -293,7 +297,8 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_END_OF_REDIAL_PERIOD:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                                 LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
         case LE_ECALL_STATE_UNKNOWN:
@@ -602,12 +607,21 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
     LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
 
-    char VinSet[LE_ECALL_VIN_MAX_BYTES] = "12345678901234567";
+    char VinSet[LE_ECALL_VIN_MAX_LEN+1] = "12345678901234567A";
     char VinGet[LE_ECALL_VIN_MAX_BYTES] = { '\0' };
-    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
 
-    LE_ASSERT((LE_OK == le_ecall_GetVIN(&VinGet[0], LE_ECALL_VIN_MAX_LEN)));
-    LE_ASSERT(( 0 == strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_LEN )));
+    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
+    LE_ASSERT((LE_FAULT == le_ecall_GetVIN(VinGet, LE_ECALL_VIN_MAX_LEN)));
+    LE_ASSERT((LE_OK == le_ecall_GetVIN(VinGet, LE_ECALL_VIN_MAX_BYTES)));
+
+    LE_ASSERT(( 0 != strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_BYTES )));
+    LE_INFO("eCall settings, VIN is %s", VinGet);
+
+    VinSet[LE_ECALL_VIN_MAX_LEN] = '\0';
+    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
+    LE_ASSERT((LE_OK == le_ecall_GetVIN(VinGet, LE_ECALL_VIN_MAX_BYTES)));
+    LE_ASSERT(( 0 == strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_BYTES )));
+    LE_INFO("eCall settings, VIN is %s", VinGet);
 
     le_ecall_PropulsionTypeBitMask_t propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
 
@@ -696,7 +710,8 @@ static void Testle_ecall_LoadMsd
 
     // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
     LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) ==
+                                                                                  LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef, 511, 511) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef, -512, -512) == LE_DUPLICATE);
 
@@ -861,5 +876,6 @@ COMPONENT_INIT
 
     exit(0);
 }
+
 
 
