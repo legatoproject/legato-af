@@ -1530,16 +1530,26 @@ static void ParseBuffer
                 }
             break;
             case PARSER_SEARCH_T:
-                if (( input == 'T' ) || ( input == 't' ))
+                switch (input)
                 {
-                    devPtr->currentCmd[1] = input;
-                    devPtr->cmdParser.rxState = PARSER_SEARCH_CR;
-                    devPtr->parseIndex = 2;
-                }
-                else
-                {
-                    devPtr->cmdParser.rxState = PARSER_SEARCH_A;
-                    devPtr->parseIndex = 0;
+                    case 'T':
+                    case 't':
+                    {
+                        devPtr->currentCmd[1] = input;
+                        devPtr->cmdParser.rxState = PARSER_SEARCH_CR;
+                        devPtr->parseIndex = 2;
+                    }
+                    break;
+                    case 'A':
+                    case 'a':
+                        // do nothing in this case
+                    break;
+                    default:
+                    {
+                        devPtr->cmdParser.rxState = PARSER_SEARCH_A;
+                        devPtr->parseIndex = 0;
+                    }
+                    break;
                 }
             break;
             case PARSER_SEARCH_CR:
@@ -1570,6 +1580,11 @@ static void ParseBuffer
                     }
 
                     devPtr->parseIndex=0;
+                }
+                // backspace character
+                else if ( input == 0x7F )
+                {
+                    devPtr->parseIndex--;
                 }
                 else
                 {
