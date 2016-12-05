@@ -68,7 +68,6 @@ add_subdirectory(positioning/positioningTest)
 add_subdirectory(positioning/positioningUnitTest)
 
 ## Audio Services
-add_subdirectory(audio/pa)
 add_subdirectory(audio/service/audioTest)
 add_subdirectory(audio/service/memoryTest)
 add_subdirectory(audio/audioMcc)
