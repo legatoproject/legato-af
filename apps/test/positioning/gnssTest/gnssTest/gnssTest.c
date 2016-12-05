@@ -502,6 +502,9 @@ static void TestLeGnssStart
     uint32_t rate = 0;
     le_gnss_ConstellationBitMask_t constellationMask;
     le_gnss_NmeaBitMask_t nmeaMask;
+    uint32_t ttff = 0;
+    le_result_t result = LE_FAULT;
+
 
     LE_INFO("Start Test Testle_gnss_StartTest");
 
@@ -523,6 +526,18 @@ static void TestLeGnssStart
     /* Wait for a position fix */
     LE_INFO("Wait 120 seconds for a 3D fix");
     sleep(120);
+
+    // Get TTFF
+    result = le_gnss_GetTtff(&ttff);
+    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    if(result == LE_OK)
+    {
+        LE_INFO("TTFF start = %d msec", ttff);
+    }
+    else
+    {
+        LE_INFO("TTFF start not available");
+    }
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
@@ -750,10 +765,14 @@ static void TestLeGnssConstellations
     // test1: error test
     constellationMask = 0;
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
-    sleep(2);
+    constellationMask = LE_GNSS_CONSTELLATION_SBAS;
+    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
+    constellationMask |= LE_GNSS_CONSTELLATION_QZSS;
+    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
 
-    // test2 : Gps selection
-    constellationMask = LE_GNSS_CONSTELLATION_GPS;
+    // test2 : Gps selection (LE_GNSS_CONSTELLATION_SBAS and LE_GNSS_CONSTELLATION_QZSS are present
+    // in the constellationMask)
+    constellationMask |= LE_GNSS_CONSTELLATION_GPS;
     LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     LE_ASSERT(constellationMask == LE_GNSS_CONSTELLATION_GPS)
@@ -784,7 +803,6 @@ static void TestLeGnssConstellations
 
     // next tests have same results as test4 for mdm9x15
 #if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
-
     // test5: Gps+Glonass+Beidou selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
                         LE_GNSS_CONSTELLATION_GLONASS |
@@ -947,9 +965,8 @@ static void TestSuplCertificate
     LE_INFO("le_gnss_SetSuplServerUrl OK");
 
     //Injects the SUPL certificate with lenght zero :
-    //(won't be signaled as error (user must put the right size).
     LE_ASSERT((le_gnss_InjectSuplCertificate(0,
-                               0,ShortSuplCertificate)) == LE_OK);
+                               0,ShortSuplCertificate)) == LE_FAULT);
     //Injects the SUPL certificate with ID error
     LE_ASSERT((le_gnss_InjectSuplCertificate(10,
                                strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_FAULT);
@@ -980,8 +997,6 @@ static void TestSuplCertificate
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-     LE_INFO("======== Supl Certificate Test  ========");
-     TestSuplCertificate();
      LE_INFO("======== GNSS device Test  ========");
      TestLeGnssDevice();
      LE_INFO("======== GNSS device Start Test  ========");
@@ -996,5 +1011,7 @@ COMPONENT_INIT
      TestLeGnssConstellations();
      LE_INFO("======== GNSS NMEA sentences Test  ========");
      TestLeGnssNmeaSentences();
+     LE_INFO("======== Supl Certificate Test  ========");
+     TestSuplCertificate();
      LE_INFO("======== GNSS device Start Test SUCCESS ========");
 }

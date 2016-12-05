@@ -119,12 +119,11 @@
  * The le_gnss_SetConstellation() function selects the GNSS constellation(s) used in solution.
  * If all GNSS constellations are disabled, the GNSS engine is disabled.
  *
- * @warning Your platform may require a reboot to take into account this change.
- * Please refer to your platform documentation for further details.
+ * @warning Your platform may require a reboot to take into account this change. Please refer to
+ * your platform documentation for further details.
  *
- * The following configurations are currently supported:
- *   - GPS
- *   - GPS + GLONASS
+ * Combinations of constellation for GPS , GLONASS, BDS and GALILEO satellites are currently
+ * supported. Are not supported the constellations for SBAS and QZSS satellites.
  *
  * All supported GNSS constellations are enabled by default.
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
@@ -439,6 +438,7 @@ ENUM Constellation
     SV_CONSTELLATION_GLONASS,          ///< Satellite Vehicle of Glonass constellation.
     SV_CONSTELLATION_GALILEO,          ///< Satellite Vehicle of Galileo constellation.
     SV_CONSTELLATION_BEIDOU,           ///< Satellite Vehicle of Beidou constellation.
+    SV_CONSTELLATION_QZSS,             ///< Satellite Vehicle of QZSS constellation.
     SV_CONSTELLATION_MAX               ///< Maximum value.
 };
 
@@ -466,7 +466,9 @@ BITMASK ConstellationBitMask
     CONSTELLATION_GPS,                      ///< GPS constellation used in solution.
     CONSTELLATION_GLONASS,                  ///< GLONASS constellation used in solution.
     CONSTELLATION_BEIDOU,                   ///< BEIDOU constellation used in solution.
-    CONSTELLATION_GALILEO                   ///< GALILEO constellation used in solution.
+    CONSTELLATION_GALILEO,                  ///< GALILEO constellation used in solution.
+    CONSTELLATION_SBAS,                     ///< SBAS constellation used in solution.
+    CONSTELLATION_QZSS                      ///< QZSS constellation used in solution.
 };
 
 //--------------------------------------------------------------------------------------------------
