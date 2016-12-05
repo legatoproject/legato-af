@@ -9,87 +9,88 @@ Welcome to Legato!
   - Install required packages:
 
 ```
-$ sudo apt-get build-essential \
- python python-jinja2 \
- git subversion libsdl-dev \
- diffstat texinfo gawk chrpath wget cpio \
- vim zsh icecc bash ninja-build screen sshpass \
- bc python-git unzip libxml2-utils
+$ sudo apt-get install build-essential \
+                       python python-jinja2 cmake \
+                       git subversion libsdl-dev \
+                       diffstat texinfo gawk chrpath wget cpio \
+                       vim zsh bash ninja-build screen sshpass \
+                       bc python-git unzip libxml2-utils
 ```
-Optional packages: ```vim zsh icecc```
-  - Cross-build toolchain(s)
+
+Optional packages: ```vim zsh```
+
+  - Cross-build toolchain(s)<br/>
     For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/resources/legato/downloads/
 
 #### Clone from GitHub
 
-Legato uses [repo](https://code.google.com/p/git-repo/) as it is distributed as multiple
-repositories.
+Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed as multiple repositories.
 
-  1. Install git-repo:
+1. Install [repo](https://code.google.com/p/git-repo/):
 
-    (on Ubuntu > 14.04)
-    ```
-    $ sudo apt-get install phablet-tools
-    ```
-    OR
-    ```
-    $ curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-    $ chmod a+x ~/bin/repo
-    ```
+  (on Ubuntu > 14.04)
+  ```bash
+  $ sudo apt-get install phablet-tools
+  ```
+  OR
+  ```bash
+  $ wget -O ~/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
+  $ chmod a+x ~/bin/repo
+  ```
 
-  2. Clone the environment:
+2. Clone the environment:
+  ```bash
+  $ mkdir workspace
+  $ cd workspace
+  $ repo init -u git://github.com/legatoproject/manifest
+  $ repo sync
+  ```
 
-    ```
-    $ mkdir workspace
-    $ cd workspace
-    $ repo init -u git://github.com/legatoproject/manifest
-    $ repo sync
-    ```
-
-    You can also clone a specific release:
-
-    ```
-    $ repo init -u git://github.com/legatoproject/manifest -m legato/releases/16.04.1.xml
-    $ repo sync
-    ```
+  You can also clone a specific release:
+  ```bash
+  $ repo init -u git://github.com/legatoproject/manifest -m legato/releases/16.07.0.xml
+  $ repo sync
+  ```
 
 #### Installation
 
- To install the Legato framework on your development PC,
+##### To install the Legato framework on your development PC
 
-  1. clone it from GitHub or untar a release archive into a directory
+  1. Clone it from GitHub or untar a release archive into a directory
 
-  2. cd into that directory
+  2. ```cd``` into that directory
 
-  3. run [make wp85](http://legato.io/legato-docs/latest/basicBuildLegato_make.html)
-     replace ```wp 85``` with the target type ID you're building.
+  3. ```make```
 
-  4. To configure your bash shell's environment for the Legato application build tools,
-     source ```bin/configlegatoenv```:
+##### To configure your bash shell's environment for the Legato application build tools
 
-        $ . bin/configlegatoenv
+Source ```bin/configlegatoenv```:
+```bash
+$ . bin/configlegatoenv
+```
+OR, run the interactive bash shell ```bin/legs```:
+```
+$ bin/legs
+```
 
-     OR, run the interactive bash shell ```bin/legs```:
+##### To build support for cross-build targets, run [```make <target>```](http://legato.io/legato-docs/latest/basicBuildLegato_make.html).
 
-        $ bin/legs
+For example, to enable support for the Sierra Wireless WP85xx devices, run ```make wp85```.<br/>
+Of course, each of these depends on the cross-build toolchain for that target,
+so ensure that you have the appropriate toolchain installed first.
 
-  5. To build support for cross-build targets, run ```make <target>```.
-     For example, to enable support for the Sierra Wireless AR7xxx devices, run ```make ar7```.
-     Of course, each of these depends on the cross-build tool chain for that target,
-     so ensure that you have the appropriate tool chain installed first.
+The path to your toolchain and the prefix of the name of the tools in the toolchain
+are specified using the ```xxxxxx_TOOLCHAIN_DIR``` and ```xxxxxx_TOOLCHAIN_PREFIX``` environment variables
+(where ```xxxxxx``` is replaced with the target platform's ID, such as WP85).
 
-     The path to your tool chain and the prefix of the name of the tools in the tool chain
-     are specified using the xxxxxx_TOOLCHAIN_DIR and xxxxxx_TOOLCHAIN_PREFIX environment variables
-     (where xxxxxx is replaced with the target platform's ID, such as WP85).
+If your toolchain is installed somewhere other than the default location under ```/opt/swi```,
+ensure that the appropriate environment variables are set to tell the build tools where to find
+your toolchain and what its prefix is.<br/>
+For example, for Sierra Wireless WP85xx devices, ```WP85_TOOLCHAIN_DIR``` must be set to the
+path of the directory that contains the file ```arm-poky-linux-gnuabi-gcc```, and
+```WP85_TOOLCHAIN_PREFIX``` must be set to ```arm-poky-linux-gnuabi-```.
 
-     If your toolchain is installed somewhere other than the default location under ```/opt/swi```,
-     ensure that the appropriate environment variables are set to tell the build tools where to find
-     your toolchain and what its prefix is.
-     For example, for Sierra Wireless WP85xx devices, ```WP85_TOOLCHAIN_DIR``` must be set to the
-     path of the directory that contains the file ```arm-poky-linux-gnuabi-gcc```, and
-     ```WP85_TOOLCHAIN_PREFIX``` must be set to ```arm-poky-linux-gnuabi-```.
-
-     Following is a list of supported cross-build targets:
+Following is a list of supported cross-build targets:
 
 Target  |  Description                    | Environment variables
 :-------|---------------------------------|:-------------------------------------------------------
@@ -104,18 +105,22 @@ Target  |  Description                    | Environment variables
 
 #### Documentation
 
- Once you have completed the first three installation steps above, you will find a set of
- HTML documentation under the "Documentation" directory.  Point your web browser at
- ```Documentation/index.html``` to view it.
+Once you have completed the first three installation steps above, you will find a set of
+HTML documentation under the "Documentation" directory.<br/>
+Point your web browser at ```Documentation/index.html``` to view it:
+```
+xdg-open Documentatation/index.html
+```
+
+The latest release documentation is available at: http://legato.io/legato-docs/latest/
 
 #### Uninstallation
 
- To uninstall Legato from your development PC:
+To uninstall Legato from your development PC:
 
   - Delete the directory you unzipped Legato under
-  - Revert any changes you may have made to your ```.bashrc```, etc. to set up ```XXX_TOOLCHAIN_DIR```
+  - Revert any changes you may have made to your ```.bashrc```, etc. to set up ```xxxxxx_TOOLCHAIN_DIR```
     environment variables.
-
 
 #### Directory Structure
 
