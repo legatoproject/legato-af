@@ -364,6 +364,9 @@ static void TestDataConnectionV4
     int sockFd = 0;
     struct sockaddr_in servAddr;
 
+    //Setting everything in this structure to zero
+    memset(&servAddr, 0, sizeof(servAddr));
+
     if ((sockFd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         sprintf(buffer, "Failed to create socket");
@@ -401,6 +404,9 @@ static void TestDataConnectionV6
 {
     int sockFd = 0;
     struct sockaddr_in6 servAddr;
+
+    //Setting everything in this structure to zero
+    memset(&servAddr, 0, sizeof(servAddr));
 
     if ((sockFd = socket(AF_INET6, SOCK_STREAM, 0)) < 0)
     {

@@ -290,6 +290,9 @@ void MakeSystem
     // Generate the build script for the system.
     ninja::Generate(systemPtr, BuildParams, OutputDir, argc, argv);
 
+    // Now delete the appPtr
+    delete systemPtr;
+
     // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)
     {

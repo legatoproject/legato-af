@@ -322,6 +322,9 @@ void MakeApp
     // Generate the build script for the application.
     ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);
 
+    // Now delete the appPtr
+    delete appPtr;
+
     // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)
     {

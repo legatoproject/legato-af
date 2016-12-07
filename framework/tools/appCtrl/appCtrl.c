@@ -1764,6 +1764,8 @@ static void NoRunProcNameArgHanlder
 )
 {
     char* procNames = strdup(noRunProcNamesPtr);
+    LE_ASSERT(procNames != NULL);
+
     char delim[2] = ",";
     char* token;
 
@@ -1780,6 +1782,8 @@ static void NoRunProcNameArgHanlder
 
         token = strtok(NULL, delim);
     }
+
+    free(procNames);
 }
 
 

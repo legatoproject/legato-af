@@ -1381,6 +1381,8 @@ static void CreateRequiresSection
               );
 
         printf("\nRequires section written to %s.\n", fileToUsePtr);
+
+        fclose(reqFilePtr);
     }
 
     exit(EXIT_SUCCESS);
@@ -1626,6 +1628,6 @@ COMPONENT_INIT
     le_arg_AddPositionalCallback(StoreAppName);
 
     le_arg_Scan();
-    
+
     StartAppTrace();
 }
