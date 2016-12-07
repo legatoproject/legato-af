@@ -349,7 +349,12 @@ void Testle_ecall_ConfigSettings
 
     propulsionType = LE_ECALL_PROPULSION_TYPE_GASOLINE;
     LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
-    LE_ASSERT((LE_ECALL_PROPULSION_TYPE_ELECTRIC == propulsionType));
+    LE_ASSERT( LE_ECALL_PROPULSION_TYPE_ELECTRIC == propulsionType );
+
+    propulsionType = LE_ECALL_PROPULSION_TYPE_OTHER;
+    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
+    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
+    LE_ASSERT( LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -659,6 +664,7 @@ COMPONENT_INIT
         LE_INFO("======== StartTest Test  ========");
         Testle_ecall_StartTest();
         LE_INFO("======== Test eCall Modem Services implementation Test SUCCESS ========");
+        exit(0);
     }
     else
     {

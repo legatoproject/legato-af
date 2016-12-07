@@ -671,6 +671,11 @@ static void Testle_ecall_ConfigSettings
     propulsionType = LE_ECALL_PROPULSION_TYPE_GASOLINE;
     LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
     LE_ASSERT( LE_ECALL_PROPULSION_TYPE_ELECTRIC == propulsionType );
+
+    propulsionType = LE_ECALL_PROPULSION_TYPE_OTHER;
+    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
+    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
+    LE_ASSERT( LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType );
 }
 
 //--------------------------------------------------------------------------------------------------
