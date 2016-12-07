@@ -1957,6 +1957,7 @@ static void CallEventHandler
     }
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * ECall event handler function thread
@@ -1967,6 +1968,8 @@ static void* ECallThread
     void* contextPtr
 )
 {
+    le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
+
     LE_INFO("ECall event thread started");
 
     // Register a handler function for eCall state indications
@@ -1975,6 +1978,8 @@ static void* ECallThread
         LE_ERROR("Add pa_ecall_AddEventHandler failed");
         return NULL;
     }
+
+    le_sem_Post(initSemaphore);
 
     // Run the event loop
     le_event_RunLoop();
@@ -2137,7 +2142,10 @@ le_result_t le_ecall_Init
     le_mem_ExpandPool(ECallEventsPool, ECALL_EVENTS_POOL_SIZE);
 
     // Start ECall thread
-    le_thread_Start(le_thread_Create("ECallThread", ECallThread, NULL));
+    le_sem_Ref_t initSemaphore = le_sem_Create("InitSem",0);
+    le_thread_Start(le_thread_Create("ECallThread", ECallThread, (void*)initSemaphore));
+    le_sem_Wait(initSemaphore);
+    le_sem_Delete(initSemaphore);
 
     // Init semaphore to synchronize eCall handler with MCC notification
     SemaphoreRef = le_sem_Create("MccNotificationSem",0);

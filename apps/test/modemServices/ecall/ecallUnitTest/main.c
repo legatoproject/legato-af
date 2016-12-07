@@ -154,9 +154,32 @@ le_msg_SessionEventHandlerRef_t le_msgSimu_AddServiceCloseHandler
 // Test functions.
 //--------------------------------------------------------------------------------------------------
 
-#define NB_CLIENT 2
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum number of fake client apps.
+ */
+//--------------------------------------------------------------------------------------------------
+#define NB_CLIENT       2
 
-// Task context
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define a short semaphore timeout in seconds.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SHORT_TIMEOUT   1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define a long semaphore timeout in seconds.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LONG_TIMEOUT    5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Task context structure.
+ */
+//--------------------------------------------------------------------------------------------------
 typedef struct
 {
     uint32_t                         appId;
@@ -167,19 +190,51 @@ typedef struct
 
 } AppContext_t;
 
-// VIN: ASDAJNPR1VABCDEFG
+//--------------------------------------------------------------------------------------------------
+/**
+ * Imported MSD (VIN: ASDAJNPR1VABCDEFG).
+ */
+//--------------------------------------------------------------------------------------------------
 static uint8_t              ImportedMsd[] ={0x01, 0x4C, 0x07, 0x80, 0xA6, 0x4D, 0x29, 0x25,
                                             0x97, 0x60, 0x17, 0x0A, 0x2C, 0xC3, 0x4E, 0x3D,
                                             0x05, 0x1B, 0x18, 0x48, 0x61, 0xEB, 0xA0, 0xC8,
                                             0xFF, 0x73, 0x7E, 0x64, 0x20, 0xD1, 0x04, 0x01,
                                             0x3F, 0x81, 0x00};
-static AppContext_t         AppCtx[NB_CLIENT];
-static le_sem_Ref_t         ThreadSemaphore;
-static le_sem_Ref_t         InitSemaphore;
-static le_ecall_State_t     CurrentEcallState;
-static le_ecall_CallRef_t   CurrentEcallRef = NULL;
-static le_clk_Time_t        TimeToWait = { 4, 0 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Context of the 2 fake client apps.
+ */
+//--------------------------------------------------------------------------------------------------
+static AppContext_t         AppCtx[NB_CLIENT];
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore to synchronize the 2 fake client apps with the main thread (unitary test core).
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t         ThreadSemaphore;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Semaphore to synchronize unitary test initialization.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t         InitSemaphore;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Curent eCall state.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ecall_State_t     CurrentEcallState;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Current eCall reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ecall_CallRef_t   CurrentEcallRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -319,11 +374,12 @@ static void SynchTest
     void
 )
 {
-    int i=0;
+    int             i = 0;
+    le_clk_Time_t   timeToWait = { LONG_TIMEOUT, 0 };
 
     for (;i<NB_CLIENT;i++)
     {
-        LE_ASSERT(le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_OK);
+        LE_ASSERT(le_sem_WaitWithTimeOut(ThreadSemaphore, timeToWait) == LE_OK);
     }
 }
 
@@ -368,7 +424,6 @@ static void* AppHandler
     // Subscribe to eCall state handler
     LE_ASSERT((appCtxPtr->ecallHandler = le_ecall_AddStateChangeHandler(MyECallEventHandler,
                                                                         ctxPtr)) != NULL);
-
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
 
@@ -506,7 +561,8 @@ void Testle_ecall_RemoveHandlers
     void
 )
 {
-    int i;
+    int             i;
+    le_clk_Time_t   timeToWait = { SHORT_TIMEOUT, 0 };
 
     // Remove handlers: add le_ecall_RemoveStateChangeHandler to the eventLoop of tasks
     for (i=0; i<NB_CLIENT; i++)
@@ -524,7 +580,7 @@ void Testle_ecall_RemoveHandlers
     pa_ecallSimu_ReportEcallState(LE_ECALL_STATE_STARTED);
 
     // Wait for the semaphore timeout to check that handlers are not called
-    LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT );
+    LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, timeToWait) == LE_TIMEOUT );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -837,6 +893,7 @@ COMPONENT_INIT
     InitSemaphore = le_sem_Create("InitSem",0);
     le_thread_Start(le_thread_Create("UnitTestInit", UnitTestInit, NULL));
     le_sem_Wait(InitSemaphore);
+    le_sem_Delete(InitSemaphore);
 
     LE_INFO("======== Start UnitTest of eCall API ========");
 
