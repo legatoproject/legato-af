@@ -354,7 +354,7 @@ COMPONENT_INIT
     }
     else
     {
-        LE_ERROR("PRINT USAGE => execInApp mccTest mccTest <Destination phone number>"
+        LE_ERROR("PRINT USAGE => app runProc mccTest --exe=mccTest -- <Destination phone number>"
                         " <CLIR_ON | CLIR_OFF>");
         exit(EXIT_SUCCESS);
     }
