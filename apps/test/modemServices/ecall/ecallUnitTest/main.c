@@ -594,7 +594,7 @@ static void Testle_ecall_OperationMode
     void
 )
 {
-    le_result_t         res = LE_FAULT;
+    le_result_t         res;
     le_ecall_OpMode_t   mode = LE_ECALL_NORMAL_MODE;
 
     LE_ASSERT((res=le_ecall_ForceOnlyMode()) == LE_OK);
@@ -624,7 +624,7 @@ static void Testle_ecall_ConfigSettings
     char                 psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
     le_ecall_MsdTxMode_t mode = LE_ECALL_TX_MODE_PULL;
     uint16_t             deregTime = 0;
-    le_ecall_SystemStandard_t systemStandard = LE_ECALL_ERA_GLONASS;
+    le_ecall_SystemStandard_t systemStandard;
     le_ecall_MsdVehicleType_t vehicleType    = LE_ECALL_MSD_VEHICLE_BUS_M2;
     uint32_t             msdVersion = 1;
 
@@ -658,12 +658,30 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
     LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
 
-    char VinSet[LE_ECALL_VIN_MAX_BYTES] = "12345678901234567";
-    char VinGet[LE_ECALL_VIN_MAX_BYTES] = { '\0' };
-    LE_ASSERT((LE_OK == le_ecall_SetVIN(VinSet)));
+    LE_ASSERT(LE_BAD_PARAMETER == le_ecall_SetVIN(NULL));
 
-    LE_ASSERT((LE_OK == le_ecall_GetVIN(&VinGet[0], LE_ECALL_VIN_MAX_LEN)));
-    LE_ASSERT(( 0 == strncmp(&VinSet[0], &VinGet[0], LE_ECALL_VIN_MAX_LEN )));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVE12345678AH87KH90"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRiVE12345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37IRFVE12345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BoFVE12345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VFO7BRFVE12345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVE12345q78"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVE12Q45678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("iIoOqQFVE12345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVE02345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVEu2345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVEU2345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVEz2345678"));
+    LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVEZ2345678"));
+
+    LE_ASSERT(LE_OK == le_ecall_SetVIN("VF37BRFVE12345678"));
+
+    char vin[LE_ECALL_VIN_MAX_BYTES];
+    LE_ASSERT(LE_BAD_PARAMETER == le_ecall_GetVIN(NULL, 0));
+    LE_ASSERT(LE_BAD_PARAMETER == le_ecall_GetVIN(vin, LE_ECALL_VIN_MAX_LEN));
+    LE_ASSERT(LE_OK == le_ecall_GetVIN(vin, LE_ECALL_VIN_MAX_BYTES));
+    LE_ASSERT( 0 == strcmp("VF37BRFVE12345678", vin));
 
     le_ecall_PropulsionTypeBitMask_t propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
 
@@ -789,7 +807,7 @@ static void Testle_ecall_StartManual
 )
 {
     le_ecall_CallRef_t  testECallRef = 0x00;
-    le_ecall_State_t    state = LE_ECALL_STATE_UNKNOWN;
+    le_ecall_State_t    state;
 
     LE_INFO("Start Testle_ecall_StartManual");
 
@@ -826,7 +844,7 @@ static void Testle_ecall_StartTest
 )
 {
     le_ecall_CallRef_t                 testECallRef = 0x00;
-    le_ecall_State_t                   state = LE_ECALL_STATE_UNKNOWN;
+    le_ecall_State_t                   state;
 
     LE_ASSERT(le_ecall_SetPsapNumber("0102030405") == LE_OK);
 
@@ -923,5 +941,3 @@ COMPONENT_INIT
 
     exit(0);
 }
-
-

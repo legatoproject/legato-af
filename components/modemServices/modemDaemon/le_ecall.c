@@ -369,8 +369,8 @@ static int32_t ConvertDdToDms
 {
     int32_t  deg;
     float    degMod;
-    float    minAbs=0.0;
-    float    secDec=0.0;
+    float    minAbs;
+    float    secDec;
     float    sec;
 
     // compute degrees
@@ -688,7 +688,7 @@ static le_result_t DialAttempt
     void
 )
 {
-    le_result_t result = LE_OK;
+    le_result_t result;
 
     // Check redial state
     switch(ECallObj.redial.state)
@@ -922,7 +922,7 @@ static le_result_t VehicleTypeStringToEnum
     le_ecall_MsdVehicleType_t* vehType // OUT
 )
 {
-    le_result_t result = LE_OK;
+    le_result_t result;
     LE_FATAL_IF((vehStr == NULL), "vehStr is NULL !");
 
     if (!strcmp(vehStr, "Passenger-M1"))
@@ -1277,7 +1277,7 @@ static le_result_t LoadECallSettings
     ECall_t* eCallPtr
 )
 {
-    le_result_t res = LE_OK;
+    le_result_t res;
     char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s", CFG_MODEMSERVICE_ECALL_PATH);
 
@@ -1862,7 +1862,7 @@ static void ECallStateHandler
     {
         le_clk_Time_t timer = { .sec=LE_ECALL_SEM_TIMEOUT_SEC,
                                 .usec=LE_ECALL_SEM_TIMEOUT_USEC };
-        le_result_t semTerminationResult = LE_FAULT;
+        le_result_t semTerminationResult;
 
         // Get call termination result
         semTerminationResult = le_sem_WaitWithTimeOut(SemaphoreRef, timer);
@@ -2650,7 +2650,6 @@ le_result_t le_ecall_StartAutomatic
     le_ecall_CallRef_t    ecallRef   ///< [IN] eCall reference
 )
 {
-    le_result_t result = LE_FAULT;
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
 
     if (eCallPtr == NULL)
@@ -2716,14 +2715,10 @@ le_result_t le_ecall_StartAutomatic
 
     if (DialAttempt() == LE_OK)
     {
-        result = LE_OK;
-    }
-    else
-    {
-        result = LE_FAULT;
+        return LE_OK;
     }
 
-    return result;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2744,7 +2739,6 @@ le_result_t le_ecall_StartManual
     le_ecall_CallRef_t    ecallRef   ///< [IN] eCall reference
 )
 {
-    le_result_t result = LE_FAULT;
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
 
     if (eCallPtr == NULL)
@@ -2810,14 +2804,10 @@ le_result_t le_ecall_StartManual
 
     if (DialAttempt() == LE_OK)
     {
-        result = LE_OK;
-    }
-    else
-    {
-        result = LE_FAULT;
+        return LE_OK;
     }
 
-    return result;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2839,7 +2829,6 @@ le_result_t le_ecall_StartTest
 )
 {
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
-    le_result_t result = LE_FAULT;
 
     if (eCallPtr == NULL)
     {
@@ -2904,14 +2893,10 @@ le_result_t le_ecall_StartTest
 
     if (DialAttempt() == LE_OK)
     {
-        result = LE_OK;
-    }
-    else
-    {
-        result = LE_FAULT;
+        return LE_OK;
     }
 
-    return result;
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3886,29 +3871,31 @@ le_result_t le_ecall_SetSystemStandard
         ///< System mode
 )
 {
-    le_result_t result = LE_FAULT;
+    le_cfg_IteratorRef_t iteratorRef;
+    const char *standard = "\0";
 
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
-
-    if (LE_ECALL_PAN_EUROPEAN == systemStandard)
-    {
-        le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, "PAN-EUROPEAN");
-        le_cfg_CommitTxn(iteratorRef);
-        result = LE_OK;
-    }
-    else if (LE_ECALL_ERA_GLONASS == systemStandard)
-    {
-        le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, "ERA-GLONASS");
-        le_cfg_CommitTxn(iteratorRef);
-        result = LE_OK;
-    }
-    else
+    if ( (LE_ECALL_PAN_EUROPEAN != systemStandard) && (LE_ECALL_ERA_GLONASS != systemStandard) )
     {
         LE_ERROR("parameter %d has invalid value", systemStandard);
-        result = LE_FAULT;
-        le_cfg_CancelTxn( iteratorRef );
+        return LE_FAULT;
     }
-    return result;
+
+    switch (systemStandard)
+    {
+        case LE_ECALL_PAN_EUROPEAN:
+            standard = "PAN-EUROPEAN";
+            break;
+        case LE_ECALL_ERA_GLONASS:
+            standard = "ERA-GLONASS";
+            break;
+        default: break;
+    }
+
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_ECALL_PATH);
+    le_cfg_SetString(iteratorRef, CFG_NODE_SYSTEM_STD, standard);
+    le_cfg_CommitTxn(iteratorRef);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4072,27 +4059,25 @@ le_result_t le_ecall_SetVehicleType
         ///< [IN] Vehicle type
 )
 {
-    le_result_t result = LE_FAULT;
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
-    char  vehStr[VEHICLE_TYPE_MAX_BYTES] = {0};
+    le_result_t result;
+    le_cfg_IteratorRef_t iteratorRef;
+    char vehStr[VEHICLE_TYPE_MAX_BYTES];
 
-    if( LE_OK == VehicleTypeEnumToString( vehicleType, vehStr ))
-    {
-        LE_WARN("VehicleTypeEnumToString %d -> '%s' !", vehicleType, vehStr );
+    memset(vehStr, 0, VEHICLE_TYPE_MAX_BYTES);
 
-        le_cfg_SetString(iteratorRef, CFG_NODE_VEH, vehStr);
-        result = LE_OK;
-        le_cfg_CommitTxn(iteratorRef);
-    }
-    else
+    result = VehicleTypeEnumToString(vehicleType, vehStr);
+    if (LE_FAULT == result)
     {
         LE_WARN("No value set for '%s' !", CFG_NODE_VEH);
-        result = LE_FAULT;
-        le_cfg_CancelTxn( iteratorRef );
+        return LE_FAULT;
     }
 
-    LE_DEBUG("VehicleTypeEnumToString %s", vehStr );
-    return result;
+    LE_DEBUG("VehicleTypeEnumToString %d -> '%s' !", vehicleType, vehStr);
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_ECALL_PATH);
+    le_cfg_SetString(iteratorRef, CFG_NODE_VEH, vehStr);
+    le_cfg_CommitTxn(iteratorRef);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4159,7 +4144,44 @@ le_result_t le_ecall_GetVehicleType
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The Vehicle Identification Number is defined by iso 3833 as a 17 character
+ * alphanumeric code, which does not include the letters i, I, o, O, q, Q. Also
+ * the letters u, U, z, Z and the digit 0 are not allowed in the model year code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static int VerifyVIN
+(
+    char *vin
+)
+{
+    int ret = 0;
+    char c;
 
+    c = (char)tolower(vin[9]);
+
+    if ( ('0' == c) || ('u' == c) || ('z' == c) )
+    {
+        LE_WARN("Year digit cannot be %c", vin[9]);
+        ret = -1;
+    }
+
+    while ( (*vin) && (!ret) )
+    {
+        c= (char)tolower(*vin);
+        if ( ('i' == c) || ('o' == c) || ('q' == c) )
+        {
+            LE_WARN("%c not allowed in VIN", *vin);
+            ret = -1;
+        }
+
+        vin++;
+    }
+
+    return ret;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4173,39 +4195,36 @@ le_result_t le_ecall_GetVehicleType
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetVIN
 (
-    const char* vin
-        ///< [IN] VIN (Vehicle Identification Number)
+    const char* vin ///< [IN] VIN (Vehicle Identification Number)
 )
 {
-    le_result_t result = LE_OK;
-    le_cfg_IteratorRef_t iteratorRef = NULL;
+    le_cfg_IteratorRef_t iterator;
 
-    if (NULL == vin)
+    if (!vin)
     {
         LE_KILL_CLIENT("vin is NULL !");
         return LE_BAD_PARAMETER;
     }
 
-    iteratorRef = le_cfg_CreateWriteTxn( CFG_MODEMSERVICE_ECALL_PATH );
-
-    if (LE_ECALL_VIN_MAX_LEN > strnlen( vin, LE_ECALL_VIN_MAX_BYTES))
+    if (strlen(vin) != LE_ECALL_VIN_MAX_LEN)
     {
-        LE_WARN("SetVIN parameter vin is not big enough %zu. Should be least %d. '%s'",
-                strnlen( vin, LE_ECALL_VIN_MAX_BYTES),
-                LE_ECALL_VIN_MAX_LEN,
-                vin);
-        result = LE_FAULT;
-        le_cfg_CancelTxn( iteratorRef );
-    }
-    else
-    {
-        le_cfg_SetString(iteratorRef, CFG_NODE_VIN, vin);
-        LE_INFO("Set VIN to %s", vin);
-        result = LE_OK;
-        le_cfg_CommitTxn(iteratorRef);
+        LE_WARN("VIN has to be %d bytes long: %s -> %zd",
+            LE_ECALL_VIN_MAX_LEN, vin, strlen(vin));
+        return LE_FAULT;
     }
 
-    return result;
+    if (VerifyVIN((char *)vin))
+    {
+        return LE_FAULT;
+    }
+
+    iterator = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_ECALL_PATH);
+
+    le_cfg_SetString(iterator, CFG_NODE_VIN, vin);
+
+    le_cfg_CommitTxn(iterator);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4215,68 +4234,60 @@ le_result_t le_ecall_SetVIN
  * @return
  *  - LE_OK on success
  *  - LE_NOT_FOUND if the value is not set.
- *  - LE_BAD_PARAMETER parameter is NULL or to small
+ *  - LE_BAD_PARAMETER parameter is NULL or too small
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetVIN
 (
-    char* vin,
-        ///< [OUT] VIN size is 17 chars
-
-    size_t vinNumElements
-        ///< [IN]
+    char* vin,              ///< [OUT] VIN size is 18 chars
+    size_t vinNumElements   ///< [IN]
 )
 {
-    le_result_t result = LE_FAULT;
-    le_cfg_IteratorRef_t iteratorRef = NULL;
+    le_cfg_IteratorRef_t iterator;
 
-    if (NULL == vin)
+    if (!vin)
     {
         LE_KILL_CLIENT("vin is NULL !");
         return LE_BAD_PARAMETER;
     }
 
-
-    if (LE_ECALL_VIN_MAX_LEN > vinNumElements)
+    if (vinNumElements != LE_ECALL_VIN_MAX_BYTES)
     {
-        LE_ERROR("vinNumElements must be at least %d not %zu", LE_ECALL_VIN_MAX_LEN, vinNumElements);
-        return LE_FAULT;
+        LE_WARN("VIN has to be at least %d bytes long", LE_ECALL_VIN_MAX_BYTES);
+        return LE_BAD_PARAMETER;
     }
 
-    iteratorRef = le_cfg_CreateReadTxn( CFG_MODEMSERVICE_ECALL_PATH );
+    iterator = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_ECALL_PATH);
 
     // Get VIN
-    char vinStr[LE_ECALL_VIN_MAX_BYTES] = {'\0'};
-    if (le_cfg_NodeExists(iteratorRef, CFG_NODE_VIN))
+    if (!le_cfg_NodeExists(iterator, CFG_NODE_VIN))
     {
-        if (le_cfg_GetString(iteratorRef, CFG_NODE_VIN, vinStr, LE_ECALL_VIN_MAX_BYTES, "")
-            != LE_OK)
-        {
-            LE_WARN("No node value set for '%s'", CFG_NODE_VIN);
-            vin[0] = '\0';
-        }
-        else if (strnlen( vinStr, LE_ECALL_VIN_MAX_BYTES) > 0)
-        {
-            memcpy( &vin[0],
-                   (const void *)vinStr,
-                   strnlen( vinStr, LE_ECALL_VIN_MAX_BYTES));
-            result = LE_OK;
-        }
-        else
-        {
-            result = LE_NOT_FOUND;
-        }
-        LE_DEBUG("eCall settings, VIN is %s", vinStr);
-    }
-    else
-    {
-        LE_WARN("No value set for '%s' !", CFG_NODE_VIN);
-        result = LE_NOT_FOUND;
+        LE_WARN("No node value set for '%s'", CFG_NODE_VIN);
+
+        le_cfg_CancelTxn(iterator);
+
+        return LE_NOT_FOUND;
     }
 
-    le_cfg_CancelTxn( iteratorRef );
+    memset(vin, 0, LE_ECALL_VIN_MAX_BYTES);
 
-    return result;
+    le_cfg_GetString(iterator, CFG_NODE_VIN, vin, LE_ECALL_VIN_MAX_BYTES, "");
+    if (strlen(vin) != LE_ECALL_VIN_MAX_LEN)
+    {
+        LE_DEBUG("eCall settings, VIN is set to %s", vin);
+
+        memset(vin, 0, LE_ECALL_VIN_MAX_BYTES);
+
+        LE_WARN("No node value set for '%s'", CFG_NODE_VIN);
+
+        le_cfg_CancelTxn(iterator);
+
+        return LE_NOT_FOUND;
+    }
+
+    le_cfg_CancelTxn(iterator);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4394,7 +4405,7 @@ le_result_t le_ecall_GetPropulsionType
         ///< [OUT] bitmask
 )
 {
-    le_result_t result = LE_OK;
+    le_result_t result;
     le_ecall_PropulsionTypeBitMask_t resultBitMask= 0;
 
     if (NULL == propulsionTypePtr)
@@ -4449,4 +4460,3 @@ le_result_t le_ecall_GetPropulsionType
 
     return result;
 }
-

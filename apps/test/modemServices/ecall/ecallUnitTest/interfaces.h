@@ -5,7 +5,8 @@
 #include "le_pm_interface.h"
 #include "le_mdmDefs_interface.h"
 
-
+#undef LE_KILL_CLIENT
+#define LE_KILL_CLIENT  LE_WARN
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the server service reference
