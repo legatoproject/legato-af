@@ -35,6 +35,16 @@
 
 
 //--------------------------------------------------------------------------------------------------
+ /**
+ *  Maximum number of installation attempts.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_INSTALL_COUNT 5
+
+
+
+
+//--------------------------------------------------------------------------------------------------
 /**
  *  Field Ids of the Legato application object.
  */
@@ -165,6 +175,16 @@ static const char UriValueName[] = "uri";
  */
 //--------------------------------------------------------------------------------------------------
 static const char SystemIndexName[] = "SavedSystemIndex";
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Name of the install count storage.
+ */
+//--------------------------------------------------------------------------------------------------
+static const char SystemInstallCount[] = "SavedInstallCount";
 
 
 
@@ -314,8 +334,9 @@ static void SaveInstallState
 (
     InstallState newState,  ///< The state to save.
     const char* uriPtr,     ///< Optional, the URI we're downloading from.
-    int32_t systemIndex     ///< Optional, use -1 to ignore.  Used to save the index of the current
+    int32_t systemIndex,    ///< Optional, use -1 to ignore. Used to save the index of the current
                             ///<   system.
+    int32_t installCount    ///< Optional, use -1 to ignore. Used to save the number installs
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -339,6 +360,15 @@ static void SaveInstallState
     else if (le_cfg_NodeExists(iterRef, SystemIndexName))
     {
         le_cfg_DeleteNode(iterRef, SystemIndexName);
+    }
+
+    if (installCount != -1)
+    {
+        le_cfg_SetInt(iterRef, SystemInstallCount, installCount);
+    }
+    else if (le_cfg_NodeExists(iterRef, SystemInstallCount))
+    {
+        le_cfg_DeleteNode(iterRef, SystemInstallCount);
     }
 
     le_cfg_CommitTxn(iterRef);
@@ -371,6 +401,28 @@ static int32_t RestorePreviousSystemInfo
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Get the number of installation attempts from the config tree.
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t RestoreInstallCount
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(BaseConfigPath);
+
+    int32_t index = le_cfg_GetInt(iterRef, SystemInstallCount, 0);
+    le_cfg_CommitTxn(iterRef);
+
+    return index;
+}
+
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Download status update handler.
  */
 //--------------------------------------------------------------------------------------------------
@@ -387,14 +439,14 @@ static void OnUriDownloadUpdate
         case LE_AVC_DOWNLOAD_COMPLETE:
             LE_DEBUG("Download complete.");
             SetInstallObjState(US_DOWNLOADED, UR_DEFAULT);
-            SaveInstallState(IS_DOWNLOAD_SUCCEEDED, NULL, -1);
+            SaveInstallState(IS_DOWNLOAD_SUCCEEDED, NULL, -1, -1);
             break;
 
         case LE_AVC_DOWNLOAD_FAILED:
             LE_DEBUG("Download failed.");
             // TODO: Find out the real reason this failed.
             SetInstallObjState(US_DOWNLOADED, UR_CHECKSUM_FAILED);
-            SaveInstallState(IS_DOWNLOAD_FAILED, NULL, -1);
+            SaveInstallState(IS_DOWNLOAD_FAILED, NULL, -1, -1);
             break;
 
         case LE_AVC_DOWNLOAD_PENDING:
@@ -445,12 +497,13 @@ static void StartInstall
             LE_ERROR("Could not start update.");
 
             SetInstallObjState(US_IDLE, UR_UNSUPPORTED_PACKAGE_TYPE);
-            SaveInstallState(IS_UPDATE_BAD_PACKAGE, NULL, -1);
+            SaveInstallState(IS_UPDATE_BAD_PACKAGE, NULL, -1, -1);
         }
         else
         {
+            int32_t currentInstallCount = RestoreInstallCount();
             SetInstallObjState(US_UPDATING, UR_DEFAULT);
-            SaveInstallState(IS_UPDATE_REQUESTED, NULL, le_update_GetCurrentSysIndex());
+            SaveInstallState(IS_UPDATE_REQUESTED, NULL, le_update_GetCurrentSysIndex(), ++currentInstallCount);
         }
     }
 }
@@ -501,13 +554,13 @@ static void RequestDownload
     if (pa_avc_StartURIDownload(uri, OnUriDownloadUpdate) == LE_OK)
     {
         LE_DEBUG("Download request successful.");
-        SaveInstallState(IS_DOWNLOAD_REQUESTED, uri, -1);
+        SaveInstallState(IS_DOWNLOAD_REQUESTED, uri, -1, -1);
     }
     else
     {
         LE_ERROR("Download request failed.");
         SetInstallObjState(US_IDLE, UR_INVALID_URI);
-        SaveInstallState(IS_DOWNLOAD_BAD_URI, NULL, -1);
+        SaveInstallState(IS_DOWNLOAD_BAD_URI, NULL, -1, -1);
     }
 }
 
@@ -649,7 +702,7 @@ static void LegatoInstallObjectFieldHandler
             LE_DEBUG("LO1F_UPDATE");
             if (action == ASSET_DATA_ACTION_EXEC)
             {
-                SaveInstallState(IS_UPDATE_REQUESTED, NULL, -1);
+                SaveInstallState(IS_UPDATE_REQUESTED, NULL, -1, -1);
                 RequestInstall();
             }
             break;
@@ -731,6 +784,9 @@ static void RestoreInstallState
 
     le_cfg_CommitTxn(iterRef);
 
+    // Force the type of the install to framework.
+    avcServer_SetUpdateType(LE_AVC_FRAMEWORK_UPDATE);
+
     switch (lastState)
     {
         case IS_IDLE:
@@ -766,18 +822,35 @@ static void RestoreInstallState
                 int32_t recordedIndex = RestorePreviousSystemInfo();
                 int32_t currentIndex = le_update_GetCurrentSysIndex();
 
-                if (   (recordedIndex == -1)
-                    || (recordedIndex >= currentIndex))
+                // If install has never been started
+                if (recordedIndex == -1)
                 {
-                    // It looks like we rolled back, so mark the status accordingly.
-                    SaveInstallState(IS_UPDATE_FAILED, NULL, -1);
-                    SetInstallObjState(US_IDLE, UR_UPDATE_FAILED);
+                    RequestInstall();
                 }
                 else
                 {
-                    // Looks like the install was successful.
-                    SaveInstallState(IS_UPDATE_SUCCEEDED, NULL, -1);
-                    SetInstallObjState(US_IDLE, UR_UPDATE_SUCCESS);
+                    if (recordedIndex >= currentIndex)
+                    {
+                        int currentInstallCount = RestoreInstallCount();
+
+                        if (currentInstallCount < MAX_INSTALL_COUNT)
+                        {
+                            // It looks like the install could have been interrupted, try installing again.
+                            RequestInstall();
+                        }
+                        else
+                        {
+                            // If 5 install attempts have been made, mark system update as failed.
+                            SaveInstallState(IS_UPDATE_FAILED, NULL, -1, -1);
+                            SetInstallObjState(US_IDLE, UR_UPDATE_FAILED);
+                        }
+                    }
+                    else
+                    {
+                        // Looks like the install was successful.
+                        SaveInstallState(IS_UPDATE_SUCCEEDED, NULL, -1, -1);
+                        SetInstallObjState(US_IDLE, UR_UPDATE_SUCCESS);
+                    }
                 }
             }
             break;

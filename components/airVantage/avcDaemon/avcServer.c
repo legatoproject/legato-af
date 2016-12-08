@@ -1435,7 +1435,8 @@ le_result_t le_avc_AcceptInstall
     {
         return AcceptInstallFirmware();
     }
-    else if ( CurrentUpdateType == LE_AVC_APPLICATION_UPDATE )
+    else if ( (CurrentUpdateType == LE_AVC_APPLICATION_UPDATE) ||
+              (CurrentUpdateType == LE_AVC_FRAMEWORK_UPDATE) )
     {
         return AcceptInstallApplication();
     }
