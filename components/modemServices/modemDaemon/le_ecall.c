@@ -4331,13 +4331,11 @@ le_result_t le_ecall_SetPropulsionType
         sprintf (cfgNodeLoc, "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Hydrogen");
         i++;
-
     }
 
     if (LE_ECALL_PROPULSION_TYPE_OTHER & propulsionTypeBitMask)
     {
         sprintf (cfgNodeLoc, "%d", i);
-        le_cfg_GoToNode(iteratorRef, cfgNodeLoc);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Other");
         i++;
     }
