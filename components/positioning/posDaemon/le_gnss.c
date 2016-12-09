@@ -2998,6 +2998,7 @@ le_result_t le_gnss_Disable
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ *  - LE_OUT_OF_RANGE  if acquisition rate value is equal to zero
  *
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
@@ -3008,7 +3009,13 @@ le_result_t le_gnss_SetAcquisitionRate
     uint32_t  rate      ///< Acquisition rate in milliseconds.
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result;
+
+    if (0 == rate)
+    {
+        LE_ERROR("Acquisition rate is zero");
+        return LE_OUT_OF_RANGE;
+    }
 
     // Check the GNSS device state
     switch (GnssState)

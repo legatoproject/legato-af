@@ -72,6 +72,9 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_ForceColdRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_ForceFactoryRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_OK);
+    acqRate = 0;
+    LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OUT_OF_RANGE);
+    acqRate = 1100;
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
