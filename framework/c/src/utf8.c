@@ -25,8 +25,8 @@
  * equal to the the number of bytes in the string.
  *
  * @return
- *      The number of characters in string if successful.
- *      LE_FORMAT_ERROR if the string is not UTF-8.
+ *      - Number of characters in string if successful.
+ *      - LE_FORMAT_ERROR if the string is not UTF-8.
  */
 //--------------------------------------------------------------------------------------------------
 ssize_t le_utf8_NumChars
@@ -156,8 +156,8 @@ size_t le_utf8_NumBytesInChar
  * If destStr and srcStr overlap the behaviour of this function is undefined.
  *
  * @return
- *      LE_OK if srcStr was completely copied to the destStr.
- *      LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
+ *      - LE_OK if srcStr was completely copied to the destStr.
+ *      - LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_utf8_Copy
@@ -233,9 +233,9 @@ le_result_t le_utf8_Copy
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function appends srcStr to destStr by copying characters from srcStr to the end of destStr.
- * The srcStr must be in UTF-8 format.  The number of bytes in the resultant destStr (not including
- * the NULL-terminator) is returned in destStrLenPtr.
+ * Appends srcStr to destStr by copying characters from srcStr to the end of destStr.  The srcStr
+ * must be in UTF-8 format.  The number of bytes in the resultant destStr (not including the
+ * NULL-terminator) is returned in destStrLenPtr.
  *
  * A null-character is always added to the end of destStr after all srcStr characters have been
  * copied.
@@ -251,8 +251,8 @@ le_result_t le_utf8_Copy
  * If destStr and srcStr overlap the behaviour of this function is undefined.
  *
  * @return
- *      LE_OK if srcStr was completely copied to the destStr.
- *      LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
+ *      - LE_OK if srcStr was completely copied to the destStr.
+ *      - LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_utf8_Append
@@ -285,9 +285,9 @@ le_result_t le_utf8_Append
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function copies all characters from the srcStr to destStr up to the first occurrence of
- * subStr.  The subStr is not copied and instead a null-terminator is added to the destStr.
- * The number of bytes copied (not including the null-terminator) is returned in numBytesPtr.
+ * Copies all characters from the srcStr to destStr up to the first occurrence of subStr.  The
+ * subStr is not copied and instead a null-terminator is added to the destStr.  The number of bytes
+ * copied (not including the null-terminator) is returned in numBytesPtr.
  *
  * The srcStr and subStr must be in null-terminated UTF-8 strings.
  *
@@ -296,8 +296,8 @@ le_result_t le_utf8_Append
  * If subStr is not found in the srcStr then this function behaves just like le_utf8_Copy().
  *
  * @return
- *      LE_OK if srcStr was completely copied to the destStr.
- *      LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
+ *      - LE_OK if srcStr was completely copied to the destStr.
+ *      - LE_OVERFLOW if srcStr was truncated when it was copied to destStr.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_utf8_CopyUpToSubStr
@@ -391,11 +391,10 @@ le_result_t le_utf8_CopyUpToSubStr
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function checks to see if the string is indeed a UTF-8 encoded, null-terminated string.
+ * Checks to see if the string is indeed a UTF-8 encoded, null-terminated string.
  *
  * @return
- *      true if the format is correct.
- *      false if the format is incorrect.
+ *      true if the format is correct or false otherwise
  */
 //--------------------------------------------------------------------------------------------------
 bool le_utf8_IsFormatCorrect
@@ -444,9 +443,9 @@ bool le_utf8_IsFormatCorrect
  * Parse an integer value from a string.
  *
  * @return
- *  - LE_OK = Success.
- *  - LE_FORMAT_ERROR = The argument string was not an integer value.
- *  - LE_OUT_OF_RANGE = Value is too large to be stored in an int variable.
+ *      - LE_OK = Success.
+ *      - LE_FORMAT_ERROR = The argument string was not an integer value.
+ *      - LE_OUT_OF_RANGE = Value is too large to be stored in an int variable.
  **/
 //--------------------------------------------------------------------------------------------------
 le_result_t le_utf8_ParseInt
@@ -469,8 +468,8 @@ le_result_t le_utf8_ParseInt
     }
 
     // strtol() sets the endPtr to the same as its first argument if no characters were valid.
-    // Otherwise, it sets endPtr to point to the first character than is invalid, which should
-    // be the null terminator if the whole string contained valid characters.
+    // Otherwise, it sets endPtr to point to the first character than is invalid, which should be
+    // the null terminator if the whole string contained valid characters.
     if ((endPtr == arg) || (*endPtr != '\0'))
     {
         return LE_FORMAT_ERROR;
