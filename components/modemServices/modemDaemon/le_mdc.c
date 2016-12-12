@@ -35,8 +35,6 @@
 #define APN_IIN_FILE    le_arg_GetArg(0)
 #define APN_MCCMNC_FILE le_arg_GetArg(1)
 #endif
-// @TODO change the APN file when modemservices becomes a sandboxed app.
-//#define APN_FILE "/usr/local/share/apns.json"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -117,7 +115,6 @@ static le_mem_PoolRef_t DataProfilePool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t DataProfileRefMap;
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -651,9 +648,12 @@ static void* CommandThread
     void* contextPtr
 )
 {
+    le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
+
     // Register for MDC command events
-    le_event_AddHandler("ProcessCommandHandler", CommandEventId,
-        ProcessCommandEventHandler);
+    le_event_AddHandler("ProcessCommandHandler", CommandEventId, ProcessCommandEventHandler);
+
+    le_sem_Post(initSemaphore);
 
     // Run the event loop
     le_event_RunLoop();
@@ -694,9 +694,14 @@ void le_mdc_Init
     // Create an event Id for MT-PDP notification
     MtPdpEventId = le_event_CreateId("MtPdpNotif", sizeof(le_mdc_Profile_t*));
 
-    CommandEventId = le_event_CreateId("CommandEventId",
-         sizeof(CmdRequest_t));
-    le_thread_Start(le_thread_Create("CommandEventThread", CommandThread, NULL));
+    CommandEventId = le_event_CreateId("CommandEventId", sizeof(CmdRequest_t));
+
+    // initSemaphore is used to wait for CommandThread() execution. It ensures that the thread is
+    // ready when we exit from le_mdc_Init().
+    le_sem_Ref_t initSemaphore = le_sem_Create("InitSem", 0);
+    le_thread_Start(le_thread_Create("CommandEventThread", CommandThread, (void*)initSemaphore));
+    le_sem_Wait(initSemaphore);
+    le_sem_Delete(initSemaphore);
 
     //  MT-PDP change handler counter initialization
     MtPdpStateChangeHandlerCounter = 0;

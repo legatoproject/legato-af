@@ -748,9 +748,14 @@ static void* MrcCommandThread
     void* contextPtr
 )
 {
+    le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
+
     // Register for MRC command events
-    le_event_AddHandler("ProcessMrcCommandHandler", MrcCommandEventId,
-        ProcessMrcCommandEventHandler);
+    le_event_AddHandler("ProcessMrcCommandHandler",
+                        MrcCommandEventId,
+                        ProcessMrcCommandEventHandler);
+
+    le_sem_Post(initSemaphore);
 
     // Run the event loop
     le_event_RunLoop();
@@ -1058,9 +1063,16 @@ void le_mrc_Init
     // Register a handler function for Signal Strength change indication
     pa_mrc_AddSignalStrengthIndHandler(SignalStrengthIndHandlerFunc, NULL);
 
-    MrcCommandEventId = le_event_CreateId("CommandEvent",
-        sizeof(CmdRequest_t));
-    le_thread_Start(le_thread_Create("MrcManualSelectionThread", MrcCommandThread, NULL));
+    MrcCommandEventId = le_event_CreateId("CommandEvent", sizeof(CmdRequest_t));
+
+    // initSemaphore is used to wait for MrcCommandThread() execution. It ensures that the thread is
+    // ready when we exit from le_mrc_Init().
+    le_sem_Ref_t initSemaphore = le_sem_Create("InitSem", 0);
+    le_thread_Start(le_thread_Create("MrcManualSelectionThread",
+                                     MrcCommandThread,
+                                     (void*)initSemaphore));
+    le_sem_Wait(initSemaphore);
+    le_sem_Delete(initSemaphore);
 
     // Get & Set the Network registration state notification
     LE_DEBUG("Get the Network registration state notification configuration");
