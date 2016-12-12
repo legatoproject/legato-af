@@ -83,7 +83,6 @@ typedef struct {
     pcm_Handle_t                pcmHandle;        ///< audio resource handle
     le_audio_SamplePcmConfig_t  pcmConfig;        ///< PCM paramaeters
     int                         fd;               ///< File descriptor used for file capture or playback
-    le_sem_Ref_t                threadSemaphore;  ///< semaphore to check starting
     le_thread_Ref_t             mainThreadRef;    ///< main thread reference
     le_audio_If_t               interface;        ///< audio interface
     bool                        pause;            ///< pause in capture
@@ -162,7 +161,7 @@ typedef struct le_audio_MediaThreadContext
     uint32_t                         fd_in;              ///< file descriptor to read
     uint32_t                         fd_out;             ///< file descriptor to write
     uint32_t                         bufferSize;         ///< Size of the required buffer
-    bool                             allDataSent;        ///< all data are sent by the data thread
+    le_sem_Ref_t                     threadSemaphore;    ///< semaphore to wait starting
     InitMediaFunc_t                  initFunc;           ///< Init function for play/capture
                                                          ///< in WAV/AMR format
     ReadMediaFunc_t                  readFunc;           ///< Read function for play/capture

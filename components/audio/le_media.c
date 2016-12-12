@@ -17,10 +17,16 @@
 #include "pa_pcm.h"
 #include <math.h>
 
-
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Legato object string length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define STRING_LEN    30
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -797,6 +803,11 @@ static void DestroyMediaThread
         close(mediaCtxPtr->fd_pipe_output);
         streamPtr->fd = mediaCtxPtr->fd_arg;
 
+        if (mediaCtxPtr->threadSemaphore)
+        {
+            le_sem_Delete(mediaCtxPtr->threadSemaphore);
+        }
+
         le_mem_Release(mediaCtxPtr);
         streamPtr->mediaThreadContextPtr = NULL;
     }
@@ -817,6 +828,7 @@ static void* MediaThread
     le_audio_MediaThreadContext_t * mediaCtxPtr = (le_audio_MediaThreadContext_t *) contextPtr;
     uint8_t outBuffer[mediaCtxPtr->bufferSize];
     uint32_t readLen = 0;
+    bool semPost = false;
 
     LE_DEBUG("MediaThread");
 
@@ -831,15 +843,23 @@ static void* MediaThread
         memset(outBuffer,0,mediaCtxPtr->bufferSize);
 
         /* read/decode the packet */
-        if (( mediaCtxPtr->readFunc( mediaCtxPtr,
-                                   outBuffer,
-                                   &readLen ) == LE_OK ) && readLen )
+        if ( ( mediaCtxPtr->readFunc( mediaCtxPtr,
+                                      outBuffer,
+                                      &readLen ) == LE_OK ) && readLen )
         {
             if ( mediaCtxPtr->writeFunc( mediaCtxPtr,
-                                    outBuffer,
-                                    readLen ) != LE_OK )
+                                         outBuffer,
+                                         readLen ) != LE_OK )
             {
                 break;
+            }
+            else
+            {
+                if (mediaCtxPtr->threadSemaphore && !semPost)
+                {
+                    le_sem_Post(mediaCtxPtr->threadSemaphore);
+                    semPost = true;
+                }
             }
         }
         else
@@ -848,9 +868,9 @@ static void* MediaThread
         }
     }
 
-    mediaCtxPtr->allDataSent = true;
     LE_DEBUG("MediaThread end");
 
+    // Run the event loop to wait the end of the thread
     le_event_RunLoop();
 
     return NULL;
@@ -894,13 +914,25 @@ static le_result_t InitMediaThread
         return LE_FAULT;
     }
 
-    char threadName[30]="\0";
+    char name[STRING_LEN];
 
-    snprintf(threadName, 30, "MediaThread-%p", streamPtr->streamRef);
+    snprintf(name, sizeof(name), "MediaThread-%p", streamPtr->streamRef);
 
-    streamPtr->mediaThreadRef = le_thread_Create(threadName,
-                                                MediaThread,
-                                                streamPtr->mediaThreadContextPtr);
+    streamPtr->mediaThreadRef = le_thread_Create(name,
+                                                 MediaThread,
+                                                 streamPtr->mediaThreadContextPtr);
+
+    snprintf(name, sizeof(name), "MediaSem-%p", streamPtr->streamRef);
+
+    // semaphore only needs for playback. For recording, we are waiting for data on the pipe
+    if (streamPtr->audioInterface == LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY)
+    {
+        mediaCtxPtr->threadSemaphore = le_sem_Create(name,0);
+    }
+    else
+    {
+        mediaCtxPtr->threadSemaphore = NULL;
+    }
 
     le_thread_SetJoinable(streamPtr->mediaThreadRef);
 
@@ -909,6 +941,12 @@ static le_result_t InitMediaThread
                                  streamPtr);
 
     le_thread_Start(streamPtr->mediaThreadRef);
+
+    if (mediaCtxPtr->threadSemaphore)
+    {
+        le_clk_Time_t  timeToWait = {1,0};
+        le_sem_WaitWithTimeOut(mediaCtxPtr->threadSemaphore, timeToWait);
+    }
 
     return LE_OK;
 }
@@ -1189,7 +1227,7 @@ static le_result_t PlayCaptControl
             }
             else
             {
-                LE_ERROR("Timer is not running");
+                LE_ERROR("stream already in pause");
                 res = LE_FAULT;
             }
         break;
@@ -1203,7 +1241,7 @@ static le_result_t PlayCaptControl
             }
             else
             {
-                LE_ERROR("Timer is running");
+                LE_ERROR("Resume the stream, but not paused");
                 res = LE_FAULT;
             }
         break;
@@ -1273,7 +1311,7 @@ static le_result_t PlayCaptControl
  *
  */
 //--------------------------------------------------------------------------------------------------
-void PlayCaptTreatEvent
+static void PlayTreatEvent
 (
     void* param1Ptr,
     void* param2Ptr
@@ -1281,13 +1319,17 @@ void PlayCaptTreatEvent
 {
     le_audio_Stream_t* streamPtr = param1Ptr;
     le_audio_PcmContext_t* pcmContextPtr = streamPtr->pcmContextPtr;
-    le_audio_MediaThreadContext_t* mediaThreadContextPtr = streamPtr->mediaThreadContextPtr;
-    bool sendEvent = true;
     bool mediaClose = false;
 
     if (!streamPtr || !pcmContextPtr)
     {
         LE_ERROR("streamPtr or pcmContextPtr is null !!!");
+        return;
+    }
+
+    if (LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY != streamPtr->audioInterface)
+    {
+        LE_ERROR("Bad function called");
         return;
     }
 
@@ -1297,22 +1339,7 @@ void PlayCaptTreatEvent
     {
         if (streamPtr->playFile)
         {
-            if (!mediaThreadContextPtr)
-            {
-                LE_ERROR("mediaThreadContextPtr null !!!");
-            }
-            else
-            {
-                LE_DEBUG("allDataSent %d", mediaThreadContextPtr->allDataSent);
-                if (mediaThreadContextPtr->allDataSent)
-                {
-                    mediaClose = true;
-                }
-                else
-                {
-                    sendEvent = false;
-                }
-            }
+            mediaClose = true;
         }
     }
     else
@@ -1320,17 +1347,14 @@ void PlayCaptTreatEvent
         mediaClose = true;
     }
 
-    if (sendEvent)
-    {
-        le_audio_StreamEvent_t streamEvent;
-        streamEvent.streamPtr = streamPtr;
-        streamEvent.streamEvent = LE_AUDIO_BITMASK_MEDIA_EVENT;
-        streamEvent.event.mediaEvent = pcmContextPtr->mediaEvent;
+    le_audio_StreamEvent_t streamEvent;
+    streamEvent.streamPtr = streamPtr;
+    streamEvent.streamEvent = LE_AUDIO_BITMASK_MEDIA_EVENT;
+    streamEvent.event.mediaEvent = pcmContextPtr->mediaEvent;
 
-        le_event_Report(streamPtr->streamEventId,
-                            &streamEvent,
-                            sizeof(le_audio_StreamEvent_t));
-    }
+    le_event_Report(streamPtr->streamEventId,
+                        &streamEvent,
+                        sizeof(le_audio_StreamEvent_t));
 
     if (mediaClose)
     {
@@ -1357,8 +1381,8 @@ static le_result_t GetPlaybackFrames
     fd_set rfds;
     struct timeval tv;
     int ret;
-    long usec = (pa_pcm_GetPeriodSize(pcmContextPtr->pcmHandle) * 1000000)/
-                                  (pcmContextPtr->pcmConfig.byteRate);
+    long usec = pa_pcm_GetPeriodSize(pcmContextPtr->pcmHandle) * (1000000/
+                                  (pcmContextPtr->pcmConfig.byteRate));
     uint32_t size = *bufsizePtr, amount = 0;
 
     while (size && len)
@@ -1462,6 +1486,12 @@ static void PlayCaptResult
     le_audio_Stream_t* streamPtr = contextPtr;
     le_audio_PcmContext_t* pcmContextPtr = streamPtr->pcmContextPtr;
 
+    if (!streamPtr || !pcmContextPtr)
+    {
+        LE_ERROR("streamPtr %p or pcmContextPtr %p is null !!!", streamPtr, pcmContextPtr);
+        return;
+    }
+
     if (LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY == streamPtr->audioInterface)
     {
         LE_DEBUG("Playback result: res %d mainThreadRef %p", res, pcmContextPtr->mainThreadRef);
@@ -1470,13 +1500,18 @@ static void PlayCaptResult
         {
             pcmContextPtr->mediaEvent = LE_AUDIO_MEDIA_NO_MORE_SAMPLES;
         }
+        else if (res == LE_UNDERFLOW)
+        {
+            // No data were sent to the driver. Nothing to do
+            return;
+        }
         else
         {
             pcmContextPtr->mediaEvent = LE_AUDIO_MEDIA_ERROR;
         }
 
         le_event_QueueFunctionToThread( pcmContextPtr->mainThreadRef,
-                                        PlayCaptTreatEvent,
+                                        PlayTreatEvent,
                                         streamPtr,
                                         NULL );
     }
@@ -1790,7 +1825,7 @@ le_result_t le_media_PlaySamples
 
     LE_DEBUG("streamPtr->deviceIdentifier %d",streamPtr->deviceIdentifier);
 
-    char deviceString[10]="\0";
+    char deviceString[STRING_LEN];
     snprintf(deviceString,sizeof(deviceString),"hw:0,%d", streamPtr->hwDeviceId);
     LE_DEBUG("Hardware interface: %s", deviceString);
 
@@ -2074,7 +2109,7 @@ le_result_t le_media_Capture
     pcmContextPtr->pause = false;
     streamPtr->pcmContextPtr = pcmContextPtr;
 
-    char deviceString[10]="\0";
+    char deviceString[STRING_LEN];
     snprintf(deviceString,sizeof(deviceString),"hw:0,%d", streamPtr->hwDeviceId);
     LE_DEBUG("Hardware interface: %s", deviceString);
 
