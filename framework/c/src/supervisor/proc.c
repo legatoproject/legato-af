@@ -575,10 +575,8 @@ static le_result_t GetEnvironmentVariables
             if ( (le_cfg_GetNodeName(procCfg, "", envVars[i].name, LIMIT_MAX_ENV_VAR_NAME_BYTES) != LE_OK) ||
                  (le_cfg_GetString(procCfg, "", envVars[i].value, LIMIT_MAX_PATH_BYTES, "") != LE_OK) )
             {
-                LE_ERROR("Error reading environment variables for process '%s'.", procRef->namePtr);
-
                 le_cfg_CancelTxn(procCfg);
-                return LE_FAULT;
+                goto errorReading;
             }
 
             if (le_cfg_GoToNextSibling(procCfg) != LE_OK)
@@ -587,10 +585,8 @@ static le_result_t GetEnvironmentVariables
             }
             else if (i >= maxNumEnvVars-1)
             {
-                LE_ERROR("There were too many environment variables for process '%s'.", procRef->namePtr);
-
                 le_cfg_CancelTxn(procCfg);
-                return LE_FAULT;
+                goto errorReading;
             }
         }
 
@@ -598,8 +594,48 @@ static le_result_t GetEnvironmentVariables
 
         numEnvVars = i + 1;
     }
+    // If the config path is NULL (likely because the process is auxiliary and thus "unconfigured"),
+    // then default PATH is provided depending on the app is sandboxed or not. This default PATH is
+    // the same as the one written to the config during app build-time.
+    else
+    {
+        size_t size = sizeof(envVars[0].name);
+        if (snprintf(envVars[0].name, size, "PATH") >= size)
+        {
+            goto errorReading;
+        }
+
+        size = sizeof(envVars[0].value);
+        if (app_GetIsSandboxed(procRef->appRef))
+        {
+            if (snprintf(envVars[0].value, size, "/usr/local/bin:/usr/bin:/bin") >= size)
+            {
+                goto errorReading;
+            }
+        }
+        else
+        {
+            const char* appName = app_GetName(procRef->appRef);
+
+            if (snprintf(envVars[0].value, size,
+                         "/legato/systems/current/appsWriteable/%s/bin:\
+                          /legato/systems/current/appsWriteable/%s/usr/bin:\
+                          /legato/systems/current/appsWriteable/%s/usr/local/bin",
+                         appName, appName, appName) >= size)
+            {
+                goto errorReading;
+            }
+        }
+
+        numEnvVars = 1;
+    }
 
     return numEnvVars;
+
+errorReading:
+
+    LE_ERROR("Error reading environment variables for process '%s'.", procRef->namePtr);
+    return LE_FAULT;
 }
 
 
@@ -1066,7 +1102,7 @@ le_result_t proc_Start
     //       done in the parent process.
 
     // Get the environment variables from the config tree for this process.
-    EnvVar_t envVars[LIMIT_MAX_NUM_ENV_VARS];
+    EnvVar_t envVars[LIMIT_MAX_NUM_ENV_VARS] = {{{ 0 }}};
     int numEnvVars = GetEnvironmentVariables(procRef, envVars, LIMIT_MAX_NUM_ENV_VARS);
 
     if (numEnvVars == LE_FAULT)
