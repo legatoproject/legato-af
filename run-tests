@@ -2,6 +2,7 @@
 
 SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
+TEST_COVERAGE=${TEST_COVERAGE:-1}
 
 function StartServiceDirectory()
 {
@@ -222,7 +223,7 @@ function Build()
 
     BUILDDIR="$BUILDDIR_BASE/$TARGET"
 
-    echo "Building for $TARGET"
+    echo "Building $TARGET with coverage report set to $TEST_COVERAGE"
 
     # Check Toolchain path
     # NOTE: Even if the toolchain path is not set, the Makefile should be able to recover.
@@ -236,7 +237,7 @@ function Build()
     fi
 
     # Build
-    make tests_$TARGET
+    make tests_$TARGET TEST_COVERAGE=$TEST_COVERAGE
     CheckRet
 
     source $SOURCEDIR/bin/configlegatoenv
@@ -262,7 +263,7 @@ function BuildClang()
 
     # Normal build, with clang
     export USE_CLANG=1
-    Build "localhost" false false
+    Build "localhost"
     unset USE_CLANG
     CleanBuild
 }
@@ -274,8 +275,10 @@ function Job_HostUnitTest()
         return
     fi
 
-    Build "localhost" false false
+    CleanBuild
+    Build "localhost"
     HostUnitTest
+    GenerateReport "localhost"
 }
 
 function Job_TargetUnitTest()
@@ -286,8 +289,10 @@ function Job_TargetUnitTest()
     fi
 
     TargetIdentify
-    Build $TARGET_TYPE false false
+    CleanBuild
+    Build $TARGET_TYPE
     TargetUnitTest
+    GenerateReport $TARGET_TYPE
 }
 
 function Manual_DeveloperPrePushTrial()
@@ -296,15 +301,31 @@ function Manual_DeveloperPrePushTrial()
     CleanBuild
 
     echo "Building ..."
-    Build "localhost" false true
+    Build "localhost"
 
     echo "Building for virtual target..."
-    Build "virt" false false
+    Build "virt"
 
     echo "Testing ..."
     HostUnitTest
 
     echo "Tests complete."
+}
+
+function GenerateReport()
+{
+    TARGET=$1
+
+    BUILDDIR="$BUILDDIR_BASE/$TARGET"
+
+    if [[ "$TEST_COVERAGE" == "1" ]]; then
+        echo "Generate report for $TARGET"
+
+        # Build
+        gcovr -x -r . -o $BUILDDIR/coverage.xml \
+            --exclude=".*(test|build|codegen)\b.*"
+        CheckRet
+    fi
 }
 
 echo -e "== Task: '$1' ==\n"
@@ -319,19 +340,22 @@ host-ut)
     ;;
 run-host-ut)
     HostUnitTest
+    GenerateReport "localhost"
     ;;
 target-ut)
     Job_TargetUnitTest
     ;;
 run-target-ut)
     TargetUnitTest
+    GenerateReport $TARGET_TYPE
     ;;
 dev-trial)
     Manual_DeveloperPrePushTrial
     ;;
 quick-test)
-    Build "localhost" false 1 true
+    Build "localhost"
     HostUnitTest
+    GenerateReport "localhost"
     ;;
 *)
     echo "Invalid argument: '$1'"

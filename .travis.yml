@@ -13,16 +13,16 @@ services:
 
 install:
   - sudo apt-get -qq update
-  - sudo apt-get --yes --assume-yes install vim expect-dev build-essential 
+  - sudo apt-get --yes --assume-yes install vim expect-dev build-essential
     fakeroot sed git-core gawk unzip wget diffstat python python-jinja2
     python-pip python-pyparsing python-pysqlite2 cmake coreutils curl
     bison flex chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev
-    libxml-libxml-perl m4 ninja-build autoconf pkg-config doxygen graphviz
+    libxml-libxml-perl m4 ninja-build autoconf pkg-config doxygen graphviz gcovr
   - sudo wget -O /usr/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
   - sudo chmod +x /usr/bin/repo
   - git config --global color.ui false
   - git config --global user.name "Travis"
-  - git config --global user.email "legato@travis-ci.org" 
+  - git config --global user.email "legato@travis-ci.org"
 
 script:
   - if [ "$CC" == "clang" ]; then export USE_CLANG=1 && which clang; fi

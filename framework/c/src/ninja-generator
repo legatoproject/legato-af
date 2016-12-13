@@ -36,6 +36,13 @@ then
     TARGET_CC="$TARGET_CC --sysroot=$TARGET_SYSROOT"
 fi
 
+# enable coverage.flags
+if [ "$TEST_COVERAGE" == "1" ]
+then
+    NINJA_CFLAGS="--coverage"
+    NINJA_LDFLAGS="--coverage"
+fi
+
 BUILD_DIR=$LEGATO_ROOT/build/$LEGATO_TARGET/framework
 
 NINJA_SCRIPT=$BUILD_DIR/build.ninja
@@ -84,7 +91,7 @@ rule Compile
 
 rule Link
   description = Linking liblegato
-  command = $TARGET_CC -shared -o \$out \$in -lpthread -lrt
+  command = $TARGET_CC -shared -o \$out \$in -lpthread -lrt $NINJA_LDFLAGS
 
 build $LIBLEGATO : Link $LIBLEGATO_OBJECTS
 
@@ -102,7 +109,7 @@ END-OF-HERE-DOC
 for sourceFile in $LIBLEGATO_SOURCES
 do
     echo "build `ObjectsFromSources $sourceFile` : Compile $sourceFile"
-    echo "  flags ="
+    echo "  flags = $NINJA_CFLAGS"
     echo
 
 done >> $NINJA_SCRIPT

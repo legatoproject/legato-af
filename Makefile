@@ -103,6 +103,7 @@ ifeq ($(MAKECMDGOALS),release)
   # We never build for coverage testing when building a release.
   override TEST_COVERAGE := 0
 endif
+export TEST_COVERAGE
 
 # PlantUML file path
 PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
