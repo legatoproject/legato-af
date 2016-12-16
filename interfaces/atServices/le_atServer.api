@@ -88,6 +88,8 @@
  * using le_atServer_Delete().
  * An AT command can be available only on one dedicated device, or on all bound devices, using
  * le_atServer_SetDevice().
+ * le_atServer_EnableEcho() allows the user to enable echo on a selected device.
+ * le_atServer_DisableEcho() allows the user to disable echo on a selected device.
  *
  * @section atServer_handler Handler
  *
@@ -453,4 +455,32 @@ FUNCTION le_result_t SendUnsolicitedResponse
     Device          device                                      IN  ///< device reference where the
                                                                     ///< unsolicited response has to
                                                                     ///< be sent
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables echo on the selected device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnableEcho
+(
+    Device device  IN       ///< device reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables echo on the selected device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableEcho
+(
+    Device device  IN       ///< device reference
 );

@@ -8,8 +8,8 @@
 #include "defs.h"
 #include "strerror.h"
 
-#define DSIZE           512     /* default buffer size */
-#define SERVER_TIMEOUT  2000    /* server timeout in milliseconds */
+#define DSIZE           512     // default buffer size
+#define SERVER_TIMEOUT  2000    // server timeout in milliseconds
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -44,7 +44,8 @@ static char* PrettyPrint
 
     while(*swapPtr)
     {
-        switch (*swapPtr) {
+        switch (*swapPtr)
+        {
         case '\r':
             *swapPtr = '<';
             break;
@@ -80,12 +81,11 @@ static le_result_t SendCommandsAndTest
     int count = 0;
     ssize_t size = 0;
 
-
     memset(buf, 0 , DSIZE);
 
     snprintf(buf, strlen(commandsPtr)+2, "%s\r", commandsPtr);
 
-    LE_DEBUG("Commands: %s", PrettyPrint(buf));
+    LE_INFO("Commands: %s", PrettyPrint(buf));
 
     if (write(fd, buf, strlen(buf)) == -1)
     {
@@ -137,7 +137,8 @@ static le_result_t SendCommandsAndTest
     LE_DEBUG("Response: %s", PrettyPrint(buf));
     LE_DEBUG("Expected: %s", PrettyPrint((char *)expectedResponsePtr));
 
-    if (expectedResponsePtr) {
+    if (expectedResponsePtr)
+    {
         if (strcmp(buf, expectedResponsePtr))
         {
             LE_ERROR("response %s", PrettyPrint(buf));
@@ -298,15 +299,14 @@ static void* AtHost
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, sharedDataPtr->devPathPtr, sizeof(addr.sun_path)-1);
 
-    /* wait for the server to bind to the socket */
+    // wait for the server to bind to the socket
     pthread_mutex_lock(&sharedDataPtr->mutex);
     while(!sharedDataPtr->ready)
     {
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_sec += SERVER_TIMEOUT/1000;
 
-        errno = pthread_cond_timedwait(
-                    &sharedDataPtr->cond, &sharedDataPtr->mutex, &ts);
+        errno = pthread_cond_timedwait(&sharedDataPtr->cond, &sharedDataPtr->mutex, &ts);
         if (errno)
         {
             LE_ERROR("pthread_cond_timedwait failed: %s", strerror(errno));
@@ -328,6 +328,34 @@ static void* AtHost
         close(epollFd);
         errno = LE_COMM_ERROR;
         return (void *) &errno;
+    }
+
+    // activate echo
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+ECHO=1",
+                "\r\n+ECHO TYPE: PARA\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT",
+               "AT\r"
+                "\r\n TYPE: ACT\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
+    }
+
+    // disactivate echo
+    ret = SendCommandsAndTest(socketFd, epollFd, "AT+ECHO=0",
+               "AT+ECHO=0\r"
+                "\r\n+ECHO TYPE: PARA\r\n"
+                "\r\nOK\r\n");
+    if (ret)
+    {
+        goto err;
     }
 
     ret = SendCommandsAndTest(socketFd, epollFd, "AT",
@@ -541,6 +569,7 @@ static void* AtHost
         return (void *)&errno;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * main of the test
@@ -564,10 +593,8 @@ COMPONENT_INIT
     pthread_cond_init(&SharedData.cond, NULL);
     SharedData.ready = false;
 
-    atServerThread = le_thread_Create(
-        "atServerThread", AtServer, (void *)&SharedData);
-    atHostThread = le_thread_Create(
-        "atHostThread", AtHost, (void *)&SharedData);
+    atServerThread = le_thread_Create("atServerThread", AtServer, (void *)&SharedData);
+    atHostThread = le_thread_Create("atHostThread", AtHost, (void *)&SharedData);
 
     le_thread_SetJoinable(atHostThread);
     le_thread_SetJoinable(atServerThread);

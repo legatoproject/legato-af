@@ -15,7 +15,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
  * ServerData_t definition
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -28,13 +27,12 @@ ServerData_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * AtCmd_t definition
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    const char* atCmdPtr;
-    le_atServer_CmdRef_t cmdRef;
+    const char*                      atCmdPtr;
+    le_atServer_CmdRef_t             cmdRef;
     le_atServer_CommandHandlerFunc_t handlerPtr;
 }
 AtCmd_t;
@@ -42,23 +40,36 @@ AtCmd_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * AtSession_t definition
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
     le_atServer_DeviceRef_t devRef;
-    int fd;
-    int cmdsCount;
-    AtCmd_t atCmds[COMMANDS_MAX];
+    int                     fd;
+    int                     cmdsCount;
+    AtCmd_t                 atCmds[COMMANDS_MAX];
 }
 AtSession_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Server thread shared data
+ */
+//--------------------------------------------------------------------------------------------------
+static ServerData_t ServerData;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AtSession shared data
+ */
+//--------------------------------------------------------------------------------------------------
+static AtSession_t AtSession;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * AT command handler
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_GetCommandName
  *      le_atServer_SendIntermediateResponse
  *      le_atServer_GetParameter
@@ -84,8 +95,8 @@ static void AtCmdHandler
     // check whether command's name is registred on the server app
     memset(atCommandName,0,LE_ATDEFS_COMMAND_MAX_BYTES);
     LE_ASSERT(le_atServer_GetCommandName(commandRef,
-                atCommandName,LE_ATDEFS_COMMAND_MAX_BYTES)
-            == LE_OK);
+                                         atCommandName,
+                                         LE_ATDEFS_COMMAND_MAX_BYTES) == LE_OK);
 
     LE_DEBUG("AT command name %s", atCommandName);
 
@@ -96,26 +107,22 @@ static void AtCmdHandler
     {
         case LE_ATSERVER_TYPE_PARA:
             LE_DEBUG("Type PARA");
-            snprintf(rsp+strlen(rsp),
-                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
         break;
 
         case LE_ATSERVER_TYPE_TEST:
             LE_DEBUG("Type TEST");
-            snprintf(rsp+strlen(rsp),
-                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
         break;
 
         case LE_ATSERVER_TYPE_READ:
             LE_DEBUG("Type READ");
-            snprintf(rsp+strlen(rsp),
-                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
         break;
 
         case LE_ATSERVER_TYPE_ACT:
             LE_DEBUG("Type ACT");
-            snprintf(rsp+strlen(rsp),
-                LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
         break;
 
         default:
@@ -124,9 +131,7 @@ static void AtCmdHandler
     }
 
     // send an intermediate response with the command type
-    LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef,
-                                                rsp)
-            == LE_OK);
+    LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
     // get the command parameters and send them in an intermediate response
     for (i = 0; i < parametersNumber && parametersNumber <= PARAM_MAX; i++)
@@ -140,25 +145,19 @@ static void AtCmdHandler
         LE_DEBUG("Param %d: %s", i, param);
 
         memset(rsp,0,LE_ATDEFS_RESPONSE_MAX_BYTES);
-        snprintf(rsp,LE_ATDEFS_RESPONSE_MAX_BYTES,
-            "%s PARAM %d: %s", atCommandName+2, i, param);
+        snprintf(rsp,LE_ATDEFS_RESPONSE_MAX_BYTES, "%s PARAM %d: %s", atCommandName+2, i, param);
 
-        LE_ASSERT(
-            le_atServer_SendIntermediateResponse(commandRef, rsp)
-            == LE_OK);
+        LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
     }
 
     // test for bad parameter
     LE_ASSERT(le_atServer_GetParameter(commandRef,
-                                    parametersNumber+1,
-                                    param,
-                                    LE_ATDEFS_PARAMETER_MAX_BYTES )
-            == LE_BAD_PARAMETER);
+                                       parametersNumber+1,
+                                       param,
+                                       LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_BAD_PARAMETER);
 
     // send OK final response
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                        LE_ATSERVER_OK, false, "")
-        == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -167,7 +166,7 @@ static void AtCmdHandler
  *
  * tests long responses and multiple intermediates send
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_SendIntermediateResponse
  *      le_atServer_SendFinalResponse
  *
@@ -191,9 +190,7 @@ static void AtiCmdHandler
         case LE_ATSERVER_TYPE_READ:
             LE_ASSERT(
                 // send and ERROR final response
-                le_atServer_SendFinalResponse(commandRef,
-                    LE_ATSERVER_ERROR, false, "")
-                == LE_OK);
+                le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
             break;
         // this is an action type command so send multiple intermediate
         // responses and an OK final response
@@ -201,57 +198,134 @@ static void AtiCmdHandler
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s",
                 "Manufacturer: Sierra Wireless, Incorporated");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "Model: WP8548");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s",
                 "Revision: SWI9X15Y_07.10.04.00 12c1700 jenkins"
                 " 2016/06/02 02:52:45");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "IMEI: 359377060009700");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "IMEI SV: 42");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "FSN: LL542500111503");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "+GCAP: +CGSM");
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef, rsp)
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
             // send an OK final response
-            LE_ASSERT(
-                le_atServer_SendFinalResponse(commandRef,
-                    LE_ATSERVER_OK, false, "")
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                                    LE_ATSERVER_OK,
+                                                    false,
+                                                    "") == LE_OK);
             break;
 
         default:
             LE_ASSERT(0);
             break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT+ECHO command handler (echo)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AtEchoCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t   type,
+    uint32_t             parametersNumber,
+    void*                contextPtr
+)
+{
+    AtSession_t* atSessionPtr = (AtSession_t *)contextPtr;
+    char         rsp[LE_ATDEFS_RESPONSE_MAX_BYTES];
+    char         atCommandName[LE_ATDEFS_COMMAND_MAX_BYTES];
+    char         param[LE_ATDEFS_PARAMETER_MAX_BYTES];
+    le_result_t  res = LE_OK;
+
+    LE_DEBUG("commandRef %p", commandRef);
+
+    // check whether command's name is registred on the server app
+    memset(atCommandName,0,LE_ATDEFS_COMMAND_MAX_BYTES);
+    LE_ASSERT(le_atServer_GetCommandName(commandRef,
+                                         atCommandName,
+                                         LE_ATDEFS_COMMAND_MAX_BYTES) == LE_OK);
+
+    LE_DEBUG("AT command name %s", atCommandName);
+
+    memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
+    snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s TYPE: ", atCommandName+2);
+
+    switch (type)
+    {
+        case LE_ATSERVER_TYPE_PARA:
+            LE_INFO("Type PARA");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
+            memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
+            LE_ASSERT(le_atServer_GetParameter(commandRef,
+                                               0,
+                                               param,
+                                               LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
+            if (0 == strncmp(param, "1", strlen("1")))
+            {
+                LE_ASSERT(le_atServer_EnableEcho(atSessionPtr->devRef) == LE_OK);
+            }
+            else if (0 == strncmp(param, "0", strlen("0")))
+            {
+                LE_ASSERT(le_atServer_DisableEcho(atSessionPtr->devRef) == LE_OK);
+            }
+            else
+            {
+                res = LE_FAULT;
+                LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                                        LE_ATSERVER_ERROR,
+                                                        false,
+                                                        "") == LE_OK);
+            }
+        break;
+
+        case LE_ATSERVER_TYPE_TEST:
+            LE_INFO("Type TEST");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "TEST");
+        break;
+
+        case LE_ATSERVER_TYPE_READ:
+            LE_INFO("Type READ");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "READ");
+        break;
+
+        case LE_ATSERVER_TYPE_ACT:
+            LE_INFO("Type ACT");
+            snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "ACT");
+        break;
+
+        default:
+            LE_ASSERT(0);
+        break;
+    }
+
+    if (LE_OK == res)
+    {
+        // Send the command type into an intermediate response
+        LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+
+        // Send Final response
+        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
     }
 }
 
@@ -266,8 +340,8 @@ static void AtiCmdHandler
 //--------------------------------------------------------------------------------------------------
 static le_atServer_CmdRef_t GetRef
 (
-    AtCmd_t* AtCmds,
-    int cmdsCount,
+    AtCmd_t*    atCmdsPtr,
+    int         cmdsCount,
     const char* cmdNamePtr
 )
 {
@@ -275,9 +349,9 @@ static le_atServer_CmdRef_t GetRef
 
     for (i=0; i<cmdsCount; i++)
     {
-        if ( ! (strcmp(AtCmds[i].atCmdPtr, cmdNamePtr)) )
+        if ( ! (strcmp(atCmdsPtr[i].atCmdPtr, cmdNamePtr)) )
         {
-            return AtCmds[i].cmdRef;
+            return atCmdsPtr[i].cmdRef;
         }
     }
 
@@ -290,7 +364,7 @@ static le_atServer_CmdRef_t GetRef
  *
  * tests commands deletion
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_GetParameter
  *      le_atServer_SendIntermediateResponse
  *      le_atServer_SendFinalResponse
@@ -306,7 +380,7 @@ static void DelCmdHandler
     void* contextPtr
 )
 {
-    AtSession_t *AtSession = (AtSession_t *)contextPtr;
+    AtSession_t *atSessionPtr = (AtSession_t *)contextPtr;
     le_atServer_FinalRsp_t finalRsp = LE_ATSERVER_OK;
     le_atServer_CmdRef_t cmdRef;
     char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
@@ -315,9 +389,7 @@ static void DelCmdHandler
     switch (type)
     {
         case LE_ATSERVER_TYPE_PARA:
-            for (i = 0;
-                i < parametersNumber && parametersNumber <= PARAM_MAX;
-                i++)
+            for (i = 0; i < parametersNumber && parametersNumber <= PARAM_MAX; i++)
             {
                 memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
                 // get the command to delete
@@ -328,7 +400,7 @@ static void DelCmdHandler
                                         LE_ATDEFS_PARAMETER_MAX_BYTES)
                                     == LE_OK);
                 // get its refrence
-                cmdRef = GetRef(AtSession->atCmds, AtSession->cmdsCount, param);
+                cmdRef = GetRef(atSessionPtr->atCmds, atSessionPtr->cmdsCount, param);
                 LE_DEBUG("Deleting %p => %s", cmdRef, param);
                 // delete the command
                 LE_ASSERT(le_atServer_Delete(cmdRef) == LE_OK);
@@ -353,10 +425,7 @@ static void DelCmdHandler
         break;
     }
     // send final response
-    LE_ASSERT(
-        le_atServer_SendFinalResponse(
-            commandRef, finalRsp, false, "")
-        == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, finalRsp, false, "") == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -365,7 +434,7 @@ static void DelCmdHandler
  *
  * tests closing server session
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_SendFinalResponse
  *      le_atServer_Close
  */
@@ -378,7 +447,7 @@ static void CloseCmdHandler
     void* contextPtr
 )
 {
-    AtSession_t* AtSession = (AtSession_t *)contextPtr;
+    AtSession_t* atSessionPtr = (AtSession_t *)contextPtr;
 
     switch (type) {
     // this command doesn't accept parameter, test or read send an ERROR
@@ -386,16 +455,13 @@ static void CloseCmdHandler
     case LE_ATSERVER_TYPE_PARA:
     case LE_ATSERVER_TYPE_TEST:
     case LE_ATSERVER_TYPE_READ:
-        LE_ASSERT(
-            le_atServer_SendFinalResponse(
-                commandRef, LE_ATSERVER_ERROR, false, "")
-            == LE_OK);
+        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
 
         break;
     // in case of an action command just close the session
     // we cannot send a response, the closing is in progress
     case LE_ATSERVER_TYPE_ACT:
-        LE_ASSERT(le_atServer_Close(AtSession->devRef) == LE_OK);
+        LE_ASSERT(le_atServer_Close(atSessionPtr->devRef) == LE_OK);
         break;
 
     default:
@@ -410,7 +476,7 @@ static void CloseCmdHandler
  *
  * tests unsolicited responses
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_SendIntermediateResponse
  *      le_atServer_SendFinalResponse
  *      le_atServer_SendUnsolicitedResponse, specific device and all devices
@@ -425,7 +491,7 @@ static void CbcCmdHandler
     void* contextPtr
 )
 {
-    AtSession_t* AtSession = (AtSession_t *)contextPtr;
+    AtSession_t* atSessionPtr = (AtSession_t *)contextPtr;
     le_atServer_FinalRsp_t finalRsp = LE_ATSERVER_OK;
 
     switch (type)
@@ -439,8 +505,7 @@ static void CbcCmdHandler
         case LE_ATSERVER_TYPE_TEST:
             LE_ASSERT(
                 le_atServer_SendIntermediateResponse(commandRef,
-                    "+CBC: (0-2),(1-100),(voltage)")
-                == LE_OK);
+                                                     "+CBC: (0-2),(1-100),(voltage)") == LE_OK);
             finalRsp = LE_ATSERVER_OK;
             break;
         // read isn't allowed
@@ -450,16 +515,13 @@ static void CbcCmdHandler
         // send an intermediate response containing the values
         // send unsolicited responses with updates
         case LE_ATSERVER_TYPE_ACT:
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef,
-                    "+CBC: 1,50,4190")
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef,
+                                                           "+CBC: 1,50,4190") == LE_OK);
             LE_ASSERT(le_atServer_SendUnsolicitedResponse("+CBC: 1,70,4190",
-                            LE_ATSERVER_SPECIFIC_DEVICE, AtSession->devRef)
-                == LE_OK);
+                                                          LE_ATSERVER_SPECIFIC_DEVICE,
+                                                          atSessionPtr->devRef) == LE_OK);
             LE_ASSERT(le_atServer_SendUnsolicitedResponse("+CBC: 2,100,4190",
-                            LE_ATSERVER_ALL_DEVICES, 0)
-                == LE_OK);
+                                                          LE_ATSERVER_ALL_DEVICES, 0) == LE_OK);
             finalRsp = LE_ATSERVER_OK;
             break;
 
@@ -478,7 +540,7 @@ static void CbcCmdHandler
  *
  * tests suspend/resume functions
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_Suspend
  *      le_atServer_Resume
  *      le_atServer_SendIntermediateResponse
@@ -496,7 +558,7 @@ static void DataCmdHandler
 )
 {
     int i;
-    AtSession_t* AtSession = (AtSession_t *)contextPtr;
+    AtSession_t* atSessionPtr = (AtSession_t *)contextPtr;
 
     switch (type)
     {
@@ -504,42 +566,34 @@ static void DataCmdHandler
         case LE_ATSERVER_TYPE_READ:
         case LE_ATSERVER_TYPE_PARA:
             LE_ASSERT(
-                le_atServer_SendFinalResponse(commandRef,
-                    LE_ATSERVER_ERROR, false, "")
-                == LE_OK);
+                le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
             break;
         // send an OK final response
         case LE_ATSERVER_TYPE_TEST:
-            LE_ASSERT(
-                le_atServer_SendFinalResponse(commandRef,
-                    LE_ATSERVER_OK, false, "")
-                == LE_OK);
+            LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                                    LE_ATSERVER_OK,
+                                                    false,
+                                                    "") == LE_OK);
             break;
         case LE_ATSERVER_TYPE_ACT:
-            LE_ASSERT(
-                le_atServer_SendIntermediateResponse(commandRef,
-                    "CONNECT")
-                == LE_OK);
-
-            LE_ASSERT(le_atServer_Suspend(AtSession->devRef) == LE_OK);
+            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, "CONNECT") == LE_OK);
+            LE_ASSERT(le_atServer_Suspend(atSessionPtr->devRef) == LE_OK);
 
             for (i=0; i<3; i++)
             {
                 LE_ASSERT(le_atServer_SendUnsolicitedResponse("CONNECTED",
-                            LE_ATSERVER_SPECIFIC_DEVICE, AtSession->devRef)
+                            LE_ATSERVER_SPECIFIC_DEVICE, atSessionPtr->devRef)
                     == LE_OK);
             }
 
-            if (write(AtSession->fd, "testing the data mode", 21) == -1)
+            if (write(atSessionPtr->fd, "testing the data mode", 21) == -1)
             {
                 LE_ERROR("write failed: %s", strerror(errno));
             }
 
-            LE_ASSERT(le_atServer_Resume(AtSession->devRef) == LE_OK);
+            LE_ASSERT(le_atServer_Resume(atSessionPtr->devRef) == LE_OK);
 
-            LE_ASSERT(
-                le_atServer_SendFinalResponse(commandRef,
-                    LE_ATSERVER_OK, true, "NO CARRIER")
+            LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, true, "NO CARRIER")
                 == LE_OK);
             break;
 
@@ -592,16 +646,14 @@ static void CleanUp
     void *contextPtr
 )
 {
-    ServerData_t *serverData;
+    ServerData_t *serverDataPtr = (ServerData_t *)contextPtr;
 
-    serverData = (ServerData_t *)contextPtr;
-
-    if (close(serverData->connFd) == -1)
+    if (close(serverDataPtr->connFd) == -1)
     {
         LE_ERROR("close failed %s", strerror(errno));
     }
 
-    if (close(serverData->socketFd) == -1)
+    if (close(serverDataPtr->socketFd) == -1)
     {
         LE_ERROR("close failed %s", strerror(errno));
     }
@@ -615,7 +667,7 @@ static void CleanUp
  * start the server
  * initialize/create new commands and register them within the server app
  *
- * API tested:
+ * tested APIs:
  *      le_atServer_Open
  *      le_atServer_Create
  *      le_atServer_AddCommandHandler
@@ -628,12 +680,10 @@ void* AtServer
 )
 {
     SharedData_t* sharedDataPtr;
-    static ServerData_t serverData;
-    static AtSession_t AtSession;
     struct sockaddr_un addr;
     int i = 0;
 
-    AtCmd_t AtCmdCreation[] =
+    AtCmd_t atCmdCreation[] =
     {
         {
             .atCmdPtr = "AT+DATA",
@@ -706,6 +756,11 @@ void* AtServer
             .handlerPtr = AtCmdHandler,
         },
         {
+            .atCmdPtr = "AT+ECHO",
+            .cmdRef = NULL,
+            .handlerPtr = AtEchoCmdHandler,
+        },
+        {
             .atCmdPtr = "ATD",
             .cmdRef = NULL,
             .handlerPtr = AtdCmdHandler,
@@ -714,14 +769,14 @@ void* AtServer
 
     sharedDataPtr = (SharedData_t *)contextPtr;
 
-    LE_DEBUG("Server Started");
+    LE_INFO("Server Started");
 
-    le_thread_AddDestructor(CleanUp,(void *)&serverData);
+    le_thread_AddDestructor(CleanUp,(void *)&ServerData);
 
     pthread_mutex_lock(&sharedDataPtr->mutex);
 
-    serverData.socketFd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (serverData.socketFd == -1)
+    ServerData.socketFd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (ServerData.socketFd == -1)
     {
         LE_ERROR("socket failed: %s", strerror(errno));
         return NULL;
@@ -731,13 +786,13 @@ void* AtServer
     addr.sun_family= AF_UNIX;
     strncpy(addr.sun_path, sharedDataPtr->devPathPtr, sizeof(addr.sun_path)-1);
 
-    if (bind(serverData.socketFd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
+    if (bind(ServerData.socketFd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
     {
-        LE_ERROR(" bind failed: %s", strerror(errno));
+        LE_ERROR("bind failed: %s", strerror(errno));
         return NULL;
     }
 
-    if (listen(serverData.socketFd, 1) == -1)
+    if (listen(ServerData.socketFd, 1) == -1)
     {
         LE_ERROR("listen failed: %s", strerror(errno));
         return NULL;
@@ -747,8 +802,8 @@ void* AtServer
     pthread_cond_signal(&sharedDataPtr->cond);
     pthread_mutex_unlock(&sharedDataPtr->mutex);
 
-    serverData.connFd = accept(serverData.socketFd, NULL, NULL);
-    if (serverData.connFd == -1)
+    ServerData.connFd = accept(ServerData.socketFd, NULL, NULL);
+    if (ServerData.connFd == -1)
     {
         LE_ERROR("accept failed: %s", strerror(errno));
         return NULL;
@@ -758,32 +813,34 @@ void* AtServer
     AtSession.devRef = le_atServer_Open(-1);
     LE_ASSERT(AtSession.devRef == NULL);
 
-    /*
-     * save a copy of fd and duplicate it before Opening the server
-     * after a call to le_atServer_Open the file descriptor will be closed
-     */
-
-    AtSession.fd = serverData.connFd;
+    // save a copy of fd and duplicate it before Opening the server after a call to
+    // le_atServer_Open the file descriptor will be closed
+    AtSession.fd = ServerData.connFd;
 
     // start the server
-    AtSession.devRef = le_atServer_Open(dup(serverData.connFd));
+    AtSession.devRef = le_atServer_Open(dup(ServerData.connFd));
     LE_ASSERT(AtSession.devRef != NULL);
 
-    AtSession.cmdsCount = NUM_ARRAY_MEMBERS(AtCmdCreation);
+    // Echo function tests
+    LE_ASSERT(le_atServer_EnableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
+        == LE_BAD_PARAMETER);
+    LE_ASSERT(le_atServer_DisableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
+        == LE_BAD_PARAMETER);
+
+    // AT commands handling tests
+    AtSession.cmdsCount = NUM_ARRAY_MEMBERS(atCmdCreation);
 
     // AT commands subscriptions
     while (i < AtSession.cmdsCount)
     {
-        AtCmdCreation[i].cmdRef = le_atServer_Create(AtCmdCreation[i].atCmdPtr);
-        LE_ASSERT(AtCmdCreation[i].cmdRef != NULL);
+        atCmdCreation[i].cmdRef = le_atServer_Create(atCmdCreation[i].atCmdPtr);
+        LE_ASSERT(atCmdCreation[i].cmdRef != NULL);
 
-        AtSession.atCmds[i] = AtCmdCreation[i];
+        AtSession.atCmds[i] = atCmdCreation[i];
 
-        LE_ASSERT(le_atServer_AddCommandHandler(
-                AtCmdCreation[i].cmdRef,
-                AtCmdCreation[i].handlerPtr,
-                (void *)&AtSession)
-            != NULL);
+        LE_ASSERT(le_atServer_AddCommandHandler(atCmdCreation[i].cmdRef,
+                                                atCmdCreation[i].handlerPtr,
+                                                (void *)&AtSession) != NULL);
 
         i++;
     }

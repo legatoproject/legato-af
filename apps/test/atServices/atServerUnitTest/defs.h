@@ -17,7 +17,7 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    const char*     devPathPtr;    ///< device path
+    const char*     devPathPtr;     ///< device path
     pthread_mutex_t mutex;          ///< used for sync
     pthread_cond_t  cond;           ///< signal connection is ready
     bool            ready;          ///< ready for connection

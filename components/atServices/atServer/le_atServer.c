@@ -383,6 +383,7 @@ typedef struct
     RspState_t              rspState;
     le_msg_SessionRef_t     sessionRef;         ///< session reference
     bool                    suspended;          /// is device in data mode?
+    bool                    echo;               /// is echo enabled
 }
 DeviceContext_t;
 
@@ -1620,6 +1621,15 @@ static void RxNewData
         size = le_dev_Read(&devPtr->device,
                     (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
                     (LE_ATDEFS_COMMAND_MAX_LEN - devPtr->indexRead));
+
+        // Echo is activated
+        if (devPtr->echo)
+        {
+            le_dev_Write(&devPtr->device,
+                        (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
+                        size);
+        }
+
         devPtr->indexRead += size;
         ParseBuffer(devPtr);
     }
@@ -2420,6 +2430,66 @@ le_result_t le_atServer_SendUnsolicitedResponse
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables echo on the selected device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_EnableEcho
+(
+    le_atServer_DeviceRef_t device
+        ///< [IN] device reference
+
+)
+{
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, device);
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad device reference");
+        return LE_BAD_PARAMETER;
+    }
+    else
+    {
+        devPtr->echo = true;
+        return LE_OK;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables echo on the selected device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_DisableEcho
+(
+    le_atServer_DeviceRef_t device
+        ///< [IN] device reference
+
+)
+{
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, device);
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad device reference");
+        return LE_BAD_PARAMETER;
+    }
+    else
+    {
+        devPtr->echo = false;
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
