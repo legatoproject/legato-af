@@ -8,6 +8,18 @@
  * server is compliant with 3GPP 27.007, paragraphs 4.0, 4.1 and 4.2, and V25 ter, paragraphs 5.3,
  * 5.4.
  *
+ * @section le_atServer_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b atService.
+ *
+ * Here's a code sample binding to the AT commands server:
+ * @verbatim
+   bindings:
+   {
+     atServerTest.atServerTestComp.le_atServer -> atService.le_atServer
+   }
+   @endverbatim
+ *
  * @section atServer_syntax AT command syntax
  *
  * @subsection atServer_Syntax Syntax rules
@@ -86,8 +98,6 @@
  *
  * A new AT command can be added into the parser using le_atServer_Create(), and it can be deleted
  * using le_atServer_Delete().
- * An AT command can be available only on one dedicated device, or on all bound devices, using
- * le_atServer_SetDevice().
  * le_atServer_EnableEcho() allows the user to enable echo on a selected device.
  * le_atServer_DisableEcho() allows the user to disable echo on a selected device.
  *
@@ -97,6 +107,7 @@
  * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().<br>
  * The called handler (le_atServer_CommandHandlerRef_t prototype) can use
  * le_atServer_GetCommandName() to retrieve the received AT command string.<br>
+ * The device used to execute the AT command can be retrieve thanks to le_atServer_GetDevice().<br>
  * It can also call le_atServer_GetParameter() to retrieve parameters of the AT command. This
  * function gets the string sending through the AT command. If the parameter was sent between
  * quotes, the quotes are removed. This API can be used for both formats:
@@ -146,6 +157,25 @@
  * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
  * sends its final response).
  *
+ * @section atServer_bridge Bridge
+ *
+ * A second file descriptor can be used thanks to le_atServer_OpenBridge() to send
+ * all unknown AT commands to an altervative device (such as the modem). For all devices linked to
+ * that bridge using le_atServer_AddDeviceToBridge(), unknown commands will be sent through that file
+ * descriptor.
+ *
+ * @image html atCommandsParserBridge.png
+ *
+ * @note AT commands server is opened on the file descriptor fd1 using le_atServer_Open() API.
+ * AT commands server is bridged on the file descriptor fd2 using le_atServer_OpenBridge() API.
+ *
+ * A device can be remove from a bridge thanks to le_atServer_RemoveDeviceFromBridge() API.
+ * A bridge can be closed using le_atServer_CloseBridge() API.
+ *
+ * @warning Some modem AT commands may conflict with Legato APIs; using both may cause problems that
+ * can be difficult to diagnose. The modem AT commands should be avoided whenever possible, and
+ * should only be used with great care.
+ *
  * The application can send an unsolicited on all opened device, or only one on a dedicated deivce.
  *
  * <HR>
@@ -178,6 +208,14 @@ REFERENCE Cmd;
  */
 //--------------------------------------------------------------------------------------------------
 REFERENCE Device;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for a AT commands server / AT commands client bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Bridge;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -323,25 +361,6 @@ FUNCTION le_result_t Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function sets the device(s) where the specified AT command is available.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to set the device.
- *
- * @note If the AT command is available for all devices (i.e. availableDevice argument is set to
- * LE_ATSERVER_ALL_DEVICES), the "device" argument is unused.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetDevice
-(
-    Cmd             commandRef          IN, ///< AT command reference
-    AvailableDevice   availableDevice   IN, ///< device available for the AT command
-    Device            device            IN  ///< device reference where the AT command is available
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Handler for the AT command processing.
  *
  * @note The argument "parametersNumber" is set only when "type" parameter value is
@@ -398,6 +417,23 @@ FUNCTION le_result_t GetCommandName
 (
     Cmd    commandRef            IN,            ///< AT command reference
     string name[le_atDefs.COMMAND_MAX_LEN] OUT  ///< AT command string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the device reference in use for an AT command specified with
+ * its reference.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDevice
+(
+    Cmd    commandRef            IN,         ///< AT command reference
+    Device deviceRef             OUT         ///< Device reference
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -484,3 +520,69 @@ FUNCTION le_result_t DisableEcho
 (
     Device device  IN       ///< device reference
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function opens a AT commands server bridge.
+ * All unknown AT commands will be sent on this alternative file descriptor thanks to the AT client
+ * Service.
+ *
+ * @return
+ *      - Reference to the requested bridge.
+ *      - NULL if the device can't be bridged
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Bridge OpenBridge
+(
+    file              fd           IN  ///< File descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function closes an opened bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to close the bridge.
+ *      - LE_BUSY          The bridge is in use (devices references have to be removed first).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CloseBridge
+(
+    Bridge            bridgeRef       IN  ///< Bridge reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds a device to an opened bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BUSY          The device is already used by the bridge.
+ *      - LE_FAULT         The function failed to add the device to the bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AddDeviceToBridge
+(
+    Device            deviceRef       IN, ///< Device reference to add to the bridge
+    Bridge            bridgeRef       IN  ///< Bridge refence
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function removes a device from a bridge
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_NOT_FOUND     The device is not isued by the specified bridge
+ *      - LE_BUSY          The device is currently in use
+ *      - LE_FAULT         The function failed to add the device to the bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RemoveDeviceFromBridge
+(
+    Device            deviceRef       IN, ///< Device reference to add to the bridge
+    Bridge            bridgeRef       IN  ///< Bridge refence
+);
+

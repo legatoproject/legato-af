@@ -23,6 +23,5 @@ start: manual
 
 bindings:
 {
-    atClientTest.atClientTestComp.le_atClient -> atClient.le_atClient
+    atClientTest.atClientTestComp.le_atClient -> atService.le_atClient
 }
-

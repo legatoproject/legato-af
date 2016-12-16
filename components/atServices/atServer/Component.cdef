@@ -6,10 +6,18 @@ provides:
     }
 }
 
+requires:
+{
+    api:
+    {
+        atServices/le_atClient.api
+    }
+}
 
 sources:
 {
     le_atServer.c
+    bridge.c
     $CURDIR/../Common/le_dev.c
 }
 

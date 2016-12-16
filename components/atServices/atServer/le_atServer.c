@@ -8,6 +8,8 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
+#include "bridge.h"
+#include "le_atServer_local.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -15,12 +17,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define ERR_MSG_MAX 256
-//--------------------------------------------------------------------------------------------------
-/**
- * Max length of thread name
- */
-//--------------------------------------------------------------------------------------------------
-#define THREAD_NAME_MAX_LENGTH  30
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -114,13 +110,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Is character a letter ?
- */
-//--------------------------------------------------------------------------------------------------
-#define IS_CHAR(X)              ((X>='A')&&(X<='Z'))||((X>='a')&&(X<='z')) /*[A-Z]||[a-z]*/
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Is character '&' ?
  */
 //--------------------------------------------------------------------------------------------------
@@ -188,7 +177,6 @@ static le_mem_PoolRef_t  RspStringPool;
 static le_mem_PoolRef_t EventIdPool;
 
 //--------------------------------------------------------------------------------------------------
-
 /**
  * Map for devices
  */
@@ -317,12 +305,15 @@ typedef struct
 {
     le_atServer_CmdRef_t    cmdRef;                                 ///< cmd refrence
     char                    cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];   ///< Command to send
-    le_event_Id_t           eventId;
+    le_event_Id_t           eventId;                                ///< event id associated to the
+                                                                    ///< AT command
     le_atServer_AvailableDevice_t availableDevice;                  ///< device to send unsol rsp
     le_atServer_Type_t      type;                                   ///< cmd type
     le_dls_List_t           paramList;                              ///< parameters list
     bool                    processing;                             ///< is command processing
     le_atServer_DeviceRef_t deviceRef;                              ///< device refrence
+    bool                    bridgeCmd;                              ///< is command created by the
+                                                                    ///< AT bridge
     le_msg_SessionRef_t     sessionRef;                             ///< session reference
     bool                    handlerExists;
     bool                    isDialCommand;                          ///< specific dial command
@@ -340,11 +331,14 @@ typedef struct
     char                    foundCmd[LE_ATDEFS_COMMAND_MAX_LEN];    ///< cmd found in input string
     RxParserState_t         rxState;                                ///< input string parser state
     CmdParserState_t        cmdParser;                              ///< cmd parser state
-    CmdParserState_t        lastCmdParserState;
-    char*                   currentAtCmdPtr;
-    char*                   currentCharPtr;
-    char*                   lastCharPtr;
-    ATCmdSubscribed_t*      currentCmdPtr;
+    CmdParserState_t        lastCmdParserState;                     ///< previous cmd parser state
+    char*                   currentAtCmdPtr;                        ///< current AT cmd position
+                                                                    ///< in foundCmd buffer
+    char*                   currentCharPtr;                         ///< current parsing position
+                                                                    ///< in foundCmd buffer
+    char*                   lastCharPtr;                            ///< last received character
+                                                                    ///< position in foundCmd buffer
+    ATCmdSubscribed_t*      currentCmdPtr;                          ///< current command context
 }
 CmdParser_t;
 
@@ -356,8 +350,8 @@ CmdParser_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_atServer_FinalRsp_t  final;
-    bool                    customStringAvailable;
+    le_atServer_FinalRsp_t  final;                               ///< final result code
+    bool                    customStringAvailable;               /// custom string available
     char                    resp[LE_ATDEFS_RESPONSE_MAX_BYTES];  ///< string value
 }
 FinalRsp_t;
@@ -370,20 +364,25 @@ FinalRsp_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    Device_t                device;             ///< data of the connected device
-    le_atServer_DeviceRef_t ref;                ///< reference of the device context
-    char                    currentCmd[LE_ATDEFS_COMMAND_MAX_LEN];
-    uint32_t                indexRead;
-    uint32_t                parseIndex;
-    CmdParser_t             cmdParser;
-    FinalRsp_t              finalRsp;
-    bool                    processing;         ///< is device peocessed?
-    le_dls_List_t           unsolicitedList;
-    bool                    isFirstIntermediate;
-    RspState_t              rspState;
-    le_msg_SessionRef_t     sessionRef;         ///< session reference
-    bool                    suspended;          /// is device in data mode?
-    bool                    echo;               /// is echo enabled
+    Device_t                device;                               ///< data of the connected device
+    le_atServer_DeviceRef_t ref;                                  ///< reference of the device
+    char                    currentCmd[LE_ATDEFS_COMMAND_MAX_LEN];///< input buffer
+    uint32_t                indexRead;                            ///< last read character position
+                                                                  ///< in currentCmd
+    uint32_t                parseIndex;                           ///< current index in currentCmd
+    CmdParser_t             cmdParser;                            ///< parsing context
+    FinalRsp_t              finalRsp;                             ///< final response to be sent
+    bool                    processing;                           ///< is an AT command in progress
+                                                                  ///< on the device
+    le_dls_List_t           unsolicitedList;                      ///< unsolicited list to be sent
+                                                                  ///< when the AT command will be
+                                                                  ///< over
+    bool                    isFirstIntermediate;                  ///< is first intermediate sent
+    RspState_t              rspState;                             ///< sending response state
+    le_atServer_BridgeRef_t bridgeRef;                            ///< bridge reference
+    le_msg_SessionRef_t     sessionRef;                           ///< session reference
+    bool                    suspended;                            ///< is device in data mode
+    bool                    echo;                                 /// is echo enabled
 }
 DeviceContext_t;
 
@@ -791,6 +790,39 @@ static void SendUnsolRsp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create a modem AT command using the ATBridge.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CreateModemCommand
+(
+    CmdParser_t* cmdParserPtr,
+    char*        atCmdPtr
+)
+{
+    if ( bridge_Create(atCmdPtr) != LE_OK )
+    {
+        LE_ERROR("Error in AT command creation");
+        return LE_FAULT;
+    }
+
+    cmdParserPtr->currentCmdPtr = le_hashmap_Get(CmdHashMap,
+                                                 atCmdPtr);
+
+    if ( cmdParserPtr->currentCmdPtr == NULL )
+    {
+        LE_ERROR("At command still not exists");
+        return LE_FAULT;
+    }
+
+    (cmdParserPtr->currentCmdPtr)->bridgeCmd = true;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the AT command context
  *
  */
@@ -800,20 +832,37 @@ static le_result_t GetAtCmdContext
     CmdParser_t* cmdParserPtr
 )
 {
+    DeviceContext_t* devPtr = CONTAINER_OF(cmdParserPtr, DeviceContext_t, cmdParser);
+
     if (cmdParserPtr->currentCmdPtr == NULL)
     {
         cmdParserPtr->currentCmdPtr = le_hashmap_Get(CmdHashMap, cmdParserPtr->currentAtCmdPtr);
 
-        if (( cmdParserPtr->currentCmdPtr == NULL ) ||
-            ( cmdParserPtr->currentCmdPtr && cmdParserPtr->currentCmdPtr->processing ))
+        if ( cmdParserPtr->currentCmdPtr == NULL )
         {
-            LE_DEBUG("AT command not found %s", cmdParserPtr->currentAtCmdPtr);
+            LE_DEBUG("AT command not found");
+            if ( devPtr->bridgeRef )
+            {
+                if (( CreateModemCommand(cmdParserPtr, cmdParserPtr->currentAtCmdPtr) != LE_OK ) ||
+                    ( cmdParserPtr->currentCmdPtr == NULL ))
+                {
+                    LE_ERROR("At command still not exists");
+                    return LE_FAULT;
+                }
+            }
+            else
+            {
+                return LE_FAULT;
+            }
+        }
+        else if ( cmdParserPtr->currentCmdPtr->processing )
+        {
+            LE_DEBUG("AT command currently in processing");
             return LE_FAULT;
         }
 
         cmdParserPtr->currentCmdPtr->processing = true;
 
-        DeviceContext_t* devPtr = CONTAINER_OF(cmdParserPtr, DeviceContext_t, cmdParser);
         cmdParserPtr->currentCmdPtr->deviceRef = devPtr->ref;
     }
 
@@ -909,7 +958,7 @@ static le_result_t ParseContinue
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get a parameter from basic command (general case)
+ * AT parser transition (Get a parameter from basic format commands)
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -934,6 +983,12 @@ static le_result_t ParseBasicCmdParam
             else
             {
                 tokenQuote = true;
+            }
+
+            // If "bridge command", keep the quote
+            if ((cmdParserPtr->currentCmdPtr)->bridgeCmd)
+            {
+                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
             }
         }
         else
@@ -1142,7 +1197,25 @@ static le_result_t ParseBasicEnd
 
 //--------------------------------------------------------------------------------------------------
 /**
- * AT parser transition (treatment of a basic command)
+ * Basic format command found, update command context
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void BasicCmdFound
+(
+    CmdParser_t* cmdParserPtr
+)
+{
+    DeviceContext_t* devPtr = CONTAINER_OF(cmdParserPtr, DeviceContext_t, cmdParser);
+
+    cmdParserPtr->currentCmdPtr->deviceRef = devPtr->ref;
+    cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_ACT;
+    cmdParserPtr->currentCmdPtr->processing = true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT parser transition (treatment of a basic format commands)
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1160,7 +1233,7 @@ static le_result_t ParseBasic
     }
 
     uint32_t len = cmdParserPtr->currentCharPtr-cmdParserPtr->currentAtCmdPtr+1;
-
+    char* initialPosPtr = cmdParserPtr->currentCharPtr;
     char atCmd[len];
     memset(atCmd,0,len);
     strncpy(atCmd, cmdParserPtr->currentAtCmdPtr, len-1);
@@ -1176,16 +1249,35 @@ static le_result_t ParseBasic
         }
         else
         {
-            DeviceContext_t* devPtr = CONTAINER_OF(cmdParserPtr, DeviceContext_t, cmdParser);
-            cmdParserPtr->currentCmdPtr->deviceRef = devPtr->ref;
-
-            cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_ACT;
-            cmdParserPtr->currentCmdPtr->processing = true;
+            BasicCmdFound(cmdParserPtr);
 
             cmdParserPtr->currentCharPtr--;
 
             return LE_OK;
         }
+    }
+
+    DeviceContext_t* devPtr = CONTAINER_OF(cmdParserPtr, DeviceContext_t, cmdParser);
+
+    if ( devPtr->bridgeRef )
+    {
+        //Reset the pointer to its initial value
+        cmdParserPtr->currentCharPtr = initialPosPtr;
+
+        strncpy(atCmd, cmdParserPtr->currentAtCmdPtr, len-1);
+
+        if (( CreateModemCommand(cmdParserPtr, atCmd) != LE_OK ) ||
+            ( cmdParserPtr->currentCmdPtr == NULL ))
+        {
+            LE_ERROR("At command still not exists");
+            return LE_FAULT;
+        }
+
+        BasicCmdFound(cmdParserPtr);
+
+        cmdParserPtr->currentCharPtr--;
+
+        return LE_OK;
     }
 
     return LE_FAULT;
@@ -1215,7 +1307,7 @@ static le_result_t ParseEqual
 
 //--------------------------------------------------------------------------------------------------
 /**
- * AT parser transition (treat a parameter for extended commands)
+ * AT parser transition (treat a parameter for extended format commands)
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1256,6 +1348,12 @@ static le_result_t ParseParam
             {
                 tokenQuote = true;
             }
+
+            // If "bridge command", keep the quote
+            if ((cmdParserPtr->currentCmdPtr)->bridgeCmd)
+            {
+                paramPtr->param[index++] = *cmdParserPtr->currentCharPtr;
+            }
         }
         else
         {
@@ -1283,8 +1381,9 @@ static le_result_t ParseParam
             loop = false;
         }
 
-        if (( *cmdParserPtr->currentCharPtr == AT_TOKEN_COMMA ) ||
-            ( *cmdParserPtr->currentCharPtr == AT_TOKEN_SEMICOLON ))
+        if ((tokenQuote == false) &&
+            (( *cmdParserPtr->currentCharPtr == AT_TOKEN_COMMA ) ||
+             ( *cmdParserPtr->currentCharPtr == AT_TOKEN_SEMICOLON )))
         {
             loop = false;
             cmdParserPtr->currentCharPtr--;
@@ -1481,6 +1580,12 @@ static void ParseAtCmd
                                                         cmdParserPtr->cmdParser);
             devPtr->finalRsp.final = LE_ATSERVER_ERROR;
             devPtr->finalRsp.customStringAvailable = false;
+
+            if (cmdParserPtr->currentCmdPtr)
+            {
+                cmdParserPtr->currentCmdPtr->processing = false;
+            }
+
             SendFinalRsp(devPtr);
 
             return;
@@ -1900,6 +2005,52 @@ le_result_t le_atServer_Resume
     return LE_OK;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the bridge reference on a AT command in progress.
+ *
+ * @return
+ *      - Reference to the requested device.
+ *      - NULL if the device is not available.
+ *
+ * @note
+ *  This function internal, not exposed as API
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_GetBridgeRef
+(
+    le_atServer_CmdRef_t     commandRef,
+    le_atServer_BridgeRef_t* bridgeRefPtr
+)
+{
+    ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
+
+    if (cmdPtr == NULL)
+    {
+        LE_ERROR("Bad reference");
+        return LE_FAULT;
+    }
+
+    if (cmdPtr->bridgeCmd && cmdPtr->processing)
+    {
+        DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, cmdPtr->deviceRef);
+
+        if (devPtr == NULL)
+        {
+            LE_ERROR("Bad device reference");
+            return LE_FAULT;
+        }
+
+        *bridgeRefPtr = devPtr->bridgeRef;
+
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function opens an AT server session on the requested device.
@@ -2059,8 +2210,7 @@ le_result_t le_atServer_Delete
         ///< [IN] AT command reference
 )
 {
-    ATCmdSubscribed_t* cmdPtr =
-        le_ref_Lookup(SubscribedCmdRefMap, commandRef);
+    ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
 
     if (!cmdPtr)
     {
@@ -2077,33 +2227,6 @@ le_result_t le_atServer_Delete
     le_mem_Release(cmdPtr);
 
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function sets the device(s) where the specified AT command is available.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to set the device.
- *
- * @note If the AT command is available for all devices (i.e. availableDevice argument is set to
- * LE_ATSERVER_ALL_DEVICES), the "device" argument is unused.
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_atServer_SetDevice
-(
-    le_atServer_CmdRef_t commandRef,
-        ///< [IN] AT command reference
-
-    le_atServer_AvailableDevice_t availableDevice,
-        ///< [IN] device available for the AT command
-
-    le_atServer_DeviceRef_t device
-        ///< [IN] device reference where the AT command is available
-)
-{
-    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2275,6 +2398,45 @@ le_result_t le_atServer_GetCommandName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function can be used to get the device reference in use for an AT command specified with
+ * its reference.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_GetDevice
+(
+    le_atServer_CmdRef_t commandRef,
+        ///< [IN] AT command reference
+
+    le_atServer_DeviceRef_t* deviceRefPtr
+        ///< [OUT] Device reference
+)
+{
+    ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
+
+    if ((cmdPtr == NULL) || (deviceRefPtr == NULL))
+    {
+        LE_ERROR("Bad command reference");
+        return LE_FAULT;
+    }
+
+    if (!cmdPtr->processing)
+    {
+        LE_ERROR("Command not processing");
+        return LE_FAULT;
+    }
+
+    *deviceRefPtr = cmdPtr->deviceRef;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function can be used to send an intermediate response.
  *
  * @return
@@ -2311,6 +2473,12 @@ le_result_t le_atServer_SendIntermediateResponse
     if (devPtr == NULL)
     {
         LE_ERROR("Bad device reference");
+        return LE_FAULT;
+    }
+
+    if (intermediateRspPtr == NULL)
+    {
+        LE_ERROR("No intermediate response string");
         return LE_FAULT;
     }
 
@@ -2366,7 +2534,20 @@ le_result_t le_atServer_SendFinalResponse
 
     devPtr->finalRsp.final = final;
     devPtr->finalRsp.customStringAvailable = customStringAvailable;
-    strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES );
+
+    if (customStringAvailable)
+    {
+        if (finalRspPtr)
+        {
+            strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES );
+        }
+        else
+        {
+            LE_ERROR("customStringAvailable set but finalRspPtr NULL !");
+            return LE_FAULT;
+        }
+    }
+
 
     // clean AT command context, not in use now
     le_dls_Link_t* linkPtr;
@@ -2444,8 +2625,10 @@ le_result_t le_atServer_SendUnsolicitedResponse
         }
     }
 
+
     return LE_OK;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2507,6 +2690,147 @@ le_result_t le_atServer_DisableEcho
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function opens a AT commands server bridge.
+ * All unknown AT commands will be sent on this alternative file descriptor thanks to the AT client
+ * Service.
+ *
+ * @return
+ *      - Reference to the requested bridge.
+ *      - NULL if the device can't be bridged
+ */
+//--------------------------------------------------------------------------------------------------
+le_atServer_BridgeRef_t le_atServer_OpenBridge
+(
+    int fd
+        ///< [IN] File descriptor.
+)
+{
+    le_atServer_BridgeRef_t bridgeRef = bridge_Open(fd);
+
+    if (bridgeRef == NULL)
+    {
+        LE_ERROR("Error during bridge creation");
+    }
+
+    return bridgeRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function closes an opened bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to close the bridge.
+ *      - LE_BUSY          The bridge is in use (devices references have to be removed first).
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_CloseBridge
+(
+    le_atServer_BridgeRef_t bridgeRef
+        ///< [IN] Bridge refence
+)
+{
+    return bridge_Close(bridgeRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds a device to an opened bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BUSY          The device is already used by the bridge.
+ *      - LE_FAULT         The function failed to add the device to the bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_AddDeviceToBridge
+(
+    le_atServer_DeviceRef_t deviceRef,
+        ///< [IN] Device reference to add to the bridge
+
+    le_atServer_BridgeRef_t bridgeRef
+        ///< [IN] Bridge refence
+)
+{
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, deviceRef);
+    le_result_t res;
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad device reference");
+        return LE_FAULT;
+    }
+
+    if (devPtr->bridgeRef != NULL)
+    {
+        return LE_BUSY;
+    }
+
+    if ( (res = bridge_AddDevice(deviceRef, bridgeRef)) != LE_OK )
+    {
+        return res;
+    }
+
+    devPtr->bridgeRef = bridgeRef;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function removes a device from a bridge
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+        - LE_NOT_FOUND     The device is not isued by the specified bridge
+ *      - LE_FAULT         The function failed to add the device to the bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_RemoveDeviceFromBridge
+(
+    le_atServer_DeviceRef_t deviceRef,
+        ///< [IN] Device reference to add to the bridge
+
+    le_atServer_BridgeRef_t bridgeRef
+        ///< [IN] Bridge refence
+)
+{
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, deviceRef);
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad device reference");
+        return LE_FAULT;
+    }
+
+    if (devPtr->bridgeRef == NULL)
+    {
+        // Device not bridge
+        LE_ERROR("Device not bridged");
+        return LE_FAULT;
+    }
+
+    if (devPtr->cmdParser.currentCmdPtr
+        && devPtr->cmdParser.currentCmdPtr->processing
+        && devPtr->cmdParser.currentCmdPtr->bridgeCmd)
+    {
+        return LE_BUSY;
+    }
+
+    if (bridge_RemoveDevice(deviceRef, bridgeRef) != LE_OK)
+    {
+        return LE_FAULT;
+    }
+
+    devPtr->bridgeRef = NULL;
+
+    return LE_OK;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The COMPONENT_INIT intialize the AT Server Component when Legato start
@@ -2547,4 +2871,6 @@ COMPONENT_INIT
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(
         le_atServer_GetServiceRef(), CloseSessionEventHandler, NULL);
+
+    bridge_Init();
 }

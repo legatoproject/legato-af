@@ -458,9 +458,8 @@ static void CloseCmdHandler
         LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
 
         break;
-    // in case of an action command just close the session
-    // we cannot send a response, the closing is in progress
     case LE_ATSERVER_TYPE_ACT:
+        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
         LE_ASSERT(le_atServer_Close(atSessionPtr->devRef) == LE_OK);
         break;
 
@@ -820,6 +819,7 @@ void* AtServer
     // start the server
     AtSession.devRef = le_atServer_Open(dup(ServerData.connFd));
     LE_ASSERT(AtSession.devRef != NULL);
+    sharedDataPtr->devRef = AtSession.devRef;
 
     // Echo function tests
     LE_ASSERT(le_atServer_EnableEcho((le_atServer_DeviceRef_t)0xdeadbeef)

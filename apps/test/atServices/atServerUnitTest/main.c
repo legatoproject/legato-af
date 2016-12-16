@@ -19,7 +19,29 @@
 //--------------------------------------------------------------------------------------------------
 static SharedData_t SharedData;
 
-void* AtServer(void* contextPtr);
+//--------------------------------------------------------------------------------------------------
+/**
+ * server thread function
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void* AtServer
+(
+    void* contextPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to test the AT server bridge feature.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t Testle_atServer_Bridge
+(
+    int socketFd,
+    int epollFd,
+    SharedData_t* sharedDataPtr
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -46,13 +68,13 @@ static char* PrettyPrint
     {
         switch (*swapPtr)
         {
-        case '\r':
-            *swapPtr = '<';
+            case '\r':
+                *swapPtr = '<';
             break;
-        case '\n':
-            *swapPtr = '>';
+            case '\n':
+                *swapPtr = '>';
             break;
-        default: break;
+          default: break;
         }
         swapPtr++;
     }
@@ -62,15 +84,14 @@ static char* PrettyPrint
 
 //--------------------------------------------------------------------------------------------------
 /**
- * send an AT command and test on an expected result
+ * Test on an expected result
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t SendCommandsAndTest
+le_result_t TestResponses
 (
     int fd,
     int epollFd,
-    const char* commandsPtr,
     const char* expectedResponsePtr
 )
 {
@@ -80,18 +101,6 @@ static le_result_t SendCommandsAndTest
     int offset = 0;
     int count = 0;
     ssize_t size = 0;
-
-    memset(buf, 0 , DSIZE);
-
-    snprintf(buf, strlen(commandsPtr)+2, "%s\r", commandsPtr);
-
-    LE_INFO("Commands: %s", PrettyPrint(buf));
-
-    if (write(fd, buf, strlen(buf)) == -1)
-    {
-        LE_ERROR("write failed: %s", strerror(errno));
-        return LE_IO_ERROR;
-    }
 
     count = strlen(expectedResponsePtr);
     memset(buf, 0 , DSIZE);
@@ -148,6 +157,37 @@ static le_result_t SendCommandsAndTest
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * send an AT command and test on an expected result
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SendCommandsAndTest
+(
+    int fd,
+    int epollFd,
+    const char* commandsPtr,
+    const char* expectedResponsePtr
+)
+{
+    char buf[DSIZE];
+
+    memset(buf, 0 , DSIZE);
+
+    snprintf(buf, strlen(commandsPtr)+2, "%s\r", commandsPtr);
+
+    LE_INFO("Commands: %s", PrettyPrint(buf));
+
+    if (write(fd, buf, strlen(buf)) == -1)
+    {
+        LE_ERROR("write failed: %s", strerror(errno));
+        return LE_IO_ERROR;
+    }
+
+    return TestResponses(fd, epollFd, expectedResponsePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -513,6 +553,13 @@ static void* AtHost
         goto err;
     }
 
+    // Test bridge feature
+    ret = Testle_atServer_Bridge(socketFd, epollFd, sharedDataPtr);
+    if (ret)
+    {
+        goto err;
+    }
+
     ret = SendCommandsAndTest(socketFd, epollFd, "AT+DEL="
                 "\"AT\",\"ATI\",\"AT+CBC\",\"AT+ABCD\",\"ATA\",\"AT&F\","
                 "\"ATS\",\"ATV\",\"AT&C\",\"AT&D\",\"ATE\",\"AT+DATA\"",
@@ -569,7 +616,6 @@ static void* AtHost
         return (void *)&errno;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * main of the test
@@ -578,8 +624,8 @@ static void* AtHost
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    le_thread_Ref_t atServerThread;
     le_thread_Ref_t atHostThread;
+    le_thread_Ref_t atServerThread;
     int* retVal;
 
     // To reactivate for all DEBUG logs
@@ -594,6 +640,7 @@ COMPONENT_INIT
     SharedData.ready = false;
 
     atServerThread = le_thread_Create("atServerThread", AtServer, (void *)&SharedData);
+    SharedData.atServerThread = atServerThread;
     atHostThread = le_thread_Create("atHostThread", AtHost, (void *)&SharedData);
 
     le_thread_SetJoinable(atHostThread);

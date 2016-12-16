@@ -13,6 +13,18 @@
  * unsolicited responses).
  * This service can be subscribed to by several apps simultaneously.
  *
+ * @section le_atClient_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b atService.
+ *
+ * Here's a code sample binding to the AT commands server:
+ * @verbatim
+   bindings:
+   {
+      atClientTest.atClientTestComp.le_atClient -> atService.le_atClient
+   }
+   @endverbatim
+ *
  * @section atClient_binding Device Binding
  *
  * le_atClient_Start() must be called to bind a specific device with the ATClient.

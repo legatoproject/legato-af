@@ -1,61 +1,57 @@
-#include "le_atServer_interface.h"
-#include "le_atClient_interface.h"
-
-#undef LE_KILL_CLIENT
-#define LE_KILL_CLIENT LE_WARN
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the client session reference for the current message
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionRef_t le_atServer_GetClientSessionRef
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the server service reference
- */
-//--------------------------------------------------------------------------------------------------
-le_msg_ServiceRef_t le_atServer_GetServiceRef
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Advertise the server service
- */
-//--------------------------------------------------------------------------------------------------
-void le_atServer_AdvertiseService
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add service open handler
+/** @file le_atServer_local.h
  *
+ * Implementation of AT commands server API.
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
-//--------------------------------------------------------------------------------------------------
-le_msg_SessionEventHandlerRef_t AddServiceOpenHandler
-(
-    le_msg_ServiceRef_t serviceRef,
-    le_msg_SessionEventHandler_t handlerFunc,
-    void *contextPtr
-);
+
+#ifndef LEGATO_LE_ATSERVER_LOCAL_INCLUDE_GUARD
+#define LEGATO_LE_ATSERVER_LOCAL_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add service close handler
- *
+ * Device pool size
  */
 //--------------------------------------------------------------------------------------------------
-le_msg_SessionEventHandlerRef_t AddServiceCloseHandler
+#define DEVICE_POOL_SIZE    2
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max length of thread name
+ */
+//--------------------------------------------------------------------------------------------------
+#define THREAD_NAME_MAX_LENGTH  30
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT commands pool size
+ */
+//--------------------------------------------------------------------------------------------------
+#define CMD_POOL_SIZE       100
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is character a letter ?
+ */
+//--------------------------------------------------------------------------------------------------
+#define IS_CHAR(X)              ((X>='A')&&(X<='Z'))||((X>='a')&&(X<='z')) /*[A-Z]||[a-z]*/
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the bridge reference on a AT command in progress.
+ *
+ * @return
+ *      - Reference to the requested device.
+ *      - NULL if the device is not available.
+ *
+ * @note
+ *  This function internal, not exposed as API
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_GetBridgeRef
 (
-    le_msg_ServiceRef_t serviceRef,
-    le_msg_SessionEventHandler_t handlerFunc,
-    void *contextPtr
+    le_atServer_CmdRef_t     commandRef,
+    le_atServer_BridgeRef_t* bridgeRefPtr
 );
+
+#endif //LEGATO_LE_ATSERVER_LOCAL_INCLUDE_GUARD

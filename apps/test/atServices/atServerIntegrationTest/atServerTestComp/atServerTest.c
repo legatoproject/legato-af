@@ -4,6 +4,14 @@
  * Use a TCP socket to connect to the atServer:
  * Open a connection (with telnet for instance) on port 1234
  *
+ * The AT server bridge can be activated thanks to the AT command AT+BRIDGE:
+ * - AT+BRIDGE="OPEN" opens the bridge
+ * - AT+BRIDGE="ADD" adds the current device to the bridge
+ * - AT+BRIDGE="REMOVE" removes the current device from the bridge
+ * - AT+BRIDGE="CLOSE" closes the current device to the bridge
+ * note that the bridge is opened on the device /dev/ttyAT (directed to the modem) and may have to
+ * be changed depending on the used target.
+ *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
  */
@@ -15,6 +23,13 @@
 #include <netinet/in.h>
 
 #define PARAM_MAX   10
+
+#define NB_CLIENT_MAX 4
+
+#define STRING_OPEN "OPEN"
+#define STRING_CLOSE "CLOSE"
+#define STRING_ADD "ADD"
+#define STRING_REMOVE "REMOVE"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -29,6 +44,7 @@ typedef struct
     void*                               contextPtr;
 }
 AtCmd_t;
+
 
 //------------------------------------------------------------------------------
 /**
@@ -52,8 +68,8 @@ typedef struct
 }
 DialContext_t;
 
-static le_atServer_DeviceRef_t DevRef = NULL;
 static DialContext_t DialContext;
+static le_atServer_BridgeRef_t BridgeRef = NULL;
 
 static void AtCmdHandler
 (
@@ -119,6 +135,14 @@ static void CloseHandler
     void* contextPtr
 );
 
+static void AtBridgeHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+);
+
 static AtCmd_t AtCmdCreation[] =
 {
     {
@@ -169,6 +193,12 @@ static AtCmd_t AtCmdCreation[] =
         .handlerPtr = AthCmdHandler,
         .contextPtr = &DialContext
 
+    },
+    {
+        .atCmdPtr = "AT+BRIDGE",
+        .cmdRef = NULL,
+        .handlerPtr = AtBridgeHandler,
+        .contextPtr = NULL
     },
 };
 
@@ -318,9 +348,12 @@ static void CloseHandler
 {
     LE_INFO("Closing Server Session");
 
-    LE_ASSERT(le_atServer_Close(DevRef) == LE_OK);
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    le_atServer_DeviceRef_t devRef = NULL;
 
-    exit(0);
+    LE_ASSERT(le_atServer_GetDevice(commandRef, &devRef) == LE_OK);
+
+    LE_ASSERT(le_atServer_Close(devRef) == LE_OK);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -348,6 +381,9 @@ static void AteCmdHandler
     {
         PrepareHandler(commandRef, type, parametersNumber, contextPtr);
 
+        le_atServer_DeviceRef_t devRef = NULL;
+        LE_ASSERT(le_atServer_GetDevice(commandRef, &devRef) == LE_OK);
+
         if (LE_ATSERVER_TYPE_PARA == type)
         {
             memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
@@ -357,11 +393,11 @@ static void AteCmdHandler
                                                 LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
             if (0 == strncmp(param, "1", strlen("1")))
             {
-                LE_ASSERT(le_atServer_EnableEcho(DevRef) == LE_OK);
+                LE_ASSERT(le_atServer_EnableEcho(devRef) == LE_OK);
             }
             else if (0 == strncmp(param, "0", strlen("0")))
             {
-                LE_ASSERT(le_atServer_DisableEcho(DevRef) == LE_OK);
+                LE_ASSERT(le_atServer_DisableEcho(devRef) == LE_OK);
             }
             else
             {
@@ -550,7 +586,7 @@ error:
 
 //--------------------------------------------------------------------------------------------------
 /**
- * ATD command handler
+ * ATH command handler
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -573,13 +609,103 @@ static void AthCmdHandler
     }
     else
     {
+        le_atServer_DeviceRef_t devRef = NULL;
+        LE_ASSERT(le_atServer_GetDevice(commandRef, &devRef) == LE_OK);
+
         StopTimer(dialCtxPtr);
         dialCtxPtr->terminatedRsp = TERMINATED_OK;
-        dialCtxPtr->devRef = DevRef;
+        dialCtxPtr->devRef = devRef;
         dialCtxPtr->commandRef = commandRef;
         LE_ASSERT(le_mcc_HangUp(dialCtxPtr->testCallRef) == LE_OK);
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT+BRIDGE command handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AtBridgeHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    le_atServer_DeviceRef_t deviceRef;
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
+
+    PrepareHandler(commandRef, type, parametersNumber, contextPtr);
+
+    if (parametersNumber != 1)
+    {
+        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+        return;
+    }
+
+    // Get the deviceRef where the AT command was issued
+    LE_ASSERT(le_atServer_GetDevice(commandRef, &deviceRef) == LE_OK);
+
+    LE_ASSERT(le_atServer_GetParameter(commandRef,
+                                       0,
+                                       param,
+                                       LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
+
+    if (strncmp(param, STRING_OPEN, strlen(STRING_OPEN)) == 0)
+    {
+        if (BridgeRef == NULL)
+        {
+            // Start AT command bridge
+            int fdTtyAT = open("/dev/ttyAT", O_RDWR | O_NOCTTY | O_NONBLOCK);
+            BridgeRef = le_atServer_OpenBridge(fdTtyAT);
+            LE_ASSERT(BridgeRef != NULL);
+        }
+        else
+        {
+            goto error;
+        }
+    }
+    else if (strncmp(param, STRING_ADD, strlen(STRING_ADD)) == 0)
+    {
+        if (!BridgeRef)
+        {
+            goto error;
+        }
+
+        LE_ASSERT(le_atServer_AddDeviceToBridge(deviceRef,BridgeRef) == LE_OK);
+    }
+    else if (strncmp(param, STRING_REMOVE, strlen(STRING_REMOVE)) == 0)
+    {
+        if (!BridgeRef)
+        {
+            goto error;
+        }
+
+        LE_ASSERT(le_atServer_RemoveDeviceFromBridge(deviceRef,BridgeRef) == LE_OK);
+    }
+    else if (strncmp(param, STRING_CLOSE, strlen(STRING_CLOSE)) == 0)
+    {
+        if (!BridgeRef)
+        {
+            goto error;
+        }
+
+        LE_ASSERT(le_atServer_CloseBridge(BridgeRef) == LE_OK);
+        BridgeRef = NULL;
+    }
+
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+
+    return;
+
+error:
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -676,46 +802,32 @@ static void MyCallEventHandler
     }
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * The signal event handler function for SIGINT/SIGTERM when process dies.
- */
-//--------------------------------------------------------------------------------------------------
-static void SigHandler
-(
-    int sigNum
-)
-{
-    le_atServer_Close(DevRef);
-    exit(0);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * main of the test
+ * Socket thread.
  *
  */
 //--------------------------------------------------------------------------------------------------
-COMPONENT_INIT
+static void* SocketThread
+(
+    void* contextPtr
+)
 {
+    le_atServer_ConnectService();
+
+    int ret, optVal = 1;
+    struct sockaddr_in myAddress, clientAddress;
+    le_atServer_DeviceRef_t devRef = NULL;
     int sockFd;
     int connFd;
-    int ret, optVal = 1, i = 0;
-    struct sockaddr_in myAddress, clientAddress;
-
-    LE_INFO("======== Start atServer implementation Test ========");
-
-    // Register a signal event handler for SIGINT when user interrupts/terminates process
-    signal(SIGINT, SigHandler);
-    signal(SIGTERM, SigHandler);
 
     // Create the socket
     sockFd = socket (AF_INET, SOCK_STREAM, 0);
+
     if (sockFd < 0)
     {
         LE_ERROR("creating socket failed: %m");
-        return;
+        return NULL;
     }
 
     // set socket option
@@ -723,8 +835,9 @@ COMPONENT_INIT
     if (ret)
     {
         LE_ERROR("error setting socket option %m");
-        return;
+        return NULL;
     }
+
 
     memset(&myAddress,0,sizeof(myAddress));
 
@@ -737,18 +850,33 @@ COMPONENT_INIT
     if (ret)
     {
         LE_ERROR("%m");
-        return;
+        return NULL;
     }
 
     // Listen on the socket
-    listen(sockFd,1);
+    listen(sockFd, NB_CLIENT_MAX);
 
     socklen_t addressLen = sizeof(clientAddress);
 
-    connFd = accept(sockFd, (struct sockaddr *)&clientAddress, &addressLen);
+    while (1)
+    {
+        connFd = accept(sockFd, (struct sockaddr *)&clientAddress, &addressLen);
 
-    DevRef = le_atServer_Open(connFd);
-    LE_ASSERT(DevRef != NULL);
+        devRef = le_atServer_Open(connFd);
+        LE_ASSERT(devRef != NULL);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * main of the test
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+COMPONENT_INIT
+{
+    LE_INFO("AT server test starts");
+    int i = 0;
 
     // AT commands subscriptions
     while ( i < NUM_ARRAY_MEMBERS(AtCmdCreation) )
@@ -766,4 +894,9 @@ COMPONENT_INIT
 
     // Add a call handler
     le_mcc_AddCallEventHandler(MyCallEventHandler, &DialContext);
+
+    le_thread_Start(le_thread_Create("SocketThread",
+                                     SocketThread,
+                                     NULL));
 }
+

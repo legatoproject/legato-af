@@ -28,7 +28,7 @@ start: manual
 
 bindings:
 {
-    atServerTest.atServerTestComp.le_atServer -> atServer.le_atServer
+    atServerTest.atServerTestComp.le_atServer -> atService.le_atServer
     atServerTest.atServerTestComp.le_mcc -> modemService.le_mcc
 }
 

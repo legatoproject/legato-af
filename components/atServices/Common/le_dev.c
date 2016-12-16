@@ -143,43 +143,59 @@ static void PrintBuffer
     if(le_log_GetFilterLevel() == LE_LOG_DEBUG)
     {
         uint32_t i;
-        char dev[DSIZE];
-
+        uint32_t dataLen = 1;
         DevInfo.fd = fd;
 
-        if (GetDeviceInformation())
-        {
-            snprintf(dev, DSIZE, "%d", fd);
-        }
-        else
-        {
-            snprintf(dev, DSIZE, "%s", DevInfo.linkName);
-        }
-
-        LE_DEBUG("R/W (%d bytes) on %s", bufferSize, dev);
-
-        for(i=0; i<bufferSize; i++)
+        for(i=0;i<bufferSize;i++)
         {
             if (bufferPtr[i] == '\r' )
             {
-                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",
-                    dev, i, bufferPtr[i], "CR");
+                dataLen+=4;
             }
             else if (bufferPtr[i] == '\n')
             {
-                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",
-                    dev, i, bufferPtr[i], "LF");
+                dataLen+=4;
             }
             else if (bufferPtr[i] == 0x1A)
             {
-                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%s'",
-                    dev, i, bufferPtr[i], "CTRL+Z");
+                dataLen+=8;
             }
             else
             {
-                LE_DEBUG("'%s' -> [%d] '0x%.2x' '%c'",
-                    dev, i, bufferPtr[i], bufferPtr[i]);
+                dataLen+=1;
             }
+        }
+
+        char string[dataLen];
+        memset(string, 0, dataLen);
+
+        for(i=0;i<bufferSize;i++)
+        {
+            if (bufferPtr[i] == '\r' )
+            {
+                snprintf(string+strlen(string), dataLen-strlen(string), "<CR>");
+            }
+            else if (bufferPtr[i] == '\n')
+            {
+                snprintf(string+strlen(string), dataLen-strlen(string), "<LF>");
+            }
+            else if (bufferPtr[i] == 0x1A)
+            {
+                snprintf(string+strlen(string), dataLen-strlen(string), "<CTRL+Z>");
+            }
+            else
+            {
+                snprintf(string+strlen(string), dataLen-strlen(string), "%c", bufferPtr[i]);
+            }
+        }
+
+        if (GetDeviceInformation())
+        {
+            LE_DEBUG("'%d' -> %s", fd, string);
+        }
+        else
+        {
+            LE_DEBUG("'%s' -> %s", DevInfo.linkName, string);
         }
     }
 }
@@ -276,7 +292,7 @@ int32_t le_dev_Write
     DevInfo.fd = devicePtr->fd;
     if (!GetDeviceInformation())
     {
-        LE_INFO("%s", DevInfo.devInfoStr);
+        LE_DEBUG("%s", DevInfo.devInfoStr);
     }
 
     LE_FATAL_IF(devicePtr->fd==-1,"Write Handle error\n");
@@ -333,7 +349,7 @@ le_result_t le_dev_AddFdMonitoring
     DevInfo.fd = devicePtr->fd;
     if (!GetDeviceInformation())
     {
-        LE_INFO("%s", DevInfo.devInfoStr);
+        LE_DEBUG("%s", DevInfo.devInfoStr);
     }
 
     if (devicePtr->fdMonitor)
@@ -393,7 +409,7 @@ void le_dev_RemoveFdMonitoring
     DevInfo.fd = devicePtr->fd;
     if (!GetDeviceInformation())
     {
-        LE_INFO("%s", DevInfo.devInfoStr);
+        LE_DEBUG("%s", DevInfo.devInfoStr);
     }
 
     if (devicePtr->fdMonitor)

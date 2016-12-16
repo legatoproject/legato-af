@@ -3,6 +3,7 @@ requires:
     api:
     {
         atServices/le_atServer.api [types-only]
+        atServices/le_atClient.api [types-only]
     }
 }
 
@@ -10,6 +11,7 @@ requires:
 sources:
 {
     ${LEGATO_ROOT}/components/atServices/atServer/le_atServer.c
+    ${LEGATO_ROOT}/components/atServices/atServer/bridge.c
     ${LEGATO_ROOT}/components/atServices/Common/le_dev.c
     atServer_stub.c
 }
