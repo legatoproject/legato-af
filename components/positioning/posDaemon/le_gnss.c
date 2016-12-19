@@ -122,6 +122,7 @@ typedef struct le_gnss_PositionSample
     uint16_t        minutes;         ///< UTC Minutes into the hour [range 0..59].
     uint16_t        seconds;         ///< UTC Seconds into the minute [range 0..59].
     uint16_t        milliseconds;    ///< UTC Milliseconds into the second [range 0..999].
+    uint64_t        epochTime;          ///< Epoch time in milliseconds since Jan. 1, 1970
     bool            gpsTimeValid;    ///< if true, GPS time is set
     uint32_t        gpsWeek;         ///< GPS week number from midnight, Jan. 6, 1980.
     uint32_t        gpsTimeOfWeek;   ///< Amount of time in milliseconds into the GPS week.
@@ -551,6 +552,8 @@ static void GetPosSampleData
     posSampleDataPtr->minutes = paPosDataPtr->time.minutes;
     posSampleDataPtr->seconds = paPosDataPtr->time.seconds;
     posSampleDataPtr->milliseconds = paPosDataPtr->time.milliseconds;
+    // Epoch time
+    posSampleDataPtr->epochTime = paPosDataPtr->epochTime;
     // GPS time
     posSampleDataPtr->gpsTimeValid = paPosDataPtr->gpsTimeValid;
     posSampleDataPtr->gpsWeek = paPosDataPtr->gpsWeek;
@@ -1299,6 +1302,62 @@ le_result_t le_gnss_GetGpsTime
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the position sample's epoch time.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to acquire the epoch time (epoch time set to 0).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note The epoch time is the number of seconds elapsed since January 1, 1970
+ *       (midnight UTC/GMT), not counting leaps seconds.
+ *
+ * @note If the caller is passing an invalid position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetEpochTime
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint64_t* millisecondsPtr
+        ///< [OUT] Milliseconds since Jan. 1, 1970.
+)
+{
+    le_result_t result;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Check input pointers
+    if (millisecondsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    // Get the epoch time
+    if (0 != positionSamplePtr->epochTime)
+    {
+        result = LE_OK;
+        *millisecondsPtr = positionSamplePtr->epochTime;
+    }
+    else
+    {
+        result = LE_FAULT;
+        *millisecondsPtr = 0;
+    }
+    return result;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

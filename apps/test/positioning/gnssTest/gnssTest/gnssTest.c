@@ -132,6 +132,7 @@ static void PositionHandlerFunction
     uint16_t minutes;
     uint16_t seconds;
     uint16_t milliseconds;
+    uint64_t epochTime;
     // GPS time
     uint32_t gpsWeek;
     uint32_t gpsTimeOfWeek;
@@ -184,10 +185,16 @@ static void PositionHandlerFunction
                             , &milliseconds);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
+    // Get Epoch time
+    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
+
     // Display time/date format 13:45:30 2009-06-15
     LE_INFO("%02d:%02d:%02d %d-%02d-%02d,"
             , hours, minutes, seconds
             , year, month, day);
+
+    // Display epoch time
+    LE_INFO("epoch time: %ld:", (long int) epochTime);
 
     // Get GPS time
     result = le_gnss_GetGpsTime(positionSampleRef
@@ -461,8 +468,15 @@ static void TestLeGnssPositionHandler
 )
 {
     le_thread_Ref_t positionThreadRef;
+    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
+    uint64_t epochTime;
 
     LE_INFO("Start Test Testle_gnss_PositionHandlerTest");
+
+    // Get Epoch time, samples already present
+    LE_ASSERT((le_gnss_GetEpochTime(positionSampleRef, &epochTime)) == LE_OK);
+    // Display epoch time
+    LE_INFO("epoch time: %ld:", (long int) epochTime);
 
     LE_INFO("Start GNSS");
     LE_ASSERT((le_gnss_Start()) == LE_OK);
@@ -483,6 +497,13 @@ static void TestLeGnssPositionHandler
 
     // stop thread
     le_thread_Cancel(positionThreadRef);
+
+    // Get Epoch time, get last position sample
+    positionSampleRef = le_gnss_GetLastSampleRef();
+    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
+
+    // Display epoch time
+    LE_INFO("epoch time: %ld:", (long int) epochTime);
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);

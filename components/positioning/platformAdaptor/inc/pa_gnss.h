@@ -167,10 +167,11 @@ typedef struct {
     uint32_t           directionUncertainty;        ///< The direction uncertainty in degrees,
                                                     ///  with 1 decimal place
     // UTC time
-    bool               timeValid;                   ///< if true, time is set
-    pa_Gnss_Time_t     time;                        ///< The time of the fix
-    bool               dateValid;                   ///< if true, date is set
-    pa_Gnss_Date_t     date;                        ///< The date of the fix
+    bool               timeValid;          ///< if true, time is set
+    pa_Gnss_Time_t     time;               ///< The time of the fix
+    uint64_t           epochTime;          ///< Epoch time in milliseconds since Jan. 1, 1970
+    bool               dateValid;          ///< if true, date is set
+    pa_Gnss_Date_t     date;               ///< The date of the fix
     // GPS time
     bool               gpsTimeValid;        ///< if true, GPS time is set
     uint32_t           gpsWeek;             ///< GPS week number from midnight, Jan. 6, 1980.
