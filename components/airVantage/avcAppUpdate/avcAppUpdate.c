@@ -436,7 +436,17 @@ static bool IsHiddenApp
                 "fwupdateService",
                 "smsInboxService",
                 "gpioService",
-                "tools"
+                "tools",
+                "atService",
+                "atClient",
+                "atServer",
+                "spiService",
+                "devMode",
+                "wifiService",
+                "wifiClientTest",
+                "wifiApTest",
+                "wifiWebAp",
+                "wifi"
             };
 
         for (size_t i = 0; i < NUM_ARRAY_MEMBERS(appList); i++)
