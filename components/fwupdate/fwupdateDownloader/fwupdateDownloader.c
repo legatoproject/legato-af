@@ -61,6 +61,87 @@ static le_result_t CheckSystemState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function wait for a connection and perform the download of the image when
+ * a connection is done
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SocketEventHandler
+(
+    int fd
+)
+{
+    struct sockaddr_in clientAddress;
+    le_result_t result;
+    int connFd;
+
+    socklen_t addressLen = sizeof(clientAddress);
+
+    LE_INFO("waiting connection ...");
+    connFd = accept(fd, (struct sockaddr *)&clientAddress, &addressLen);
+
+    if (connFd == -1)
+    {
+        LE_ERROR("accept error: %m");
+    }
+    else
+    {
+        LE_INFO("Connected ...");
+
+        result = CheckSystemState();
+
+        if (result == LE_OK)
+        {
+            result = le_fwupdate_Download(connFd);
+
+            LE_INFO("Download result=%s", LE_RESULT_TXT(result));
+            if (result == LE_OK)
+            {
+                le_fwupdate_DualSysSwapAndSync();
+                // if this function returns so there is an error => do a SYNC
+                LE_ERROR("Swap And Sync failed -> Sync");
+                result = le_fwupdate_DualSysSync();
+                if (result != LE_OK)
+                {
+                    LE_ERROR("SYNC failed");
+                }
+                // TODO send an error message to the host
+            }
+        }
+        else
+        {
+            LE_ERROR("Connection error %d", result);
+        }
+
+        close(connFd);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function call the appropriate handler on event reception
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SocketListenerHandler
+(
+    int fd,
+    short events
+)
+{
+    if (events & POLLERR)
+    {
+        LE_ERROR("socket Error");
+    }
+
+    if (events & POLLIN)
+    {
+        SocketEventHandler(fd);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the FW UPDATE DOWNLOADER module.
  */
 //--------------------------------------------------------------------------------------------------
@@ -69,7 +150,6 @@ COMPONENT_INIT
     struct sockaddr_in myAddress;
     int ret, optVal = 1;
     int sockFd;
-    int connFd;
 
     LE_INFO("FW UPDATE DOWNLOADER starts");
 
@@ -116,51 +196,5 @@ COMPONENT_INIT
         return;
     }
 
-    while(1)
-    {
-        struct sockaddr_in clientAddress;
-        le_result_t result;
-
-        socklen_t addressLen = sizeof(clientAddress);
-
-        LE_INFO("waiting connection ...");
-        connFd = accept(sockFd, (struct sockaddr *)&clientAddress, &addressLen);
-
-        if (connFd == -1)
-        {
-            LE_ERROR("accept error: %m");
-        }
-        else
-        {
-            LE_INFO("Connected ...");
-
-            result = CheckSystemState();
-
-            if (result == LE_OK)
-            {
-                result = le_fwupdate_Download(connFd);
-
-                LE_INFO("Download result=%s", LE_RESULT_TXT(result));
-                if (result == LE_OK)
-                {
-                    le_fwupdate_DualSysSwapAndSync();
-                    // if this function returns so there is an error => do a SYNC
-                    LE_ERROR("Swap And Sync failed -> Sync");
-                    result = le_fwupdate_DualSysSync();
-                    if (result != LE_OK)
-                    {
-                        LE_ERROR("SYNC failed");
-                    }
-                    // TODO send an error message to the host
-                }
-            }
-            else
-            {
-                LE_ERROR("Connection error %d", result);
-            }
-
-            close(connFd);
-        }
-    }
-    close(sockFd);
+    le_fdMonitor_Create("fwDownloaderMonitor", sockFd, SocketListenerHandler, POLLIN);
 }
