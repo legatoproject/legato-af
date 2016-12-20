@@ -1733,6 +1733,7 @@ static void RxNewData
     if (events & POLLRDHUP)
     {
         LE_INFO("fd %d: Connection reset by peer", fd);
+        le_dev_RemoveFdMonitoring(&devPtr->device);
     }
     else if (events & POLLIN)
     {

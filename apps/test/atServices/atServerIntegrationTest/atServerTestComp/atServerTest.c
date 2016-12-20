@@ -22,8 +22,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PARAM_MAX   10
-
 #define NB_CLIENT_MAX 4
 
 #define STRING_OPEN "OPEN"
@@ -45,32 +43,80 @@ typedef struct
 }
 AtCmd_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Call termination response
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    TERMINATED_NO_CARRIER_UNSOL,
+    TERMINATED_NO_CARRIER_FINAL,
+    TERMINATED_OK
+}
+CallTerminationResponse_t;
 
-//------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
  * Dial context
  *
  */
-//------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 typedef struct
 {
     le_atServer_DeviceRef_t     devRef;
     le_atServer_CmdRef_t        commandRef;
     le_mcc_CallRef_t            testCallRef;
     bool                        isCallRefCreated;
-    enum
-    {
-        TERMINATED_NO_CARRIER_UNSOL,
-        TERMINATED_NO_CARRIER_FINAL,
-        TERMINATED_OK
-    }                           terminatedRsp;
+    CallTerminationResponse_t   terminatedRsp;
     le_timer_Ref_t              timerRef;
 }
 DialContext_t;
 
-static DialContext_t DialContext;
-static le_atServer_BridgeRef_t BridgeRef = NULL;
+//--------------------------------------------------------------------------------------------------
+/**
+ * Device context
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_fdMonitor_Ref_t monitorRef;
+    le_atServer_DeviceRef_t devRef;
+    int fd;
+}
+DeviceCtx_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test context
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mem_PoolRef_t        devicesPool;
+    le_thread_Ref_t         mainThreadRef;
+    DialContext_t           dialContext;
+    le_atServer_BridgeRef_t bridgeRef;
+}
+TestCtx_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test global context
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static TestCtx_t TestCtx;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT Commands handlers declaration
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static void AtCmdHandler
 (
     le_atServer_CmdRef_t commandRef,
@@ -143,6 +189,12 @@ static void AtBridgeHandler
     void* contextPtr
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT Commands definition
+ *
+ */
+//--------------------------------------------------------------------------------------------------
 static AtCmd_t AtCmdCreation[] =
 {
     {
@@ -179,26 +231,26 @@ static AtCmd_t AtCmdCreation[] =
         .atCmdPtr = "ATA",
         .cmdRef = NULL,
         .handlerPtr = AtaCmdHandler,
-        .contextPtr = &DialContext
+        .contextPtr = &TestCtx.dialContext
     },
     {
         .atCmdPtr = "ATD",
         .cmdRef = NULL,
         .handlerPtr = AtdCmdHandler,
-        .contextPtr = &DialContext
+        .contextPtr = &TestCtx.dialContext
     },
     {
         .atCmdPtr = "ATH",
         .cmdRef = NULL,
         .handlerPtr = AthCmdHandler,
-        .contextPtr = &DialContext
+        .contextPtr = &TestCtx.dialContext
 
     },
     {
         .atCmdPtr = "AT+BRIDGE",
         .cmdRef = NULL,
         .handlerPtr = AtBridgeHandler,
-        .contextPtr = NULL
+        .contextPtr = &TestCtx
     },
 };
 
@@ -265,7 +317,7 @@ void PrepareHandler
     LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
 
     // Send parameters into an intermediate response
-    for (i = 0; i < parametersNumber && parametersNumber <= PARAM_MAX; i++)
+    for (i = 0; i < parametersNumber; i++)
     {
         memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
         LE_ASSERT(le_atServer_GetParameter(commandRef,
@@ -503,7 +555,7 @@ static void AtdCmdHandler
     int i;
     for (i=0; i < strlen(dialNumber)-1; i++)
     {
-        if (((dialNumber[i] < 0x30) || (dialNumber[i] > 0x39)) && (dialNumber[i] != '+'))
+        if (((dialNumber[i] < '0') || (dialNumber[i] > '9')) && (dialNumber[i] != '+'))
         {
             LE_ERROR("Invalid char %c", dialNumber[i]);
             goto error;
@@ -556,28 +608,21 @@ static void AtaCmdHandler
 {
     DialContext_t* dialCtxPtr = contextPtr;
 
-    if (dialCtxPtr->testCallRef == NULL)
-    {
-        goto error;
-    }
-    else
+    if (dialCtxPtr->testCallRef != NULL)
     {
         le_result_t res = le_mcc_Answer(dialCtxPtr->testCallRef);
 
-        if (res != LE_OK)
+        if (res == LE_OK)
         {
-            goto error;
+            LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
+                                                    LE_ATSERVER_OK,
+                                                    false,
+                                                    "") == LE_OK);
+
+            return;
         }
-
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                LE_ATSERVER_OK,
-                                                false,
-                                                "") == LE_OK);
-
-        return;
     }
 
-error:
     LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
                                             LE_ATSERVER_ERROR,
                                             true,
@@ -635,6 +680,14 @@ static void AtBridgeHandler
     void* contextPtr
 )
 {
+    TestCtx_t* testCtxPtr = contextPtr;
+
+    if (!testCtxPtr)
+    {
+        LE_ERROR("Bad context");
+        return;
+    }
+
     le_atServer_DeviceRef_t deviceRef;
     char param[LE_ATDEFS_PARAMETER_MAX_BYTES];
 
@@ -656,12 +709,12 @@ static void AtBridgeHandler
 
     if (strncmp(param, STRING_OPEN, strlen(STRING_OPEN)) == 0)
     {
-        if (BridgeRef == NULL)
+        if (testCtxPtr->bridgeRef == NULL)
         {
             // Start AT command bridge
             int fdTtyAT = open("/dev/ttyAT", O_RDWR | O_NOCTTY | O_NONBLOCK);
-            BridgeRef = le_atServer_OpenBridge(fdTtyAT);
-            LE_ASSERT(BridgeRef != NULL);
+            testCtxPtr->bridgeRef = le_atServer_OpenBridge(fdTtyAT);
+            LE_ASSERT(testCtxPtr->bridgeRef != NULL);
         }
         else
         {
@@ -670,31 +723,31 @@ static void AtBridgeHandler
     }
     else if (strncmp(param, STRING_ADD, strlen(STRING_ADD)) == 0)
     {
-        if (!BridgeRef)
+        if (!testCtxPtr->bridgeRef)
         {
             goto error;
         }
 
-        LE_ASSERT(le_atServer_AddDeviceToBridge(deviceRef,BridgeRef) == LE_OK);
+        LE_ASSERT(le_atServer_AddDeviceToBridge(deviceRef,testCtxPtr->bridgeRef) == LE_OK);
     }
     else if (strncmp(param, STRING_REMOVE, strlen(STRING_REMOVE)) == 0)
     {
-        if (!BridgeRef)
+        if (!testCtxPtr->bridgeRef)
         {
             goto error;
         }
 
-        LE_ASSERT(le_atServer_RemoveDeviceFromBridge(deviceRef,BridgeRef) == LE_OK);
+        LE_ASSERT(le_atServer_RemoveDeviceFromBridge(deviceRef,testCtxPtr->bridgeRef) == LE_OK);
     }
     else if (strncmp(param, STRING_CLOSE, strlen(STRING_CLOSE)) == 0)
     {
-        if (!BridgeRef)
+        if (!testCtxPtr->bridgeRef)
         {
             goto error;
         }
 
-        LE_ASSERT(le_atServer_CloseBridge(BridgeRef) == LE_OK);
-        BridgeRef = NULL;
+        LE_ASSERT(le_atServer_CloseBridge(testCtxPtr->bridgeRef) == LE_OK);
+        testCtxPtr->bridgeRef = NULL;
     }
 
     LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
@@ -721,6 +774,7 @@ static void MyCallEventHandler
 )
 {
     LE_INFO("callEvent %d", callEvent);
+
     DialContext_t* dialCtxPtr = contextPtr;
 
     if (callEvent == LE_MCC_EVENT_ALERTING)
@@ -804,6 +858,76 @@ static void MyCallEventHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Socket handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SocketHandler
+(
+    int   fd,
+    short events
+)
+{
+    LE_INFO("Host disconnected");
+
+    DeviceCtx_t* deviceCtxPtr = le_fdMonitor_GetContextPtr();
+
+    if (!deviceCtxPtr)
+    {
+        LE_ERROR("No device context");
+        return;
+    }
+
+    if (deviceCtxPtr->fd != fd)
+    {
+        LE_ERROR("Bad fd: %d (expected: %d)", fd, deviceCtxPtr->fd);
+        return;
+    }
+
+    if (POLLRDHUP == events)
+    {
+        le_atServer_Close(deviceCtxPtr->devRef);
+        le_fdMonitor_Delete(deviceCtxPtr->monitorRef);
+        close(deviceCtxPtr->fd);
+        le_mem_Release(deviceCtxPtr);
+    }
+    else
+    {
+        LE_ERROR("Unknown error %d", events);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add socket monitoring.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddMonitoring
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    DeviceCtx_t* deviceCtxPtr = param1Ptr;
+    LE_ASSERT(deviceCtxPtr != NULL);
+
+    char monitorName[30];
+    snprintf(monitorName, sizeof(monitorName), "monitor-%d", deviceCtxPtr->fd);
+
+    le_fdMonitor_Ref_t monitorRef = le_fdMonitor_Create(monitorName,
+                                                        deviceCtxPtr->fd,
+                                                        SocketHandler,
+                                                        POLLRDHUP);
+
+
+    deviceCtxPtr->monitorRef = monitorRef;
+
+    le_fdMonitor_SetContextPtr(monitorRef, deviceCtxPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Socket thread.
  *
  */
@@ -819,7 +943,7 @@ static void* SocketThread
     struct sockaddr_in myAddress, clientAddress;
     le_atServer_DeviceRef_t devRef = NULL;
     int sockFd;
-    int connFd;
+    TestCtx_t* testCtxPtr = contextPtr;
 
     // Create the socket
     sockFd = socket (AF_INET, SOCK_STREAM, 0);
@@ -860,10 +984,25 @@ static void* SocketThread
 
     while (1)
     {
+        int connFd;
+
         connFd = accept(sockFd, (struct sockaddr *)&clientAddress, &addressLen);
 
-        devRef = le_atServer_Open(connFd);
+        devRef = le_atServer_Open(dup(connFd));
         LE_ASSERT(devRef != NULL);
+
+        // Create device context and monitor the socket
+        DeviceCtx_t* deviceCtxPtr = le_mem_ForceAlloc(testCtxPtr->devicesPool);
+        LE_ASSERT(deviceCtxPtr != NULL);
+
+        deviceCtxPtr->devRef = devRef;
+        deviceCtxPtr->fd = connFd;
+
+        le_event_QueueFunctionToThread(testCtxPtr->mainThreadRef,
+                                       AddMonitoring,
+                                       deviceCtxPtr,
+                                       NULL);
+
     }
 }
 
@@ -878,6 +1017,14 @@ COMPONENT_INIT
     LE_INFO("AT server test starts");
     int i = 0;
 
+    memset(&TestCtx, 0, sizeof(TestCtx));
+
+    // Device pool allocation
+    TestCtx.devicesPool = le_mem_CreatePool("DevicesPool",sizeof(DeviceCtx_t));
+    le_mem_ExpandPool(TestCtx.devicesPool, NB_CLIENT_MAX);
+
+    TestCtx.mainThreadRef = le_thread_GetCurrent();
+
     // AT commands subscriptions
     while ( i < NUM_ARRAY_MEMBERS(AtCmdCreation) )
     {
@@ -890,13 +1037,11 @@ COMPONENT_INIT
         i++;
     }
 
-    memset(&DialContext,0,sizeof(DialContext));
-
     // Add a call handler
-    le_mcc_AddCallEventHandler(MyCallEventHandler, &DialContext);
+    le_mcc_AddCallEventHandler(MyCallEventHandler, &TestCtx.dialContext);
 
     le_thread_Start(le_thread_Create("SocketThread",
                                      SocketThread,
-                                     NULL));
+                                     &TestCtx));
 }
 
