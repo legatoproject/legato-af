@@ -60,7 +60,7 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
 
   2. ```cd``` into that directory
 
-  3. run ```make```
+  3. Run ```make```
 
 ##### To configure your bash shell's environment for the Legato application build tools
 
