@@ -75,6 +75,7 @@ typedef struct
     le_atClient_UnsolicitedResponseHandlerRef_t unsolHandlerRef;    ///< AT cleint unsolicited
                                                                     ///< handler refenrece
     le_sem_Ref_t                                semRef;             ///< semaphore reference
+    le_msg_SessionRef_t                         sessionRef;         ///< session reference
 }
 BridgeCtx_t;
 
@@ -825,6 +826,7 @@ le_atServer_BridgeRef_t bridge_Open
                                                                         1);
 
     threadNumber++;
+    bridgeCtxPtr->sessionRef = le_atServer_GetClientSessionRef();
 
     return bridgeCtxPtr->bridgeRef;
 }
@@ -952,4 +954,57 @@ le_result_t bridge_RemoveDevice
     }
 
     return LE_NOT_FOUND;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean the bridge context when the close session service handler is invoked
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void bridge_CleanContext
+(
+    le_msg_SessionRef_t sessionRef
+)
+{
+    le_ref_IterRef_t iter;
+
+    iter = le_ref_GetIterator(BridgesRefMap);
+
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        BridgeCtx_t* bridgePtr = (BridgeCtx_t*) le_ref_GetValue(iter);
+
+        if (!bridgePtr)
+        {
+            return;
+        }
+
+        if (sessionRef == bridgePtr->sessionRef)
+        {
+            // Release devices list
+            le_dls_Link_t* linkPtr = le_dls_Pop(&bridgePtr->devicesList);
+
+            while (NULL != linkPtr)
+            {
+                DeviceLink_t* devLinkPtr = CONTAINER_OF(linkPtr,
+                                                        DeviceLink_t,
+                                                        link);
+
+                if (LE_OK != le_atServer_UnlinkDeviceFromBridge(devLinkPtr->deviceRef,
+                                                                bridgePtr->bridgeRef))
+                {
+                    LE_ERROR("Unable to unlink device %p from bridge %p", devLinkPtr->deviceRef,
+                                                                          bridgePtr->bridgeRef);
+                }
+
+                le_mem_Release(devLinkPtr);
+
+                linkPtr = le_dls_Pop(&bridgePtr->devicesList);
+            }
+
+            LE_DEBUG("deleting bridgeRef %p", bridgePtr->bridgeRef);
+            le_mem_Release(bridgePtr);
+        }
+    }
 }

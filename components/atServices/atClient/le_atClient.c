@@ -1249,20 +1249,18 @@ static void UnsolicitedPoolDestructor
 )
 {
     Unsolicited_t* unsolicitedPtr = ptr;
-    le_dls_List_t list;
-    le_dls_Link_t link;
+    le_dls_List_t* listPtr;
+    le_dls_Link_t* linkPtr;
 
-    list = unsolicitedPtr->interfacePtr->unsolicitedList;
-    link = unsolicitedPtr->link;
+    listPtr = &unsolicitedPtr->interfacePtr->unsolicitedList;
+    linkPtr = &unsolicitedPtr->link;
 
     LE_DEBUG("Destroy unsolicited %s", unsolicitedPtr->unsolRsp);
 
-    if ( le_dls_IsInList(&list, &link) )
+    if ( le_dls_IsInList(listPtr, linkPtr) )
     {
-        le_dls_Remove(&list, &link);
+        le_dls_Remove(listPtr, linkPtr);
     }
-
-    le_ref_DeleteRef(UnsolRefMap, unsolicitedPtr->ref);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2051,6 +2049,8 @@ void le_atClient_RemoveUnsolicitedResponseHandler
                                    RemoveUnsolicited,
                                    (void*) unsolicitedPtr,
                                    (void*) NULL);
+
+        le_ref_DeleteRef(UnsolRefMap, addHandlerRef);
     }
 }
 

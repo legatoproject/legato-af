@@ -1864,6 +1864,12 @@ static le_result_t CloseServer
         le_mem_Release(unsolicitedPtr);
     }
 
+    // Remove from bridge
+    if (devPtr->bridgeRef)
+    {
+        le_atServer_RemoveDeviceFromBridge(devRef, devPtr->bridgeRef);
+    }
+
     le_ref_DeleteRef(DevicesRefMap, devPtr->ref);
 
     le_mem_Release(devPtr);
@@ -1900,6 +1906,9 @@ static void CloseSessionEventHandler
             }
         }
     }
+
+    // close associated bridge
+    bridge_CleanContext(sessionRef);
 
     iter = le_ref_GetIterator(DevicesRefMap);
     while (LE_OK == le_ref_NextNode(iter))
@@ -2051,6 +2060,45 @@ le_result_t le_atServer_GetBridgeRef
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function unlinks the device from the bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to unlink the device from the bridge.
+ *
+ * @note
+ *  This function internal, not exposed as API
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_UnlinkDeviceFromBridge
+(
+    le_atServer_DeviceRef_t deviceRef,
+    le_atServer_BridgeRef_t bridgeRef
+)
+{
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, deviceRef);
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad reference");
+        return LE_FAULT;
+    }
+
+    if (devPtr->bridgeRef == bridgeRef)
+    {
+        devPtr->bridgeRef = NULL;
+        return LE_OK;
+    }
+
+    LE_ERROR("Unable to unlink device %p from bridge %p, current association: %p",
+                                                    deviceRef, bridgeRef, devPtr->bridgeRef);
+
+    return LE_FAULT;
+
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2131,6 +2179,14 @@ le_result_t le_atServer_Close
         ///< [IN] device to be unbinded
 )
 {
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, devRef);
+
+    if (devPtr->processing)
+    {
+        LE_ERROR("Device busy");
+        return LE_BUSY;
+    }
+
     return CloseServer(devRef);
 }
 

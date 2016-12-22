@@ -398,12 +398,13 @@ static void CloseHandler
     void*                contextPtr
 )
 {
-    LE_INFO("Closing Server Session");
-
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
     le_atServer_DeviceRef_t devRef = NULL;
 
+    LE_INFO("Closing Server Session");
+
     LE_ASSERT(le_atServer_GetDevice(commandRef, &devRef) == LE_OK);
+
+    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
 
     LE_ASSERT(le_atServer_Close(devRef) == LE_OK);
 }

@@ -100,5 +100,15 @@ le_result_t bridge_RemoveDevice
     le_atServer_BridgeRef_t bridgeRef
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean the bridge context when the close session service handler is invoked
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void bridge_CleanContext
+(
+    le_msg_SessionRef_t sessionRef
+);
 
 #endif //LEGATO_LE_BRIDGE_INCLUDE_GUARD

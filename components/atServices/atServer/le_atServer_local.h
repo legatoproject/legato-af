@@ -54,4 +54,22 @@ le_result_t le_atServer_GetBridgeRef
     le_atServer_BridgeRef_t* bridgeRefPtr
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function unlinks the device from the bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to unlink the device from the bridge.
+ *
+ * @note
+ *  This function internal, not exposed as API
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_UnlinkDeviceFromBridge
+(
+    le_atServer_DeviceRef_t deviceRef,
+    le_atServer_BridgeRef_t bridgeRef
+);
+
 #endif //LEGATO_LE_ATSERVER_LOCAL_INCLUDE_GUARD
