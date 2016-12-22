@@ -422,11 +422,11 @@ static void CheckUnsolicited
             }
             else
             {
-                if (LE_ATDEFS_UNSOLICITED_MAX_LEN - strlen(unsolPtr->unsolBuffer) >= 2)
+                if (LE_ATDEFS_UNSOLICITED_MAX_BYTES - strlen(unsolPtr->unsolBuffer) > sizeof("\r\n"))
                 {
-                    snprintf( unsolPtr->unsolBuffer+strlen(unsolPtr->unsolBuffer),
-                   LE_ATDEFS_UNSOLICITED_MAX_BYTES,
-                    "\r\n" );
+                    snprintf(unsolPtr->unsolBuffer+strlen(unsolPtr->unsolBuffer),
+                             sizeof("\r\n") + 1,    // +1 for Null terminator
+                             "\r\n" );
                 }
 
                 unsolPtr->lineCounter++;
@@ -864,6 +864,7 @@ static bool CheckResponse
             if(lineSize>LE_ATDEFS_RESPONSE_MAX_BYTES)
             {
                 LE_ERROR("string too long");
+                le_mem_Release(newStringPtr);
                 return false;
             }
 
@@ -1451,7 +1452,7 @@ le_result_t le_atClient_SetCommand
         return LE_BAD_PARAMETER;
     }
 
-    strncpy(cmdPtr->cmd, commandPtr, sizeof(cmdPtr->cmd));
+    le_utf8_Copy(cmdPtr->cmd, commandPtr, sizeof(cmdPtr->cmd), NULL);
     return LE_OK;
 }
 
@@ -1494,20 +1495,13 @@ le_result_t le_atClient_SetIntermediateResponse
         while(interPtr != NULL)
         {
             RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
-            memset(newStringPtr,0,sizeof(RspString_t));
+            memset(newStringPtr, 0, sizeof(RspString_t));
 
-            if(strlen(interPtr)>LE_ATDEFS_RESPONSE_MAX_BYTES)
-            {
-                LE_DEBUG("%s is too long (%zd): Max size %d",interPtr,strlen(interPtr),
-                         LE_ATDEFS_RESPONSE_MAX_BYTES);
-                return LE_FAULT;
-            }
-
-            strncpy(newStringPtr->line,interPtr,LE_ATDEFS_RESPONSE_MAX_BYTES);
+            le_utf8_Copy(newStringPtr->line, interPtr, LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
 
             newStringPtr->link = LE_DLS_LINK_INIT;
 
-            le_dls_Queue(&(cmdPtr->ExpectintermediateResponseList),&(newStringPtr->link));
+            le_dls_Queue(&(cmdPtr->ExpectintermediateResponseList), &(newStringPtr->link));
 
             interPtr = strtok_r(NULL, "|", &savePtr);
         }
@@ -1515,9 +1509,9 @@ le_result_t le_atClient_SetIntermediateResponse
     else
     {
         RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
-        memset(newStringPtr,0,sizeof(RspString_t));
+        memset(newStringPtr, 0, sizeof(RspString_t));
         newStringPtr->link = LE_DLS_LINK_INIT;
-        le_dls_Queue(&(cmdPtr->ExpectintermediateResponseList),&(newStringPtr->link));
+        le_dls_Queue(&(cmdPtr->ExpectintermediateResponseList), &(newStringPtr->link));
 
     }
 
@@ -1564,14 +1558,7 @@ le_result_t le_atClient_SetFinalResponse
             RspString_t* newStringPtr = le_mem_ForceAlloc(RspStringPool);
             memset(newStringPtr,0,sizeof(RspString_t));
 
-            if(strlen(respPtr)>LE_ATDEFS_RESPONSE_MAX_BYTES)
-            {
-                LE_DEBUG("%s is too long (%zd): Max size %d",respPtr,strlen(respPtr),
-                            LE_ATDEFS_RESPONSE_MAX_BYTES);
-                return LE_FAULT;
-            }
-
-            strncpy(newStringPtr->line,respPtr,LE_ATDEFS_RESPONSE_MAX_BYTES);
+            le_utf8_Copy(newStringPtr->line,respPtr,LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
 
             newStringPtr->link = LE_DLS_LINK_INIT;
 
@@ -2005,7 +1992,7 @@ le_atClient_UnsolicitedResponseHandlerRef_t le_atClient_AddUnsolicitedResponseHa
     Unsolicited_t* unsolicitedPtr = le_mem_ForceAlloc(UnsolicitedPool);
 
     memset(unsolicitedPtr, 0 ,sizeof(Unsolicited_t));
-    strncpy(unsolicitedPtr->unsolRsp, unsolRsp, strlen(unsolRsp));
+    le_utf8_Copy(unsolicitedPtr->unsolRsp, unsolRsp, strlen(unsolRsp), NULL);
     unsolicitedPtr->lineCount    = lineCount;
     unsolicitedPtr->handlerPtr = handlerPtr;
     unsolicitedPtr->contextPtr = contextPtr;
@@ -2151,15 +2138,8 @@ le_atClient_DeviceRef_t le_atClient_Start
     le_thread_Start(newInterfacePtr->threadRef);
     le_sem_Wait(newInterfacePtr->waitingSemaphore);
 
-    if (newInterfacePtr != NULL)
-    {
-        newInterfacePtr->ref = le_ref_CreateRef(DevicesRefMap, newInterfacePtr);
-        return newInterfacePtr->ref;
-    }
-    else
-    {
-        return NULL;
-    }
+    newInterfacePtr->ref = le_ref_CreateRef(DevicesRefMap, newInterfacePtr);
+    return newInterfacePtr->ref;
 }
 
 //--------------------------------------------------------------------------------------------------

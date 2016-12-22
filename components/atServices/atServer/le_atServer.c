@@ -1636,9 +1636,10 @@ static void ParseBuffer
 
                         devPtr->currentCmd[devPtr->parseIndex] = '\0';
                         LE_DEBUG("Command found %s", devPtr->currentCmd);
-                        strncpy(devPtr->cmdParser.foundCmd,
-                                devPtr->currentCmd,
-                                LE_ATDEFS_COMMAND_MAX_LEN);
+                        le_utf8_Copy(devPtr->cmdParser.foundCmd,
+                                     devPtr->currentCmd,
+                                     LE_ATDEFS_COMMAND_MAX_LEN,
+                                     NULL);
 
                         devPtr->cmdParser.currentCharPtr = devPtr->cmdParser.foundCmd;
                         devPtr->cmdParser.lastCharPtr = devPtr->cmdParser.foundCmd +
@@ -1843,7 +1844,7 @@ static le_result_t SendUnsolicitedResponse
     }
 
     RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
-    strncpy(rspStringPtr->resp, unsolRsp, LE_ATDEFS_RESPONSE_MAX_BYTES);
+    le_utf8_Copy(rspStringPtr->resp, unsolRsp, LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
 
     SendUnsolRsp(devPtr, rspStringPtr);
 
@@ -2573,7 +2574,7 @@ le_result_t le_atServer_SendIntermediateResponse
     }
 
     RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
-    strncpy(rspStringPtr->resp, intermediateRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES);
+    le_utf8_Copy(rspStringPtr->resp, intermediateRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES, NULL);
 
     SendIntermediateRsp(devPtr, rspStringPtr);
 
@@ -2627,9 +2628,8 @@ le_result_t le_atServer_SendFinalResponse
 
     if (customStringAvailable)
     {
-        strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES );
+        le_utf8_Copy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES, NULL );
     }
-
 
     // clean AT command context, not in use now
     le_dls_Link_t* linkPtr;

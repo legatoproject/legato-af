@@ -167,7 +167,7 @@ static void SendConnStateEvent
     VoiceCallState_t eventVoiceCall;
 
     eventVoiceCall.callObjRef = call_ctx->callObjRef;
-    strncpy(eventVoiceCall.identifier, call_ctx->destination, MAX_DESTINATION_LEN_BYTE);
+    le_utf8_Copy(eventVoiceCall.identifier, call_ctx->destination, MAX_DESTINATION_LEN_BYTE, NULL);
     eventVoiceCall.callEvent = event;
 
     // Send the event to interested applications
@@ -617,7 +617,7 @@ le_voicecall_CallRef_t le_voicecall_Start
     {
         memset(msgCommand.callCtxPtr, 0, sizeof(VoiceCallContext_t));
         msgCommand.command = REQUEST_CALL_COMMAND;
-        strncpy(msgCommand.destination, DestinationID, MAX_DESTINATION_LEN_BYTE);
+        le_utf8_Copy(msgCommand.destination, DestinationID, MAX_DESTINATION_LEN_BYTE, NULL);
 
         // Need to return a unique reference that will be used by
         // le_voicecall_GetTerminationReason() or le_voicecall_End().  Don't actually have any

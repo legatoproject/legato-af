@@ -67,7 +67,7 @@ static char* StrError
 #ifdef __USE_GNU
     snprintf(errMsg, DSIZE, "%s", strerror_r(err, errMsg, DSIZE));
 #else /* XSI-compliant */
-    strerror_r(err, errMsg, DSIZE);
+    strerror_r(err, errMsg, sizeof(errMsg));
 #endif
     return errMsg;
 }
@@ -94,19 +94,29 @@ static le_result_t GetDeviceInformation
         struct passwd* passwd;
         struct group* group;
 
-        memset(DevInfo.fdSysPath, 0, DSIZE);
-        memset(DevInfo.linkName, 0, DSIZE);
-        memset(DevInfo.devInfoStr, 0, DSIZE);
+        // Note: Better use sizeof() operator instead of any macro(i.e. DSIZE), as it is compile
+        //       time operator and gives the code better flexibility.
+
+        memset(DevInfo.fdSysPath, 0, sizeof(DevInfo.fdSysPath));
+        memset(DevInfo.linkName, 0, sizeof(DevInfo.linkName));
+        memset(DevInfo.devInfoStr, 0, sizeof(DevInfo.devInfoStr));
 
         // build the path to fd
         snprintf(DevInfo.fdSysPath,
-            DSIZE, "/proc/%d/fd/%d", getpid(), DevInfo.fd);
+            sizeof(DevInfo.fdSysPath), "/proc/%d/fd/%d", getpid(), DevInfo.fd);
 
+        int len = readlink(DevInfo.fdSysPath, DevInfo.linkName, sizeof(DevInfo.fdSysPath));
         // get device path
-        if (readlink(DevInfo.fdSysPath, DevInfo.linkName, DSIZE) == -1) {
+        if (len < 0) {
             LE_ERROR("readlink failed %s", StrError(errno));
             return LE_FAULT;
         }
+        else if (len >= sizeof(DevInfo.fdSysPath))
+        {
+            LE_ERROR("Too long path. Max allowed: %zd", sizeof(DevInfo.fdSysPath)-1);
+            return LE_FAULT;
+        }
+
         // try to get device stats
         if (fstat(DevInfo.fd, &fdStats) == -1)
         {
@@ -119,8 +129,8 @@ static le_result_t GetDeviceInformation
 
         DevInfo.major = major(fdStats.st_rdev);
         DevInfo.minor = minor(fdStats.st_rdev);
-        snprintf(DevInfo.uName, DSIZE, "%s", passwd->pw_name);
-        snprintf(DevInfo.gName, DSIZE, "%s", group->gr_name);
+        snprintf(DevInfo.uName, sizeof(DevInfo.uName), "%s", passwd->pw_name);
+        snprintf(DevInfo.gName, sizeof(DevInfo.gName), "%s", group->gr_name);
         snprintf(DevInfo.devInfoStr, sizeof(DevInfo.devInfoStr), "%s, %s [%u, %u], (u: %s, g: %s)",
             DevInfo.fdSysPath,
             DevInfo.linkName,

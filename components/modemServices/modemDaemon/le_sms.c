@@ -2818,7 +2818,9 @@ le_result_t le_sms_SetDestination
         return LE_NOT_FOUND;
     }
 
-    if(strlen(destPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
+    size_t length = strnlen(destPtr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+
+    if(length > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
         LE_KILL_CLIENT("strlen(dest) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));
         return LE_FAULT;
@@ -2829,14 +2831,14 @@ le_result_t le_sms_SetDestination
         return LE_NOT_PERMITTED;
     }
 
-    if(!strlen(destPtr))
+    if(length == 0)
     {
         return LE_BAD_PARAMETER;
     }
 
     msgPtr->pduReady = false; // PDU must be regenerated
 
-    strncpy(msgPtr->tel, destPtr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+    le_utf8_Copy(msgPtr->tel, destPtr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES, NULL);
 
     return LE_OK;
 }
@@ -3259,7 +3261,6 @@ le_result_t le_sms_SetText
     const char*           textPtr ///< [IN] The SMS text.
 )
 {
-    size_t        length;
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
 
     if (msgPtr == NULL)
@@ -3273,26 +3274,16 @@ le_result_t le_sms_SetText
         return LE_NOT_PERMITTED;
     }
 
-    if(strlen(textPtr) > (LE_SMS_TEXT_MAX_BYTES-1))
+    size_t length = strnlen(textPtr, LE_SMS_TEXT_MAX_BYTES);
+
+    if(length > (LE_SMS_TEXT_MAX_BYTES-1))
     {
         LE_KILL_CLIENT("strlen(text) > %d", (LE_SMS_TEXT_MAX_BYTES-1));
         return LE_FAULT;
     }
-
-    if(!strlen(textPtr))
+    else if (length == 0)
     {
         return LE_BAD_PARAMETER;
-    }
-
-    length = strnlen(textPtr, LE_SMS_TEXT_MAX_BYTES+1);
-    if (!length)
-    {
-        return LE_BAD_PARAMETER;
-    }
-
-    if (length > LE_SMS_TEXT_MAX_BYTES)
-    {
-        return LE_OUT_OF_RANGE;
     }
 
     msgPtr->format = LE_SMS_FORMAT_TEXT;
@@ -3301,7 +3292,7 @@ le_result_t le_sms_SetText
     LE_DEBUG("try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
         textPtr, length, msgPtr->text, msgPtr);
 
-    strncpy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES);
+    le_utf8_Copy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES, NULL);
 
     return LE_OK;
 }

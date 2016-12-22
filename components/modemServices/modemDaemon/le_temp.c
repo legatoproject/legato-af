@@ -196,7 +196,7 @@ static void PaTemperatureThresholdHandler
     ThresholdReport_t* tempEventPtr = le_mem_ForceAlloc(ThresholdReportPool);
 
     tempEventPtr->ref = sensorCtxPtr->ref;
-    strncpy(tempEventPtr->threshold, thresholdPtr, LE_TEMP_THRESHOLD_NAME_MAX_BYTES);
+    le_utf8_Copy(tempEventPtr->threshold, thresholdPtr, LE_TEMP_THRESHOLD_NAME_MAX_BYTES, NULL);
 
     LE_INFO("Report '%s' threshold for %p sensor reference",
              tempEventPtr->threshold,
