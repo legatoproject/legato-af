@@ -2169,8 +2169,7 @@ le_atServer_DeviceRef_t le_atServer_Open
  *      - LE_OK             The function succeeded.
  *      - LE_BAD_PARAMETER  Invalid device reference.
  *      - LE_BUSY           The requested device is busy.
- *      - LE_FAULT          Failed to stop the server, check logs
- *                              for more information.
+ *      - LE_FAULT          Failed to stop the server, check logs for more information.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_Close
@@ -2180,6 +2179,12 @@ le_result_t le_atServer_Close
 )
 {
     DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, devRef);
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad reference");
+        return LE_FAULT;
+    }
 
     if (devPtr->processing)
     {
