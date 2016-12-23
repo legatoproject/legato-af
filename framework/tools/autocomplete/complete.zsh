@@ -16,7 +16,7 @@ compctl \
     app
 
 # complete with files and $LEGATO_ROOT/build targets
-compctl -x 'p[1,1]' -f -K list_instlegato_targets \
+compctl -x 'p[1,1]' -f -K list_instlegato_targets -- \
     instlegato
 
 # complete the 1st argument with commands
