@@ -46,6 +46,14 @@ static parseTree::CompoundItem_t* ParseSection
                                                parseTree::Content_t::MODULE_PARAM,
                                                parseTree::Token_t::STRING);
     }
+    else if (sectionName == "sources")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
+    else if (sectionName == "cflags" || sectionName == "ldflags")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::ARG);
+    }
     else
     {
         lexer.ThrowException(

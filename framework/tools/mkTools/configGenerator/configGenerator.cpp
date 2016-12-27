@@ -1022,7 +1022,7 @@ static void GenerateModulesConfig
     {
         auto modulePtr = mapEntry.second;
 
-        cfgStream << "  \"" << path::GetLastNode(modulePtr->path) << "\"\n";
+        cfgStream << "  \"" << modulePtr->name << ".ko" << "\"\n";
         cfgStream << "  {\n";
         cfgStream << "    \"params\"\n";
         cfgStream << "    {\n";

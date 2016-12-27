@@ -41,6 +41,7 @@ static void GenerateCommentHeader
 //--------------------------------------------------------------------------------------------------
 /**
  * Print to a given build script the build statements related to a given module.
+ * If it's a pre-built module, just copy it. Otherwise generate a module Makefile and build it.
  **/
 //--------------------------------------------------------------------------------------------------
 void GenerateBuildStatements
@@ -53,11 +54,22 @@ void GenerateBuildStatements
 
 //--------------------------------------------------------------------------------------------------
 {
-    // Add build statement for copying the .ko file
-    script << "build " << "$builddir/" << modulePtr->objFilePtr->path << ": "
-           << "CopyF " << modulePtr->path << "\n"
-           << "  modeFlags = u+rw-x,g+r-wx,o+r-wx\n"
-           "\n";
+    script << "build " << "$builddir/" << modulePtr->koFilePtr->path << ": ";
+
+    if (modulePtr->path.empty() || !file::FileExists(modulePtr->path))
+    {
+        // No pre-built module: generate and invoke a Makefile
+        GenerateMakefile(modulePtr, buildParams);
+        script << "MakeKernelModule " << "$builddir/"
+               << path::GetContainingDir(modulePtr->koFilePtr->path) << "\n";
+    }
+    else
+    {
+        // Pre-built module: add build statement for copying the .ko file
+        script << "CopyF " << modulePtr->path << "\n"
+               << "  modeFlags = u+rw-x,g+r-wx,o+r-wx\n";
+    }
+    script << "\n";
 }
 
 
@@ -96,9 +108,81 @@ static void GenerateNinjaScriptBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate a Makefile for a kernel module.
+ **/
+//--------------------------------------------------------------------------------------------------
+void GenerateMakefile
+(
+    const model::Module_t* modulePtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string buildPath = path::MakeAbsolute(buildParams.workingDir
+                                + "/modules/" + modulePtr->name);
+    std::string compilerPath = GetCCompilerPath(envVars::Get("LEGATO_TARGET"));
+
+    std::ofstream makefile;
+    OpenFile(makefile, buildPath + "/Makefile", buildParams.beVerbose);
+
+    // Specify kernel module name and list all object files to link
+    makefile << "obj-m += " << modulePtr->name << ".o\n";
+
+    // Don't list object files in case of a single source file with module name
+    if (modulePtr->cObjectFiles.size() > 1 ||
+        modulePtr->cObjectFiles.front()->path != modulePtr->name + ".o")
+    {
+        for (auto obj : modulePtr->cObjectFiles)
+        {
+            makefile << modulePtr->name << "-objs += " << obj->path << "\n";
+        }
+    }
+    makefile << "\n";
+
+    // Specify directory where the sources are located
+    makefile << "src = " << modulePtr->dir << "\n\n";
+
+    // Add compiler and linker options
+    for (auto obj : modulePtr->cFlags)
+    {
+        makefile << "ccflags-y += " << obj << "\n";
+    }
+    for (auto obj : modulePtr->ldFlags)
+    {
+        makefile << "ldflags-y += " << obj << "\n";
+    }
+    makefile << "\n";
+
+    makefile << "KBUILD := " << modulePtr->kernelDir << "\n";
+
+    if (buildParams.target != "localhost")
+    {
+        // Specify the CROSS_COMPILE and ARCH environment variables
+        // Note: compiler path may contain dashes in directory names
+        std::string compiler = path::GetLastNode(compilerPath);
+        std::string cross = path::GetContainingDir(compilerPath) + "/"
+                                + compiler.substr(0, compiler.rfind('-') + 1);
+        std::string arch = compiler.substr(0, compiler.find('-'));
+
+        makefile << "export CROSS_COMPILE := " << cross << "\n";
+        makefile << "export ARCH := " << arch << "\n";
+    }
+    makefile << "\n";
+
+    // Specify build rules
+    makefile << "all:\n";
+    makefile << "\tmake -C $(KBUILD) M=" + buildPath + " modules\n";
+    makefile << "\n";
+    makefile << "clean:\n";
+    makefile << "\t make -C $(KBUILD) M=" + buildPath + " clean\n";
+
+    CloseFile(makefile);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate a build script for a pre-built kernel module.
- *
- * @note TBD: This will be used by mkmod.
  **/
 //--------------------------------------------------------------------------------------------------
 void Generate

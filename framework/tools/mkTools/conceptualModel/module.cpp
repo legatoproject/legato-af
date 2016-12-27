@@ -19,7 +19,9 @@ namespace model
 //--------------------------------------------------------------------------------------------------
 Module_t::Module_t(parseTree::MdefFile_t *filePtr)
 //--------------------------------------------------------------------------------------------------
-: defFilePtr(filePtr)
+: defFilePtr(filePtr),
+  dir(path::GetContainingDir(filePtr->path)),
+  koFilePtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
 }
@@ -27,16 +29,15 @@ Module_t::Module_t(parseTree::MdefFile_t *filePtr)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set path to module binary and build artifacts related to this module.
+ * Set build environment and artifacts related to this module.
  **/
 //--------------------------------------------------------------------------------------------------
-void Module_t::SetPath(std::string modulePath)
+void Module_t::SetBuildEnvironment(void)
 {
-    path = modulePath;
-    name = path::RemoveSuffix(path::GetLastNode(path), ".ko");
+    name = path::RemoveSuffix(path::GetLastNode(defFilePtr->path), ".mdef");
     workingDir = "modules/" + name;
-    auto objFilePath = workingDir + "/" + name + ".ko";
-    objFilePtr = new model::ObjectFile_t(objFilePath, path);
+    auto koFilePath = workingDir + "/" + name + ".ko";
+    koFilePtr = new model::ObjectFile_t(koFilePath, defFilePtr->path);
 }
 
 

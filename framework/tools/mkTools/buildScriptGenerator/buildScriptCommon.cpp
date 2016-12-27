@@ -187,6 +187,12 @@ void GenerateBuildRules
               "            jar -cf $out -C $classDestPath .\n"
               "\n";
 
+    // Generate rules for building drivers.
+    script << "rule MakeKernelModule\n"
+              "  description = Build kernel driver module\n"
+              "  command = make -C $in\n"
+              "\n";
+
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"
               "  description = Generating IPC interface code\n"

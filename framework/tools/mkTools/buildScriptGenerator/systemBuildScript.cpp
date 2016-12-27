@@ -225,7 +225,7 @@ static void GenerateSystemPackBuildStatement
     {
         auto modulePtr = mapEntry.second;
 
-        script << " $builddir/" << modulePtr->objFilePtr->path;
+        script << " $builddir/" << modulePtr->koFilePtr->path;
     }
 
     // This must also be done again if any of the Legato framework daemons or on-target
