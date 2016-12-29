@@ -1,6 +1,11 @@
-preBuilt:	$LEGATO_ROOT/drivers/mangoh/mangoh.ko
+sources:
+{
+    mangoh_iot.c
+    green.c
+    eeprom.c
+}
 
 params:
 {
-	model = "green"
+    model = "green"
 }

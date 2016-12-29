@@ -10,4 +10,7 @@
 // Copyright (C) Sierra Wireless Inc.
 //-------------------------------------------------------------------------------------------------
 
-preBuilt: $LEGATO_ROOT/drivers/spisvc/spisvc.ko
+sources:
+{
+    spisvc.c
+}
