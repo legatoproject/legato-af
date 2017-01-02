@@ -268,7 +268,7 @@ static void VoiceSessionStateHandler
                 LE_WARN("No more resource ");
                 ctx_temp.callObjRef = NULL;
                 strncpy(ctx_temp.destination, "TODO", MAX_DESTINATION_LEN_BYTE);
-                newCtxPtr->lastEvent = LE_VOICECALL_EVENT_RESOURCE_BUSY;
+                ctx_temp.lastEvent = LE_VOICECALL_EVENT_RESOURCE_BUSY;
 
                 // Send error event to application.
                 SendConnStateEvent(&ctx_temp, ctx_temp.lastEvent);
