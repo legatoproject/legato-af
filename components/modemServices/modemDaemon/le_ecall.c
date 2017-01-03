@@ -2933,6 +2933,19 @@ le_result_t le_ecall_End
         return LE_BAD_PARAMETER;
     }
 
+    if (eCallPtr->startType == PA_ECALL_START_AUTO)
+    {
+        LE_ERROR("An automatic Ecall cannot be terminated");
+        return LE_FAULT;
+    }
+
+    if ( (eCallPtr->startType == PA_ECALL_START_MANUAL) &&
+        (eCallPtr->sessionState > ECALL_SESSION_REQUEST) )
+    {
+        LE_ERROR("Ecall transaction cannot be terminated, Ecall in progress");
+        return LE_FAULT;
+    }
+
     // Invalidate MSD
     InvalidateMsd();
 
