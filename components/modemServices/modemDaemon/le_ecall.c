@@ -1915,45 +1915,50 @@ static void CallEventHandler
 
     LE_DEBUG("session state %d, event %d", ECallObj.sessionState, event);
 
-    if (   (ECALL_SESSION_NOT_CONNECTED == eCallPtr->sessionState)
-        || (ECALL_SESSION_CONNECTED == eCallPtr->sessionState)
-        || (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)
-        || (ECALL_SESSION_STOPPED == eCallPtr->sessionState)
-       )
+    // Check if an eCall session is active
+    if (eCallPtr->sessionState < ECALL_SESSION_NOT_CONNECTED)
     {
-        le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
+        // The call is not an eCall, no treatment necessary
+        LE_DEBUG("No active eCall session, MCC event ignored");
+        return;
+    }
 
-        if (res != LE_OK)
-        {
-            LE_ERROR("Error in GetCallIdentifier %d", res);
-            return;
-        }
+    le_result_t res = le_mcc_GetCallIdentifier(callRef, &callId);
+    if (res != LE_OK)
+    {
+        LE_ERROR("Error in GetCallIdentifier %d", res);
+        return;
+    }
 
-        LE_DEBUG("callId %d eCallPtr->callId %d", callId, eCallPtr->callId);
+    LE_DEBUG("callId %d eCallPtr->callId %d", callId, eCallPtr->callId);
 
-        if (LE_MCC_EVENT_CONNECTED == event)
-        {
-
-            LE_DEBUG("Updating callid: eCallPtr->callId %d = callId %d. sessionState %d",
-                    eCallPtr->callId,
-                    callId,
-                    ECallObj.sessionState);
-            // When a call, either outgoing or incoming connects in session, it's considered a eCall
-            // Then the CallId is set.
+    switch (event)
+    {
+        case LE_MCC_EVENT_INCOMING:
+        case LE_MCC_EVENT_ORIGINATING:
+            LE_DEBUG("Updating callId: eCallPtr->callId %d = callId %d. sessionState %d",
+                     eCallPtr->callId, callId, ECallObj.sessionState);
+            // An incoming or outgoing call is being established while an eCall session is active:
+            // it is an eCall, update the eCall id with this call identifier
             eCallPtr->callId = callId;
-        }
+            break;
 
-        if ((callId == eCallPtr->callId) && (event == LE_MCC_EVENT_TERMINATED))
-        {
-            eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
-            eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
-            eCallPtr->callId = -1;
+        case LE_MCC_EVENT_TERMINATED:
+            if (callId == eCallPtr->callId)
+            {
+                eCallPtr->termination = le_mcc_GetTerminationReason(callRef);
+                eCallPtr->specificTerm = le_mcc_GetPlatformSpecificTerminationCode(callRef);
+                eCallPtr->callId = -1;
 
-            LE_DEBUG("Call termination status available: termination %d, specificTerm %d",
-                    eCallPtr->termination, eCallPtr->specificTerm);
-            // Synchronize eCall handler with MCC notification
-            le_sem_Post(SemaphoreRef);
-        }
+                LE_DEBUG("Call termination status available: termination %d, specificTerm %d",
+                        eCallPtr->termination, eCallPtr->specificTerm);
+                // Synchronize eCall handler with MCC notification
+                le_sem_Post(SemaphoreRef);
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
