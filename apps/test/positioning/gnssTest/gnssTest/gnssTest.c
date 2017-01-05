@@ -37,7 +37,7 @@ static void TestLeGnssDevice
     uint32_t ttffValue;
     uint32_t acqRate;
     le_gnss_ConstellationBitMask_t constellationMask;
-    le_gnss_NmeaBitMask_t nmeaMask;
+    le_gnss_NmeaBitMask_t nmeaMask=0;
 
     LE_INFO("Start Test Testle_gnss_DeviceTest");
     // GNSS device enabled by default
@@ -57,8 +57,9 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
-    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+
     // Enable GNSS device (READY state)
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
     LE_ASSERT((le_gnss_Disable()) == LE_OK);
@@ -78,6 +79,7 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
+
     // Start GNSS device (ACTIVE state)
     LE_ASSERT((le_gnss_Start()) == LE_OK);
     LE_ASSERT((le_gnss_Start()) == LE_DUPLICATE);
@@ -87,8 +89,9 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
-    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+
     // Stop GNSS device (READY state)
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
     LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
@@ -813,11 +816,7 @@ static void TestLeGnssConstellations
     // test4: error test (GPS constellation is not set)
     //        and Beidou is unknown for mdm9x15
     constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
-#if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
-    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_FAULT);
-#else
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
-#endif
 
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     // test constellationMask has not changed after error
@@ -990,7 +989,7 @@ static void TestSuplCertificate
 
     //Injects the SUPL certificate with lenght zero :
     LE_ASSERT((le_gnss_InjectSuplCertificate(0,
-                               0,ShortSuplCertificate)) == LE_FAULT);
+                               0,ShortSuplCertificate)) == LE_OK);
     //Injects the SUPL certificate with ID error
     LE_ASSERT((le_gnss_InjectSuplCertificate(10,
                                strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_FAULT);
