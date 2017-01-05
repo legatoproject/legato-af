@@ -323,7 +323,19 @@ CreateImg_mdm9x28() {
     OOB_SIZE=224
     PEB_SIZE=256KiB
     COMPAT_BYTE=00000001
-    PID='9X28'
+    case $TARGET in
+        ar758x)
+            PID='9X28'
+            ;;
+        wp76xx)
+            PID='Y921'
+            ;;
+        *)
+            echo "Unknown product '$TARGET'"
+            exit 1
+            ;;
+    esac
+
     PLATFORM=$PID
     SUPPORT_COMPRESSION=false
 
