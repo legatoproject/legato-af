@@ -48,7 +48,12 @@
  * Maximum number of profile objects supported
  */
 //--------------------------------------------------------------------------------------------------
+#if defined (PDP_MAX_PROFILE)
+#define PA_MDC_MAX_PROFILE PDP_MAX_PROFILE
+#else
 #define PA_MDC_MAX_PROFILE 5
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**

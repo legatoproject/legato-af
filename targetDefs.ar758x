@@ -45,3 +45,9 @@ export MKEXE_FLAGS += -C "-DSIERRA_MDM9X28"
 # External ADCs
 MKSYS_FLAGS += -C "-DADC_BEGIN_NUM=1"
 MKSYS_FLAGS += -C "-DADC_COUNT=2"
+
+# PDP Contexts
+# 24 profiles, 4 PDPs context in UMTS and 8 PDPs context in LTE network
+MKSYS_FLAGS += -C "-DPDP_MAX_PROFILE=24"
+MKSYS_FLAGS += -C "-DPDP_MAX_MULTIPDP=8"
+
