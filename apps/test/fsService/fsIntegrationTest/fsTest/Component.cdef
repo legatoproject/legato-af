@@ -1,0 +1,12 @@
+sources:
+{
+    fsTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_fs.api
+    }
+}

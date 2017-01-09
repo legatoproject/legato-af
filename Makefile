@@ -77,6 +77,7 @@ export LEGATO_MODEM_PA_ECALL =
 export LEGATO_SECSTORE_PA =
 export LEGATO_FWUPDATE_PA =
 export LEGATO_UARTMODE_PA =
+export LEGATO_FS_PA =
 
 export LEGATO_AUDIO_PA_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_audio_default
 export LEGATO_AUDIO_PA_AMR_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_amr_default
@@ -88,6 +89,7 @@ export LEGATO_MODEM_PA_ECALL_DEFAULT = $(LEGATO_ROOT)/components/modemServices/p
 export LEGATO_SECSTORE_PA_DEFAULT = $(LEGATO_ROOT)/components/secStore/platformAdaptor/default/le_pa_secStore_default
 export LEGATO_FWUPDATE_PA_DEFAULT = $(LEGATO_ROOT)/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
 export LEGATO_UARTMODE_PA_DEFAULT = $(LEGATO_ROOT)/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
+export LEGATO_FS_PA_DEFAULT = $(LEGATO_ROOT)/components/fsService/platformAdaptor/default/le_pa_fs_default
 
 # Do not use clang by default.
 USE_CLANG ?= 0

@@ -1,0 +1,22 @@
+sandboxed: false
+
+executables:
+{
+    fsDaemon = ($LEGATO_ROOT/components/fsService/fsDaemon)
+}
+
+processes:
+{
+    run:
+    {
+        (fsDaemon)
+    }
+
+    faultAction: restart
+}
+
+extern:
+{
+    fsDaemon.fsDaemon.le_fs
+}
+

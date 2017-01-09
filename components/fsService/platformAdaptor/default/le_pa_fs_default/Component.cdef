@@ -1,0 +1,17 @@
+requires:
+{
+    api:
+    {
+        le_fs.api   [types-only]
+    }
+}
+
+sources:
+{
+    pa_fs_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+}

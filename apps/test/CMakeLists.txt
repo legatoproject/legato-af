@@ -89,6 +89,9 @@ add_subdirectory(cellNetService/cellNetUnitTest)
 add_subdirectory(dataConnectionService/dataConnectionServiceTest)
 add_subdirectory(dataConnectionService/dataConnectionUnitTest)
 
+## Filesystem Service
+add_subdirectory(fsService/fsIntegrationTest)
+
 ## Other Services ...
 add_subdirectory(voiceCallService/voiceCallServiceIntegrationTest)
 add_subdirectory(smsInboxService)
@@ -111,4 +114,3 @@ add_subdirectory(cm)
 # Fw update
 add_subdirectory(fwupdate/fwupdateUnitTest)
 add_subdirectory(fwupdate/fwupdateIntegrationTest)
-

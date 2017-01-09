@@ -1,0 +1,26 @@
+provides:
+{
+    api:
+    {
+        le_fs.api
+    }
+}
+
+sources:
+{
+    le_fs.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/fsService/platformAdaptor/inc
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_FS_PA_DEFAULT
+        $LEGATO_FS_PA
+    }
+}

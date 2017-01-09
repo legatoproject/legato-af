@@ -1,0 +1,247 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_fs File System service
+ *
+ * @ref le_fs_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * The File System (FS) service allows accessing the file system on different platforms:
+ * - the Legato file system is used for Read/Write platforms
+ * - the modem internal file system is used for Read Only platforms
+ *
+ * The File System service offers the following file operations:
+ * - open a file with le_fs_Open()
+ * - close a file with le_fs_Close()
+ * - read in a file with le_fs_Read()
+ * - write in a file with le_fs_Write()
+ * - change the current position in a file with le_fs_Seek()
+ * - get the size of a file with le_fs_GetSize()
+ * - delete a file with le_fs_Delete()
+ * - move a file with le_fs_Move()
+ *
+ * @warning The modem internal file system is not designed to replace the Legato file system on
+ * Read Only platforms: this FS service is reserved for internal use.
+ *
+ * @section le_fs_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b fsService application service.
+ *
+ * Here's a code sample binding to File System service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_fs -> fsService.le_fs
+   }
+   @endverbatim
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_fs_interface.h
+ *
+ * Legato @ref c_fs API.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File access modes used when opening a file.
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK AccessMode
+{
+    RDONLY,   ///< Read only
+    WRONLY,   ///< Write only
+    RDWR,     ///< Read/Write
+    CREAT,    ///< Create a new file
+    TRUNC,    ///< Truncate
+    APPEND,   ///< Append
+    SYNC      ///< Synchronized
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximal bit mask for file access mode.
+ *
+ * @note This maximal value should be coherent with @ref le_fs_AccessMode_t
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE ACCESS_MODE_MAX = 0x7F;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Offset position used when seeking in a file.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Position
+{
+    SEEK_SET,   ///< From the current position
+    SEEK_CUR,   ///< From the beginning of the file
+    SEEK_END    ///< From the end of the file
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of characters permitted for a file path.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PATH_MAX_LEN = 128;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes to read/write in one API call.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE DATA_MAX_SIZE = 8192;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference of a file
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE File;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to create or open an existing file.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Open
+(
+    string filePath[PATH_MAX_LEN] IN, ///< File path
+    AccessMode accessMode         IN, ///< Access mode for the file
+    File fileRef                  OUT ///< File reference (if successful)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to close an opened file.
+ *
+ * @return
+ *  - LE_OK         The function succeeded.
+ *  - LE_FAULT      The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Close
+(
+    File fileRef       IN  ///< File reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to read the requested data length from an opened file.
+ * The data is read at the current file position.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Read
+(
+    File fileRef                IN, ///< File reference
+    uint8 buf[DATA_MAX_SIZE]    OUT ///< Buffer to store the data read in the file
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to write the requested data length to an opened file.
+ * The data is written at the current file position.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Write
+(
+    File fileRef                IN, ///< File reference
+    uint8 buf[DATA_MAX_SIZE]    IN  ///< Buffer to write in the file
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to change the file position of an opened file.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Seek
+(
+    File fileRef          IN,  ///< File reference
+    int32 offset          IN,  ///< Offset to apply
+    Position position     IN,  ///< Offset is relative to this position
+    int32 currentOffset   OUT  ///< Offset from the beginning after the seek operation
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to get the size of a file.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSize
+(
+    string filePath[PATH_MAX_LEN]   IN, ///< File path
+    uint32 size                     OUT ///< File size (if successful)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to delete a file.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    string filePath[PATH_MAX_LEN]   IN  ///< File path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to rename an existing file.
+ * If rename fails, the file will keep its original name.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       A file path is too long.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Move
+(
+    string srcPath[PATH_MAX_LEN]    IN, ///< Path to file to rename
+    string destPath[PATH_MAX_LEN]   IN  ///< New path to file
+);
