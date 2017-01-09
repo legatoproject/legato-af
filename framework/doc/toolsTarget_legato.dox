@@ -1,26 +1,31 @@
 /** @page toolsTarget_legato legato
 
-Use the @c legato tool to run the Legato framework.
+Use the @c legato tool to control the Legato Application Framework.
 
 <h1>Usage</h1>
 
-<b><c> legato [start | stop | restart | version | help]</c></b>
+<b><c> legato [start|stop|restart|status|version|help]</c></b>
 
 @verbatim legato start @endverbatim
 
-> Starts the Legato framework.
+> Starts the Legato Application Framework.
 
 @verbatim legato stop @endverbatim
 
-> Stops the Legato framework.
+> Stops the Legato Application Framework.
 
 @verbatim legato restart @endverbatim
 
-> Restarts the Legato framework.
+> Restarts the Legato Application Framework.
+
+@verbatim legato status @endverbatim
+
+> Displays the current running state (started, stopped), system state (good, bad, probation) and
+system index of Legato.
 
 @verbatim legato version @endverbatim
 
-> Displays the intstalled Legato framework version.
+> Displays the current installed version.
 
 @verbatim legato help @endverbatim
 
