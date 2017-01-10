@@ -528,7 +528,7 @@ def ProcessHandlerFunc(tokens):
 def MakeHandlerExpr():
 
     # The expressions are checked in the given order, so the order must not be changed.
-    allParameters = StringParm | FileParm | SimpleParm
+    allParameters = StringParm | ArrayParm | FileParm | SimpleParm
     allParameters.setFailAction(functools.partial(FailFunc, expected=ExpectedParm))
 
     body = MakeListExpr(allParameters)

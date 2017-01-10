@@ -1,0 +1,27 @@
+
+requires:
+{
+    api:
+    {
+        le_avdata.api
+        le_avc.api
+    }
+}
+
+sources:
+{
+    timeSeriesAppMain.c
+}
+
+assets:
+{
+    myHouse =
+    {
+        variables:
+        {
+            int Humidity = 0
+            float Temperature = 20.00
+        }
+    }
+}
+

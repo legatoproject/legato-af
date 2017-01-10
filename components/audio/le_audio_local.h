@@ -82,18 +82,14 @@ le_audio_If_t;
 typedef struct {
     pcm_Handle_t                pcmHandle;        ///< audio resource handle
     le_audio_SamplePcmConfig_t  pcmConfig;        ///< PCM paramaeters
-    le_timer_Ref_t              timerRef;         ///< timer reference
-    long                        timerUsec;        ///< timer interval
     int                         fd;               ///< File descriptor used for file capture or playback
     le_sem_Ref_t                threadSemaphore;  ///< semaphore to check starting
-    le_result_t                 operationResult;  ///< result of the delayed operation
     le_thread_Ref_t             mainThreadRef;    ///< main thread reference
     le_audio_If_t               interface;        ///< audio interface
     bool                        pause;            ///< pause in capture
-    bool                        isNoMoreSamplesEventSent; ///< event "No More Sample" sent
     le_audio_MediaEvent_t       mediaEvent;       ///< media event to be sent
 }
-le_audio_PcmThreadContext_t;
+le_audio_PcmContext_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -202,11 +198,10 @@ typedef struct le_audio_Stream {
     le_dls_List_t    sessionRefList;                   ///< Clients sessionRef list
     le_audio_SampleAmrConfig_t  sampleAmrConfig;       ///< Sample AMR configuration
     le_audio_Format_t   encodingFormat;                ///< Audio encoding format
-    le_audio_PcmThreadContext_t* pcmThreadContextPtr;  ///< PCM playback/capture context
+    le_audio_PcmContext_t* pcmContextPtr;              ///< PCM playback/capture context
     le_audio_MediaThreadContext_t* mediaThreadContextPtr;///< Read Media thread
     le_audio_DtmfStreamEventHandlerRef_t dtmfEventHandler; ///< Dtmf stream event handler
     le_thread_Ref_t     mediaThreadRef;                 ///< Media thread reference
-    le_thread_Ref_t     pcmThreadRef;                  ///< Playback/capture thread reference
     bool                playFile;                      ///< Stream plays a file
     int8_t              deviceIdentifier;              ///< Device identifier
     int8_t              hwDeviceId;                    ///< Hardware Device identifier

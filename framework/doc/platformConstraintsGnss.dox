@@ -1,0 +1,90 @@
+/** @page platformConstraintsGnss GNSS platform constraints
+
+@section platformConstraintsGnss_acqRate Acquisition rate
+
+The le_gnss_SetAcquisitionRate() function configures the GNSS device acquisition rate.
+
+On Qualcomm-based platform the “tracking” mode is selected for the “continuous” navigation.
+
+When a hot start is requested, it is possible that GPS engine can’t get fix within first 1s, hence
+NMEA message can possibly get empty frame outputs every second.
+Tracking mode is based on periodic hot start: periodically, low layer GPS engine starts a new
+session and updates GPS location until it gets a fix, from which NMEA output can be composed.
+
+In other words, after first fix is gotten, GPS engine restart the GPS session to get the fix again,
+it will not output the last valid fix before we get the new fix, and NMEA message can get empty
+frame again.
+
+The 'Acquisition Rate' value is used to set the interval between two fix requests.
+
+Qualcomm-based platform hot start performance is about 1~3s, it’s an average value. So you may
+notice a void NMEA string (and the corresponding Legato position sample notification) during hot
+start and then the valid NMEA string on an AcquisitionRate minimum time interval.
+But it’s should not be so accurate, you may have 1~3s error-range.
+
+Here below an example of NMEA traces in tracking mode with a 30-second acquisition rate.
+Note the GPGGA string sequence:
+
+@verbatim
+
+$GPVTG,,T,,M,,N,,K,N*2C
+$GPGSA,A,1,,,,,,,,,,,,,,,*1E
+        $GPGGA,,,,,,0,,,,,,,,*66                -> say it’s 1st second from logging start, no fix from beginning for 1st GPS session
+$PQXFI,,,,,,,,,,*56
+$GPRMC,,V,,,,,,,,,,N*53
+$GPGSV,2,1,05,02,,,42,06,48,299,50,09,53,213,50,19,28,230,43*48
+$GPGSV,2,2,05,31,09,029,*4C
+        $GPGGA,100836.0,4849.944172,N,00216.094351,E,1,03,1.7,54.2,M,48.0,M,,*69  -> second 2 from start (100836), get the fix for 1st session
+$PQXFI,100836.0,4849.944172,N,00216.094351,E,54.2,5.74,11.44,1.86*6A
+$GPVTG,318.5,T,320.6,M,0.0,N,0.0,K,A*2B
+$GPRMC,100836.0,A,4849.944172,N,00216.094351,E,0.0,318.5,220116,2.1,W,A*12 valid final NMEA
+$GPGSA,A,2,06,09,19,,,,,,,,,,2.0,1.7,1.0*31
+$GPVTG,,T,,M,,N,,K,N*2C
+$GPGSA,A,1,,,,,,,,,,,,,,,*1E
+        $GPGGA,,,,,,0,,,,,,,,*66               -> second 31, no fix for 2nd GPS session
+$PQXFI,,,,,,,,,,*56
+$GPRMC,,V,,,,,,,,,,N*53 non valid intermediate NMEA
+$GPGSV,2,1,05,02,,,41,06,49,299,49,09,53,213,48,19,28,230,43*4B
+$GPGSV,2,2,05,31,09,029,*4C
+        $GPGGA,100906.0,4849.942986,N,00216.093882,E,1,03,1.7,48.3,M,48.0,M,,*60  -> second 32 from start (100906, 30s after 100836), get the fix for 2nd session
+$PQXFI,100906.0,4849.942986,N,00216.093882,E,48.3,7.25,15.04,0.77*6A
+$GPVTG,318.5,T,320.6,M,0.0,N,0.0,K,A*2B
+$GPRMC,100906.0,A,4849.942986,N,00216.093882,E,0.0,318.5,220116,2.1,W,A*17
+$GPGSA,A,2,06,09,19,,,,,,,,,,2.0,1.7,1.0*31
+$GPVTG,,T,,M,,N,,K,N*2C
+$GPGSA,A,1,,,,,,,,,,,,,,,*1E
+$       GPGGA,,,,,,0,,,,,,,,*66               -> second 61, no fix for 3rd session
+$PQXFI,,,,,,,,,,*56
+$GPRMC,,V,,,,,,,,,,N*53
+$GPGSV,2,1,05,02,,,43,06,49,298,50,09,53,213,47,19,27,230,44*47
+$GPGSV,2,2,05,31,09,029,*4C
+$GPGGA,100936.0,4849.941714,N,00216.095230,E,1,03,1.7,55.9,M,48.0,M,,*66  -> second 62 from start (100936, 30s after 100906), get the fix for 3rd session
+$PQXFI,100936.0,4849.941714,N,00216.095230,E,55.9,15.01,27.89,0.34*5A
+$GPVTG,318.5,T,320.6,M,0.0,N,0.0,K,A*2B
+$GPRMC,100936.0,A,4849.941714,N,00216.095230,E,0.0,318.5,220116,2.1,W,A*17
+$GPGSA,A,2,06,09,19,,,,,,,,,,2.0,1.7,1.0*31
+$GPVTG,,T,,M,,N,,K,N*2C
+$GPGSA,A,1,,,,,,,,,,,,,,,*1E
+$GPGGA,,,,,,0,,,,,,,,*66
+
+@endverbatim
+
+@section platformConstraintsGnss_nmeaMask Enabled NMEA sentences
+
+The le_gnss_SetNmeaSentences() and le_gnss_GetNmeaSentences() functions configure the enabled NMEA
+sentences in the NMEA flow. Please note that the Qualcomm-based firmware release
+<c>SWI9X15A_07.10.15.00</c> is subject to some limitations:
+- Not all NMEA sentences supported by the AT!GPSNMEASENTENCE can be (de)activated through
+the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not available.
+- The Galileo NMEA sentences always appear as not enabled when retrieving their status, even if
+they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
+NMEA sentences.
+
+@section References
+
+See @ref c_gnss API
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

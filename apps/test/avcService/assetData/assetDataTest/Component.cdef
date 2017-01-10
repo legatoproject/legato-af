@@ -16,3 +16,14 @@ sources:
     $LEGATO_ROOT/components/airVantage/avcDaemon/assetData.c
     assetDataTest.c
 }
+
+cflags:
+{
+    $LEGATO_FEATURE_OBSERVE
+    $LEGATO_FEATURE_TIMESERIES
+}
+
+ldflags:
+{
+    ${LDFLAG_LEGATO_TIMESERIES}
+}

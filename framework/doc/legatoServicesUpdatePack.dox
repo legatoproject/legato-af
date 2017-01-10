@@ -138,22 +138,6 @@ Code sample:
 }
 @endverbatim
 
-@section updatePack_Concatenation App Updates Concatenation
-
-App removal and app install update packs can be combined together by concatenating their
-files together into a single file.
-
-Code sample:
-
-@code
-$ cat app1.remove.update app2.wp85.update app3.wp85.update > myMultiAppChanges.update
-@endcode
-
-It's @b strongly recommended that system updates be used instead of concatenated app
-changes. System updates are applied atomically preventing problems that can result from
-a multi-app update being interrupted before all the changes could be applied (e.g., by a power
-loss, reset, or loss of connectivity.
-
 <HR>
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.

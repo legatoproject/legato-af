@@ -35,6 +35,7 @@ static void TestLeGnssDevice
     uint32_t ttffValue;
     uint32_t acqRate;
     le_gnss_ConstellationBitMask_t constellationMask;
+    le_gnss_NmeaBitMask_t nmeaMask;
 
     LE_INFO("Start Test Testle_gnss_DeviceTest");
     // GNSS device enabled by default
@@ -54,6 +55,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     // Enable GNSS device (READY state)
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
     LE_ASSERT((le_gnss_Disable()) == LE_OK);
@@ -68,6 +71,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_ForceFactoryRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
+    LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
     // Start GNSS device (ACTIVE state)
     LE_ASSERT((le_gnss_Start()) == LE_OK);
     LE_ASSERT((le_gnss_Start()) == LE_DUPLICATE);
@@ -77,6 +82,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+    LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     // Stop GNSS device (READY state)
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
     LE_ASSERT((le_gnss_Enable()) == LE_DUPLICATE);
@@ -92,6 +99,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_ForceFactoryRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
+    LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
 }
 //! [GnssEnable]
 
@@ -129,8 +138,10 @@ static void PositionHandlerFunction
     int32_t     latitude;
     int32_t     longitude;
     int32_t     altitude;
+    int32_t     altitudeOnWgs84;
     int32_t     hAccuracy;
     int32_t     vAccuracy;
+    int32_t     magneticDeviation;
     // DOP parameter
     uint16_t hdop;
     uint16_t vdop;
@@ -233,6 +244,22 @@ static void PositionHandlerFunction
                 , altitude, vAccuracy);
     }
 
+    // Get altitude on WGS-84
+    result = le_gnss_GetAltitudeOnWgs84( positionSampleRef
+                                       , &altitudeOnWgs84);
+    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+
+    if(result == LE_OK)
+    {
+         LE_INFO("altitude on WGS-84.%d"
+                , altitudeOnWgs84/1000);
+    }
+    else
+    {
+         LE_INFO("Altitude on WGS-84 unknown [%d]"
+                , altitudeOnWgs84);
+    }
+
     // Get DOP parameter
     result = le_gnss_GetDop( positionSampleRef
                             , &hdop
@@ -290,6 +317,21 @@ static void PositionHandlerFunction
         LE_INFO("direction unknown [%d,%d]"
                 , direction, directionAccuracy);
     }
+
+    // Get the magnetic deviation
+    result = le_gnss_GetMagneticDeviation( positionSampleRef
+                                         , &magneticDeviation);
+    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+
+    if(result == LE_OK)
+    {
+        LE_INFO("magnetic deviation %d", magneticDeviation/10);
+    }
+    else
+    {
+        LE_INFO("magnetic deviation unknown [%d]",magneticDeviation);
+    }
+
 
     /* Satellites status */
     uint8_t satsInViewCount;
@@ -457,7 +499,7 @@ static void TestLeGnssStart
 {
     uint32_t rate = 0;
     le_gnss_ConstellationBitMask_t constellationMask;
-
+    le_gnss_NmeaBitMask_t nmeaMask;
 
     LE_INFO("Start Test Testle_gnss_StartTest");
 
@@ -468,6 +510,10 @@ static void TestLeGnssStart
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     LE_INFO("Constellation 0x%X", constellationMask);
     LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
+
+    LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
+    LE_INFO("Enabled NMEA sentences 0x%08X", nmeaMask);
+    LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
 
     LE_INFO("Start GNSS");
     LE_ASSERT((le_gnss_Start()) == LE_OK);
@@ -719,7 +765,7 @@ static void TestLeGnssConstellations
                                     LE_GNSS_CONSTELLATION_GLONASS))
     sleep(2);
 
-    // test4: error test (GPS constallation is not set)
+    // test4: error test (GPS constellation is not set)
     //        and Beidou is unknown for mdm9x15
     constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
 #if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
@@ -727,14 +773,15 @@ static void TestLeGnssConstellations
 #else
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
 #endif
+
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     // test constellationMask has not changed after error
     LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS))
+                                    LE_GNSS_CONSTELLATION_GLONASS));
     sleep(2);
 
     // next tests have same results as test4 for mdm9x15
-#if defined(SIERRA_MDM9X40)
+#if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
 
     // test5: Gps+Glonass+Beidou selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
@@ -776,7 +823,7 @@ static void TestLeGnssConstellations
                         LE_GNSS_CONSTELLATION_GLONASS |
                         LE_GNSS_CONSTELLATION_BEIDOU |
                         LE_GNSS_CONSTELLATION_GALILEO |
-                        LE_GNSS_CONSTELLATION_GALILEO+5;
+                        LE_GNSS_CONSTELLATION_GALILEO | 5;
 
     LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
@@ -784,8 +831,56 @@ static void TestLeGnssConstellations
                                     LE_GNSS_CONSTELLATION_GLONASS |
                                     LE_GNSS_CONSTELLATION_BEIDOU |
                                     LE_GNSS_CONSTELLATION_GALILEO))
-
 #endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: test Setting/Getting enabled NMEA sentences mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestLeGnssNmeaSentences
+(
+    void
+)
+{
+    int i = 0;
+    le_gnss_NmeaBitMask_t nmeaMask;
+
+    LE_INFO("Start Test TestLeGnssNmeaSentences");
+
+    // Test 1: bit mask too big, error
+    nmeaMask = (LE_GNSS_NMEA_SENTENCES_MAX << 1) | 1;
+    LE_ASSERT(LE_BAD_PARAMETER == le_gnss_SetNmeaSentences(nmeaMask));
+
+    // Test 2: test all bits from the bit mask
+    le_gnss_NmeaBitMask_t nmeaSentencesList[] = {
+        LE_GNSS_NMEA_MASK_GPGGA,
+        LE_GNSS_NMEA_MASK_GPGSA,
+        LE_GNSS_NMEA_MASK_GPGSV,
+        LE_GNSS_NMEA_MASK_GPRMC,
+        LE_GNSS_NMEA_MASK_GPVTG,
+        LE_GNSS_NMEA_MASK_GLGSV,
+        LE_GNSS_NMEA_MASK_GNGNS,
+        LE_GNSS_NMEA_MASK_GNGSA,
+        // ToDo: Uncomment when FW issue is fixed
+//        LE_GNSS_NMEA_MASK_GAGGA,
+//        LE_GNSS_NMEA_MASK_GAGSA,
+//        LE_GNSS_NMEA_MASK_GAGSV,
+//        LE_GNSS_NMEA_MASK_GARMC,
+//        LE_GNSS_NMEA_MASK_GAVTG,
+        LE_GNSS_NMEA_MASK_PSTIS,
+        LE_GNSS_NMEA_MASK_PQXFI,
+        0
+    };
+
+    for (i = 0; nmeaSentencesList[i]; i++)
+    {
+        LE_ASSERT_OK(le_gnss_SetNmeaSentences(nmeaSentencesList[i]));
+        LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+        LE_ASSERT(nmeaMask == nmeaSentencesList[i]);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -808,5 +903,7 @@ COMPONENT_INIT
      TestLeGnssTtffMeasurement();
      LE_INFO("======== GNSS Constellation Test  ========");
      TestLeGnssConstellations();
+     LE_INFO("======== GNSS NMEA sentences Test  ========");
+     TestLeGnssNmeaSentences();
      LE_INFO("======== GNSS device Start Test SUCCESS ========");
 }

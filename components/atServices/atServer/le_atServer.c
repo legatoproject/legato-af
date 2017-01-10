@@ -8,7 +8,6 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
-#include <ctype.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -44,6 +43,15 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define RSP_POOL_SIZE       10
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command responses types
+ */
+//--------------------------------------------------------------------------------------------------
+#define RSP_TYPE_OK         0
+#define RSP_TYPE_ERROR      1
+#define RSP_TYPE_RESPONSE   2
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -341,6 +349,7 @@ typedef struct
     le_atServer_DeviceRef_t ref;                ///< reference of the device context
     le_thread_Ref_t         threadRef;          ///< Thread reference
     le_sem_Ref_t            semaphore;          ///< semaphore used for synchronization
+    le_mutex_Ref_t          mutex;              ///< sync device usage
     char                    currentCmd[LE_ATSERVER_COMMAND_MAX_LEN];
     uint32_t                indexRead;
     uint32_t                parseIndex;
@@ -469,198 +478,6 @@ CmdParserFunc_t CmdParserTab[AT_PARSE_MAX][AT_PARSE_MAX] =
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is the destructor for ATCmdSubscribed_t struct
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void AtCmdPoolDestructor
-(
-    void *ptr
-)
-{
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function is the destructor for DeviceContext_t struct
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void DevicesPoolDestructor
-(
-    void *ptr
-)
-{
-
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Device thread destructor.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void DestroyDeviceThread
-(
-    void *contextPtr
-)
-{
-
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Send a response on the opened device.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void SendRspString
-(
-    DeviceContext_t *devPtr,
-    RspString_t* rspStringPtr
-)
-{
-    char string[LE_ATSERVER_RESPONSE_MAX_BYTES+4];
-    memset(string,0,LE_ATSERVER_RESPONSE_MAX_BYTES+4);
-    snprintf(string, LE_ATSERVER_RESPONSE_MAX_BYTES+4, "\r\n%s\r\n", rspStringPtr->resp);
-
-    le_dev_Write( &devPtr->device, (uint8_t*)string, strlen(string) );
-
-    le_mem_Release(rspStringPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Send a final response on the opened device.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void SendFinalRsp
-(
-    void* param1Ptr,
-    void* param2Ptr
-)
-{
-    DeviceContext_t *devPtr = param1Ptr;
-    char string[LE_ATSERVER_RESPONSE_MAX_BYTES+4];
-    memset(string, 0, LE_ATSERVER_RESPONSE_MAX_BYTES+4);
-
-    if (devPtr->finalRsp.customStringAvailable)
-    {
-        snprintf(string, LE_ATSERVER_RESPONSE_MAX_BYTES+4, "\r\n%s\r\n", devPtr->finalRsp.resp);
-    }
-    else
-    {
-        switch (devPtr->finalRsp.final)
-        {
-            case LE_ATSERVER_OK:
-                snprintf(string,LE_ATSERVER_RESPONSE_MAX_BYTES,"\r\nOK\r\n");
-            break;
-            default:
-                snprintf(string,LE_ATSERVER_RESPONSE_MAX_BYTES,"\r\nERROR\r\n");
-            break;
-        }
-    }
-
-    le_dev_Write( &devPtr->device, (uint8_t*)string, strlen(string) );
-    devPtr->processing = false;
-
-    memset( &devPtr->cmdParser, 0, sizeof(CmdParser_t) );
-    memset( &devPtr->finalRsp, 0, sizeof(FinalRsp_t) );
-
-    // Send backup unsolicited responses
-    le_dls_Link_t* linkPtr;
-
-    while ( (linkPtr = le_dls_Pop(&devPtr->unsolicitedList)) != NULL )
-    {
-        RspString_t* rspStringPtr = CONTAINER_OF(linkPtr,
-                                    RspString_t,
-                                    link);
-
-        SendRspString(devPtr, rspStringPtr);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Send a intermediate response on the opened device.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void SendIntermediateRsp
-(
-    void* param1Ptr,
-    void* param2Ptr
-)
-{
-    DeviceContext_t *devPtr = param1Ptr;
-    RspString_t* rspStringPtr = param2Ptr;
-
-    if (rspStringPtr == NULL)
-    {
-        LE_ERROR("Bad rspStringPtr");
-        return;
-    }
-
-    if (devPtr == NULL)
-    {
-        LE_ERROR("Bad devPtr");
-        le_mem_Release(rspStringPtr);
-        return;
-    }
-
-    // Check if command is currently in processing
-    if ((!devPtr->processing) ||
-        (devPtr->cmdParser.currentCmdPtr && !((devPtr->cmdParser.currentCmdPtr)->processing)))
-    {
-        LE_ERROR("Command not processing anymore");
-        le_mem_Release(rspStringPtr);
-        return;
-    }
-
-    SendRspString(devPtr, rspStringPtr);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Send an intermediate response on the opened device.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void SendUnsolRsp
-(
-    void* param1Ptr,
-    void* param2Ptr
-)
-{
-    DeviceContext_t *devPtr = param1Ptr;
-    RspString_t* rspStringPtr = param2Ptr;
-
-    if (rspStringPtr == NULL)
-    {
-        LE_ERROR("Bad rspStringPtr");
-        return;
-    }
-
-    if (devPtr == NULL)
-    {
-        LE_ERROR("Bad devPtr");
-        le_mem_Release(rspStringPtr);
-        return;
-    }
-
-    if (!devPtr->processing)
-    {
-        SendRspString(devPtr, rspStringPtr);
-    }
-    else
-    {
-        le_dls_Queue(&devPtr->unsolicitedList, &(rspStringPtr->link));
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function finds or creates an eventId into the EventIdList
  *
  */
@@ -712,19 +529,18 @@ static le_event_Id_t GetEventId
  *
  */
 //--------------------------------------------------------------------------------------------------
-#if 0
 static void ReleaseEventId
 (
     le_event_Id_t eventId
 )
 {
-    le_dls_Link_t* linkPtr = le_dls_Peek(&EventIdList);
+    le_dls_Link_t *linkPtr = le_dls_Peek(&EventIdList);
 
     while (linkPtr!=NULL)
     {
-        struct eventIdList* currentPtr = CONTAINER_OF(linkPtr,
-                                                      struct eventIdList,
-                                                      link);
+        EventIdList_t *currentPtr = CONTAINER_OF(linkPtr,
+                                                    EventIdList_t,
+                                                    link);
 
         if (currentPtr->eventId == eventId)
         {
@@ -738,7 +554,210 @@ static void ReleaseEventId
     LE_DEBUG("could not found eventId to release");
     return;
 }
-#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is the destructor for ATCmdSubscribed_t struct
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AtCmdPoolDestructor
+(
+    void *commandPtr
+)
+{
+    ATCmdSubscribed_t *cmdPtr = commandPtr;
+    le_dls_Link_t *linkPtr;
+
+    LE_DEBUG("AT command pool destructor");
+
+    // cleanup the hashmap
+    le_hashmap_Remove(CmdHashMap, cmdPtr->cmdName);
+
+    // cleanup ParamList dls pool
+    while((linkPtr = le_dls_Pop(&cmdPtr->paramList)) != NULL)
+    {
+        ParamString_t *paramPtr = CONTAINER_OF(linkPtr,
+                                    ParamString_t,
+                                    link);
+        le_mem_Release(paramPtr);
+    }
+
+    // release eventID
+    ReleaseEventId(cmdPtr->eventId);
+
+    le_ref_DeleteRef(SubscribedCmdRefMap, cmdPtr->cmdRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a response on the opened device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendRspString
+(
+    DeviceContext_t *devPtr,
+    uint8_t rspType,
+    const char *rspPtr
+)
+{
+    char string[LE_ATSERVER_RESPONSE_MAX_BYTES+4];
+
+    // lock and prepare the msg to write to device
+    le_mutex_Lock(devPtr->mutex);
+
+    memset(string,0,LE_ATSERVER_RESPONSE_MAX_BYTES+4);
+
+    switch (rspType)
+    {
+        case RSP_TYPE_OK:
+            snprintf(string,LE_ATSERVER_RESPONSE_MAX_BYTES,"\r\nOK\r\n");
+            break;
+        case RSP_TYPE_ERROR:
+            snprintf(string,LE_ATSERVER_RESPONSE_MAX_BYTES,"\r\nERROR\r\n");
+            break;
+        case RSP_TYPE_RESPONSE:
+            snprintf(string, LE_ATSERVER_RESPONSE_MAX_BYTES+4, \
+                "\r\n%s\r\n", rspPtr);
+            break;
+    }
+
+    le_dev_Write(&devPtr->device, (uint8_t*)string, strlen(string));
+
+    // we're done with the device
+    le_mutex_Unlock(devPtr->mutex);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a final response on the opened device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendFinalRsp
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    DeviceContext_t *devPtr = param1Ptr;
+
+    if (devPtr->finalRsp.customStringAvailable)
+    {
+        SendRspString(devPtr, RSP_TYPE_RESPONSE, devPtr->finalRsp.resp);
+    }
+    else
+    {
+        switch (devPtr->finalRsp.final)
+        {
+            case LE_ATSERVER_OK:
+                SendRspString(devPtr, RSP_TYPE_OK, "");
+            break;
+            default:
+                SendRspString(devPtr, RSP_TYPE_ERROR, "");
+            break;
+        }
+    }
+
+    devPtr->processing = false;
+
+    memset( &devPtr->cmdParser, 0, sizeof(CmdParser_t) );
+    memset( &devPtr->finalRsp, 0, sizeof(FinalRsp_t) );
+
+    // Send backup unsolicited responses
+    le_dls_Link_t* linkPtr;
+
+    while ( (linkPtr = le_dls_Pop(&devPtr->unsolicitedList)) != NULL )
+    {
+        RspString_t* rspStringPtr = CONTAINER_OF(linkPtr,
+                                    RspString_t,
+                                    link);
+
+        SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
+        le_mem_Release(rspStringPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a intermediate response on the opened device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendIntermediateRsp
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    DeviceContext_t *devPtr = param1Ptr;
+    RspString_t* rspStringPtr = param2Ptr;
+
+    if (rspStringPtr == NULL)
+    {
+        LE_ERROR("Bad rspStringPtr");
+        return;
+    }
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad devPtr");
+        le_mem_Release(rspStringPtr);
+        return;
+    }
+
+    // Check if command is currently in processing
+    if ((!devPtr->processing) ||
+        (devPtr->cmdParser.currentCmdPtr && !((devPtr->cmdParser.currentCmdPtr)->processing)))
+    {
+        LE_ERROR("Command not processing anymore");
+        le_mem_Release(rspStringPtr);
+        return;
+    }
+
+    SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
+    le_mem_Release(rspStringPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send an intermediate response on the opened device.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SendUnsolRsp
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    DeviceContext_t *devPtr = param1Ptr;
+    RspString_t* rspStringPtr = param2Ptr;
+
+    if (rspStringPtr == NULL)
+    {
+        LE_ERROR("Bad rspStringPtr");
+        return;
+    }
+
+    if (devPtr == NULL)
+    {
+        LE_ERROR("Bad devPtr");
+        le_mem_Release(rspStringPtr);
+        return;
+    }
+
+    if (!devPtr->processing)
+    {
+        SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
+        le_mem_Release(rspStringPtr);
+    }
+    else
+    {
+        le_dls_Queue(&devPtr->unsolicitedList, &(rspStringPtr->link));
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1347,7 +1366,7 @@ static void ParseBuffer
                     else
                     {
                         LE_ERROR("Command in progress");
-                        le_dev_Write(&devPtr->device, (uint8_t*)"\r\nERROR\r\n", 9 );
+                        SendRspString(devPtr, RSP_TYPE_ERROR, "");
                     }
 
                     devPtr->parseIndex=0;
@@ -1412,11 +1431,15 @@ static void *DeviceThread
 
     if (devPtr->device.fdMonitor)
     {
-        LE_ERROR("Interface %s already started",devPtr->device.path);
+        LE_ERROR("Interface already monitored %d", devPtr->device.fd);
         return NULL;
     }
 
-    le_dev_Open(&devPtr->device, RxNewData, devPtr);
+    if (le_dev_AddFdMonitoring(&devPtr->device, RxNewData, devPtr) != LE_OK)
+    {
+        LE_ERROR("Error during adding the fd monitoring");
+        return NULL;
+    }
 
     le_sem_Post(devPtr->semaphore);
 
@@ -1486,34 +1509,19 @@ static void FirstLayerAtCmdHandler
 //--------------------------------------------------------------------------------------------------
 le_atServer_DeviceRef_t le_atServer_Start
 (
-    const char* devicePathPtr
-        ///< [IN] device path which has to be used for the AT parser
+    int32_t              fd          ///< The file descriptor
 )
 {
     char name[THREAD_NAME_MAX_LENGTH];
     static uint32_t threatCounter = 1;
 
     // Search if the device is already opened
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(DevicesRefMap);
-
-     while (le_ref_NextNode(iterRef) == LE_OK)
-     {
-        DeviceContext_t* devPtr = (DeviceContext_t*) le_ref_GetValue(iterRef);
-
-        if (le_path_IsEquivalent(devicePathPtr, devPtr->device.path, "/") == true)
-        {
-            le_mem_AddRef(devPtr);
-            return devPtr->ref;
-        }
-    }
-
     DeviceContext_t* devPtr = le_mem_ForceAlloc(DevicesPool);
 
     memset(devPtr,0,sizeof(DeviceContext_t));
 
-    le_utf8_Copy(devPtr->device.path,devicePathPtr,LE_ATSERVER_PATH_MAX_LEN,0);
-
-    LE_DEBUG("Create a new interface for '%s'", devicePathPtr);
+    LE_DEBUG("Create a new interface for %d", fd);
+    devPtr->device.fd = fd;
 
     snprintf(name,THREAD_NAME_MAX_LENGTH,"atCommandServer-%d",threatCounter);
     devPtr->threadRef = le_thread_Create(name,DeviceThread,devPtr);
@@ -1521,16 +1529,13 @@ le_atServer_DeviceRef_t le_atServer_Start
     memset(name,0,THREAD_NAME_MAX_LENGTH);
     snprintf(name,THREAD_NAME_MAX_LENGTH,"AtServerSem-%d",threatCounter);
     devPtr->semaphore = le_sem_Create(name,0);
+    devPtr->mutex = le_mutex_CreateNonRecursive("DeviceMutex");
 
     devPtr->cmdParser.rxState = PARSER_SEARCH_A;
     devPtr->parseIndex = 0;
     devPtr->unsolicitedList = LE_DLS_LIST_INIT;
 
     threatCounter++;
-
-    le_thread_AddChildDestructor(devPtr->threadRef,
-                                 DestroyDeviceThread,
-                                 devPtr);
 
     le_thread_SetJoinable(devPtr->threadRef);
 
@@ -1556,22 +1561,100 @@ le_atServer_DeviceRef_t le_atServer_Start
  * This function stops the AT server session on the requested device.
  *
  * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to stop the AT server session.
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_BUSY           The requested device is busy.
+ *      - LE_FAULT          Failed to stop the server, check logs
+ *                              for more information.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_Stop
 (
-    le_atServer_DeviceRef_t device
+    le_atServer_DeviceRef_t devRef
         ///< [IN] device to be unbinded
 )
 {
-    return LE_FAULT;
+    le_result_t result = LE_OK;
+    ATCmdSubscribed_t *cmdPtr = NULL;
+    le_dls_Link_t *linkPtr = NULL;
+    int errMsgLen = 512;
+    char errMsg[errMsgLen];
+
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, devRef);
+
+    if (!devPtr)
+    {
+        LE_ERROR("Invalid device");
+        return LE_BAD_PARAMETER;
+    }
+
+    LE_DEBUG("Stopping device %d", devPtr->device.fd);
+
+    if ( (result = le_mutex_TryLock(devPtr->mutex)) )
+    {
+        LE_WARN("Device busy");
+        return LE_BUSY;
+    }
+
+    // try to cancel the child thread
+    if ( (result = le_thread_Cancel(devPtr->threadRef)) )
+    {
+        LE_WARN("Thread refrence (%p) doesn't exist", devPtr->threadRef);
+        return LE_FAULT;
+    }
+
+    // wait for the tread to actually cancel
+    if ((result = le_thread_Join(devPtr->threadRef, NULL)))
+    {
+        LE_WARN("Failed to wait for the thread with error %d", result);
+        return LE_FAULT;
+    }
+
+    le_dev_RemoveFdMonitoring(&devPtr->device);
+
+    if (close(devPtr->device.fd))
+    {
+        // using thread safe strerror
+        memset(errMsg, 0, errMsgLen);
+        strerror_r(errno, errMsg, errMsgLen);
+        LE_ERROR("%s", errMsg);
+        return LE_FAULT;
+    }
+
+    cmdPtr = devPtr->cmdParser.currentCmdPtr;
+    if (cmdPtr)
+    {
+        cmdPtr->processing = false;
+    }
+
+    if (devPtr->semaphore)
+    {
+        le_sem_Delete(devPtr->semaphore);
+    }
+
+    // cleanup the dls pool
+    while((linkPtr = le_dls_Pop(&devPtr->unsolicitedList)) != NULL)
+    {
+        RspString_t *unsolicitedPtr = CONTAINER_OF(linkPtr,
+                                    RspString_t,
+                                    link);
+        le_mem_Release(unsolicitedPtr);
+    }
+
+
+    le_mutex_Unlock(devPtr->mutex);
+    le_mutex_Delete(devPtr->mutex);
+
+    le_ref_DeleteRef(DevicesRefMap, devPtr->ref);
+
+    le_mem_Release(devPtr);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function created an AT command and register it into the AT parser.
+ * This function creates an AT command and registers it into the AT parser.
  *
  * @return
  *      - Reference to the AT command.
@@ -1622,6 +1705,10 @@ le_atServer_CmdRef_t le_atServer_Create
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to delete the command.
+ *      - LE_BUSY          Command is in progress.
+ *
+ * @note If the AT Command reference is invalid, a fatal error occurs,
+ *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_Delete
@@ -1630,7 +1717,24 @@ le_result_t le_atServer_Delete
         ///< [IN] AT command reference
 )
 {
-    return LE_FAULT;
+    ATCmdSubscribed_t* cmdPtr =
+        le_ref_Lookup(SubscribedCmdRefMap, commandRef);
+
+    if (!cmdPtr)
+    {
+        LE_ERROR("Invalid reference (%p) provided!", commandRef);
+        return LE_FAULT;
+    }
+
+    if (cmdPtr->processing)
+    {
+        LE_ERROR("Command in progess");
+        return LE_BUSY;
+    }
+
+    le_mem_Release(cmdPtr);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2008,7 +2112,6 @@ COMPONENT_INIT
     DevicesPool = le_mem_CreatePool("ATServerDevicesPool",sizeof(DeviceContext_t));
     le_mem_ExpandPool(DevicesPool,DEVICE_POOL_SIZE);
     DevicesRefMap = le_ref_CreateMap("DevicesRefMap", DEVICE_POOL_SIZE);
-    le_mem_SetDestructor(DevicesPool,DevicesPoolDestructor);
 
     // AT commands pool allocation
     AtCommandsPool = le_mem_CreatePool("AtServerCommandsPool",sizeof(ATCmdSubscribed_t));

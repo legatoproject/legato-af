@@ -35,7 +35,7 @@ help_long_description=(
 "      'restartProc', 'restartApp', 'stopApp'."
 ""
 "   -- [<args> ...]"
-"      The -- option is used to specify comamnd line arguments to the process."
+"      The -- option is used to specify command line arguments to the process."
 "      Everything following the -- option is taken as arguments to the process to be"
 "      started.  Therefore the -- option must be the last option to appCtrl runProc."
 "      If the -- option is not used then the configured arguments are used if available."

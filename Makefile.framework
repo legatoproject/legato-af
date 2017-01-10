@@ -58,13 +58,14 @@ NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
 NINJA_FLAGS =
 
 # The daemons are built using mkexe.
-MKEXE_FLAGS += -o $(BIN_DIR)/$@ -t $(TARGET) -w $(BUILD_DIR)/$@ -l $(LIB_DIR)
+LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
+LOCAL_MKEXE_FLAGS += -o $(BIN_DIR)/$@ -t $(TARGET) -w $(BUILD_DIR)/$@ -l $(LIB_DIR)
 
 # Do not be verbose by default.
 VERBOSE ?= 0
 ifeq ($(VERBOSE),1)
   NINJA_FLAGS += -v
-  MKEXE_FLAGS += -v
+  LOCAL_MKEXE_FLAGS += -v
 endif
 
 
@@ -157,7 +158,7 @@ start: liblegato $(BIN_DIR)
 
 .PHONY: supervisor
 supervisor: liblegato $(BIN_DIR)
-	mkexe $(MKEXE_FLAGS) \
+	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/supervisor \
 		-i $(LEGATO_ROOT)/interfaces/supervisor \
 		-i $(SRC_DIR) \
@@ -168,7 +169,7 @@ supervisor: liblegato $(BIN_DIR)
 
 .PHONY: serviceDirectory
 serviceDirectory: liblegato $(BIN_DIR)
-	mkexe $(MKEXE_FLAGS) \
+	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/serviceDirectory/serviceDirectory.c \
 		--cflags=-DNO_LOG_CONTROL \
 		--cflags=-DLE_RUNTIME_DIR="$(LE_RUNTIME_DIR)/" \
@@ -177,26 +178,26 @@ serviceDirectory: liblegato $(BIN_DIR)
 
 .PHONY: logCtrlDaemon
 logCtrlDaemon: liblegato $(BIN_DIR)
-	mkexe $(MKEXE_FLAGS) \
+	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/logDaemon \
 		--cflags=-DNO_LOG_CONTROL \
 		-i $(LEGATO_ROOT)/interfaces/supervisor
 
 .PHONY: configTree
 configTree: liblegato $(BIN_DIR)
-	mkexe $(MKEXE_FLAGS) \
+	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/configTree \
 		-i $(SRC_DIR) \
 		--cflags=-std=c99
 
 .PHONY: watchdog
 watchdog: liblegato $(BIN_DIR)
-	mkexe $(MKEXE_FLAGS) \
+	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/watchdog
 
 .PHONY: updateDaemon
 updateDaemon: liblegato $(BIN_DIR)
-	mkexe $(MKEXE_FLAGS) \
+	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/updateDaemon \
 		-i $(LEGATO_ROOT)/interfaces/updateDaemon \
 		-i $(SRC_DIR)/appCfg \

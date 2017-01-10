@@ -12,32 +12,73 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Write PCM frames to sound driver.
- *
+ * callback prototype to get/set the PCM frames for playback/capture.
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_pcm_Write
+typedef le_result_t (*GetSetFramesFunc_t)
 (
-    pcm_Handle_t pcmHandle,                 ///< [IN] Handle of the audio resource given by
-                                            ///< pa_pcm_InitPlayback() / pa_pcm_InitCapture()
-                                            ///< initialization functions
-    char* data,                             ///< [OUT] Write buffer
-    uint32_t bufsize                        ///< [IN] Buffer length
+    uint8_t* bufferPtr,
+    uint32_t* bufLenPtr,
+    void* contextPtr
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read PCM frames from sound driver.
+ * callback prototype to get the final result of playback/capture.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*ResultFunc_t)
+(
+    le_result_t result,
+    void* contextPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the playback.
+ * The function is asynchronous: it starts the playback thread, then returns.
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_pcm_Read
+LE_SHARED le_result_t pa_pcm_Play
 (
-    pcm_Handle_t pcmHandle,                 ///< [IN] Handle of the audio resource given by
+    pcm_Handle_t pcmHandle                  ///< [IN] Handle of the audio resource given by
                                             ///< pa_pcm_InitPlayback() / pa_pcm_InitCapture()
                                             ///< initialization functions
-    char* data,                             ///< [IN] Read buffer
-    uint32_t bufsize                        ///< [IN] Buffer length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the recording.
+ * The function is asynchronous: it starts the recording thread, then returns.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_pcm_Capture
+(
+    pcm_Handle_t pcmHandle                  ///< [IN] Handle of the audio resource given by
+                                            ///< pa_pcm_InitPlayback() / pa_pcm_InitCapture()
+                                            ///< initialization functions
+
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the callbacks called during a playback/recording to:
+ * - get/set PCM frames thanks to getFramesFunc callback: this callback will be called by the pa_pcm
+ * to get the next PCM frames to play (playback case), or to send back PCM frames to record
+ * (recording case).
+ * - get the playback/recording result thanks to setResultFunc callback: this callback will be
+ * called by the PA_PCM to inform the caller about the status of the playback or the recording.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_pcm_SetCallbackHandlers
+(
+    pcm_Handle_t pcmHandle,
+    GetSetFramesFunc_t framesFunc,
+    ResultFunc_t setResultFunc,
+    void* contextPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -93,5 +134,6 @@ LE_SHARED le_result_t pa_pcm_InitPlayback
     char* devicePtr,                        ///< [IN] Device to be initialized
     le_audio_SamplePcmConfig_t* pcmConfig   ///< [IN] Samples PCM configuration
 );
+
 
 #endif // LEGATO_PAPCM_INCLUDE_GUARD

@@ -94,12 +94,12 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-#define LEGATO_CONFIG_TREE_ROOT_DIR "system:"
+#define SMSINBOX_CONFIG_TREE_ROOT_DIR   "smsInboxService:"
 
-#define CFG_NODE_SMSINBOX       "smsInbox"
-#define CFG_NODE_APPS           "apps"
+#define CFG_NODE_SMSINBOX               "smsInbox"
+#define CFG_NODE_APPS                   "apps"
 
-#define CFG_SMSINBOX_PATH LEGATO_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_SMSINBOX
+#define CFG_SMSINBOX_PATH               SMSINBOX_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_SMSINBOX
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.

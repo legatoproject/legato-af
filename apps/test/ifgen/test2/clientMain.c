@@ -77,6 +77,8 @@ void CallbackTestHandler
 (
     uint32_t data,
     const char* namePtr,
+    const uint8_t* array,
+    size_t arrayLength,
     int dataFile,
     void* contextPtr
 )
@@ -84,6 +86,7 @@ void CallbackTestHandler
     LE_PRINT_VALUE("%d", data);
     LE_PRINT_VALUE("'%s'", namePtr);
     LE_PRINT_VALUE("%p", contextPtr);
+    LE_PRINT_ARRAY("0x%02X", arrayLength, array);
 
     LE_PRINT_VALUE("%i", dataFile);
 

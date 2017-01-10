@@ -31,7 +31,7 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
     uint16_t minutes;
     uint16_t seconds;
     uint16_t milliseconds;
-
+    le_pos_FixState_t fixState;
 
     if(positionSampleRef == NULL)
     {
@@ -42,6 +42,9 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
         LE_INFO("New Position sample %p", positionSampleRef);
     }
 
+    le_pos_sample_GetFixState(positionSampleRef, &fixState);
+    LE_INFO("GetFixState: %d", fixState);
+
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
     LE_INFO("Get2DLocation: lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
 
@@ -49,7 +52,8 @@ static void NavigationHandler(le_pos_SampleRef_t positionSampleRef, void* contex
     LE_INFO("GetDate: year.%d, month.%d, day.%d", year, month, day);
 
     le_pos_sample_GetTime(positionSampleRef, &hours, &minutes, &seconds, &milliseconds);
-    LE_INFO("GetTime: hours.%d, minutes.%d, seconds.%d, milliseconds.%d", hours, minutes, seconds, milliseconds);
+    LE_INFO("GetTime: hours.%d, minutes.%d, seconds.%d, milliseconds.%d", hours, minutes, seconds,
+            milliseconds);
 
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
     LE_INFO("GetAltitude: alt.%d, accuracy.%d", val, accuracy);
@@ -79,6 +83,7 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
 {
     int32_t  val, val1, accuracy;
     uint32_t uval, uAccuracy;
+    le_pos_FixState_t fixState;
 
     if(positionSampleRef == NULL)
     {
@@ -88,6 +93,9 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
     {
         LE_INFO("New Position sample %p", positionSampleRef);
     }
+
+    le_pos_sample_GetFixState(positionSampleRef, &fixState);
+    LE_INFO("GetFixState: %d", fixState);
 
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
     LE_INFO("Get2DLocation: lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
@@ -145,28 +153,31 @@ static void* NavigationThread
 //--------------------------------------------------------------------------------------------------
 void Testle_pos_GetInfo()
 {
-    int32_t     latitude;
-    int32_t     longitude;
-    int32_t     altitude;
-    int32_t     hAccuracy;
-    int32_t     vAccuracy;
-    uint32_t    hSpeed;
-    uint32_t    hSpeedAccuracy;
-    int32_t     vSpeed;
-    int32_t     vSpeedAccuracy;
-    int32_t     heading;
-    int32_t     headingAccuracy=0;
-    int32_t     direction;
-    int32_t     directionAccuracy=0;
-    uint16_t    year = 0;
-    uint16_t    month = 0;
-    uint16_t    day = 0;
-    uint16_t    hours = 0;
-    uint16_t    minutes = 0;
-    uint16_t    seconds = 0;
-    uint16_t    milliseconds = 0;
+    int32_t           latitude;
+    int32_t           longitude;
+    int32_t           altitude;
+    int32_t           hAccuracy;
+    int32_t           vAccuracy;
+    uint32_t          hSpeed;
+    uint32_t          hSpeedAccuracy;
+    int32_t           vSpeed;
+    int32_t           vSpeedAccuracy;
+    int32_t           heading;
+    int32_t           headingAccuracy=0;
+    int32_t           direction;
+    int32_t           directionAccuracy=0;
+    uint16_t          year = 0;
+    uint16_t          month = 0;
+    uint16_t          day = 0;
+    uint16_t          hours = 0;
+    uint16_t          minutes = 0;
+    uint16_t          seconds = 0;
+    uint16_t          milliseconds = 0;
+    le_pos_FixState_t fixState;
+    le_result_t       res;
 
-    le_result_t res;
+    LE_ASSERT((le_pos_GetFixState(&fixState) == LE_OK));
+    LE_INFO("position fix state %d", fixState);
 
     res= le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy);
     LE_INFO("le_pos_Get2DLocation %s"

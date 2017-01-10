@@ -763,9 +763,16 @@ static void NewCallEventHandler
 
             newCall = true;
         }
+        else if (-1 == callPtr->callId)
+        {
+            // Call with no call id in MCC, update it with the value from PA
+            callPtr->callId = dataPtr->callId;
+        }
 
         callPtr->inProgress = true;
         callPtr->event = dataPtr->event;
+        callPtr->termination = dataPtr->terminationEvent;
+        callPtr->terminationCode = dataPtr->terminationCode;
     }
     else
     {
@@ -863,7 +870,13 @@ static void CloseSessionEventHandler
             RemoveCreatorFromCall(callPtr, sessionRef);
 
             callPtr->refCount--;
+
             LE_DEBUG("Release call %p countRef %d", callPtr, callPtr->refCount);
+
+            LE_FATAL_IF((callPtr->refCount < 0),
+                        "Error Release call %p, refCount %d",
+                         callPtr, callPtr->refCount);
+
             le_mem_Release(callPtr);
 
             linkPtr = le_dls_Pop(&sessionCtxPtr->callRefList);
@@ -1090,7 +1103,11 @@ le_result_t le_mcc_Delete
         }
 
         callPtr->refCount--;
-        LE_DEBUG("refCount %d", callPtr->refCount);
+        LE_DEBUG("Release call %p, refCount %d", callPtr, callPtr->refCount);
+
+        LE_FATAL_IF((callPtr->refCount < 0),
+                    "Error Release call %p, refCount %d",
+                    callPtr, callPtr->refCount);
         le_mem_Release(callPtr);
 
         return LE_OK;
@@ -1563,13 +1580,18 @@ void le_mcc_RemoveCallEventHandler
 
                     callPtr->refCount--;
                     LE_DEBUG("Release call %p countRef %d", callPtr, callPtr->refCount);
+
+                    LE_FATAL_IF((callPtr->refCount < 0),
+                                "Error Release call %p, refCount %d",
+                                callPtr, callPtr->refCount);
+
                     le_mem_Release(callPtr);
                 }
                 else
                 {
                     // a call was created by this client, do not delete its session context
                     LE_DEBUG("Delete the session context");
-                     deleteSessionCtx = false;
+                    deleteSessionCtx = false;
                 }
             }
             else

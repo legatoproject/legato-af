@@ -1257,6 +1257,64 @@ void _le_log_SetFilterLevel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Log data block. Provides a hex dump for debug
+ */
+//--------------------------------------------------------------------------------------------------
+void _le_LogData
+(
+    const uint8_t* dataPtr,             // The buffer address to be dumped
+    int dataLength,                     // The data length of buffer
+    const char* filenamePtr,            // The name of the source file that logged the message.
+    const char* functionNamePtr,        // The name of the function that logged the message.
+    const unsigned int lineNumber       // The line number in the source file that logged the message.
+)
+{
+    int i, j, numColumns;
+    char c;
+    char buffer[100];   // enough to hold 16 printed bytes, plus ASCII equivalents
+
+    for ( i=0; i<dataLength; i+=16 )
+    {
+        numColumns = dataLength - i;
+        if ( numColumns > 16 )
+        {
+            numColumns = 16;
+        }
+
+        // Print the data as numbers
+        for(j=0; j<numColumns; j++)
+        {
+            sprintf( &buffer[j*3], "%02X ", dataPtr[i+j] );
+        }
+
+        // Print extra spaces, if needed, plus separator at column 49
+        sprintf( &buffer[numColumns*3], "%*c: ", (16-numColumns)*3+1, ' ' );
+
+        // Print the data as characters, starting at column 51
+        for(j=0; j<numColumns; j++)
+        {
+            c = dataPtr[i+j];
+            if ( ! isprint(c) )
+            {
+                c = '.';
+            }
+            sprintf( &buffer[51+j], "%c", c );
+        }
+
+        do
+        {
+            if ((LE_LOG_LEVEL_FILTER_PTR == NULL) || (LE_LOG_DEBUG >= *LE_LOG_LEVEL_FILTER_PTR))
+            {
+                _le_log_Send(LE_LOG_DEBUG, NULL, LE_LOG_SESSION, filenamePtr, functionNamePtr,
+                             lineNumber, "%s", buffer);
+            }
+        } while(0);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Log messages from the framework.  Used for testing only.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1319,3 +1377,5 @@ void log_LogGenericMsg
 #endif
 
 }
+
+

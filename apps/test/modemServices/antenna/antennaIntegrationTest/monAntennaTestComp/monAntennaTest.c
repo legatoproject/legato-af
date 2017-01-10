@@ -43,6 +43,7 @@
 typedef enum
 {
     DEVICEMODEL_UNKNOWN = 0,
+    DEVICEMODEL_AR758X_FAMILY,
     DEVICEMODEL_AR7_FAMILY,
     DEVICEMODEL_AR8_FAMILY
 }DeviceModelFamily_t;
@@ -79,10 +80,13 @@ static void AntennaHandler
     void* contextPtr
 )
 {
+    char statusStr[50],typeStr[50];
     le_antenna_Type_t antennaType;
     le_result_t result = le_antenna_GetType( antennaRef, &antennaType );
+
     LE_ASSERT(result == LE_OK);
     LE_ASSERT(antennaType < LE_ANTENNA_MAX);
+
 
     AntennaCtxtText[antennaType].count++;
 
@@ -97,7 +101,49 @@ static void AntennaHandler
     }
     else
     {
-        LE_INFO("Antenna %d status %d", antennaType, status);
+        switch(antennaType)
+        {
+            case LE_ANTENNA_PRIMARY_CELLULAR:
+                sprintf(typeStr, "LE_ANTENNA_PRIMARY_CELLULAR");
+                break;
+            case LE_ANTENNA_DIVERSITY_CELLULAR:
+                sprintf(typeStr, "LE_ANTENNA_DIVERSITY_CELLULAR");
+                break;
+            case LE_ANTENNA_GNSS:
+                sprintf(typeStr, "LE_ANTENNA_GNSS");
+                break;
+            default:
+                sprintf(typeStr, "ERROR");
+                break;
+        }
+
+        switch(status)
+        {
+            case LE_ANTENNA_SHORT_CIRCUIT:
+                sprintf(statusStr, "LE_ANTENNA_SHORT_CIRCUIT");
+                break;
+
+            case LE_ANTENNA_CLOSE_CIRCUIT:
+                sprintf(statusStr, "LE_ANTENNA_CLOSE_CIRCUIT");
+                break;
+
+            case LE_ANTENNA_OPEN_CIRCUIT:
+                sprintf(statusStr, "LE_ANTENNA_OPEN_CIRCUIT");
+                break;
+
+            case LE_ANTENNA_OVER_CURRENT:
+                sprintf(statusStr, "LE_ANTENNA_OVER_CURRENT");
+                break;
+
+            case LE_ANTENNA_INACTIVE:
+                sprintf(statusStr, "LE_ANTENNA_INACTIVE");
+                break;
+
+            default:
+                sprintf(statusStr, "ERROR");
+                break;
+        }
+        LE_INFO("Antenna %s status%s", typeStr, statusStr);
     }
 }
 
@@ -105,7 +151,6 @@ static void AntennaHandler
 /*
  * Start test:
  * 'app start antennaTest'
- * 'execInApp antennaTest monAntennaTest'
  *
  */
 COMPONENT_INIT
@@ -122,7 +167,11 @@ COMPONENT_INIT
     result = le_info_GetDeviceModel(modelDevice, sizeof(modelDevice));
     LE_ASSERT(result == LE_OK);
     LE_INFO("le_info_GetDeviceModel get => %s", modelDevice);
-    if(strncmp(modelDevice, "AR7", strlen("AR7")) == 0)
+    if(strncmp(modelDevice, "AR758", strlen("AR758")) == 0)
+    {
+        DeviceModelFamily = DEVICEMODEL_AR758X_FAMILY;
+    }
+    else if(strncmp(modelDevice, "AR7", strlen("AR7")) == 0)
     {
         DeviceModelFamily = DEVICEMODEL_AR7_FAMILY;
     }
@@ -138,7 +187,7 @@ COMPONENT_INIT
     /*
      * Request cellular antenna diagnostic
      */
-    LE_INFO("Cellular antenna diagnostic:");
+    LE_INFO("Cellular antenna diagnostic: %d", DeviceModelFamily);
 
     AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef =
                                                     le_antenna_Request(LE_ANTENNA_PRIMARY_CELLULAR);
@@ -166,6 +215,19 @@ COMPONENT_INIT
         result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
                                   , &antennaAdc);
         LE_ASSERT((result == LE_OK)&&(antennaAdc == 1));
+    }
+    else if(DeviceModelFamily == DEVICEMODEL_AR758X_FAMILY)
+    {
+        int8_t adcId;
+
+        // Test external ADC index 0
+        result = le_antenna_SetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
+                                  , 5);
+        LE_ASSERT(result == LE_UNSUPPORTED);
+
+        result = le_antenna_GetExternalAdc(AntennaCtxtText[LE_ANTENNA_PRIMARY_CELLULAR].antennaRef
+                                  , &adcId);
+        LE_ASSERT(result == LE_UNSUPPORTED);
     }
     else
     {
@@ -229,17 +291,18 @@ COMPONENT_INIT
     /*
      * Request diversity antenna diagnostic
      */
-    if(DeviceModelFamily == DEVICEMODEL_AR7_FAMILY)
+    if((DeviceModelFamily == DEVICEMODEL_AR7_FAMILY)
+      || (DeviceModelFamily == DEVICEMODEL_AR758X_FAMILY))
     {
         LE_INFO("Diversity antenna diagnostic:");
         AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].antennaRef = le_antenna_Request(
-                                                                        LE_ANTENNA_DIVERSITY_CELLULAR);
+                                   LE_ANTENNA_DIVERSITY_CELLULAR);
         LE_ASSERT(AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].antennaRef != 0);
         /*
          * Get the current limits
          */
         result = le_antenna_GetOpenLimit(AntennaCtxtText[LE_ANTENNA_DIVERSITY_CELLULAR].antennaRef,
-                                                                                            &openLimit);
+                                    &openLimit);
         LE_ASSERT(result == LE_OK);
         LE_INFO("openLimit %d", openLimit);
 
@@ -332,48 +395,71 @@ COMPONENT_INIT
         LE_ASSERT(result == LE_UNSUPPORTED);
     }
 
-    /*
-     * Get the current limits
-     */
-    result = le_antenna_GetOpenLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &openLimit);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("GNSS antenna openLimit %d", openLimit);
+    if(DeviceModelFamily == DEVICEMODEL_AR758X_FAMILY)
+    {
+        LE_INFO("Gnss Antenna monitoring not managed on this platform");
 
-    result = le_antenna_GetShortLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &shortLimit);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("GNSS antenna shortLimit %d", shortLimit);
+        result = le_antenna_GetOpenLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &openLimit);
+        LE_ASSERT(result == LE_FAULT);
 
-    /*
-     * Set the short limit: this limit is can be used to detect a close circuit using a 10kohms
-     * resistance to simulate the antenna
-     */
-    result = le_antenna_SetShortLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, shortLimit);
-    LE_ASSERT(result == LE_OK);
+        result = le_antenna_GetShortLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &shortLimit);
+        LE_ASSERT(result == LE_FAULT);
 
-    /*
-     * Set the open limit: this limit is can be used to detect an open circuit
-     */
-    result = le_antenna_SetOpenLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, openLimit);
-    LE_ASSERT(result == LE_OK);
+        result = le_antenna_SetShortLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, shortLimit);
+        LE_ASSERT(result == LE_FAULT);
 
-    /*
-     * Get the current state (the result depends on presence/absence of the 10kohms resistance)
-     */
-    result = le_antenna_GetStatus(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &status);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("GNSS antenna status %d", status);
+        result = le_antenna_SetOpenLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, openLimit);
+        LE_ASSERT(result == LE_FAULT);
 
-    /*
-     * Subscribe to the status handler
-     */
-    AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef = le_antenna_AddStatusEventHandler (
-                                        AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef,
-                                        AntennaHandler,
-                                        NULL
-                                        );
+        result = le_antenna_GetStatus(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &status);
+        LE_ASSERT(result == LE_FAULT);
+    }
+    else
+    {
+        /*
+         * Get the current limits
+         */
+        result = le_antenna_GetOpenLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &openLimit);
+        LE_ASSERT(result == LE_OK);
+        LE_INFO("GNSS antenna openLimit %d", openLimit);
 
-    LE_INFO("GNSS antenna handlerRef %p", AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef);
-    LE_ASSERT(AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef != 0);
+        result = le_antenna_GetShortLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &shortLimit);
+        LE_ASSERT(result == LE_OK);
+        LE_INFO("GNSS antenna shortLimit %d", shortLimit);
+
+        /*
+         * Set the short limit: this limit is can be used to detect a close circuit using a 10kohms
+         * resistance to simulate the antenna
+         */
+        result = le_antenna_SetShortLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, shortLimit);
+        LE_ASSERT(result == LE_OK);
+
+        /*
+         * Set the open limit: this limit is can be used to detect an open circuit
+         */
+        result = le_antenna_SetOpenLimit(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, openLimit);
+        LE_ASSERT(result == LE_OK);
+
+        /*
+         * Get the current state (the result depends on presence/absence of the 10kohms resistance)
+         */
+        result = le_antenna_GetStatus(AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef, &status);
+        LE_ASSERT(result == LE_OK);
+        LE_INFO("GNSS antenna status %d", status);
+
+        /*
+         * Subscribe to the status handler
+         */
+        AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef = le_antenna_AddStatusEventHandler (
+            AntennaCtxtText[LE_ANTENNA_GNSS].antennaRef,
+            AntennaHandler,
+            NULL
+        );
+
+        LE_INFO("GNSS antenna handlerRef %p", AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef);
+        LE_ASSERT(AntennaCtxtText[LE_ANTENNA_GNSS].handlerRef != 0);
+
+    }
 
     LE_INFO("======== Antenna diagnostic Test finished  ========");
 }

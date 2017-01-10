@@ -67,7 +67,7 @@ static void AsyncResponse_{{func.name}}
     _msgBufPtr = PackData( _msgBufPtr, &(serverDataPtr->contextPtr), sizeof(void*) );
 
     // Pack the input parameters
-    {{ handler.parmList | printParmList("clientPack", sep="\n") | indent }}
+    {{ handler.transferParams | printParmList("clientPack", sep="\n") | indent }}
 
     // Send the async response to the client
     LE_DEBUG("Sending message to client session %p : %ti bytes sent",

@@ -17,7 +17,10 @@ processes:
 
 requires:
 {
-    configTree: { [w] system }
+    configTree:
+    {
+        [w] .
+    }
 }
 
 extern:

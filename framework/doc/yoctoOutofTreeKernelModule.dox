@@ -16,8 +16,8 @@ cd yocto-install
 export TOPDIR=${PWD}
 @endcode
 
-Then download the appropriate toolchain for your environment from
-the <a href="http://downloads.sierrawireless.com/legato">Legato Downloads</a> page.
+Then download the appropriate toolchain for your environment from the
+<a href="http://source.sierrawireless.com/resources/legato/downloads/">Legato Downloads</a> page.
 You can use @c wget after you know the filename.
 
 Ensure you have appropriate access to run the toolchain install script:

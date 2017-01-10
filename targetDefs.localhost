@@ -23,3 +23,6 @@ else
 endif
 
 $(info "Compiler Dir: ${TOOLCHAIN_DIR}")
+
+# Define the default sdef file to use
+SDEF_TO_USE ?= localhost.sdef

@@ -18,6 +18,10 @@ mkapp(  avcObserveApp.adef
             -i ${LEGATO_ROOT}/interfaces/airVantage
      )
 
+mkapp(  avcTimeSeriesApp.adef
+            -i ${LEGATO_ROOT}/interfaces/airVantage
+     )
+
 #
 # Test individual parts
 #

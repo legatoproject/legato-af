@@ -48,6 +48,24 @@
 // Definitions.
 //--------------------------------------------------------------------------------------------------
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Content type: Proprietary sierra encoding format (delta + cbor + zlib)
+ * This content type is used only for notify messages.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SIERRA_CBOR_ENCODING   12118
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Content type: TLV encoding used for notify and read responses.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TLV_ENCODING    1542
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * The possible actions to take after receiving a pending download or install notification.
@@ -224,6 +242,7 @@ LE_SHARED pa_avc_LWM2MOperationDataRef_t pa_avc_CreateOpData
     int objInstId,
     int resourceId,
     pa_avc_OpType_t opType,
+    uint16_t contentType,
     uint8_t* tokenPtr,
     uint8_t tokenLength
 );

@@ -63,19 +63,22 @@ static void TenMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, void
 #endif
 
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
-    LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
+    LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d,
+            accuracy.%d", val, val1, accuracy);
 
     le_pos_sample_GetDate(positionSampleRef, &year, &month, &day);
     LE_INFO("Check le_pos_sample_GetDate passed, year.%d, month.%d, day.%d", year, month, day);
 
     le_pos_sample_GetTime(positionSampleRef, &hours, &minutes, &seconds, &milliseconds);
-    LE_INFO("Check le_pos_sample_GetTime passed, hours.%d, minutes.%d, seconds.%d, milliseconds.%d", hours, minutes, seconds, milliseconds);
+    LE_INFO("Check le_pos_sample_GetTime passed, hours.%d, minutes.%d, seconds.%d, milliseconds.%d",
+            hours, minutes, seconds, milliseconds);
 
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);
 
     le_pos_sample_GetHorizontalSpeed(positionSampleRef, &uval, &uAccuracy);
-    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval, uAccuracy);
+    LE_INFO("Check le_pos_sample_GetHorizontalSpeed passed, hSpeed.%d, accuracy.%d", uval,
+            uAccuracy);
 
     le_pos_sample_GetVerticalSpeed(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetVerticalSpeed passed, vSpeed.%d, accuracy.%d", val, accuracy);
@@ -126,7 +129,8 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
 #endif
 
     le_pos_sample_Get2DLocation(positionSampleRef, &val, &val1, &accuracy);
-    LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d, accuracy.%d", val, val1, accuracy);
+    LE_INFO("Check le_pos_sample_Get2DLocation passed, lat.%d, long.%d, accuracy.%d", val, val1,
+            accuracy);
 
     le_pos_sample_GetAltitude(positionSampleRef, &val, &accuracy);
     LE_INFO("Check le_pos_sample_GetAltitude passed, alt.%d, accuracy.%d", val, accuracy);
@@ -165,28 +169,35 @@ static void TwentyMeterNavigationHandler(le_pos_SampleRef_t positionSampleRef, v
 //--------------------------------------------------------------------------------------------------
 void Testle_pos_Fix()
 {
-    int32_t     latitude;
-    int32_t     longitude;
-    int32_t     altitude;
-    int32_t     hAccuracy;
-    int32_t     vAccuracy;
-    uint32_t    hSpeed;
-    uint32_t    hSpeedAccuracy;
-    int32_t     vSpeed;
-    int32_t     vSpeedAccuracy;
-    int32_t     heading;
-    int32_t     headingAccuracy=0;
-    int32_t     direction;
-    int32_t     directionAccuracy=0;
-    le_result_t res;
+    int32_t           latitude;
+    int32_t           longitude;
+    int32_t           altitude;
+    int32_t           hAccuracy;
+    int32_t           vAccuracy;
+    uint32_t          hSpeed;
+    uint32_t          hSpeedAccuracy;
+    int32_t           vSpeed;
+    int32_t           vSpeedAccuracy;
+    int32_t           heading;
+    int32_t           headingAccuracy=0;
+    int32_t           direction;
+    int32_t           directionAccuracy=0;
+    le_pos_FixState_t fixState;
+    le_result_t       res;
+
+    res = le_pos_GetFixState(&fixState);
+    CU_ASSERT_EQUAL(res, LE_OK);
+    LE_INFO("position fix state %d", fixState);
 
     res = le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy);
     CU_ASSERT_EQUAL(res, LE_OK);
-    LE_INFO("Check le_pos_Get2DLocation latitude.%d, longitude.%d, hAccuracy.%d", latitude, longitude, hAccuracy);
+    LE_INFO("Check le_pos_Get2DLocation latitude.%d, longitude.%d, hAccuracy.%d", latitude,
+            longitude, hAccuracy);
 
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     CU_ASSERT_EQUAL(res, LE_OK);
-    LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d, vAccuracy.%d", latitude, longitude, hAccuracy, altitude, vAccuracy);
+    LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d,
+            vAccuracy.%d", latitude, longitude, hAccuracy, altitude, vAccuracy);
 
     res = le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
 #if ENABLE_SIMUL
@@ -194,7 +205,8 @@ void Testle_pos_Fix()
 #else
     CU_ASSERT_EQUAL(res, LE_OK);
 #endif
-    LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d", hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
+    LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d",
+            hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
 
     res = le_pos_GetHeading(&heading, NULL);
     CU_ASSERT_EQUAL(res, LE_OK);
@@ -202,17 +214,20 @@ void Testle_pos_Fix()
 
     res = le_pos_GetDirection(&direction, NULL);
     CU_ASSERT_EQUAL(res, LE_OK);
-    LE_INFO("Check le_pos_GetDirection direction.%d, directionAccuracy.%d", direction, directionAccuracy);
+    LE_INFO("Check le_pos_GetDirection direction.%d, directionAccuracy.%d", direction,
+            directionAccuracy);
 
     sleep (6);
 
     res = le_pos_Get2DLocation(&latitude, &longitude, &hAccuracy);
     CU_ASSERT_EQUAL(res, LE_OK);
-    LE_INFO("Check le_pos_Get2DLocation latitude.%d, longitude.%d, hAccuracy.%d", latitude, longitude, hAccuracy);
+    LE_INFO("Check le_pos_Get2DLocation latitude.%d, longitude.%d, hAccuracy.%d", latitude,
+            longitude, hAccuracy);
 
     res = le_pos_Get3DLocation(&latitude, &longitude, &hAccuracy, &altitude, &vAccuracy);
     CU_ASSERT_EQUAL(res, LE_OK);
-    LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d, vAccuracy.%d", latitude, longitude, hAccuracy, altitude, vAccuracy);
+    LE_INFO("Check le_pos_Get3DLocation latitude.%d, longitude.%d, hAccuracy.%d, altitude.%d,
+            vAccuracy.%d", latitude, longitude, hAccuracy, altitude, vAccuracy);
 
     res = le_pos_GetMotion(&hSpeed, &hSpeedAccuracy, &vSpeed, &vSpeedAccuracy);
 #if ENABLE_SIMUL
@@ -220,7 +235,8 @@ void Testle_pos_Fix()
 #else
     CU_ASSERT_EQUAL(res, LE_OK);
 #endif
-    LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d", hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
+    LE_INFO("Check le_pos_GetMotion hSpeed.%d, hSpeedAccuracy.%d, vSpeed.%d, vSpeedAccuracy.%d",
+            hSpeed, hSpeedAccuracy, vSpeed, vSpeedAccuracy);
 
     res = le_pos_GetHeading(&heading, NULL);
     CU_ASSERT_EQUAL(res, LE_OK);
@@ -228,7 +244,8 @@ void Testle_pos_Fix()
 
     res = le_pos_GetDirection(&direction, NULL);
     CU_ASSERT_EQUAL(res, LE_OK);
-    LE_INFO("Check le_pos_GetDirection direction.%d, directionAccuracy.%d", direction, directionAccuracy);
+    LE_INFO("Check le_pos_GetDirection direction.%d, directionAccuracy.%d", direction,
+            directionAccuracy);
 
 }
 

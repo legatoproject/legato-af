@@ -30,7 +30,7 @@
  *
  * The Cellular Network can be requested using le_cellnet_Request(). The le_cellnet_Request
  * function will turn on the radio if it is switched off and it will unlock the SIM if a PIN code
- * is required (it will retrieve the needed information from the config tree,
+ * is required (it will retrieve the needed information from the secure storage,
  * cf. @ref c_le_cellnet_config).
  * Before the cellular network is requested, an application should register a network state
  * handler using le_cellnet_AddStateEventHandler(). Once the cellular network becomes available,
@@ -47,20 +47,20 @@
  *
  * @section c_le_cellnet_config Cellular Network configuration
  *
- * Setting the SIM PIN code in the config tree and retreiving it is performed by two functions:
+ * Setting the SIM PIN code in the secure storage and retreiving it is performed by two functions:
  * le_cellnet_SetSimPinCode() and le_cellnet_GetSimPinCode().
  *
  * The le_cellnet_SetSimPinCode() function takes two parameters : SIM identifier and SIM card
- * PIN code and stores the PIN code in the rigth path of the config tree.
+ * PIN code and stores the PIN code in the secure storage.
  * Note that the function erases the previous stored SIM card PIN code.
  * Note that it is possible to set and retry a void entry ("") corresponding to an unlocked SIM.
  *
  * The le_cellnet_GetSimPinCode() function takes one parameter: the SIM identifier and retreives
- * the SIM card PIN code from the config tree.
+ * the SIM card PIN code from the secure storage.
  *
  * @note
  * when a new SIM is inserted and :
- *   - is locked, Cellular Network Service will read automatically the config tree in order to try
+ *   - is locked, Cellular Network Service will read automatically the secure storage in order to try
  *     to enter the pin for the SIM card.
  *   - is blocked, Cellular Network Service just log an error and did not try to enter the puk code.
  *   - when setting a too long PIN code (max 8 digits), a fatal error occurs, the function will
@@ -152,7 +152,7 @@ FUNCTION Release
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Set the PIN code in the config tree.
+ * Set the PIN code in the secure storage.
  *
  * @return
  *    LE_OUT_OF_RANGE    Invalid simId
@@ -169,16 +169,16 @@ FUNCTION Release
 FUNCTION le_result_t SetSimPinCode
 (
     le_sim.Id simId                    IN,  ///< SIM identifier.
-    string pinCode[le_sim.PIN_MAX_LEN] IN  ///< PIN code to insert in the config tree.
+    string pinCode[le_sim.PIN_MAX_LEN] IN  ///< PIN code to insert in the secure storage.
  );
 
 // -------------------------------------------------------------------------------------------------
 /**
- * Retreive the PIN code from the config tree.
+ * Retreive the PIN code from the secure storage.
  *
  * @return
  *    LE_OUT_OF_RANGE    Invalid simId
- *  - LE_NOT_FOUND       PIN code is not found in the config tree.
+ *  - LE_NOT_FOUND       PIN code is not found in the secure storage.
  *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
  *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
  *  - LE_OK              The function succeeded.
@@ -187,7 +187,7 @@ FUNCTION le_result_t SetSimPinCode
 FUNCTION le_result_t GetSimPinCode
 (
     le_sim.Id simId                    IN,  ///< SIM identifier.
-    string pinCode[le_sim.PIN_MAX_LEN] OUT  ///< Read the PIN code from the config tree.
+    string pinCode[le_sim.PIN_MAX_LEN] OUT  ///< Read the PIN code from the secure storage.
 );
 
 

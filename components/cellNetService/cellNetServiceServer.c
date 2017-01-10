@@ -7,21 +7,24 @@
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-
 #include "interfaces.h"
-#include "mdmCfgEntries.h"
-
 #include "le_print.h"
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**
- * ConfigDb max attempt number.
+ *  Nodes in the secure storage used to store PIN codes.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SECSTORE_NODE_SIM   "sim"
+#define SECSTORE_NODE_PIN   "pin"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Secure storage max attempt number.
  *
  */
 //--------------------------------------------------------------------------------------------------
-#define CONFIGDB_ATTEMPT_MAX   5
+#define SECSTORE_ATTEMPT_MAX   5
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -57,25 +60,19 @@ static le_event_Id_t CellNetStateEvent;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Load the SIM configuration from the config DB
+ * Load the SIM configuration from the secure storage
  */
 //--------------------------------------------------------------------------------------------------
-static void LoadSimFromConfigDb
+static void LoadSimFromSecStore
 (
     le_sim_Id_t simId
 )
 {
-    uint32_t attemptCounter = CONFIGDB_ATTEMPT_MAX;
-    // Get the configuration path for the SIM.
-    char configPath[LIMIT_MAX_PATH_BYTES];
-    snprintf(configPath, sizeof(configPath), "%s/%d",
-             CFG_MODEMSERVICE_SIM_PATH,
-             simId);
-
-    LE_DEBUG("Start reading SIM-%d information in ConfigDB",simId);
-
+    uint32_t attemptCounter = SECSTORE_ATTEMPT_MAX;
     le_result_t result;
     le_sim_States_t simState;
+
+    LE_DEBUG("Start reading SIM-%d information in secure storage",simId);
 
     do
     {
@@ -85,33 +82,44 @@ static void LoadSimFromConfigDb
         {
             case LE_SIM_INSERTED:
             {
-                // Check that the app has a configuration value.
-                le_cfg_IteratorRef_t simCfg = le_cfg_CreateReadTxn(configPath);
+                // Set the secure storage path for the SIM
+                char secStorePath[LE_SECSTORE_MAX_NAME_BYTES];
+                snprintf(secStorePath, sizeof(secStorePath), "%s/%d/%s",
+                         SECSTORE_NODE_SIM, simId, SECSTORE_NODE_PIN);
 
-                char simPin[LIMIT_MAX_PATH_BYTES] = {0};
+                char simPin[LE_SIM_PIN_MAX_BYTES] = {0};
+                size_t simSize = LE_SIM_PIN_MAX_BYTES;
 
-                result = le_cfg_GetString(simCfg,CFG_NODE_PIN,simPin,sizeof(simPin),"");
-                if ( result != LE_OK )
+                // Read PIN code stored in secure storage
+                result = le_secStore_Read(secStorePath, (uint8_t *)simPin, &simSize);
+                if (LE_NOT_FOUND == result)
                 {
-                    LE_WARN("PIN string too large for SIM-%d",simId);
-                    le_cfg_CancelTxn(simCfg);
+                    LE_ERROR("SIM PIN code isn't found in the secure storage");
                     return;
                 }
-                if ( strncmp(simPin,"",sizeof(simPin))==0 )
+                else if (LE_OVERFLOW == result)
                 {
-                    LE_WARN("PIN not set for SIM-%d",simId);
-                    le_cfg_CancelTxn(simCfg);
+                    LE_WARN("PIN string too large for SIM-%d", simId);
                     return;
                 }
-                if ( (result = le_sim_EnterPIN(simId,simPin)) != LE_OK )
+                else if (LE_OK != result)
                 {
-                    LE_ERROR("Error.%d Failed to enter SIM pin for SIM-%d",result,simId);
-                    le_cfg_CancelTxn(simCfg);
+                    LE_ERROR("Unable to retrieve PIN for SIM-%d, error %s",
+                             simId, LE_RESULT_TXT(result));
+                    return;
+                }
+                if (0 == strncmp(simPin, "", sizeof(simPin)))
+                {
+                    LE_WARN("PIN not set for SIM-%d", simId);
+                    return;
+                }
+                if (LE_OK != (result = le_sim_EnterPIN(simId, simPin)))
+                {
+                    LE_ERROR("Error.%d Failed to enter SIM pin for SIM-%d", result, simId);
                     return;
                 }
                 LE_DEBUG("Sim-%d is unlocked", simId);
 
-                le_cfg_CancelTxn(simCfg);
                 attemptCounter = 1;
                 break;
             }
@@ -125,7 +133,7 @@ static void LoadSimFromConfigDb
                 if (attemptCounter==1)
                 {
                     LE_WARN("Could not load the configuration because "
-                            "the SIM is still busy after %d attempts", CONFIGDB_ATTEMPT_MAX);
+                            "the SIM is still busy after %d attempts", SECSTORE_ATTEMPT_MAX);
                 }
                 else
                 {
@@ -246,12 +254,12 @@ static void StartCellNetTimerHandler
             // The radio is ON, stop and delete the Timer.
             le_timer_Delete(timerRef);
 
-            // Load SIM configuration from Config DB
+            // Load SIM configuration from secure storage
             le_sim_Id_t simSelected = le_sim_GetSelectedCard();
 
             if (le_sim_IsPresent(simSelected))
             {
-                LoadSimFromConfigDb(simSelected);
+                LoadSimFromSecStore(simSelected);
                 SendCellNetStateEvent();
             }
 
@@ -282,12 +290,12 @@ static void StartCellularNetwork
     result=le_mrc_GetRadioPower(&radioState);
     if ((result == LE_OK) && (radioState == LE_ON))
     {
-        // Load SIM configuration from Config DB
+        // Load SIM configuration from secure storage
         le_sim_Id_t simSelected = le_sim_GetSelectedCard();
 
         if (le_sim_IsPresent(simSelected))
         {
-            LoadSimFromConfigDb(simSelected);
+            LoadSimFromSecStore(simSelected);
             SendCellNetStateEvent();
         }
 
@@ -437,7 +445,7 @@ static void SimStateHandler
 {
     if (simState == LE_SIM_INSERTED)
     {
-        LoadSimFromConfigDb(simId);
+        LoadSimFromSecStore(simId);
         SendCellNetStateEvent();
     }
 }
@@ -475,6 +483,7 @@ static void* CellNetThread
     le_cfg_ConnectService();
     le_mrc_ConnectService();
     le_sim_ConnectService();
+    le_secStore_ConnectService();
 
     LE_INFO("CellNet Thread Started");
 
@@ -608,7 +617,7 @@ void le_cellnet_Release
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the PIN code in the config tree.
+ * Set the PIN code in the secure storage.
  *
  * @return
  *    LE_OUT_OF_RANGE    Invalid simId
@@ -626,14 +635,14 @@ le_result_t le_cellnet_SetSimPinCode
 
     const char* pinCodePtr
         ///< [IN]
-        ///< PIN code to insert in the config tree.
+        ///< PIN code to insert in the secure storage.
 )
 {
 
     le_result_t result=LE_OK;
     size_t pinCodeLength = strlen(pinCodePtr);
 
-    LE_DEBUG("simId= %d, pinCode= %s",simId,pinCodePtr);
+    LE_DEBUG("simId= %d",simId);
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -676,23 +685,29 @@ le_result_t le_cellnet_SetSimPinCode
             }
         }
     }
+
     if (LE_OK == result)
     {
-        // Set the configuration path for the SIM.
-        char configPath[LIMIT_MAX_PATH_BYTES];
-        snprintf(configPath, sizeof(configPath), "%s/%d",
-                 CFG_MODEMSERVICE_SIM_PATH,
-                 simId);
+        // Set the secure storage path for the SIM
+        char secStorePath[LE_SECSTORE_MAX_NAME_BYTES];
+        snprintf(secStorePath, sizeof(secStorePath), "%s/%d/%s",
+                 SECSTORE_NODE_SIM, simId, SECSTORE_NODE_PIN);
 
-        le_cfg_IteratorRef_t simCfgRef = le_cfg_CreateWriteTxn(configPath);
-        le_cfg_SetString(simCfgRef, CFG_NODE_PIN, pinCodePtr);
-        le_cfg_CommitTxn(simCfgRef);
+        result = le_secStore_Write(secStorePath, (uint8_t*)pinCodePtr,
+                                   strnlen(pinCodePtr, LE_SIM_PIN_MAX_BYTES));
 
-        LE_DEBUG("SIM PIN code (%s) inserted OK in config Tree",pinCodePtr);
+        if (LE_OK == result)
+        {
+            LE_DEBUG("SIM PIN code correctly inserted in secure storage");
 
-        // New SIM pincode is taken into account
-        LoadSimFromConfigDb(simId);
-        SendCellNetStateEvent();
+            // New SIM pincode is taken into account
+            LoadSimFromSecStore(simId);
+            SendCellNetStateEvent();
+        }
+        else
+        {
+            LE_ERROR("Unable to store PIN code, error %s\n", LE_RESULT_TXT(result));
+        }
     }
 
     return result;
@@ -702,11 +717,11 @@ le_result_t le_cellnet_SetSimPinCode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Retreive the PIN code from the config tree.
+ * Retrieve the PIN code from the secure storage.
  *
  * @return
  *    LE_OUT_OF_RANGE    Invalid simId
- *  - LE_NOT_FOUND       SIM PIN node isn't found in the config tree.
+ *  - LE_NOT_FOUND       SIM PIN node isn't found in the secure storage.
  *  - LE_OVERFLOW        PIN code exceeds the maximum length of 8 digits.
  *  - LE_UNDERFLOW       The PIN code is not long enough (min 4 digits).
  *  - LE_OK              The function succeeded.
@@ -720,7 +735,7 @@ le_result_t le_cellnet_GetSimPinCode
 
     char* pinCodePtr,
         ///< [OUT]
-        ///< Read the PIN code from the config tree.
+        ///< Read the PIN code from the secure storage.
 
     size_t pinCodeNumElements
         ///< [IN]
@@ -738,52 +753,45 @@ le_result_t le_cellnet_GetSimPinCode
     }
     else
     {
-        // Set the configuration path for the SIM.
-        char configPath[LIMIT_MAX_PATH_BYTES];
+        // Set the secure storage path for the SIM
+        char secStorePath[LE_SECSTORE_MAX_NAME_BYTES];
+        snprintf(secStorePath, sizeof(secStorePath), "%s/%d/%s",
+                 SECSTORE_NODE_SIM, simId, SECSTORE_NODE_PIN);
+
         char simPin[LE_SIM_PIN_MAX_BYTES] = {0};
-        le_cfg_IteratorRef_t simCfgRef;
+        size_t simSize = LE_SIM_PIN_MAX_BYTES;
 
-        snprintf(configPath,
-                 sizeof(configPath),
-                 "%s/%d",
-                 CFG_MODEMSERVICE_SIM_PATH, simId);
+        // Read PIN code stored in secure storage
+        result = le_secStore_Read(secStorePath, (uint8_t *)simPin, &simSize);
 
-        // Check that the app has a configuration value.
-        simCfgRef = le_cfg_CreateReadTxn(configPath);
-
-        // test if the node exists
-        if (!le_cfg_NodeExists(simCfgRef, CFG_NODE_PIN))
+        if (LE_NOT_FOUND == result)
         {
-            LE_ERROR("SIM PIN node isn't found in the config tree");
-            result = LE_NOT_FOUND;
+            LE_ERROR("SIM PIN code isn't found in the secure storage");
+        }
+        else if (LE_OVERFLOW == result)
+        {
+            LE_ERROR("Retrieved SIM PIN code exceeds the supplied buffer");
+        }
+        else if (LE_OK != result)
+        {
+            LE_ERROR("Unable to retrieve PIN, error %s", LE_RESULT_TXT(result));
         }
         else
         {
-            //read config tree
-            result = le_cfg_GetString(simCfgRef,CFG_NODE_PIN,simPin,sizeof(simPin),"");
-            if (result != LE_OK)
+            //void entry is taken into account
+            if (   (0 != strncmp(simPin, "", LE_SIM_PIN_MAX_LEN))
+                && (strlen(simPin) < LE_SIM_PIN_MIN_LEN))
             {
-                LE_ERROR("retrieved SIM PIN code exceeds the supplied buffer");
-                result = LE_OVERFLOW;
+                LE_ERROR("Retrieved SIM PIN code is not long enough (min 4 digits)");
+                result = LE_UNDERFLOW;
             }
             else
             {
-                 //void entry is taken into account
-                 if ((strncmp(simPin,"",LE_SIM_PIN_MAX_LEN)!=0) &&
-                     (strlen(simPin) < LE_SIM_PIN_MIN_LEN))
-                {
-                    LE_ERROR("retrieved SIM PIN code is not long enough (min 4 digits) ");
-                    result = LE_UNDERFLOW;
-                }
-                else
-                {
-                    //copy pincode
-                    strncpy ( pinCodePtr, simPin, sizeof(simPin) );
-                    LE_DEBUG("SIM PIN code= %s retrieved OK",pinCodePtr);
-                }
+                //copy pincode
+                strncpy ( pinCodePtr, simPin, sizeof(simPin) );
+                LE_DEBUG("SIM PIN code retrieved OK");
             }
         }
-        le_cfg_CancelTxn(simCfgRef);
     }
     return result;
 }

@@ -25,7 +25,12 @@
 // For htonl
 #include <arpa/inet.h>
 
+#ifdef LEGATO_FEATURE_TIMESERIES
 
+#include "tinycbor/cbor.h"
+#include "zlib.h"
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Macros
@@ -51,6 +56,34 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define STRING_VALUE_NUMBYTES 256
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes for CBOR encoded time series data
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_CBOR_BUFFER_NUMBYTES 1024
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks the return value from the tinyCBOR encoder and returns from function if an error is found.
+ */
+//--------------------------------------------------------------------------------------------------
+#ifdef LEGATO_FEATURE_TIMESERIES
+
+#define \
+    RETURN_IF_CBOR_ERROR( err ) \
+    ({ \
+        if (err != CborNoError) \
+        { \
+            LE_ERROR("CBOR encoding error %s", cbor_error_string(err)); \
+            return LE_FAULT; \
+        } \
+    })
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -122,6 +155,38 @@ InstanceData_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Data contained in time series
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    uint8_t* bufferPtr;             ///< Buffer for accumulating history data.
+    size_t bufferSize;              ///< Buffer size of history data.
+
+#ifdef LEGATO_FEATURE_TIMESERIES
+    double timeStampFactor;         ///< Factor of time stamp.
+    uint64_t prevTimeStamp;         ///< Time stamp of last data capture, used for delta encoding.
+
+    double factor;                  ///< Factor of data.
+    union
+    {
+        int prevIntValue;           ///< Value of of last data capture - used for delta encoding.
+        double prevFloatValue;      ///< Value of last data capture - used for delta encoding.
+    };
+
+    uint32_t numElements;           ///< Number of elements in cbor encoded stream.
+
+    CborEncoder streamRef;          ///< CBOR encoded stream reference.
+    CborEncoder mapRef;             ///< CBOR encoded map reference.
+    CborEncoder sampleRef;          ///< CBOR encoded sample data reference.
+#endif
+}
+TimeSeriesData_t;
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Data contained in a single field of an asset instance
  */
 //--------------------------------------------------------------------------------------------------
@@ -142,6 +207,8 @@ typedef struct
         bool boolValue;
         char* strValuePtr;
     };
+
+    TimeSeriesData_t* timeSeriesPtr;
 
     le_dls_Link_t link;          ///< For adding to the field list
 }
@@ -262,6 +329,22 @@ static le_hashmap_Ref_t AssetMapByName = NULL;
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t RegUpdateTimerRef;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Time series data memory pool.  Initialized in assetData_Init().
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t TimeSeriesDataPoolRef = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * CBOR buffer memory pool.  Initialized in assetData_Init().
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t CborBufferPoolRef = NULL;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -461,6 +544,8 @@ static void InitDefaultFieldData
 {
     fieldDataPtr->isObserve = false;
     fieldDataPtr->readCallBackOpRef = NULL;
+
+    fieldDataPtr->timeSeriesPtr = NULL;
 
     switch ( fieldDataPtr->type )
     {
@@ -1188,6 +1273,523 @@ static le_result_t GetField
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Allocate resources and start accumulating time series data on the specified field.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_BUSY if time series already enabled on this field
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StartTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to be time series'd
+    double factor,                              ///< [IN] Multiplication factor used for delta encoding
+    double timeStampFactor                      ///< [IN] Multiplication factor used for delta encoding of time stamp
+)
+{
+#ifdef LEGATO_FEATURE_TIMESERIES
+
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+    uint8_t* timeSeriesBufferPtr;
+    char headerId[64];
+    CborError err;
+    CborEncoder headerArray;
+    CborEncoder factorArray;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+    if ( result != LE_OK )
+    {
+        LE_ERROR("Field not found.");
+        return result;
+    }
+
+    // Is time series enabled on this field.
+    if (fieldDataPtr->timeSeriesPtr != NULL)
+    {
+        LE_ERROR("Time series already enabled on this field.");
+        return LE_BUSY;
+    }
+
+    // Check if observe is enabled on this field.
+    if (!fieldDataPtr->isObserve)
+    {
+        LE_ERROR("Observe not enabled on this field.");
+        return LE_FAULT;
+    }
+
+    FormatString(headerId,
+                 sizeof(headerId),
+                 "/%i/%i",
+                 instanceRef->instanceId,
+                 fieldId);
+
+    fieldDataPtr->timeSeriesPtr = le_mem_ForceAlloc(TimeSeriesDataPoolRef);
+
+    memset(fieldDataPtr->timeSeriesPtr, 0, sizeof(TimeSeriesData_t));
+
+    timeSeriesBufferPtr = le_mem_ForceAlloc(CborBufferPoolRef);
+    fieldDataPtr->timeSeriesPtr->bufferPtr = timeSeriesBufferPtr;
+
+    fieldDataPtr->timeSeriesPtr->bufferSize = MAX_CBOR_BUFFER_NUMBYTES;
+
+    // Initialize CBOR stream.
+    cbor_encoder_init(&fieldDataPtr->timeSeriesPtr->streamRef,
+                      timeSeriesBufferPtr,
+                      MAX_CBOR_BUFFER_NUMBYTES,
+                      0);
+
+    err = cbor_encoder_create_map(&fieldDataPtr->timeSeriesPtr->streamRef,
+                                  &fieldDataPtr->timeSeriesPtr->mapRef,
+                                  NUM_TIME_SERIES_MAPS);
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Create a map and add the header in to the map.
+    err = cbor_encode_text_stringz(&fieldDataPtr->timeSeriesPtr->mapRef, "h");
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Create an array for the header.
+    err = cbor_encoder_create_array(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                    &headerArray,
+                                    1);
+    RETURN_IF_CBOR_ERROR(err);
+
+    err = cbor_encode_text_string(&headerArray, headerId, strlen(headerId));
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Close the heade map i.e done with entering in to header array.
+    // e.g. "h" : [/1000/0]  --> map for header.
+    cbor_encoder_close_container(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                 &headerArray);
+
+    // Create a map for factor.
+    // e.g. "f" : [1]  --> map for factor.
+    err = cbor_encode_text_stringz(&fieldDataPtr->timeSeriesPtr->mapRef, "f");
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Create an array of factors (time stamp factor, data factor)
+    err = cbor_encoder_create_array(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                    &factorArray,
+                                    2);
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Add factor for time stamp.
+    err = cbor_encode_double(&factorArray, timeStampFactor);
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Add factor for sample.
+    err = cbor_encode_double(&factorArray, factor);
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Close the map i.e done with entering in to factor array.
+    cbor_encoder_close_container(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                 &factorArray);
+
+    // Create an array for samples. The sample array will have time stamp and data pair.
+    err = cbor_encode_text_stringz(&fieldDataPtr->timeSeriesPtr->mapRef, "s");
+    RETURN_IF_CBOR_ERROR(err);
+
+    err = cbor_encoder_create_array(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                    &fieldDataPtr->timeSeriesPtr->sampleRef,
+                                    CborIndefiniteLength);
+    RETURN_IF_CBOR_ERROR(err);
+
+    fieldDataPtr->timeSeriesPtr->factor = factor;
+    fieldDataPtr->timeSeriesPtr->timeStampFactor = timeStampFactor;
+
+    return result;
+
+#else
+    LE_ERROR("Time series not supported.");
+    return LE_FAULT;
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop time series on this field and free resources.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_CLOSED if timeseries already stopped
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t StopTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId                                 ///< [IN] Field to be time series'd
+)
+{
+#ifdef LEGATO_FEATURE_TIMESERIES
+
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+
+    if (fieldDataPtr->timeSeriesPtr == NULL)
+    {
+        LE_ERROR("Time series not enabled on this field.");
+        return LE_CLOSED;
+    }
+
+    le_mem_Release(fieldDataPtr->timeSeriesPtr->bufferPtr);
+    le_mem_Release(fieldDataPtr->timeSeriesPtr);
+
+    fieldDataPtr->timeSeriesPtr = NULL;
+
+    return LE_OK;
+
+#else
+    LE_ERROR("Time series not supported.");
+    return LE_FAULT;
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compress the accumulated CBOR encoded time series data and send it to server.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_FAULT if any other error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t PushTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to be time series'd
+    bool isRestartTimeSeries                    ///< [IN] Restart time series after push?
+)
+{
+
+#ifdef LEGATO_FEATURE_TIMESERIES
+
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+    uint32_t cborStreamSize;
+    unsigned char compressedBuf[MAX_CBOR_BUFFER_NUMBYTES];
+    unsigned long int compressBufLength;
+    z_stream defstream;
+    pa_avc_LWM2MOperationDataRef_t opRef;
+    CborError err;
+
+    double dataFactor;
+    double timeStampFactor;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+
+    if (fieldDataPtr->timeSeriesPtr == NULL)
+    {
+        // Time series not enabled on this field.
+        LE_ERROR("Time series not enabled on this field.");
+        return LE_CLOSED;
+    }
+
+    // Check if observe is enabled on this field.
+    if (!fieldDataPtr->isObserve)
+    {
+        LE_ERROR("Observe not enabled on this field.");
+        return LE_FAULT;
+    }
+
+    // Remember the factors used.
+    dataFactor = fieldDataPtr->timeSeriesPtr->factor;
+    timeStampFactor = fieldDataPtr->timeSeriesPtr->timeStampFactor;
+
+    // Close the map i.e done with entering in to sample array.
+    err = cbor_encoder_close_container_checked(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                               &fieldDataPtr->timeSeriesPtr->sampleRef);
+
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Close the stream.
+    err = cbor_encoder_close_container_checked(&fieldDataPtr->timeSeriesPtr->streamRef,
+                                               &fieldDataPtr->timeSeriesPtr->mapRef);
+    RETURN_IF_CBOR_ERROR(err);
+
+    // Dump CBOR encoded data.
+    cborStreamSize = cbor_encoder_get_buffer_size(&fieldDataPtr->timeSeriesPtr->mapRef,
+                                                  fieldDataPtr->timeSeriesPtr->bufferPtr);
+
+    //LE_DEBUG("cborStreamSize = %d", cborStreamSize);
+    //LE_DUMP(fieldDataPtr->timeSeriesPtr->bufferPtr, cborStreamSize);
+
+    // Compress the cbor encoded data
+    // ToDo: In place compression
+    defstream.zalloc = Z_NULL;
+    defstream.zfree = Z_NULL;
+    defstream.opaque = Z_NULL;
+
+    defstream.avail_in = cborStreamSize;
+    defstream.next_in = (Bytef *)fieldDataPtr->timeSeriesPtr->bufferPtr;
+    defstream.avail_out = (uInt)sizeof(compressedBuf);
+    defstream.next_out = (Bytef *)compressedBuf;
+
+    deflateInit(&defstream, Z_BEST_COMPRESSION);
+    deflate(&defstream, Z_FINISH);
+    deflateEnd(&defstream);
+
+    compressBufLength = defstream.total_out;
+
+    //LE_DEBUG("Compressed size is: %lu\n", compressBufLength);
+    //LE_DUMP(compressedBuf, compressBufLength);
+
+    // Send the delta encoded + CBOR encoded + Zipped data to the server.
+    opRef = pa_avc_CreateOpData(instanceRef->assetDataPtr->appName,
+                                instanceRef->assetDataPtr->assetId,
+                                -1,
+                                -1,
+                                PA_AVC_OPTYPE_NOTIFY,
+                                SIERRA_CBOR_ENCODING,
+                                fieldDataPtr->token,
+                                fieldDataPtr->tokenLength);
+
+    pa_avc_NotifyChange(opRef, compressedBuf, compressBufLength);
+
+    // Stop time series.
+    result = StopTimeSeries(instanceRef, fieldId);
+
+    // Restart time series if asked.
+    if (result == LE_OK && isRestartTimeSeries)
+    {
+        result = StartTimeSeries(instanceRef, fieldId, dataFactor, timeStampFactor);
+    }
+
+    return result;
+
+#else
+    LE_ERROR("Time series not supported.");
+    return LE_FAULT;
+#endif
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is time series enabled on this resource, if yes how many data points are recorded so far?
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t GetTimeSeriesStatus
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field id
+    bool* isTimeSeriesPtr,                      ///< [OUT] Is time series enabled on this field
+    int* numDataPointsPtr                       ///< [OUT] Number of data points recorded so far
+)
+{
+#ifdef LEGATO_FEATURE_TIMESERIES
+
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+
+    if (fieldDataPtr->timeSeriesPtr == NULL)
+    {
+        // Time series not enabled on this field.
+        LE_DEBUG("Time series not enabled on this field.");
+
+        *isTimeSeriesPtr = false;
+        *numDataPointsPtr = 0;
+    }
+    else
+    {
+        *isTimeSeriesPtr = true;
+        *numDataPointsPtr = fieldDataPtr->timeSeriesPtr->numElements;
+    }
+
+    return LE_OK;
+
+#else
+    LE_ERROR("Time series not supported.");
+    return LE_FAULT;
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the sampled data in to the CBOR sample array.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_FAULT on any other error
+ *      - LE_OVERFLOW if the current entry was not added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t TimeSeriesAddEntry
+(
+    FieldData_t* fieldDataPtr,
+    uint64_t utcMilliSec
+)
+{
+
+#ifdef LEGATO_FEATURE_TIMESERIES
+
+    CborError err;
+    uint64_t timeStamp;
+    int intDelta;
+    double floatDelta;
+    size_t currentSize;
+    struct timeval tv;
+
+    // Reserve CBOR_RESERVED_BYTES bytes for closing the container.
+    // The stream has to be flushed it starts getting in to the reserved area.
+    currentSize = cbor_encoder_get_buffer_size(&fieldDataPtr->timeSeriesPtr->sampleRef,
+                                               fieldDataPtr->timeSeriesPtr->bufferPtr);
+
+
+    if (currentSize > (fieldDataPtr->timeSeriesPtr->bufferSize - CBOR_RESERVED_BYTES))
+    {
+        LE_WARN("Time series buffer overflow on field %d.", fieldDataPtr->fieldId);
+        LE_DEBUG("currentSize = %zd.", currentSize);
+
+        return LE_OVERFLOW;
+    }
+
+    // Get current system time if utc milli seconds is not provided.
+    // The time stamp is expected in UTC milli seconds by the server.
+    if (utcMilliSec == 0)
+    {
+        gettimeofday(&tv, NULL);
+        utcMilliSec = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
+    }
+
+    // For the first entry write the absolute value, for all other entries calculate delta.
+    if (fieldDataPtr->timeSeriesPtr->numElements == 0)
+    {
+        timeStamp = utcMilliSec * fieldDataPtr->timeSeriesPtr->timeStampFactor;
+    }
+    else
+    {
+        timeStamp = (utcMilliSec - fieldDataPtr->timeSeriesPtr->prevTimeStamp) *
+                    fieldDataPtr->timeSeriesPtr->timeStampFactor;
+    }
+
+    // Add time stamp to sample array.
+    err = cbor_encode_int(&fieldDataPtr->timeSeriesPtr->sampleRef, timeStamp);
+    RETURN_IF_CBOR_ERROR(err);
+
+    fieldDataPtr->timeSeriesPtr->prevTimeStamp = utcMilliSec;
+
+    // Add the data to sample array.
+    switch ( fieldDataPtr->type )
+    {
+        case DATA_TYPE_INT:
+            if (fieldDataPtr->timeSeriesPtr->numElements == 0)
+            {
+                intDelta = fieldDataPtr->intValue * fieldDataPtr->timeSeriesPtr->factor;
+            }
+            else
+            {
+                intDelta = (fieldDataPtr->intValue - fieldDataPtr->timeSeriesPtr->prevIntValue) *
+                            fieldDataPtr->timeSeriesPtr->factor;
+            }
+
+            //LE_DEBUG("intDelta = %d", intDelta);
+
+            err = cbor_encode_int(&fieldDataPtr->timeSeriesPtr->sampleRef, intDelta);
+
+            fieldDataPtr->timeSeriesPtr->prevIntValue = fieldDataPtr->intValue;
+            break;
+
+        case DATA_TYPE_BOOL:
+            err = cbor_encode_boolean(&fieldDataPtr->timeSeriesPtr->sampleRef, fieldDataPtr->boolValue);
+            break;
+
+        case DATA_TYPE_STRING:
+            err = cbor_encode_text_string(&fieldDataPtr->timeSeriesPtr->sampleRef,
+                                          fieldDataPtr->strValuePtr,
+                                          strlen(fieldDataPtr->strValuePtr));
+            break;
+
+        case DATA_TYPE_FLOAT:
+            // ToDO: float doesn't benefit from use of factor - investigate.
+            if (fieldDataPtr->timeSeriesPtr->numElements == 0)
+            {
+                floatDelta = fieldDataPtr->floatValue * fieldDataPtr->timeSeriesPtr->factor;
+            }
+            else
+            {
+                floatDelta = (fieldDataPtr->floatValue - fieldDataPtr->timeSeriesPtr->prevFloatValue);
+                floatDelta = floatDelta * fieldDataPtr->timeSeriesPtr->factor;
+            }
+
+            if ((uint64_t)fieldDataPtr->timeSeriesPtr->factor == 1)
+            {
+                err = cbor_encode_double(&fieldDataPtr->timeSeriesPtr->sampleRef, floatDelta);
+            }
+            else
+            {
+                LE_DEBUG("Float data encoded as integer.");
+                err = cbor_encode_int(&fieldDataPtr->timeSeriesPtr->sampleRef, (uint64_t)floatDelta);
+            }
+
+            fieldDataPtr->timeSeriesPtr->prevFloatValue = fieldDataPtr->floatValue;
+            break;
+
+        case DATA_TYPE_NONE:
+            LE_ERROR("Failed to add an entry in CBOR stream.");
+            break;
+    }
+
+    RETURN_IF_CBOR_ERROR(err);
+
+    fieldDataPtr->timeSeriesPtr->numElements++;
+
+
+    // Reserve CBOR_RESERVED_BYTES bytes for closing the container.
+    // The stream has to be flushed it starts getting in to the reserved area.
+    currentSize = cbor_encoder_get_buffer_size(&fieldDataPtr->timeSeriesPtr->sampleRef,
+                                               fieldDataPtr->timeSeriesPtr->bufferPtr);
+
+    if (currentSize > (fieldDataPtr->timeSeriesPtr->bufferSize - CBOR_RESERVED_BYTES))
+    {
+        LE_WARN("Time series buffer full; flush and restart time series on field %d.",
+                 fieldDataPtr->fieldId);
+        LE_DEBUG("currentSize = %zd.", currentSize);
+
+        return LE_NO_MEMORY;
+    }
+
+    return LE_OK;
+
+#else
+    LE_ERROR("Time series not supported.");
+    return LE_FAULT;
+#endif
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Check if a registered handler exists for a field read action.
  *
  * @return:
@@ -1442,7 +2044,7 @@ static void PrintAssetMap
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static GetInt
+static le_result_t GetInt
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -1487,7 +2089,7 @@ le_result_t static GetInt
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static GetFloat
+static le_result_t GetFloat
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -1525,15 +2127,20 @@ le_result_t static GetFloat
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static SetInt
+static le_result_t SetInt
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
     int value,                                  ///< [IN] The value to write
-    bool isClient                               ///< [IN] Is it client or server access
+    bool isClient,                              ///< [IN] Is it client or server access
+    uint64_t utcMilliSec                        ///< [IN] Timestamp in utc milli seconds
 )
 {
     le_result_t result;
@@ -1580,8 +2187,12 @@ le_result_t static SetInt
         fieldDataPtr->readCallBackOpRef = NULL;
     }
 
-    //LE_PRINT_VALUE("%d", prevValue);
-    //LE_PRINT_VALUE("%d", value);
+    // If time series is enabled add the data to time series history and get out. If time series is
+    // not enabled send the observe notification right away.
+    if (fieldDataPtr->timeSeriesPtr != NULL)
+    {
+        return TimeSeriesAddEntry(fieldDataPtr, utcMilliSec);
+    }
 
     // Notify the server if observe is enabled and the value is changed.
     // The server sends notify on entire object, so we need to send the TLV of entire
@@ -1612,6 +2223,7 @@ le_result_t static SetInt
                                         -1,
                                         -1,
                                         PA_AVC_OPTYPE_NOTIFY,
+                                        TLV_ENCODING,
                                         fieldDataPtr->token,
                                         fieldDataPtr->tokenLength);
 
@@ -1630,15 +2242,20 @@ le_result_t static SetInt
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static SetFloat
+static le_result_t SetFloat
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
     double value,                               ///< [IN] The value to write
-    bool isClient                               ///< [IN] Is it client or server access
+    bool isClient,                              ///< [IN] Is it client or server access
+    uint64_t utcMilliSec                        ///< [IN] Timestamp in utc milli seconds
 )
 {
     le_result_t result;
@@ -1684,8 +2301,12 @@ le_result_t static SetFloat
         fieldDataPtr->readCallBackOpRef = NULL;
     }
 
-    //LE_PRINT_VALUE("%lf", prevValue);
-    //LE_PRINT_VALUE("%lf", value);
+    // If time series is enabled add the data to time series history and get out. If time series is
+    // not enabled send the observe notification right away.
+    if (fieldDataPtr->timeSeriesPtr != NULL)
+    {
+        return TimeSeriesAddEntry(fieldDataPtr, utcMilliSec);
+    }
 
     // Notify the server if observe is enabled and the value is changed.
     // The server sends notify on entire object, so we need to send the TLV of entire
@@ -1716,6 +2337,7 @@ le_result_t static SetFloat
                                         -1,
                                         -1,
                                         PA_AVC_OPTYPE_NOTIFY,
+                                        TLV_ENCODING,
                                         fieldDataPtr->token,
                                         fieldDataPtr->tokenLength);
 
@@ -1736,7 +2358,7 @@ le_result_t static SetFloat
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static GetBool
+static le_result_t GetBool
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -1775,15 +2397,20 @@ le_result_t static GetBool
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static SetBool
+static le_result_t SetBool
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
     bool value,                                 ///< [IN] The value to write
-    bool isClient                               ///< [IN] Is it client or server access
+    bool isClient,                              ///< [IN] Is it client or server access
+    uint64_t utcMilliSec                        ///< [IN] Timestamp in utc milli seconds
 )
 {
     le_result_t result;
@@ -1829,6 +2456,13 @@ le_result_t static SetBool
         fieldDataPtr->readCallBackOpRef = NULL;
     }
 
+    // If time series is enabled add the data to time series history and get out. If time series is
+    // not enabled send the observe notification right away.
+    if (fieldDataPtr->timeSeriesPtr != NULL)
+    {
+        return TimeSeriesAddEntry(fieldDataPtr, utcMilliSec);
+    }
+
     // Notify the server if observe is enabled and the value is changed.
     // The server sends notify on entire object, so we need to send the TLV of entire
     // object but include only the resource that changed.
@@ -1858,6 +2492,7 @@ le_result_t static SetBool
                                         -1,
                                         -1,
                                         PA_AVC_OPTYPE_NOTIFY,
+                                        TLV_ENCODING,
                                         fieldDataPtr->token,
                                         fieldDataPtr->tokenLength);
 
@@ -1880,7 +2515,7 @@ le_result_t static SetBool
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static GetString
+static le_result_t GetString
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to read
@@ -1920,15 +2555,20 @@ le_result_t static GetString
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
  *      - LE_OVERFLOW if the stored string was truncated
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t static SetString
+static le_result_t SetString
 (
     assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
     int fieldId,                                ///< [IN] Field to write
     const char* strPtr,                         ///< [IN] The value to write
-    bool isClient                               ///< [IN] Is it client or server access
+    bool isClient,                              ///< [IN] Is it client or server access
+    uint64_t utcMilliSec                        ///< [IN] Timestamp in utc milli seconds
 )
 {
     le_result_t result;
@@ -1974,6 +2614,13 @@ le_result_t static SetString
         fieldDataPtr->readCallBackOpRef = NULL;
     }
 
+    // If time series is enabled add the data to time series history and get out. If time series is
+    // not enabled send the observe notification right away.
+    if (fieldDataPtr->timeSeriesPtr != NULL)
+    {
+        return TimeSeriesAddEntry(fieldDataPtr, utcMilliSec);
+    }
+
     // Notify the server if observe is enabled and the value is changed.
     // The server sends notify on entire object, so we need to send the TLV of entire
     // object but include only the resource that changed.
@@ -2003,6 +2650,7 @@ le_result_t static SetString
                                         -1,
                                         -1,
                                         PA_AVC_OPTYPE_NOTIFY,
+                                        TLV_ENCODING,
                                         fieldDataPtr->token,
                                         fieldDataPtr->tokenLength);
 
@@ -2373,11 +3021,6 @@ le_result_t assetData_CreateInstanceById
     // Add back reference from instance data to the asset containing the instance
     assetInstPtr->assetDataPtr = assetDataPtr;
 
-    // If the object is already getting observed, setup the new instance for observe as well.
-    if (assetDataPtr->isObjectObserve)
-    {
-        assetData_SetObserve(assetInstPtr, true, assetDataPtr->token, assetDataPtr->tokenLength);
-    }
 
     le_dls_Queue(&assetDataPtr->instanceList, &assetInstPtr->link);
 
@@ -2502,7 +3145,15 @@ void assetData_DeleteInstance
                 break;
         }
 
-        // Release the field
+        // Release Time Series resources.
+        if (fieldDataPtr->timeSeriesPtr != NULL)
+        {
+            LE_DEBUG("Releasing time series resources of %s", fieldDataPtr->name);
+            le_mem_Release(fieldDataPtr->timeSeriesPtr->bufferPtr);
+            le_mem_Release(fieldDataPtr->timeSeriesPtr);
+        }
+
+        // Release the field.
         LE_DEBUG("Deleting field %s", fieldDataPtr->name);
         le_mem_Release(fieldDataPtr);
 
@@ -2946,6 +3597,10 @@ le_result_t assetData_client_GetFloat
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -2956,9 +3611,34 @@ le_result_t assetData_client_SetInt
     int value                                   ///< [IN] The value to write
 )
 {
-    return SetInt(instanceRef, fieldId, value, true);
+    return SetInt(instanceRef, fieldId, value, true, 0);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of an integer variable field in time series.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_RecordInt
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    int value,                                  ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+)
+{
+    return SetInt(instanceRef, fieldId, value, true, timeStamp);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2967,6 +3647,10 @@ le_result_t assetData_client_SetInt
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -2977,8 +3661,34 @@ le_result_t assetData_client_SetFloat
     double value                                ///< [IN] The value to write
 )
 {
-    return SetFloat(instanceRef, fieldId, value, true);
+    return SetFloat(instanceRef, fieldId, value, true, 0);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a float variable field in time series.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_RecordFloat
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    double value,                               ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+)
+{
+    return SetFloat(instanceRef, fieldId, value, true, timeStamp);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3008,6 +3718,10 @@ le_result_t assetData_client_GetBool
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -3018,7 +3732,34 @@ le_result_t assetData_client_SetBool
     bool value                                  ///< [IN] The value to write
 )
 {
-    return SetBool(instanceRef, fieldId, value, true);
+    return SetBool(instanceRef, fieldId, value, true, 0);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a boolean variable field in time series.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_RecordBool
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    bool value,                                 ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+)
+{
+    return SetBool(instanceRef, fieldId, value, true, timeStamp);
 }
 
 
@@ -3052,7 +3793,11 @@ le_result_t assetData_client_GetString
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
- *      - LE_OVERFLOW if the stored string was truncated
+ *      - LE_OVERFLOW if the stored string was truncated (or)
+                      if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -3063,7 +3808,152 @@ le_result_t assetData_client_SetString
     const char* strPtr                          ///< [IN] The value to write
 )
 {
-    return SetString(instanceRef, fieldId, strPtr, true);
+    return SetString(instanceRef, fieldId, strPtr, true, 0);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Record the value of a string variable field in time series
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the stored string was truncated or
+ *                    if the current entry was NOT added as the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_RecordString
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    const char* strPtr,                         ///< [IN] The value to write
+    uint64_t timeStamp                          ///< [IN] timestamp in msec
+)
+{
+    return SetString(instanceRef, fieldId, strPtr, true, timeStamp);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate resources and start accumulating time series data on the specified field.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_BUSY if time series already enabled on this field
+ *      - LE_FAULT any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_StartTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to be accumulated
+    double factor,                              ///< [IN] Factor used for delta encoding of values
+    double timeStampFactor                      ///< [IN] Factor used for delta encoding of time stamp
+)
+{
+    return StartTimeSeries(instanceRef, fieldId, factor, timeStampFactor);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop time series on this field and free resources.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_CLOSED if timeseries already stopped
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_StopTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId                                 ///< [IN] Field to be stopped from data accumulation
+)
+{
+    return StopTimeSeries(instanceRef, fieldId);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compress the accumulated CBOR encoded time series data and send it to server.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ *      - LE_CLOSED if time series not enabled on this field
+ *      - LE_FAULT if any other error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_PushTimeSeries
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to be Flushed
+    bool isRestartTimeSeries                    ///< [IN] Restart time series after push?
+)
+{
+    return PushTimeSeries(instanceRef, fieldId, isRestartTimeSeries);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is time series enabled on this resource, if yes how many data points are recorded so far?
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_GetTimeSeriesStatus
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field id
+    bool* isTimeSeriesPtr,                      ///< [OUT] Is time series enabled on this field
+    int* numDataPointsPtr                       ///< [OUT] Number of data points recorded so far
+)
+{
+    return GetTimeSeriesStatus(instanceRef, fieldId, isTimeSeriesPtr, numDataPointsPtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Is this resource enabled for observe notifications?
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if field not found
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t assetData_client_IsObserve
+(
+    assetData_InstanceDataRef_t instanceRef,    ///< [IN] Asset instance to use
+    int fieldId,                                ///< [IN] Field to write
+    bool *isObservePtr                          ///< [IN] Is observe enabled on this field?
+)
+{
+    le_result_t result;
+    FieldData_t* fieldDataPtr;
+
+    result = GetFieldFromInstance(instanceRef, fieldId, &fieldDataPtr);
+    if ( result != LE_OK )
+    {
+        return result;
+    }
+    else
+    {
+        *isObservePtr = fieldDataPtr->isObserve;
+        return LE_OK;
+    }
 }
 
 
@@ -3164,6 +4054,10 @@ le_result_t assetData_server_GetInt
  * @return:
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
+ *      - LE_OVERFLOW if the current entry was NOT added as the time series buffer is full.
+ *                    (This error is applicable only if time series is enabled on this field)
+ *      - LE_NO_MEMORY if the current entry was added but there is no space for next one.
+ *                    (This error is applicable only if time series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -3174,7 +4068,7 @@ le_result_t assetData_server_SetInt
     int value                                   ///< [IN] The value to write
 )
 {
-    return SetInt(instanceRef, fieldId, value, false);
+    return SetInt(instanceRef, fieldId, value, false, 0);
 }
 
 
@@ -3207,6 +4101,7 @@ le_result_t assetData_server_GetBool
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
  *      - LE_FAULT on any other error
+ *      - LE_NO_MEMORY if the cbor stream overflows (only if Time Series is enabled on this field)
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t assetData_server_SetBool
@@ -3216,7 +4111,7 @@ le_result_t assetData_server_SetBool
     bool value                                  ///< [IN] The value to write
 )
 {
-    return SetBool(instanceRef, fieldId, value, false);
+    return SetBool(instanceRef, fieldId, value, false, 0);
 }
 
 
@@ -3251,6 +4146,7 @@ le_result_t assetData_server_GetString
  *      - LE_OK on success
  *      - LE_NOT_FOUND if field not found
  *      - LE_OVERFLOW if the stored string was truncated
+ *      - LE_NO_MEMORY if the cbor stream overflows (only if Time Series is enabled on this field)
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -3261,7 +4157,7 @@ le_result_t assetData_server_SetString
     const char* strPtr                          ///< [IN] The value to write
 )
 {
-    return SetString(instanceRef, fieldId, strPtr, false);
+    return SetString(instanceRef, fieldId, strPtr, false, 0);
 }
 
 
@@ -3588,6 +4484,10 @@ le_result_t assetData_Init
     AssetDataPoolRef = le_mem_CreatePool("Asset data pool", sizeof(AssetData_t));
     ActionHandlerDataPoolRef = le_mem_CreatePool("Action handler data pool",
                                                  sizeof(ActionHandlerData_t));
+
+    // Memory pool for time series data.
+    TimeSeriesDataPoolRef = le_mem_CreatePool("TimeSeries data pool", sizeof(TimeSeriesData_t));
+    CborBufferPoolRef = le_mem_CreatePool("CBOR buffer pool", MAX_CBOR_BUFFER_NUMBYTES);
 
     StringValuePoolRef = le_mem_CreatePool("String value pool", STRING_VALUE_NUMBYTES);
     AddressStringPoolRef = le_mem_CreatePool("Address pool", 100);

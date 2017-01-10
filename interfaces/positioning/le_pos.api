@@ -64,6 +64,9 @@
  * The @c le_pos_GetDirection() function gets the last updated direction value in
  * degrees (where 0 is True North) and its associated accuracy value. Direction of movement is the
  * direction that the vehicle/person is actually moving.
+
+ * The @c le_pos_GetFixState() function gets the position fix state. The fix state allows the user
+ * to determine if it is a 2-Dimensional or a 3-Dimensional position fix.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_posSampleCodeFixOnDemand
@@ -87,6 +90,7 @@
  * - le_pos_sample_GetVerticalSpeed()
  * - le_pos_sample_GetHeading()
  * - le_pos_sample_GetDirection()
+ * - le_pos_sample_GetFixState()
  *
  * @c le_pos_sample_Release() releases the object.
  *
@@ -132,6 +136,20 @@
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Fix position states.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FixState
+{
+    STATE_NO_FIX,              ///< The position is not fixed.
+    STATE_FIX_2D,              ///< 2-Dimensional position fix.
+    STATE_FIX_3D,              ///< 3-Dimensional position fix.
+    STATE_FIX_ESTIMATED,       ///< Estimated (i.e. forward predicted) position fix.
+    STATE_UNKNOWN              ///< Unknow state.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -250,10 +268,12 @@ FUNCTION le_result_t GetDate
  * accuracy, Vertical Speed, Vertical Speed's accuracy).
  *
  * @return LE_FAULT         Function failed to get the motion's data.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX, UINT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX,
+ *                          UINT32_MAX).
  * @return LE_OK            Function succeeded.
  *
- * @note hSpeedPtr, hSpeedAccuracyPtr, vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not needed.
+ * @note hSpeedPtr, hSpeedAccuracyPtr, vSpeedPtr, vSpeedAccuracyPtr can be set to NULL if not
+ *       needed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetMotion
@@ -297,6 +317,22 @@ FUNCTION le_result_t GetDirection
 (
     int32 direction OUT,            ///< Direction indication in degrees (where 0 is True North).
     int32 directionAccuracy OUT     ///< Direction's accuracy estimate in degrees.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position fix state
+ *
+ * @return LE_FAULT         Function failed to get the position fix state.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note In case the function fails to get the position fix state, a fatal error occurs,
+ *       the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFixState
+(
+    FixState state OUT              ///< Position fix state.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -385,7 +421,8 @@ FUNCTION le_result_t sample_GetAltitude
  * Get the position sample's horizontal speed.
  *
  * @return LE_FAULT         Function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX, UINT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX,
+ *                          UINT32_MAX).
  * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing an invalid Position reference into this function,
@@ -468,6 +505,22 @@ FUNCTION le_result_t sample_GetDirection
     int32 directionAccuracy OUT         ///< Direction's accuracy estimate in degrees.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's fix state.
+ *
+ * @return LE_FAULT         Function failed to get the position sample's fix state.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t sample_GetFixState
+(
+    Sample positionSampleRef,           ///< Position sample's reference.
+    FixState state OUT                  ///< Position fix state.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

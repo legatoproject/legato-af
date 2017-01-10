@@ -83,16 +83,25 @@
  * the different technologies of the ordered list to use for the default connection data.
  *
  * @section c_le_data_configdb Configuration tree
+ * @copydoc c_le_data_configdbPage_Hide
  *
- * The configuration of the Wi-Fi access point is stored in the configuration database under the
- * following path:
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ */
+//--------------------------------------------------------------------------------------------------
+
+ /**
+ * @interface c_le_data_configdbPage_Hide
+ *
+ * The configuration of the Wi-Fi access point is stored in the configuration database of the
+ * @c dataConnectionService under the following path:
  * @verbatim
-    /
-        dataConnectionService/
-            wifi/
-                SSID<string> == TestSsid
-                secProtocol<int> == 3
-                passphrase<string> == Passw0rd
+    dataConnectionService:/
+        wifi/
+            SSID<string> == TestSsid
+            secProtocol<int> == 3
+            passphrase<string> == Passw0rd
    @endverbatim
  *
  * @note The security protocol is one of the supported protocols defined in the
@@ -102,9 +111,6 @@
  * managed by the Wi-Fi client. Until its API is modified, the config tree is used to configure
  * the only access point to use for the default data connection.
  *
- * <HR>
- *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  */
 //--------------------------------------------------------------------------------------------------
 

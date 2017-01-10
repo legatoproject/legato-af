@@ -51,7 +51,6 @@ static void TestMdc_Configuration( void )
     pa_mdc_ProfileData_t profileData;
     char newAPN[] = "NewAPN";
     int i;
-    le_result_t res;
 
     /* Configure the pa_mdcSimu */
     for (i = 0; i < NB_PROFILE; i++)
@@ -73,8 +72,7 @@ static void TestMdc_Configuration( void )
 
         if ( (i/2)*2 == i )
         {
-            res = le_mdc_GetProfileFromApn(tstAPN, &ProfileRef[i]);
-            LE_ASSERT(res == LE_OK);
+            LE_ASSERT_OK(le_mdc_GetProfileFromApn(tstAPN, &ProfileRef[i]));
         }
         else
         {
@@ -92,22 +90,17 @@ static void TestMdc_Configuration( void )
     LE_ASSERT(le_mdc_MapProfileOnNetworkInterface(ProfileRef[0], "rmnet_data0") == LE_OK);
 
     /* Get and change APN of 1st profile */
-    char apn[10];
-    res = le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(strcmp("TstAPN0", apn)==0);
-    res = le_mdc_SetAPN(ProfileRef[0], newAPN);
-    LE_ASSERT(res == LE_OK);
-    res = le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(strcmp(newAPN, apn)==0);
+    char apn[30];
+    LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn)));
+    LE_ASSERT(0 == strcmp("TstAPN0", apn));
+    LE_ASSERT_OK(le_mdc_SetAPN(ProfileRef[0], newAPN));
+    LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn)));
+    LE_ASSERT(0 == strcmp(newAPN, apn));
 
     /* Check to get a profile thanks to its APN */
     le_mdc_ProfileRef_t profile;
-    res = le_mdc_GetProfileFromApn("TstAPN0", &profile);
-    LE_ASSERT(res == LE_NOT_FOUND);
-    res = le_mdc_GetProfileFromApn(newAPN, &profile);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(LE_NOT_FOUND == le_mdc_GetProfileFromApn("TstAPN0", &profile));
+    LE_ASSERT_OK(le_mdc_GetProfileFromApn(newAPN, &profile));
     LE_ASSERT(profile == ProfileRef[0]);
 
     /* Get and change authentification */
@@ -116,57 +109,45 @@ static void TestMdc_Configuration( void )
     char password[10];
     char myUserName[]="myName";
     char myPassword[]="myPwd";
-    res = le_mdc_GetAuthentication(ProfileRef[0],&auth, userName, sizeof(userName), password,
-                                                                                sizeof(password));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(auth == LE_MDC_AUTH_NONE);
-    res = le_mdc_SetAuthentication(ProfileRef[0],LE_MDC_AUTH_PAP, myUserName, myPassword);
-    LE_ASSERT(res == LE_OK);
-    res = le_mdc_GetAuthentication(ProfileRef[0],&auth, userName, sizeof(userName), password,
-                                                                                sizeof(password));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(auth == LE_MDC_AUTH_PAP);
-    LE_ASSERT(strcmp(userName, myUserName)==0);
-    LE_ASSERT(strcmp(password, myPassword)==0);
+    LE_ASSERT_OK(le_mdc_GetAuthentication(ProfileRef[0], &auth, userName, sizeof(userName),
+                                          password, sizeof(password)));
+    LE_ASSERT(LE_MDC_AUTH_NONE == auth);
+    LE_ASSERT_OK(le_mdc_SetAuthentication(ProfileRef[0], LE_MDC_AUTH_PAP,
+                                          myUserName, myPassword));
+    LE_ASSERT_OK(le_mdc_GetAuthentication(ProfileRef[0], &auth, userName, sizeof(userName),
+                                          password, sizeof(password)));
+    LE_ASSERT(LE_MDC_AUTH_PAP == auth);
+    LE_ASSERT(0 == strcmp(userName, myUserName));
+    LE_ASSERT(0 == strcmp(password, myPassword));
 
     /* Get PDP type and change it */
-    le_mdc_Pdp_t pdp;
-    pdp = le_mdc_GetPDP(ProfileRef[0]);
-    LE_ASSERT(pdp == LE_MDC_PDP_IPV4);
-    res = le_mdc_SetPDP(ProfileRef[0], LE_MDC_PDP_IPV6);
-    LE_ASSERT(res == LE_OK);
-    pdp = le_mdc_GetPDP(ProfileRef[0]);
-    LE_ASSERT(pdp == LE_MDC_PDP_IPV6);
+    LE_ASSERT(LE_MDC_PDP_IPV4 == le_mdc_GetPDP(ProfileRef[0]));
+    LE_ASSERT_OK(le_mdc_SetPDP(ProfileRef[0], LE_MDC_PDP_IPV6));
+    LE_ASSERT(LE_MDC_PDP_IPV6 == le_mdc_GetPDP(ProfileRef[0]));
 
     /* start a session: profile can't be modified when a session is activated */
-    res = le_mdc_StartSession(ProfileRef[0]);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_mdc_StartSession(ProfileRef[0]));
 
     /* Try to set APN (error is expected as a connection is in progress) */
-    res = le_mdc_SetAPN(ProfileRef[0], "TstAPN0");
-    LE_ASSERT(res == LE_FAULT);
+    LE_ASSERT(LE_FAULT == le_mdc_SetAPN(ProfileRef[0], "TstAPN0"));
     /* Get is possible */
-    res = le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(strcmp(newAPN, apn)==0);
+    LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn)));
+    LE_ASSERT(0 == strcmp(newAPN, apn));
 
-    /* Try to set authentification (error is expected as a connection is in progress) */
-    res = le_mdc_SetAuthentication(ProfileRef[0],LE_MDC_AUTH_CHAP, myUserName, myPassword);
-    LE_ASSERT(res == LE_FAULT);
+    /* Try to set authentication (error is expected as a connection is in progress) */
+    LE_ASSERT(LE_FAULT == le_mdc_SetAuthentication(ProfileRef[0], LE_MDC_AUTH_CHAP,
+                                                   myUserName, myPassword));
     /* Get is possible */
-    res = le_mdc_GetAuthentication(ProfileRef[0],&auth, userName, sizeof(userName), password,
-                                                                                sizeof(password));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(auth == LE_MDC_AUTH_PAP);
-    LE_ASSERT(strcmp(userName, myUserName)==0);
-    LE_ASSERT(strcmp(password, myPassword)==0);
+    LE_ASSERT_OK(le_mdc_GetAuthentication(ProfileRef[0], &auth, userName, sizeof(userName),
+                                          password, sizeof(password)));
+    LE_ASSERT(LE_MDC_AUTH_PAP == auth);
+    LE_ASSERT(0 == strcmp(userName, myUserName));
+    LE_ASSERT(0 == strcmp(password, myPassword));
 
     /* Try to set PDP type (error is expected as a connection is in progress) */
-    res = le_mdc_SetPDP(ProfileRef[0], LE_MDC_PDP_IPV4V6);
-    LE_ASSERT(res == LE_FAULT);
+    LE_ASSERT(LE_FAULT == le_mdc_SetPDP(ProfileRef[0], LE_MDC_PDP_IPV4V6));
     /* Get is possible */
-    pdp = le_mdc_GetPDP(ProfileRef[0]);
-    LE_ASSERT(pdp == LE_MDC_PDP_IPV6);
+    LE_ASSERT(LE_MDC_PDP_IPV6 == le_mdc_GetPDP(ProfileRef[0]));
 
     /* Check that other profiles didn't change */
     for (i = 1; i < NB_PROFILE; i++)
@@ -175,47 +156,48 @@ static void TestMdc_Configuration( void )
         snprintf(tstAPN,10,"TstAPN%d", i);
 
         /* Check APN */
-        res = le_mdc_GetAPN(ProfileRef[i], apn, sizeof(apn));
-        LE_ASSERT(res == LE_OK);
-        LE_ASSERT(strcmp(tstAPN, apn)==0);
+        LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[i], apn, sizeof(apn)));
+        LE_ASSERT(0 == strcmp(tstAPN, apn));
 
         /* Check auth */
-        res = le_mdc_GetAuthentication(ProfileRef[i],&auth, userName, sizeof(userName), password,
-                                                                                sizeof(password));
-        LE_ASSERT(res == LE_OK);
-        LE_ASSERT(auth == LE_MDC_AUTH_NONE);
+        LE_ASSERT_OK(le_mdc_GetAuthentication(ProfileRef[i], &auth, userName, sizeof(userName),
+                                              password, sizeof(password)));
+        LE_ASSERT(LE_MDC_AUTH_NONE == auth);
 
         /* Check PDP type */
-        pdp = le_mdc_GetPDP(ProfileRef[i]);
-        LE_ASSERT(pdp == LE_MDC_PDP_IPV4);
+        LE_ASSERT(LE_MDC_PDP_IPV4 == le_mdc_GetPDP(ProfileRef[i]));
 
         /* Check to get a profile thanks to its APN */
-        res = le_mdc_GetProfileFromApn(tstAPN, &profile);
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT_OK(le_mdc_GetProfileFromApn(tstAPN, &profile));
         LE_ASSERT(profile == ProfileRef[i]);
     }
 
     /* stop the session */
-    res = le_mdc_StopSession(ProfileRef[0]);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_mdc_StopSession(ProfileRef[0]));
 
-    char homeMcc[]="208";
-    char homeMnc[]="01";
-    char tstAPN[]="orange";
+    /* Test default APNs */
+    char homeMcc[] = "000";
+    char homeMnc[] = "00";
     pa_simSimu_ReportSimState(LE_SIM_READY);
     pa_simSimu_SetHomeNetworkMccMnc(homeMcc, homeMnc);
-    res = le_mdc_SetDefaultAPN(ProfileRef[2]);
-    LE_ASSERT(res == LE_OK);
-    /* Check APN */
-    res = le_mdc_GetAPN(ProfileRef[2], apn, sizeof(apn));
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(strcmp(tstAPN, apn)==0);
+    LE_ASSERT(LE_FAULT == le_mdc_SetDefaultAPN(ProfileRef[2]));
 
-    strcpy(homeMcc,"000");
-    strcpy(homeMnc,"000");
+    /* Set default APN based on MCC and MNC */
+    strcpy(homeMcc, "208");
+    strcpy(homeMnc, "01");
     pa_simSimu_SetHomeNetworkMccMnc(homeMcc, homeMnc);
-    res = le_mdc_SetDefaultAPN(ProfileRef[2]);
-    LE_ASSERT(res == LE_FAULT);
+    LE_ASSERT_OK(le_mdc_SetDefaultAPN(ProfileRef[2]));
+    /* Check APN */
+    LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[2], apn, sizeof(apn)));
+    LE_ASSERT(0 == strcmp("orange", apn));
+
+    /* Set default APN based on ICCID, MCC and MNC */
+    char iccid[] = "89332422217010081060";
+    pa_simSimu_SetCardIdentification(iccid);
+    LE_ASSERT_OK(le_mdc_SetDefaultAPN(ProfileRef[2]));
+    /* Check APN */
+    LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[2], apn, sizeof(apn)));
+    LE_ASSERT(0 == strcmp("internet.sierrawireless.com", apn));
 }
 
 //--------------------------------------------------------------------------------------------------

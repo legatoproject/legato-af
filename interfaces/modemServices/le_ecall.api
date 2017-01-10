@@ -69,10 +69,10 @@
  *
  * @section le_ecall_session eCall Session
  *
- * Start an eCall session by creating an eCall object that calls
- * le_ecall_Create(). Stop an eCall session with le_ecall_End().
+ * An eCall session is started by creating an eCall object with the le_ecall_Create() function.
+ * The eCall session can then be stopped with le_ecall_End().
  *
- * The type of eCall and the kind of activation are specified using different functions to start the
+ * The eCall type and the kind of activation are specified using different functions to start the
  * eCall session:
  * - le_ecall_StartManual(): initiate a manual eCall session (triggered by a passenger)
  * - le_ecall_StartAutomatic(): initiate an automatic eCall session (automatically triggered by
@@ -80,8 +80,13 @@
  * - le_ecall_StartTest(): initiate a test eCall session (to test the communication between the
  * IVS and the PSAP)
  *
- * @warning An application must wait for @c LE_ECALL_STATE_DISCONNECTED event before calling again
- * the @c le_ecall_StartXxx() functions.
+ * @warning An application must wait for the end of the ongoing eCall before triggering another
+ * one with the @c le_ecall_StartXxx() functions. An eCall is ended when:
+ * - the application successfully ended it with le_ecall_End() returning @c LE_OK
+ * - or the event @ref LE_ECALL_STATE_STOPPED is received
+ * - or the event @ref LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN is received
+ * - or the event @ref LE_ECALL_STATE_DISCONNECTED is received and no redial is launched (see
+ * @ref le_ecall_redial section for more information about the redial process).
  *
  * When the eCall object is no longer needed, call le_ecall_Delete() to free all allocated
  * resources associated with the object.
@@ -91,10 +96,20 @@
  * changes. The handler can be managed using le_ecall_AddStateChangeHandler() and
  * le_ecall_RemoveStateChangeHandler().
  *
- * An application can call le_ecall_GetTerminationReason() to know the reason of the call
- * termination when call state is LE_ECALL_STATE_DISCONNECTED, and also
+ * An application can also call le_ecall_GetTerminationReason() to retrieve the reason of the call
+ * termination when call state is @ref LE_ECALL_STATE_DISCONNECTED, and also
  * le_ecall_GetPlatformSpecificTerminationCode() to get platform specific termination code (refer
  * to your platform documentation for further details).
+ *
+ * @section le_ecall_concurrency Concurrency
+ *
+ * If another application tries to use the eCall service while a session is already in progress, the
+ * le_ecall_StartManual(), le_ecall_StartAutomatic(), le_ecall_StartTest() functions will return a
+ * @c LE_BUSY error. The eCall session in progress won't be interrupted or disturbed. The
+ * application can follow the session progress with 'state' functions like le_ecall_GetState() and
+ * le_ecall_AddStateChangeHandler().
+ * A manual eCall can't interrupt an automatic eCall, and an automatic eCall can't interrupt a
+ * manual eCall.
  *
  * @section le_ecall_msd Minimum Set of Data (MSD)
  *
@@ -134,16 +149,6 @@
  * LE_ECALL_STATE_PSAP_START_IND_RECEIVED event is received.
  * The MSD can be updated before calling le_ecall_SendMsd(), using the e_ecall_ImportMsd() function
  * or the le_ecall_SetMsdXxx() functions.
- *
- * @section le_ecall_concurrency Concurrency
- *
- * If another application tries to use the eCall service while a session is already in progress, the
- * le_ecall_StartManual(), le_ecall_StartAutomatic(), le_ecall_StartTest() functions will return a
- * LE_BUSY error. The eCall session in progress won't be interrupted or disturbed. The application
- * can follow the session progress with 'state' functions like le_ecall_GetState() and
- * le_ecall_AddStateChangeHandler().
- * A manual eCall can't interrupt an automatic eCall, and an automatic eCall can't interrupt a
- * manual eCall.
  *
  * @section le_ecall_eraglonass ERA-GLONASS compliancy
  *

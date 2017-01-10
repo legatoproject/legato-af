@@ -931,13 +931,13 @@ FUNCTION le_result_t GetTdScdmaBandPreferences
  * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
  *
  * @return
- *  - LE_NOT_FOUND     User Preferred operator list is not available.
+ *  - LE_UNSUPPORTED   List of User Preferred operators not available.
  *  - LE_FAULT         Function failed.
  *  - LE_BAD_PARAMETER RAT mask is invalid.
  *  - LE_OK            Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
+ *       it's a fatal error and the function won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */
@@ -954,12 +954,13 @@ FUNCTION le_result_t AddPreferredOperator
  * Remove a preferred operator by specifying the MCC/MNC.
  *
  * @return
- *  - LE_NOT_FOUND     User Preferred operator list is not available.
- *  - LE_FAULT         Function failed.
- *  - LE_OK            Function succeeded.
+ *  - LE_UNSUPPORTED    List of User Preferred operators not available.
+ *  - LE_NOT_FOUND      Operator not found in the User Preferred operators list.
+ *  - LE_FAULT          Function failed.
+ *  - LE_OK             Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
+ *       it's a fatal error and the function won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */

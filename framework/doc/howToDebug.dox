@@ -6,14 +6,19 @@ There are various tools available to determine why your app is failing or blocki
 
 - @ref howToLogs to set filters, tracing, etc.
 - @ref howToDebug_appStatus for current app info.
-- @ref howToDebug_sdir to check if your is app connected.
+- @ref howToDebug_sdir to check if your app is connected.
 - @ref howToDebug_execInApp to rerun the app.
 - @ref howToDebug_inspect to review memory pool details.
+- @ref howToDebug_appCrashLogs to analysis system crash logs or core dumps.
 - @ref howToDebug_openTools can help, too.
 
 @section howToDebug_appStatus Check App Status
 Run <code>app status</code> on the target to list all apps and their current
 status. See @ref toolsTarget_app
+
+@section howToDebug_appCrashLogs Check App Crash Logs
+Check the latest app crash logs or core dumps in either persistent or non-persistent
+location. See @ref c_log_debugFiles
 
 @section howToDebug_sdir Run sdir
 Run <code>sdir list</code> on the target to determine if the app is failing

@@ -1,6 +1,6 @@
 /** @page howToConfigTreeSchema Config Tree Schema
 
-This is Legato's config tree schema:
+This is the Legato application framework @e system config tree schema:
 
 @subpage howToConfigTreeSchema_bindingConfig
 

@@ -2,7 +2,8 @@
 /**
  * @page c_gnss GNSS
  *
- * @ref le_gnss_interface.h "API Reference"
+ * @ref le_gnss_interface.h "API Reference" <br>
+ * @ref platformConstraintsGnss page
  *
  * @ref howToGNSS
  *
@@ -105,7 +106,7 @@
  *
  * @subsection le_gnss_AcquisitionRate Acquisition rate
  * The GNSS position is computed and delivered each acquisition rate. Default value is 1 second.
- * The application can configure/retreive the GNSS device acquisition rate with the
+ * The application can configure/retrieve the GNSS device acquisition rate with the
  * le_gnss_SetAcquisitionRate() / le_gnss_GetAcquisitionRate() functions.
  *
  * Please refer to @ref le_gnss_APIcallsRequirements.
@@ -118,8 +119,8 @@
  * The le_gnss_SetConstellation() function selects the GNSS constellation(s) used in solution.
  * If all GNSS constellations are disabled, the GNSS engine is disabled.
  *
- * @warning Your platform may require a reboot to take into account this change. Please refer to your
- * platform documentation for further details.
+ * @warning Your platform may require a reboot to take into account this change.
+ * Please refer to your platform documentation for further details.
  *
  * The following configurations are currently supported:
  *   - GPS
@@ -131,6 +132,24 @@
  *
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeConstellation
+ *
+ * @subsection le_gnss_NmeaSentences NMEA sentences selection
+ *
+ * The le_gnss_SetNmeaSentences() function selects the enabled NMEA sentences in the
+ * @ref le_gnss_NMEA with a bit mask. The supported values are listed in @ref le_gnss_NmeaBitMask_t.
+ *
+ * @warning Your GNSS device may require a restart to take into account this change.
+ * Please refer to your platform documentation for further details.
+ *
+ * @note All supported NMEA sentences are enabled by default.
+ *
+ * The le_gnss_GetNmeaSentences() function gets the bit mask of the enabled NMEA sentences in the
+ * @ref le_gnss_NMEA.
+ *
+ * Please refer to @ref le_gnss_APIcallsRequirements.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_gnssSampleCodeNmeaSentences
  *
  * @subsection le_gnss_APIcallsRequirements API calls Requirements
  * The following table shows the pre-requisites when using the GNSS service API function set.
@@ -152,6 +171,8 @@
  *| le_gnss_GetTtff() | LE_NOT_PERMITTED |  LE_OK or error code | LE_OK or error code | LE_NOT_PERMITTED |
  *| le_gnss_SetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_GetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_SetNmeaSentences() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetNmeaSentences() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *
  * Also see @ref howToGNSS.
  *
@@ -196,7 +217,9 @@
  * - le_gnss_GetSatellitesStatus()
  * - le_gnss_GetDop()
  * - le_gnss_GetSatellitesLatency()
- *
+ * - le_gnss_GetAltitudeOnWgs84()
+ * - le_gnss_GetMagneticDeviation()
+
  * The handler can be managed using le_gnss_AddPositionHandler()
  * and le_gnss_RemovePositionHandler().
  * When a position is computed, the handler is called.
@@ -309,6 +332,12 @@
  */
 
 /**
+ * @page c_gnssSampleCodeNmeaSentences Sample code for GNSS NMEA sentences selection
+ *
+ * @snippet "apps/test/positioning/gnssTest/gnssTest/gnssTest.c" GnssControl
+ */
+
+/**
  * @page c_gnssSampleCodePosition Sample code for GNSS position information
  *
  * @snippet "apps/test/positioning/gnssTest/gnssTest/gnssTest.c" GnssPosition
@@ -376,6 +405,15 @@ DEFINE SV_INFO_MAX_LEN = 80;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Define the maximal bit mask for enabled NMEA sentences
+ *
+ * @note This maximal value should be coherent with @ref le_gnss_NmeaBitMask_t
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE NMEA_SENTENCES_MAX = 0x7FFF;
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  GNSS fix position states.
  */
 //--------------------------------------------------------------------------------------------------
@@ -428,6 +466,35 @@ BITMASK ConstellationBitMask
     CONSTELLATION_GLONASS,                  ///< GLONASS constellation used in solution.
     CONSTELLATION_BEIDOU,                   ///< BEIDOU constellation used in solution.
     CONSTELLATION_GALILEO                   ///< GALILEO constellation used in solution.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * NMEA sentences Bit Mask indicating the NMEA sentences enabled in the NMEA flow.
+ *
+ * @warning The supported NMEA sentences depend on the platform. Please refer to your platform
+ * documentation for further details.
+ *
+ * @note The bit mask values should be coherent with @ref LE_GNSS_NMEA_SENTENCES_MAX
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK NmeaBitMask
+{
+    NMEA_MASK_GPGGA,    ///< GPGGA type enabled: GPS fix data.
+    NMEA_MASK_GPGSA,    ///< GPGSA type enabled: GPS DOP and active satellites.
+    NMEA_MASK_GPGSV,    ///< GPGSV type enabled: GPS satellites in view.
+    NMEA_MASK_GPRMC,    ///< GPRMC type enabled: GPS recommended minimum data.
+    NMEA_MASK_GPVTG,    ///< GPVTG type enabled: GPS vector track and speed over the ground.
+    NMEA_MASK_GLGSV,    ///< GLGSV type enabled: GLONASS satellites in view.
+    NMEA_MASK_GNGNS,    ///< GNGNS type enabled: GNSS fix data.
+    NMEA_MASK_GNGSA,    ///< GNGSA type enabled: GNSS DOP and active satellites.
+    NMEA_MASK_GAGGA,    ///< GAGGA type enabled: Galileo fix data.
+    NMEA_MASK_GAGSA,    ///< GAGSA type enabled: Galileo DOP and active satellites.
+    NMEA_MASK_GAGSV,    ///< GAGSV type enabled: Galileo satellites in view.
+    NMEA_MASK_GARMC,    ///< GARMC type enabled: Galileo recommended minimum data.
+    NMEA_MASK_GAVTG,    ///< GAVTG type enabled: Galileo vector track and speed over the ground.
+    NMEA_MASK_PSTIS,    ///< PSTIS type enabled: GPS session start indication.
+    NMEA_MASK_PQXFI     ///< PQXFI type enabled: Proprietary Qualcomm eXtended Fix Information.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -672,6 +739,9 @@ FUNCTION le_result_t Disable
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ *
+ * @warning This function may be subject to limitations depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetAcquisitionRate
@@ -753,8 +823,6 @@ FUNCTION le_result_t GetPositionState
  * @note The latitude and longitude are given in degrees with 6 decimal places like:
  *    Latitude +48858300 = 48.858300 degrees North
  *    Longitude +2294400 = 2.294400 degrees East
- *
- * @note Altitude is in meters, above Mean Sea Level, with 3 decimal places (3047 = 3.047 meters).
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1052,11 +1120,63 @@ FUNCTION le_result_t GetDop
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSatellitesLatency
 (
-    Sample positionSampleRef IN,  ///< Position sample's reference.
-    uint16  satId[SV_INFO_MAX_LEN] OUT,      ///< Satellites in View ID number, referring
-                                             ///< to NMEA standard.
+    Sample positionSampleRef IN,            ///< Position sample's reference.
+    uint16  satId[SV_INFO_MAX_LEN] OUT,     ///< Satellites in View ID number, referring
+                                            ///< to NMEA standard.
     int32  latency[SV_INFO_MAX_LEN] OUT     ///< Satellites latency measure in milliseconds
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's altitude with respect to the WGS-84 ellipsoid
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the altitude.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note altitudeOnWgs84 is in meters, between WGS-84 earth ellipsoid and mean sea level
+ *       with 3 decimal places (3047 = 3.047 meters).
+ *
+ * @note For a 2D position fix, the altitude with respect to the WGS-84 ellipsoid will be indicated
+ *       as invalid and set to INT32_MAX.
+ *
+ * @note If the caller is passing an invalid Position reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAltitudeOnWgs84
+(
+    Sample positionSampleRef  IN,  ///< Position sample's reference.
+    int32  altitudeOnWgs84 OUT     ///< Altitude in meters, between WGS-84 earth ellipsoid
+                                   ///< and mean sea level [resolution 1e-3].
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's magnetic deviation. It is the difference between the bearing to
+ * true north and the bearing shown on a magnetic compass. The deviation is positive when the
+ * magnetic north is east of true north.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note magneticDeviation is in degrees, with 1 decimal places (47 = 4.7 degree).
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMagneticDeviation
+(
+    Sample positionSampleRef IN,        ///< Position sample's reference.
+    int32  magneticDeviation OUT        ///< MagneticDeviation in degrees [resolution 1e-1].
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1168,4 +1288,45 @@ FUNCTION le_result_t DeleteSuplCertificate
 (
     uint8  suplCertificateId      IN  ///< ID of the SUPL certificate.
                                       ///< Certificate ID range is 0 to 9
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the enabled NMEA sentences using a bit mask.
+ *
+ * @return
+ *  - LE_OK             Success
+ *  - LE_BAD_PARAMETER  Bit mask exceeds the maximal value
+ *  - LE_FAULT          Failure
+ *  - LE_BUSY           Service is busy
+ *  - LE_TIMEOUT        Timeout occurred
+ *  - LE_NOT_PERMITTED  GNSS device is not in "ready" state
+ *
+ * @warning This function may be subject to limitations depending on the platform. Please refer to
+ *          the @ref platformConstraintsGnss page.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetNmeaSentences
+(
+    NmeaBitMask nmeaMask        IN  ///< Bit mask for enabled NMEA sentences.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the bit mask for the enabled NMEA sentences.
+ *
+ * @return
+ *  - LE_OK             Success
+ *  - LE_FAULT          Failure
+ *  - LE_BUSY           Service is busy
+ *  - LE_TIMEOUT        Timeout occurred
+ *  - LE_NOT_PERMITTED  GNSS device is not in "ready" state
+ *
+ * @note If the caller is passing an null pointer to this function, it is a fatal error
+ *       and the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNmeaSentences
+(
+    NmeaBitMask nmeaMaskPtr     OUT  ///< Bit mask for enabled NMEA sentences.
 );

@@ -9,7 +9,8 @@ Sandboxes are configured through the @ref defFiles :
 - @ref defFilesAdef
 - @ref defFilesSdef
 
-This is what a sandboxed app @ref howToConfigTreeSchema looks like.
+App configuration is provided to the on-target framework through
+@ref howToConfigTreeSchema "system config tree" settings.
 
 @section howToSecuritySandbox_probs Common Problems
 
@@ -20,6 +21,10 @@ to ensure permissions are valid.
 @ref defFilesCdef_requires ".cdef requires" and
 @ref defFilesAdef_requires ".adef requires" sections include all required files.
 - you've reached a sanboxed app @ref howToSecuritySandboxLimits "limit".
+
+
+@ref howToSecuritySandboxUse contains detailed instructions on how to troubleshoot
+sandbox problems.
 
 @section howToSecuritySandbox_sampleApps Sandbox Sample Apps
 

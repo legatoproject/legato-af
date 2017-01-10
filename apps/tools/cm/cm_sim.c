@@ -13,9 +13,6 @@
 #include "cm_sim.h"
 #include "cm_common.h"
 
-#define CFG_MODEMSERVICE_SIM_PATH "/modemServices/sim"
-#define CFG_NODE_PIN              "pin"
-
 static le_sim_Id_t SimId;
 
 //-------------------------------------------------------------------------------------------------
@@ -552,7 +549,7 @@ int cm_sim_UnblockSim
 
 //-------------------------------------------------------------------------------------------------
 /**
- * This function will store the pin in the configdb.
+ * This function will store the pin in the secure storage.
  *
  * @return EXIT_SUCCESS if the call was successful, EXIT_FAILURE otherwise.
  */
@@ -562,16 +559,18 @@ int cm_sim_StorePin
     const char * pin    ///< [IN] PIN code
 )
 {
-    char configPath[512];
+    le_result_t result = le_cellnet_SetSimPinCode(SimId, pin);
 
-    // @todo Update SIM storage path once cellnet service switches to SIM type
-    snprintf(configPath, sizeof(configPath), "%s/%d", CFG_MODEMSERVICE_SIM_PATH, SimId);
-
-    le_cfg_IteratorRef_t iteratorRef = le_cfg_CreateWriteTxn(configPath);
-    le_cfg_SetString(iteratorRef, CFG_NODE_PIN, pin);
-    le_cfg_CommitTxn(iteratorRef);
-
-    return EXIT_SUCCESS;
+    if (LE_OK == result)
+    {
+        printf("PIN code successfully stored!\n");
+        return EXIT_SUCCESS;
+    }
+    else
+    {
+        printf("Unable to store PIN code, error %s\n", LE_RESULT_TXT(result));
+        return EXIT_FAILURE;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------

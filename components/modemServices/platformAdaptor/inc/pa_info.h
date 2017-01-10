@@ -327,6 +327,24 @@ LE_SHARED le_result_t pa_info_GetPriId
         ///< [IN]
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the product stock keeping unit number (SKU) string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The SKU number string length exceeds the maximum length.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_info_GetSku
+(
+    char* skuIdStr,
+        ///< [OUT] Product SKU ID string.
+
+    size_t skuIdStrNumElements
+        ///< [IN]
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

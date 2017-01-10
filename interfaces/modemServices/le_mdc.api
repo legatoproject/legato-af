@@ -37,8 +37,12 @@
  *
  * @note le_mdc_GetProfile() creates a new profile if the profile's index can't be found.
  *
- * A pre-defined data profile can also be retrieved using le_mdc_GetProfileFromApn() thanks to its
+ * A pre-defined data profile can be retrieved using le_mdc_GetProfileFromApn() thanks to its
  * APN.
+ *
+ * A default APN can be set for a defined profile with le_mdc_SetDefaultAPN(), based on the SIM
+ * identification number (ICCID). If no match is found in the database using the ICCID, the search
+ * falls back on the home network (MCC/MNC) to determine the default APN.
  *
  * @warning Ensure to check the list of supported data profiles for your specific platform.
  *
@@ -100,12 +104,12 @@
  * interface name using le_mdc_GetInterfaceName(). The IP Preference can be checked with
  * le_mdc_IsIPv4() or le_mdc_IsIPv6() when the profile is connected. The IP address for the
  * current data session
- * can be retreived by  le_mdc_GetIPv4Address() or le_mdc_GetIPv6Address(). The Gateway and
+ * can be retrieved by  le_mdc_GetIPv4Address() or le_mdc_GetIPv6Address(). The Gateway and
  * DNS
  * addresses can be retrieved using le_mdc_GetIPv4GatewayAddress(),
  * le_mdc_GetIPv4DNSAddresses() or le_mdc_GetIPv6GatewayAddress(), le_mdc_GetIPv6DNSAddresses().
  * The Access Point Name can be retrieved by le_mdc_GetAPN(). The Data bearer
- * Technology can be retreived by le_mdc_GetDataBearerTechnology().
+ * Technology can be retrieved by le_mdc_GetDataBearerTechnology().
  *
  * When the data session is stopped, the disconnection reason can be known using
  * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() (refer to
@@ -843,8 +847,9 @@ FUNCTION le_result_t SetAPN
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the Access Point Name (APN) for the given profile according to the home network mcc/mnc.
- *
+ * Set the Access Point Name (APN) for the given profile according to the SIM identification
+ * number (ICCID). If no APN is found using the ICCID, fall back on the home network (MCC/MNC)
+ * to determine the default APN.
  *
  * @return
  *      - LE_OK on success
@@ -852,7 +857,7 @@ FUNCTION le_result_t SetAPN
  *      - LE_FAULT for all other errors
  *
  * @note
- *      The process exits, if an invalid profile object is given
+ *      The process exits if an invalid profile object is given
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDefaultAPN

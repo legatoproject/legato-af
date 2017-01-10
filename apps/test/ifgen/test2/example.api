@@ -123,6 +123,7 @@ HANDLER CallbackTestHandler
 (
     uint32 data IN,
     string name[50] IN,
+    uint8 array[16] IN,
     file dataFile IN
 );
 

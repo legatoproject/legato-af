@@ -38,6 +38,10 @@ void cm_info_PrintInfoHelp
             "\tcm info firmware\n\n"
             "To print the bootloader version:\n"
             "\tcm info bootloader\n\n"
+            "To print the PRI part and the PRI revision:\n"
+            "\tcm info pri\n\n"
+            "To print the SKU:\n"
+            "\tcm info sku\n\n"
             );
 }
 
@@ -163,6 +167,58 @@ void cm_info_PrintDeviceModel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print the product requirement information (PRI) part number and revision number.
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_info_PrintGetPriId
+(
+    bool withHeaders
+)
+{
+    char priIdPn[LE_INFO_MAX_PRIID_PN_BYTES] = {0};
+    char priIdRev[LE_INFO_MAX_PRIID_REV_BYTES] = {0};
+
+    le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
+
+    if(withHeaders)
+    {
+        cm_cmn_FormatPrint("priIdPn", priIdPn);
+        cm_cmn_FormatPrint("priIdRev", priIdRev);
+    }
+    else
+    {
+        printf("%s %s\n", priIdPn, priIdRev);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print the product stock keeping unit number (SKU).
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_info_PrintGetSku
+(
+    bool withHeaders
+)
+{
+    char skuId[LE_INFO_MAX_SKU_BYTES] = {0};
+
+    le_info_GetSku(skuId, LE_INFO_MAX_SKU_BYTES);
+
+    if(withHeaders)
+    {
+        cm_cmn_FormatPrint("skuId", skuId);
+    }
+    else
+    {
+        printf("%s\n", skuId);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Process commands for info service.
  */
 //--------------------------------------------------------------------------------------------------
@@ -183,6 +239,8 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintSerialNumber(true);
         cm_info_PrintFirmwareVersion(true);
         cm_info_PrintBootloaderVersion(true);
+        cm_info_PrintGetPriId(true);
+        cm_info_PrintGetSku(true);
     }
     else if (strcmp(command, "firmware") == 0)
     {
@@ -203,6 +261,14 @@ void cm_info_ProcessInfoCommand
     else if (strcmp(command, "fsn") == 0)
     {
         cm_info_PrintSerialNumber(false);
+    }
+    else if (strcmp(command, "pri") == 0)
+    {
+        cm_info_PrintGetPriId(false);
+    }
+    else if (strcmp(command, "sku") == 0)
+    {
+        cm_info_PrintGetSku(false);
     }
     else
     {

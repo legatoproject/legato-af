@@ -646,7 +646,7 @@ static void DestroyDeviceThread
     DeviceContext_t* interfacePtr = contextPtr;
     le_dls_Link_t* linkPtr;
 
-    LE_DEBUG("Destroy thread for interface %s", interfacePtr->device.path);
+    LE_DEBUG("Destroy thread for interface %d", interfacePtr->device.fd);
 
     while ((linkPtr=le_dls_Pop(&interfacePtr->unsolicitedList)) != NULL)
     {
@@ -670,9 +670,10 @@ static void DestroyDeviceThread
         le_sem_Delete(interfacePtr->waitingSemaphore);
     }
 
-    if (interfacePtr->device.handle)
+    if (interfacePtr->device.fd)
     {
-        le_dev_Close(&interfacePtr->device);
+        le_dev_RemoveFdMonitoring(&interfacePtr->device);
+        close(interfacePtr->device.fd);
     }
 
     le_ref_DeleteRef(DevicesRefMap, interfacePtr->ref);
@@ -690,19 +691,19 @@ static void *DeviceThread
 )
 {
     DeviceContext_t *interfacePtr = context;
-    LE_DEBUG("Start thread for %s ", interfacePtr->device.path);
+    LE_DEBUG("Start thread for %d", interfacePtr->device.fd);
 
     if (interfacePtr->device.fdMonitor)
     {
-        LE_ERROR("Interface %s already started",interfacePtr->device.path);
+        LE_ERROR("Interface %d already monitored",interfacePtr->device.fd);
         return NULL;
     }
 
     InitializeState(interfacePtr);
 
-    if (le_dev_Open(&interfacePtr->device, RxNewData, interfacePtr) != LE_OK)
+    if (le_dev_AddFdMonitoring(&interfacePtr->device, RxNewData, interfacePtr) != LE_OK)
     {
-        LE_ERROR("Error during open the device");
+        LE_ERROR("Error during adding the fd monitoring");
         return NULL;
     }
 
@@ -1353,7 +1354,6 @@ le_atClient_CmdRef_t le_atClient_Create
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1374,7 +1374,7 @@ le_result_t le_atClient_SetDevice
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     DeviceContext_t* interfacePtr = le_ref_Lookup(DevicesRefMap, devRef);
@@ -1395,7 +1395,6 @@ le_result_t le_atClient_SetDevice
  * This function must be called to delete an AT command reference.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1412,7 +1411,7 @@ le_result_t le_atClient_Delete
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     le_ref_DeleteRef(CmdRefMap, cmdRef);
@@ -1427,7 +1426,6 @@ le_result_t le_atClient_Delete
  * This function must be called to set the AT command string to be sent.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1447,7 +1445,7 @@ le_result_t le_atClient_SetCommand
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     strncpy(cmdPtr->cmd, commandPtr, sizeof(cmdPtr->cmd));
@@ -1463,7 +1461,6 @@ le_result_t le_atClient_SetCommand
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1476,14 +1473,14 @@ le_result_t le_atClient_SetIntermediateResponse
         ///< [IN] AT Command
 
     const char* intermediatePtr
-        ///< [IN] Set InterLE_NOT_FOUNDmediate
+        ///< [IN] Set Intermediate
 )
 {
     AtCmd_t* cmdPtr = le_ref_Lookup(CmdRefMap, cmdRef);
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     char *interPtr = strdup(intermediatePtr);
@@ -1534,7 +1531,6 @@ le_result_t le_atClient_SetIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1554,7 +1550,7 @@ le_result_t le_atClient_SetFinalResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     char *respPtr = strdup(responsePtr);
@@ -1594,7 +1590,6 @@ le_result_t le_atClient_SetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1614,7 +1609,7 @@ le_result_t le_atClient_SetText
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     if (textPtr)
@@ -1641,7 +1636,6 @@ le_result_t le_atClient_SetText
  * This function must be called to set the timeout of the AT command execution.
  *
  * @return
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1661,7 +1655,7 @@ le_result_t le_atClient_SetTimeout
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     cmdPtr->timeout = timer;
@@ -1674,7 +1668,6 @@ le_result_t le_atClient_SetTimeout
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
@@ -1692,7 +1685,7 @@ le_result_t le_atClient_Send
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     if (cmdPtr->interfacePtr == NULL)
@@ -1740,7 +1733,6 @@ le_result_t le_atClient_Send
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1764,7 +1756,7 @@ le_result_t le_atClient_GetFirstIntermediateResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     cmdPtr->responsesCount = le_dls_NumLinks(&cmdPtr->responseList);
@@ -1790,8 +1782,7 @@ le_result_t le_atClient_GetFirstIntermediateResponse
  * This function is used to get the next intermediate response.
  *
  * @return
- *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
+ *      - LE_NOT_FOUND when there are no further results.
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1814,7 +1805,7 @@ le_result_t le_atClient_GetNextIntermediateResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     cmdPtr->intermediateIndex += 1;
@@ -1831,7 +1822,7 @@ le_result_t le_atClient_GetNextIntermediateResponse
         }
     }
 
-    return LE_FAULT;
+    return LE_NOT_FOUND;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1840,7 +1831,6 @@ le_result_t le_atClient_GetNextIntermediateResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_OK when function succeed
  *
  * @note If the AT Command reference is invalid, a fatal error occurs,
@@ -1863,7 +1853,7 @@ le_result_t le_atClient_GetFinalResponse
     if (cmdPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", cmdRef);
-        return LE_NOT_FOUND;
+        return LE_BAD_PARAMETER;
     }
 
     le_dls_Link_t* linkPtr;
@@ -1890,7 +1880,6 @@ le_result_t le_atClient_GetFinalResponse
  *
  * @return
  *      - LE_FAULT when function failed
- *      - LE_NOT_FOUND when the AT Command reference is invalid
  *      - LE_TIMEOUT when a timeout occur
  *      - LE_OK when function succeed
  *
@@ -2064,40 +2053,36 @@ void le_atClient_RemoveUnsolicitedResponseHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to start a ATClient session on a specified device.
+ * This function must be called to automatically set and send an AT Command.
  *
- * @return reference on a device context
+ * @return
+ *      - LE_FAULT when function failed
+ *      - LE_NOT_FOUND when the AT Command reference is invalid
+ *      - LE_TIMEOUT when a timeout occur
+ *      - LE_OK when function succeed
+ *
+ * @note If the AT command is invalid, a fatal error occurs,
+ *       the function won't return.
+ *
+ * @note The AT command reference is created and returned by this API, there's no need to call
+ * le_atClient_Create() first.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_atClient_DeviceRef_t le_atClient_Start
 (
-    const char* devicePathPtr
+    int32_t              fd          ///< The file descriptor
 )
 {
     char name[THREAD_NAME_MAX_LENGTH];
     static uint32_t threatCounter = 1;
 
-    // Search if the device is already opened
-    le_ref_IterRef_t iterRef = le_ref_GetIterator(DevicesRefMap);
-
-     while (le_ref_NextNode(iterRef) == LE_OK)
-     {
-        DeviceContext_t* interfacePtr = (DeviceContext_t*) le_ref_GetValue(iterRef);
-
-        if (le_path_IsEquivalent(devicePathPtr, interfacePtr->device.path, "/") == true)
-        {
-            le_mem_AddRef(interfacePtr);
-            return interfacePtr->ref;
-        }
-    }
-
     DeviceContext_t* newInterfacePtr = le_mem_ForceAlloc(DevicesPool);
 
     memset(newInterfacePtr,0,sizeof(DeviceContext_t));
 
-    le_utf8_Copy(newInterfacePtr->device.path,devicePathPtr,LE_ATCLIENT_PATH_MAX_BYTES,0);
-
-    LE_DEBUG("Create a new interface for '%s'", devicePathPtr);
+    LE_DEBUG("Create a new interface for '%d'", fd);
+    newInterfacePtr->device.fd = fd;
 
     snprintf(name,THREAD_NAME_MAX_LENGTH,"atCommandClient-%d",threatCounter);
     newInterfacePtr->threadRef = le_thread_Create(name,DeviceThread,newInterfacePtr);

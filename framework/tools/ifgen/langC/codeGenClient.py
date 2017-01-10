@@ -139,7 +139,7 @@ static void _Handle_{{func.name}}
     void* contextPtr = _clientDataPtr->contextPtr;
 
     // Unpack the remaining parameters
-    {{ handler.parmList | printParmList("serverUnpack", sep="\n\n") | indent }}
+    {{ handler.transferParams | printParmList("serverUnpack", sep="\n\n") | indent }}
 
     // Call the registered handler
     if ( _handlerRef_{{func.name}} != NULL )

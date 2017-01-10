@@ -13,6 +13,7 @@ requires:
         modemServices/le_temp.api
         modemServices/le_ips.api
         modemServices/le_rtc.api
+        le_cellnet.api
     }
 }
 

@@ -198,8 +198,16 @@ static void CallbackTestHandlerQueued
 
     LE_PRINT_VALUE("%i", fdToClient);
 
+    uint8_t array[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+
     // Note that data, which is uint32_t, is just cast to void*, so cast it back.
-    CallbackTestHandlerRef( *((uint32_t*)dataPtr), "some name from server", fdToClient, contextPtr );
+    CallbackTestHandlerRef(
+      *((uint32_t*)dataPtr),
+      "some name from server",
+      array,
+      NUM_ARRAY_MEMBERS(array),
+      fdToClient,
+      contextPtr);
 }
 
 

@@ -7,7 +7,9 @@ This topic explains how to make Legato.
 @b cd to your Legato directory.
 
 @b Run the make script:
-@code make @endcode
+@code
+make localhost
+@endcode
 
 These are @subpage yoctoLegatoHostDirs installed.
 
@@ -15,6 +17,10 @@ This will build a @ref legatoServicesUpdatePack "system update pack" for the tar
 the build directory for your target (e.g., build/localhost/system.localhost.update).
 
 @section yoctoBuildLegato_configShell Configure Shell
+
+To set up your shell environment to use the Legato command-line tools, run the @c legs @a script
+(short for "legato shell") every time you open a new shell. You can find the @c legs script in the @c bin
+subdirectory of the Legato app framework directory (appears when the framework is built).
 
 You need to set up your shell environment to use the Legato command-line tools.
 
@@ -25,7 +31,11 @@ You can run @c bin/legs @a every time you open a new shell:
 @b Run
 @code$ bin/legs@endcode
 
-You can run @c exit at any time to terminate @c legs and restore your shell's environment.
+After running 'legs', you can run @c exit at any time to terminate @c legs and restore your
+shell's environment.
+
+@warning If you have two Legato framework versions installed on your PC, to switch versions you
+@b MUST @c exit out of @c legs and run the @c legs script again from the other version.
 
 @subsection yoctoBuildLegato_configShell_configlegatoenv bin/configlegatoenv
 
@@ -39,12 +49,13 @@ current shell session, which allows you to use bash alternatives like @c zsh.
 @b Run the @c make script to build the framework for the target:
 @code $ make wp85 @endcode
 
-Substitute @c wp85 for other target names : @c ar7, @c ar86 or @c raspi.
+Substitute @c wp85 for other target names : @c  wp750x, @c ar7, @c ar86 or @c raspi.
 
-This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under the build
-directory for your target  (e.g., @c build/wp85/system.wp85.update).
+This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under
+the build directory for your target  (e.g., @c build/wp85/system.wp85.update).
 
-Ensure you @ref yoctoBuildLegato_configShell before.
+See @ref yoctoTargetSW for details on how to install your system update pack onto your
+target device.
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

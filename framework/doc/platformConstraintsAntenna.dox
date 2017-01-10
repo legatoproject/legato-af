@@ -1,0 +1,12 @@
+/** @page platformConstraintsAntenna Platform Constraints
+
+The AR758x platform:
+ The platform doesn't support antenna monitoring on GNSS antenna.
+ le_antenna_SetExternalAdc() and le_antenna_GetExternalAdc() APIs are not supported.
+
+See @ref  c_antenna API
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
+

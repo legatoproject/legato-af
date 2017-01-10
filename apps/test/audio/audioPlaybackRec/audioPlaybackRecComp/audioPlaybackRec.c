@@ -757,6 +757,9 @@ static void ConnectAudioToFileLocalPlay
     FileAudioRef = le_audio_OpenPlayer();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFilePlayback returns NULL!");
 
+    LE_ERROR_IF((le_audio_SetGain(FileAudioRef, 0x3000) != LE_OK), "Cannot set multimedia gain");
+
+
     le_audio_Unmute(FileAudioRef);
 
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
@@ -826,6 +829,9 @@ static void ConnectAudioToFileLocalRec
     // Capture local on input connector.
     FileAudioRef = le_audio_OpenRecorder();
     LE_ERROR_IF((FileAudioRef==NULL), "OpenFileRecording returns NULL!");
+
+    LE_ERROR_IF((le_audio_SetGain(FileAudioRef, 0x3000) != LE_OK), "Cannot set multimedia gain");
+
 
     MediaHandlerRef = le_audio_AddMediaHandler(FileAudioRef, MyMediaEventHandler, NULL);
 

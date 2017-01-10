@@ -40,6 +40,11 @@ else ifeq ($(MAKECMDGOALS),wp750x)
 else ifeq ($(MAKECMDGOALS),tests_wp750x)
   include targetDefs.wp750x
 
+else ifeq ($(MAKECMDGOALS),wp76xx)
+  include targetDefs.wp76xx
+else ifeq ($(MAKECMDGOALS),tests_wp76xx)
+  include targetDefs.wp76xx
+
 else ifeq ($(MAKECMDGOALS),virt)
   include targetDefs.virt
 else ifeq ($(MAKECMDGOALS),tests_virt)

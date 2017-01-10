@@ -44,7 +44,7 @@
  *
  * Use the ChangeEvent to register a notification callback function to be called when the
  * state of an input pin changes. Thje type of edge detection can then be modified by calling
- * SetEdgeSense() or DisbleEdgeSense()
+ * SetEdgeSense() or DisableEdgeSense()
  * @note Only one handler can be registered per pin. Subsequent attempts to register a handler
  * will result in the client being killed.
  *

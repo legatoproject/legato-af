@@ -765,6 +765,22 @@ if ( {parm.serverName} > {parm.minValue} )
 class HandlerFuncData(BaseFunctionData):
 
     def __init__(self, funcName, parmList, comment=""):
+        def addArrayLengthParameters(params):
+            callParams = list()
+            transferParams = list()
+            for p in params:
+                callParams.append(p)
+                if isinstance(p, ArrayParmData):
+                    sizeParam = BaseParmData(p.sizeVar, RawType("size_t"))
+                    sizeParam.maxValue = p.maxSize
+                    if hasattr(p, 'minSize'):
+                        sizeParam.minValue = p.minSize
+                    # When transferring on the wire, the size is sent before the array.  When
+                    # calling the function, the size parameter comes after the array.
+                    callParams.append(sizeParam)
+                    transferParams.append(sizeParam)
+                transferParams.append(p)
+            return (callParams, transferParams)
 
         # Add the contextPtr variable to the parameter list before using it to init the instance.
         # Note that parmList may be a pyparsing type, so always convert to a real list.
@@ -772,12 +788,15 @@ class HandlerFuncData(BaseFunctionData):
         # todo: There might be a better way to handle this rather than using BaseParmData(), but in
         #       this case, we actually want to pass the pointer value, rather than dereferencing it.
         contextParm = BaseParmData( "contextPtr", RawType("void*") )
-        parmList = list(parmList) + [ contextParm ]
 
         # The contextPtr is always explicitly packed and unpacked, so don't need to do it with
         # the rest of the parameters for the handler.
         contextParm.serverUnpack = ""
         contextParm.clientPack = ""
+        parmList = list(parmList) + [ contextParm ]
+
+        # Add the array length parameters into the parameter list
+        (parmList, self.transferParams) = addArrayLengthParameters(parmList)
 
         # Init the instance
         # The funcName is actually used as the handler type (todo: maybe change this), and the
@@ -786,7 +805,6 @@ class HandlerFuncData(BaseFunctionData):
 
         # Store the full name, for mapping from API names to C names
         HandlerTypes[funcName] = self.name
-
 
 
 class EventFuncData(BaseFunctionData):

@@ -9,7 +9,7 @@ The @c .mdef files support declaring pre-built kernel modules to use Legato.
 @section defFilesMdef_preBuilt preBuilt
 
 The mandatory @c preBuilt: section specifies the path to the pre-built kernel module binary file.
-This binary file will be bundled with Legato and installed on the target using @ insmod Linux
+This binary file will be bundled with Legato and installed on the target using @c insmod Linux
 command.
 
 The module binary file specified must have an extension @c .ko to indicate the

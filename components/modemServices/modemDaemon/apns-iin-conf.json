@@ -1,0 +1,19 @@
+{
+    "apns": {
+        "@version": "1",
+        "__comment__": [
+            "This file is used to match a SIM identification number (ICCID) with an Issuer       ",
+            "Identification Number (IIN) and therefore an APN. This is useful for multi-IMSI SIM ",
+            "cards like the Sierra Wireless Smart SIM.                                           ",
+            "The IIN is specified in ITU Rec E.118 as the beginning of the ICCID (max 7 digits)  ",
+            "and can be used to find the current SIM card operator.                              "
+        ],
+        "apn": [
+            {
+                "@iin": "893324",
+                "@carrier": "Sierra Wireless",
+                "@apn": "internet.sierrawireless.com"
+            }
+        ]
+    }
+}

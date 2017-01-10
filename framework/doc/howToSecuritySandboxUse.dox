@@ -1,13 +1,22 @@
 /** @page howToSecuritySandboxUse Use Sandboxes
 
-This topic describes how to create your apps to properly use Legato's @ref basicSecuritySandbox feature.
 
-We've used a Python hello world app example of sandboxing throughout this topic.
+This topic describes how to configure your sandboxed app, and find the root causes of sandbox
+related problems.
 
-@section howToSecurity_Sandbox_createApps Create Sandboxed Apps
+By default, all apps are @ref @ref basicSecuritySandbox "sandboxed". If your app is written in C or
+C++, and only uses Legato APIs and standard libraries, then you may already be running your app in
+a sandbox without even knowing it. Sometimes you need more, and therefore, may be prevented
+from accessing something you need.
 
-To use sandboxing properly, you basically import everything your app needs into your
-sandbox. See @ref basicAppsCreate for details on the basic elements needed for Legato apps.
+We'll use a trivial Python program example to demonstrate how to sandbox apps properly.
+
+When shell command samples are provided, lines beginning with '$' are run on the development PC, and
+lines beginning with '#' are run on the target device (either through @c ssh or the serial console).
+
+See @ref basicAppsCreate for details on on how to create Legato apps.
+
+@section howToSecurity_Sandbox_createApp Create App
 
 Create your @c hello.py app like this:
 @code
@@ -17,31 +26,28 @@ print("Hello world!")
 
 @endcode
 
-@section howToSecurity_Sandbox_import Import Stuff
+Now create an @c .adef file called @c helloPython.adef that looks like this:
 
-You need to import your app and the Python library into the sandbox. To do this, you create an @c .adef
-like this @c helloPython.adef sample:
 @code
-
     bundles:
     {
         file:
         {
-            hello.py /
+            hello.py /   /* bundle hello.py into the app, appearing in the root of the sandbox. */
         }
     }
     requires:
     {
         file:
         {
-            /usr/bin/python /usr/bin/
+            /usr/bin/python /usr/bin/     /* import python interpreter into /usr/bin in sandbox */
         }
     }
     processes:
     {
         run:
         {
-            ( python /hello.py)
+            ( python /hello.py)           /* run hello.py when the app starts */
         }
     }
 @endcode
@@ -50,33 +56,29 @@ like this @c helloPython.adef sample:
 
 You're ready to build and install your sandboxed app:
 @code
-mkapp helloPython.adef  -t wp85 && instapp helloPython.wp85.update 192.168.2.2
+$ mkapp helloPython.adef  -t wp85 && update helloPython.wp85.update 192.168.2.2
 @endcode
 
 @section howToSandbox_checkLogs Check Logs
-Okay, not quite so fast. To ensure everything fired correctly, you need to check your log:
+
+To ensure everything fired correctly, you need to check your target's log:
 @code
-logread | grep python
+# logread | grep helloPython
 @endcode
 
-Although you loaded the libraries, you may still see an error like this output for our @c py example:
+Oops, there's an error:
 
 @code
 python: error while loading shared libraries: libpython2.7.so.1.0: cannot open shared object file: No such file or directory
 @endcode
 
+This is the dynamic linker telling us it can't find the library @c libpython2.7.so.1.0 that
+is needed by the @c python interpreter.
+
 The library path <code>/usr/lib/libpython2.7.so.1.0 /usr/lib/</code> needs to be added to the
-@c .adef to the @c requires/file section:
+@c .adef in the @c requires/file section:
 
 @code
-
-    bundles:
-    {
-        file:
-        {
-            hello.py /
-        }
-    }
     requires:
     {
         file:
@@ -85,23 +87,17 @@ The library path <code>/usr/lib/libpython2.7.so.1.0 /usr/lib/</code> needs to be
             /usr/lib/libpython2.7.so.1.0 /usr/lib/
          }
     }
-    processes:
-    {
-        run:
-        {
-            ( python /hello.py)
-        }
-    }
 @endcode
 
-If you're unsure of a library path, run:
+If you're unsure of a library path, use @c find on the target device:
 @code
-find -name libpython2.7.so.1.0 /
+# find -name libpython2.7.so.1.0 /
+/usr/lib/libpython2.7.so.1.0
 @endcode
 
 Then you need to build and install it again:
 @code
-mkapp helloPython.adef  -t wp85 && instapp helloPython.wp85.update 192.168.2.2
+$ mkapp helloPython.adef  -t wp85 && update helloPython.wp85.update 192.168.2.2
 @endcode
 
 Check the log, and it's still complaining about @c libutil.so.1, so we add
@@ -118,18 +114,52 @@ Check the log, and it's still complaining about @c libutil.so.1, so we add
     }
 @endcode
 
-You also need to add these directories to the @c .adef dir section:
+@section howToSandbox_strace Using strace
+
+If the logs don't indicate what the problem is, you can use @c strace to trace all the
+system calls that the program performs, and look for failed calls to <code>open()</code>.
+
+Do this by changing adding <c>strace -f</c> in front of your program name in the processes/run
+section of the .adef:
+
 @code
-    dir:
+    processes:
     {
-        /usr/lib/python2.7 /usr/lib/
-        /usr/include/python2.7 /usr/include/
+        run:
+        {
+            ( strace -f python /hello.py)           /* run hello.py when the app starts */
+        }
+    }
+@endcode
+
+@section howToSandbox_requiresDirs Requiring Whole Directories
+
+Continuing your investigation, you find your app needs stuff from
+<c>/usr/lib/python2.7</c> and <c>/usr/include/python2.7</c>.
+
+There's a lot of stuff in there. You know it's safe to allow your app access to
+all of it. To save you the hassle of going through the discovery process
+for each individual file in the directories your program might need, you can just
+add the whole directories to your sandbox using a @c requires/dir section in your @c .adef:
+
+@code
+    requires:
+    {
+        dir:
+        {
+            /usr/lib/python2.7 /usr/lib/
+            /usr/include/python2.7 /usr/include/
+        }
     }
 @endcode
 
 @section howToSandbox_envVars Environment Variables
 
-The log now displays something like <code>getpwuid(): uid not found: 1017</code>.
+The log will now display something like:
+@verbatim
+getpwuid(): uid not found: 1017
+@endverbatim.
+
 You need to set the environment variables. For our @c py example, you add this to the @c .adef file
 processes section:
 @code
@@ -143,8 +173,15 @@ processes section:
 
 @section howToSandbox_success Sandbox Working Correctly
 
-Viewing the logs one more time, you see <code>INFO | python[8816] | Hello world!</code>.
-Congrats, you just setup up a properly sandboxed Legato app!
+Viewing the logs one more time, you see:
+@verbatim
+INFO | python[8816] | Hello world!
+@endverbatim
+
+Congratulations! You have shown that you care about security and are proving yourself to be
+a thorn in the side of hackers and an asset to your developer community, the greater Internet
+community, and all those who might be affected by vulnerabilities in networked devices.
+We sincerely thank you!
 
 Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 

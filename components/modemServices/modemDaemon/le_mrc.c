@@ -1568,13 +1568,15 @@ le_result_t le_mrc_GetTdScdmaBandPreferences
  * Add a preferred operator by specifying the MCC/MNC and the Radio Access Technology.
  *
  * @return
- *  - LE_NOT_FOUND     User Preferred operator list is not available.
+ *  - LE_UNSUPPORTED   List of User Preferred operators not available.
  *  - LE_FAULT         Function failed.
  *  - LE_BAD_PARAMETER RAT mask is invalid.
  *  - LE_OK            Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
+ *       it's a fatal error and the function won't return.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_AddPreferredOperator
@@ -1635,7 +1637,7 @@ le_result_t le_mrc_AddPreferredOperator
     if (GetPreferredOperatorsList(&preferredOperatorsList, false, true, &nbEntries) != LE_OK)
     {
         LE_ERROR("No preferred Operator list available!!");
-        return LE_NOT_FOUND;
+        return LE_UNSUPPORTED;
     }
 
     LE_WARN_IF((nbEntries == 0), "Preferred PLMN Operator list is empty!");
@@ -1663,12 +1665,15 @@ le_result_t le_mrc_AddPreferredOperator
  * Remove a preferred operator by specifying the MCC/MNC.
  *
  * @return
- *  - LE_NOT_FOUND  User Preferred operator list is not available.
- *  - LE_FAULT      Function failed.
- *  - LE_OK         Function succeeded.
+ *  - LE_UNSUPPORTED    List of User Preferred operators not available.
+ *  - LE_NOT_FOUND      Operator not found in the User Preferred operators list.
+ *  - LE_FAULT          Function failed.
+ *  - LE_OK             Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
+ *       it's a fatal error and the function won't return.
+ *
+ * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_RemovePreferredOperator
@@ -1713,7 +1718,8 @@ le_result_t le_mrc_RemovePreferredOperator
     res = GetPreferredOperatorsList(&preferredOperatorsList, false, true, &nbItem);
     if (res == LE_OK)
     {
-        if (RemovePreferredOperators(&preferredOperatorsList, mcc, mnc) == LE_OK)
+        res = RemovePreferredOperators(&preferredOperatorsList, mcc, mnc);
+        if (res == LE_OK)
         {
             if (pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK)
             {
@@ -1724,14 +1730,14 @@ le_result_t le_mrc_RemovePreferredOperator
         else
         {
             LE_ERROR("Could not remove [%s,%s] into the preferred operator list", mcc, mnc);
-            res = LE_FAULT;
+            // Error code of RemovePreferredOperators is returned
         }
         DeletePreferredOperatorsList(&preferredOperatorsList);
     }
     else
     {
         LE_ERROR("No preferred Operator present in modem!");
-        res = LE_NOT_FOUND;
+        res = LE_UNSUPPORTED;
     }
 
     return res;

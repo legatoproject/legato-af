@@ -14,7 +14,8 @@
 
 
 /*
- * This test gets the Target Hardware Platform information and it displays it in the log and in the shell.
+ * This test gets the Target Hardware Platform information and it displays it in the log and in
+ * the shell.
  *
  * API Tested:
  *  le_info_GetDeviceModel().
@@ -386,7 +387,8 @@ static void PriIdTest
 
     LE_INFO("======== PriidTest ========");
 
-    result = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
+    result = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES,
+                              priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
     if (result == LE_OK)
     {
         LE_INFO("le_info_GetPriId get priIdPn => %s", priIdPn);
@@ -426,6 +428,29 @@ static void PriIdTest
         LE_ERROR("======== PriidTest FAILED ========");
     }
 }
+
+
+/*
+ * This test le_info_GetSku API.
+ *
+ * API Tested:
+ *  - le_info_GetSku().
+ */
+static void SkuIdTest
+(
+    void
+)
+{
+    char skuId[LE_INFO_MAX_SKU_BYTES] = {0};
+    char skuIdBadBuffer[2] = {0};
+
+    LE_INFO("======== SkuId test ========");
+
+    LE_ASSERT(le_info_GetSku(skuId, 1) == LE_OVERFLOW);
+    LE_ASSERT(le_info_GetSku(skuIdBadBuffer, LE_INFO_MAX_SKU_BYTES) == LE_OVERFLOW);
+    LE_ASSERT(le_info_GetSku(skuId, LE_INFO_MAX_SKU_BYTES) == LE_OK);
+}
+
 
 /*
  * This test le_info_GetPlatformSerialNumber API.
@@ -554,6 +579,8 @@ COMPONENT_INIT
     ManufacturerNameTest();
 
     PriIdTest();
+
+    SkuIdTest();
 
     PlatformSerialNumberTest();
 

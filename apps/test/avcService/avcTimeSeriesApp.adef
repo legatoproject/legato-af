@@ -1,0 +1,21 @@
+
+executables:
+{
+    avcTimeSeriesApp = ( componentTimeSeriesApp )
+}
+
+processes:
+{
+    run:
+    {
+        (avcTimeSeriesApp)
+    }
+}
+
+bindings:
+{
+    avcTimeSeriesApp.componentTimeSeriesApp.le_avdata -> avcService.le_avdata
+    avcTimeSeriesApp.componentTimeSeriesApp.le_avc -> avcService.le_avc
+}
+
+version: DEMO

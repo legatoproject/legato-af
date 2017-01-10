@@ -346,13 +346,13 @@ static void* AppHandler
 
     LE_INFO("App id: %d", appCtxPtr->appId);
 
+    LOCK
     // simulate a client session for each thread
     intptr_t tempSessionRef = appCtxPtr->appId +1;
     appCtxPtr->sessionRef = (le_msg_SessionRef_t)(tempSessionRef);
     _ClientSessionRef = appCtxPtr->sessionRef;
 
     // Subscribe to eCall state handler
-    LOCK
     LE_ASSERT((appCtxPtr->mccHandlerRef = le_mcc_AddCallEventHandler(MyCallEventHandler,
                                                                      ctxPtr)) != NULL);
     UNLOCK
@@ -451,6 +451,7 @@ static void SimulateAndCheckOutgoingCallEvent
             }
     }
     LE_ASSERT(le_mcc_HangUpAll() == LE_OK);
+    _ClientSessionRef = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -501,8 +502,8 @@ static void RemoveHandler
 {
     AppContext_t * appCtxPtr = (AppContext_t*) param1Ptr;
 
-    _ClientSessionRef = appCtxPtr->sessionRef;
     LOCK
+    _ClientSessionRef = appCtxPtr->sessionRef;
     le_mcc_RemoveCallEventHandler(appCtxPtr->mccHandlerRef);
     UNLOCK
 
@@ -628,6 +629,9 @@ void Testle_mcc_callWaiting
     LE_ASSERT(le_mcc_GetCallWaitingService(&callWaitingStatus) == LE_OK);
     LE_ASSERT(callWaitingStatus == LE_OFF);
 
+    intptr_t tempSessionRef = MAIN_TASK_SESSION_REF;
+    _ClientSessionRef = (le_msg_SessionRef_t)(tempSessionRef);
+
     LE_ASSERT((CurrentCallRef = le_mcc_Create(DESTINATION_NUMBER)) != NULL);
     LE_ASSERT(le_mcc_ActivateCall(CurrentCallRef) == LE_FAULT);
     pa_mccSimu_SetVoiceDialResult(LE_OK);
@@ -635,13 +639,18 @@ void Testle_mcc_callWaiting
     CurrentCallEvent = LE_MCC_EVENT_WAITING;
     pa_mccSimu_ReportCallEvent(DESTINATION_NUMBER, LE_MCC_EVENT_WAITING);
     SynchTest();
+
+    _ClientSessionRef = (le_msg_SessionRef_t)(tempSessionRef);
     LE_ASSERT(le_mcc_ActivateCall(CurrentCallRef) == LE_OK);
     CurrentCallEvent = LE_MCC_EVENT_TERMINATED;
     CurrentTerm = 0;
     CurrentTermCode = 0;
     pa_mccSimu_ReportCallEvent(DESTINATION_NUMBER, LE_MCC_EVENT_TERMINATED);
+
     SynchTest();
+    _ClientSessionRef = (le_msg_SessionRef_t)(tempSessionRef);
     le_mcc_Delete(CurrentCallRef);
+    _ClientSessionRef = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -723,6 +732,7 @@ void Testle_mcc_AddHandlers
     // Simulate incoming call
     SimulateAndCheckIncomingCallEvent();
 
+    _ClientSessionRef = NULL;
     // Check that no more call of the semaphore
     LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
 }

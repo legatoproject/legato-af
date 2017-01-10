@@ -64,6 +64,7 @@ static void* TestThread
                                                 NULL,
                                                 1
                                             );
+
     le_event_RunLoop();
 
     return NULL;
@@ -79,6 +80,7 @@ COMPONENT_INIT
 {
     const char* phoneNumber=NULL;
     le_thread_Ref_t newThreadPtr;
+    LE_DEBUG("Start atClientTest");
 
     // Get phone number
     if (le_arg_NumArgs() == 1)
@@ -92,22 +94,25 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
+    //! [binding]
+    int fd = open("/dev/ttyAT", O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+    LE_ASSERT(fd >= 0);
+
+    int newFd = dup(fd);
+
+    DevRef = le_atClient_Start(fd);
+    //! [binding]
+
+    // Try to stop the device
+    LE_ASSERT(le_atClient_Stop(DevRef) == LE_OK);
+    LE_ASSERT(le_atClient_Stop(DevRef) == LE_FAULT);
+
+    DevRef = le_atClient_Start(newFd);
 
     newThreadPtr = le_thread_Create("TestThread",TestThread,NULL);
 
     le_thread_Start(newThreadPtr);
-    //! [binding]
-    DevRef = le_atClient_Start("/dev/ttyAT");
-    //! [binding]
-    // A device is opened only once, we should received the same reference
-    LE_ASSERT(le_atClient_Start("/dev/ttyAT") == DevRef);
-
-    // Try to stop the device
-    LE_ASSERT(le_atClient_Stop(DevRef) == LE_OK);
-    LE_ASSERT(le_atClient_Stop(DevRef) == LE_OK);
-
-    // OPen again for tests
-    DevRef = le_atClient_Start("/dev/ttyAT");
 
     char buffer[LE_ATCLIENT_CMD_RSP_MAX_BYTES];
     le_atClient_CmdRef_t cmdRef;
@@ -119,11 +124,11 @@ COMPONENT_INIT
     LE_ASSERT(le_atClient_SetFinalResponse(cmdRef, "OK|ERROR|+CME ERROR") == LE_OK);
     LE_ASSERT(le_atClient_Send(cmdRef) == LE_OK);
     LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
-    LE_DEBUG("final rsp: %s", buffer);
+    LE_INFO("final rsp: %s", buffer);
     memset(buffer,0,50);
     LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
                                                                                           == LE_OK);
-    LE_DEBUG("inter rsp: %s", buffer);
+    LE_INFO("inter rsp: %s", buffer);
     LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
                                                                                    == LE_NOT_FOUND);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
@@ -136,11 +141,11 @@ COMPONENT_INIT
                                                 "OK|ERROR|+CME ERROR",
                                                 LE_ATCLIENT_CMD_DEFAULT_TIMEOUT  ) == LE_OK);
     LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
-    LE_DEBUG("final rsp: %s", buffer);
+    LE_INFO("final rsp: %s", buffer);
     memset(buffer,0,50);
     LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
                                                                                           == LE_OK);
-    LE_DEBUG("inter rsp: %s", buffer);
+    LE_INFO("inter rsp: %s", buffer);
     LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
                                                                                    == LE_NOT_FOUND);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
@@ -157,11 +162,11 @@ COMPONENT_INIT
     //! [declarationFull]
     memset(buffer,0,50);
     LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
-    LE_DEBUG("final rsp: %s", buffer);
+    LE_INFO("final rsp: %s", buffer);
     memset(buffer,0,50);
     LE_ASSERT(le_atClient_GetFirstIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
                                                                                           == LE_OK);
-    LE_DEBUG("inter rsp: %s", buffer);
+    LE_INFO("inter rsp: %s", buffer);
     LE_ASSERT(le_atClient_GetNextIntermediateResponse(cmdRef,buffer, LE_ATCLIENT_CMD_RSP_MAX_BYTES)
                                                                                    == LE_NOT_FOUND);
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
@@ -184,11 +189,11 @@ COMPONENT_INIT
                                         LE_ATCLIENT_CMD_DEFAULT_TIMEOUT) == LE_OK);
     //! [declarationSimple]
 
-    LE_ASSERT( le_atClient_GetFinalResponse(cmdRef,
+    LE_ASSERT(le_atClient_GetFinalResponse(cmdRef,
                                        buffer,
-                                       LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK );
+                                       LE_ATCLIENT_CMD_RSP_MAX_BYTES) == LE_OK);
 
-    LE_ASSERT( strcmp(buffer,"OK") == 0);
+    LE_ASSERT(strcmp(buffer,"OK") == 0);
 
     //! [responses]
     int intNumber = 1;
@@ -229,13 +234,4 @@ COMPONENT_INIT
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
     //! [delete]
 
-    // Test timeout command
-    cmdRef = le_atClient_Create();
-    LE_ASSERT(cmdRef != NULL);
-    LE_ASSERT(le_atClient_SetCommand(cmdRef, "AT+COPS=?") == LE_OK);
-    LE_ASSERT(le_atClient_SetTimeout(cmdRef, 1) == LE_OK);
-    LE_ASSERT(le_atClient_SetDevice(cmdRef, DevRef) == LE_OK);
-    LE_ASSERT(le_atClient_SetFinalResponse(cmdRef, "OK|ERROR|+CME ERROR") == LE_OK);
-    LE_ASSERT(le_atClient_Send(cmdRef)==LE_TIMEOUT);
-    LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
 }

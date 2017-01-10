@@ -1675,8 +1675,7 @@ static void CaptureDebugData
     char command[LIMIT_MAX_PATH_BYTES];
     int s = snprintf(command,
                      sizeof(command),
-                     "/legato/systems/current/bin/saveLogs %s %s %s %s",
-                     app_GetIsSandboxed(procRef->appRef) ? "SANDBOXED" : "NOTSANDBOXED",
+                     "/legato/systems/current/bin/saveLogs %s %s %s",
                      app_GetName(procRef->appRef),
                      procRef->namePtr,
                      isRebooting ? "REBOOT" : "");

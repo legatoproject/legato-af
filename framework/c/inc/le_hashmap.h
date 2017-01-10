@@ -449,7 +449,7 @@ le_result_t le_hashmap_PrevNode
  *
  */
 //--------------------------------------------------------------------------------------------------
-void const * le_hashmap_GetKey
+const void* le_hashmap_GetKey
 (
     le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator.
 );
@@ -465,7 +465,7 @@ void const * le_hashmap_GetKey
  *
  */
 //--------------------------------------------------------------------------------------------------
-void const * le_hashmap_GetValue
+void* le_hashmap_GetValue
 (
     le_hashmap_It_Ref_t iteratorRef        ///< [IN] Reference to the iterator.
 );
