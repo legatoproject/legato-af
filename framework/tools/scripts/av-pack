@@ -27,9 +27,10 @@ help_long_description=(
 "requested for this application."
 ""
 "-b, --build-dir, <string>"
-"    File system path of the build directory to be searched for the manifest.app file. Please ensure"
+"    File system path of the build directory to be searched for the info.properties file. Please ensure"
 "that the build directory specified corresponds to your *.update file. This will be used to"
-"determine whether av-pack should be generating an application pack or system pack."
+"determine whether av-pack should be generating an application pack or system pack. The path should"
+"end with the target platform."
 ""
 "-n, --name, <string>"
 "    (Optional) Identify the name of the system."
@@ -147,94 +148,116 @@ EOF
 ) >> "$1/manifest.app"
 }
 
+# Generate an manifest.app file at the specified path, based on the provided info.properties file.
+function GenerateAppManifest()
+{
+    local infoPropPath=$1
+    local manifestPath=$2
+
+    # Get app name and version from info.properties
+    local line=$(grep "app.name" $infoPropPath)
+    local appName=${line#app.name=}
+    line=$(grep "app.version" $infoPropPath)
+    local appVer=${line#app.version=}
+
+    cat <<EndOfManifest > $manifestPath
+<?xml version="1.0" encoding="UTF-8"?>
+<app:application xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0" name="$appName" type="" revision="$appVer">
+  <application-manager use="LWM2M_SW"/>
+  <capabilities>
+    <communication use="legato"/>
+    <data>
+      <encoding type="LWM2M">
+        <asset default-label="Application Objects" id="le_${appName}">
+          <node default-label="Application Object" path="0">
+            <variable default-label="Version" path="0" type="string"/>
+            <variable default-label="Name" path="1" type="string"/>
+            <variable default-label="State" path="2" type="int"/>
+            <variable default-label="StartMode" path="3" type="int"/>
+          </node>
+          <node default-label="Process Object" path="1">
+            <variable default-label="Name" path="0" type="string"/>
+            <variable default-label="ExecName" path="1" type="string"/>
+            <variable default-label="State" path="2" type="int"/>
+            <variable default-label="FaultAction" path="3" type="int"/>
+            <variable default-label="FaultCount" path="4" type="int"/>
+            <variable default-label="FaultLogs" path="5" type="string"/>
+          </node>
+        </asset>
+      </encoding>
+    </data>
+  </capabilities>
+</app:application>
+EndOfManifest
+}
+
 # Generate manifest for application(s)
 function CreateAppPack()
 {
-    manifest=$(find $BUILD_DIR -name manifest.app)
-
     if [ "$UPDATE_TYPE" == "app" ]
     then
-        numOfManifest=$(echo "$manifest" | wc -l)
+        # Get the path to the info.properties for the app.
+        infoPropertiesPath=$(ls $BUILD_DIR/app/*/staging/info.properties)
 
-        # An application pack must include on manifest.app
-        if [ -z "$manifest" ]
+        if [ -z "$infoPropertiesPath" ]
         then
-            ExitWithError "Can't find any built applications."
+            ExitWithError "Can't find any info.properties file."
         fi
 
-        if [ "$numOfManifest" -gt 1 ]
+        if [ "$(echo "$infoPropertiesPath" | wc -l)" -gt 1 ]
         then
-            ExitWithError "Only one manifest permitted. Please be more specific"
+            ExitWithError "More than one info.proeprties file is found. Delete $BUILD_DIR and make the app again."
         fi
 
-        if [ ! -f "$manifest" ]
-        then
-            ExitWithError "Not a regular file: '$manifest'"
-        fi
+        # Generate the manifest.app file based on info found in info.properties.
+        manifestPath=$TMP_DIR/manifest.app
+        GenerateAppManifest $infoPropertiesPath $manifestPath
 
-        appName=$(GetManifestField "$manifest" "name")
+        # Set type attribute in manifest
+        appName=$(GetManifestField "$manifestPath" "name")
 
         if [ -z "$appName" ]
         then
-            ExitWithError "Failed to extract app name from manifest file '$MANIFEST'"
+            ExitWithError "Failed to extract app name from manifest file $manifestPath"
         fi
-
-        # Generate a copy of the manifest file in the temp directory
-        cat "$manifest" > $TMP_DIR/manifest.app
 
         if [ -z "$TYPE" ]
         then
             TYPE="$appName-legato-application"
         fi
 
-        # Set type attribute in manifest
-        SetManifestField "$TMP_DIR/manifest.app" "type" "$TYPE"
+        SetManifestField "$manifestPath" "type" "$TYPE"
 
         # Check application version, if none, we will replace it with the applications hash
-        appVersion=$(GetManifestField "$manifest" "revision")
+        appVersion=$(GetManifestField "$manifestPath" "revision")
         if [ -z "$appVersion" ]
         then
-            appInfoProperties=$(find $BUILD_DIR -name "info.properties")
-
-            if [ -z "$appInfoProperties" ]
-            then
-                ExitWithError "Failed to extract app hash from info.properties"
-            fi
-
-            SetManifestField "$TMP_DIR/manifest.app" "revision" "$(GetAppHash $appInfoProperties)"
+            SetManifestField "$manifestPath" "revision" "$(GetAppHash $infoPropertiesPath)"
         fi
 
         IncludeBinaryFile "$TMP_DIR/"
     else
-        for appManifest in $manifest
+        # Get the list of paths to the info.properties files for the system.
+        infoPropertiesPathList=$(ls $BUILD_DIR/system/app/*/staging/info.properties)
+
+        # Generate manifest files for each app found in the system.
+        for infoPropertiesPath in $infoPropertiesPathList
         do
-            if [ ! -f $appManifest ]
-            then
-                ExitWithError "Not a regular file: $appManifest"
-            fi
-
-            appName=$(GetManifestField "$appManifest" "name")
-            appManifestDir="$TMP_DIR/$appName"
-            mkdir $appManifestDir
-
-            cat "$appManifest" > $appManifestDir/manifest.app
+            # Generate the manifest.app file based on info found in info.properties.
+            line=$(grep "app.name" $infoPropertiesPath)
+            appName=${line#app.name=}
+            mkdir $TMP_DIR/$appName
+            manifestPath=$TMP_DIR/$appName/manifest.app
+            GenerateAppManifest $infoPropertiesPath $manifestPath
 
             # Set type attribute in manifest
-            SetManifestField "$appManifestDir/manifest.app" "type" "$appName-$TYPE"
+            SetManifestField "$manifestPath" "type" "$appName-$TYPE"
 
             # Check application version, if none, we will replace it with the applications hash
-            appVersion=$(GetManifestField "$appManifest" "revision")
+            appVersion=$(GetManifestField "$manifestPath" "revision")
             if [ -z "$appVersion" ]
             then
-                searchPath=$(dirname $appManifest)
-                appInfoProperties=$(find $searchPath -name "info.properties")
-
-                if [ -z "$appInfoProperties" ]
-                then
-                    ExitWithError "Failed to extract app hash from info.properties"
-                fi
-
-                SetManifestField "$appManifestDir/manifest.app" "revision" "$(GetAppHash $appInfoProperties)"
+                SetManifestField "$manifestPath" "revision" "$(GetAppHash $infoPropertiesPath)"
             fi
         done
     fi
@@ -277,7 +300,7 @@ function CreateSystemPack()
 # Update file
 UPDATE_FILE=""
 
-# Directory to search for the manifest file.
+# Directory to search for the info.properties file.
 BUILD_DIR=""
 
 # The "name" the will be declared in the manifest file

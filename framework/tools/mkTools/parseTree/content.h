@@ -44,11 +44,7 @@ struct Content_t
         POOL,           ///< Pool (TokenList_t), "poolName = 123"
         APP,            ///< Named item in .sdef 'apps:' section (CompoundItemList_t),
                         ///  "appPath", "appPath { }" or "appPath { overrides }".
-        MODULE,         ///< Named item in .sdef 'kernelModules:' section (CompoundItemList_t),
-        ASSET,          ///< AirVantage asset definition (Asset_t).
-        ASSET_SETTING,  ///< AirVantage writable value (AssetSetting_t).
-        ASSET_VARIABLE, ///< AirVantage readable value (AssetVariable_t).
-        ASSET_COMMAND   ///< AirVantage executable value (AssetCommand_t).
+        MODULE          ///< Named item in .sdef 'kernelModules:' section (CompoundItemList_t),
     };
 
     Type_t type;        ///< The type of content item.

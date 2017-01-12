@@ -184,18 +184,6 @@ TokenList_t* CreateTokenList
         case Content_t::MODULE:
             throw mk::Exception_t(LE_I18N("Internal error: MODULE is not a TokenList_t type."));
 
-        case Content_t::ASSET:
-            throw mk::Exception_t(LE_I18N("Internal error: ASSET is not a TokenList_t type."));
-
-        case Content_t::ASSET_SETTING:
-            return new AssetSetting_t(firstTokenPtr);
-
-        case Content_t::ASSET_VARIABLE:
-            return new AssetVariable_t(firstTokenPtr);
-
-        case Content_t::ASSET_COMMAND:
-            return new AssetCommand_t(firstTokenPtr);
-
     }
 
     throw mk::Exception_t(
@@ -340,16 +328,12 @@ const TokenList_t* ToTokenListPtr
         case Content_t::ENV_VAR:
         case Content_t::MODULE_PARAM:
         case Content_t::POOL:
-        case Content_t::ASSET_SETTING:
-        case Content_t::ASSET_VARIABLE:
-        case Content_t::ASSET_COMMAND:
             return static_cast<const TokenList_t*>(contentItemPtr);
 
         case Content_t::TOKEN:
         case Content_t::COMPLEX_SECTION:
         case Content_t::APP:
         case Content_t::MODULE:
-        case Content_t::ASSET:
             throw mk::Exception_t(
                 mk::format(LE_I18N("Internal error: %s is not a TokenList_t."),
                            contentItemPtr->TypeName())
@@ -387,7 +371,6 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::COMPLEX_SECTION:
         case Content_t::APP:
         case Content_t::MODULE:
-        case Content_t::ASSET:
             return static_cast<const CompoundItemList_t*>(contentItemPtr);
 
         case Content_t::TOKEN:
@@ -414,9 +397,6 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::ENV_VAR:
         case Content_t::MODULE_PARAM:
         case Content_t::POOL:
-        case Content_t::ASSET_SETTING:
-        case Content_t::ASSET_VARIABLE:
-        case Content_t::ASSET_COMMAND:
         {
             auto tokenListPtr = static_cast<const TokenList_t*>(contentItemPtr);
             tokenListPtr->ThrowException(

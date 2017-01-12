@@ -742,120 +742,6 @@ static void AddRequiredItems
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pull an asset setting or a variable field from the token stream.
- **/
-//--------------------------------------------------------------------------------------------------
-static void AddAssetDataFields
-(
-    model::AssetField_t::ActionType_t actionType,
-    model::Asset_t* modelAssetPtr,
-    parseTree::CompoundItemList_t* sectionPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto subItemPtr : sectionPtr->Contents())
-    {
-        auto tokenListPtr = static_cast<parseTree::TokenList_t*>(subItemPtr);
-        auto& contents = tokenListPtr->Contents();
-
-        // Get the name, type, (setting or variable,) and data type from the token stream.
-        auto fieldPtr = new model::AssetField_t(actionType,
-                                                tokenListPtr->firstTokenPtr->text,
-                                                contents[0]->text);
-
-        // If there is a default value, add that as well.
-        if (contents.size() == 2)
-        {
-            fieldPtr->SetDefaultValue(contents[1]->text);
-        }
-
-        modelAssetPtr->fields.push_back(fieldPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pull an asset command field from the token stream.
- **/
-//--------------------------------------------------------------------------------------------------
-static void AddAssetCommand
-(
-    model::Asset_t* modelAssetPtr,
-    parseTree::CompoundItemList_t* sectionPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto subItemPtr : sectionPtr->Contents())
-    {
-        auto tokenListPtr = static_cast<parseTree::TokenList_t*>(subItemPtr);
-        auto fieldPtr = new model::AssetField_t(model::AssetField_t::TYPE_COMMAND,
-                                                "",
-                                                tokenListPtr->firstTokenPtr->text);
-
-        modelAssetPtr->fields.push_back(fieldPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Add user defined assets to the component model.
- **/
-//--------------------------------------------------------------------------------------------------
-static void AddUserAssets
-(
-    model::Component_t* componentPtr,
-    const parseTree::CompoundItem_t* sectionPtr,
-    const mk::BuildParams_t& buildParams
-)
-//--------------------------------------------------------------------------------------------------
-{
-    auto assetSectionPtr = static_cast<const parseTree::ComplexSection_t*>(sectionPtr);
-
-    for (auto subsectionPtr : assetSectionPtr->Contents())
-    {
-        auto parsedAssetPtr = static_cast<const parseTree::Asset_t*>(subsectionPtr);
-        auto modelAssetPtr = new model::Asset_t();
-
-        modelAssetPtr->SetName(parsedAssetPtr->Name());
-
-        for (auto assetSubsectionPtr : parsedAssetPtr->Contents())
-        {
-            const auto& assetSubsectionName = assetSubsectionPtr->firstTokenPtr->text;
-
-            if (assetSubsectionName == "settings")
-            {
-                AddAssetDataFields(model::AssetField_t::TYPE_SETTING,
-                                   modelAssetPtr,
-                                   static_cast<parseTree::CompoundItemList_t*>(assetSubsectionPtr));
-            }
-            else if (assetSubsectionName == "variables")
-            {
-                AddAssetDataFields(model::AssetField_t::TYPE_VARIABLE,
-                                   modelAssetPtr,
-                                   static_cast<parseTree::CompoundItemList_t*>(assetSubsectionPtr));
-            }
-            else if (assetSubsectionName == "commands")
-            {
-                AddAssetCommand(modelAssetPtr,
-                                static_cast<parseTree::CompoundItemList_t*>(assetSubsectionPtr));
-            }
-            else
-            {
-                assetSubsectionPtr->ThrowException(
-                    mk::format(LE_I18N("Unexpected asset subsection, '%s'."), assetSubsectionName)
-                );
-            }
-        }
-
-        componentPtr->assets.push_back(modelAssetPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Print a summary of a component model.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1022,54 +908,6 @@ static void PrintSummary
             }
         }
     }
-
-    if (!componentPtr->assets.empty())
-    {
-        std::cout << LE_I18N("  AirVantage Cloud Interface:") << std::endl;
-
-        for (const auto asset : componentPtr->assets)
-        {
-            std::cout << mk::format(LE_I18N("    '%s'"), asset->GetName()) << std::endl;
-
-            for (auto field : asset->fields)
-            {
-                auto& dataType = field->GetDataType();
-                auto& name = field->GetName();
-                std::string actionTypeStr;
-
-                switch (field->GetActionType())
-                {
-                    case model::AssetField_t::TYPE_SETTING:
-                        actionTypeStr =  LE_I18N("setting");
-                        break;
-
-                    case model::AssetField_t::TYPE_VARIABLE:
-                        actionTypeStr = LE_I18N("variable");
-                        break;
-
-                    case model::AssetField_t::TYPE_COMMAND:
-                        actionTypeStr = LE_I18N("command");
-                        break;
-
-                    case model::AssetField_t::TYPE_UNSET:
-                        throw mk::Exception_t(LE_I18N("Internal error: "
-                                                      "Unset AssetField_t action type."));
-                }
-
-                if (!dataType.empty())
-                {
-                    std::cout << mk::format(LE_I18N("      %s %s %s"),
-                                            actionTypeStr, dataType, name)
-                              << std::endl;
-                }
-                else
-                {
-                    std::cout << mk::format(LE_I18N("      %s %s"), actionTypeStr, name)
-                              << std::endl;
-                }
-            }
-        }
-    }
 }
 
 
@@ -1155,10 +993,6 @@ model::Component_t* GetComponent
         else if (sectionName == "requires")
         {
             AddRequiredItems(componentPtr, sectionPtr, buildParams);
-        }
-        else if (sectionName == "assets")
-        {
-            AddUserAssets(componentPtr, sectionPtr, buildParams);
         }
         else
         {

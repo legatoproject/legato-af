@@ -274,39 +274,6 @@ struct Pool_t : TokenList_t
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Asset settings are writable values from AirVantage.
- */
-//--------------------------------------------------------------------------------------------------
-struct AssetSetting_t : TokenList_t
-{
-    AssetSetting_t(Token_t* firstTokenPtr): TokenList_t(ASSET_SETTING, firstTokenPtr) {}
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Asset variables are readable values from AirVantage.
- */
-//--------------------------------------------------------------------------------------------------
-struct AssetVariable_t : TokenList_t
-{
-    AssetVariable_t(Token_t* firstTokenPtr): TokenList_t(ASSET_VARIABLE, firstTokenPtr) {}
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Asset commands are executable from AirVantage.
- */
-//--------------------------------------------------------------------------------------------------
-struct AssetCommand_t : TokenList_t
-{
-    AssetCommand_t(Token_t* firstTokenPtr): TokenList_t(ASSET_COMMAND, firstTokenPtr) {}
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Section or named item that contains a list of compound items as content.
  * An example is the "processes:" section of the .adef file.
  */
@@ -361,17 +328,6 @@ struct App_t : CompoundItemList_t
 struct Module_t : CompoundItemList_t
 {
     Module_t(Token_t* firstTokenPtr): CompoundItemList_t(MODULE, firstTokenPtr) {}
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Assets represent collections of data that can be exchanged with AirVantage.
- */
-//--------------------------------------------------------------------------------------------------
-struct Asset_t : CompoundItemList_t
-{
-    Asset_t(Token_t* firstTokenPtr): CompoundItemList_t(ASSET, firstTokenPtr) {}
 };
 
 

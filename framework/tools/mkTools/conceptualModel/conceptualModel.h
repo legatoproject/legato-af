@@ -94,8 +94,6 @@ namespace model
 #include "user.h"
 #include "permissions.h"
 #include "fileSystemObject.h"
-#include "assetField.h"
-#include "asset.h"
 #include "component.h"
 #include "exe.h"
 #include "process.h"

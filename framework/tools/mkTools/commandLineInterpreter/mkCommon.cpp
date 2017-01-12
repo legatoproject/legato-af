@@ -154,9 +154,6 @@ void GenerateCode
         // Generate _main.c.
         code::GenerateExeMain(exePtr.second, buildParams);
     }
-
-    // Generate the manifest.app file for Air Vantage.
-    airVantage::GenerateManifest(appPtr, buildParams);
 }
 
 

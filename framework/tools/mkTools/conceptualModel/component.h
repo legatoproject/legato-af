@@ -58,8 +58,6 @@ struct Component_t
 
     std::set<std::string> implicitDependencies; ///< Changes to these files triggers a re-link.
 
-    std::list<Asset_t*> assets;  ///< Asset data that this component can sync with AirVantage.
-
     // Get a pre-existing Component object for the component found at a given directory path.
     // @return Pointer to the object or NULL if not found.
     static Component_t* GetComponent(const std::string& path);
