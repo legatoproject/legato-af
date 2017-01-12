@@ -22,3 +22,19 @@ mkapp(  secStoreTest2.adef
             ${LEGATO_ROOT}/interfaces/le_secStore.api
             secStoreTest2/*
      )
+
+mkapp(  secStoreTest2Global.adef
+        DEPENDS
+            ## TODO: Remove all this when the mk tools do dependency checking.
+            ${LEGATO_ROOT}/interfaces/le_secStore.api
+            secStoreTest2/*
+     )
+
+mkapp(  secStoreTestGlobal.adef
+        DEPENDS
+            ## TODO: Remove all this when the mk tools do dependency checking.
+            ${LEGATO_ROOT}/interfaces/le_secStore.api
+            secStoreTestGlobal/*
+     )
+
+add_subdirectory(secStoreUnitTest)

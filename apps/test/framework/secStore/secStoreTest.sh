@@ -3,7 +3,7 @@
 LoadTestLib
 
 targetAddr=$1
-targetType=${2:-ar7}
+targetType=${2:-wp85}
 
 OnFail() {
     echo "Secure Storage Test Failed!"
@@ -142,6 +142,61 @@ RunSecStoreTest2()
     CheckLogStr "==" 1 "============ SecStoreTest2 PASSED ============="
 }
 
+# This test verifies read, write, and delete "0-byte files".
+# It uses the same executable as secStoreTest2, but built against secStoreGlobal service.
+RunSecStoreTestGlobal()
+{
+    # Install test apps
+    echo "Install test apps"
+    instapp secStoreTestGlobal.$targetType.update $targetAddr
+
+    # Clear logs
+    echo "Clear the logs."
+    ClearTargetLog
+
+    # Run test apps
+    echo "Starting secStoreTestGlobal."
+    ssh root@$targetAddr  "$BIN_PATH/app start secStoreTestGlobal"
+    CheckRet
+
+    # Wait for app to finish
+    IsAppRunning "secStoreTestGlobal"
+    while [ $? -eq 0 ]; do
+        IsAppRunning "secStoreTestGlobal"
+    done
+
+    # Cleanup
+    echo "Uninstall all apps."
+    ssh root@$targetAddr "$BIN_PATH/app remove secStoreTestGlobal"
+
+    # Verification
+    echo "Grepping the logs to check the results."
+    CheckLogStr "==" 1 "============ SecStoreTestGlobal PASSED ============="
+
+    # Check that the entries created by the app are still present
+    # after uninstall
+    KEY=/global/file1
+    VALUE=$(ssh root@$targetAddr "$BIN_PATH/secstore read $KEY")
+    CheckRet
+    if [ -n "$VALUE" ]; then
+        echo "Value should have been empty for 0-byte file $KEY"
+        exit 1
+    fi
+    ssh root@$targetAddr "$BIN_PATH/secstore rm $KEY"
+    CheckRet
+
+    # AVMS
+    KEY=/global/avms/file1
+    VALUE=$(ssh root@$targetAddr "$BIN_PATH/secstore read $KEY")
+    CheckRet
+    if [[ "$VALUE" != "string321" ]]; then
+        echo "Unexpected value for entry $KEY: '$VALUE'"
+        exit 1
+    fi
+    ssh root@$targetAddr "$BIN_PATH/secstore rm $KEY"
+    CheckRet
+}
+
 
 ##################################
 ##  Main Script Body  ############
@@ -151,6 +206,8 @@ echo "******** Secure Storage Test Starting ***********"
 SetUp
 RunSecStoreTest1
 RunSecStoreTest2
+RunSecStoreTestGlobal
 
 echo "Secure Storage Test Passed!"
 exit 0
+

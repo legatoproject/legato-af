@@ -1,0 +1,36 @@
+#*******************************************************************************
+# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+#*******************************************************************************
+
+set(LEGATO_SECSTORE "${LEGATO_ROOT}/components/secStore/")
+
+if(TEST_COVERAGE EQUAL 1)
+    set(CFLAGS "--cflags=\"--coverage\"")
+    set(LFLAGS "--ldflags=\"--coverage\"")
+endif()
+
+function(add_secstore_test TEST_NAME)
+    set(TEST_EXEC "secStoreUnitTest_${TEST_NAME}")
+
+    mkexe(${TEST_EXEC}
+        ${PA_DIR}/simu/components/le_pa_secStore
+        secStoreComp
+        ${TEST_NAME}
+        -i secStoreComp/
+        -i ${LEGATO_ROOT}/interfaces/secureStorage/
+        -i ${LEGATO_SECSTORE}/platformAdaptor/inc
+        -i ${LEGATO_ROOT}/framework/c/src
+        -i ${LEGATO_ROOT}/framework/c/src/appCfg
+        -i ${PA_DIR}/simu/components/le_pa_secStore
+        -C "-fvisibility=default -g"
+        ${CFLAGS}
+        ${LFLAGS}
+    )
+
+    add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} ${ARGN})
+endfunction()
+
+add_secstore_test(secStoreTest1a -l 8192)
+add_secstore_test(secStoreTest1b)
+add_secstore_test(secStoreTest2)
+add_secstore_test(secStoreTestGlobal)

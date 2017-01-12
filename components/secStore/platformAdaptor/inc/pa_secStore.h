@@ -38,7 +38,7 @@ typedef void (*pa_secStore_GetEntry_t)
  *      LE_OK if successful.
  *      LE_NO_MEMORY if there is not enough memory to store the data.
  *      LE_UNAVAILABLE if the secure storage is currently unavailable.
- *      LE_BAD_PARAMETER if the path cannot be written to because it is a directory or ot would
+ *      LE_BAD_PARAMETER if the path cannot be written to because it is a directory or it would
  *                       result in an invalid path.
  *      LE_FAULT if there was some other error.
  */

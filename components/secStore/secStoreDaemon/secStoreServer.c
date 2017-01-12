@@ -33,7 +33,6 @@
 //--------------------------------------------------------------------------------------------------
 #define MD5_STR_BYTES       LE_LIMIT_MD5_STR_LEN + 1
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Path in secure storage to store data for non-app users.
@@ -48,6 +47,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define SYS_PATH            "/sys"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Path in secure storage to store global data.
+ */
+//--------------------------------------------------------------------------------------------------
+#define GLOBAL_PATH         "/global"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -761,8 +768,9 @@ static bool IsValidName
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_secStore_Write
+static le_result_t Write
 (
+    bool isGlobal,                  ///< [IN] Is this an operation is the global domain?
     const char* name,               ///< [IN] Name of the secure storage item.
     const uint8_t* bufPtr,          ///< [IN] Buffer contain the data to store.
     size_t bufNumElements           ///< [IN] Size of buffer.
@@ -792,32 +800,44 @@ le_result_t le_secStore_Write
         }
     }
 
-    // Get the client's name and see if it is an app.
-    bool isApp;
-    char clientName[LIMIT_MAX_USER_NAME_BYTES];
+    char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
+    le_result_t result;
 
-    if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+    if(isGlobal)
     {
-        LE_KILL_CLIENT("Could not get the client's name.");
-        return LE_FAULT;
+        // Build global path based on prefix and item name.
+        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), GLOBAL_PATH, name, NULL) != LE_OK,
+                    "Global path for item %s is too long.", name);
     }
-
-    // Get the path to the client's secure storage area.
-    char path[SECSTOREADMIN_MAX_PATH_BYTES];
-    GetClientPath(clientName, isApp, path, sizeof(path));
-
-    // Check the available limit for the client.
-    le_result_t result = CheckClientLimit(clientName, path, name, bufNumElements);
-
-    if (result != LE_OK)
+    else
     {
-        return result;
+        // Get the client's name and see if it is an app.
+        bool isApp;
+        char clientName[LIMIT_MAX_USER_NAME_BYTES];
+
+        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+        {
+            LE_KILL_CLIENT("Could not get the client's name.");
+            return LE_FAULT;
+        }
+
+        // Get the path to the client's secure storage area.
+        GetClientPath(clientName, isApp, path, sizeof(path));
+
+        // Check the available limit for the client.
+        result = CheckClientLimit(clientName, path, name, bufNumElements);
+
+        if (result != LE_OK)
+        {
+            return result;
+        }
+
+        // Append item name to client path.
+        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
+                    "Client %s's path for item %s is too long.", clientName, name);
     }
 
     // Write the item to the secure storage.
-    LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
-                "Client %s's path for item %s is too long.", clientName, name);
-
     result = pa_secStore_Write(path, bufPtr, bufNumElements);
 
     if (result == LE_BAD_PARAMETER)
@@ -828,6 +848,51 @@ le_result_t le_secStore_Write
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes an item to secure storage.  If the item already exists then it will be overwritten with
+ * the new value.  If the item does not already exist then it will be created.  Specifying 0 for
+ * buffer size means emptying an existing file or creating a 0-byte file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there is not enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_secStore_Write
+(
+    const char* name,               ///< [IN] Name of the secure storage item.
+    const uint8_t* bufPtr,          ///< [IN] Buffer contain the data to store.
+    size_t bufNumElements           ///< [IN] Size of buffer.
+)
+{
+    return Write(false, name, bufPtr, bufNumElements);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Writes an item to secure storage.  If the item already exists then it will be overwritten with
+ * the new value.  If the item does not already exist then it will be created.  Specifying 0 for
+ * buffer size means emptying an existing file or creating a 0-byte file.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NO_MEMORY if there is not enough memory to store the item.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreGlobal_Write
+(
+    const char* name,               ///< [IN] Name of the secure storage item.
+    const uint8_t* bufPtr,          ///< [IN] Buffer contain the data to store.
+    size_t bufNumElements           ///< [IN] Size of buffer.
+)
+{
+    return Write(true, name, bufPtr, bufNumElements);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -842,8 +907,9 @@ le_result_t le_secStore_Write
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_secStore_Read
+static le_result_t Read
 (
+    bool isGlobal,                  ///< [IN] Is this an operation is the global domain?
     const char* name,               ///< [IN] Name of the secure storage item.
     uint8_t* bufPtr,                ///< [OUT] Buffer to store the data in.
     size_t* bufNumElementsPtr       ///< [INOUT] Size of buffer.
@@ -873,27 +939,83 @@ le_result_t le_secStore_Read
         }
     }
 
-    // Get the client's name and see if it is an app.
-    bool isApp;
-    char clientName[LIMIT_MAX_USER_NAME_BYTES];
+    char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
 
-    if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+    if(isGlobal)
     {
-        LE_KILL_CLIENT("Could not get the client's name.");
-        return LE_FAULT;
+        // Build global path based on prefix and item name.
+        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), GLOBAL_PATH, name, NULL) != LE_OK,
+                    "Global path for item %s is too long.", name);
+    }
+    else
+    {
+        // Get the client's name and see if it is an app.
+        bool isApp;
+        char clientName[LIMIT_MAX_USER_NAME_BYTES];
+
+        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+        {
+            LE_KILL_CLIENT("Could not get the client's name.");
+            return LE_FAULT;
+        }
+
+        // Get the path to the client's secure storage area.
+        GetClientPath(clientName, isApp, path, sizeof(path));
+
+        // Append item name to client path.
+        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
+                    "Client %s's path for item %s is too long.", clientName, name);
     }
 
-    // Get the path to the client's secure storage area.
-    char path[SECSTOREADMIN_MAX_PATH_BYTES];
-    GetClientPath(clientName, isApp, path, sizeof(path));
-
     // Read the item from the secure storage.
-    LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
-                "Client %s's path for item %s is too long.", clientName, name);
-
     return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item.  No data will be written to
+ *                  the buffer in this case.
+ *      LE_NOT_FOUND if the item does not exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_secStore_Read
+(
+    const char* name,               ///< [IN] Name of the secure storage item.
+    uint8_t* bufPtr,                ///< [OUT] Buffer to store the data in.
+    size_t* bufNumElementsPtr       ///< [INOUT] Size of buffer.
+)
+{
+    return Read(false, name, bufPtr, bufNumElementsPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reads an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_OVERFLOW if the buffer is too small to hold the entire item.  No data will be written to
+ *                  the buffer in this case.
+ *      LE_NOT_FOUND if the item does not exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreGlobal_Read
+(
+    const char* name,               ///< [IN] Name of the secure storage item.
+    uint8_t* bufPtr,                ///< [OUT] Buffer to store the data in.
+    size_t* bufNumElementsPtr       ///< [INOUT] Size of buffer.
+)
+{
+    return Read(true, name, bufPtr, bufNumElementsPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -906,8 +1028,9 @@ le_result_t le_secStore_Read
  *      LE_FAULT if there was some other error.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_secStore_Delete
+le_result_t Delete
 (
+    bool isGlobal,      ///< [IN] Is this an operation is the global domain?
     const char* name    ///< [IN] Name of the secure storage item.
 )
 {
@@ -929,25 +1052,74 @@ le_result_t le_secStore_Delete
         }
     }
 
-    // Get the client's name and see if it is an app.
-    bool isApp;
-    char clientName[LIMIT_MAX_USER_NAME_BYTES];
+    char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
 
-    if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+    if(isGlobal)
     {
-        LE_KILL_CLIENT("Could not get the client's name.");
-        return LE_FAULT;
+        // Build global path based on prefix and item name.
+        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), GLOBAL_PATH, name, NULL) != LE_OK,
+                    "Global path for item %s is too long.", name);
+    }
+    else
+    {
+        // Get the client's name and see if it is an app.
+        bool isApp;
+        char clientName[LIMIT_MAX_USER_NAME_BYTES];
+
+        if (GetClientName(clientName, sizeof(clientName), &isApp) != LE_OK)
+        {
+            LE_KILL_CLIENT("Could not get the client's name.");
+            return LE_FAULT;
+        }
+
+        // Get the path to the client's secure storage area.
+        GetClientPath(clientName, isApp, path, sizeof(path));
+
+        // Append item name to client path.
+        LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
+                    "Client %s's path for item %s is too long.", clientName, name);
     }
 
-    // Get the path to the client's secure storage area.
-    char path[SECSTOREADMIN_MAX_PATH_BYTES];
-    GetClientPath(clientName, isApp, path, sizeof(path));
-
     // Delete the item from the secure storage.
-    LE_FATAL_IF(le_path_Concat("/", path, sizeof(path), name, NULL) != LE_OK,
-                "Client %s's path for item %s is too long.", clientName, name);
-
     return pa_secStore_Delete(path);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the item does not exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_secStore_Delete
+(
+    const char* name    ///< [IN] Name of the secure storage item.
+)
+{
+    return Delete(false, name);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Deletes an item from secure storage.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the item does not exist.
+ *      LE_UNAVAILABLE if the secure storage is currently unavailable.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secStoreGlobal_Delete
+(
+    const char* name    ///< [IN] Name of the secure storage item.
+)
+{
+    return Delete(true, name);
 }
 
 

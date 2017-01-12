@@ -1,0 +1,17 @@
+requires:
+{
+    api:
+    {
+        le_secStore.api                     [types-only]
+        secureStorage/secStoreAdmin.api     [types-only]
+        le_limit.api                        [types-only]
+        le_appInfo.api                      [types-only]
+        le_update.api                       [types-only]
+    }
+}
+
+sources:
+{
+    ../../secStoreTestGlobal/secStoreTestGlobal.c
+}
+

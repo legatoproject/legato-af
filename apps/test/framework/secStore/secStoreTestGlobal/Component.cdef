@@ -1,0 +1,13 @@
+sources:
+{
+    secStoreTestGlobal.c
+}
+
+requires:
+{
+    api:
+    {
+        secStoreGlobal = le_secStore.api
+        secureStorage/secStoreAdmin.api
+    }
+}

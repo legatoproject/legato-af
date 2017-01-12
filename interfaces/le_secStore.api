@@ -48,6 +48,31 @@
  * If corruption in the secure storage is detected, a restore is performed and the target device is
  * rebooted.
  *
+ * @section c_secStoreGlobal Global Secure Storage
+ *
+ * This same API also provides access to a global area that can be shared across the system.
+ * This interface is called @c secStoreGlobal.
+ *
+ * Here's a code sample binding to this service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.secStoreGlobal -> secStore.secStoreGlobal
+   }
+   @endverbatim
+ *
+ * And the following code should be used to use the API from your .cdef file:
+ * @verbatim
+   requires:
+   {
+     api:
+
+     {
+       secStoreGlobal = le_secStore.api
+    }
+   }
+   @endverbatim
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.

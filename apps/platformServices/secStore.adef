@@ -19,6 +19,7 @@ extern:
 {
     secStore.secStoreDaemon.le_secStore
     secStore.secStoreDaemon.secStoreAdmin
+    secStore.secStoreDaemon.secStoreGlobal
 }
 
 

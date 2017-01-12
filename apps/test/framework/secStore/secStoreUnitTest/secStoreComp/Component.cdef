@@ -1,0 +1,28 @@
+requires:
+{
+    api:
+    {
+        le_secStore.api                     [types-only]
+        secureStorage/secStoreAdmin.api     [types-only]
+        le_limit.api                        [types-only]
+        le_appInfo.api                      [types-only]
+        le_update.api                       [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/secStore/secStoreDaemon/secStoreServer.c
+    secStoreStub.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceOpenHandler=MsgAddServiceOpenHandler
+    -Dle_msg_AddServiceCloseHandler=MsgAddServiceCloseHandler
+    -Dle_msg_GetClientUserCreds=MsgGetClientUserCreds
+    -Dle_appInfo_GetName=AppInfoGetName
+    -Dle_update_GetCurrentSysIndex=UpdateGetCurrentSysIndex
+    -Dle_update_GetPreviousSystemIndex=UpdateGetPreviousSystemIndex
+    -Dle_update_GetSystemHash=UpdateGetSystemHash
+}

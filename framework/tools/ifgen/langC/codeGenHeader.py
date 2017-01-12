@@ -303,7 +303,9 @@ def WriteLocalHeaderFile(pf, ph, hashValue, fileName, serviceName):
     #
     #       In the future, this size will be automatically calculated.
     #
-    if fileName.endswith( ("le_secStore_messages.h", "secStoreAdmin_messages.h") ):
+    if fileName.endswith( ("le_secStore_messages.h",
+                           "secStoreGlobal_messages.h",
+                           "secStoreAdmin_messages.h") ):
         maxMsgSize = 8500
     elif fileName.endswith("le_cfg_messages.h"):
         maxMsgSize = 1600
