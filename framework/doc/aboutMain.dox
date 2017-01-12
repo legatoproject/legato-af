@@ -1,11 +1,10 @@
 /** @page aboutMain About
 
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage aboutLegato                     | About Legato                        |
-| @subpage aboutReleaseInfo           | release and upgrade notes - current and previous versions       |
-| @subpage aboutLicenses           | Legato and Open Source Licenses   |
-| @subpage aboutLegatoContributing | how to contribute to Legato open source project |
-| @subpage aboutDocsVersion             | access other docs' versions                 |
+| Section                            | Description                                               |
+| ---------------------------------- | --------------------------------------------------------- |
+| @subpage aboutLegato               | About Legato                                              |
+| @subpage aboutReleaseInfo          | Release Information for the Legato Application Framework  |
+| @subpage aboutLicenses             | Legato and Open Source Licenses                           |
+| @subpage aboutLegatoContributing   | how to contribute to Legato open source project           |
 
 **/
