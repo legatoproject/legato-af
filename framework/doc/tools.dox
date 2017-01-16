@@ -1,10 +1,48 @@
 /** @page tools Tools
 
-These topics contain info about available Legato tools:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage toolsTarget   | run on target device    |
-| @subpage toolsHost      | run on a host PC          |
-| @subpage buildTools    | run on host PC to build apps    |
+Legato contains Tools that will help you configure and diagnose your target or dev machine and build
+ Systems, Apps and Components for Legato.
+
+They are broken down into 3 categories:
+
+| Section                            | Description                                                                            |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| @subpage toolsTarget               | Target tools - tools that run on the target device                                     |
+| @subpage toolsHost                 | Target management tools - tools for managing target devices (run on Linux dev machine) |
+| @subpage buildTools                | Build management tools - build tools (run on Linux dev machine)                        |
+
+Before running tools on your host machine you will need to configure your shell.
+
+@section toolsConfigShell Configuring your Shell
+
+To set up your shell environment to use the Legato command-line tools, run the @c legs @a script
+(short for "legato shell") every time you open a new shell. Located in the @c bin
+subdirectory of your Legato root directory.
+
+@note If the bin directory is missing or empty, it's because the framework has not been built yet.
+
+@subsection toolsBinlegs bin/legs
+
+You can run an interactive bash shell configured for Legato by running
+ @c bin/legs @a every time you open a new shell:
+
+Run
+@code $ bin/legs @endcode
+
+After running @c legs, you can @c exit the shell at any time to terminate @c legs and restore your
+shell's environment.
+
+@warning If you have two Legato framework versions installed on your PC, to switch versions you
+@b MUST @c exit out of @c legs and run the @c legs script again from the other version.
+
+@subsection toolsConfigLegatoEnv bin/configlegatoenv
+
+You can also use @c configlegatoenv as alternative to @c bin/legs:
+@code $ source bin/configlegatoenv @endcode
+
+configlegatoenv does not spawn an new shell, instead it imports the Legato configuration within your
+current shell session. This is useful if you want to use bash alternatives like @c zsh.
+
+Copyright (C) Sierra Wireless Inc.
 
 **/
