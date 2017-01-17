@@ -1,23 +1,24 @@
 /** @page howToMain How To
 
 This section contains topics about frequently needed tasks:
-| Section                            | Description                                                 |
-| ---------------------------------- | --------------------------------------------------          |
-| @subpage howToLoginAuthentication  | setting up secure shell with ssh keys and passwords         |
-| @subpage howToCustomizeUART        | UART customizations on WP85 or WP75 module                  |
-| @subpage howToDevMode              | managing Developer Mode                                     |
-| @subpage howToDebug                | debugging apps                                              |
-| @subpage howToConfigTree           | managing target Config Trees                                |
-| @subpage howToPowerMgmt            | managing device power                                       |
-| @subpage howToEcall                | PDF about general Legato eCall features                     |
-| @subpage howToGNSS                 | managing GNSS on target                                     |
-| @subpage howToSecurity             | sandboxes and SMACK                                         |
-| @subpage howToPortLegacyGen        | porting legacy apps to Legato                               |
-| @subpage howToSetUserTimebase      | setting up user timebase                                    |
-| @subpage howToNMEA                 | setting up NMEA                                             |
-| @subpage howToAV                   | using AirVantage to remotely administer apps                |
-| @subpage howToLogs                 | accessing and use Legato Logs                               |
-| @subpage howToSoftwareUpdate       | software update features                                    |
+| Section                                                        | Description                                         |
+| ----------------------------------                             | --------------------------------------------------- |
+| @subpage howToLoginAuthentication "Setup Login Authentication" | Setting up secure shell with ssh keys and passwords |
+| @subpage howToCustomizeUART                                    | UART customizations on WP85 or WP75 module          |
+| @subpage howToDebug                                            | Debugging apps                                      |
+| @subpage howToConfigTree                                       | Managing target Config Trees                        |
+| @subpage howToPowerMgmt                                        | Managing device power                               |
+| @subpage howToDevMode "Manage Dev Mode"                        | Managing Developer Mode                             |
+| @subpage howToEcall                                            | PDF about general Legato eCall features             |
+| @subpage howToGNSS                                             | Managing GNSS on target                             |
+| @subpage howToSecurity                                         | Sandboxes and SMACK                                 |
+| @subpage howToPortLegacyGen                                    | Porting legacy apps to Legato                       |
+| @subpage howToSetUserTimebase                                  | Setting up user timebase                            |
+| @subpage howToNMEA                                             | Setting up NMEA                                     |
+| @subpage howToSPI                                              | Setting up the SPI Service                          |
+| @subpage howToAV                                               | Using AirVantage to remotely administer apps        |
+| @subpage howToLogs                                             | Accessing and use Legato Logs                       |
+| @subpage howToSoftwareUpdate                                   | Software update features                            |
 
 Copyright (C) Sierra Wireless Inc.
 
