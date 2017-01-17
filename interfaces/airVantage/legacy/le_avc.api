@@ -1,6 +1,9 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_avc AirVantage Connector
+ * @page c_le_avc_legacy AirVantage Connector
+ *
+ * @deprecated This API should not be used for new applications and will be removed in a future
+ * version of Legato. It has been replaced by @ref c_le_avc .
  *
  * @ref le_avc_interface.h "API Reference" <br>
  * @ref howToAVConnect "How To Connect"
@@ -91,6 +94,11 @@
  *
  * If an install can't be applied because it's blocked, another attempt to apply the install
  * will be made at a later time.
+ *
+ * The control app can add a session controller handler using le_avc_AddSessionRequestEventHandler().
+ * If the control app registers a session request event handler, requests by user apps to open or
+ * close session will be forwarded to the control app. If the control app doesn't register a session
+ * request handler, avms session can be opened anytime by user apps.
  *
  * @section c_le_avc_GetPollingTimer Polling Timer
  *
@@ -264,6 +272,18 @@ ENUM Status
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Request to open or close avms session.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SessionRequest
+{
+    SESSION_ACQUIRE,        ///< Request by user app to open AV session
+    SESSION_RELEASE         ///< Request by user app to close AV session
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The type of pending update
  */
 //--------------------------------------------------------------------------------------------------
@@ -336,6 +356,29 @@ EVENT StatusEvent
 (
     StatusHandler handler
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for receiving session open or close request.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER SessionRequestHandler
+(
+    SessionRequest request IN    ///< Request to open or close AV session
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on session open or close request.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT SessionRequestEvent
+(
+    SessionRequestHandler handler
+);
+
 
 
 //--------------------------------------------------------------------------------------------------

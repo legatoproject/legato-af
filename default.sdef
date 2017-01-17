@@ -7,7 +7,7 @@
 apps:
 {
     // Platform services.
-    $LEGATO_ROOT/apps/platformServices/airVantage/avcService
+    $LEGATO_SERVICE_AVC_APP
     $LEGATO_ROOT/apps/platformServices/audioService
     $LEGATO_ROOT/apps/platformServices/cellNetService
     $LEGATO_ROOT/apps/platformServices/dataConnectionService

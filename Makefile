@@ -111,6 +111,9 @@ PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
 # PlantUML file definition
 export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
 
+# System external dependencies
+EXT_DEPS =
+
 # ========== TARGET-SPECIFIC VARIABLES ============
 
 include $(wildcard modules/*/moduleDefs)
@@ -132,6 +135,32 @@ ifneq ($(MAKECMDGOALS),clean)
   endif
 
 endif
+
+# ========== APP-SPECIFIC VARIABLES ============
+
+# AirVantage service
+LEGATO_APP_AVC ?= lwm2mcore
+$(info AirVantage: $(LEGATO_APP_AVC))
+ifeq ($(LEGATO_APP_AVC),lwm2mcore)
+  export LEGATO_SERVICE_AVC_APP := "$(LEGATO_ROOT)/apps/platformServices/airVantageConnector/avcService"
+
+  # Declare an external dependency as to let the airVantageConnector prepare itself
+  EXT_DEPS += extDep_avc
+
+else ifeq ($(LEGATO_APP_AVC),legacy)
+  export LEGATO_SERVICE_AVC_APP := "$(LEGATO_ROOT)/apps/platformServices/airVantage/avcService"
+else ifeq ($(LEGATO_APP_AVC),none)
+  export LEGATO_SERVICE_AVC_APP :=
+else
+  $(error "Invalid LEGATO_APP_AVC $(LEGATO_APP_AVC)")
+endif
+$(info AirVantage app: $(LEGATO_SERVICE_AVC_APP))
+
+# ========== EXTERNAL DEPENDENCIES BUILD RULES ============
+
+.PHONY: extDep_avc
+extDep_avc:
+	make -C apps/platformServices/airVantageConnector
 
 # ========== GENERIC BUILD RULES ============
 
@@ -276,7 +305,8 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
 			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
-			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
+			-DLEGATO_APP_AVC=$(LEGATO_APP_AVC)
 
 # Construct the staging directory with common files for embedded targets.
 # Staging directory will become /mnt/legato/ in cwe
@@ -392,7 +422,7 @@ SDEF_TO_USE ?= default.sdef
 
 SYSTEM_TARGETS = $(foreach target,$(TARGETS),system_$(target))
 .PHONY: $(SYSTEM_TARGETS)
-$(SYSTEM_TARGETS):system_%: framework_%
+$(SYSTEM_TARGETS):system_%: framework_% $(EXT_DEPS)
 	rm -f system.sdef
 	ln -s $(SDEF_TO_USE) system.sdef
 	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) system.sdef \

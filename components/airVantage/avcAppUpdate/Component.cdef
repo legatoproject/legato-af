@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-        airVantage/le_avc.api [types-only]
+        airVantage/legacy/le_avc.api [types-only]
 
         le_update.api
         le_instStat.api

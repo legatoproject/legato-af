@@ -3,8 +3,8 @@ provides:
 {
     api:
     {
-        airVantage/le_avc.api
-        airVantage/le_avdata.api
+        airVantage/legacy/le_avc.api
+        airVantage/legacy/le_avdata.api
     }
 }
 
