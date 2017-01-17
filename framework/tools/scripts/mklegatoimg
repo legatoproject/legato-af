@@ -35,10 +35,8 @@ CheckRet() {
     fi
 }
 
-while getopts ":t:o:d:v:" arg
+while getopts ":t:o:d:v:s" arg
 do
-    echo "$OPTARG == $(readlink -f $OPTARG)"
-
     case $arg in
     t)
         TARGET=$OPTARG
@@ -51,6 +49,9 @@ do
         ;;
     v)
         VERSION=$OPTARG
+        ;;
+    s)
+        STRIP_STAGING_TREE=true
         ;;
     ?)
         echo "$0: invalid option -$OPTARG"
@@ -118,16 +119,24 @@ echo "Output: $OUTPUT_DIR"
 echo "Version: $VERSION"
 
 StripExeAndLibs() {
-    if [ "$STRIP_STAGING_TREE" == "yes" ]; then
-        STRIP=${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}strip
-        test -x $STRIP || (echo "Executable ${TOOLCHAIN_PREFIX}strip is missing"; false)
-        CheckRet
-
-        for file in `find $STAGING_DIR -type f`; do
-            file ${file} | grep "ELF .* not stripped" >/dev/null
-            test $? -eq 0 && ${STRIP} ${file} && echo "Stripping $file"
-        done
+    if [[ "$STRIP_STAGING_TREE" != "true" ]]; then
+        return
     fi
+
+    PATH="${TOOLCHAIN_DIR}:${PATH}"
+
+    FindTool "${TOOLCHAIN_PREFIX}strip" STRIP
+    CheckRet
+
+    FindTool "${TOOLCHAIN_PREFIX}nm" NM
+    CheckRet
+
+    for file in $(find $STAGING_DIR -type f); do
+        if [ -n "$(${NM} ${file} 2>/dev/null)" ]; then
+            echo "Stripping $file"
+            ${STRIP} ${file}
+        fi
+    done
 }
 
 GenerateUbinizeCfg() {

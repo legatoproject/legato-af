@@ -133,7 +133,6 @@ ifneq ($(MAKECMDGOALS),clean)
 
 endif
 
-
 # ========== GENERIC BUILD RULES ============
 
 # Tell make that the targets are not actual files.
@@ -305,9 +304,14 @@ stage_embedded:
 	# Check PA libraries.
 	checkpa $(TARGET) || true
 
+# If set, generate an image with stripped binaries
+ifeq ($(STRIP_STAGING_TREE),1)
+  MKLEGATOIMG_FLAGS += -s
+endif
+
 .PHONY: stage_mklegatoimg
 stage_mklegatoimg:
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET)
+	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
 
 # ==== localhost needs no staging. Just a blank rule ====
 

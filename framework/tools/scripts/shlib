@@ -210,10 +210,16 @@ SetTargetIP()
 # Function to be able to use the toolchain within a script
 FindToolchain() {
     toolchain_dir_env_name=${TARGET^^}_TOOLCHAIN_DIR
+    toolchain_prefix_env_name=${TARGET^^}_TOOLCHAIN_PREFIX
 
     TOOLCHAIN_DIR=${!toolchain_dir_env_name}
     if [ -z "$TOOLCHAIN_DIR" ]; then
-        TOOLCHAIN_DIR=$(findtoolchain $TARGET)
+        TOOLCHAIN_DIR=$(findtoolchain $TARGET dir)
+    fi
+
+    TOOLCHAIN_PREFIX=${!toolchain_prefix_env_name}
+    if [ -z "$TOOLCHAIN_PREFIX" ]; then
+        TOOLCHAIN_PREFIX=$(findtoolchain $TARGET prefix)
     fi
 
     TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")

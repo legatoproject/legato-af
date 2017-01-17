@@ -52,4 +52,5 @@ MKSYS_FLAGS += -C "-DPDP_MAX_PROFILE=24"
 MKSYS_FLAGS += -C "-DPDP_MAX_MULTIPDP=8"
 
 # Set this variable to generate a tree with stripped executables and libraries
-export STRIP_STAGING_TREE=yes
+STRIP_STAGING_TREE ?= 1
+
