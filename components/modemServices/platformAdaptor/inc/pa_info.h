@@ -55,26 +55,60 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum 'International Mobile Equipment Identity length.
+ * Maximum International Mobile Equipment Identity length excluding null termination character.
  */
 //--------------------------------------------------------------------------------------------------
 #define PA_INFO_IMEI_MAX_LEN     LE_INFO_IMEI_MAX_LEN
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum 'International Mobile Equipment Identity length.
+ * Maximum International Mobile Equipment Identity length.
  */
 //--------------------------------------------------------------------------------------------------
 #define PA_INFO_IMEI_MAX_BYTES   LE_INFO_IMEI_MAX_BYTES
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum International Mobile Equipment Identity software version number length excluding null
+ * termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_IMEISV_MAX_LEN     LE_INFO_IMEISV_MAX_LEN
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum number of characters (excluding null terminator) in a device model
- * identification string.
+ * Maximum International Mobile Equipment Identity software version number length.
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_IMEISV_MAX_BYTES   LE_INFO_IMEISV_MAX_BYTES
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a version string excluding null termination character.
  **/
 //--------------------------------------------------------------------------------------------------
-#define PA_INFO_DEVICE_MODEL_MAX_LEN     256
+#define PA_INFO_VERS_MAX_LEN    LE_INFO_MAX_VERS_LEN
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a version string
+ **/
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_VERS_MAX_BYTES   LE_INFO_MAX_VERS_BYTES
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a model string excluding null termination character.
+ **/
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_MODEL_MAX_LEN    LE_INFO_MAX_MODEL_LEN
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a model string
+ **/
+//--------------------------------------------------------------------------------------------------
+#define PA_INFO_MODEL_MAX_BYTES   LE_INFO_MAX_MODEL_BYTES
 
 
 //--------------------------------------------------------------------------------------------------
@@ -84,6 +118,12 @@
 //--------------------------------------------------------------------------------------------------
 typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_BYTES];
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type definition for an International Mobile Equipment Identity software version number (IMEISV)
+ */
+//--------------------------------------------------------------------------------------------------
+typedef char pa_info_ImeiSv_t[PA_INFO_IMEISV_MAX_BYTES];
 
 
 //--------------------------------------------------------------------------------------------------
@@ -91,7 +131,7 @@ typedef char pa_info_Imei_t[PA_INFO_IMEI_MAX_BYTES];
  * Type definition for a 'Device Model ID'.
  */
 //--------------------------------------------------------------------------------------------------
-typedef char pa_info_DeviceModel_t[PA_INFO_DEVICE_MODEL_MAX_LEN + 1];
+typedef char pa_info_DeviceModel_t[PA_INFO_MODEL_MAX_BYTES];
 
 
 
@@ -149,6 +189,21 @@ LE_SHARED le_result_t pa_info_GetBootloaderVersion
 LE_SHARED le_result_t pa_info_GetImei
 (
     pa_info_Imei_t imei   ///< [OUT] IMEI value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function get the International Mobile Equipment Identity software version number (IMEISV).
+ *
+ * @return
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_info_GetImeiSv
+(
+    pa_info_ImeiSv_t imeiSv   ///< [OUT] IMEISV value
 );
 
 
@@ -240,7 +295,7 @@ LE_SHARED le_result_t pa_info_GetPrlVersion
 );
 
 
-///--------------------------------------------------------------------------------------------------
+///-------------------------------------------------------------------------------------------------
 /**
  * Get the CDMA Preferred Roaming List (PRL) only preferences status.
  *

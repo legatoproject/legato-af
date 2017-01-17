@@ -553,6 +553,38 @@ static void GetRfDeviceStatusTest
 
 
 /*
+ * Test le_info_GetImei and le_info_GetImeiSv APIs.
+ *
+ * API Tested:
+ *  le_info_GetImei().
+ *  le_info_GetImeiSv().
+ */
+static void ImeiTest
+(
+    void
+)
+{
+    char imei[LE_INFO_IMEI_MAX_BYTES];
+    char imeiSv[LE_INFO_IMEISV_MAX_BYTES];
+
+    LE_INFO("======== ImeiTest ========");
+    LE_ASSERT(le_info_GetImei(imei, sizeof(imei)) == LE_OK);
+    LE_INFO("le_info_GetImei get => %s", imei);
+    LE_ASSERT(le_info_GetImei(imei, 1) == LE_OVERFLOW);
+    LE_ASSERT(le_info_GetImei(imei, 0) == LE_FAULT);
+    LE_INFO("======== ImeiTest PASSED ========");
+
+    LE_INFO("======== ImeiSvTest ========");
+    LE_ASSERT(le_info_GetImeiSv(imeiSv, sizeof(imeiSv)) == LE_OK);
+    LE_INFO("le_info_GetImeiSv get => %s", imeiSv);
+    LE_ASSERT(le_info_GetImeiSv(imeiSv, 1) == LE_OVERFLOW);
+    LE_ASSERT(le_info_GetImeiSv(imeiSv, 0) == LE_FAULT);
+    LE_INFO("======== ImeiSvTest PASSED ========");
+}
+
+
+
+/*
  * Each Test called once.
  *  - modelDeviceIdentityTest()
  *  - ..
@@ -560,6 +592,8 @@ static void GetRfDeviceStatusTest
 COMPONENT_INIT
 {
     LE_INFO("======== Start LE_INFO implementation Test ========");
+
+    ImeiTest();
 
     MeidTest();
 
