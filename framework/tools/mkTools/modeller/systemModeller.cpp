@@ -227,6 +227,12 @@ static void ModelApp
 
     if (adefPath.empty())
     {
+        if (appSpec.empty())
+        {
+            std::cerr << "Ignoring empty app specification" << std::endl;
+            return;
+        }
+
         std::cerr << "Looked in the following places:" << std::endl;
         for (auto& dir : buildParams.sourceDirs)
         {
