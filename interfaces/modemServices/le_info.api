@@ -35,6 +35,9 @@
  *
  * le_info_GetImei() is used to retrieve the International Mobile Equipment Identity (IMEI).
  *
+ * le_info_GetImeiSv() is used to retrieve the International Mobile Equipment Identity software
+ * version number(IMEISV).
+ *
  * le_info_GetMeid() is used to retrieve the CDMA device Mobile Equipment Identifier (MEID).
  *
  * le_info_GetEsn() is used to retrieve Electronic Serial Number (ESN) of the device.
@@ -98,6 +101,21 @@ DEFINE IMEI_MAX_LEN    = (15);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE IMEI_MAX_BYTES  = (IMEI_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the IMEISV string, excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IMEISV_MAX_LEN    = 255;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the IMEISV string
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE IMEISV_MAX_BYTES  = (IMEISV_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -309,6 +327,22 @@ FUNCTION le_result_t GetImei
     string   imei[IMEI_MAX_LEN] OUT   ///< IMEI string.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the International Mobile Equipment Identity software version number (IMEISV).
+ *
+ * @return LE_FAULT       Function failed to retrieve the IMEISV.
+ * @return LE_OVERFLOW    IMEISV length exceed the maximum length.
+ * @return LE_OK          Function succeeded.
+ *
+ * @note If the caller passes a bad pointer into this function, it's a fatal error; the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetImeiSv
+(
+    string   imeiSv[IMEISV_MAX_LEN] OUT   ///< IMEISV string.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -319,6 +353,9 @@ FUNCTION le_result_t GetImei
  *      - LE_NOT_FOUND if the version string is not available
  *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirmwareVersion
@@ -336,6 +373,9 @@ FUNCTION le_result_t GetFirmwareVersion
  *      - LE_NOT_FOUND if the version string is not available
  *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBootloaderVersion

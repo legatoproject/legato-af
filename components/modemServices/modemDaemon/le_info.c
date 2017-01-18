@@ -41,6 +41,11 @@ le_result_t le_info_GetImei
         LE_KILL_CLIENT("imeiPtr is NULL !");
         return LE_FAULT;
     }
+    if (0 == len)
+    {
+        LE_ERROR("parameter error");
+        return LE_FAULT;
+    }
 
     if(pa_info_GetImei(imei) != LE_OK)
     {
@@ -54,7 +59,49 @@ le_result_t le_info_GetImei
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to retrieve the International Mobile Equipment Identity software
+ * version number (IMEISV).
+ *
+ * @return LE_FAULT       Function failed to retrieve the IMEISV.
+ * @return LE_OVERFLOW    IMEISV length exceed the maximum length.
+ * @return LE_OK          Function succeeded.
+ *
+ * @note If the caller passes a bad pointer into this function, it's a fatal error; the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetImeiSv
+(
+    char*  imeiSvPtr,           ///< [OUT] IMEISV string.
+    size_t imeiSvNumElements    ///< [IN] The length of IMEISV string.
+)
+{
+    pa_info_ImeiSv_t imeiSv = {0};
 
+    if (imeiSvPtr == NULL)
+    {
+        LE_KILL_CLIENT("imeiSvPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (0 == imeiSvNumElements)
+    {
+        LE_ERROR("parameter error");
+        return LE_FAULT;
+    }
+
+    if (pa_info_GetImeiSv(imeiSv) != LE_OK)
+    {
+        LE_ERROR("Failed to get the IMEISV");
+        imeiSvPtr[0] = '\0';
+        return LE_FAULT;
+    }
+    else
+    {
+        return (le_utf8_Copy(imeiSvPtr, imeiSv, imeiSvNumElements, NULL));
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -63,12 +110,16 @@ le_result_t le_info_GetImei
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetFirmwareVersion
 (
-    char* version,
+    char* versionPtr,
         ///< [OUT]
         ///< Firmware version string
 
@@ -76,7 +127,18 @@ le_result_t le_info_GetFirmwareVersion
         ///< [IN]
 )
 {
-    return pa_info_GetFirmwareVersion(version, versionNumElements);
+    // Check input parameters
+    if (versionPtr == NULL)
+    {
+        LE_KILL_CLIENT("versionPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (versionNumElements == 0)
+    {
+        LE_ERROR("parameter error");
+        return LE_FAULT;
+    }
+    return pa_info_GetFirmwareVersion(versionPtr, versionNumElements);
 }
 
 
@@ -87,12 +149,16 @@ le_result_t le_info_GetFirmwareVersion
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetBootloaderVersion
 (
-    char* version,
+    char* versionPtr,
         ///< [OUT]
         ///< Bootloader version string
 
@@ -100,7 +166,18 @@ le_result_t le_info_GetBootloaderVersion
         ///< [IN]
 )
 {
-    return pa_info_GetBootloaderVersion(version, versionNumElements);
+    // Check input parameters
+    if (versionPtr == NULL)
+    {
+        LE_KILL_CLIENT("versionPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (versionNumElements == 0)
+    {
+        LE_ERROR("parameter error");
+        return LE_FAULT;
+    }
+    return pa_info_GetBootloaderVersion(versionPtr, versionNumElements);
 }
 
 
@@ -128,6 +205,12 @@ le_result_t le_info_GetDeviceModel
     if(modelPtr == NULL)
     {
         LE_KILL_CLIENT("model pointer is NULL");
+        return LE_FAULT;
+    }
+
+    if (0 == modelNumElements)
+    {
+        LE_ERROR("parameter error");
         return LE_FAULT;
     }
 

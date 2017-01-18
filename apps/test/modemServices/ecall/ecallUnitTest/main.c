@@ -281,12 +281,14 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_WAITING_PSAP_START_IND:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_WAITING_PSAP_START_IND.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                     LE_ECALL_STATE_WAITING_PSAP_START_IND.");
             break;
         }
         case LE_ECALL_STATE_PSAP_START_IND_RECEIVED:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                     LE_ECALL_STATE_PSAP_START_IND_RECEIVED.");
             LE_INFO("Send MSD...");
             LE_ASSERT(le_ecall_SendMsd(eCallRef) == LE_OK);
             break;
@@ -318,12 +320,14 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                                      LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE.");
             break;
         }
         case LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                                      LE_ECALL_STATE_ALACK_RECEIVED_CLEAR_DOWN.");
             break;
         }
         case LE_ECALL_STATE_STOPPED:
@@ -348,7 +352,8 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_END_OF_REDIAL_PERIOD:
         {
-            LE_INFO("Check MyECallEventHandler passed, state is LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
+            LE_INFO("Check MyECallEventHandler passed, state is \
+                                                 LE_ECALL_STATE_END_OF_REDIAL_PERIOD.");
             break;
         }
         case LE_ECALL_STATE_UNKNOWN:
@@ -775,7 +780,8 @@ static void Testle_ecall_LoadMsd
 
     // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
     LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) == LE_DUPLICATE);
+    LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) ==
+                                                                                  LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef, 511, 511) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef, -512, -512) == LE_DUPLICATE);
 
@@ -941,3 +947,4 @@ COMPONENT_INIT
 
     exit(0);
 }
+

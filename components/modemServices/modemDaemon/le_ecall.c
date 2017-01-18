@@ -552,7 +552,6 @@ static void RedialClear
     void
 )
 {
-
     // Check redial state
     switch(ECallObj.redial.state)
     {
@@ -608,7 +607,6 @@ static void RedialStop
     RedialStopCause_t stopCause
 )
 {
-
     LE_DEBUG("Stop redial: cause %d, state %d", stopCause, ECallObj.redial.state);
 
     // Check redial state
@@ -4235,6 +4233,7 @@ le_result_t le_ecall_SetVIN
  *  - LE_OK on success
  *  - LE_NOT_FOUND if the value is not set.
  *  - LE_BAD_PARAMETER parameter is NULL or too small
+ *  - LE_FAULT for other failures
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetVIN

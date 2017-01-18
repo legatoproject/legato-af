@@ -3,7 +3,7 @@ executables:
     audioPlaybackRecTest = ( audioPlaybackRecComp )
 }
 
-maxFileSystemBytes: 256K
+maxFileSystemBytes: 5000K
 
 bundles:
 {

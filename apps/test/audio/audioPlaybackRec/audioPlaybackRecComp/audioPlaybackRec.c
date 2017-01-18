@@ -3,11 +3,15 @@
  *
 * You must issue the following commands:
 * @verbatim
-  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- <test case> [main audio path] [file's name] [option]
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest --
+  $     <test case> [main audio path] [file's name] [option]
 
   Example:
-  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- REC I2S /record/remote.wav WAV STOP=10
-  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- PB MIC /usr/share/sounds/0-to-9.wav
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest --
+  $     REC I2S /record/remote.wav WAV STOP=10
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- PB I2S /usr/share/sounds/0-to-9.wav
+  $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- PB I2S /usr/share/sounds/0-to-9.wav
+  $     PAUSE=2 RESUME=3
  @endverbatim
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
@@ -1166,7 +1170,10 @@ static void DisconnectAllAudio
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void PrintUsage()
+static void PrintUsage
+(
+    void
+)
 {
     int idx;
     bool sandboxed = (getuid() != 0);

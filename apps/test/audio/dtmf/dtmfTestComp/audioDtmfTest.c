@@ -2,9 +2,8 @@
  * This module is for testing of the DTMF Audio service.
  *
  * On the target, you must issue the following commands:
- * $ app start dtmfTest
- * $ app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <dtmfs> <duration in ms> <pause in ms>
- *   [<tel number> <inband/outband>]
+ * $ app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <MIC/I2S/PCM> <dtmfs>
+ *    <duration in ms> <pause in ms> [<tel number> <inband/outband>]
  *
  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
  *
@@ -32,12 +31,50 @@ static le_audio_ConnectorRef_t AudioOutputConnectorRef = NULL;
 static const char*  DestinationNumber;
 static const char*  DtmfSendingCase;
 static const char*  DtmfString;
+static const char*  InterfaceString;
 static uint32_t     Duration;
 static uint32_t     Pause;
 
 static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef1 = NULL;
 static le_audio_DtmfDetectorHandlerRef_t DtmfHandlerRef2 = NULL;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Help.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintUsage
+(
+    void
+)
+{
+    int idx;
+    bool sandboxed = (getuid() != 0);
+    const char * usagePtr[] = {
+       "Usage of the 'dtmfTest' app is:",
+#if (ENABLE_CODEC == 1)
+    "  app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <MIC/I2S/PCM> "
+#else
+    "  app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <I2S/PCM> "
+#endif
+       "<dtmfs> <duration in ms> <pause in ms> [<tel number> <inband/outband>]",
+       "",
+    };
+
+    for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
+    {
+        if(sandboxed)
+        {
+            LE_INFO("%s", usagePtr[idx]);
+        }
+        else
+        {
+            fprintf(stderr, "%s\n", usagePtr[idx]);
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -106,7 +143,99 @@ static void ConnectAudioToPcm
         res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
+    LE_INFO("Audio connected to PCM interface");
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect audio to I2S.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConnectAudioToI2S
+(
+    void
+)
+{
+    le_result_t res;
+
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
+
+    // Redirect audio to the I2S interface.
+    FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
+    LE_ERROR_IF((FeOutRef==NULL), "OpenI2sTx returns NULL!");
+    FeInRef = le_audio_OpenI2sRx(LE_AUDIO_I2S_STEREO);
+    LE_ERROR_IF((FeInRef==NULL), "OpenI2sRx returns NULL!");
+
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+    AudioOutputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
+
+    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef &&
+        AudioInputConnectorRef && AudioOutputConnectorRef)
+    {
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM RX on Input connector!");
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM TX on Output connector!");
+        res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
+    }
+    LE_INFO("Audio connected to I2S interface");
+}
+
+
+#if (ENABLE_CODEC == 1)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Connect audio to analog input/output.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ConnectAudioToCodec
+(
+    void
+)
+{
+    le_result_t res;
+
+    MdmRxAudioRef = le_audio_OpenModemVoiceRx();
+    LE_ERROR_IF((MdmRxAudioRef==NULL), "GetRxAudioStream returns NULL!");
+    MdmTxAudioRef = le_audio_OpenModemVoiceTx();
+    LE_ERROR_IF((MdmTxAudioRef==NULL), "GetTxAudioStream returns NULL!");
+
+    // Redirect audio to the in-built Microphone and Speaker.
+    FeOutRef = le_audio_OpenSpeaker();
+    LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
+    FeInRef = le_audio_OpenMic();
+    LE_ERROR_IF((FeInRef==NULL), "OpenMic returns NULL!");
+
+    AudioInputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
+    AudioOutputConnectorRef = le_audio_CreateConnector();
+    LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
+
+    if (MdmRxAudioRef && MdmTxAudioRef && FeOutRef && FeInRef &&
+        AudioInputConnectorRef && AudioOutputConnectorRef)
+    {
+        res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Mic on Input connector!");
+        res = le_audio_Connect(AudioInputConnectorRef, MdmTxAudioRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmTx on Input connector!");
+        res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector!");
+        res = le_audio_Connect(AudioOutputConnectorRef, MdmRxAudioRef);
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
+    }
+    LE_INFO("Audio connected to Codec interface");
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -217,8 +346,8 @@ static void DisconnectAllAudio
 static void MyCallEventHandler
 (
     le_mcc_CallRef_t   callRef,
-    le_mcc_Event_t    callEvent,
-    void*                  contextPtr
+    le_mcc_Event_t     callEvent,
+    void*              contextPtr
 )
 {
     le_result_t         res;
@@ -250,6 +379,10 @@ static void MyCallEventHandler
                     LE_ERROR("Failed to play DTMF!");
                     return;
                 }
+            }
+            else
+            {
+                LE_ERROR("PlayerAudioRef or AudioInputConnectorRef is NULL");
             }
         }
         else if (strcmp(DtmfSendingCase,"outband")==0)
@@ -324,21 +457,37 @@ static void MyCallEventHandler
 //--------------------------------------------------------------------------------------------------
 static void PlayLocalDtmf
 (
-    void
+    const char * argString
 )
 {
     le_result_t res;
+
+    if (strncmp(argString, "PCM", strlen("PCM")) == 0)
+    {
+        LE_INFO("Play DTMF on PCM output interface");
+        // Redirect audio to the PCM Tx.
+        FeOutRef = le_audio_OpenPcmTx(0);
+        LE_ERROR_IF((FeOutRef==NULL), "OpenPcmTx returns NULL!");
+    }
+    else if (strncmp(argString, "I2S", strlen("I2S")) == 0)
+    {
+        LE_INFO("Play DTMF on I2S output interface");
+        // Redirect audio to the I2S Tx.
+        FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
+        LE_ERROR_IF((FeOutRef==NULL), "OpenI2STx returns NULL!");
+    }
+    else if(strncmp(argString, "MIC", strlen("MIC")) == 0)
+    {
 #if (ENABLE_CODEC == 1)
-    LE_INFO("Play DTMF on Speaker");
-    // Redirect audio to the in-built Microphone and Speaker.
-    FeOutRef = le_audio_OpenSpeaker();
-    LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
+        LE_INFO("Play DTMF on Speaker");
+        // Redirect audio to the in-built Microphone and Speaker.
+        FeOutRef = le_audio_OpenSpeaker();
+        LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
 #else
-    LE_INFO("Play DTMF on PCM output interface");
-    // Redirect audio to the PCM Tx.
-    FeOutRef = le_audio_OpenPcmTx(0);
-    LE_ERROR_IF((FeOutRef==NULL), "OpenPcmTx returns NULL!");
+        PrintUsage();
+        return;
 #endif
+     }
 
     AudioOutputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
@@ -369,35 +518,6 @@ static void PlayLocalDtmf
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Help.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void PrintUsage()
-{
-    int idx;
-    bool sandboxed = (getuid() != 0);
-    const char * usagePtr[] = {
-            "Usage of the 'dtmfTest' app is:",
-            "   app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <dtmfs> <duration in ms> <pause in ms> "
-            "[<tel number> <inband/outband>] ",
-            "",
-    };
-
-    for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
-    {
-        if(sandboxed)
-        {
-            LE_INFO("%s", usagePtr[idx]);
-        }
-        else
-        {
-            fprintf(stderr, "%s\n", usagePtr[idx]);
-        }
-    }
-}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -433,30 +553,35 @@ COMPONENT_INIT
     // Register a signal event handler for SIGINT when user interrupts/terminates process
     signal(SIGINT, SigHandler);
 
-    if (le_arg_NumArgs() == 6)
+    if (le_arg_NumArgs() == 7)
     {
-        DtmfString = le_arg_GetArg(1);
-        Duration = atoi(le_arg_GetArg(2));
-        Pause = atoi(le_arg_GetArg(3));
-        DestinationNumber = le_arg_GetArg(4);
-        DtmfSendingCase = le_arg_GetArg(5);
+        InterfaceString = le_arg_GetArg(1);
+        DtmfString = le_arg_GetArg(2);
+        Duration = atoi(le_arg_GetArg(3));
+        Pause = atoi(le_arg_GetArg(4));
+        DestinationNumber = le_arg_GetArg(5);
+        DtmfSendingCase = le_arg_GetArg(6);
+        LE_INFO("   Play DTMF on remote");
         LE_INFO("   DTMF to play.\"%s\"", DtmfString);
         LE_INFO("   Duration.%dms", Duration);
         LE_INFO("   Pause.%dms", Pause);
         LE_INFO("   Phone number.%s", DestinationNumber);
         LE_INFO("   DTMF Sending case.%s", DtmfSendingCase);
+        LE_INFO("   Interface.%s", InterfaceString);
     }
-    else if (le_arg_NumArgs() == 4)
+    else if (le_arg_NumArgs() == 5)
     {
         if(strncmp(le_arg_GetArg(0), "loc", strlen("loc"))==0)
         {
             LE_INFO("   Play DTMF on local interface");
-            DtmfString = le_arg_GetArg(1);
-            Duration = atoi(le_arg_GetArg(2));
-            Pause = atoi(le_arg_GetArg(3));
+            InterfaceString = le_arg_GetArg(1);
+            DtmfString = le_arg_GetArg(2);
+            Duration = atoi(le_arg_GetArg(3));
+            Pause = atoi(le_arg_GetArg(4));
             LE_INFO("   DTMF to play.\"%s\"", DtmfString);
             LE_INFO("   Duration.%dms", Duration);
             LE_INFO("   Pause.%dms", Pause);
+            LE_INFO("   Interface.%s", InterfaceString);
             isLocalTest = true;
         }
         else
@@ -468,12 +593,27 @@ COMPONENT_INIT
     else
     {
         PrintUsage();
-        exit(EXIT_FAILURE);
     }
 
     if (!isLocalTest)
     {
-        ConnectAudioToPcm();
+        if(strncmp(InterfaceString, "I2S", strlen("I2S"))==0)
+        {
+            ConnectAudioToI2S();
+        }
+        else if(strncmp(InterfaceString, "PCM", strlen("PCM"))==0)
+        {
+            ConnectAudioToPcm();
+        }
+        else
+        {
+#if (ENABLE_CODEC == 1)
+            ConnectAudioToCodec();
+#else
+            PrintUsage();
+#endif
+        }
+
         DtmfHandlerRef1 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef,
                                                           MyDtmfDetectorHandler1,
                                                           NULL);
@@ -487,7 +627,7 @@ COMPONENT_INIT
     }
     else
     {
-        PlayLocalDtmf();
+        PlayLocalDtmf(InterfaceString);
     }
 }
 

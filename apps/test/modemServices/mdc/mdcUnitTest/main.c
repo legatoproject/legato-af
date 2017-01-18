@@ -86,6 +86,9 @@ static void TestMdc_Configuration( void )
         LE_ASSERT((i+1) == le_mdc_GetProfileIndex(ProfileRef[i]));
     }
 
+    /* Map profile on network interface */
+    LE_ASSERT(le_mdc_MapProfileOnNetworkInterface(ProfileRef[0], "rmnet_data0") == LE_OK);
+
     /* Get and change APN of 1st profile */
     char apn[30];
     LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[0], apn, sizeof(apn)));

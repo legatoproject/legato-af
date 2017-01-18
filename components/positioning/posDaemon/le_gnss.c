@@ -106,6 +106,7 @@ typedef struct le_gnss_PositionSample
     uint16_t        minutes;         ///< UTC Minutes into the hour [range 0..59].
     uint16_t        seconds;         ///< UTC Seconds into the minute [range 0..59].
     uint16_t        milliseconds;    ///< UTC Milliseconds into the second [range 0..999].
+    uint64_t        epochTime;       ///< Epoch time in milliseconds since Jan. 1, 1970
     bool            gpsTimeValid;    ///< if true, GPS time is set
     uint32_t        gpsWeek;         ///< GPS week number from midnight, Jan. 6, 1980.
     uint32_t        gpsTimeOfWeek;   ///< Amount of time in milliseconds into the GPS week.
@@ -535,6 +536,8 @@ static void GetPosSampleData
     posSampleDataPtr->minutes = paPosDataPtr->time.minutes;
     posSampleDataPtr->seconds = paPosDataPtr->time.seconds;
     posSampleDataPtr->milliseconds = paPosDataPtr->time.milliseconds;
+    // Epoch time
+    posSampleDataPtr->epochTime = paPosDataPtr->epochTime;
     // GPS time
     posSampleDataPtr->gpsTimeValid = paPosDataPtr->gpsTimeValid;
     posSampleDataPtr->gpsWeek = paPosDataPtr->gpsWeek;
@@ -585,6 +588,27 @@ static void GetPosSampleData
 
     return;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The signal event handler function for SIGPIPE called from the Legato event loop.
+ *
+ * If the read end of a pipe is closed, then a write to the pipe will cause a SIGPIPE signal for the
+ * calling process and this process will be killed.
+ * By catching the SIGPIPE signal, the write to the pipe will only cause a write error.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SigPipeHandler
+(
+    int sigNum
+)
+{
+    LE_FATAL_IF(sigNum != SIGPIPE, "Unknown signal %s.", strsignal(sigNum));
+    LE_INFO("%s received through SigPipeHandler.", strsignal(sigNum));
+}
+
+
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -710,6 +734,12 @@ le_result_t gnss_Init
         }
         break;
     }
+
+    // Block signals.  All signals that are to be used in signal events must be blocked.
+    le_sig_Block(SIGPIPE);
+
+    // Register a signal event handler for SIGPIPE signal.
+    le_sig_SetEventHandler(SIGPIPE, SigPipeHandler);
 
     // Create a pool for Position  Handler objects
     PositionHandlerPoolRef = le_mem_CreatePool("PositionHandlerPoolRef"
@@ -1256,6 +1286,62 @@ le_result_t le_gnss_GetGpsTime
 
     return result;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the position sample's epoch time.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to acquire the epoch time (epoch time set to 0).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note The epoch time is the number of seconds elapsed since January 1, 1970
+ *       (midnight UTC/GMT), not counting leaps seconds.
+ *
+ * @note If the caller is passing an invalid position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetEpochTime
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint64_t* millisecondsPtr
+        ///< [OUT] Milliseconds since Jan. 1, 1970.
+)
+{
+    le_result_t result;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+    // Check position sample's reference
+    if ( positionSamplePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Check input pointers
+    if (millisecondsPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    // Get the epoch time
+    if (0 != positionSamplePtr->epochTime)
+    {
+        result = LE_OK;
+        *millisecondsPtr = positionSamplePtr->epochTime;
+    }
+    else
+    {
+        result = LE_FAULT;
+        *millisecondsPtr = 0;
+    }
+    return result;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2863,6 +2949,7 @@ le_result_t le_gnss_Disable
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
  *  - LE_NOT_PERMITTED If the GNSS device is not in "ready" state.
+ *  - LE_OUT_OF_RANGE  if acquisition rate value is equal to zero
  *
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
@@ -2873,7 +2960,13 @@ le_result_t le_gnss_SetAcquisitionRate
     uint32_t  rate      ///< Acquisition rate in milliseconds.
 )
 {
-    le_result_t result = LE_FAULT;
+    le_result_t result;
+
+    if (0 == rate)
+    {
+        LE_ERROR("Acquisition rate is zero");
+        return LE_OUT_OF_RANGE;
+    }
 
     // Check the GNSS device state
     switch (GnssState)
@@ -3032,6 +3125,9 @@ le_result_t le_gnss_SetSuplServerUrl
  *  - LE_FAULT on failure
  *  - LE_BUSY service is busy
  *  - LE_TIMEOUT a time-out occurred
+ *
+ * @note If the SUPL certificate size is bigger than the Maximum SUPL certificate size,
+ * it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_InjectSuplCertificate

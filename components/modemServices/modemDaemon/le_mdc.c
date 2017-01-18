@@ -2188,3 +2188,31 @@ void le_mdc_GetPlatformSpecificFailureConnectionReason
     *failureCodePtr = profilePtr->conFailure.callConnectionFailureCode;
     *failureTypePtr = profilePtr->conFailure.callConnectionFailureType;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map a profile on a network interface
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED if not supported by the target
+ *      - LE_FAULT for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_MapProfileOnNetworkInterface
+(
+    le_mdc_ProfileRef_t profileRef,        ///< [IN] Profile reference
+    const char*      interfaceNamePtr      ///< [IN] Network interface name
+)
+{
+    le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
+
+    if (profilePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", profileRef);
+        return LE_FAULT;
+    }
+
+    return pa_mdc_MapProfileOnNetworkInterface(profilePtr->profileIndex, interfaceNamePtr);
+}

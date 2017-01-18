@@ -53,7 +53,8 @@ static le_result_t ReadAndPrintRtc
         memset(buff,0,255);
         struct tm tm;
 
-        time_t time = epochTime/1000;
+        time_t time = (epochTime/1000) + CM_DELTA_POSIX_TIME_EPOCH_GPS_TIME_EPOCH_IN_SEC;
+        LE_DEBUG(" read posixEpochtime %ld seconds\n", (time_t) time);
 
         snprintf(buff, sizeof(buff), "%ld", (long) time);
         strptime(buff, "%s", &tm);
@@ -100,9 +101,14 @@ static le_result_t SetRtc
         return LE_FAULT;
     }
 
-    uint64_t timeMs = (uint64_t) t * 1000;
+    uint64_t gpsEpochTimeMs =
+       ((uint64_t) t - CM_DELTA_POSIX_TIME_EPOCH_GPS_TIME_EPOCH_IN_SEC) * 1000;
 
-    return le_rtc_SetUserTime(timeMs);
+    LE_DEBUG(" posixEpochtime: %ld seconds, gpsEpochTime: %llu seconds",
+                                          (time_t) t,
+                                          (unsigned long long int)(gpsEpochTimeMs/1000));
+
+    return le_rtc_SetUserTime(gpsEpochTimeMs);
 }
 
 

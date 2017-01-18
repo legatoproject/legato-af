@@ -16,6 +16,8 @@ static le_gnss_PositionHandlerRef_t PositionHandlerRef = NULL;
 //Wait up to 60 seconds for a 3D fix
 #define GNSS_WAIT_MAX_FOR_3DFIX  60
 
+char ShortSuplCertificate[50]={0};
+
 //--------------------------------------------------------------------------------------------------
 //                                       Test Functions
 //--------------------------------------------------------------------------------------------------
@@ -59,6 +61,7 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+
     // Enable GNSS device (READY state)
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
@@ -75,9 +78,13 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_ForceColdRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_ForceFactoryRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_OK);
+    acqRate = 0;
+    LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OUT_OF_RANGE);
+    acqRate = 1100;
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
+
     // Start GNSS device (ACTIVE state)
     LE_ASSERT((le_gnss_Start()) == LE_OK);
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_ACTIVE);
@@ -90,6 +97,7 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+
     // Stop GNSS device (READY state)
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
@@ -136,6 +144,7 @@ static void PositionHandlerFunction
     uint16_t minutes;
     uint16_t seconds;
     uint16_t milliseconds;
+    uint64_t epochTime;
     // GPS time
     uint32_t gpsWeek;
     uint32_t gpsTimeOfWeek;
@@ -188,10 +197,16 @@ static void PositionHandlerFunction
                             , &milliseconds);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
+    // Get Epoch time
+    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
+
     // Display time/date format 13:45:30 2009-06-15
     LE_INFO("%02d:%02d:%02d %d-%02d-%02d,"
             , hours, minutes, seconds
             , year, month, day);
+
+    // Display epoch time
+    LE_INFO("epoch time: %ld:", (long int) epochTime);
 
     // Get GPS time
     result = le_gnss_GetGpsTime(positionSampleRef
@@ -442,8 +457,15 @@ static void TestLeGnssPositionHandler
 )
 {
     le_thread_Ref_t positionThreadRef;
+    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
+    uint64_t epochTime;
 
     LE_INFO("Start Test Testle_gnss_PositionHandlerTest");
+
+    // Get Epoch time, samples already present
+    LE_ASSERT((le_gnss_GetEpochTime(positionSampleRef, &epochTime)) == LE_OK);
+    // Display epoch time
+    LE_INFO("epoch time: %ld:", (long int) epochTime);
 
     LE_INFO("Start GNSS");
     LE_ASSERT((le_gnss_Start()) == LE_OK);
@@ -464,6 +486,13 @@ static void TestLeGnssPositionHandler
 
     // stop thread
     le_thread_Cancel(positionThreadRef);
+
+    // Get Epoch time, get last position sample
+    positionSampleRef = le_gnss_GetLastSampleRef();
+    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
+
+    // Display epoch time
+    LE_INFO("epoch time: %ld:", (long int) epochTime);
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
@@ -486,6 +515,9 @@ static void TestLeGnssStart
     uint32_t rate = 0;
     le_gnss_ConstellationBitMask_t constellationMask;
     le_gnss_NmeaBitMask_t nmeaMask;
+    uint32_t ttff = 0;
+    le_result_t result = LE_FAULT;
+
 
     LE_INFO("Start Test Testle_gnss_StartTest");
 
@@ -507,6 +539,18 @@ static void TestLeGnssStart
     /* Wait for a position fix */
     LE_INFO("Wait 120 seconds for a 3D fix");
     sleep(120);
+
+    // Get TTFF
+    result = le_gnss_GetTtff(&ttff);
+    LE_ASSERT((result == LE_OK)||(result == LE_BUSY));
+    if(result == LE_OK)
+    {
+        LE_INFO("TTFF start = %d msec", ttff);
+    }
+    else
+    {
+        LE_INFO("TTFF start not available");
+    }
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
@@ -734,10 +778,14 @@ static void TestLeGnssConstellations
     // test1: error test
     constellationMask = 0;
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
-    sleep(2);
+    constellationMask = LE_GNSS_CONSTELLATION_SBAS;
+    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
+    constellationMask |= LE_GNSS_CONSTELLATION_QZSS;
+    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
 
-    // test2 : Gps selection
-    constellationMask = LE_GNSS_CONSTELLATION_GPS;
+    // test2 : Gps selection (LE_GNSS_CONSTELLATION_SBAS and LE_GNSS_CONSTELLATION_QZSS are present
+    // in the constellationMask)
+    constellationMask |= LE_GNSS_CONSTELLATION_GPS;
     LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     LE_ASSERT(constellationMask == LE_GNSS_CONSTELLATION_GPS)
@@ -754,11 +802,7 @@ static void TestLeGnssConstellations
     // test4: error test (GPS constellation is not set)
     //        and Beidou is unknown for mdm9x15
     constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
-#if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
-    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_FAULT);
-#else
     LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
-#endif
 
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     // test constellationMask has not changed after error
@@ -768,7 +812,6 @@ static void TestLeGnssConstellations
 
     // next tests have same results as test4 for mdm9x15
 #if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
-
     // test5: Gps+Glonass+Beidou selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
                         LE_GNSS_CONSTELLATION_GLONASS |
@@ -871,6 +914,92 @@ static void TestLeGnssNmeaSentences
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: test SUPL certificate
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSuplCertificate
+(
+    void
+)
+{
+    le_gnss_AssistedMode_t gnssMode;
+
+    memset(&ShortSuplCertificate, 0x69, sizeof(ShortSuplCertificate));
+
+    //Gets the SUPL Assisted-GNSS LE_GNSS_STANDALONE_MODE mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+
+    //Set the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_STANDALONE_MODE)) == LE_OK);
+    LE_INFO("SUPL Stand alone mode set");
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_STANDALONE_MODE);
+
+    //Set the SUPL Assisted-GNSSLE_GNSS_MS_BASED_MODE mode.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_BASED_MODE)) == LE_OK);
+    LE_INFO("SUPL Ms based mode set");
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_MS_BASED_MODE);
+
+    //Set the SUPL Assisted-GNSS mode LE_GNSS_MS_ASSISTED_MODE.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE)) == LE_OK);
+    LE_INFO("SUPL Assisted mode set");
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_MS_ASSISTED_MODE);
+
+    //Set the SUPL Assisted-GNSS mode LE_GNSS_MS_ASSISTED_MODE.
+    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE+10)) == LE_UNSUPPORTED);
+
+    //Gets the SUPL Assisted-GNSS mode.
+    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
+    LE_ASSERT(gnssMode == LE_GNSS_MS_ASSISTED_MODE);
+
+    //Set the SUPL server URL
+    LE_ASSERT((le_gnss_SetSuplServerUrl("http://sls1.sirf")) == LE_OK);
+
+    //Set the SUPL server URL
+    LE_ASSERT((le_gnss_SetSuplServerUrl("http://sls1.sirf.com")) == LE_OK);
+    LE_INFO("le_gnss_SetSuplServerUrl OK");
+
+    //Injects the SUPL certificate with lenght zero :
+    LE_ASSERT((le_gnss_InjectSuplCertificate(0,
+                               0,ShortSuplCertificate)) == LE_OK);
+    //Injects the SUPL certificate with ID error
+    LE_ASSERT((le_gnss_InjectSuplCertificate(10,
+                               strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_FAULT);
+
+    //Injects the SUPL certificate to be used in A-GNSS sessions
+    LE_ASSERT((le_gnss_InjectSuplCertificate(0,
+                               strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_OK);
+
+    // cannot test certificate with lenght greater than LE_GNSS_SUPL_CERTIFICATE_MAX_BYTES
+    // there is no return code in this case.
+    //Delete the SUPL certificate 10 (out of range)
+    LE_ASSERT((le_gnss_DeleteSuplCertificate(10)) == LE_FAULT);
+
+    //Delete a SUPL certificate not used in A-GNSS sessions
+    LE_ASSERT((le_gnss_DeleteSuplCertificate(1)) == LE_FAULT);
+
+    //Delete the SUPL certificate used in A-GNSS sessions
+    LE_ASSERT((le_gnss_DeleteSuplCertificate(0)) == LE_OK);
+
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * App init.
  *
  */
@@ -891,6 +1020,8 @@ COMPONENT_INIT
      TestLeGnssConstellations();
      LE_INFO("======== GNSS NMEA sentences Test  ========");
      TestLeGnssNmeaSentences();
+     LE_INFO("======== Supl Certificate Test  ========");
+     TestSuplCertificate();
      LE_INFO("======== GNSS Test SUCCESS ========");
      exit(EXIT_SUCCESS);
 }

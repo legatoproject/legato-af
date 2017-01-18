@@ -48,7 +48,12 @@
  * Maximum number of profile objects supported
  */
 //--------------------------------------------------------------------------------------------------
+#if defined (PDP_MAX_PROFILE)
+#define PA_MDC_MAX_PROFILE PDP_MAX_PROFILE
+#else
 #define PA_MDC_MAX_PROFILE 5
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -574,6 +579,23 @@ LE_SHARED le_result_t pa_mdc_GetDataFlowStatistics
 LE_SHARED le_result_t pa_mdc_ResetDataFlowStatistics
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map a profile on a network interface
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED if not supported by the target
+ *      - LE_FAULT for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_MapProfileOnNetworkInterface
+(
+    uint32_t         profileIndex,         ///< [IN] The profile to use
+    const char*      interfaceNamePtr      ///< [IN] Network interface name
 );
 
 #endif // LEGATO_PA_MDC_INCLUDE_GUARD

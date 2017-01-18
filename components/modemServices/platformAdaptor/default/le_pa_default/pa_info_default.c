@@ -73,6 +73,25 @@ le_result_t pa_info_GetImei
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function get the International Mobile Equipment Identity software version number (IMEISV).
+ *
+ * @return
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_TIMEOUT       No response was received from the Modem.
+ * - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetImeiSv
+(
+    pa_info_ImeiSv_t imeiSv   ///< [OUT] IMEISV value
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

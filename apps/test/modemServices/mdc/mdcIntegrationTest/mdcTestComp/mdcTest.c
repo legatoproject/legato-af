@@ -43,6 +43,9 @@ static const char PdpIpv4v6[] = "ipv4v6";
 static const char AuthPap[] = "pap";
 static const char AuthChap[] = "chap";
 static const char AuthPapChap[] = "pap-chap";
+static const char Map[] = "map";
+static const char Cid[] = "cid";
+static const char Rmnet[] = "rmnet";
 
 // Structure used to set the configuration
 typedef struct
@@ -143,6 +146,7 @@ static void SetConfiguration
     FILE* configFilePtr = fopen("/tmp/config.txt","r");
     Configuration_t configuration;
 
+
     memset(&configuration, 0, sizeof(Configuration_t));
 
     // if configuration file absent, use default settings
@@ -158,51 +162,104 @@ static void SetConfiguration
         fseek(configFilePtr, 0, SEEK_END);
         uint32_t len = ftell(configFilePtr);
         char cmdLine[ len + 1 ];
+        char* saveLinePtr;
+        char* saveParamPtr;
+        char* cmdLinePtr;
+
         memset(cmdLine,0,len+1);
         fseek(configFilePtr, 0, SEEK_SET);
         fread(cmdLine, 1, len, configFilePtr);
         fclose(configFilePtr);
 
-        // Replace last character
-        if (( cmdLine[len-1] == '\n' ) || ( cmdLine[len-1] == '\r' ))
-        {
-            cmdLine[len-1]=' ';
-        }
+        // Get first line
+        cmdLinePtr = strtok_r(cmdLine, "\r\n", &saveLinePtr);
 
         // Get profile number
-        char* cidPtr =  strtok(cmdLine, " ");
+        char* cidPtr =  strtok_r(cmdLinePtr, " ", &saveParamPtr);
         LE_ASSERT(cidPtr != NULL);
         strncpy(configuration.cid, cidPtr, strlen(cidPtr));
 
         // Get pdp type
-        char* pdpPtr = strtok(NULL, " ");
+        char* pdpPtr = strtok_r(NULL, " ", &saveParamPtr);
         LE_ASSERT(pdpPtr != NULL);
         strncpy(configuration.pdp, pdpPtr, strlen(pdpPtr));
 
         // Get apn
-        char* apnPtr = strtok(NULL, " ");
+        char* apnPtr = strtok_r(NULL, " ", &saveParamPtr);
         LE_ASSERT(apnPtr != NULL);
         strncpy(configuration.apn, apnPtr, strlen(apnPtr));
 
         // Get authentification
-        char* authPtr = strtok(NULL, " ");
+        char* authPtr = strtok_r(NULL, " ", &saveParamPtr);
         if (authPtr != NULL)
         {
             strncpy(configuration.auth, authPtr, strlen(authPtr));
         }
 
         // Get username
-        char* userNamePtr = strtok(NULL, " ");
+        char* userNamePtr = strtok_r(NULL, " ", &saveParamPtr);
         if (userNamePtr != NULL)
         {
             strncpy(configuration.userName, userNamePtr, strlen(userNamePtr));
         }
 
         // Get password
-        char* passwordPtr = strtok(NULL, " ");
+        char* passwordPtr = strtok_r(NULL, " ", &saveParamPtr);
         if(passwordPtr != NULL)
         {
             strncpy(configuration.password, passwordPtr, strlen(passwordPtr));
+        }
+
+        // Get optional lines
+        cmdLinePtr = strtok_r(NULL, "\r\n", &saveLinePtr);
+
+        while (cmdLinePtr)
+        {
+            char* optionPtr = strtok_r(cmdLinePtr, " ", &saveParamPtr);
+
+            // Check mapping cid
+            if ( strncmp(optionPtr, Map, strlen(Map)) == 0 )
+            {
+                LE_INFO("mapping cid");
+                char* cidPtr = strtok_r(NULL, " ", &saveParamPtr);
+
+                if ( strncmp(cidPtr, Cid, strlen(Cid)) == 0 )
+                {
+                    int cid = strtol((const char*) cidPtr+strlen(Cid), NULL, 10);
+
+                    if (errno != 0)
+                    {
+                        LE_ERROR("Bad cid %d %m", errno);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    LE_INFO("map cid %d", cid);
+
+                    char* rmnetPtr = strtok_r(NULL, " ", &saveParamPtr);
+
+                    if ( strncmp(rmnetPtr, Rmnet, strlen(Rmnet)) == 0 )
+                    {
+                        int rmnet = strtol(rmnetPtr+strlen(Rmnet), NULL, 10);
+
+                        if (errno != 0)
+                        {
+                            LE_ERROR("Bad rmnet %d %m", errno);
+                            exit(EXIT_FAILURE);
+                        }
+
+                        le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(cid);
+
+                        char string[20];
+                        memset(string,0,sizeof(string));
+                        snprintf(string,sizeof(string),"rmnet_data%d", rmnet);
+                        LE_INFO("cid %d rmnet: %s", cid, string);
+
+                        LE_ASSERT(le_mdc_MapProfileOnNetworkInterface(profileRef, string) == LE_OK);
+                    }
+                }
+            }
+
+            cmdLinePtr = strtok_r(NULL, "\r\n", &saveLinePtr);
         }
     }
 
@@ -214,7 +271,13 @@ static void SetConfiguration
     }
     else
     {
-        profile = atoi(configuration.cid);
+        profile = strtol(configuration.cid, NULL, 10);
+
+        if (errno != 0)
+        {
+            LE_ERROR("Bad profile %d %m", errno);
+            exit(EXIT_FAILURE);
+        }
     }
 
     // Get the profile reference
@@ -534,8 +597,6 @@ COMPONENT_INIT
 
     while (testsDef[test].testCase != TEST_MAX)
     {
-        LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
-
         LE_INFO("======= MDC %s STARTED =======", testsDef[test].testName);
 
         // start the profile
@@ -543,6 +604,8 @@ COMPONENT_INIT
         {
             case TEST_SYNC:
                 LE_ASSERT( le_mdc_StartSession(profileRef) == LE_OK );
+
+                LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
             break;
             case TEST_ASYNC:
             {
@@ -557,6 +620,8 @@ COMPONENT_INIT
                 res = le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout);
                 LE_ASSERT(res == LE_OK);
                 LE_ASSERT(sessionStart == LE_OK);
+
+                LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
             }
             break;
             default:

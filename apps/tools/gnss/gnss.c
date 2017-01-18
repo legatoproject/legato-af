@@ -38,6 +38,8 @@
 #define CONSTELLATION_GLONASS       2
 #define CONSTELLATION_BEIDOU        4
 #define CONSTELLATION_GALILEO       8
+#define CONSTELLATION_SBAS          0x10
+#define CONSTELLATION_QZSS          0x12
 // @}
 
 //-------------------------------------------------------------------------------------------------
@@ -504,6 +506,18 @@ static int SetConstellation
         constellationMask = LE_GNSS_CONSTELLATION_GALILEO;
         constellationSum -= CONSTELLATION_GALILEO;
         strcat(constellationStr, "GALILEO");
+    }
+    if (constellationSum & CONSTELLATION_SBAS)
+    {
+        constellationMask = LE_GNSS_CONSTELLATION_SBAS;
+        constellationSum -= CONSTELLATION_SBAS;
+        strcat(constellationStr, "SBAS");
+    }
+    if (constellationSum & CONSTELLATION_QZSS)
+    {
+        constellationMask = LE_GNSS_CONSTELLATION_QZSS;
+        constellationSum -= CONSTELLATION_QZSS;
+        strcat(constellationStr, "QZSS");
     }
     strcat(constellationStr, "]");
 

@@ -32,6 +32,8 @@ void cm_info_PrintInfoHelp
             "\tcm info device\n\n"
             "To print the IMEI:\n"
             "\tcm info imei\n\n"
+            "To print the IMEISV:\n"
+            "\tcm info imeiSv\n\n"
             "To print the serial number:\n"
             "\tcm info fsn\n\n"
             "To print the firmware version:\n"
@@ -66,6 +68,30 @@ void cm_info_PrintImei
     else
     {
         printf("%s\n", imei);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print the IMEISV
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_info_PrintImeiSv
+(
+    bool withHeaders
+)
+{
+    char imeiSv[LE_INFO_IMEISV_MAX_BYTES] = {0};
+
+    le_info_GetImeiSv(imeiSv, sizeof(imeiSv));
+
+    if(withHeaders)
+    {
+        cm_cmn_FormatPrint("IMEISV", imeiSv);
+    }
+    else
+    {
+        printf("%s\n", imeiSv);
     }
 }
 
@@ -236,6 +262,7 @@ void cm_info_ProcessInfoCommand
     {
         cm_info_PrintDeviceModel(true);
         cm_info_PrintImei(true);
+        cm_info_PrintImeiSv(true);
         cm_info_PrintSerialNumber(true);
         cm_info_PrintFirmwareVersion(true);
         cm_info_PrintBootloaderVersion(true);
@@ -257,6 +284,10 @@ void cm_info_ProcessInfoCommand
     else if (strcmp(command, "imei") == 0)
     {
         cm_info_PrintImei(false);
+    }
+    else if (0 == strcmp(command, "imeiSv"))
+    {
+        cm_info_PrintImeiSv(false);
     }
     else if (strcmp(command, "fsn") == 0)
     {

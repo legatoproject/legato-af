@@ -169,6 +169,9 @@ static void ExecuteCommand
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    // To reactivate for all DEBUG logs
+    //le_log_SetFilterLevel(LE_LOG_DEBUG);
+
     // help menu
     if (le_arg_NumArgs() == 0)
     {

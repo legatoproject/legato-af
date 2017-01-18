@@ -64,6 +64,11 @@
  * @section le_mdc_session Data Sessions
  *
  * @subsection le_mdc_session_MO Mobile Originated (MO-PDP context activation)
+ *
+ * le_mdc_MapProfileOnNetworkInterface() may be used to map a data session with a network interface.
+ * To take effect, this API has to be called before starting the data session. Otherwise, the
+ * mapping will be taken into account at the next start of the data profile.
+ *
  * A data session can be started using le_mdc_StartSession(). To start a data session, a
  * data profile must be created and written to the modem, or  an existing data profile
  * can be used. A data session can be stopped using le_mdc_StopSession(). The number of
@@ -1006,4 +1011,21 @@ FUNCTION GetPlatformSpecificFailureConnectionReason
     Profile profileRef  IN,      ///< profile reference
     int32   failureType OUT,     ///< platform specific failure type
     int32   failureCode OUT      ///< platform specific failure code
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map a profile on a network interface
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_UNSUPPORTED if not supported by the target
+ *      - LE_FAULT for all other errors
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t MapProfileOnNetworkInterface
+(
+    Profile profileRef                             IN,  ///< Profile reference
+    string  interfaceName[INTERFACE_NAME_MAX_LEN]  IN   ///< Network interface name
 );
