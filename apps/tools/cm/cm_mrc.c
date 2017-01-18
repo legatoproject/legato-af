@@ -247,6 +247,62 @@ static le_result_t GetRAT
 
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function will attempt to get the Circuit and Packet Switched state.
+ *
+ * @return LE_OK if the call was successful.
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t GetServicesState
+(
+    void
+)
+{
+    le_result_t res;
+    le_mrc_ServiceState_t serviceState;
+
+    res = le_mrc_GetCircuitSwitchedState(&serviceState);
+    if (res != LE_OK)
+    {
+        return res;
+    }
+
+    switch(serviceState)
+    {
+        case LE_MRC_ATTACHED:
+            cm_cmn_FormatPrint("CS", "Circuit Switched Attached (LE_MRC_ATTACHED)");
+            break;
+        case LE_MRC_DETACHED:
+            cm_cmn_FormatPrint("CS", "Circuit Switched Detached (LE_MRC_DETACHED)");
+            break;
+        default:
+            cm_cmn_FormatPrint("CS", "Circuit Switched Unknown (LE_MRC_ATTACHED)");
+            break;
+    }
+
+    res = le_mrc_GetPacketSwitchedState(&serviceState);
+    if (res != LE_OK)
+    {
+        return res;
+    }
+
+    switch(serviceState)
+    {
+        case LE_MRC_ATTACHED:
+            cm_cmn_FormatPrint("PS", "Packet Switched Attached (LE_MRC_ATTACHED)");
+            break;
+        case LE_MRC_DETACHED:
+            cm_cmn_FormatPrint("PS", "Packet Switched Detached (LE_MRC_DETACHED)");
+            break;
+        default:
+            cm_cmn_FormatPrint("PS", "Packet Switched Unknown (LE_MRC_ATTACHED)");
+            break;
+    }
+
+    return LE_OK;
+}
+
 
 
 //-------------------------------------------------------------------------------------------------
@@ -344,6 +400,13 @@ int cm_mrc_GetModemStatus
     }
 
     res = GetSignalQuality();
+
+    if (res != LE_OK)
+    {
+        exitStatus = EXIT_FAILURE;
+    }
+
+    res = GetServicesState();
 
     if (res != LE_OK)
     {

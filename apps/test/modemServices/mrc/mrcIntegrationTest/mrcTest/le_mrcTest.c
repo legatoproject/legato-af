@@ -90,6 +90,62 @@ static void TestRatHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler function for PS change notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestPSHandler
+(
+    le_mrc_ServiceState_t psState,
+    void*        contextPtr
+)
+{
+    LE_INFO("New PS state: %d", psState);
+
+    if (psState == LE_MRC_DETACHED)
+    {
+        LE_INFO("Check PSHandler passed, PS is LE_MRC_DETACHED.");
+    }
+    else if (psState == LE_MRC_ATTACHED)
+    {
+        LE_INFO("Check PSHandler passed, PS is LE_MRC_ATTACHED.");
+    }
+    else
+    {
+        LE_ERROR("Check PSHandler failed, bad PS state %d", psState);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for CS change notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestCSHandler
+(
+    le_mrc_ServiceState_t csState,
+    void*        contextPtr
+)
+{
+    LE_INFO("New CS state: %d", csState);
+
+    if (csState == LE_MRC_DETACHED)
+    {
+        LE_INFO("Check CSHandler passed, CS is LE_MRC_DETACHED.");
+    }
+    else if (csState == LE_MRC_ATTACHED)
+    {
+        LE_INFO("Check CSHandler passed, CS is LE_MRC_ATTACHED.");
+    }
+    else
+    {
+        LE_ERROR("Check CSHandler failed, bad CS state %d", csState);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler function for Network Registration Notifications.
  *
  */
@@ -204,6 +260,68 @@ static void Testle_mrc_GetRat()
 }
 //! [RAT in Use]
 
+//! [Service State]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Packet Switched state
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetPSState
+(
+    void
+)
+{
+    le_mrc_ServiceState_t  psState;
+
+    LE_ASSERT_OK(le_mrc_GetPacketSwitchedState(&psState));
+    switch(psState)
+    {
+        case LE_MRC_ATTACHED:
+            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_ATTACHED");
+            break;
+        case LE_MRC_DETACHED:
+            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_DETACHED");
+            break;
+        default:
+            LE_ERROR("le_mrc_GetPacketSwitchedState returns an unknown PS state");
+            break;
+    }
+
+}
+//! [Service State]
+
+//! [Service State]
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Circuit Switched state
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetCSState
+(
+    void
+)
+{
+    le_mrc_ServiceState_t  csState;
+
+    LE_ASSERT_OK(le_mrc_GetCircuitSwitchedState(&csState));
+    switch(csState)
+    {
+        case LE_MRC_ATTACHED:
+            LE_INFO("le_mrc_GetCircuitSwitchedState returns LE_MRC_ATTACHED");
+            break;
+        case LE_MRC_DETACHED:
+            LE_INFO("le_mrc_GetCircuitSwitchedState returns LE_MRC_DETACHED");
+            break;
+        default:
+            LE_ERROR("le_mrc_GetCircuitSwitchedState returns an unknown CS state");
+            break;
+    }
+
+}
+//! [Service State]
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Network Registration notification handling.
@@ -231,6 +349,42 @@ static void Testle_mrc_RatHdlr()
     testHdlrRef = le_mrc_AddRatChangeHandler(TestRatHandler, NULL);
     LE_ASSERT(testHdlrRef);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: CS change handling.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_CSHdlr
+(
+    void
+)
+{
+    le_mrc_CircuitSwitchedChangeHandlerRef_t testCSHdlrRef;
+
+    testCSHdlrRef = le_mrc_AddCircuitSwitchedChangeHandler(TestCSHandler, NULL);
+    LE_ASSERT(testCSHdlrRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: PS change handling.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_PSHdlr
+(
+    void
+)
+{
+    le_mrc_PacketSwitchedChangeHandlerRef_t testPSHdlrRef;
+
+    testPSHdlrRef = le_mrc_AddPacketSwitchedChangeHandler(TestPSHandler, NULL);
+    LE_ASSERT(testPSHdlrRef);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -423,6 +577,7 @@ static void* MyRegisterModeAsyncThread
     le_event_RunLoop();
     return NULL;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1428,12 +1583,33 @@ static void Testle_mrc_GetBandCapabilities()
     le_mrc_LteBandBitMask_t         lteBands = 0;
     le_mrc_TdScdmaBandBitMask_t     tdScdmaBands = 0;
 
-    LE_ASSERT(le_mrc_GetBandCapabilities(&bands) == LE_OK);
-    LE_INFO("Get 2G/3G Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)bands);
-    LE_ASSERT(le_mrc_GetLteBandCapabilities(&lteBands) == LE_OK);
-    LE_INFO("Get LTE Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)lteBands);
-    LE_ASSERT(le_mrc_GetTdScdmaBandCapabilities(&tdScdmaBands) == LE_OK);
-    LE_INFO("Get TD-SCDMA Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)tdScdmaBands);
+    // Not supported on all platform
+    if (le_mrc_GetBandCapabilities(&bands) == LE_OK)
+    {
+        LE_INFO("Get 2G/3G Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)bands);
+    }
+    else
+    {
+        LE_WARN("le_mrc_GetBandCapabilities failed");
+    }
+
+    if (le_mrc_GetLteBandCapabilities(&lteBands) == LE_OK)
+    {
+        LE_INFO("Get LTE Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)lteBands);
+    }
+    else
+    {
+        LE_WARN("le_mrc_GetLteBandCapabilities failed");
+    }
+
+    if (le_mrc_GetTdScdmaBandCapabilities(&tdScdmaBands) == LE_OK)
+    {
+        LE_INFO("Get TD-SCDMA Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)tdScdmaBands);
+    }
+    else
+    {
+        LE_WARN("le_mrc_GetTdScdmaBandCapabilities failed");
+    }
 }
 //! [Band Capabilities]
 
@@ -1446,6 +1622,14 @@ static void Testle_mrc_GetBandCapabilities()
 COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
+
+    LE_INFO("======== CSHdlr Test ========");
+    Testle_mrc_CSHdlr();
+    LE_INFO("======== CSHdlr Test PASSED ========");
+
+    LE_INFO("======== PSHdlr Test ========");
+    Testle_mrc_PSHdlr();
+    LE_INFO("======== PSHdlr Test PASSED ========");
 
     LE_INFO("======== PreferredPLMN Test ========");
     Testle_mrc_PreferredPLMN();
@@ -1468,6 +1652,14 @@ COMPONENT_INIT
     LE_INFO("======== GetRat Test ========");
     Testle_mrc_GetRat();
     LE_INFO("======== GetRat Test PASSED ========");
+
+    LE_INFO("======== GetCSstate Test ========");
+    Testle_mrc_GetCSState();
+    LE_INFO("======== GetCSstate Test PASSED ========");
+
+    LE_INFO("======== GetPSState Test ========");
+    Testle_mrc_GetPSState();
+    LE_INFO("======== GetPSState Test PASSED ========");
 
     LE_INFO("======== Location information Test ========");
     Testle_mrc_GetLocInfo();
@@ -1532,7 +1724,6 @@ COMPONENT_INIT
     LE_INFO("======== Signal Strength Handler Test ========");
     Testle_mrc_SsHdlr();
     LE_INFO("======== Signal Strength Handler Test PASSED ========");
-
 
     LE_INFO("======== Test MRC Modem Services implementation Test SUCCESS ========");
 

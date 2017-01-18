@@ -169,6 +169,30 @@
  * A sample code can be seen in the following page:
  * - @subpage c_mrcNetworkRegistration
  *
+ * @section le_mrc_service Packet and Circuit Switched services state
+ *
+ * le_mrc_GetPacketSwitchedState() API retrieves the current Packet switched state
+ * @ref le_mrc_ServiceState_t.
+ *
+ * le_mrc_GetCircuitSwitchedState() API retrieves the current Circuit switched state
+ * @ref le_mrc_ServiceState_t.
+ *
+ * The Packet or Circuit Switched services state can be:
+ * - ATTACHED
+ * - DETACHED
+ *
+ * The application can register a handler function to retrieve the Circuit Switched or the Packet
+ * Switched state each time the service state changes.
+ *
+ * le_mrc_AddCircuitSwitchedChangeHandler() API installs a Circuit Switched state handler.
+ * le_mrc_AddPacketSwitchedChangeHandler() API installs a Packet Switched state handler.
+ *
+ * le_mrc_RemovePacketSwitchedChangeHandler() and le_mrc_RemoveCircuitSwitchedChangeHandler APIs
+ * uninstall the handler function.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_mrcGetService
+ *
  * @section le_mrc_signal Signal Quality
  *
  * le_mrc_GetSignalQual() retrieves the received signal strength details.
@@ -363,6 +387,12 @@
  *
  */
 
+/**
+ * @page c_mrcGetService Sample code for Get the Current Circuit Switched and Packet Switched state
+ *
+ * @snippet "apps/test/modemServices/mrc/mrcIntegrationTest/mrcTest/le_mrcTest.c" Service State
+ *
+ */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -507,6 +537,18 @@ BITMASK TdScdmaBandBitMask
     BITMASK_TDSCDMA_BAND_D,
     BITMASK_TDSCDMA_BAND_E,
     BITMASK_TDSCDMA_BAND_F
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Packet or Circuit switched services state.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ServiceState
+{
+    DETACHED,           ///< Not attached.
+    ATTACHED            ///< Attached.
 };
 
 
@@ -663,6 +705,53 @@ EVENT RatChange
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for Packet Switched service state changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER PacketSwitchedChangeHandler
+(
+    ServiceState psState    ///< Parameter ready to receive the Packet Switched service state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Packet Switched service changes.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT PacketSwitchedChange
+(
+    PacketSwitchedChangeHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for Circuit Switched service state changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CircuitSwitchedChangeHandler
+(
+    ServiceState csState    ///< Parameter ready to receive the Circuit Switched service state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Circuit Switched service changes.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT CircuitSwitchedChange
+(
+    CircuitSwitchedChangeHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for Signal Strength value changes.
  *
  */
@@ -785,6 +874,37 @@ FUNCTION le_result_t GetRegisterMode
     string mncPtr[MNC_LEN] OUT  ///< Mobile Network Code
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Packet Switched state.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPacketSwitchedState
+(
+    ServiceState state OUT ///< The current Packet switched state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Circuit Switched state.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCircuitSwitchedState
+(
+    ServiceState state OUT ///< The current Circuit switched state.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
