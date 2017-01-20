@@ -14,6 +14,7 @@
  * @subpage c_basics <br>
  * @subpage c_args <br>
  * @subpage c_atomFile <br>
+ * @subpage c_crc <br>
  * @subpage c_dir <br>
  * @subpage c_doublyLinkedList <br>
  * @subpage c_memory <br>
@@ -209,6 +210,7 @@ extern "C" {
 #include "le_json.h"
 #include "le_tty.h"
 #include "le_atomFile.h"
+#include "le_crc.h"
 
 #ifdef __cplusplus
 }
