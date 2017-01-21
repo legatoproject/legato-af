@@ -1,0 +1,142 @@
+/** @page basicTargetConfigETH Configure Ethernet Interface
+
+@section targetEthSetIP Set Fixed MAC Address
+
+Some target devices (e.g., mangOH, or the SWI Dev Kit) do not have a dedicated MAC address set.
+Every time you reboot the device it will grab a new IP address and may be confusing to connect
+to.
+
+To configure the MAC address to a static address use @ref targetToolsSetNet.  This will set the MAC
+address to the current address:
+
+@verbatim
+$ minicom -D /dev/ttyUSB0          # Log in as an administrator
+
+# setNet macfixed
+# ifconfig                      # check that the MAC address and IP address are set
+# legato restart                # reboots the target device
+@endverbatim
+
+@section targetEthEnableSSH Check Firewall Rules
+
+Upon upgrading to Legato 16.10.0+ @b SSH is disabled on all network interfaces except @c usb0.
+
+IPTable rules have been added to @b DROP any SSH (port 22) traffic on all interfaces except @c usb0.
+
+Rule configuration is stored in /etc/iptables.  @c rules.v4 (IPV4) and @c rules.v6 (IPV6)
+contain the following default configuration:
+
+IPV4 Config:
+
+@verbatim
+# less /etc/iptables/rules.v4        # or rules.v6 to check the IPv6 rules
+
+
+# Allow traffic on already established connections
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# Allow DNS replies
+-A INPUT -p udp -m udp --sport 53 -j ACCEPT
+
+# Allow PING replies
+-A INPUT -p icmp -m icmp --icmp-type 0 -j ACCEPT
+
+# Allow incoming SSH connections and PING requests over ECM interface
+-A INPUT -i usb0 -p tcp -m tcp --dport 22 -j ACCEPT
+-A INPUT -i usb0 -p icmp -m icmp --icmp-type 8 -j ACCEPT
+
+# Create more custom rules here, e.g.:
+# Allow incoming TCP connections for service port <port> on interface <if>
+# -A INPUT -i <if> -p tcp -m tcp --dport <port> -j ACCEPT
+
+COMMIT
+@endverbatim
+
+@subsection targetUSBSSHEditRules Editing Firewall Rules
+
+Create custom rules to enable ssh on more than just the USB interface (e.g., enable SSH over eth0)
+by adding rules to the Custom section.
+
+@verbatim
+# Create more custom rules here, e.g.:
+# Allow incoming TCP connections for service port <port> on interface <if>
+# -A INPUT -i <if> -p tcp -m tcp --dport <port> -j ACCEPT
+
+-A INPUT -i eth0 -p tcp -m tcp --dport 22 -j ACCEPT
+@endverbatim
+
+To apply the updated rules @c reboot your target.
+
+@section targetEthIPV6 Setting up IPv6 over Ethernet
+
+Check to see if IPv6 is enabled on your dev machine and target.
+
+@verbatim ip -6 address show <interface> @endverbatim
+
+If there is no IPv6 address add config for the interface
+
+@verbatim
+$ sudo cp /etc/network/interfaces /etc/network/interfaces.backup
+$ sudo vi /etc/network/interfaces
+@endverbatim
+
+Add the following lines (modify for your interface, and IP address you wish to use)
+
+@verbatim
+auto <interface>
+iface <interface> inet6 static
+    address <desired ip address>
+    netmask 127
+@endverbatim
+
+Restart the networking on your device:
+
+Dev Machine:
+@verbatim
+$ sudo systemctl restart networking
+@endverbatim
+
+Target:
+Reboot your device
+
+Test by pinging your Target Device from your dev machine on the IP address assigned:
+
+@verbatim
+$ ping6 <ipv6 address>
+@endverbatim
+
+@section targetEthTroubleshooting Troubleshooting
+
+@subsection targetEthTroubleConnectivty Connectivity Issues
+
+- If you are having issues connecting over IP on the Target device try connection over USB or Serial
+Cable and bring the interface up and down, or reboot the device.
+
+@verbatim
+# ifdown eth0
+# ifup eth0
+@endverbatim
+
+@subsection targetEthTroubleDS Developer Studio Connectivity
+
+If the Target is not being recognized in [Developer Studio](http://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions):
+
+Check to see if @c devMode is running
+
+@verbatim
+# app status devMode
+@endverbatim
+
+Start developer mode (restart if needed)
+
+@verbatim
+# app stop devMode
+# app start devMode
+@endverbatim
+
+For further help with Developer Studio see the Developer Studio Guide within the Help section of
+[Developer Studio](http://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions).
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

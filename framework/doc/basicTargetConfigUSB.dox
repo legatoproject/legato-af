@@ -1,0 +1,128 @@
+/** @page basicTargetConfigUSB Configure USB Interface
+
+The WP85 module on a mangOH board is pre-configured to connect over USB.  SSH is enabled over
+USB only for all targets on Legato 16.10.0+.
+
+By default the USB IP address is 192.168.2.2.
+
+@section targetUSBConnect Connect using SSH over USB
+
+Install a ssh client on your dev machine.
+
+In Linux:
+
+@verbatim
+$ sudo apt-get install openssh-client
+@endverbatim
+
+The default IP for WP devices over USB is 192.168.2.2.
+
+@verbatim
+$ ssh 192.168.2.2   # you may have to specify a user depending on how the Target it configured
+@endverbatim
+
+@section targetUSBCheckFW Check Firewall Rules
+
+Upon upgrading to Legato 16.10.0 @b SSH is disabled on all network interfaces except @c usb0.
+
+Rule configuration is stored in /etc/iptables.  @c rules.v4 (IPV4) and @c rules.v6 (IPV6)
+
+Check the config by running:
+
+@verbatim
+# less /etc/iptables/rules.v4       # or rules.v6 to check the IPv6 rules
+@endverbatim
+
+To further modify the firewall rules see @ref targetEthEnableSSH
+
+@section targetUSBIPV6 Set up IPv6 over USB
+
+Check to see if IPv6 is enabled on your dev machine and target.
+
+@verbatim
+$ ip -6 address show <interface>
+@endverbatim
+
+If there is no IPv6 address add config for the interface
+
+@verbatim
+$ sudo cp /etc/network/interfaces /etc/network/interfaces.backup
+$ sudo vi /etc/network/interfaces
+@endverbatim
+
+Add the following lines (modify for your interface (usb0 on the Target), and IP address you wish to
+use
+
+@verbatim
+auto <interface>
+iface <interface> inet6 static
+    address <desired ip address>
+    netmask 127
+@endverbatim
+
+Restart the networking on your device.
+
+Dev Machine:
+@verbatim
+$ sudo systemctl restart networking
+@endverbatim
+
+Target:
+Reboot your device
+
+Test by pinging your Target Device from your dev machine on the IP address assigned and run
+@c ifconfig @c usb0 on both the Target and dev machine to display the configuration.
+
+@verbatim
+$ ping6 <ipv6 address>
+@endverbatim
+
+@section targetUSBTroubleshoot Troubleshoot Issues
+
+<b>Connectivity Issues:</b>
+
+- Currently there is an outstanding issue in Ubuntu 15.10+ with the ECMUsb driver. This bug may
+cause your Ubuntu Connection Manager to crash. The workaround is to uninstall Modem Manager on your
+Ubuntu PC.
+
+@verbatim
+$ sudo apt-get remove modemmanager
+@endverbatim
+
+- If you are having issues connecting over IP on the Target device try connection over USB or Serial
+Cable and bring the interface up and down, or reboot the device.
+
+@verbatim
+# ifdown usb0
+# ifup usb0
+@endverbatim
+
+- If  USB isn't configured on a WP target, then delete @c /mnt/flash/ufs/etc and reboot:
+@verbatim
+# rm -rf /mnt/flash/ufs/etc
+# reboot
+@endverbatim
+
+<b>Developer Studio:</b>
+
+If the Target is not being recognized in [Developer Studio](http://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions):
+
+Check to see if @c devMode is running
+
+@verbatim
+# app status devMode
+@endverbatim
+
+Start developer mode (restart if needed)
+
+@verbatim
+# app stop devMode
+# app start devMode
+@endverbatim
+
+For further help with Developer Studio see the Developer Studio Guide within the Help section of
+[Developer Studio](http://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions).
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

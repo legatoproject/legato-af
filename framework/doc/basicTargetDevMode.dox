@@ -1,4 +1,4 @@
-/** @page howToDevMode Developer Mode
+/** @page basicTargetDevMode Developer Mode
 
 Developer Mode is installed by default in Legato 16.10+.
 
@@ -9,7 +9,7 @@ Developer Mode (@c devMode) was created to provide helpful features to Developer
   - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
   - holds a wake lock, so the target won't go to sleep when disconnected from USB.
 
-@section howToDevMode_enableDev Enabling Developer Mode
+@section devMode_enableDev Enabling Developer Mode
 
 To start @c devMode on your target (if it's disabled):
 
@@ -41,13 +41,13 @@ processes:
     {
 @endverbatim
 
-@section howToDevMode_disableDev Disabling Developer Mode
+@section DevMode_disableDev Disabling Developer Mode
 
 To temporarily stop devMode:
 
 @verbatim app stop devMode @endverbatim
 
-@section howToDevMode_removeDev Removing Developer Mode
+@section devMode_removeDev Removing Developer Mode
 
 To remove devMode from your target:
 
