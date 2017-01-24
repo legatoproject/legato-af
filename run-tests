@@ -322,7 +322,14 @@ function GenerateReport()
         echo "Generate report for $TARGET"
 
         # Build
-        gcovr -x -r . -o $BUILDDIR/coverage.xml \
+        gcovr --xml \
+            -r . -o $BUILDDIR/coverage.xml \
+            --exclude=".*(test|build|codegen)\b.*"
+        CheckRet
+
+        mkdir -p $BUILDDIR/coverage/html/
+        gcovr --html --html-details \
+            -r . -o $BUILDDIR/coverage/html/index.html \
             --exclude=".*(test|build|codegen)\b.*"
         CheckRet
     fi
