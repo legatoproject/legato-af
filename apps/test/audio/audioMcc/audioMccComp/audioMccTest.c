@@ -739,8 +739,10 @@ static void PrintUsage()
 #if (ENABLE_CODEC == 1)
             " - MIC (for mic/speaker)",
 #endif
-            " - PCM (for devkit's codec use, execute 'wm8940_demo --pcm' command)",
-            " - I2S (for devkit's codec use, execute 'wm8940_demo --i2s' command)",
+            " - PCM (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
+                "execute 'wm8940_demo --pcm' command)",
+            " - I2S (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
+                "execute 'wm8940_demo --i2s' command)",
             " - USB (for USB)",
             " - R-PB (for Remote playback)",
             " - R-REC (for Remote recording)",
@@ -751,8 +753,10 @@ static void PrintUsage()
 #if (ENABLE_CODEC == 1)
             " - MIC (for mic/speaker)",
 #endif
-            " - PCM (for devkit's codec use, execute 'wm8940_demo --pcm' command)",
-            " - I2S (for devkit's codec use, execute 'wm8940_demo --i2s' command)",
+            " - PCM (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
+                "execute 'wm8940_demo --pcm' command)",
+            " - I2S (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
+                "execute 'wm8940_demo --i2s' command)",
             " - USB (for USB)",
             "",
             "File's name can be the complete file's path (for file playback/recording only).",
