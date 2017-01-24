@@ -3100,6 +3100,9 @@ le_result_t le_gnss_GetSuplAssistedMode
  *  - LE_FAULT on failure
  *  - LE_BUSY service is busy
  *  - LE_TIMEOUT a time-out occurred
+ *
+ * @note If the SUPL server URL size is bigger than the maximum string length (including NULL
+ * terminator) size, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetSuplServerUrl
