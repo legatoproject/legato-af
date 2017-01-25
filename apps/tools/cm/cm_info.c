@@ -208,8 +208,8 @@ void cm_info_PrintGetPriId
 
     if(withHeaders)
     {
-        cm_cmn_FormatPrint("priIdPn", priIdPn);
-        cm_cmn_FormatPrint("priIdRev", priIdRev);
+        cm_cmn_FormatPrint("PRI PN", priIdPn);
+        cm_cmn_FormatPrint("PRI Rev", priIdRev);
     }
     else
     {
@@ -234,7 +234,7 @@ void cm_info_PrintGetSku
 
     if(withHeaders)
     {
-        cm_cmn_FormatPrint("skuId", skuId);
+        cm_cmn_FormatPrint("SKU", skuId);
     }
     else
     {
