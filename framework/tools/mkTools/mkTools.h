@@ -7,7 +7,7 @@
  * This is done partly as a convenience for the programmer (so they don't have to include as many
  * files) and partly as a performance improvement measure (because this file can be pre-compiled).
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

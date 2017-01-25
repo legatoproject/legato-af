@@ -4,7 +4,7 @@
  *
  * Functions offered by the component modeller to other modeller modules.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

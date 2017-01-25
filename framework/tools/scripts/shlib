@@ -1,6 +1,6 @@
 #!/bin/bash
 # source this for functions only
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 
 BIN_PATH="/legato/systems/current/bin"
 

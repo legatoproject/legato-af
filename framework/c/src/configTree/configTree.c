@@ -6,8 +6,8 @@
  *  This file is the "Component Main" of the configTree daemon.  This is where all of the daemon's
  *  startup occurs.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

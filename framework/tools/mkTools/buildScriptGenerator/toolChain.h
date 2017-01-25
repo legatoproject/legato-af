@@ -4,7 +4,7 @@
  *
  * Tool chain related functions needed by the build script generator.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

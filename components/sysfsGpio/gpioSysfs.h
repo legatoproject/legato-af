@@ -3,7 +3,7 @@
  * Definitions of the generic functions for manipulating the Sysfs GPIO
  * interface presented by the Linux kernel
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

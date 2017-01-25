@@ -25,7 +25,7 @@
  *  - le_cellnet_Release()
  *  - le_cellnet_GetNetworkState()
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 /* Legato Framework */

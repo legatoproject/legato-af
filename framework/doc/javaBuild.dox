@@ -243,6 +243,6 @@ Like C/C++ components, the ninja build tool is used to do dependency checking to
 an app. If the .class files are up to date against the .java sources, then Java code compiling won't
 occur. The build tools also assume that the @c javac command line compiler is somewhere in the path.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

@@ -6,7 +6,7 @@
  *
  * As a side-effect, the Lexer_t builds a list of tokens in a given DefFile_t object.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

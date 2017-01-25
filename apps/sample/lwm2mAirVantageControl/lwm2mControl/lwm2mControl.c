@@ -3,7 +3,7 @@
  * Simple app that brings up the Air Vantage LWM2M connection and logs status messages from the
  * Air Vantage agent.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -96,6 +96,6 @@ This is the full list of supported modes:
 | audio    | USB audio      | Expose the target as a sound card        | N/A               | pcmC2D0c <br> pcmC2D0p |
 | serial   | serial         | A serial interface to the embedded Linux | /dev/ttyGS0       | /dev/ttyUSB0           |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
  **/

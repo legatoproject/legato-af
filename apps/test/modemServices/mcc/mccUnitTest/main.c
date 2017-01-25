@@ -4,7 +4,7 @@
  * @warning ! IMPORTANT ! We need to simulate a different session ref for each thread: 1 for the
  *          main thread, and 2 for the 2 threads created for call handler installation.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

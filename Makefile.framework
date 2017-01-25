@@ -13,7 +13,7 @@
 #
 # Framework build output is placed under $(LEGATO_ROOT)/build/$(TARGET)/framework
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 # Make sure required variables are set.

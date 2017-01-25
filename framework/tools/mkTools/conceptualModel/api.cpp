@@ -2,7 +2,7 @@
 /**
  * @file api.cpp
  *
- * (C) Copyright, Sierra Wireless Inc.  Use of this work is subject to license.
+ * (C) Copyright, Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

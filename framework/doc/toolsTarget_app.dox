@@ -19,7 +19,7 @@ app --help <br>
 </c></b>
 
 @verbatim app start <appName> [<options>] @endverbatim
-> Runs an app in a modified manner by one or more of the following options: 
+> Runs an app in a modified manner by one or more of the following options:
 
 > <c>--norun=<procName1>[,<procName2>,...]</c> <br>
 > Don't start the specified configured processes. Names are separated by commas
@@ -27,10 +27,10 @@ app --help <br>
 
 @verbatim app stop <appName> @endverbatim
 > Stops the specified app.
- 
+
 @verbatim app restart <appName> @endverbatim
 > Restarts the specified app.
- 
+
 @verbatim app remove <appName> @endverbatim
 > Removes the specified app.
 > @warning Be careful not to accidentally remove system services apps that you might
@@ -38,12 +38,12 @@ app --help <br>
 
 @verbatim app list @endverbatim
 > List all installed apps.
- 
+
 @verbatim app status [<appName>] @endverbatim
 > If an appName is specified, provides status on that app. If no app is specified,
 > provides status on all installed apps.
 > Status can be @c stopped, @c running, @c paused or @c not installed.
- 
+
 @verbatim app version <appName> @endverbatim
 > Provides the version of the specified app.
 
@@ -85,6 +85,6 @@ app --help <br>
 @verbatim app --help@endverbatim
 > Prints help text to standard out and exits.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

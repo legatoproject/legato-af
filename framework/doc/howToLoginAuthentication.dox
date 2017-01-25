@@ -1,6 +1,6 @@
 /** @page howToLoginAuthentication Login Authentication
 
-This topic provides the recommended login authentication credential setup options for Sierra Wireless 
+This topic provides the recommended login authentication credential setup options for Sierra Wireless
 modules that are using serial console or secure shell interfaces for target device access.
 
 Starting with Legato 16.10.0 (and SWI9X15Y_07.11.18.00 or later), when you access your module using
@@ -48,6 +48,6 @@ be easily guessed.
 @warning Please test your ssh keys and/or passwords in a separate terminal before logging off from
 all terminals to ensure you don't lose access to your target device.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

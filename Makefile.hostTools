@@ -7,7 +7,7 @@
 #
 # This Makefile is intended to run as part of a larger build system.
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 export LEGATO_ROOT ?= $(CURDIR)

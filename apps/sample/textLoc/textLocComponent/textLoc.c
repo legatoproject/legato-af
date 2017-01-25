@@ -10,7 +10,7 @@
  * of adef file. If nothing specified in environment variable, it will send message to a default
  * non-existent phone number.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

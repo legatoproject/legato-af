@@ -3,7 +3,7 @@
  * Definition of the Process class, which is used to hold the details of a single process
  * defined in a "run:" subsection of a "processes:" section in a .adef file.
  *
- * Copyright (C) 2013-2014 Sierra Wireless, Inc. Use of this work is subject to license.
+ * Copyright (C) 2013-2014 Sierra Wireless, Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

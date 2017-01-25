@@ -6,7 +6,7 @@
  * is muxed with the antennae inputs and used by the modem for antenna diagnostics. Therefore
  * we have to use modem services to read thos inputs.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //-------------------------------------------------------------------------------------------------
 

@@ -62,6 +62,6 @@ In @c modemDemo/demo.c, it's also possible to extend the list of processed comma
 See <br>
 @ref c_mdc
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

@@ -1,7 +1,7 @@
 #*******************************************************************************
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
-# Use of this work is subject to license.
+#
 #*******************************************************************************
 
 # Creates application from the gnssXtraTest.adef

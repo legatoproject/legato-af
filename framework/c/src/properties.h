@@ -3,7 +3,7 @@
  * This API is used to obtain the key-value pairs from an application configuration file in the Java
  * .properties format.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SRC_PROPERTIES_INCLUDE_GUARD

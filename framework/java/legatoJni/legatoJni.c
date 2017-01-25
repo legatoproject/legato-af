@@ -6,7 +6,7 @@
  *  Shim layer to provide access to the Legato C library from Java.
  *
  *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
- *  Use of this work is subject to license.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

@@ -12,7 +12,7 @@
  * note that the bridge is opened on the device /dev/ttyAT (directed to the modem) and may have to
  * be changed depending on the used target.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

@@ -4,7 +4,7 @@
  *
  * This file defines interfaces that are for use by other modules in the framework implementation.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SRC_SAFEREF_H_INCLUDE_GUARD

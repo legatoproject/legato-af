@@ -4,7 +4,7 @@ This topic summarizes how to create a script to automate importing and exporting
 settings.
 
 Legato automatically creates copies of config trees during
-@ref howToConfigTreeUpdate "updating". 
+@ref howToConfigTreeUpdate "updating".
 
 An import/export script is an easy way to create a copy of your config trees in case you want to
 reinstate without rebuilding them.
@@ -62,6 +62,6 @@ $ inst.sh myApp
 
 @endcode
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

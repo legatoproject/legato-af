@@ -19,7 +19,7 @@
  *
  * Legato @ref ifgentest include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef INTERFACE_H_INCLUDE_GUARD

@@ -21,7 +21,7 @@
  * death of the Supervisor.  If the Supervisor exits, the status is checked and the start
  * program either exits or selects a system to run again.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

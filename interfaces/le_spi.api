@@ -73,7 +73,7 @@
  * le_spi_Close(spiHandle);
  * @endcode
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@
  *
  * Legato @ref c_le_spi include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -146,7 +146,7 @@ FUNCTION Close
 /**
  * Configures an SPI device's data sample settings. The required values should be
  * included in your target's datasheet. Most common @c Mode values are
- * @c 0 and @c 3. 
+ * @c 0 and @c 3.
  *
  * These are the SPI Mode options:
  * |   Mode  |   Clock Polarity   |  Clock Phase   |   Clock Edge   |

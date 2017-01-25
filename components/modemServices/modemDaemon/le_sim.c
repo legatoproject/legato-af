@@ -2,7 +2,7 @@
  *
  * This file contains the data structures and the source code of the high level SIM APIs.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 

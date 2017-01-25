@@ -7,8 +7,8 @@
  *  config tree API.  So, if a request can not be handled right away, it is queued for later
  *  processing.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

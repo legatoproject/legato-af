@@ -2,7 +2,7 @@
 /**
  * @file json.c JSON Parsing API implementation
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

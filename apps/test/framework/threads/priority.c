@@ -9,7 +9,7 @@
 // Each thread simply asks the kernel for its own scheduling policy to make sure it's correct.
 // If an error is detected, the test aborts immediately, so no check at the end is really needed.
 //
-// Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"

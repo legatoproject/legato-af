@@ -15,7 +15,7 @@
  * store the message identifier contained in the application mailbox. It is updated each time is new
  * SMS is received.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
  */
 // -------------------------------------------------------------------------------------------------
 

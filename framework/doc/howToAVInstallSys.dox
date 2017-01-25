@@ -32,6 +32,6 @@ The files are generated under the builds working directory (e.g., @c ./_build_cu
 See @ref howToAVUploadApp to upload your System Bundle to your device through Air Vantage.
 
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

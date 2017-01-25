@@ -4,7 +4,7 @@
  * This file defines several common system paths. Currently they are simply #defined as strings
  * in this header.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 #ifndef LEGATO_SYSPATHS_INCLUDE_GUARD

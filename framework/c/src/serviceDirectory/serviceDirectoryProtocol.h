@@ -91,14 +91,14 @@
  * byte swapping.  Furthermore, all message members are multiples of the processor's
  * natural word size, so there's little risk of structure packing misalignment.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 /** @file serviceDirectoryProtocol.h
  *
  * See @ref serviceDirectoryProtocol
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SERVICE_DIRECTORY_PROTOCOL_INCLUDE_GUARD

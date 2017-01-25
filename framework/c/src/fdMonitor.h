@@ -6,7 +6,7 @@
  *
  * The File Descriptor Monitor module is part of the @ref c_eventLoop implementation.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

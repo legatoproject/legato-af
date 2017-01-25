@@ -2,7 +2,7 @@
  *
  * This module contains limit definitions used internally by the Legato framework.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LE_SRC_LIMITS_INCLUDE_GUARD

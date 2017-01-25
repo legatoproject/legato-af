@@ -72,6 +72,6 @@ From the Legato directory, this is the path to kernel build directory:
 
 See @ref yoctoOutofTreeKernelModule for details.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

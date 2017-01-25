@@ -60,6 +60,6 @@ target device.
 @note The tcf-agent creates extra network traffic between the host and the target. Stopping or
 removing devMode will decrease the traffic.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
  **/

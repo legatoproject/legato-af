@@ -5,7 +5,7 @@
  * $ app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <MIC/I2S/PCM> <dtmfs>
  *    <duration in ms> <pause in ms> [<tel number> <inband/outband>]
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

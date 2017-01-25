@@ -18,7 +18,7 @@ Legato is all about building and deploying apps quickly on an open platform.
 Write cool apps and share them to connect our world!
 
 Go to <a href="http://legato.io/legato-docs/latest/buildAppsConcepts.html">Build Apps->Concepts</a>
-for Legato overview info and details on how to start developing apps. 
+for Legato overview info and details on how to start developing apps.
 
 @section aboutLegatoContributing_contribute Contribute to Code
 
@@ -26,5 +26,5 @@ If you want to submit changes to the Legato source code for review,
 see @subpage aboutLegatoContributingCode "Contributing to the Legato open source project"
 for info on how to get started.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 **/

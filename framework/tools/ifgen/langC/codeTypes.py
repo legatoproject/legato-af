@@ -1,7 +1,7 @@
 #
 # Define types/classes for different code/message objects
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 
 # Python libraries

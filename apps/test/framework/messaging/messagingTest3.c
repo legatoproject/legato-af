@@ -8,7 +8,7 @@
  *  - Both client and server have session close handlers registered, which catch the close event
  *    and exit with EXIT_SUCCESS.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

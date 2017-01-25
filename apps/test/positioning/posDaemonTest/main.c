@@ -3,7 +3,7 @@
   *
   * Run cmake -DENABLE_SIMUL=1 before launching make if you want to use the simulator.
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   *
   */
 

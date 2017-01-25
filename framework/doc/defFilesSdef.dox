@@ -340,6 +340,6 @@ commands:
 @warning When the command runs, it runs with the full privileges of the user that runs it.
          If you login as root and run a command, the command executes with root user privileges.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

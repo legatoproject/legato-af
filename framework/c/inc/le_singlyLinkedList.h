@@ -158,7 +158,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 
@@ -166,7 +166,7 @@
   *
   * Legato @ref c_singlyLinkedList include file.
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   */
 
 #ifndef LEGATO_SINGLY_LINKED_LIST_INCLUDE_GUARD

@@ -2,7 +2,7 @@
  *
  * Declaration of the framework's internal handy file descriptor manipulation functions.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LE_FILE_DESCRIPTOR_H_INCLUDE_GUARD

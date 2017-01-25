@@ -2,7 +2,7 @@
   * This module is for unit testing the le_mem module in the legato
   * runtime library (liblegato.so).
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   */
 
 #include "legato.h"
@@ -458,7 +458,7 @@ COMPONENT_INIT
     }
 
     le_mem_GetStats(colourSubPool2, &stats);
-    if ( (le_mem_GetObjectCount(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) || 
+    if ( (le_mem_GetObjectCount(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) ||
          (stats.numFree != NUM_EXPAND_SUB_POOL) )
     {
         printf("Error in sub-pool: %d", __LINE__);
@@ -498,7 +498,7 @@ COMPONENT_INIT
     }
 
     le_mem_GetStats(colourSubPool2, &stats);
-    if ( (le_mem_GetObjectCount(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) || 
+    if ( (le_mem_GetObjectCount(colourSubPool2) != COLOUR_POOL_SIZE - numRelease + NUM_EXPAND_SUB_POOL) ||
          (stats.numFree != NUM_EXPAND_SUB_POOL) )
     {
         printf("Error in sub-pool: %d", __LINE__);

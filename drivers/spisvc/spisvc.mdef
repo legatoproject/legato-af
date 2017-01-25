@@ -7,7 +7,7 @@
 //
 // For use with a MangOH reference design, SPI device has to be plugged into IoT slot 0.
 //
-// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 //-------------------------------------------------------------------------------------------------
 
 preBuilt: $LEGATO_ROOT/drivers/spisvc/spisvc.ko

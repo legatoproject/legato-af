@@ -5,8 +5,8 @@
  *
  *  Module that handles the configuration tree iterator functionality.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

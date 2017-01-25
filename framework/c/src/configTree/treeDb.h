@@ -22,8 +22,8 @@
  *  is deleted.   To cancel a write transaction, just delete the shadow tree without merging
  *  it back into the named tree.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

@@ -15,7 +15,7 @@ files).
 Legato supports @subpage basicUpdateOTA to remotely
 update target devices in the field.
 
-There's also a @ref toolsTarget_fwUpdate target tool available. 
+There's also a @ref toolsTarget_fwUpdate target tool available.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 **/

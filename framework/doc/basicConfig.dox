@@ -100,6 +100,6 @@ The Config Tree system separates each apps' configration data only allowing acce
 
 @todo Document how config data access control lists are specified.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

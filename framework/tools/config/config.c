@@ -5,7 +5,7 @@
  *
  *  Utility to work with a config tree from the command line.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
  *  to license.
  */
 // -------------------------------------------------------------------------------------------------

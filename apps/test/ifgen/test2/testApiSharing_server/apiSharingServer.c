@@ -1,7 +1,7 @@
 /*
  * The "real" implementation of the functions on the server side of the API-sharing test.
  *
- * Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C), Sierra Wireless Inc.
  */
 
 

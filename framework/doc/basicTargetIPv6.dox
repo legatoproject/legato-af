@@ -38,6 +38,6 @@ iface usb0 inet6 static
     netmask 127
 @endverbatim
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

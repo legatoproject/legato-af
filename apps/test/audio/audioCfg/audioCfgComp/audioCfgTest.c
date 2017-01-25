@@ -4,7 +4,7 @@
  * On the target, you must issue the following commands:
  * $ app runProc audioCfgTest --exe=audioCfgTest [-- <audio profile>]
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

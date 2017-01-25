@@ -3,7 +3,7 @@
 #
 #  Generate the Java client and server code for a given API file.
 #
-#  Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+#  Copyright (C) Sierra Wireless Inc.
 #
 # --------------------------------------------------------------------------------------------------
 

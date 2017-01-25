@@ -73,7 +73,7 @@
  *     error will be logged and the SIM will not be unlocked.
  *   - is the SIM is blocked, it just logs an error and does not try to enter the PUK code.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@
  *
  * Legato @ref c_le_cellnet include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

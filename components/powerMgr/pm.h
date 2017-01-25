@@ -3,7 +3,7 @@
  *
  * Local power manager functions.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef COMPONENTS_POWERMGR_PM_H_

@@ -5,7 +5,7 @@
  * Routines for dealing with serial ports. Port configuration, simple reads and writes are handled
  * here.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

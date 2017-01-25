@@ -14,6 +14,6 @@ These topics describe how to use AirVantage for remote administration of your Le
 | @ref c_le_avc                        | API to configure AirVantage connectivity           |
 | @ref c_le_avdata                     | API to setup AirVantage data                       |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
  **/

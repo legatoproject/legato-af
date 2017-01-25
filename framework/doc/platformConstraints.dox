@@ -13,6 +13,6 @@ The AR755x, AR8652, WP750x, and WP8548 platforms have the following limitations:
 | @subpage platformConstraintsTemperature   | X  | X  |   | X |
 | @subpage platformConstraintsATCommand | X  | X  |  X | X |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

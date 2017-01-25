@@ -42,7 +42,7 @@
  * @subsection le_antenna_cell_thres_subsection Thresholds
  *
  * Configurable thresholds are compared to the ADC (Analog to Digital Converter) reading from the
- * antenna diagnostic voltage to determine the antenna state. 
+ * antenna diagnostic voltage to determine the antenna state.
  *
  * Short and Open threshold limits determine the antenna's state:
  *
@@ -51,8 +51,8 @@
  * - close circuit: presence of antenna
  *
  * A short event is reported for the Cellular or Diversity antenna if the ADC value is lower than
- * the corresponding short limit. 
- 
+ * the corresponding short limit.
+
  * <b>Open Threshold Limit</b>
  * - open circuit: no antenna
  *
@@ -136,7 +136,7 @@
  * le_antenna_GetExternalAdc() API gets the external ADC used to monitor the requested antenna.
  *
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -146,7 +146,7 @@
  *
  * Legato @ref c_antenna include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -4,7 +4,7 @@
  *  @file Session.java
  *
  *  Copyright (C) Sierra Wireless, Inc. 2014. All rights reserved.
- *  Use of this work is subject to license.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

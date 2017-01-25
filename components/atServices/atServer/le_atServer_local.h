@@ -2,7 +2,7 @@
  *
  * Implementation of AT commands server API.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_LE_ATSERVER_LOCAL_INCLUDE_GUARD

@@ -24,7 +24,7 @@ int16
 int32
 int64
 
-double 
+double
 
 string
 
@@ -274,6 +274,6 @@ in @c defn.api and @c common.api
 
 <HR>
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

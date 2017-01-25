@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #*******************************************************************************
 
 if ( (LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET MATCHES "ar86") )

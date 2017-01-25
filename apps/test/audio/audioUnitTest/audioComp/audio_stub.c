@@ -1,7 +1,7 @@
 /**
  * This module implements some stub for audio unit tetst.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

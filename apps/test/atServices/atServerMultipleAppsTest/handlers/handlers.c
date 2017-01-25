@@ -1,7 +1,7 @@
 /**
  * This module implements handlers functions for AT commands server API.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

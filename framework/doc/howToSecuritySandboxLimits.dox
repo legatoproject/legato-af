@@ -37,6 +37,6 @@ LE_NO_MEMORY.
 @note See <a href="http://linux.die.net/man/2/prlimit">Linux man pages</a> for details on many of these
 limits.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

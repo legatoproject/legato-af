@@ -26,7 +26,7 @@ arbitration among apps (so multiple apps can share the same resources).
 | @subpage legatoServicesWiFi           | WiFi                                               |    |
 | @subpage legatoAtServices             | AT commands services                               | x  |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/
 

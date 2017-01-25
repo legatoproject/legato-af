@@ -2,7 +2,7 @@
  *
  * This file contains the declaration of the SMS Operatrions Initialization.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SMS_OPS_LOCAL_INCLUDE_GUARD

@@ -50,5 +50,5 @@ merge and git revert (i.e., "Fix bug" not "Fixed bug" or "Fixes bug").
 
 <b>Resolves: #xxx</b> Include the GitHub issue number in this format.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 **/

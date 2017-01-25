@@ -273,7 +273,7 @@ static void ConnectionEventHandler(int fd, int event)
  *
  * <hr>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -281,7 +281,7 @@ static void ConnectionEventHandler(int fd, int event)
  *
  * Legato @ref c_fdMonitor include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_FDMONITOR_INCLUDE_GUARD

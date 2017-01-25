@@ -2,7 +2,7 @@
  *
  * Low-Level Messaging API implementation's "Protocol" module's inter-module interface definitions.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef MESSAGING_PROTOCOL_H_INCLUDE_GUARD

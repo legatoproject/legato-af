@@ -167,6 +167,6 @@ provides :     // Note that space is allowed between the section name and the co
 sources: {httpd.c}
 @endcode
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

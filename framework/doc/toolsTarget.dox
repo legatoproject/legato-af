@@ -18,6 +18,6 @@ Legato has these tools to run on the target:
 | @subpage toolsTarget_pmTool        | set power manager target options                   |
 | @subpage toolsTarget_update        | install, update, and remove software               |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

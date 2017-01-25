@@ -29,7 +29,7 @@
  * For each session, there exists a level, a set of output location flags, and a list of
  * trace keywords, each of which has an "is enabled" flag.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LOG_INCLUDE_GUARD

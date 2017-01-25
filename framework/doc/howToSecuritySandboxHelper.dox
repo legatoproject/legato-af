@@ -10,7 +10,7 @@ to access, and then prompts for permission for the app to use the missing files 
 
 To use @c sbhelper:
 - Create your app as usual filling in all the @ref defFilesAdef sections. Complete as
-much of the requires @ref defFilesAdef_requiresFile section as possible.  
+much of the requires @ref defFilesAdef_requiresFile section as possible.
 - Run @ref toolsHost_sbhelper specifying the target device app name, target type,
 and the IP address (DEST_IP).  If @c DEST_IP isn't specified on the command line,
 the contents of the @c DEST_IP environment variable will be used.
@@ -29,6 +29,6 @@ required files that aren't caught.
 so you must check the resulting app is working properly.
 - automatically determining resource limits isn't supported yet.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

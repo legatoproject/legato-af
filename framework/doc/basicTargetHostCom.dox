@@ -12,6 +12,6 @@ You'll need to @ref basicTargetConfigIP, and setup your login authentication cre
 @note Use the @ref toolsTarget_setNet tool to set your MAC address so you don't have to go through @c ifconfig every time
 you reboot the target.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

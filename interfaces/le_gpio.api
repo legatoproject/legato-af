@@ -107,7 +107,7 @@ bindings:
  * will disable the service for pin 13. Note that specifying the type as bool is vital as the config
  * tool defaults to the string type, and hence any value set will default to false.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -117,7 +117,7 @@ bindings:
  *
  * Legato @ref c_gpio include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //-------------------------------------------------------------------------------------------------
 

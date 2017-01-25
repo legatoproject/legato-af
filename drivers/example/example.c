@@ -9,7 +9,7 @@
  * Values of these two parameters can be overriden in the params: section of the module's .mdef file.
  * See example.mdef file for details.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and

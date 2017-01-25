@@ -16,7 +16,7 @@
  * file recording.
  * When the call is disconnected, the recorded audio is played on local interface (Speaker).
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
  /**
   * This module implements the le_info's tests.
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   *
   * testModemInfo Application shall be installed and executed on target.
   *

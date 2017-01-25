@@ -3,7 +3,7 @@
  * Mutex module's intra-framework header file.  This file exposes type definitions and function
  * interfaces to other modules inside the framework implementation.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SRC_MUTEX_H_INCLUDE_GUARD

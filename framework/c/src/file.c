@@ -5,7 +5,7 @@
  * Routines for dealing with files.  Checking for files, deleting files, doing simple reads, writes
  * and copies are all handled here.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

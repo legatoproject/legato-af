@@ -152,4 +152,4 @@ To uninstall Legato from your development PC:
    ```./modules``` - contains other repositories that are extending Legato.
 
 * * *
-_Copyright (C) Sierra Wireless Inc. Use of this work is subject to license._
+_Copyright (C) Sierra Wireless Inc. _

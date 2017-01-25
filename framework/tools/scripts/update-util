@@ -1,6 +1,6 @@
 #! /usr/bin/python2
 
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 
 # Combine two system update files by the following rules
 # No version checking is done to see if updates are in version order.
@@ -125,7 +125,7 @@ def Help():
         if lastHeading == 'verbatim':
             print '@endverbatim'
         print '<hr>'
-        print 'Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.'
+        print 'Copyright (C) Sierra Wireless Inc. '
     else:
         print __doc__
 

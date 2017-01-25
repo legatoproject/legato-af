@@ -4,7 +4,7 @@
  * This module contains initialization functions for the Legato signal events system that should
  * be called by the build system.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 #ifndef LEGATO_SIG_INCLUDE_GUARD

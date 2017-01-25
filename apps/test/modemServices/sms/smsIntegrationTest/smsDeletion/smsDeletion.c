@@ -13,9 +13,9 @@
   *    Automatically from storage (see traces, pa_sms_DelMsgFromMem()). All handlers are removed and
   *    application exits.
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   *
-  * Use of this work is subject to license.
+  *
   *
   */
 

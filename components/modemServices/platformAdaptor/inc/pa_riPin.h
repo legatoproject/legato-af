@@ -1,6 +1,6 @@
 /** @file pa_riPin.h
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_PARIPIN_INCLUDE_GUARD

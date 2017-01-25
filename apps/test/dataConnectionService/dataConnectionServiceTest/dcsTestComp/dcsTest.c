@@ -6,7 +6,7 @@
  * - Check with connection status notifications if the data connection is established
  * - Close the default data connection
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

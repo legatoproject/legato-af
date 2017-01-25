@@ -46,7 +46,7 @@ $ log stoptrace keyword processName/componentName
  *    destination is the "processName/componentName" followed by a '/' character.
  *    commandParameter is the string specific to the command.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

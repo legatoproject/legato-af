@@ -5,7 +5,7 @@
  * Functions exported by the Update Daemon's "system" module, which encapsulates detailed knowledge
  * of how to operate on systems.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

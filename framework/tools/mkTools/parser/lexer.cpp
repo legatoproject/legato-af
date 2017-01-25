@@ -5,7 +5,7 @@
  * @warning Don't use isalpha() or isalnum() in this file, because their results are
             locale-dependent.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

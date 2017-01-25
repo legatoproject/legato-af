@@ -9,6 +9,6 @@ These topics describe how to start working with a Legato host PC and a target de
 | @subpage basicTargetSW | install software on target   |
 | @subpage basicTargetRecover   | restore target with Linux Android SDK   |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

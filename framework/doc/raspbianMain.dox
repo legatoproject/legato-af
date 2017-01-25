@@ -5,7 +5,7 @@ This topic provides some helpful tips to install Legato on a Raspbian distributi
 @section raspbianMain_downloadRaspbian_downloadInstall Download and Install
 
 <a href="https://www.raspberrypi.org/downloads/raspbian/">Download Raspbian</a>
-Lite image from the official website. 
+Lite image from the official website.
 
 Then, install the Raspbian system on your Raspberry Pi.
 
@@ -95,7 +95,7 @@ You also need to edit:
 - add @b "SmackProcessLabel=syslog" in @b [Service]
 
 To allow you to login as root:
-- edit @c /etc/ssh/sshd_config 
+- edit @c /etc/ssh/sshd_config
 - set @b PermitRootLogin to @b Yes.
 
 On the <b>Host PC</b>, download Legato from the
@@ -147,11 +147,11 @@ iface wlan0 inet manual
 
 The @ref wifi_wifiap_testapp "WiFi access point sample app" demonstrates how one Internet connection
 can be shared with multiple WiFi devices. To have Wireless WAN connectivity on a Raspberry Pi, a
-module like <a href="http://linkwave.co.uk/">Linkwave</a>'s 
+module like <a href="http://linkwave.co.uk/">Linkwave</a>'s
 <a href="http://linkwave.co.uk/the-pilot">The PiloT</a> is required. The PiloT is known to work with
 Legato and Raspberry Pi, and can be used to create a wireless WiFi hotspot with the
 @ref wifi_wifiap_testapp "WiFi access point sample app".
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

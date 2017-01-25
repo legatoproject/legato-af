@@ -39,7 +39,7 @@
  * is unlikely to occur in normal data.  Whenever a block is allocated or released, the
  * guard bands are checked for corruption and any corruption is reported.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 #include "legato.h"

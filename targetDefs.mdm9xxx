@@ -2,7 +2,7 @@
 # Definitions specific to Sierra Wireless modules that are based on the Qualcomm MDM9xxx chipset
 # family.
 #
-# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# Copyright (C), Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 PROPRIETARY_UTIL_DIR := $(PA_DIR)/qmi/components

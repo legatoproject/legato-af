@@ -7,7 +7,7 @@
 // will exit with EXIT_FAILURE (or will hang forever, if the destructor never runs or one of
 // the completion status check functions deadlocks).
 //
-// Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 // -------------------------------------------------------------------------------------------------
 
 #include "legato.h"

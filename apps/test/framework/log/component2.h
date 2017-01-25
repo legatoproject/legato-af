@@ -1,7 +1,7 @@
  /**
   * This is component 2 for the multi-component logging unit test.
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   */
 
 #include "legato.h"

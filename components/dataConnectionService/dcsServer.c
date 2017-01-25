@@ -2,7 +2,7 @@
 /**
  *  Data Connection Server
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
  *
  * The Data Connection Service (DCS) supports two technologies in this version:
  * - the 'Mobile' technology, with a data connection based on the Modem Data Control service (MDC)

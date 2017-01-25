@@ -4,7 +4,7 @@
  *
  * Interfaces provided by the Update Unpacker to other modules inside the Update Daemon.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

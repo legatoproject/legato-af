@@ -1,6 +1,6 @@
 /** @file pa_pcm.h
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_PAPCM_INCLUDE_GUARD

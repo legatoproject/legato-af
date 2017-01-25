@@ -6,7 +6,7 @@
  * specified as an command line argument and the song selection is done interactively on the command
  * line.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

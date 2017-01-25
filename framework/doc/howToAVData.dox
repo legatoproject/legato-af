@@ -61,6 +61,6 @@ There are several ways to read an asset's data from AirVantage:
  - enable LWM2M_OBSERVE on the server and any changes to the asset will be pushed to the server
    by the device.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
  **/

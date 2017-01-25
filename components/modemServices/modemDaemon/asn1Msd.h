@@ -2,7 +2,7 @@
  *
  * This file contains the declarations of the ASN1 MSD builder.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_ASN1_MSD_INCLUDE_GUARD

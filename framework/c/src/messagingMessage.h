@@ -2,7 +2,7 @@
  *
  * @ref c_messaging implementation's "Message" module's inter-module interface definitions.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_MESSAGING_MESSAGE_H_INCLUDE_GUARD

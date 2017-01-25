@@ -37,7 +37,7 @@
  * The Safe Reference Map is shared between threads, though, so any access to it must be protected
  * from races.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

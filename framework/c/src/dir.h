@@ -3,7 +3,7 @@
  *
  * Declaration of the framework's internal directory manipulation functions.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 

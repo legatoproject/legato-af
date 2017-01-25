@@ -5,7 +5,7 @@
  * Utility functions needed by the installers (Update Daemon and the start program's "golden"
  * system installer).
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

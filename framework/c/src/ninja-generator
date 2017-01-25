@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------------------------------
 # Ninja build script generator for the liblegato build.
 #
-# Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 # Ensure all the required variables are set.

@@ -3,7 +3,7 @@
 TMP_DIR=.av-pack.tmp
 
 copyright="
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 "
 
 . "$(dirname "${BASH_SOURCE[0]}")/shlib"

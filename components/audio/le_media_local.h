@@ -1,6 +1,6 @@
 /** @file le_media_local.h
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_LEMEDIALOCAL_INCLUDE_GUARD

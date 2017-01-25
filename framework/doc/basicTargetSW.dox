@@ -11,6 +11,6 @@ $ update build/wp85/system.wp85.update 192.168.2.2
 
 See @ref toolsTarget_update for more information on how to use the @c update tool.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

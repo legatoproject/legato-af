@@ -57,6 +57,6 @@ the build directory for your target  (e.g., @c build/wp85/system.wp85.update).
 See @ref basicTargetSW for details on how to install your system update pack onto your
 target device.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

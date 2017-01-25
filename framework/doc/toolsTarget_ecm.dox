@@ -32,6 +32,6 @@ Use the @c configEcm tool to setup an ECM interface.
 @note <code>configEcm default</code> is only used by the Legato startup script. Use
 <code>configEcm on</code>without IP parameters to assign the default IP address.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

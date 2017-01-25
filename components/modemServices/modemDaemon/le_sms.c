@@ -22,7 +22,7 @@
  * the message length, then it encodes the message in PDU if it is a Text or a Binary message, and
  * finally it forwards the message to the modem for sending.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 #include "legato.h"

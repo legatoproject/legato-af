@@ -2,7 +2,7 @@
 # Definitions specific to Sierra Wireless modules that are based on the Qualcomm MDM9x28 chipset
 # family.
 #
-# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# Copyright (C), Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 export LEGATO_QMI_MODEM_PA_SRC := $(PA_DIR)/qmi/src/components/le_pa/mdm9x28/le_pa

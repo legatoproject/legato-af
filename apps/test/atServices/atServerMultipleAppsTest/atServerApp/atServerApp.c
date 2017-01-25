@@ -17,7 +17,7 @@
  * If the client that created the commands dies, the other client can't use
  * them anymore, an ERROR will be sent instead
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

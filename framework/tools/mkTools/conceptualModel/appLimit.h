@@ -3,7 +3,7 @@
  * Base class for various configurable limits, such as memory limits and CPU limits, that
  * can be placed on processes, applications, etc.
  *
- * Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

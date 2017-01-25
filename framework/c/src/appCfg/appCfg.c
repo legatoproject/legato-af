@@ -5,7 +5,7 @@
  * database's system tree.  The caller of this API must be have privileges to read the configuration
  * system tree.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

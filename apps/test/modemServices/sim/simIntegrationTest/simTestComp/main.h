@@ -2,7 +2,7 @@
   * This module is for unit testing of the modemServices component.
   *
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   *
   */
 

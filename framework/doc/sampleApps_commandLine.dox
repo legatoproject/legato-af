@@ -35,7 +35,7 @@ root@swi-mdm9x15:/legato/apps/bb20bdcce7eb03179af9c62adf619e19/read-only/bin#  .
 
 This is how to access permissions to control read/write, group members' and others' read access:
 @code
-root@swi-mdm9x15:/legato/apps/bb20bdcce7eb03179af9c62adf619e19/read-only/bin# ./fileInfo permissions /etc/hosts --max-count=10 
+root@swi-mdm9x15:/legato/apps/bb20bdcce7eb03179af9c62adf619e19/read-only/bin# ./fileInfo permissions /etc/hosts --max-count=10
 @endcode
 
 @note The long hexadecimal number in the apps' directory is unique to each installed app.
@@ -45,6 +45,6 @@ root@swi-mdm9x15:/legato/apps/bb20bdcce7eb03179af9c62adf619e19/read-only/bin# ./
 See <br>
 @ref basicAppsCreate
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

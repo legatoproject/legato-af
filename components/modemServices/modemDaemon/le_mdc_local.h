@@ -3,7 +3,7 @@
  *
  * Local Modem Data Control (MDC) Definitions
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_MDC_LOCAL_INCLUDE_GUARD

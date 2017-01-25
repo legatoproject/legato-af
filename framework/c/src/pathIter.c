@@ -6,7 +6,7 @@
  *
  * See @ref c_pathIter for details.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  * license.
  */
 //--------------------------------------------------------------------------------------------------

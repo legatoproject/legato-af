@@ -8,7 +8,7 @@
  *      2) Only use the 'key=value' format for properties.
  *      3) Comment lines always start with a '#' character.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

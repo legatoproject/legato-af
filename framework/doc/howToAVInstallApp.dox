@@ -49,6 +49,6 @@ $ av-pack -f helloWorld.wp85.signed abcCo.jsmith.helloWorld _build_helloWorld/wp
 See @ref howToAVUploadApp to upload your Application Bundle to your device through Air Vantage.
 
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

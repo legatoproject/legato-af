@@ -2,7 +2,7 @@
   * This module implements the le_pos's unit tests.
   *
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   *
   */
 

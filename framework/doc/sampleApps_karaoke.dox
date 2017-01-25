@@ -29,7 +29,7 @@ Run the app with the player process's standard out connected to the terminal:
 $ app runProc karaoke player
 @endcode
 
-The default song's lyrics will print to the terminal. 
+The default song's lyrics will print to the terminal.
 
 In another terminal, you can connect to the app's selector process interactively:
 @code
@@ -37,12 +37,12 @@ $ app runProc karaoke selector normal
 @endcode
 
 The player's output will slow down because the speed was changed to @e normal (from the @c .adef
-@e fast default). 
+@e fast default).
 
 A menu is also provided to change songs.
 
 Enter @ Ctrl+C in both windows to kill processes, and stop the app.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

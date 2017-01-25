@@ -2,7 +2,7 @@
 /**
  * @file sdefParser.h  Parser for .sdef files.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

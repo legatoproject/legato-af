@@ -6,7 +6,7 @@
  * The user time is available to store a time that will be updated with the battery backed up
  * (VCOIN) clock.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

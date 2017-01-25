@@ -3,7 +3,7 @@
  *
  * API for killing processes.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 #ifndef LEGATO_SRC_KILLER_INCLUDE_GUARD
 #define LEGATO_SRC_KILLER_INCLUDE_GUARD

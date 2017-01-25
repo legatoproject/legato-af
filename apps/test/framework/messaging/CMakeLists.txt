@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------------------------------
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #---------------------------------------------------------------------------------------------------
 
 ### Copy test setup script to test program output directory.

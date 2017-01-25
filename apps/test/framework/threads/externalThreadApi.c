@@ -8,7 +8,7 @@
  * to access thread-specific data (such as the Mutex API), and then clean up after itself using
  * le_thread_CleanupLegatoThreadData().
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

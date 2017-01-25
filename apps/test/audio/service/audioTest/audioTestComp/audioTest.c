@@ -4,7 +4,7 @@
  * This test opens the Audio on USB for outgoing calls, it opens the Audio on Microphone and Speaker
  * for incoming calls.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

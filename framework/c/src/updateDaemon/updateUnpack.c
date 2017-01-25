@@ -7,7 +7,7 @@
  *
  * This is single-threaded, event-driven code that shares the main thread's event loop.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

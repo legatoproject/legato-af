@@ -13,7 +13,7 @@
   $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- PB I2S /usr/share/sounds/0-to-9.wav
   $     PAUSE=2 RESUME=3
  @endverbatim
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

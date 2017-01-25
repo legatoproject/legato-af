@@ -6,7 +6,7 @@
  *       use a third party smack library so that we don't need to maintain this implementation when
  *       the smackfs file interface changes.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "smack.h"

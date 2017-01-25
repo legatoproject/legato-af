@@ -4,7 +4,7 @@
  *
  * Default implementation of @ref pa_avc interface
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

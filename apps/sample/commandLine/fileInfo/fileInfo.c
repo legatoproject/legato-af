@@ -9,7 +9,7 @@
  * Takes a command, followed by a list of file/directory paths.  Accepts additional options like
  * -x or --max-count.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

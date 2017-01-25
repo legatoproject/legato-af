@@ -114,7 +114,7 @@
  * The acquisition rate set with le_pos_SetAcquisitionRate() will take effect once a request of
  * activation of the positioning service by le_posCtrl_Request() is done.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -135,7 +135,7 @@
  *
  * Legato @ref c_pos include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -9,7 +9,7 @@
 //
 // See the comment for ThreadMainFunction() for details on how the rest of this test works.
 //
-// Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 // -------------------------------------------------------------------------------------------------
 
 /* NOTE:

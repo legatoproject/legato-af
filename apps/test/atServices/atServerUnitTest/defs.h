@@ -1,7 +1,7 @@
 /**
  * defs.h implemets shared definitions, variables, ... between main and server
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 #ifndef _DEFS_H

@@ -28,5 +28,5 @@ turn-off time series in the necessary @c targetdef files (i.e., comment starting
 For details on time series functions, see AirVantage Data API @ref le_avdata_timeseries, Legato
 16.10.0 Release Notes, and Legato 16.10.0 Upgrade Notes.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 **/

@@ -10,7 +10,7 @@
 # - TARGET_CC = path to the appropriate C compiler for the target.
 # - TARGET_SANDBOX_IMPORT = selector for which set of files to import into sandboxes on the target.
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 BUILD_PRODUCTS = 	config		\

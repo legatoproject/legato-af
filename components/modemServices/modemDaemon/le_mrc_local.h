@@ -2,7 +2,7 @@
  *
  * This file contains the declaration of the MRC Initialization.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_MRC_LOCAL_INCLUDE_GUARD

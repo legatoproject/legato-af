@@ -9,7 +9,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless, Inc. 2015. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless, Inc. 2015.
  */
 
 
@@ -17,7 +17,7 @@
  *
  * Legato @ref c_pa_rtc include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_PARTC_INCLUDE_GUARD

@@ -47,7 +47,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@
  *
  * This file includes preprocessor macros that can be used to fine tune the Legato framework.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 #ifndef LE_BUILD_CONFIG_H_INCLUDE_GUARD

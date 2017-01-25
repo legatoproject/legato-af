@@ -4,7 +4,7 @@
  * API for managing Legato framework daemons.  The framework daemons include the Service Directory,
  * Log Control, Configuration Tree and Watchdog.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 #include "legato.h"
 #include "frameworkDaemons.h"

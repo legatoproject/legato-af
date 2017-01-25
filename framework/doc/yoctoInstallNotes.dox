@@ -16,7 +16,7 @@ detected by your host every time you reboot the device. See @ref basicTargetConf
 Either boot with an Ethernet cable plugged in and let the device obtain an IP address using
 DHCP, or enable CDC-ECM and the micro-USB cable. You can then determine the IP address using
 @c ifconfig on the console or provide a fixed IP from your DHCP server. Then use @c ssh and @c scp to
-access the device and transfer files. 
+access the device and transfer files.
 @note ssh over Ethernet is temporarily disabled in Legato 16.10.0.
 
 @section yoctoInstallNotes_yoctoDefUSB Change Default USB Classes
@@ -61,6 +61,6 @@ Remember to untar the generated rootfs to an exported file system. The file poin
 rootfs link contains the most recent root file system. There’s more info available at
 <a href="https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt">kernel docs</a>.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

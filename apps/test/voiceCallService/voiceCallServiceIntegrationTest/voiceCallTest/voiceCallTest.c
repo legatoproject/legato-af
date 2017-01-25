@@ -2,7 +2,7 @@
   * This module implements the le_voicecall's integration tests.
   *
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   *
   */
 

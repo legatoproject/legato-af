@@ -26,6 +26,6 @@ still be added to the app's @ref defFilesAdef or @ref defFilesCdef files.
 @verbatim --help, -h @endverbatim
 > Display help and exit.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

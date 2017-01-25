@@ -25,7 +25,7 @@
  * Groups are created and deleted by modifying the /etc/group file.  File backup and recover and
  * file locking is handled in the same way as the passwd file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

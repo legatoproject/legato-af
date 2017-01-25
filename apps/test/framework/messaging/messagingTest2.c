@@ -6,7 +6,7 @@
  * - Create a server thread and two client threads in the same process.
  * - Use synchronous request-response.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -2,7 +2,7 @@
  *
  * Generic File System API.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LE_FILE_SYSTEM_H_INCLUDE_GUARD

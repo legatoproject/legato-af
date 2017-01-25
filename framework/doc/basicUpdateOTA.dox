@@ -19,5 +19,5 @@ update files (@ref buildToolsmkapp followed by @ref toolsHost_av-pack) or bundle
 the one <c>.update</c> pack file, and it provides built-in rollback recovery. The <c>.update</c>
 file is used by the Legato application framework, so the target doesn't need to reset to apply the update.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 **/

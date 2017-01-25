@@ -2,7 +2,7 @@
 # Determines which target include file to include based on the goal passed to make on the
 # command-line.
 #
-# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# Copyright (C), Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 ifeq ($(MAKECMDGOALS),localhost)

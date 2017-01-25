@@ -149,6 +149,6 @@ if the "POWER_CONTROLLER" sensor temperature decreases below the:
 @note Please refer to the Product Technical specification document of your platform for further
 details.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

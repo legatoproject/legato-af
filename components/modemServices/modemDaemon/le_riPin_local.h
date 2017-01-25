@@ -3,7 +3,7 @@
  *
  * Local the Ring Indicator signal API Definitions
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_RIPIN_LOCAL_INCLUDE_GUARD

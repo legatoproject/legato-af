@@ -22,7 +22,7 @@
  *  -# What threads, if any, are currently waiting on a given semaphore?
  *    - Each Semaphore object has a list of Per-Thread Semaphore Records for this.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

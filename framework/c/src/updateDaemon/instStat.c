@@ -6,7 +6,7 @@
  * installed or removed.  These applications may not be directly involved in the install process,
  * but may just need to know that the system has changed.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

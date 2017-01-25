@@ -4,7 +4,7 @@
  *
  * This file contains the source code of the top level ultra lower power mode API.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -2,7 +2,7 @@
  *
  * Implementation of the AT commands server <-> AT commands client bridge.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_LE_BRIDGE_INCLUDE_GUARD

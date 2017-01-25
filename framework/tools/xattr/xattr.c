@@ -3,7 +3,7 @@
  * This is a temporary extended attributes command line tool used to view and set extended
  * attributes.  This tool should be replaced by a third party tool if possible.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

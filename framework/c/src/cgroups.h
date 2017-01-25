@@ -97,7 +97,7 @@
  * The functions in this API are not thread safe.  Other synchronization methods must be used to
  * control concurrent access to the cgroups.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SRC_CGROUPS_INCLUDE_GUARD

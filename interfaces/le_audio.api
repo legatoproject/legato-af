@@ -3,7 +3,7 @@
  * @page c_audio Audio
  *
  * @ref le_audio_interface.h "API Reference" <br>
- * @ref platformConstraintsAudio Constraints 
+ * @ref platformConstraintsAudio Constraints
  * <HR>
  *
  * The Audio API handles audio interfaces including play and record supported formats.
@@ -34,9 +34,9 @@
  *
  * @section le_audio_configuration Configure the Audio
  *
- * The audio profile can be set with the le_audio_SetProfile() function. 
+ * The audio profile can be set with the le_audio_SetProfile() function.
  *
- * @warning Ensure to check the number of supported audio profiles for your specific platform. 
+ * @warning Ensure to check the number of supported audio profiles for your specific platform.
  *
  * An audio profile can be retrieved with le_audio_GetProfile() and set with le_audio_SetProfile().
  *
@@ -118,7 +118,7 @@
  * @note Opening a Legato audio stream doesn’t necessarily interact with the audio HW interface.
  * On most platforms, it only allocates a context in memory. The audio path becomes active when the
  * streams are plugged into a connector.
- * 
+ *
  *
  * @section le_audio_streams Control an Audio Stream
  *
@@ -294,7 +294,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 
@@ -304,7 +304,7 @@
  *
  * Legato @ref c_audio include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -44,6 +44,6 @@ To apply the updated rules @c reboot your target.
 
 @note To enable usb0 again comment out the eth0 line and uncomment the usb0 line.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

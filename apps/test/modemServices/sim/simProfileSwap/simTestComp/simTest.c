@@ -6,7 +6,7 @@
   $ app start simProfileSwap
   $ app runProc simProfileSwap --exe=simProfileSwap -- <ext/esim> <gemalto/oberthur/gd/morpho> <ecs/commercial>
  @endverbatim
-* Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+* Copyright (C) Sierra Wireless Inc.
 *
 */
 

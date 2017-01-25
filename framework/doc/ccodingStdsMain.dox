@@ -43,7 +43,7 @@ Each module should contain a comment block at the top of the file that describes
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 @endcode
 
@@ -374,6 +374,6 @@ Configure  your editor(s) now!  (...and, while you're at it, tell your editor no
 
 <HR>
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

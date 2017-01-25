@@ -10,7 +10,7 @@
  * My apologies to vegetarians and cattle rights advocates.  No actual bovines were harmed in
  * the making of this protocol.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef BURGER_PROTOCOL_H_INCLUDE_GUARD

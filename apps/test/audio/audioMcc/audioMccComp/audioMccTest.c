@@ -5,7 +5,7 @@
  * $ app start audioMccTest
  * $ app runProc audioMccTest --exe=audioMccTest -- <Phone number> <test case> [main audio path] [file's name]
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

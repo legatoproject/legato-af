@@ -10,8 +10,8 @@
  *  This module also takes care of handling call backs to the user so that they can know their
  *  request has been completed.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

@@ -2,7 +2,7 @@
  *
  * Includes for updateDaemon.c to talk to updateCtrl.c
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef _UPDATECTRL_INCLUDE_GUARD_

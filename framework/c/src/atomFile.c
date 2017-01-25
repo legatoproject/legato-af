@@ -18,7 +18,7 @@
  * during the re-naming should keep the original file intact. All the aforementioned steps are
  * followed in this API implementation,
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

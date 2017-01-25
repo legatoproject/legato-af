@@ -3,7 +3,7 @@
  * This file contains definitions exported by the Hash Map module to other modules inside
  * the Legato framework.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef _LEGATO_HASHMAP_H_INCLUDE_GUARD

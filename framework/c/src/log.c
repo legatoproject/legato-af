@@ -4,7 +4,7 @@
  * Configuration of log messages is also handled by this module.  Writing traces to the log and
  * enabling traces by keyword is also handled here.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

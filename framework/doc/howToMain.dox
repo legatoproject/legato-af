@@ -19,6 +19,6 @@ This section contains topics about frequently needed tasks:
 | @subpage howToLogs                 | accessing and use Legato Logs                               |
 | @subpage howToSoftwareUpdate       | software update features                                    |
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
  **/

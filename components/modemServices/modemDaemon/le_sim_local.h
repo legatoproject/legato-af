@@ -2,7 +2,7 @@
  *
  * This file contains the declaration of the SIM Initialization.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SIM_LOCAL_INCLUDE_GUARD

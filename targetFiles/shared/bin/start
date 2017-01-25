@@ -1,5 +1,5 @@
 #! /bin/sh
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 
 LEGATO_SYSTEM_PATH="/legato/systems/current/bin"
 

@@ -43,6 +43,6 @@ resource limits, an isolated app can still cause damage by consuming all availab
 
 @todo Add support for flash and network consumption limits on apps.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

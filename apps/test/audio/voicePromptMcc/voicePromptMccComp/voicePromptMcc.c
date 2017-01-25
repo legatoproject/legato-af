@@ -24,7 +24,7 @@
  * @note If Ctrl-C is issued while the call is connected, the last voice prompt (VOICE_PROMPT_END)
  *       won't be played since we exit before the playback starts.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

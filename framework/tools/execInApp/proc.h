@@ -3,7 +3,7 @@
  *
  * API for working with child processes.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SRC_PROC_INCLUDE_GUARD

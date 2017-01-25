@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 
 # run every executable file in scripts with option -h except legs and this file
 # redirect help output to a page in docs

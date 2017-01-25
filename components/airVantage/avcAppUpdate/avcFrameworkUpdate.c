@@ -9,7 +9,7 @@
  *    legato/1/0  -  Framework update object.  This object is used to handle framework bundle
  *                   updates over lwm2m.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

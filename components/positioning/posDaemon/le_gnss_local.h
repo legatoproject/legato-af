@@ -3,7 +3,7 @@
  *
  * Local GNSS Definitions
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_GNSS_LOCAL_INCLUDE_GUARD

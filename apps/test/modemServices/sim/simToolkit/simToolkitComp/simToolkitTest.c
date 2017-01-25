@@ -6,7 +6,7 @@
   $ app start simToolkit
   $ app runProc simToolkit --exe=simToolkit -- <accept/reject/none> [<APN> <UserName> <Password>]
  @endverbatim
-* Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
+* Copyright (C) Sierra Wireless, Inc.
 *
 */
 

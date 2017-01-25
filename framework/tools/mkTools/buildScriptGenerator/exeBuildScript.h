@@ -4,7 +4,7 @@
  *
  * Functions provided by the Executables Build Script Generator to other build script generators.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

@@ -243,7 +243,7 @@
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -251,7 +251,7 @@
  *
  * Legato @ref c_atomFile include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_ATOMFILE_INCLUDE_GUARD

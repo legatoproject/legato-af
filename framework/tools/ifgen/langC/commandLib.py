@@ -1,7 +1,7 @@
 #
 # Implement the C language specific parts of the ifgen command line tool
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 
 # System libraries

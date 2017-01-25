@@ -1,6 +1,6 @@
 /** @file le_antenna_local.h
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_LEANTENNALOCAL_INCLUDE_GUARD

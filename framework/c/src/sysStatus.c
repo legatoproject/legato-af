@@ -5,7 +5,7 @@
  * Functions to do with manipulating the status of a system (and typically
  * the current system) used by updateDaemon and supervisor
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

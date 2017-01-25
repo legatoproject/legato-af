@@ -1,7 +1,7 @@
 #
 # C code generator functions for server implementation files
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 
 import os

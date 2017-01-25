@@ -35,6 +35,6 @@ root@swi-mdm9x15:~# app stop <app name>
 
 Run @c app @c help for options.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

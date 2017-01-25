@@ -37,7 +37,7 @@
  * need to be started for the application.  However, an application may contain other processes not
  * in this list, processes that were forked by processes within the app.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

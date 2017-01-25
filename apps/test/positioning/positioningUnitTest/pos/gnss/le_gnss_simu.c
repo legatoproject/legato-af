@@ -5,7 +5,7 @@
  * This file contains the simulation functions for the GNSS API.
  * Refer to le_gnss_interface.h for info about the used functions
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

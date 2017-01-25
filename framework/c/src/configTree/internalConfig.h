@@ -6,8 +6,8 @@
  *  This module handles the details for managing the configTree's own configuration.  The configTree
  *  looks in the "system" tree for all of it's configuration.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

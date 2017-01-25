@@ -28,7 +28,7 @@
  *  -# What type of mutex is a given mutex? (recursive?)
  *    - Stored in each Mutex object as a boolean flag.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

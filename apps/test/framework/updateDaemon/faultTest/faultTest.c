@@ -8,7 +8,7 @@
  * Multiple instances of this program can be called with different arguments to exercise the
  * different recovery actions of the Supervisor.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 #include "legato.h"
 

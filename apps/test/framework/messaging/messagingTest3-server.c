@@ -2,7 +2,7 @@
 /**
  * Server for unit test 3 for the Low-Level Messaging APIs.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

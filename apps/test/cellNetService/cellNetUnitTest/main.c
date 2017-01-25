@@ -24,7 +24,7 @@
  *      g. Cellular network events handler are removed
  *      h. Simulate a cellular network event to check that handlers are removed
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

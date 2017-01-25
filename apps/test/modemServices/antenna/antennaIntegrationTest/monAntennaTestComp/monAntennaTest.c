@@ -14,7 +14,7 @@
  * The status handler counts the number of changing state: after a configured state changement, the
  * handler is unregistered.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

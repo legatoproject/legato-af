@@ -7,8 +7,8 @@
  *  functions allow detecting tree names within a path, as well as the separation of the path from
  *  the tree name.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

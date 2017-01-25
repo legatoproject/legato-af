@@ -1,7 +1,7 @@
 /**
  * This module implements the unit tests for RI Pin API.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

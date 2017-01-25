@@ -354,7 +354,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 
@@ -362,7 +362,7 @@ Jan  3 02:37:56  INFO  | processName[pid]/componentName T=threadName | fileName.
  *
  * Legato @ref c_logging include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_LOG_INCLUDE_GUARD

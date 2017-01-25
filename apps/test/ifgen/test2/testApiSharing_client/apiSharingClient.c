@@ -3,7 +3,7 @@
  * Client side of the API-sharing test, which tests that two interfaces can exist on the same
  * component that both use the same .api file.
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  **/
 //--------------------------------------------------------------------------------------------------
 

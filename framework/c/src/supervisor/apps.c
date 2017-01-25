@@ -52,7 +52,7 @@
  * the client.  These created processes are deleted as soon as the client disconnects so that when
  * the app is started normally only the configured processes are run.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

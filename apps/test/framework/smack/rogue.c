@@ -6,7 +6,7 @@
  * @todo Currently this app must run as a non-root user but once onlycap is set this process should
  *       be run as root.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

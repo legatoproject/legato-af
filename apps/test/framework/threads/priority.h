@@ -2,7 +2,7 @@
 // Header file for thread priority tests.  These functions are called by the
 // main module (main.c).
 //
-// Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+// Copyright (C) Sierra Wireless Inc.
 // -------------------------------------------------------------------------------------------------
 
 #ifndef LE_PRIORITY_TEST_H_INCLUSION_GUARD

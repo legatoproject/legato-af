@@ -63,7 +63,7 @@
  * Use smack_SetRule() to set an explicit SMACK rule that gives a specified subject access to a
  * specified object.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_SRC_SMACK_INCLUDE_GUARD

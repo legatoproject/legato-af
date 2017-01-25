@@ -189,7 +189,7 @@ $ foo bar baz
  *
  * <HR>
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 //--------------------------------------------------------------------------------------------------
@@ -197,7 +197,7 @@ $ foo bar baz
  *
  * Legato @ref c_args include file.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_ARGS_INCLUDE_GUARD

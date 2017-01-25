@@ -10,7 +10,7 @@
  *  Systems"
  *  - N.S0005-0_v1.0  "Cellular Radiotelecommunications Intersystem Operations"
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef CDMAPDU_INCLUDE_GUARD

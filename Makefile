@@ -32,7 +32,7 @@
 #
 # Targets to be built for release can be selected with RELEASE_TARGETS.
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices needed by the release process:

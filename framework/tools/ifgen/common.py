@@ -1,7 +1,7 @@
 #
 # Common definitions and functions shared by different language packages
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 #
 
 

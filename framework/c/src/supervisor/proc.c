@@ -6,7 +6,7 @@
  * state information.  However, a processes state must be updated by calling the
  * proc_SigChildHandler() from within a SIGCHILD handler.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"

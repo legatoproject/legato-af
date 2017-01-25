@@ -7,7 +7,7 @@
  *  - Tests creating and advertising services and opening services.
  *  - Also tests for conflicts with server and client being in the same process.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

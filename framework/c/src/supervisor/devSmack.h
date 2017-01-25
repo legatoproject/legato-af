@@ -4,7 +4,7 @@
  * Internal API for generating SMACK labels for device files.  This API should be used consistently
  * for all device files so that device file labels are consistent and unique.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 #ifndef LEGATO_SRC_DEVICE_SMACK_INCLUDE_GUARD
 #define LEGATO_SRC_DEVICE_SMACK_INCLUDE_GUARD

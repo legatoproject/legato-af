@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------------------------------
 # make definitions specific to Sierra Wireless WP85xx modules.
 #
-# Copyright (C), Sierra Wireless Inc.  Use of this work is subject to license.
+# Copyright (C), Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 include targetDefs.mdm9x15

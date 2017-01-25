@@ -7,7 +7,7 @@
  * - if builtMsdSize > 1, the MSD has been already encoded or imported;
  * - if builtMsdSize <= 1, the MSD is not yet encoded nor imported.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  */
 

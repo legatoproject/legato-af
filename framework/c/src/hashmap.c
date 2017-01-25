@@ -1,6 +1,6 @@
 /** @file hashmap.c
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  *
  * Parts of this file are Copyright (C) 2007 The Android Open Source Project
  *

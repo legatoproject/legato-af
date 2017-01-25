@@ -86,6 +86,6 @@ in the @c .adef and @c .cdef files @c requires section.
 Although it's not recommended, you can turn-off sandboxing by setting @ref defFilesAdef_sandboxed
 to @c false.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

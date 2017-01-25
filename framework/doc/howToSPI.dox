@@ -27,7 +27,7 @@ Install @c spidev:
 @code
 root@swi-mdm9x15:~/ktest_dir# modprobe spidev
 @endcode
- 
+
 Check @c spidev is now listed:
 @code
 root@swi-mdm9x15:~/ktest_dir# lsmod
@@ -53,7 +53,7 @@ After you've copied your kernel module @c .ko file, install it like this:
 @code
 root@swi-mdm9x15:~/ktest_dir# insmod spisvc.ko
 @endcode
- 
+
 Check @c spisvc is installed:
 @code
 root@swi-mdm9x15:~/ktest_dir# lsmod
@@ -79,6 +79,6 @@ Start the @c spisvc:
 root@swi-mdm9x15:~/ktest_dir# app start spisvc
 @endcode
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

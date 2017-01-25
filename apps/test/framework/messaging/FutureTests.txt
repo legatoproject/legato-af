@@ -22,4 +22,4 @@ Test 7:
  - Re-spawn server.
  - Check that client can reconnect to service.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.

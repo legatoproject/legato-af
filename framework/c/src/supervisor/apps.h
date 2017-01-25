@@ -3,7 +3,7 @@
  *
  * API for managing all Legato applications.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 #ifndef LEGATO_SRC_APPS_INCLUDE_GUARD
 #define LEGATO_SRC_APPS_INCLUDE_GUARD

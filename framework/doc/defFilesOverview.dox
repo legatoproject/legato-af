@@ -108,6 +108,6 @@ Even though unsanboxed apps aren't constrained the same way sandboxed apps are c
 Supervisor will still enforce @ref defFilesAdef_cpuShare and @ref defFilesAdef_processMaxFileBytes
 limits.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

@@ -2,7 +2,7 @@
  *
  * Implementation of device access.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #ifndef LEGATO_LE_DEV_INCLUDE_GUARD

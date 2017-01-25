@@ -4,7 +4,7 @@
  *  This component handles managing application update over LWM2M as well as the Legato application
  *  objects.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

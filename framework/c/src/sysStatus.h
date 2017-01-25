@@ -5,7 +5,7 @@
  * Functions relating to system status (whether a system is good, bad or
  * is being tried under probation)
  *
- * Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
 

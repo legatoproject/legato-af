@@ -12,6 +12,6 @@ Example:
 - mdm9x15-image-minimal-swi-mdm9x15-*.rootfs.manifest – regular rootfs packages. This rootfs is mounted by initramfs.
 
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

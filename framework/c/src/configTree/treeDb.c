@@ -120,8 +120,8 @@
  *  in order to have a handler registed for it.  In fact, a handler will be called when a node is
  *  deleted and when it is recreated.
  *
- *  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
- *  Use of this work is subject to license.
+ *  Copyright (C) Sierra Wireless Inc.
+ *
  */
 // -------------------------------------------------------------------------------------------------
 

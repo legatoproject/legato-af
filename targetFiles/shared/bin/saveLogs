@@ -3,7 +3,7 @@
 # --------------------------------------------------------------------------------------------------
 # Script to handle the backing up of device logs and core dumps due to application faults.
 #
-# Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+# Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
 APP_NAME=$1      # The name of the app that we're running for.

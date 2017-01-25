@@ -2,7 +2,7 @@
  *
  * Source code of functions to build the MSD needed by eCall.
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "asn1Msd.h"

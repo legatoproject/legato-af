@@ -33,7 +33,7 @@
   *
   *  - Encoding/decoding of unicode code points into/from utf-8 data
   *
-  * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+  * Copyright (C) Sierra Wireless Inc.
   */
 
 #include "legato.h"

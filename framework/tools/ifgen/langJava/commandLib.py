@@ -4,7 +4,7 @@
 #  Called by the core ifgen code, this will add the language specific command line arguments and
 #  kick off the code generation.
 #
-#  Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+#  Copyright (C) Sierra Wireless Inc.
 #
 # --------------------------------------------------------------------------------------------------
 import os

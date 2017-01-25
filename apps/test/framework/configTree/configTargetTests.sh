@@ -3,8 +3,8 @@
 #---------------------------------------------------------------------------------------------------
 #  Bash script for running the configTree ACL tests on target.
 #
-#  Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
-#  Use of this work is subject to license.
+#  Copyright (C) Sierra Wireless Inc.
+#
 #---------------------------------------------------------------------------------------------------
 
 LoadTestLib

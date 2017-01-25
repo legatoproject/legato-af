@@ -2,7 +2,7 @@
  *
  * For useage and information on updateCtrl see @le_updateCtrl.api
  *
- * Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+ * Copyright (C) Sierra Wireless Inc.
  */
 
 #include "legato.h"
