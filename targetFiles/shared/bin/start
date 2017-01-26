@@ -26,11 +26,38 @@ case "$1" in
         # Add LEGATO_SYSTEM_PATH to /etc/profile if it is not added there.
         grep -F $LEGATO_SYSTEM_PATH /etc/profile >/dev/null
         if [ $? -ne 0 ]; then
+            # Check if legato is read-only
+            if [ ! -w /etc/profile -a -f /mnt/legato/systems/current/read-only ]; then
+                cp /etc/profile /tmp/profile &&
+                chmod 755 /tmp/profile &&
+                mount -o bind /tmp/profile /etc/profile
+            fi
             echo "export PATH=$LEGATO_SYSTEM_PATH:\$PATH" >> /etc/profile
         fi
 
-        cd /mnt/legato
-        ./system/bin/startSystem
+        cd /mnt/legato/
+        # Check if legato is read-only
+        if [ -f systems/current/read-only ]; then
+
+            if [ ! -w /etc/ld.so.cache ]; then
+                # Update ld.so cache
+                if [ -f /tmp/ld.so.cache ]; then
+                    umount /etc/ld.so.cache 2>/dev/null
+                fi
+                cp /etc/ld.so.cache /tmp/ld.so.cache &&
+                ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache &&
+                chmod 644 /tmp/ld.so.cache &&
+                mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
+            else
+                ldconfig -i /legato/systems/current/lib
+            fi
+
+            # Start the legato
+            ./systems/current/bin/startSystem
+        else
+            cd /mnt/legato
+            ./system/bin/startSystem
+        fi
     ;;
 
 esac

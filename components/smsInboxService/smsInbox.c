@@ -1348,15 +1348,27 @@ static void InitSmsInBoxDirectory
     LE_DEBUG("InitSmsInBoxDirectory");
 
     // create directories
-    mkdir( SMSINBOX_PATH, S_IREAD|S_IWRITE );
+    if (0 > mkdir( SMSINBOX_PATH, S_IREAD|S_IWRITE ))
+    {
+        LE_ERROR("Unable to create directory %s: %m", SMSINBOX_PATH);
+        return;
+    }
     uint16_t pathLen = GetSMSInboxMessagePathLen();
     char path[pathLen];
     memset(path,0,pathLen);
     snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, CONF_PATH);
-    mkdir( path, S_IREAD|S_IWRITE );
+    if (0 > mkdir( path, S_IREAD|S_IWRITE ))
+    {
+        LE_ERROR("Unable to create directory %s: %m", path );
+        return;
+    }
     memset(path,0,pathLen);
     snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, MSG_PATH);
-    mkdir( path, S_IREAD|S_IWRITE );
+    if (0 > mkdir( path, S_IREAD|S_IWRITE ))
+    {
+        LE_ERROR("Unable to create directory %s: %m", path );
+        return;
+    }
 
 
     nbSmsEntries = scandir(path, &namelist, NULL, alphasort);

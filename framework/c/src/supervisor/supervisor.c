@@ -834,6 +834,28 @@ COMPONENT_INIT
                     "Couldn't bind mount '%s' unto itself. %m", CURRENT_SYSTEM_PATH);
     }
 
+    // If appsWriteable has no write-access, we are in Read-Only. Mount the overlay
+    // over appsWriteable to work with Legato
+    if (access(CURRENT_SYSTEM_PATH "/appsWriteable", W_OK))
+    {
+        // Create the directories to deploy the R/W upper layer
+        (void)mkdir( "/tmp/appsWriteable", 0755 );
+        (void)mkdir( "/tmp/appsWriteable_wk", 0755 );
+        // Check if the upper layer is already mounted
+        if (!fs_IsMountPoint(CURRENT_SYSTEM_PATH "/appsWriteable"))
+        {
+            // mount an R/W overlay
+            if (mount("overlay", CURRENT_SYSTEM_PATH "/appsWriteable", "overlay", MS_SILENT,
+                             "upperdir=/tmp/appsWriteable,"
+                             "lowerdir=" CURRENT_SYSTEM_PATH "/appsWriteable,"
+                             "workdir=/tmp/appsWriteable_wk") != 0)
+            {
+                LE_ERROR("Couldn't mount overlay R/W to '%s'. %m",
+                         CURRENT_SYSTEM_PATH "/appsWriteable");
+            }
+        }
+    }
+
     StartFramework();
 
     // Close stdin (and reopen to /dev/null to be safe).
@@ -850,9 +872,11 @@ COMPONENT_INIT
 
     // Create or remove the SMACK_DISABLED file, which is used by the init scripts to determine to
     // set SMACK labels or not.
+    // Ignore the EROFS in case of Legato is Read-Only
 #ifndef LE_SMACK_DISABLE
     // Remove SMACK_DISABLED.
-    LE_FATAL_IF((unlink("/legato/SMACK_DISABLED") == -1) && (errno != ENOENT),
+    LE_FATAL_IF((unlink("/legato/SMACK_DISABLED") == -1) &&
+                     ((errno != ENOENT) && (errno != EROFS)),
                 "Cannot remove /legato/SMACK_DISABLED. %m.");
 #else
     // Create SMACK_DISABLED.
@@ -864,7 +888,8 @@ COMPONENT_INIT
     }
     while ((fd == -1) && (errno == EINTR));
 
-    LE_FATAL_IF((fd == -1) && (errno != EEXIST), "failed to create /legato/SMACK_DISABLED. %m.");
+    LE_FATAL_IF((fd == -1) && ((errno != EEXIST) && (errno != EROFS)),
+                "failed to create /legato/SMACK_DISABLED. %m.");
 
     if (fd != -1)
     {

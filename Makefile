@@ -138,6 +138,14 @@ ifneq ($(MAKECMDGOALS),clean)
 
 endif
 
+# Legato ReadOnly system tree
+READ_ONLY ?= 0
+
+STAGE_MKLEGATOIMG = stage_mklegatoimg
+ifeq ($(READ_ONLY),1)
+  override STAGE_MKLEGATOIMG := stage_mklegatoimgro
+endif
+
 # ========== APP-SPECIFIC VARIABLES ============
 
 # AirVantage service
@@ -353,6 +361,12 @@ ifeq ($(STRIP_STAGING_TREE),1)
   MKLEGATOIMG_FLAGS += -s
 endif
 
+.PHONY: stage_mklegatoimgro
+stage_mklegatoimgro:
+	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) -S _rw $(MKLEGATOIMG_FLAGS)
+	mklegatotreero $(TARGET)
+	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
+
 .PHONY: stage_mklegatoimg
 stage_mklegatoimg:
 	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
@@ -372,7 +386,7 @@ stage_shared:
 stage_9x15: stage_shared
 
 .PHONY: stage_ar7 stage_ar86 stage_wp85 stage_wp750x
-stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 stage_mklegatoimg
+stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 $(STAGE_MKLEGATOIMG)
 
 # ==== AR758X (9x28-based Sierra Wireless modules) ====
 
@@ -380,7 +394,7 @@ stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 stage_mk
 stage_9x28: stage_shared
 
 .PHONY: stage_ar758x stage_wp76xx
-stage_ar758x stage_wp76xx: stage_embedded stage_9x28 stage_mklegatoimg
+stage_ar758x stage_wp76xx: stage_embedded stage_9x28 $(STAGE_MKLEGATOIMG)
 
 # ==== AR759X (9x40-based Sierra Wireless modules) ====
 
@@ -388,7 +402,7 @@ stage_ar758x stage_wp76xx: stage_embedded stage_9x28 stage_mklegatoimg
 stage_9x40: stage_shared
 
 .PHONY: stage_ar759x
-stage_ar759x: stage_embedded stage_9x40 stage_mklegatoimg
+stage_ar759x: stage_embedded stage_9x40 $(STAGE_MKLEGATOIMG)
 
 # ==== Virtual ====
 

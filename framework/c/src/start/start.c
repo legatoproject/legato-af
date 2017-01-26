@@ -1515,6 +1515,105 @@ static int InstallGolden
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Verify and install the current system
+ *
+ * @return None
+ */
+//--------------------------------------------------------------------------------------------------
+static void CheckAndInstallCurrentSystem
+(
+    void
+)
+{
+    int newestIndex = -1;
+    int currentIndex = -1;
+
+    // First step is to get rid of any failed unpack. We are root and this shouldn't
+    // fail unless there is no upack dir in which case that's good.
+    DeleteSystemUnpack();
+    DeleteAppsUnpack();
+
+    // Current system is named "current". All systems stored in index dirs are previous systems
+    // except when we are waking up after a system update by updateDaemon, in which case
+    // the newest index is greater than the current.
+
+    newestIndex = FindNewestSystemIndex(); // Find newest non-bad system (-1 if none exist).
+    currentIndex = ReadIndexFile("current"); // -1 if current system doesn't exist.
+    if (currentIndex != -1)
+    {
+        LE_INFO("The previous 'current' system has index %d.", currentIndex);
+    }
+
+    // Check if we should install the "golden" system from /mnt/legato.
+    if (ShouldInstallGolden(newestIndex))
+    {
+        currentIndex = InstallGolden(newestIndex, currentIndex);
+        newestIndex = currentIndex;
+    }
+    // If there wasn't a new "golden" system to install,
+    // select the newest non-bad system as the current system.
+    // If the current system is bad, the newest non-bad will be older than the current.
+    // If a new system was just installed by the Update Daemon, the newest non-bad will be
+    // newer than the current.
+    // If there is no current system, the currentIndex will be -1.
+    // But, we are guaranteed that newestIndex > -1, because if there were no non-bad
+    // systems in /legato, ShouldInstallGolden() would have returned true and the golden
+    // system would have been installed (and currentIndex would be the same as newestIndex).
+    else if (newestIndex != currentIndex)
+    {
+        // If there's a current system, and it's not "good", just delete it.
+        // But, if it is "good", save it in case we need to roll-back to it.
+        if (currentIndex > -1)
+        {
+            // Attempt to umount the system because it may have been mounted when
+            // sandboxed apps were created.
+            fs_TryLazyUmount(CurrentSystemDir);
+
+            SystemStatus_t currentSysStatus = GetStatus("current", NULL);
+
+            char path[PATH_MAX];
+
+            // Rename the current system path.
+            CreateSystemPathName(currentIndex, path, sizeof(path));
+            Rename(CurrentSystemDir, path);
+
+            switch(currentSysStatus)
+            {
+                case STATUS_BAD:
+                    // System bad. Delete and roll-back (here newestIndex < currentIndex).
+                    RecursiveDelete(path);
+                    break;
+
+                case STATUS_TRYABLE:
+                    // System try-able. Grab config tree from current system and delete it.
+                    ImportOldConfigTrees(currentIndex, newestIndex);
+                    RecursiveDelete(path);
+                    break;
+
+                case STATUS_GOOD:
+                    // System good. Grab config tree from current system.
+                    ImportOldConfigTrees(currentIndex, newestIndex);
+                    break;
+            }
+
+        }
+
+        // Make the newest system the current system.
+        SetCurrent(newestIndex);
+        currentIndex = newestIndex;
+    }
+
+    // If we need to update the dynamic linker's cache, do that now.
+    // We can tell that we need to do that if the marker file exists.
+    // That file gets deleted after the cache update finishes.
+    if (FileExists(LdconfigNotDoneMarkerFile))
+    {
+        UpdateLdSoCache(CurrentSystemDir);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * It all starts here.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1524,99 +1623,28 @@ int main
     char** argv
 )
 {
-    int newestIndex = -1;
-    int currentIndex = -1;
+    bool isReadOnly = (access("/mnt/legato/systems/current/read-only", R_OK) ? false : true);
 
-    // Bind mount if they are not already mounted.
-    BindMount("/mnt/flash/legato", "/legato");
-    BindMount("/mnt/flash/home", "/home");
-    MakeDir("/home/root");
+    if (!isReadOnly)
+    {
+        // Bind mount if they are not already mounted.
+        BindMount("/mnt/flash/legato", "/legato");
+        BindMount("/mnt/flash/home", "/home");
+    }
+    if (0 == access("/home", W_OK))
+    {
+        MakeDir("/home/root");
+    }
 
     daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
 
     while(1)
     {
-        // First step is to get rid of any failed unpack. We are root and this shouldn't
-        // fail unless there is no upack dir in which case that's good.
-        DeleteSystemUnpack();
-        DeleteAppsUnpack();
-
-        // Current system is named "current". All systems stored in index dirs are previous systems
-        // except when we are waking up after a system update by updateDaemon, in which case
-        // the newest index is greater than the current.
-
-        newestIndex = FindNewestSystemIndex(); // Find newest non-bad system (-1 if none exist).
-        currentIndex = ReadIndexFile("current"); // -1 if current system doesn't exist.
-        if (currentIndex != -1)
+        if (!isReadOnly)
         {
-            LE_INFO("The previous 'current' system has index %d.", currentIndex);
-        }
-
-        // Check if we should install the "golden" system from /mnt/legato.
-        if (ShouldInstallGolden(newestIndex))
-        {
-            currentIndex = InstallGolden(newestIndex, currentIndex);
-            newestIndex = currentIndex;
-        }
-        // If there wasn't a new "golden" system to install,
-        // select the newest non-bad system as the current system.
-        // If the current system is bad, the newest non-bad will be older than the current.
-        // If a new system was just installed by the Update Daemon, the newest non-bad will be
-        // newer than the current.
-        // If there is no current system, the currentIndex will be -1.
-        // But, we are guaranteed that newestIndex > -1, because if there were no non-bad
-        // systems in /legato, ShouldInstallGolden() would have returned true and the golden
-        // system would have been installed (and currentIndex would be the same as newestIndex).
-        else if (newestIndex != currentIndex)
-        {
-            // If there's a current system, and it's not "good", just delete it.
-            // But, if it is "good", save it in case we need to roll-back to it.
-            if (currentIndex > -1)
-            {
-                // Attempt to umount the system because it may have been mounted when
-                // sandboxed apps were created.
-                fs_TryLazyUmount(CurrentSystemDir);
-
-                SystemStatus_t currentSysStatus = GetStatus("current", NULL);
-
-                char path[PATH_MAX];
-
-                // Rename the current system path.
-                CreateSystemPathName(currentIndex, path, sizeof(path));
-                Rename(CurrentSystemDir, path);
-
-                switch(currentSysStatus)
-                {
-                    case STATUS_BAD:
-                        // System bad. Delete and roll-back (here newestIndex < currentIndex).
-                        RecursiveDelete(path);
-                        break;
-
-                    case STATUS_TRYABLE:
-                        // System try-able. Grab config tree from current system and delete it.
-                        ImportOldConfigTrees(currentIndex, newestIndex);
-                        RecursiveDelete(path);
-                        break;
-
-                    case STATUS_GOOD:
-                        // System good. Grab config tree from current system.
-                        ImportOldConfigTrees(currentIndex, newestIndex);
-                        break;
-                }
-
-            }
-
-            // Make the newest system the current system.
-            SetCurrent(newestIndex);
-            currentIndex = newestIndex;
-        }
-
-        // If we need to update the dynamic linker's cache, do that now.
-        // We can tell that we need to do that if the marker file exists.
-        // That file gets deleted after the cache update finishes.
-        if (FileExists(LdconfigNotDoneMarkerFile))
-        {
-            UpdateLdSoCache(CurrentSystemDir);
+            // Verify and install the current system.
+            // R/O system are always ready. So, nothing to do for them.
+            CheckAndInstallCurrentSystem();
         }
 
         // Run the current system.

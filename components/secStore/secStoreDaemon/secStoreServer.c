@@ -355,6 +355,7 @@ static le_result_t SetCurrSystem
         // Get the secure storage system's hash.
         char secSysHash[MD5_STR_BYTES];
         size_t hashLen = sizeof(secSysHash);
+        bool isReadOnly = (0 == access("/legato/systems/current/read-only", R_OK));
 
         result = pa_secStore_Read(secSysHashPath, (uint8_t*)secSysHash, &hashLen);
 
@@ -376,8 +377,10 @@ static le_result_t SetCurrSystem
 
         // This system is invalid and needs to be deleted.
         result = pa_secStore_Delete(CurrSysPath);
-
-        LE_FATAL_IF(result == LE_NOT_FOUND, "Could not find entry '%s'.", CurrSysPath);
+        if (!isReadOnly)
+        {
+            LE_FATAL_IF(result == LE_NOT_FOUND, "Could not find entry '%s'.", CurrSysPath);
+        }
     }
 
     // Find the ancestor index to create the system from.

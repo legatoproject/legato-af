@@ -4,6 +4,23 @@ ecm_conf=/etc/legato/ecm.conf
 ecm_dhcp_conf=/etc/dnsmasq.d/dnsmasq.ecm.conf
 ecm_iface=$(ls -1 /sys/class/net/ | egrep '(e[ec]m|usb)0')
 
+legato_ro=/mnt/legato/systems/current/read-only
+
+if [ ! -w `dirname $ecm_dhcp_conf` -a -e $legato_ro ]; then
+    # Because dnsmasq.ecm.conf should be writeable to work with configEcm
+    # if it is only R/O, we create an overlay on this file to work
+    mkdir -p /tmp/etc/dnsmasq.d /tmp/etc/dnsmasq.d_wk
+    mount -t overlay \
+          -o upperdir=/tmp/etc/dnsmasq.d,workdir=/tmp/etc/dnsmasq.d_wk,lowerdir=/etc/dnsmasq.d \
+          overlay /etc/dnsmasq.d
+fi
+if [ ! -w `dirname $ecm_conf` -a -e $legato_ro ]; then
+    mkdir -p /tmp/etc/legato /tmp/etc/legato_wk
+    mount -t overlay \
+          -o upperdir=/tmp/etc/legato,workdir=/tmp/etc/legato_wk,lowerdir=/etc/legato \
+          overlay /etc/legato
+fi
+
 command_name=$(basename $0)
 usage()
 {
@@ -313,7 +330,7 @@ case $1 in
         # on requires some arguments else it will do default
         echo ""
         if create_conf $@; then
-            local host=$(get_param host.ipV4)
+            host=$(get_param host.ipV4)
             config_dhcp $host
             restart_ecm > /dev/null
             bringup_ecm
@@ -328,7 +345,7 @@ case $1 in
     default)
         # configure default ecm parameters, but don't start interface
         if create_conf ; then
-            local host=$(get_param host.ipV4)
+            host=$(get_param host.ipV4)
             config_dhcp $host
             restart_ecm > /dev/null
         else

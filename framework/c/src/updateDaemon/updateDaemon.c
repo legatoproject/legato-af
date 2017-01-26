@@ -190,6 +190,14 @@ bool InstallReady = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Legato R/O tree
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsReadOnly = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Enter probation mode and kick off the probation timer.
  */
 //--------------------------------------------------------------------------------------------------
@@ -784,16 +792,9 @@ static void UnpackDone
 //--------------------------------------------------------------------------------------------------
 {
     CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, 100);
-
-    // If the security unpack is already finished, then notify client that download successful and
-    // wait for calling le_update_Install() api. Otherwise, wait for the security-unpack program
-    // to finish.
-    if (SecurityUnpackPipeline == NULL)
-    {
-        CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
-        InstallReady = true;
-    }
-    else
+    // If the security unpack isn't finished, change the state to
+    // SECURITY_CHECKING, Otherwise wait for calling le_update_Install() api.
+    if (SecurityUnpackPipeline != NULL)
     {
         State = STATE_SECURITY_CHECKING;
     }
@@ -1560,13 +1561,7 @@ static void PipelineDone
         if (WEXITSTATUS(status) == EXIT_SUCCESS)
         {
             LE_DEBUG("security-unpack completed successfully.");
-            // Only allowed state here is STATE_UNPACKING or STATE_SECURITY_CHECKING. If state is
-            // STATE_UNPACKING, then we return and wait for unpacking to finish (see UnpackDone()).
-            if (State == STATE_SECURITY_CHECKING)
-            {
-                CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
-                InstallReady = true;
-            }
+            CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
             return;
         }
         else if (WEXITSTATUS(status) == EXIT_FAILURE)
@@ -1693,6 +1688,7 @@ void le_update_RemoveProgressHandler
  * @return
  *      - LE_OK if accepted.
  *      - LE_BUSY if another update is in progress.
+ *      - LE_UNSUPPORTED if Legato system is R/O.
  *      - LE_UNAVAILABLE if updates are deferred.
  */
 //-------------------------------------------------------------------------------------------------
@@ -1701,6 +1697,12 @@ le_result_t le_update_Start
     int clientFd                ///<[IN] Open file descriptor from which the update can be read.
 )
 {
+    if (IsReadOnly)
+    {
+        LE_ERROR("Legato is R/O");
+        return LE_UNSUPPORTED;
+    }
+
     LE_DEBUG("fd: %d", clientFd);
 
     if (!IsValidFileDesc(clientFd))
@@ -1745,9 +1747,6 @@ le_result_t le_update_Start
 
     // Reset the error code.
     ErrorCode = LE_UPDATE_ERR_NONE;
-
-    //Reset the InstallReady flag
-    InstallReady = false;
 
     // Create a pipeline: clientfd -> security-unpack -> readFd
     SecurityUnpackPipeline = pipeline_Create();
@@ -1809,15 +1808,14 @@ le_result_t le_update_Install()
     {
         case STATE_UNPACKING:
         case STATE_SECURITY_CHECKING:
-            if (InstallReady)
+            if (SecurityUnpackPipeline == NULL)
             {
                 le_event_Report(InstallEventId, NULL, 0);
-                InstallReady = false;
                 return LE_OK;
             }
             else
             {
-                LE_ERROR("Not ready for install. Still downloading and verifying package");
+                LE_ERROR("Still downloading and verifying package");
                 result = LE_BUSY;
             }
             break;
@@ -1934,6 +1932,12 @@ le_result_t le_appRemove_Remove
     const char* appName
 )
 {
+    if (IsReadOnly)
+    {
+        LE_ERROR("Legato is R/O");
+        return LE_FAULT;
+    }
+
     // Check whether any update is active.
     if (State != STATE_IDLE)
     {
@@ -2027,23 +2031,51 @@ COMPONENT_INIT
     // Make sure we can set file permissions properly.
     umask(0);
 
-    // If a system update needs finishing, finish it now.
-    FinishSystemUpdate();
+    IsReadOnly = (0 == access("/mnt/legato/systems/current/read-only", R_OK));
 
-    // Make sure the users and groups are set up correctly for the apps we have installed
-    // in the current system.  We may have updated or rolled-back to a different system with
-    // different apps than we had last time we ran.
-    UpdateUsersAndGroups();
-
-    // If the current system is "good", go into the IDLE state,
-    if (sysStatus_Status() == SYS_GOOD)
+    if (!IsReadOnly)
     {
-        LE_INFO("Current system is 'good'.");
+        // If a system update needs finishing, finish it now.
+        FinishSystemUpdate();
+
+        // Make sure the users and groups are set up correctly for the apps we have installed
+        // in the current system.  We may have updated or rolled-back to a different system with
+        // different apps than we had last time we ran.
+        UpdateUsersAndGroups();
+
+        // If the current system is "good", go into the IDLE state,
+        if (sysStatus_Status() == SYS_GOOD)
+        {
+            LE_INFO("Current system is 'good'.");
+        }
+        // Otherwise, this system is on probation.
+        else
+        {
+            StartProbation();
+        }
     }
-    // Otherwise, this system is on probation.
     else
     {
-        StartProbation();
+        // Test if /etc/passwd and /etc/group are writable to run sandboxed apps
+        if ((0 == access("/etc/passwd", W_OK)) && (0 == access("/etc/group", W_OK)))
+        {
+            UpdateUsersAndGroups();
+        }
+        else
+        {
+            LE_CRIT("/etc/passwd and /etc/group are read-only. Sandboxes are not supported");
+        }
+
+        State = STATE_IDLE;
+
+        if (sysStatus_Status() == SYS_GOOD)
+        {
+            LE_INFO("Current system is 'good'.");
+        }
+        else
+        {
+            LE_ERROR("Current R/O system is 'not good'.");
+        }
     }
 
     // Make sure that we can report app install events.

@@ -18,6 +18,7 @@ help_long_description=(
 " - -t [TARGET]: target the image should be generated for (ar7, ...)"
 " - -d [STAGING_DIR]: staging directory for that platform"
 " - -o [OUTPUT_DIR]: output directory where the image will be stored"
+" - -S [SUFFIX]: suffix to add to images generated in case of several images"
 ""
 "For ar7/ar86/wp85/wp750x/wp76xx targets:"
 ""
@@ -35,7 +36,7 @@ CheckRet() {
     fi
 }
 
-while getopts ":t:o:d:v:s" arg
+while getopts ":t:o:d:v:S:s" arg
 do
     case $arg in
     t)
@@ -49,6 +50,9 @@ do
         ;;
     v)
         VERSION=$OPTARG
+        ;;
+    S)
+        LEGATO_IMG_SUFFIX=$OPTARG
         ;;
     s)
         STRIP_STAGING_TREE=true
@@ -142,6 +146,10 @@ StripExeAndLibs() {
 GenerateUbinizeCfg() {
     local image_path=$1
     local ubinize_cfg_path=$2
+    if [[ "$WITH_DM_VERITY" == "true" ]]; then
+        local hash_path=$3
+        local rhbin_path=$4
+    fi
 
     rm -f $ubinize_cfg_path
     touch $ubinize_cfg_path
@@ -149,9 +157,42 @@ GenerateUbinizeCfg() {
     echo "mode=ubi" >> $ubinize_cfg_path
     echo "image=$image_path" >> $ubinize_cfg_path
     echo "vol_id=0" >> $ubinize_cfg_path
-    echo "vol_type=dynamic" >> $ubinize_cfg_path
     echo "vol_name=legato" >> $ubinize_cfg_path
-    echo "vol_flags=autoresize" >> $ubinize_cfg_path
+
+    if [[ "$WITH_DM_VERITY" == "true" ]]; then
+        if [ -n "${hash_path}" ] ; then
+            echo "vol_type=static" >> $ubinize_cfg_path
+        else
+            echo "vol_type=dynamic" >> $ubinize_cfg_path
+            echo "vol_flags=autoresize" >> $ubinize_cfg_path
+        fi
+
+        if [ -n "${hash_path}" ] ; then
+            echo "[hash-volume]" >> $ubinize_cfg_path
+            echo "mode=ubi" >> $ubinize_cfg_path
+            echo "image=$hash_path" >> $ubinize_cfg_path
+            echo "vol_id=1" >> $ubinize_cfg_path
+            echo "vol_type=static" >> $ubinize_cfg_path
+            echo "vol_name=legato_hs" >> $ubinize_cfg_path
+
+            if [ -n "${rhbin_path}" ] ; then
+                echo "[rh-volume]" >> $ubinize_cfg_path
+                echo "mode=ubi" >> $ubinize_cfg_path
+                echo "image=$rhbin_path" >> $ubinize_cfg_path
+                echo "vol_id=2" >> $ubinize_cfg_path
+                echo "vol_type=static" >> $ubinize_cfg_path
+                echo "vol_name=legato_rhs" >> $ubinize_cfg_path
+            fi
+
+        fi
+    fi
+}
+
+GetRootHash() {
+    local root_hash=$1
+    local rhbin=$2
+    local rh=$(cat $root_hash | grep Root | awk -F' ' '{printf $3}')
+    echo ${rh} > ${rhbin}
 }
 
 SetSmackAttr() {
@@ -189,7 +230,12 @@ CreateImgFs() {
 
     SetSmackAttr
 
-    local legato_img="$OUTPUT_DIR/legato.$img_suffix"
+    if [[ "$WITH_DM_VERITY" == "true" ]]; then
+        local hash_img="$OUTPUT_DIR/hash${LEGATO_IMG_SUFFIX}.bin"
+        local rhbin="$OUTPUT_DIR/rhash${LEGATO_IMG_SUFFIX}.bin"
+    fi
+
+    local legato_img="$OUTPUT_DIR/legato${LEGATO_IMG_SUFFIX}.$img_suffix"
 
     local temp_dir="$OUTPUT_DIR/legatoimg/$img_type"
     mkdir -p $temp_dir
@@ -201,7 +247,7 @@ CreateImgFs() {
             FindTool "mkyaffs2image" MKYAFFS2
             CheckRet
 
-            $MKYAFFS2 -c $page_size -s $oob_size "$STAGING_DIR" "$legato_img" > yaffs2.log
+            $MKYAFFS2 -c $page_size -s $oob_size "$STAGING_DIR" "$legato_img" > yaffs2${LEGATO_IMG_SUFFIX}.log
             CheckRet
             ;;
 
@@ -212,7 +258,7 @@ CreateImgFs() {
                 return 1
             fi
 
-            $MKUBIFS -r "$STAGING_DIR" -o "$legato_img" -m $page_size -e $LAB_SIZE -c $MAX_LEB_COUNT -F > ubifs.log
+            $MKUBIFS -r "$STAGING_DIR" -o "$legato_img" -m $page_size -e $LAB_SIZE -c $MAX_LEB_COUNT -F > ubifs${LEGATO_IMG_SUFFIX}.log
             CheckRet
             ;;
 
@@ -223,8 +269,13 @@ CreateImgFs() {
                 return 1
             fi
 
-            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend -all-root > squashfs.log
+            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend -all-root > squashfs${LEGATO_IMG_SUFFIX}.log
             CheckRet
+
+            if [[ "$WITH_DM_VERITY" == "true" ]]; then
+                CreateImgFs hash_bin squashfs
+                CheckRet
+            fi
             ;;
 
         ubi)
@@ -236,9 +287,27 @@ CreateImgFs() {
                 return 1
             fi
 
-            GenerateUbinizeCfg $LEGATO_IMG ${temp_dir}/ubinize.cfg
+            if [[ "$WITH_DM_VERITY" == "true" ]]; then
+                GenerateUbinizeCfg $LEGATO_IMG ${temp_dir}/ubinize.cfg $hash_img ${rhbin}
+            else
+                GenerateUbinizeCfg $LEGATO_IMG ${temp_dir}/ubinize.cfg
+            fi
 
-            $UBINIZE -o $legato_img -m $page_size -p $peb_size -s $page_size ${temp_dir}/ubinize.cfg > ubinize.log
+            $UBINIZE -o $legato_img -m $page_size -p $peb_size -s $page_size ${temp_dir}/ubinize.cfg > ubinize${LEGATO_IMG_SUFFIX}.log
+            CheckRet
+            ;;
+
+        hash_bin)
+            FindTool "veritysetup" VERITYSETUP
+            if [ $? -ne 0 ]; then
+                echo "Warning: Unable to produce hash bin image: veritysetup tools needed"
+                return 1
+            fi
+
+            $VERITYSETUP format $OUTPUT_DIR/legato${LEGATO_IMG_SUFFIX}.$ubi_img_type $hash_img > hash_bin${LEGATO_IMG_SUFFIX}.log
+            CheckRet
+
+            GetRootHash hash_bin${LEGATO_IMG_SUFFIX}.log ${rhbin}
             CheckRet
             ;;
 
@@ -275,36 +344,36 @@ GenerateCwe() {
     cd $temp_dir
 
     local tmpmbn=$temp_dir/temp.mbn
-    if [ -f ${tmpmbn}.hdr ] ; then rm -f ${tmpmbn}.hdr; fi
-    if [ -f ${tmpmbn}.cwe ] ; then rm -f ${tmpmbn}.cwe; fi
-    if [ -f ${tmpmbn}.cwe.z ] ; then rm -f ${tmpmbn}.cwe.z; fi
-    if [ -f legato.cwe ] ; then rm -f legato.cwe; fi
-    if [ -f legato.hdr ] ; then rm -f legato.hdr; fi
-    if [ -f legatoz.cwe ] ; then rm -f legatoz.cwe; fi
-    if [ -f legatoz.hdr ] ; then rm -f legatoz.hdr; fi
+    if [ -f ${tmpmbn}${LEGATO_IMG_SUFFIX}.hdr ] ; then rm -f ${tmpmbn}${LEGATO_IMG_SUFFIX}.hdr; fi
+    if [ -f ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe ] ; then rm -f ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe; fi
+    if [ -f ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe.z ] ; then rm -f ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe.z; fi
+    if [ -f legato${LEGATO_IMG_SUFFIX}.cwe ] ; then rm -f legato${LEGATO_IMG_SUFFIX}.cwe; fi
+    if [ -f legato${LEGATO_IMG_SUFFIX}.hdr ] ; then rm -f legato${LEGATO_IMG_SUFFIX}.hdr; fi
+    if [ -f legatoz${LEGATO_IMG_SUFFIX}.cwe ] ; then rm -f legatoz${LEGATO_IMG_SUFFIX}.cwe; fi
+    if [ -f legatoz${LEGATO_IMG_SUFFIX}.hdr ] ; then rm -f legatoz${LEGATO_IMG_SUFFIX}.hdr; fi
 
-    $HDRCNV ${img_path} -OH ${tmpmbn}.hdr -IT USER -PT $PLATFORM -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-tmp.log
+    $HDRCNV ${img_path} -OH ${tmpmbn}${LEGATO_IMG_SUFFIX}.hdr -IT USER -PT $PLATFORM -V "$VERSION" -B $COMPAT_BYTE > hdrcnv${LEGATO_IMG_SUFFIX}-tmp.log
     CheckRet
 
-    cat ${tmpmbn}.hdr ${img_path} > ${tmpmbn}.cwe
+    cat ${tmpmbn}${LEGATO_IMG_SUFFIX}.hdr ${img_path} > ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe
     CheckRet
 
     # legato.cwe
-    $HDRCNV ${tmpmbn}.cwe -OH legato.hdr -IT APPL -PT $pid -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato.log
+    $HDRCNV ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe -OH legato${LEGATO_IMG_SUFFIX}.hdr -IT APPL -PT $pid -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato${LEGATO_IMG_SUFFIX}.log
     CheckRet
 
-    cat legato.hdr ${tmpmbn}.cwe > $OUTPUT_DIR/legato-${img_suffix}.cwe
+    cat legato${LEGATO_IMG_SUFFIX}.hdr ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe > $OUTPUT_DIR/legato${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe
     CheckRet
 
     # legatoz.cwe
     if $SUPPORT_COMPRESSION; then
-        $CWEZIP ${tmpmbn}.cwe -c -o ${tmpmbn}.cwe.z > cwezip.log
+        $CWEZIP ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe -c -o ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe.z > cwezip${LEGATO_IMG_SUFFIX}.log
         CheckRet
 
-        $HDRCNV ${tmpmbn}.cwe.z -OH legatoz.hdr -IT APPL -PT $pid -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz.log
+        $HDRCNV ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe.z -OH legatoz${LEGATO_IMG_SUFFIX}.hdr -IT APPL -PT $pid -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz${LEGATO_IMG_SUFFIX}.log
         CheckRet
 
-        cat legatoz.hdr ${tmpmbn}.cwe.z > $OUTPUT_DIR/legatoz-${img_suffix}.cwe
+        cat legatoz${LEGATO_IMG_SUFFIX}.hdr ${tmpmbn}${LEGATO_IMG_SUFFIX}.cwe.z > $OUTPUT_DIR/legatoz${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe
         CheckRet
     fi
 }
@@ -360,6 +429,7 @@ CreateImg_mdm9x28() {
     SUPPORT_COMPRESSION=false
     case $TARGET in
         ar758x)
+            WITH_DM_VERITY=true
             ;;
         wp76xx)
             img_indexes+=(1)
@@ -404,6 +474,7 @@ CreateImg_mdm9x40() {
     COMPAT_BYTE=00000001
     PLATFORM='9X40'
     SUPPORT_COMPRESSION=false
+    WITH_DM_VERITY=true
 
     local img_suffix=$img_type
     if [[ "$img_type" == "ubi" ]]; then
@@ -419,14 +490,14 @@ DefaultImg() {
 
     cd $OUTPUT_DIR
 
-    ln -sf legato.${img_suffix} legato.default
+    ln -sf legato${LEGATO_IMG_SUFFIX}.${img_suffix} legato${LEGATO_IMG_SUFFIX}.default
 
-    if [ -e "legato-${img_suffix}.cwe" ]; then
-        ln -sf legato-${img_suffix}.cwe legato.cwe
+    if [ -e "legato${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe" ]; then
+        ln -sf legato${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe legato${LEGATO_IMG_SUFFIX}.cwe
     fi
 
-    if [ -e "$OUTPUT_DIR/legatoz-${img_suffix}.cwe" ]; then
-        ln -sf legatoz-${img_suffix}.cwe legatoz.cwe
+    if [ -e "$OUTPUT_DIR/legatoz${LEGATO_IMG_SUFFIX}-${img_suffix}.cwe" ]; then
+        ln -sf legatoz${LEGATO_IMG_SUFFIX}-${img_suffix}${LEGATO_IMG_SUFFIX}.cwe legatoz${LEGATO_IMG_SUFFIX}.cwe
     fi
 }
 

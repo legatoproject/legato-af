@@ -2,16 +2,18 @@
 
 The AR755x, AR8652, WP750x, and WP8548 platforms have the following limitations:
 
-| Constraint   | AR755x        | AR8652       |  WP750x  |  WP8548  |
-| ---------------- | :--------------: | :--------------: | :--------------:| :--------------:|
-| @subpage platformConstraintsAdc  | X  | X  | X | X |
-| @subpage platformConstraintsAudio | X  | X  |   | X |
-| @subpage platformConstraintsGnss | X  | X  | X | X |
-| @subpage platformConstraintsSecStorage |  X  | X  |   | X |
-| @subpage platformConstraintsSim  | X  | X  |   | X |
-| @subpage platformConstraintsStk  | X  | X  |   | X |
-| @subpage platformConstraintsTemperature   | X  | X  |   | X |
-| @subpage platformConstraintsATCommand | X  | X  |  X | X |
+| Constraint                                | AR755x | AR8652 | WP750x | WP8548 |
+| ----------------------------------------- | :----: | :----: | :-----:| :-----:|
+| @subpage platformConstraintsAdc           | X      | X      | X      | X      |
+| @subpage platformConstraintsAudio         | X      | X      |        | X      |
+| @subpage platformConstraintsGnss          | X      | X      | X      | X      |
+| @subpage platformConstraintsSecStorage    | X      | X      |        | X      |
+| @subpage platformConstraintsSim           | X      | X      |        | X      |
+| @subpage platformConstraintsStk           | X      | X      |        | X      |
+| @subpage platformConstraintsTemperature   | X      | X      |        | X      |
+| @subpage platformConstraintsATCommand     | X      | X      | X      | X      |
+| @subpage platformConstraintsReadOnly      | X      | X      | X      | X      |
+
 
 Copyright (C) Sierra Wireless Inc.
 

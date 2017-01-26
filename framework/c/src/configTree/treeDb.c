@@ -3176,6 +3176,12 @@ void tdb_MergeTree
     while (   (fileRef == -1)
            && (errno == EINTR));
 
+    if ((-1 == fileRef) && (EROFS == errno))
+    {
+        // In case we are R/O for the config tree, we discard the update to flash
+        return;
+    }
+
     if (fileRef == -1)
     {
         LE_EMERG("Failed to open config file '%s' (%m).", filePath);

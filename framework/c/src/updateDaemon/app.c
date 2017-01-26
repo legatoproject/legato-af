@@ -512,7 +512,6 @@ le_result_t app_InstallIndividual
 )
 //--------------------------------------------------------------------------------------------------
 {
-
     bool systemHasThisApp = false;
 
     if (system_HasApp(appNamePtr))

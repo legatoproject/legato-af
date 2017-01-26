@@ -367,6 +367,12 @@ static void RestoreBackupFile
     const char* backupFileNamePtr       ///< [IN] Pointer to the file name of the backup file.
 )
 {
+    // Only restore backup if we have the write access to it.
+    if (-1 == access(origFileNamePtr, W_OK))
+    {
+        return;
+    }
+
     // Open the original file for writing.
     FILE* origFilePtr = le_flock_OpenStream(origFileNamePtr, LE_FLOCK_APPEND, NULL);
     LE_ASSERT(origFilePtr != NULL);
