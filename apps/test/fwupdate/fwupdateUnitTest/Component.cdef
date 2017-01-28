@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_fwupdate.api         [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+}

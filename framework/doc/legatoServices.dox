@@ -21,7 +21,8 @@ arbitration among apps (so multiple apps can share the same resources).
 | @subpage legatoServicesSMS            | SMS and SMS Inbox                                  | x  |
 | @subpage c_spi                        | Configure SPI interface                            |    |
 | @subpage legatoServicesSupervisor     | Control framework and apps                         |    |
-| @subpage legatoServicesUpdateMain     | Update modem firmware and apps                     |    |
+| @subpage legatoServicesUpdateMain     | Update Legato apps                                 |    |
+| @subpage c_le_fwupdate                | Update modem firmware                              | x  |
 | @subpage c_le_voicecall               | Voice communications                               | x  |
 | @subpage legatoServicesWiFi           | WiFi                                               |    |
 | @subpage legatoAtServices             | AT commands services                               | x  |

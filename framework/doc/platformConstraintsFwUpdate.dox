@@ -1,0 +1,97 @@
+/** @page platformConstraintsFwUpdate Firmware Update
+
+@section FwupdatePlatformsConstraints Platforms constraints
+
+The Dual System is only available on AR758x and AR759x platforms.
+
+@note Please refer to the Product Technical specification document of your platform for further
+details.
+
+@section DualSystem Dual System mechanism
+The <b>dual system</b> consists in managing 2 copies of most code areas, for reliability and
+stability purposes.
+One copy is a backup in case the other one is corrupted or not running properly.
+The running system is called \b ACTIVE and the other system (not running) is called \b UPDATE.
+One cannot write in \b ACTIVE system. Only \b UPDATE system is in RW mode. In the next figure,
+this dual-system architecture is detailled.
+Some partitions are duplicated, for dual-system purpose, and some other are shared between
+the two systems (mainly data).
+
+<center>
+@image html le_fwupdate_DualSys_Summary.svg
+</center>
+
+There are 3 operations to manage the <b>dual system</b>: \b SYNC, \b SWAP and \b SWAP&SYNC.
+
+- \b SWAP operation consists in a reboot, followed by a switch between ACTIVE & UPDATE systems.
+Legato will mark the ACTIVE system as UPDATE one, the UPDATE system as ACTIVE one and then it
+will load the ACTIVE system.
+
+<center>
+@image html le_fwupdate_DualSysSwap.svg
+</center>
+
+- \b SYNC operation consists in a copy of ACTIVE system into UPDATE one by APPS.
+No new downloads are possible without a successful SYNC issued previously. So it means
+that in a stable situation, both systems are identical (same version N).
+
+<center>
+@image html le_fwupdate_DualSysSync.svg
+</center>
+
+- \b SWAP&SYNC operation consists in a reboot, followed by a switch between ACTIVE & UPDATE
+systems in Legato, followed immediately by a copy of ACTIVE system into UPDATE system.
+
+<center>
+@image html le_fwupdate_DualSysSwapAndSync.svg
+</center>
+
+
+@section fwupdateConstrain_SystemUpdate System update
+The user is able to update a whole system by downloading a package and accepting the update.
+Using this mechanism, the user can update the UPDATE system. Then, by calling
+le_fwupdate_DualSysSwap(), the user can request to swap to the new downloaded system.
+
+@section fwupdateConstrain_PackageDownload Package download
+
+To launch a package download, the service user can call the le_fwupdate_Download() API
+which is a blocking API.
+When the package download is over and succeeds, this API returns LE_OK.
+@warning If any Legato reset happens during the package download, a new download will
+be required at next startup.
+If any issue occurs during the le_fwupdate_Download() API treatment, this API returns
+LE_FAULT and the application will need to synchronize partitions by calling
+le_fwupdate_DualSysSync() API which occurs a device reboot.
+Synchronizing partitions is necessary before calling again the le_fwupdate_Download() API.
+To know if both systems are synchronized, the le_fwupdate_DualSysSyncState() API can be called.
+
+@section fwupdateConstrain_UpdateReq Update request
+
+Once the package download is over (meaning that le_fwupdate_Download() API returns
+LE_OK), the user is able to accept or cancel the FW update.
+To do that, the le_fwupdate_DualSysSwap() (accept the upate) or the le_fwupdate_DualSysSync()
+(refuse the update) API can be used.
+@warning If any Legato reset happens before accepting the FW update, a new download will
+be required at next startup.
+Accepting a FW update (le_fwupdate_DualSysSwap()) will initiate a device reboot without returning
+any result.
+Rejecting a FW update will initiate a synchronization without any device reboot.
+
+@section fwupdateConstrain_PartitionSync Partition synchronization
+
+The user can check if the ACTIVE and UPDATE partition are synchronized by calling the
+le_fwupdate_DualSysSyncState() API.
+This API can be used before calling le_fwupdate_Download() in order to check that the
+download can be treated.
+The user can request a SYNC operation by calling le_fwupdate_DualSysSync().
+
+@section fwupdateConstrain_Reset Reset APIs
+
+The user can use a reset API to initiate a partition swap or a swap and synchronization.
+See le_fwupdate_DualSysSwap() and le_fwupdate_DualSysSwapAndSync().
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
