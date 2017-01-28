@@ -18,6 +18,7 @@ Legato has these sample apps:
 @subpage sampleApps_modemDemo <br>
 @subpage sampleApps_shellPiping <br>
 @subpage sampleApps_sms <br>
+@subpage sampleApps_fwupdateDownloader <br>
 
 All sample apps are located in @c apps/sample/. The built apps are located in
 <code>build/\<target\>/bin/samples</code>.

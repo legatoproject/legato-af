@@ -1,0 +1,23 @@
+/** @page sampleApps_fwupdateDownloader Firmware Update Downloader
+
+The firmware update process can be invoked remotely by sending an update package on
+the TCP port 5000.
+
+For example by using netcat:
+@verbatim
+nc [-q 0] <target_ip> 5000 < <spkg_name.cwe>
+@endverbatim
+
+@note The default port is 5000 but it can be changed in the source code.
+
+@note If the cwe file is not correct, a timeout of 30 seconds may occur when the firmware update 
+process is expecting incoming data.
+
+@note If no data are sent by the host to the firmware update process during more than 30 seconds,
+a timeout will occur and the download will fail.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
