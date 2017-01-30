@@ -23,5 +23,6 @@ requires:
     {
         $LEGATO_FWUPDATE_PA_DEFAULT
         $LEGATO_FWUPDATE_PA
+        $LEGATO_FWUPDATE_PA_DUALSYS
     }
 }

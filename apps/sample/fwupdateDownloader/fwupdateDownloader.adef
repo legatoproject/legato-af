@@ -1,0 +1,22 @@
+
+sandboxed: false
+
+executables:
+{
+    fwupdateDownloader = ( server )
+}
+
+processes:
+{
+    run:
+    {
+        (server)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    fwupdateDownloader.server.le_fwupdate -> fwupdateService.le_fwupdate
+}

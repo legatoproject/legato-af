@@ -659,6 +659,7 @@ INPUT                  = "@LEGATO_ROOT@/framework" \
                          "@LEGATO_ROOT@/buildTools" \
                          "@LEGATO_BUILD@/framework/doc/generated" \
                          "@LEGATO_ROOT@/components/doc" \
+                         "@LEGATO_ROOT@/platformAdaptor/qmi/src/components/doc" \
                          "@CMAKE_EXTERNAL_DOXYGEN_ROOT@"
 
 # This tag can be used to specify the character encoding of the source files

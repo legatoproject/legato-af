@@ -218,8 +218,15 @@ user_pdf: localhost build/localhost/Makefile
 	$(MAKE) -C build/localhost user_pdf
 	ln -sf build/localhost/bin/doc/user/legato-user.pdf Documentation.pdf
 
+plantuml_docs: $(PLANTUML_JAR_FILE)
+	for dir in components/doc platformAdaptor/qmi/src/components/doc; do \
+		files=`ls $(LEGATO_ROOT)/$$dir/*` ; \
+		java -Djava.awt.headless=true -jar $(PLANTUML_JAR_FILE) \
+		                              -o $(LEGATO_ROOT)/build/doc/implementation/html $$files ; \
+	done
+
 # Docs for people who want or need to know the internal implementation details.
-implementation_docs: localhost build/localhost/Makefile
+implementation_docs: localhost plantuml_docs build/localhost/Makefile
 	$(MAKE) -C build/localhost implementation_docs
 
 implementation_pdf: localhost build/localhost/Makefile

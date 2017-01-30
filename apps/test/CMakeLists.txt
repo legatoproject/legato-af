@@ -107,3 +107,8 @@ add_subdirectory(atServices/atServerUnitTest)
 
 # CM tool
 add_subdirectory(cm)
+
+# Fw update
+add_subdirectory(fwupdate/fwupdateUnitTest)
+add_subdirectory(fwupdate/fwupdateIntegrationTest)
+

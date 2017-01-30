@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_fwupdate Modem Firmware Update
+ * @page c_le_fwupdate Modem Firmware Update
  *
  * @ref le_fwupdate_interface.h "API Reference"
  *
@@ -30,6 +30,11 @@
    }
    @endverbatim
  *
+ *
+ * @warning All of these APIs are not available for all platforms. Please refer to the
+ * Product Technical specification document of your platform for further details.
+ * Please refer to @subpage platformConstraintsFwUpdate for details.
+ *
  * @section le_fwupdate_image Update Firmware Image
  *
  * The firmware update process is started by calling le_fwupdate_Download().  This function takes
@@ -37,10 +42,15 @@
  * particular, this can be used to stream the image, rather than having to save it on the file
  * system before doing the update.
  *
- * If the image is successfully downloaded, a reset will occur in order to apply
- * the update. This will reset all processors.  After the application
- * processor has restarted, the @ref le_info_version APIs can be used to determine whether
- * the firmware has been updated to the new version.
+ * On platform which does not support dual system, when the image is successfully downloaded, a
+ * reset will occur in order to apply the update. This will reset all processors.  After the
+ * application processor has restarted, the @ref le_info_version APIs can be used to determine
+ * whether the firmware has been updated to the new version.
+ *
+ * On platform which supports dual system, if the image is successfully downloaded, the user needs
+ * to swap the systems in order to use the updated system. This will reset all processors. After the
+ * application processor has restarted, the @ref le_info_version APIs can be used to determine
+ * whether the firmware has been updated to the new version.
  *
  * <HR>
  *
@@ -52,7 +62,7 @@
 /**
  * @file le_fwupdate_interface.h
  *
- * Legato @ref c_fwupdate include file.
+ * Legato @ref c_le_fwupdate include file.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -73,6 +83,9 @@ DEFINE MAX_VERS_LEN   = 256;
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_TIMEOUT after 30 seconds without data recieved
+ *      - LE_TERMINATED    if aborted by the user by calling
+ *                          pa_fwupdate_ExecuteCommand( pa_fwupdate_CANCEL )
  *      - LE_FAULT on failure
  *
  * @note
@@ -121,5 +134,84 @@ FUNCTION le_result_t GetFirmwareVersion
 FUNCTION le_result_t GetBootloaderVersion
 (
     string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function which indicates if Active and Update systems are synchronized
+ * @note This API is only available on platforms which support dual system.
+ *
+ * @deprecated This API will be removed and should not be used for further development.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_UNSUPPORTED   The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DualSysSyncState
+(
+    bool isSync OUT ///< true if both systems are synchronized, false otherwise
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request a full system reset with a systems swap.
+ *
+ * After the reset, the UPDATE and ACTIVE systems will be swapped.
+ * @note When this API is correctly treated, a device reboot is initiated without returning any
+ * value.
+ * @note This API is only available on platforms which support dual system.
+ *
+ * @deprecated This API will be removed and should not be used for further development.
+ *
+ * @return
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DualSysSwap
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request a systems SYNC.
+ *
+ * The UPDATE system will be synchronised with the ACTIVE one.
+ * @note This API is only available on platforms which support dual system.
+ *
+ * @deprecated This API will be removed and should not be used for further development.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DualSysSync
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request a full system reset with a systems SWAP and systems SYNC.
+ *
+ * After the reset, the UPDATE and ACTIVE systems will be swapped and synchronized.
+ * @note When this API is correctly treated, a device reboot is initiated without returning any
+ * value.
+ * @note This API is only available on platforms which support dual system.
+ *
+ * @deprecated This API will be removed and should not be used for further development.
+ *
+ * @return
+ *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DualSysSwapAndSync
+(
 );
 
