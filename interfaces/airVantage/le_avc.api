@@ -413,6 +413,25 @@ FUNCTION le_result_t StopSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Send a specific message to the server to be sure that the route between the device and the server
+ * is available.
+ * This API needs to be called when any package download is over (successfully or not) and before
+ * sending any notification on asset data to the server.
+ *
+ * @return
+ *      - LE_OK when the treatment is launched
+ *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED when the API is not supported
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CheckRoute
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Accept the currently pending download
  *
  * @return

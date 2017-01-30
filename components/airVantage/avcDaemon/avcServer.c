@@ -1200,6 +1200,26 @@ le_result_t le_avc_StopSession
 }
 
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a specific message to the server to be sure that the route between the device and the server
+ * is available.
+ * This API needs to be called when any package download is over (successfully or not) and before
+ * sending any notification on asset data to the server.
+ *
+ * @return
+ *      - LE_UNSUPPORTED in all cases
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_avc_CheckRoute
+(
+    void
+)
+{
+    return LE_UNSUPPORTED;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Accept the currently pending download
@@ -1856,6 +1876,8 @@ le_result_t le_avc_SetPollingTimer
 
     return pa_avc_SetPollingTimer(pollingTimer);
 }
+
+
 
 
 //--------------------------------------------------------------------------------------------------
