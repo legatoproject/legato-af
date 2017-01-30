@@ -1,22 +1,40 @@
 /** @page defFilesMdef Kernel Module Definition .mdef
 
-This topic provides details about Legato's Kernel Module Definition file.
+This topic provides details about Legato AF's Kernel Module Definition file.
 
-The @c .mdef files support declaring pre-built kernel modules to use Legato.
+The @c .mdef files support 2 methods of building drivers within the Legato AF.
+-#  Using @c pre-built to bundle kernel module binary files.
+-#  Using @c sources to make and bundle .c files into a kernel object.
+
+Each method will bundle the kernel module into the system definition (when called in the .sdef) and
+will be installed on the target when the system is updated.
+
+@note The @c .mdef must contain @b either a @c source or a @c preBuilt section, not both.
 
 @c .mdef files contain the following sections:
 
+@section defFilesMdef_sources sources
+
+The @c sources: section specifies the path of the source code that is required to build the
+kernel module binary file.  This will build a @c .ko file from the source
+
+Building a driver using @c sources:
+
+@code
+sources:
+{
+    mangoh_iot.c
+    green.c
+    eeprom.c
+}
+@endcode
+
 @section defFilesMdef_preBuilt preBuilt
 
-The mandatory @c preBuilt: section specifies the path to the pre-built kernel module binary file.
-This binary file will be bundled with Legato and installed on the target using @c insmod Linux
-command.
+The @c preBuilt: section specifies the path to the pre-built kernel module binary file.
+The module binary file specified must have an extension @c .ko.
 
-The module binary file specified must have an extension @c .ko to indicate the
-kernel module binary.
-
-This code sample shows how the kernel module binary file @c /path/to/module/hello.ko
-is bundled with Legato:
+Building a kernel module binary file from @c /path/to/module/hello.ko:
 
 @code
 {
@@ -26,7 +44,7 @@ is bundled with Legato:
 
 @section defFilesMdef_params params
 
-The optional @c params: section lists all module parameters that must be provided to the module’s
+The optional @c params: section lists all module parameters that must be provided to the
 @c insmod command.
 
 The following code sample will execute this command
@@ -34,43 +52,29 @@ The following code sample will execute this command
 @code
 params:
 {
-    param1 = “value1”
-    param2 = “value2”
+    param1 = "value1"
+    param2 = "value2"
     …
 }
 @endcode
 
-The mandatory quotes (“ ”) around each parameter value indicate a string type.
+The mandatory quotes (" ") around each parameter value indicate a string type.
 
-@section defFilesMdef_preBuilt_buildKernel Build Kernel Modules
+@section defFilesMdef_flags flags
 
-For info on how to build Linux kernel modules, see the
-<a href="http://www.yoctoproject.org/docs/1.7.3/kernel-dev/kernel-dev.html">Yocto kernel dev docs</a>
-and
+The optional @c cflags: and @c ldflags: can be added to list all options that need to be passed to
+the compiler and linker during the driver build.
 @code
-$(KERNEL_SRC)/Documentation/kbuild/modules.txt file@endcode
+cflags:
+{
+"-I/path/to/custom/includes"
+}
 
-
-@subsection defFilesMdef_buildDir Build Directory
-
-Kernel module binares are built in the Yocto Linux kernel build environment,
-preferably with Yocto cross-build tools.
-
-Modules have to be built from the Yocto kernel’s build directory.
-
-From the Yocto tree root, this is the path to kernel build directory:
-@verbatim
-<Yocto-root>/build_bin/tmp/work/swi_mdm9x15-poky-linux-gnueabi/linux-yocto/<kernel-version>/linux-swi_mdm9x15-standard-build
-@endverbatim
-
-From the Legato directory, this is the path to kernel build directory:
-@verbatim
-../build_bin/tmp/work/swi_mdm9x15-poky-linux-gnueabi/linux-yocto/<kernel-version>/linux-swi_mdm9x15-standard-build
-@endverbatim
-
-@section defFiles_kernelDriver Kernel Driver
-
-See @ref yoctoOutofTreeKernelModule for details.
+ldflags:
+{
+"-L/path/to/custom/libs"
+}
+@endcode
 
 Copyright (C) Sierra Wireless Inc.
 

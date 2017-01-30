@@ -2,22 +2,26 @@
 
 @section buildTools_mktoolsOverview Overview
 
-Legato has tools to build components, executables, apps and app systems.
-They all that start with @c mk (we call them @c mktools): <br>
+Legato AF contains tools to build components, drivers, executables, apps and app systems.
 
-@subpage buildToolsmkapp - generate an app bundle to install and run on a target. <br>
-@subpage buildToolsmksys - generate a system bundle to install and run on a target. <br>
-@subpage buildToolsmkexe - create an executable program. <br>
-@subpage buildToolsmkcomp - pre-build a component library (<c>.so</c>) file. <br>
+| Tool                      |  Description                                                         |
+|---------------            |--------------------------------------------------------------------- |
+| @subpage buildToolsmkapp  | Generate an app bundle to install and run on a target.               |
+| @subpage buildToolsmksys  | Generate a system bundle to install and run on a target.             |
+| @subpage buildToolsmkexe  | Create an executable program.                                        |
+| @subpage buildToolsmkcomp | Pre-build a component library ( @c .so) file.                        |
 
-These build tools are used to:
+Build tools are used to:
  - generate boiler-plate code
  - simplify component-based software development
+ - package and build drivers from kernel objects or source code
  - package apps and config settings to deploy to targets.
 
-Most developers will usually only need @ref buildToolsmkapp and @ref buildToolsmksys.
+@ref buildToolsmksys and @ref buildToolsmkapp build apps and systems for deployment on Target
+Devices.  @ref buildToolsmksys is a powerful tool that checks all app bindings before deployment to
+prevent build bugs in your app and prevent the app from hanging.
 
-@ref buildToolsmkexe is only needed to build an executable for a target without packaging it
+@ref buildToolsmkexe is used to build an executable for a target without packaging it
 as an app.  This can be useful to build command-line tools to copy to
 a target or bundle in a root file system image.
 
@@ -25,10 +29,10 @@ a target or bundle in a root file system image.
 a separate step is needed as a part of a complex, custom, staged build system
 (instead of letting mksys, mkapp, or mkexe handle it).
 
-<h2>Interface Generation Tool</h2>
+@section buildToolsIfGen Interface Generation Tool
 
-The @subpage buildToolsifgen tool is used to parse interface def .api files and generate include files and
-IPC code. The @c ifgen tool is usually run automatically by the @c mktools.
+The @subpage buildToolsifgen tool is used to parse interface def .api files and generate include
+files and IPC code. The @c ifgen tool is usually run automatically by @c mktools.
 
 
 <HR>
