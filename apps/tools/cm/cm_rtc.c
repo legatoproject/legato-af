@@ -30,6 +30,13 @@ void cm_rtc_PrintRtcHelp
            "\tcm rtc read\n\n"
            "To set the RTC time:\n"
            "\tcm rtc set \"25 Dec 2015 12:30:45\"\n"
+           "time format:\n"
+           "- day of the month (leading zeros are permitted)\"\n"
+           "- month (either the abbreviated or the full name)\"\n"
+           "- year with century\"\n"
+           "- hour (leading zeros are permitted)\"\n"
+           "- minute (leading zeros are permitted)\"\n"
+           "- seconds (leading zeros are permitted)\"\n"
            );
 }
 
@@ -82,8 +89,10 @@ static le_result_t SetRtc
     time_t t;
     const char* datePtr = le_arg_GetArg(2);
 
+    char* lastCarPtr;
+    lastCarPtr = strptime(datePtr, "%d %b %Y %H:%M:%S", &tm);
 
-    if (strptime(datePtr, "%d %b %Y %H:%M:%S", &tm) == NULL)
+    if ((NULL == lastCarPtr) || (*lastCarPtr != '\0'))
     {
         printf("Failed to get the time.\n");
         return LE_FAULT;
@@ -123,31 +132,54 @@ void cm_rtc_ProcessRtcCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
-    if (strcmp(command, "help") == 0)
+    // true if the command contains extra arguments.
+    bool extraArguments = true;
+
+    if (0 == strcmp(command, "help"))
     {
-        cm_rtc_PrintRtcHelp();
-    }
-    else if (strcmp(command, "read") == 0)
-    {
-        if (LE_OK != ReadAndPrintRtc())
+        if (numArgs < CM_MAX_ARGUMENTS_FOR_RTC_HELP)
         {
-            printf("Read failed.\n");
-            exit(EXIT_FAILURE);
+            extraArguments = false;
+            cm_rtc_PrintRtcHelp();
         }
     }
-    else if (strcmp(command, "set") == 0)
+    else if (0 == strcmp(command, "read"))
     {
-        if (LE_OK != SetRtc())
+        if (numArgs < CM_MAX_ARGUMENTS_FOR_RTC_READ)
         {
-            printf("Set RTC failure.\n");
-            exit(EXIT_FAILURE);
+            extraArguments = false;
+            if (LE_OK != ReadAndPrintRtc())
+            {
+                printf("Read failed.\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+    else if (0 == strcmp(command, "set"))
+    {
+        if (numArgs < CM_MAX_ARGUMENTS_FOR_RTC_SET)
+        {
+            extraArguments = false;
+            if (LE_OK != SetRtc())
+            {
+                printf("Set RTC failure.\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
     else
     {
-        printf("Invalid command for RTC service.\n");
+        printf("Unexpected string has been given to cm.\n");
         exit(EXIT_FAILURE);
     }
 
-    exit(EXIT_SUCCESS);
+    if (true == extraArguments)
+    {
+        printf("Invalid command for RTC service.\n");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        exit(EXIT_SUCCESS);
+    }
 }
