@@ -71,14 +71,15 @@ pa_Gnss_Date_t;
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    uint16_t                satId;          ///< Satellite in View ID number.
-    le_gnss_Constellation_t satConst;       ///< GNSS constellation type.
-    bool                    satUsed;        ///< TRUE if satellite in View Used for Navigation.
-    uint8_t                 satSnr;         ///< Satellite in View Signal To Noise Ratio [dBHz].
-    uint16_t                satAzim;        ///< Satellite in View Azimuth [degrees].
-                                            ///< Range: 0 to 360
-    uint8_t                satElev;         ///< Satellite in View Elevation [degrees].
-                                            ///< Range: 0 to 90
+    uint16_t                satId;        ///< Satellite in View ID number.
+    le_gnss_Constellation_t satConst;     ///< GNSS constellation type.
+    bool                    satUsed;      ///< TRUE if satellite in View is used for fix Navigation.
+    bool                    satTracked;   ///< TRUE if satellite in View is tracked for Navigation.
+    uint8_t                 satSnr;       ///< Satellite in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;      ///< Satellite in View Azimuth [degrees].
+                                          ///< Range: 0 to 360
+    uint8_t                satElev;       ///< Satellite in View Elevation [degrees].
+                                          ///< Range: 0 to 90
 }
 Pa_Gnss_SvInfo_t;
 

@@ -41,14 +41,15 @@
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    uint16_t                satId;          ///< Satellite in View ID number [PRN].
-    le_gnss_Constellation_t satConst;       ///< GNSS constellation type.
-    bool                    satUsed;        ///< TRUE if satellite in View Used for Navigation.
-    uint8_t                 satSnr;         ///< Satellite in View Signal To Noise Ratio [dBHz].
-    uint16_t                satAzim;        ///< Satellite in View Azimuth [degrees].
-                                            ///< Range: 0 to 360
-    uint8_t                 satElev;        ///< Satellite in View Elevation [degrees].
-                                            ///< Range: 0 to 90
+    uint16_t                satId;        ///< Satellite in View ID number [PRN].
+    le_gnss_Constellation_t satConst;     ///< GNSS constellation type.
+    bool                    satUsed;      ///< TRUE if satellite in View is used for fix Navigation.
+    bool                    satTracked;   ///< TRUE if satellite in View is tracked for Navigation.
+    uint8_t                 satSnr;       ///< Satellite in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;      ///< Satellite in View Azimuth [degrees].
+                                          ///< Range: 0 to 360
+    uint8_t                 satElev;      ///< Satellite in View Elevation [degrees].
+                                          ///< Range: 0 to 90
 }
 le_gnss_SvInfo_t;
 
@@ -570,6 +571,7 @@ static void GetPosSampleData
         posSampleDataPtr->satInfo[i].satId = paPosDataPtr->satInfo[i].satId;
         posSampleDataPtr->satInfo[i].satConst = paPosDataPtr->satInfo[i].satConst;
         posSampleDataPtr->satInfo[i].satUsed = paPosDataPtr->satInfo[i].satUsed;
+        posSampleDataPtr->satInfo[i].satTracked = paPosDataPtr->satInfo[i].satTracked;
         posSampleDataPtr->satInfo[i].satSnr = paPosDataPtr->satInfo[i].satSnr;
         posSampleDataPtr->satInfo[i].satAzim = paPosDataPtr->satInfo[i].satAzim;
         posSampleDataPtr->satInfo[i].satElev = paPosDataPtr->satInfo[i].satElev;
@@ -2000,7 +2002,7 @@ le_result_t le_gnss_GetSatellitesStatus
         }
     }
 
-    // Number of satellites in View used for Navigation
+    // Satellites in View used for establishing a fix
     if (satsUsedCountPtr)
     {
         if (positionSamplePtr->satsUsedCountValid)
