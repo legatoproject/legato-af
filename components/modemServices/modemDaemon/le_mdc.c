@@ -811,12 +811,9 @@ le_result_t le_mdc_GetProfileFromApn
 
     for (; profileIndex <= profileIndexMax; profileIndex++)
     {
-        char tmpApn[LE_MDC_APN_NAME_MAX_LEN];
         pa_mdc_ProfileData_t profileData;
 
         *profileRefPtr = NULL;
-
-        memset(tmpApn, 0, LE_MDC_APN_NAME_MAX_LEN);
 
         if ( pa_mdc_ReadProfile(profileIndex, &profileData) == LE_OK )
         {

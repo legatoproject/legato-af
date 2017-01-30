@@ -866,7 +866,7 @@ static le_result_t PrintApnName
     le_mdc_ProfileRef_t profileRef   ///< [IN] profile reference
 )
 {
-    char apnName[100];
+    char apnName[LE_MDC_APN_NAME_MAX_BYTES];
     le_result_t res = LE_OK;
 
     res = le_mdc_GetAPN(profileRef, apnName, sizeof(apnName));
