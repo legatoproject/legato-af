@@ -131,12 +131,12 @@ static bool IsDir
     else if (dirEntryPtr->d_type == DT_UNKNOWN)
     {
         // As per man page (http://man7.org/linux/man-pages/man3/readdir.3.html), DT_UNKNOWN
-        // should be handled properly for portability purpose. Use stat(2) to check file info.
+        // should be handled properly for portability purpose. Use lstat(2) to check file info.
         struct stat stbuf;
 
-        if (stat(dirEntryPtr->d_name, &stbuf) != 0)
+        if (lstat(dirEntryPtr->d_name, &stbuf) != 0)
         {
-            LE_ERROR("Error when trying to stat '%s'. (%m)", dirEntryPtr->d_name);
+            LE_ERROR("Error when trying to lstat '%s'. (%m)", dirEntryPtr->d_name);
             return false;
         }
 
