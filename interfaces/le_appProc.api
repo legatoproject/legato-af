@@ -87,6 +87,9 @@ ENUM FaultAction
  * @return
  *      Reference to the application process object if successful.
  *      NULL if there was an error.
+ *
+ * @note If the application or process names pointers are null or if their strings are empty or of
+ *       bad format it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Ref Create
@@ -167,7 +170,7 @@ EVENT Stop
  * If the application process is a configured process adding any argument means no arguments from
  * the configuration database will be used.
  *
- * Adding an empty argument validates the argument list but does not acutally add an argument.  This
+ * Adding an empty argument validates the argument list but does not acutally add an argument. This
  * is useful for overriding the configured arguments list with an empty argument list.
  *
  * If there is an error this function will kill the calling client.
@@ -184,6 +187,9 @@ FUNCTION AddArg
 /**
  * Deletes and invalidates the cmd-line arguments to a process and use the configured arguments if
  * available.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ClearArgs
@@ -211,6 +217,9 @@ FUNCTION SetPriority
 //--------------------------------------------------------------------------------------------------
 /**
  * Clears the application process's priority and use either the configured priority or the default.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ClearPriority
@@ -222,6 +231,9 @@ FUNCTION ClearPriority
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets the application process's fault action.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION SetFaultAction
@@ -235,6 +247,9 @@ FUNCTION SetFaultAction
 /**
  * Clears the application process's fault action and use either the configured fault action or the
  * default.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION ClearFaultAction
@@ -251,6 +266,9 @@ FUNCTION ClearFaultAction
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if there was some other error.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Start
@@ -262,6 +280,9 @@ FUNCTION le_result_t Start
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes the application process object.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Delete

@@ -74,6 +74,9 @@ DEFINE MD5_STR_LEN = 32;
  *
  * @return
  *      The state of the specified application.
+ *
+ * @note If the application name pointer is null or if its string is empty or of bad format it is a
+ *       fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION State GetState
@@ -89,6 +92,9 @@ FUNCTION State GetState
  *
  * @return
  *      The state of the specified process.
+ *
+ * @note If the application or process names pointers are null or if their strings are empty or of
+ *       bad format it is a fatal error, the function will not return.
  */
 // -------------------------------------------------------------------------------------------------
 FUNCTION ProcState GetProcState
@@ -126,6 +132,9 @@ FUNCTION le_result_t GetName
  *      LE_OVERFLOW if the application hash could not fit in the provided buffer.
  *      LE_NOT_FOUND if the application is not installed.
  *      LE_FAULT if there was an error.
+ *
+ * @note If the application name pointer is null or if its string is empty or of bad format it is a
+ *       fatal error, the function will not return.
  */
 //-------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetHash

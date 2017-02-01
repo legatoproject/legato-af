@@ -119,6 +119,9 @@ FUNCTION SetRun
  *      LE_NOT_FOUND if the path does not point to a valid file.
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
+ *
+ * @note If the caller is passing an invalid reference to the application, it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Import
@@ -137,6 +140,9 @@ FUNCTION le_result_t Import
  *      LE_NOT_FOUND if the path does not point to a valid device.
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
+ *
+ * @note If the caller is passing an invalid reference to the application, it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDevicePerm
@@ -177,6 +183,9 @@ EVENT TraceAttach
 /**
  * Unblocks the traced process.  This should normally be done once the tracer has successfully
  * attached to the process.
+ *
+ * @note If the caller is passing an invalid reference to the application, it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION TraceUnblock

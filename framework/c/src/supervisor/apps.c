@@ -153,18 +153,18 @@ typedef void (*AppStopHandler_t)
 //--------------------------------------------------------------------------------------------------
 typedef struct _appContainerRef
 {
-    app_Ref_t               appRef;         // Reference to the app.
-    AppStopHandler_t        stopHandler;    // Handler function that gets called when the app stops.
-    le_appCtrl_ServerCmdRef_t stopCmdRef;   // Stores the reference to the command that requested
-                                            // this app be stopped.  This reference must be sent in
-                                            // the response to the stop app command.
-    le_dls_Link_t           link;           // Link in the list of apps.
-    bool                    isActive;       // true if the app is on the active list.  false if it
-                                            // is on the inactive list.
-    le_msg_SessionRef_t     clientRef;      // Stores the reference to the client that has a
-                                            // reference to this app. NULL means no connected client.
+    app_Ref_t               appRef;        // Reference to the app.
+    AppStopHandler_t        stopHandler;   // Handler function that gets called when the app stops.
+    le_appCtrl_ServerCmdRef_t stopCmdRef;  // Stores the reference to the command that requested
+                                           // this app be stopped.  This reference must be sent in
+                                           // the response to the stop app command.
+    le_dls_Link_t           link;          // Link in the list of apps.
+    bool                    isActive;      // true if the app is on the active list.  false if it
+                                           // is on the inactive list.
+    le_msg_SessionRef_t     clientRef;     // Stores the reference to the client that has a
+                                           // reference to this app. NULL means no connected client.
     le_appCtrl_TraceAttachHandlerFunc_t traceAttachHandler; // Client's trace attach handler.
-    void* traceAttachContextPtr;            // Context for the client's trace attach handler.
+    void* traceAttachContextPtr;           // Context for the client's trace attach handler.
 }
 AppContainer_t;
 
@@ -440,7 +440,9 @@ static AppContainer_t* GetActiveApp
     {
         AppContainer_t* appContainerPtr = CONTAINER_OF(appLinkPtr, AppContainer_t, link);
 
-        if (strncmp(app_GetName(appContainerPtr->appRef), appNamePtr, LIMIT_MAX_APP_NAME_BYTES) == 0)
+        if (strncmp(app_GetName(appContainerPtr->appRef),
+                                appNamePtr,
+                                LIMIT_MAX_APP_NAME_BYTES) == 0)
         {
             return appContainerPtr;
         }
@@ -472,7 +474,9 @@ static AppContainer_t* GetInactiveApp
     {
         AppContainer_t* appContainerPtr = CONTAINER_OF(appLinkPtr, AppContainer_t, link);
 
-        if (strncmp(app_GetName(appContainerPtr->appRef), appNamePtr, LIMIT_MAX_APP_NAME_BYTES) == 0)
+        if (strncmp(app_GetName(appContainerPtr->appRef),
+                                appNamePtr,
+                                LIMIT_MAX_APP_NAME_BYTES) == 0)
         {
             return appContainerPtr;
         }
@@ -1568,6 +1572,9 @@ void le_appCtrl_SetRun
  *      LE_NOT_FOUND if the path does not point to a valid file.
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
+ *
+ * @note If the caller is passing an invalid reference to the application, it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appCtrl_Import
@@ -1624,6 +1631,9 @@ void le_appCtrl_Import
  *      LE_NOT_FOUND if the path does not point to a valid device.
  *      LE_BAD_PARAMETER if the path is formatted incorrectly.
  *      LE_FAULT if there was some other error.
+ *
+ * @note If the caller is passing an invalid reference to the application, it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appCtrl_SetDevicePerm
@@ -1757,6 +1767,9 @@ void le_appCtrl_RemoveTraceAttachHandler
 /**
  * Unblocks the traced process.  This should normally be done once the tracer has successfully
  * attached to the process.
+ *
+ * @note If the caller is passing an invalid reference to the application, it is a fatal error,
+ *       the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appCtrl_TraceUnblock
@@ -1839,6 +1852,9 @@ void le_appCtrl_Stop
  *
  * @return
  *      The state of the specified application.
+ *
+ * @note If the application name pointer is null or if its string is empty or of bad format it is a
+ *       fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_appInfo_State_t le_appInfo_GetState
@@ -1890,6 +1906,9 @@ le_appInfo_State_t le_appInfo_GetState
  *
  * @return
  *      The state of the specified process.
+ *
+ * @note If the application or process names pointers are null or if their strings are empty or of
+ *       bad format it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_appInfo_ProcState_t le_appInfo_GetProcState
@@ -2042,6 +2061,9 @@ le_result_t le_appInfo_GetName
  *      LE_OVERFLOW if the application hash could not fit in the provided buffer.
  *      LE_NOT_FOUND if the application is not installed.
  *      LE_FAULT if there was an error.
+ *
+ * @note If the application name pointer is null or if its string is empty or of bad format it is a
+ *       fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_appInfo_GetHash
@@ -2157,8 +2179,8 @@ void wdog_WatchdogTimedOut
                     ///        rather than just the framework so that possibly connected peripherals
                     ///        get reset as well.  So, for now we will just log an error message and
                     ///        restart the app.
-                    LE_CRIT("Watchdog action requires a reboot but a module reboot is not yet supported. \
-restarting the app instead.");
+                    LE_CRIT("Watchdog action requires a reboot but a module reboot is not yet \
+                    supported restarting the app instead.");
 
                 case WATCHDOG_ACTION_RESTART_APP:
                     if (app_GetState(appContainerPtr->appRef) != APP_STATE_STOPPED)
@@ -2206,7 +2228,8 @@ restarting the app instead.");
     if (appLinkPtr == NULL)
     {
         // We exhausted the app list without taking any action for this process
-        LE_CRIT("Process pid:%d was not started by the framework. No watchdog action can be taken", procId);
+        LE_CRIT("Process pid:%d was not started by the framework. No watchdog action can be taken",
+                procId);
     }
 }
 
@@ -2234,6 +2257,9 @@ restarting the app instead.");
  * @return
  *      Reference to the application process object if successful.
  *      NULL if there was an error.
+ *
+ * @note If the application or process names pointers are null or if their strings are empty or of
+ *       bad format it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_appProc_RefRef_t le_appProc_Create
@@ -2522,6 +2548,9 @@ void le_appProc_AddArg
 /**
  * Deletes and invalidates the cmd-line arguments to a process.  This means the process will only
  * use arguments from the config if available.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appProc_ClearArgs
@@ -2587,6 +2616,9 @@ void le_appProc_SetPriority
 //--------------------------------------------------------------------------------------------------
 /**
  * Clears the application process's priority and use either the configured priority or the default.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appProc_ClearPriority
@@ -2610,6 +2642,9 @@ void le_appProc_ClearPriority
 //--------------------------------------------------------------------------------------------------
 /**
  * Sets the application process's fault action.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appProc_SetFaultAction
@@ -2666,6 +2701,9 @@ void le_appProc_SetFaultAction
 /**
  * Clears the application process's fault action and use either the configured fault action or the
  * default.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appProc_ClearFaultAction
@@ -2694,6 +2732,9 @@ void le_appProc_ClearFaultAction
  * @return
  *      LE_OK if successful.
  *      LE_FAULT if there was some other error.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_appProc_Start
@@ -2729,6 +2770,9 @@ le_result_t le_appProc_Start
 //--------------------------------------------------------------------------------------------------
 /**
  * Deletes the application process object.
+ *
+ * @note If the caller is passing an invalid reference to the application process, it is a fatal
+ *       error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_appProc_Delete
