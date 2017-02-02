@@ -825,8 +825,9 @@ FUNCTION le_result_t SetAutomaticRegisterMode
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */
@@ -842,8 +843,9 @@ FUNCTION le_result_t SetManualRegisterMode
  * Set the manual selection register mode asynchronously. This function is not blocking,
  *  the response will be returned with a handler function.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  *
  *@note <b>NOT multi-app safe</b>
  *
@@ -1056,8 +1058,9 @@ FUNCTION le_result_t GetTdScdmaBandPreferences
  *  - LE_BAD_PARAMETER RAT mask is invalid.
  *  - LE_OK            Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
- *       it's a fatal error and the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */
@@ -1079,8 +1082,9 @@ FUNCTION le_result_t AddPreferredOperator
  *  - LE_FAULT          Function failed.
  *  - LE_OK             Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
- *       it's a fatal error and the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */

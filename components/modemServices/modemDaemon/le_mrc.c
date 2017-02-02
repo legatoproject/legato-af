@@ -102,9 +102,10 @@ static pthread_mutex_t RegisteringNetworkMutex = PTHREAD_MUTEX_INITIALIZER;
  * Macro used to prevent race condition with asynchronous functions.
  */
 //--------------------------------------------------------------------------------------------------
-#define LOCK()    LE_FATAL_IF((pthread_mutex_lock(&RegisteringNetworkMutex)!=0),"Could not lock the mutex")
-#define UNLOCK()  LE_FATAL_IF((pthread_mutex_unlock(&RegisteringNetworkMutex)!=0),"Could not unlock the mutex")
-
+#define LOCK()    LE_FATAL_IF((pthread_mutex_lock(&RegisteringNetworkMutex)!=0), \
+                               "Could not lock the mutex")
+#define UNLOCK()  LE_FATAL_IF((pthread_mutex_unlock(&RegisteringNetworkMutex)!=0), \
+                               "Could not unlock the mutex")
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -409,6 +410,72 @@ static le_mem_PoolRef_t PreferredNetworkOperatorPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test mcc and mnc strings
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t TestMccMnc
+(
+    const char*   mccPtr,      ///< [IN] Mobile Country Code
+    const char*   mncPtr       ///< [IN] Mobile Network Code
+)
+{
+    uint16_t mncLength;
+
+    if (mccPtr == NULL)
+    {
+        LE_ERROR("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (mncPtr == NULL)
+    {
+        LE_ERROR("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    // Check mcc length, mcc is encoded on LE_MRC_MCC_LEN digits
+    if (strlen(mccPtr) != LE_MRC_MCC_LEN)
+    {
+        LE_ERROR(" mcc length error != %d", LE_MRC_MCC_LEN);
+        return LE_FAULT;
+    }
+
+    // Check mnc length, mnc can be encoded on LE_MRC_MCC_LEN or LE_MRC_MCC_LEN-1 digits
+    mncLength = strlen(mncPtr);
+    if ((mncLength < (LE_MRC_MNC_LEN-1)) || (mncLength > (LE_MRC_MNC_LEN)))
+    {
+        LE_ERROR(" mnc length error %d", mncLength);
+        return LE_FAULT;
+    }
+
+    // Check mcc and mnc digits
+    const char* mccMncTab[]= {mccPtr, mncPtr, NULL};
+    const char** tmpPtr = mccMncTab;
+
+    while (*tmpPtr)
+    {
+        uint8_t idx=0;
+        do
+        {
+            if (((*tmpPtr)[idx]<'0') || ((*tmpPtr)[idx]>'9'))
+            {
+                LE_ERROR("format error %s", *tmpPtr);
+                return LE_FAULT;
+            }
+            idx++;
+        } while (idx < strlen((*tmpPtr)));
+
+        tmpPtr++;
+    }
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Function to destroy all safeRef elements in the CellInfoSafeRef list.
  *
  */
@@ -640,7 +707,7 @@ static void FirstLayerSsChangeHandler
     void* secondLayerHandlerFunc
 )
 {
-    pa_mrc_SignalStrengthIndication_t*       ssIndPtr = (pa_mrc_SignalStrengthIndication_t*)reportPtr;
+    pa_mrc_SignalStrengthIndication_t*    ssIndPtr = (pa_mrc_SignalStrengthIndication_t*)reportPtr;
     le_mrc_SignalStrengthChangeHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(ssIndPtr->ss, le_event_GetContextPtr());
@@ -772,6 +839,12 @@ static void ProcessMrcCommandEventHandler
                            ((CmdRequest_t*) msgCommand)->callBackPtr;
 
         LE_DEBUG("Register plmn (%s,%s)", mccStr, mncStr);
+
+        if (LE_OK != TestMccMnc(mccStr, mncStr))
+        {
+            LE_WARN("Invalid mcc or mnc");
+            return;
+        }
 
         LOCK();
         res = pa_mrc_RegisterNetwork(mccStr, mncStr);
@@ -1226,8 +1299,9 @@ le_result_t le_mrc_SetAutomaticRegisterMode
  *  - LE_FAULT  Function failed.
  *  - LE_OK     Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetManualRegisterMode
@@ -1237,26 +1311,10 @@ le_result_t le_mrc_SetManualRegisterMode
 )
 {
     le_result_t res;
-    if (mccPtr == NULL)
-    {
-        LE_KILL_CLIENT("mccPtr is NULL !");
-        return LE_FAULT;
-    }
-    if (mncPtr == NULL)
-    {
-        LE_KILL_CLIENT("mncPtr is NULL !");
-        return LE_FAULT;
-    }
 
-    if(strlen(mccPtr) > LE_MRC_MCC_LEN)
+    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
     {
-        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
-        return LE_FAULT;
-    }
-
-    if(strlen(mncPtr) > LE_MRC_MNC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+        LE_KILL_CLIENT("Invalid mcc or mnc");
         return LE_FAULT;
     }
 
@@ -1281,17 +1339,18 @@ le_result_t le_mrc_SetManualRegisterMode
  * Set the manual selection register mode asynchronously. This function is not blocking,
  *  the response will be returned with a handler function.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), it's a fatal error,
- *       the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  */
 //--------------------------------------------------------------------------------------------------
 void le_mrc_SetManualRegisterModeAsync
 (
-    const char* mccStr,
+    const char* mccPtr,
         ///< [IN]
         ///< Mobile Country Code
 
-    const char* mncStr,
+    const char* mncPtr,
         ///< [IN]
         ///< Mobile Network Code
 
@@ -1304,33 +1363,22 @@ void le_mrc_SetManualRegisterModeAsync
 {
     CmdRequest_t cmd;
 
-    if (mccStr == NULL)
+    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
     {
-        LE_KILL_CLIENT("mccPtr is NULL !");
-    }
-    if (mncStr == NULL)
-    {
-        LE_KILL_CLIENT("mncPtr is NULL !");
+        LE_KILL_CLIENT("Invalid mcc or mnc");
     }
 
-    if(strlen(mccStr) > LE_MRC_MCC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
-    }
-
-    if(strlen(mncStr) > LE_MRC_MNC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
-    }
-
+    memset(&cmd, 0, sizeof(CmdRequest_t));
     cmd.context = contextPtr;
     cmd.callBackPtr = handlerPtr;
     cmd.command = LE_MRC_CMD_TYPE_ASYNC_REGISTRATION;
-    strncpy(cmd.selection.mccStr, mccStr, LE_MRC_MCC_LEN);
-    strncpy(cmd.selection.mncStr, mncStr, LE_MRC_MNC_LEN);
+    strncpy(cmd.selection.mccStr, mccPtr, LE_MRC_MCC_LEN);
+    strncpy(cmd.selection.mncStr, mncPtr, LE_MRC_MNC_LEN);
 
     // Sending manual Selection command
-    LE_DEBUG("Send manual Selection command");
+    LE_DEBUG("Send manual Selection command (mcc:%s, mnc:%s)",
+             cmd.selection.mccStr,
+             cmd.selection.mncStr);
     le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
 }
 
@@ -1690,19 +1738,20 @@ le_result_t le_mrc_GetTdScdmaBandPreferences
  *  - LE_BAD_PARAMETER RAT mask is invalid.
  *  - LE_OK            Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
- *       it's a fatal error and the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_AddPreferredOperator
 (
-    const char* mcc,
+    const char* mccPtr,
         ///< [IN]
         ///< Mobile Country Code
 
-    const char* mnc,
+    const char* mncPtr,
         ///< [IN]
         ///< Mobile Network Code
 
@@ -1714,27 +1763,9 @@ le_result_t le_mrc_AddPreferredOperator
     le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
     int32_t nbEntries;
 
-    if (mcc == NULL)
+    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
     {
-        LE_KILL_CLIENT("mccPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    if (mnc == NULL)
-    {
-        LE_KILL_CLIENT("mncPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    if(strlen(mcc) > LE_MRC_MCC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
-        return LE_FAULT;
-    }
-
-    if(strlen(mnc) > LE_MRC_MNC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+        LE_KILL_CLIENT("Invalid mcc or mnc");
         return LE_FAULT;
     }
 
@@ -1759,9 +1790,9 @@ le_result_t le_mrc_AddPreferredOperator
 
     LE_WARN_IF((nbEntries == 0), "Preferred PLMN Operator list is empty!");
 
-    if ( AddPreferredOperators(&preferredOperatorsList, mcc, mnc, ratMask) != LE_OK )
+    if ( AddPreferredOperators(&preferredOperatorsList, mccPtr, mncPtr, ratMask) != LE_OK )
     {
-        LE_ERROR("Could not add [%s,%s] into the preferred operator list", mcc, mnc);
+        LE_ERROR("Could not add [%s,%s] into the preferred operator list", mccPtr, mncPtr);
         DeletePreferredOperatorsList(&preferredOperatorsList);
         return LE_FAULT;
     }
@@ -1787,19 +1818,20 @@ le_result_t le_mrc_AddPreferredOperator
  *  - LE_FAULT          Function failed.
  *  - LE_OK             Function succeeded.
  *
- * @note If one code is too long (max LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits) or not set,
- *       it's a fatal error and the function won't return.
+ * @note If strings are not set, too long (bigger than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN digits), or too
+ *       short (less than LE_MRC_MCC_LEN/LE_MRC_MNC_LEN-1 digits) it's a fatal error, the function
+ *       won't return.
  *
  * @note <b>NOT multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_RemovePreferredOperator
 (
-    const char* mcc,
+    const char* mccPtr,
         ///< [IN]
         ///< Mobile Country Code
 
-    const char* mnc
+    const char* mncPtr
         ///< [IN]
         ///< Mobile Network Code
 )
@@ -1808,34 +1840,16 @@ le_result_t le_mrc_RemovePreferredOperator
     int32_t nbItem;
     le_result_t res;
 
-    if (mcc == NULL)
+    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
     {
-        LE_KILL_CLIENT("mccPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    if (mnc == NULL)
-    {
-        LE_KILL_CLIENT("mncPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    if(strlen(mcc) > LE_MRC_MCC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mcc) > %d", LE_MRC_MCC_LEN);
-        return LE_FAULT;
-    }
-
-    if(strlen(mnc) > LE_MRC_MNC_LEN)
-    {
-        LE_KILL_CLIENT("strlen(mnc) > %d", LE_MRC_MNC_LEN);
+        LE_KILL_CLIENT("Invalid mcc or mnc");
         return LE_FAULT;
     }
 
     res = GetPreferredOperatorsList(&preferredOperatorsList, false, true, &nbItem);
     if (res == LE_OK)
     {
-        res = RemovePreferredOperators(&preferredOperatorsList, mcc, mnc);
+        res = RemovePreferredOperators(&preferredOperatorsList, mccPtr, mncPtr);
         if (res == LE_OK)
         {
             if (pa_mrc_SavePreferredOperators(&preferredOperatorsList) != LE_OK)
@@ -1846,7 +1860,7 @@ le_result_t le_mrc_RemovePreferredOperator
         }
         else
         {
-            LE_ERROR("Could not remove [%s,%s] into the preferred operator list", mcc, mnc);
+            LE_ERROR("Could not remove [%s,%s] into the preferred operator list", mccPtr, mncPtr);
             // Error code of RemovePreferredOperators is returned
         }
         DeletePreferredOperatorsList(&preferredOperatorsList);
@@ -2054,7 +2068,6 @@ void le_mrc_DeletePreferredOperatorsList
  *      - LE_OK on success
  *      - LE_OVERFLOW if the MCC or MNC would not fit in buffer
  *      - LE_FAULT for all other errors
- *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetPreferredOperatorDetails
@@ -3643,8 +3656,10 @@ le_result_t le_mrc_GetLteSignalMetrics
     le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
     int32_t*            ssPtr,      ///< [OUT] Signal strength in dBm
     uint32_t*           blerPtr,    ///< [OUT] Block error rate
-    int32_t*            rsrqPtr,    ///< [OUT] RSRQ value in dB as measured by L1 with 1 decimal place
-    int32_t*            rsrpPtr,    ///< [OUT] Current RSRP in dBm as measured by L1 with 1 decimal place
+    int32_t*            rsrqPtr,    ///< [OUT] RSRQ value in dB as measured by L1 with 1 decimal
+                                    ///        place
+    int32_t*            rsrpPtr,    ///< [OUT] Current RSRP in dBm as measured by L1 with 1 decimal
+                                    ///        place
     int32_t*            snrPtr      ///< [OUT] SNR level in dB with 1 decimal place (15 = 1.5 dB)
 )
 {

@@ -6,7 +6,6 @@
  */
 
 #include "interfaces.h"
-
 #include "log.h"
 #include "pa_simu.h"
 #include "pa_sim_simu.h"
@@ -281,6 +280,8 @@ void Testle_mrc_RegisterTest
     LE_ASSERT(le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
         mncHomeStr, LE_MRC_MNC_BYTES) == LE_OK);
 
+    LE_INFO("le_sim_GetHomeNetworkMccMnc : mcc.%s mnc.%s", mccHomeStr, mncHomeStr);
+
     LE_ASSERT(le_mrc_GetRegisterMode(&isManualOrigin,
         mccStr, LE_MRC_MCC_BYTES, mncStr, LE_MRC_MNC_BYTES) == LE_OK);
 
@@ -293,6 +294,15 @@ void Testle_mrc_RegisterTest
 
     LE_ASSERT(isManual == false);
 
+    LE_ASSERT(le_mrc_SetManualRegisterMode("120", mncHomeStr) == LE_OK);
+    LE_ASSERT(le_mrc_SetManualRegisterMode("12a", mncHomeStr) == LE_FAULT);
+    LE_ASSERT(le_mrc_SetManualRegisterMode("12", mncHomeStr) == LE_FAULT);
+    LE_ASSERT(le_mrc_SetManualRegisterMode("12345", mncHomeStr) == LE_FAULT);
+    LE_ASSERT(le_mrc_SetManualRegisterMode(mccHomeStr, "a") == LE_FAULT);
+    LE_ASSERT(le_mrc_SetManualRegisterMode(mccHomeStr, "abcd") == LE_FAULT);
+    LE_ASSERT(le_mrc_SetManualRegisterMode(mccHomeStr, "ggg") == LE_FAULT);
+
+    LE_INFO("le_mrc_SetManualRegisterMode : mcc.%s mnc.%s", mccHomeStr, mncHomeStr);
     LE_ASSERT(le_mrc_SetManualRegisterMode(mccHomeStr, mncHomeStr) == LE_OK);
 
     LE_ASSERT(le_mrc_GetRegisterMode(&isManual, mccStr, LE_MRC_MCC_BYTES,

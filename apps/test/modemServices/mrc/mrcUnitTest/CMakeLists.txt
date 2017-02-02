@@ -7,7 +7,7 @@
 
 set(TEST_EXEC mrcUnitTest)
 
-set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
+set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices")
 
 if(TEST_COVERAGE EQUAL 1)
     set(CFLAGS "--cflags=\"--coverage\"")
