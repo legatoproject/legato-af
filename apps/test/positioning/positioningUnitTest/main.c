@@ -74,7 +74,7 @@ static void Test_le_pos_Get2DLocation
     LE_ASSERT(
         (latitude == gnssLocation.latitude) &&
         (longitude == gnssLocation.longitude) &&
-        (accuracy == gnssLocation.accuracy / 10) &&
+        (accuracy == gnssLocation.accuracy / 100) &&
         (result == LE_OK)
     );
 }
@@ -176,7 +176,7 @@ static void Test_le_pos_Get3DLocation
     LE_ASSERT(
         (latitude == gnssLocation.latitude) &&
         (longitude == gnssLocation.longitude) &&
-        (hAccuracy == gnssLocation.accuracy / 10) &&
+        (hAccuracy == gnssLocation.accuracy / 100) &&
         (altitude == gnssAltitude.altitude / 1000) &&
         (vAccuracy == gnssAltitude.accuracy / 10) &&
         (result == LE_OK)

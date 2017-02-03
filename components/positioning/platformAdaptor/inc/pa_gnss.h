@@ -146,7 +146,7 @@ typedef struct {
 
     bool               hUncertaintyValid; ///< if true, horizontal uncertainty is set
     uint32_t           hUncertainty;  ///< The horizontal uncertainty in meters,
-                                      ///  with 1 decimal place
+                                      ///  with 2 decimal places
 
     bool               vUncertaintyValid; ///< if true, vertical uncertainty is set
     uint32_t           vUncertainty;  ///< The vertical uncertainty in meters,

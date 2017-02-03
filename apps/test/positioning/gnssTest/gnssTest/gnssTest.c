@@ -243,7 +243,7 @@ static void PositionHandlerFunction
     if(result == LE_OK)
     {
          LE_INFO("Position lat.%d, long.%d, hAccuracy.%d"
-            , latitude, longitude, hAccuracy/10);
+            , latitude, longitude, hAccuracy/100);
     }
     else
     {

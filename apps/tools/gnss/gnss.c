@@ -543,7 +543,8 @@ static int SetConstellation
             printf("Setting constellation %s is not supported\n", constellationStr);
             break;
         case LE_NOT_PERMITTED:
-            printf("The GNSS device is not initialized, disabled or active. See logs for details\n");
+            printf("The GNSS device is not initialized, disabled or active. See logs for  \
+                    details\n");
             break;
         case LE_FAULT:
             printf("Failed!\n");
@@ -998,10 +999,10 @@ static int Get2Dlocation
     {
         printf("Latitude(positive->north) : %.6f\n"
                "Longitude(positive->east) : %.6f\n"
-               "hAccuracy                 : %.1fm\n",
+               "hAccuracy                 : %.2fm\n",
                 (float)latitude/1e6,
                 (float)longitude/1e6,
-                (float)hAccuracy/10.0);
+                (float)hAccuracy/1e2);
     }
     else if(result == LE_OUT_OF_RANGE)
     {
@@ -1714,7 +1715,8 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "motion") == 0)
         {
             status = EXIT_SUCCESS;
-            status = (GetHorizontalSpeed(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
+            status = (GetHorizontalSpeed(positionSampleRef) == EXIT_FAILURE) ?
+                                                                             EXIT_FAILURE : status;
             status = (GetVerticalSpeed(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
         }
         else if (strcmp(ParamsName, "direction") == 0)

@@ -301,7 +301,8 @@ static void PosSampleHandlerDestructor
         {
             // Get the node from the list
             posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
-                                                                    le_pos_SampleHandler_t, link);
+                                                                            le_pos_SampleHandler_t,
+                                                                            link);
             // Check the node.
             if ( posSampleHandlerNodePtr == (le_pos_SampleHandler_t*)obj)
             {
@@ -440,7 +441,8 @@ static uint32_t ComputeCommonSmallestRate
         {
             // Get the node from the list
             posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
-                                                                  le_pos_SampleHandler_t, link);
+                                                                            le_pos_SampleHandler_t,
+                                                                            link);
             // Check the node.
             if ( posSampleHandlerNodePtr->acquisitionRate < rate )
             {
@@ -520,7 +522,7 @@ static void PosSampleHandlerfunc
     {
         locationValid = true;
         LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d"
-                    , latitude, longitude, hAccuracy/10);
+                    , latitude, longitude, hAccuracy/100);
     }
     else
     {
@@ -555,7 +557,8 @@ static void PosSampleHandlerfunc
             bool hflag, vflag;
             // Get the node from the list
             posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
-                                                                 le_pos_SampleHandler_t, link);
+                                                                            le_pos_SampleHandler_t,
+                                                                            link);
 
             if ((posSampleHandlerNodePtr->horizontalMagnitude != 0) && !locationValid)
             {
@@ -580,7 +583,7 @@ static void PosSampleHandlerfunc
 
             LE_DEBUG("horizontalMove.%d, verticalMove.%d", horizontalMove, verticalMove);
 
-            if (vAccuracy != INT32_MAX)
+            if (INT32_MAX == vAccuracy)
             {
                 vflag = false;
             } else
@@ -590,14 +593,14 @@ static void PosSampleHandlerfunc
                                           vAccuracy/10); // Accuracy in meters with 1 decimal place
             }
 
-            if (hAccuracy != INT32_MAX)
+            if (INT32_MAX == hAccuracy)
             {
                 hflag = false;
             } else
             {
                 hflag = IsBeyondMagnitude(posSampleHandlerNodePtr->horizontalMagnitude,
                                           horizontalMove,
-                                          hAccuracy/10); // Accuracy in meters with 1 decimal place
+                                          hAccuracy/100); // Accuracy in meters with 2 decimal places
             }
 
             LE_DEBUG("Vertical IsBeyondMagnitude.%d", vflag);
@@ -984,11 +987,12 @@ void le_posCtrl_Release
 le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
 (
     uint32_t                     horizontalMagnitude, ///< [IN] The horizontal magnitude in meters.
-                                                      ///     0 means that I don't care about
-                                                      ///     changes in the latitude and longitude.
+                                                      ///       0 means that I don't care about
+                                                      ///       changes in the latitude and
+                                                      ///       longitude.
     uint32_t                     verticalMagnitude,   ///< [IN] The vertical magnitude in meters.
-                                                      ///     0 means that I don't care about
-                                                      ///     changes in the altitude.
+                                                      ///       0 means that I don't care about
+                                                      ///       changes in the altitude.
     le_pos_MovementHandlerFunc_t handlerPtr,          ///< [IN] The handler function.
     void*                        contextPtr           ///< [IN] The context pointer
 )
@@ -1063,7 +1067,8 @@ void le_pos_RemoveMovementHandler
         {
             // Get the node from MsgList
             posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
-                                                             le_pos_SampleHandler_t, link);
+                                                                            le_pos_SampleHandler_t,
+                                                                            link);
             // Check the node.
             if ( (le_pos_MovementHandlerRef_t)posSampleHandlerNodePtr == handlerRef )
             {
@@ -1150,7 +1155,7 @@ le_result_t le_pos_sample_Get2DLocation
     {
         if (positionSamplePtr->hAccuracyValid)
         {
-            *horizontalAccuracyPtr = positionSamplePtr->hAccuracy/10; // Update resolution
+            *horizontalAccuracyPtr = positionSamplePtr->hAccuracy/100; // Update resolution
         } else {
             *horizontalAccuracyPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
@@ -1359,8 +1364,8 @@ le_result_t le_pos_sample_GetAltitude
  * Get the position sample's horizontal speed.
  *
  * @return LE_FAULT         Function failed to find the positionSample.
- * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX,
- *                          UINT32_MAX).
+ * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid
+ *                          (set to INT32_MAX, UINT32_MAX).
  * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing an invalid Position reference into this function,
@@ -1713,7 +1718,7 @@ le_result_t le_pos_Get2DLocation
             }
             else
             {
-                *hAccuracyPtr = hAccuracy/10; // Update resolution
+                *hAccuracyPtr = hAccuracy/100; // Update resolution
             }
         }
     }
@@ -1811,7 +1816,7 @@ le_result_t le_pos_Get3DLocation
             }
             else
             {
-                *hAccuracyPtr = hAccuracy/10; // Update resolution
+                *hAccuracyPtr = hAccuracy/100; // Update resolution
             }
         }
     }
