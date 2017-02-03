@@ -10,7 +10,7 @@ processes:
 {
     run:
     {
-        (server)
+        (fwupdateDownloader)
     }
 
     faultAction: restart
