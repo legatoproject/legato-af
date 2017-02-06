@@ -48,3 +48,6 @@ docManagement
 
 # 3rd Party content
 3rdParty/*
+
+# AVC
+apps/platformServices/airVantageConnector/
