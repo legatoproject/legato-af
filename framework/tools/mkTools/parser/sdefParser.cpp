@@ -443,9 +443,17 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseBuildVar);
     }
+    else if (sectionName == "cflags")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
+    }
     else if (sectionName == "commands")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseCommand);
+    }
+    else if (sectionName == "cxxflags")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
     else if (sectionName == "interfaceSearch")
     {
@@ -454,6 +462,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "kernelModules")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, ParseModule);
+    }
+    else if (sectionName == "ldflags")
+    {
+        return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
     else
     {

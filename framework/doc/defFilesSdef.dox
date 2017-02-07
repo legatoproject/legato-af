@@ -309,6 +309,56 @@ buildVars:
 }
 @endverbatim
 
+@section defFilesSdef_cFlags cflags
+
+Provides a way to specify command-line arguments to pass to the compiler when compiling C source
+code files.  These flags will be added to the flags specified on the command-line and in other
+definition files.
+
+Flags are separated by whitespace.
+
+@code
+cflags:
+{
+    -g -O0
+    -DDEBUG=1
+}
+@endcode
+
+@section defFilesSdef_cxxFlags cxxflags
+
+Provides a way to specify command-line arguments to pass to the compiler when compiling C++ source
+code files.  These flags will be added to the flags specified on the command-line and in other
+definition files.
+
+Flags are separated by whitespace.
+
+@code
+cxxflags:
+{
+    -std=c++0x
+    -g -O0
+}
+@endcode
+
+
+@section defFilesSdef_ldFlags ldflags
+
+Linker flags provide a way to specify command-line arguments to pass to the compiler when linking
+C/C++ object
+(.o) files together into a component shared library (.so) file.  These flags will be added to the
+flags specified on the command-line and in other definition files.
+
+Flags are separated by whitespace.
+
+@code
+ldflags:
+{
+    -Lfoo/bar
+}
+@endcode
+
+
 @section defFilesSdef_kernelModules kernelModules
 
 The optional @c kernelModules: section declares a list of pre-built kernel modules to be

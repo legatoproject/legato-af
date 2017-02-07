@@ -149,7 +149,8 @@ When the app is installed on a target: <br>
 @section defFilesCdef_cFlags cflags
 
 Provides a way to specify command-line arguments to pass to the compiler when compiling C source
-code files.
+code files.  These flags will be added to the flags specified on the command-line and in other
+definition files.
 
 Flags are separated by whitespace.
 
@@ -164,7 +165,8 @@ cflags:
 @section defFilesCdef_cxxFlags cxxflags
 
 Provides a way to specify command-line arguments to pass to the compiler when compiling C++ source
-code files.
+code files.  These flags will be added to the flags specified on the command-line and in other
+definition files.
 
 Flags are separated by whitespace.
 
@@ -180,7 +182,8 @@ cxxflags:
 @section defFilesCdef_ldFlags ldflags
 
 Linker flags provide a way to specify command-line arguments to pass to the compiler when linking C/C++ object
-(.o) files together into a component shared library (.so) file.
+(.o) files together into a component shared library (.so) file.  These flags will be added to the
+flags specified on the command-line and in other definition files.
 
 Flags are separated by whitespace.
 

@@ -844,6 +844,35 @@ static void GetInterfaceSearchDirs
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get flags from a "cflags:", "cxxflags:" or "ldflags:" section and add them to the
+ * flags list in the buildParams object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetToolFlags
+(
+    std::string *toolFlagsPtr, ///< String to add flags to.
+    const parseTree::TokenList_t* sectionPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // An interfaceSearch section is a list of FILE_PATH tokens.
+    for (const auto contentItemPtr : sectionPtr->Contents())
+    {
+        auto tokenPtr = dynamic_cast<const parseTree::Token_t*>(contentItemPtr);
+
+        auto flag = path::Unquote(envVars::DoSubstitution(tokenPtr->text));
+
+        // If environment variable substitution resulted in an empty string, just ignore this.
+        if (!flag.empty())
+        {
+            *toolFlagsPtr += " ";
+            *toolFlagsPtr += flag;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a system whose .sdef file can be found at a given path.
  *
  * @return Pointer to the system object.
@@ -901,14 +930,26 @@ model::System_t* GetSystem
         {
             // Skip -- these have already been added to build environment env vars by the parser.
         }
+        else if (sectionName == "cflags")
+        {
+            GetToolFlags(&buildParams.cFlags, ToTokenListPtr(sectionPtr));
+        }
         else if (sectionName == "commands")
         {
             // Remember for later, when we know all apps have been instantiated.
             commandsSections.push_back(sectionPtr);
         }
+        else if (sectionName == "cxxflags")
+        {
+            GetToolFlags(&buildParams.cxxFlags, ToTokenListPtr(sectionPtr));
+        }
         else if (sectionName == "kernelModules")
         {
             kernelModulesSections.push_back(sectionPtr);
+        }
+        else if (sectionName == "ldflags")
+        {
+            GetToolFlags(&buildParams.ldFlags, ToTokenListPtr(sectionPtr));
         }
         else if (sectionName == "interfaceSearch")
         {
