@@ -1759,6 +1759,10 @@ static void ProcessECallState
         case LE_ECALL_STATE_RESET: /* eCall session has lost synchronization and starts over */
         case LE_ECALL_STATE_MSD_TX_FAILED: /* MSD transmission has failed */
         case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
+        case LE_ECALL_STATE_TIMEOUT_T2: /* Timeout for T2 */
+        case LE_ECALL_STATE_TIMEOUT_T3: /* Timeout for T3 */
+        case LE_ECALL_STATE_TIMEOUT_T9: /* Timeout for T9 */
+        case LE_ECALL_STATE_TIMEOUT_T10: /* Timeout for T10 */
         {
             // Nothing to do, just report the event
              break;
