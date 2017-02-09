@@ -450,7 +450,7 @@ std::string MakeCanonical
 
     if (cannonicalPath == NULL)
     {
-        throw mk::Exception_t("Path '" + path + "' is malformed.");
+        throw mk::Exception_t("Path '" + path + "' does not exist or is malformed.");
     }
 
     return std::string(cannonicalPath);
