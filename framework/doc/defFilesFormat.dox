@@ -125,6 +125,35 @@ Some useful environment variables:
  - @c CURDIR = path of the directory containing the definition file being parsed
 
 
+@section defFileFormatDirectives Include Directives
+
+Definition file sections or parts of a section may be common between several related
+systems, applications or components.  For example, all systems built for a certain module may
+need the some common @c buildVars or @c cflags set, or a series of related products
+may all share a base set of apps.
+To reuse common parts of the definition file, these parts can be separated
+into a common file, which is then included in each definition file where it is needed.  This
+is done through include directives.
+
+Include directives consist of the word @c \#include followed by the name of the file to include.
+For example
+
+@code
+#include baseBuildVars.inc
+@endcode
+
+will be treated as if the contents of baseBuildVars.inc appeared at this point.  Multiple
+include directives can be used to include multiple files.
+
+When looking for a file to include, environment variables in the filename will be expanded first.
+If the filename is absolute, that file will be included.  If it is relative, first the directory
+containing the current file will be searched, followed by the
+@c ${LEGATO_ROOT} directory.
+
+@note If an environment variable is used in an include filename the value of that environment
+variable can't be changed in a later @c buildVars section.
+
+
 @section defFileFormatWhitespace Whitespace
 
 Tabs, spaces, new-lines, carriage-returns and comments act as token separators only, and are
@@ -147,6 +176,8 @@ Comments can be included using
 /* Component.cdef file for a hypothetical web server component that provides a control API
  * (defined in httpdCtrl.api) that allows other apps to start and stop the web server via IPC.
  */
+
+#include "targets/${LEGATO_TARGET}.def"
 
 bundles:
 {

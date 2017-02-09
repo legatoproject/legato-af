@@ -57,9 +57,7 @@ static parseTree::Binding_t* ParseBinding
     bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
 
     // ->
-    SkipWhitespaceAndComments(lexer);
     (void)lexer.Pull(parseTree::Token_t::ARROW);
-    SkipWhitespaceAndComments(lexer);
 
     // Match the server side.
     auto firstServerTokenPtr = lexer.Pull(parseTree::Token_t::IPC_AGENT);
@@ -124,11 +122,7 @@ static parseTree::RunProcess_t* ParseRunEntry
         entryPtr = new parseTree::RunProcess_t(procNamePtr);
         entryPtr->AddContent(procNamePtr);
 
-        SkipWhitespaceAndComments(lexer);
-
         (void)lexer.Pull(parseTree::Token_t::EQUALS);
-
-        SkipWhitespaceAndComments(lexer);
 
         (void)lexer.Pull(parseTree::Token_t::OPEN_PARENTHESIS);
     }
@@ -137,17 +131,11 @@ static parseTree::RunProcess_t* ParseRunEntry
         entryPtr = new parseTree::RunProcess_t(lexer.Pull(parseTree::Token_t::OPEN_PARENTHESIS));
     }
 
-    SkipWhitespaceAndComments(lexer);
-
     entryPtr->AddContent(lexer.Pull(parseTree::Token_t::FILE_PATH));
-
-    SkipWhitespaceAndComments(lexer);
 
     while (lexer.IsMatch(parseTree::Token_t::FILE_PATH))
     {
         entryPtr->AddContent(lexer.Pull(parseTree::Token_t::FILE_PATH));
-
-        SkipWhitespaceAndComments(lexer);
     }
 
     entryPtr->lastTokenPtr = lexer.Pull(parseTree::Token_t::CLOSE_PARENTHESIS);
@@ -267,9 +255,7 @@ static parseTree::TokenList_t* ParseExternApiInterface
     if (lexer.IsMatch(parseTree::Token_t::EQUALS) || lexer.IsMatch(parseTree::Token_t::WHITESPACE))
     {
         // The first token is an alias.  Pull out the '=' and any whitespace and get the exe name.
-        SkipWhitespaceAndComments(lexer);
         (void)lexer.Pull(parseTree::Token_t::EQUALS);
-        SkipWhitespaceAndComments(lexer);
         ifPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
     }
 
@@ -345,7 +331,6 @@ static parseTree::RequiredConfigTree_t* ParseRequiredConfigTree
 
         itemPtr = new parseTree::RequiredConfigTree_t(permissionsPtr);
         itemPtr->AddContent(permissionsPtr);
-        SkipWhitespaceAndComments(lexer);
     }
 
     // If just a "DOT" is found, provide read access

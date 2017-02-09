@@ -34,7 +34,6 @@ static parseTree::ProvidedApi_t* ParseProvidedApi
 
     // Assume there's only a file path.
     parseTree::Token_t* apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
 
     // If there's an '=' following it, then attempt to convert it into an alias (NAME)
     // and pull out the '=' and the actual API file path.
@@ -43,9 +42,7 @@ static parseTree::ProvidedApi_t* ParseProvidedApi
         lexer.ConvertToName(apiFilePathPtr);
         aliasPtr = apiFilePathPtr;
         (void)lexer.Pull(parseTree::Token_t::EQUALS);
-        SkipWhitespaceAndComments(lexer);
         apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Create a new token list item.
@@ -63,7 +60,6 @@ static parseTree::ProvidedApi_t* ParseProvidedApi
     while (lexer.IsMatch(parseTree::Token_t::SERVER_IPC_OPTION))
     {
         apiPtr->AddContent(lexer.Pull(parseTree::Token_t::SERVER_IPC_OPTION));
-        SkipWhitespaceAndComments(lexer);
     }
 
     return apiPtr;
@@ -117,7 +113,6 @@ static parseTree::RequiredApi_t* ParseRequiredApi
 
     // Assume there's only a file path.
     parseTree::Token_t* apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
 
     // If there's an '=' following it, then attempt to convert it into an alias (NAME)
     // and pull out the '=' and the actual API file path.
@@ -126,9 +121,7 @@ static parseTree::RequiredApi_t* ParseRequiredApi
         lexer.ConvertToName(apiFilePathPtr);
         aliasPtr = apiFilePathPtr;
         (void)lexer.Pull(parseTree::Token_t::EQUALS);
-        SkipWhitespaceAndComments(lexer);
         apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Create parse tree node for this.
@@ -146,7 +139,6 @@ static parseTree::RequiredApi_t* ParseRequiredApi
     while (lexer.IsMatch(parseTree::Token_t::CLIENT_IPC_OPTION))
     {
         apiPtr->AddContent(lexer.Pull(parseTree::Token_t::CLIENT_IPC_OPTION));
-        SkipWhitespaceAndComments(lexer);
     }
 
     return apiPtr;
@@ -281,10 +273,8 @@ static parseTree::CompoundItem_t* ParseAssetField
 {
     parseTree::Token_t* dataTypeNamePtr = lexer.Pull(parseTree::Token_t::NAME);
     ValidateAssetDataTypeName(lexer, dataTypeNamePtr->text);
-    SkipWhitespaceAndComments(lexer);
 
     parseTree::Token_t* fieldNamePtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
 
     auto assetPtr = new AssetType_t(dataTypeNamePtr);
     assetPtr->AddContent(fieldNamePtr);
@@ -292,7 +282,6 @@ static parseTree::CompoundItem_t* ParseAssetField
     if (lexer.IsMatch(parseTree::Token_t::EQUALS))
     {
         (void)lexer.Pull(parseTree::Token_t::EQUALS);
-        SkipWhitespaceAndComments(lexer);
 
         parseTree::Token_t* defaultValuePtr = MatchDefaultValue(lexer, dataTypeNamePtr->text);
         assetPtr->AddContent(defaultValuePtr);
@@ -316,7 +305,6 @@ static parseTree::CompoundItem_t* ParseAssetCommandsSubsection
 //--------------------------------------------------------------------------------------------------
 {
     parseTree::Token_t* fieldNamePtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
 
     return new parseTree::AssetCommand_t(fieldNamePtr);
 }

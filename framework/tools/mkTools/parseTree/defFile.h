@@ -12,10 +12,37 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Represents a parsed .Xdef file.
+ * Represents a tokenized file.
+ *
+ * This includes both top-level files and included files.
  */
 //--------------------------------------------------------------------------------------------------
-struct DefFile_t
+struct DefFileFragment_t
+{
+    std::string path;   ///< The file system path to the file.
+
+    std::string pathMd5;///< MD5 hash of the file system path to the file.
+
+    size_t version;     ///< File format version number (0 = unknown, 1 = first version).
+
+    Token_t* firstTokenPtr; ///< Ptr to the first token in the file.
+    Token_t* lastTokenPtr;  ///< Ptr to the last token in the file.
+
+    std::map<Token_t*, DefFileFragment_t*> includedFiles; ///< Ptr to list of included files.  Maps
+                                                          /// tokens instead of paths in case the
+                                                          /// same file is included multiple times
+                                                          /// in different contexts.
+
+    /// Constructor
+    DefFileFragment_t(const std::string& filePath);
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Represents a parsed top-level .Xdef file.
+ */
+//--------------------------------------------------------------------------------------------------
+struct DefFile_t: public DefFileFragment_t
 {
     enum Type_t
     {
@@ -26,15 +53,6 @@ struct DefFile_t
     };
 
     Type_t type;        ///< The type of file.
-
-    std::string path;   ///< The file system path to the file.
-
-    std::string pathMd5;///< MD5 hash of the file system path to the file.
-
-    size_t version;     ///< File format version number (0 = unknown, 1 = first version).
-
-    Token_t* firstTokenPtr; ///< Ptr to the first token in the file.
-    Token_t* lastTokenPtr;  ///< Ptr to the last token in the file.
 
     std::list<CompoundItem_t*> sections; ///< List of top-level sections in the file.
 

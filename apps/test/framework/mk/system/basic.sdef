@@ -11,16 +11,7 @@ buildVars:
 
 apps:
 {
-    app2
-    {
-        groups:
-        {
-            groupA
-            groupB
-        }
-
-        preloaded: false
-    }
+    #include "app2.def"
 }
 
 bindings:

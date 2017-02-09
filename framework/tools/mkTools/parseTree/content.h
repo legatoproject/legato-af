@@ -10,7 +10,7 @@
 #define LEGATO_MKTOOLS_PARSE_TREE_CONTENT_H_INCLUDE_GUARD
 
 
-struct DefFile_t;
+struct DefFileFragment_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ struct Content_t
     };
 
     Type_t type;        ///< The type of content item.
-    DefFile_t* filePtr; ///< The file it was found in.
+    DefFileFragment_t* filePtr; ///< The file it was found in.
 
     std::string TypeName() const { return TypeName(type); }
     static std::string TypeName(Content_t::Type_t type);
@@ -62,7 +62,7 @@ struct Content_t
 protected:
 
     /// Constructor
-    Content_t(Type_t contentType, DefFile_t* defFilePtr): type(contentType), filePtr(defFilePtr) {}
+    Content_t(Type_t contentType, DefFileFragment_t* defFilePtr): type(contentType), filePtr(defFilePtr) {}
 };
 
 

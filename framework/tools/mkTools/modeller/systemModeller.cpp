@@ -13,53 +13,6 @@
 namespace modeller
 {
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Get environment variable settings from a "buildVars:" section and set them in the process
- * environment.
- */
-//--------------------------------------------------------------------------------------------------
-static void GetBuildEnvVars
-(
-    const parseTree::CompoundItem_t* sectionPtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    auto buildVarsSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
-
-    for (const auto contentItemPtr : buildVarsSectionPtr->Contents())
-    {
-        auto buildVarPtr = dynamic_cast<const parseTree::EnvVar_t*>(contentItemPtr);
-
-        // Make sure they're not trying to redefine one of the reserved environment variables
-        // like LEGATO_ROOT.
-        const auto& name = buildVarPtr->firstTokenPtr->text;
-        if (envVars::IsReserved(name))
-        {
-            buildVarPtr->firstTokenPtr->ThrowException(name
-                                                     + " is a reserved environment variable name.");
-        }
-
-        // If the string starts with a single quote ('), just unquote it.  Otherwise, unquote it
-        // and do environment variable substitution.
-        auto valueTokenPtr = buildVarPtr->Contents()[0];
-        std::string value = path::Unquote(valueTokenPtr->text);
-        if (valueTokenPtr->text[0] != '\'')
-        {
-            value = envVars::DoSubstitution(value);
-        }
-
-        // Update the process environment.
-        if (setenv(name.c_str(), value.c_str(), true /* overwrite existing */) != 0)
-        {
-            throw mk::Exception_t("Failed to set '" + name + "' environment variable to '"
-                                   + value + "'.");
-        }
-    }
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Updates an App_t object with the overrides specified for that app in the .sdef file.
@@ -247,8 +200,9 @@ static void ModelApp
     if (appsIter != systemPtr->apps.end())
     {
         std::stringstream msg;
-        msg << "App '" << appName << "' added to the system more than once.  Previously added at"
-            "line " << appsIter->second->parseTreePtr->firstTokenPtr->line << ".";
+        msg << "App '" << appName << "' added to the system more than once.\n"
+            << appsIter->second->parseTreePtr->firstTokenPtr->GetLocation() << ": note: "
+            "Previously added here.";
         sectionPtr->ThrowException(msg.str());
     }
 
@@ -337,8 +291,9 @@ static void ModelKernelModule
     if (modulesIter != systemPtr->modules.end())
     {
         std::stringstream msg;
-        msg << "Module '" << moduleName << "' added to the system more than once.  Previously added at"
-            "line " << modulesIter->second->parseTreePtr->firstTokenPtr->line << ".";
+        msg << "Module '" << moduleName << "' added to the system more than once.\n"
+            << modulesIter->second->parseTreePtr->firstTokenPtr->GetLocation()
+            << "Previously added here.";
         sectionPtr->ThrowException(msg.str());
     }
 
@@ -472,8 +427,9 @@ static void AddNonAppUserBinding
         std::stringstream msg;
 
         msg << "Duplicate binding of client-side interface '" << interfaceName
-            << "' belonging to non-app user '" + userName + "'. Previous binding was at"
-               " line " << i->second->parseTreePtr->firstTokenPtr->line << ".";
+            << "' belonging to non-app user '" + userName + "'.\n"
+            << i->second->parseTreePtr->firstTokenPtr->GetLocation()
+            << "Previous binding was here.";
 
         bindingPtr->parseTreePtr->ThrowException(msg.str());
     }
@@ -678,8 +634,9 @@ static void ModelCommandsSection
         if (commandIter != systemPtr->commands.end())
         {
             std::stringstream msg;
-            msg << "Command name '" << commandPtr->name << "' used more than once. Previously used"
-                   " at line " << commandIter->second->parseTreePtr->firstTokenPtr->line << ".";
+            msg << "Command name '" << commandPtr->name << "' used more than once.\n"
+                << commandIter->second->parseTreePtr->firstTokenPtr->GetLocation()
+                << "Previously used here.";
             tokens[0]->ThrowException(msg.str());
         }
 
@@ -757,29 +714,6 @@ static void GetInterfaceSearchDirs
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add all the interface search dir paths from all "interfaceSearch:" sections to a given
- * BuildParams_t object.
- */
-//--------------------------------------------------------------------------------------------------
-static void GetInterfaceSearchDirs
-(
-    mk::BuildParams_t& buildParams, ///< Object to add interface search dir paths to.
-    const std::list<const parseTree::CompoundItem_t*>& sectionPtrList
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto sectionPtr : sectionPtrList)
-    {
-        // Each interfaceSearch section is a list of FILE_PATH tokens.
-        auto tokenListPtr = dynamic_cast<const parseTree::TokenList_t*>(sectionPtr);
-
-        GetInterfaceSearchDirs(buildParams, tokenListPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Get a conceptual model for a system whose .sdef file can be found at a given path.
  *
  * @return Pointer to the system object.
@@ -813,7 +747,6 @@ model::System_t* GetSystem
     std::list<const parseTree::CompoundItem_t*> bindingsSections;
     std::list<const parseTree::CompoundItem_t*> commandsSections;
     std::list<const parseTree::CompoundItem_t*> kernelModulesSections;
-    std::list<const parseTree::CompoundItem_t*> interfaceSearchSections;
 
     // Iterate over the .sdef file's list of sections, processing content items.
     for (auto sectionPtr : sdefFilePtr->sections)
@@ -834,8 +767,7 @@ model::System_t* GetSystem
         }
         else if (sectionName == "buildVars")
         {
-            // Add each build environment variable to the mksys process's environment.
-            GetBuildEnvVars(sectionPtr);
+            // Skip -- these have already been added to build environment env vars by the parser.
         }
         else if (sectionName == "commands")
         {
@@ -848,7 +780,8 @@ model::System_t* GetSystem
         }
         else if (sectionName == "interfaceSearch")
         {
-            interfaceSearchSections.push_back(sectionPtr);
+            GetInterfaceSearchDirs(buildParams,
+                                   ToTokenListPtr(sectionPtr));
         }
         else
         {
@@ -857,12 +790,8 @@ model::System_t* GetSystem
         }
     }
 
-    // Process all the "interfaceSearch:" sections.  This must be done after all the build
-    // environment variable settings have been parsed.
-    GetInterfaceSearchDirs(buildParams, interfaceSearchSections);
-
-    // Process all the "apps:" sections.  This must be done after all the build environment
-    // variable settings have been parsed.
+    // Process all the "apps:" sections.  This must be done after all interface search directories
+    // have been parsed.
     ModelApps(systemPtr, appsSections, buildParams);
 
     // Process bindings.  This must be done after all the components and executables have been

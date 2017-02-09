@@ -8,6 +8,9 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+#ifndef LEGATO_ENVVARS_H_INCLUDE_GUARD
+#define LEGATO_ENVVARS_H_INCLUDE_GUARD
+
 namespace envVars
 {
 
@@ -92,7 +95,9 @@ bool IsReserved
 //--------------------------------------------------------------------------------------------------
 std::string DoSubstitution
 (
-    const std::string& path
+    const std::string& path,
+    std::set<std::string>* usedVarsPtr = NULL ///< If not null, returns a list of all
+                                              ///  variable names used in this substitution.
 );
 
 
@@ -124,3 +129,5 @@ bool MatchesSaved
 
 
 } // namespace envVars
+
+#endif // LEGATO_ENVVARS_H_INCLUDE_GUARD

@@ -54,18 +54,6 @@ namespace parser
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Pulls whitespace and comment tokens and throws them away (although, they still get added to
- * the file's token list).
- */
-//--------------------------------------------------------------------------------------------------
-void SkipWhitespaceAndComments
-(
-    Lexer_t& lexer
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Parse a simple section.
  *
  * @return a pointer to the parse tree object created for this section.

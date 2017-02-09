@@ -609,9 +609,9 @@ static void MarkInterfaceExternal
     if (ifInstancePtr->externMarkPtr != NULL)
     {
         std::stringstream msg;
-        msg << "Same interface marked 'extern' more than once. Previously done at line "
-            << ifInstancePtr->externMarkPtr->line
-            << ".";
+        msg << "Same interface marked 'extern' more than once.\n"
+            << ifInstancePtr->externMarkPtr->GetLocation()
+            << ": note: Previously done here.";
         nameTokenPtr->ThrowException(msg.str());
     }
 

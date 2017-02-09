@@ -150,7 +150,8 @@ bool IsReserved
     return (   (name == "LEGATO_ROOT")
             || (name == "LEGATO_TARGET")
             || (name == "LEGATO_BUILD")
-            || (name == "LEGATO_SYSROOT") );
+            || (name == "LEGATO_SYSROOT")
+            || (name == "CURDIR"));
 }
 
 
@@ -164,7 +165,8 @@ bool IsReserved
 //--------------------------------------------------------------------------------------------------
 std::string DoSubstitution
 (
-    const std::string& path
+    const std::string& path,
+    std::set<std::string>* usedVarsPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -224,12 +226,14 @@ std::string DoSubstitution
                 }
                 else
                 {
-                    // Look up the environment variable, and if found, add its value to the result.
-                    const char* envVarPtr = getenv(envVarName.c_str());
-                    if (envVarPtr != NULL)
+                    // Mark variable name as used
+                    if (usedVarsPtr)
                     {
-                        result += envVarPtr;
+                        usedVarsPtr->insert(envVarName);
                     }
+
+                    // Look up the environment variable, and if found, add its value to the result.
+                    result += Get(envVarName);
 
                     // Copy into the result string the current character from the source string
                     // (i.e., the one right after the environment variable).
@@ -251,12 +255,14 @@ std::string DoSubstitution
                 }
                 else if (*i == '}') // Make sure properly terminated with closing curly.
                 {
-                    // Look up the environment variable, and if found, add its value to the result.
-                    const char* envVarPtr = getenv(envVarName.c_str());
-                    if (envVarPtr != NULL)
+                    // Mark variable name as used
+                    if (usedVarsPtr)
                     {
-                        result += envVarPtr;
+                        usedVarsPtr->insert(envVarName);
                     }
+
+                    // Look up the environment variable, and if found, add its value to the result.
+                    result += Get(envVarName);
                     state = NORMAL;
                 }
                 else

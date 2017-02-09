@@ -18,6 +18,54 @@ namespace internal
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sets environment variables based on the contents of a buildVars section.
+ *
+ * @note This must be done in the parse stage so that the variable values are available in
+ *    processing directives.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetBuildVar
+(
+    Lexer_t& lexer,
+    const parseTree::TokenList_t* buildVarPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Make sure they're not trying to redefine one of the reserved environment variables
+    // like LEGATO_ROOT
+    const auto& name = buildVarPtr->firstTokenPtr->text;
+    if (envVars::IsReserved(name))
+    {
+        buildVarPtr->firstTokenPtr->ThrowException(name
+                                                   + " is a reserved environment variable name.");
+    }
+
+    // Unquote and do environment variable substitution
+    auto valueTokenPtr = buildVarPtr->Contents()[0];
+    std::string value = path::Unquote(envVars::DoSubstitution(valueTokenPtr->text));
+
+    // Do not allow redefinition of a variable which has already been used by the lexer to
+    // a different value.  This would result in different definitions being used in different
+    // locations.
+    if (value != envVars::Get(name))
+    {
+        auto varUsedTokenPtr = lexer.FindVarUse(name);
+        if (varUsedTokenPtr)
+        {
+            buildVarPtr->firstTokenPtr->ThrowException("Cannot set value of " + name +
+                                                       "; it has already been used in a"
+                                                       " processing directive.\n" +
+                                                       varUsedTokenPtr->GetLocation() + ": note:"
+                                                       " First used here.");
+        }
+    }
+
+    // Update the process environment
+    envVars::Set(name, value);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses the contents of a "preloaded:" section in an app's override list.
  *
  * @return Pointer to the item.
@@ -32,14 +80,8 @@ static parseTree::CompoundItem_t* ParseAppPreloadedSection
 {
     auto sectionPtr = new parseTree::SimpleSection_t(sectionNameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a ':' next.
     (void)lexer.Pull(parseTree::Token_t::COLON);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Expect the content token next.
     if (lexer.IsMatch(parseTree::Token_t::BOOLEAN))
@@ -157,15 +199,11 @@ static parseTree::CompoundItemList_t* ParseApp
     // Pull the app name out of the file and create a new object for it.
     auto itemPtr = new parseTree::App_t(lexer.Pull(parseTree::Token_t::FILE_PATH));
 
-    SkipWhitespaceAndComments(lexer);
-
     // If there's a curly next,
     if (lexer.IsMatch(parseTree::Token_t::OPEN_CURLY))
     {
         // Pull the curly out of the token stream.
         (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
-
-        SkipWhitespaceAndComments(lexer);
 
         // Until we find a closing '}', keep parsing overrides.
         while (!lexer.IsMatch(parseTree::Token_t::CLOSE_CURLY))
@@ -174,15 +212,13 @@ static parseTree::CompoundItemList_t* ParseApp
             {
                 std::stringstream msg;
                 msg << "Unexpected end-of-file before end of application override list for app '"
-                    << itemPtr->firstTokenPtr->text
-                    << "' starting at line " << itemPtr->firstTokenPtr->line
-                    << " character " << itemPtr->firstTokenPtr->column << ".";
+                    << itemPtr->firstTokenPtr->text << "'.\n"
+                    << itemPtr->firstTokenPtr->GetLocation()
+                    << ": note: Appliction override list starts here.";
                 lexer.ThrowException(msg.str());
             }
 
             itemPtr->AddContent(ParseAppOverride(lexer));
-
-            SkipWhitespaceAndComments(lexer);
         }
 
         // Pull out the '}' and make that the last token in the app.
@@ -208,11 +244,7 @@ static parseTree::CompoundItemList_t* ParseModule
 {
     // kernelModules: subsection contains paths to pre-built module binaries
     // Pull the module filename and create a new object for it.
-    auto itemPtr = new parseTree::Module_t(lexer.Pull(parseTree::Token_t::FILE_PATH));
-
-    SkipWhitespaceAndComments(lexer);
-
-    return itemPtr;
+    return new parseTree::Module_t(lexer.Pull(parseTree::Token_t::FILE_PATH));
 }
 
 
@@ -282,9 +314,7 @@ static parseTree::Binding_t* ParseBinding
     }
 
     // ->
-    SkipWhitespaceAndComments(lexer);
     (void)lexer.Pull(parseTree::Token_t::ARROW);
-    SkipWhitespaceAndComments(lexer);
 
     // Server side of the binding must be one of the following forms:
     //      serverApp.externalInterface"
@@ -325,10 +355,16 @@ static parseTree::TokenList_t* ParseBuildVar
 //--------------------------------------------------------------------------------------------------
 {
     // An buildVars entry is a simple named item containing a FILE_PATH token.
-    return ParseSimpleNamedItem(lexer,
-                                lexer.Pull(parseTree::Token_t::NAME),
-                                parseTree::Content_t::ENV_VAR,
-                                parseTree::Token_t::FILE_PATH);
+    parseTree::TokenList_t* buildVar = ParseSimpleNamedItem(lexer,
+                                                            lexer.Pull(parseTree::Token_t::NAME),
+                                                            parseTree::Content_t::ENV_VAR,
+                                                            parseTree::Token_t::FILE_PATH);
+
+    // Immediately set the build variable in the environment.  Further parsing steps depend
+    // on it being set
+    SetBuildVar(lexer, buildVar);
+
+    return buildVar;
 }
 
 
@@ -351,17 +387,13 @@ static parseTree::Command_t* ParseCommand
     commandPtr = new parseTree::Command_t(lexer.Pull(parseTree::Token_t::NAME));
 
     // '='
-    SkipWhitespaceAndComments(lexer);
     (void)lexer.Pull(parseTree::Token_t::EQUALS);
-    SkipWhitespaceAndComments(lexer);
 
     // App name
     commandPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
 
     // ':'
-    SkipWhitespaceAndComments(lexer);
     lexer.Pull(parseTree::Token_t::COLON);
-    SkipWhitespaceAndComments(lexer);
 
     // Path to executable within app.
     commandPtr->AddContent(lexer.Pull(parseTree::Token_t::FILE_PATH));

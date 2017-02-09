@@ -23,7 +23,7 @@ namespace parseTree
 Token_t::Token_t
 (
     Type_t tokenType,
-    DefFile_t* fileObjPtr,
+    DefFileFragment_t* fileObjPtr,
     size_t lineNum,
     size_t columnNum
 )

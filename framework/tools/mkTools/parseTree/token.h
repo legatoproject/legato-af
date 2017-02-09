@@ -11,18 +11,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumeration of all possible types of lexical tokens in .Xdef files.
- */
-//--------------------------------------------------------------------------------------------------
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Lexical token in a .Xdef file.
  */
 //--------------------------------------------------------------------------------------------------
 struct Token_t: public Content_t
 {
+    /**
+     * Enumeration of all possible types of lexical tokens in .Xdef files.
+     */
     enum Type_t
     {
         END_OF_FILE,        ///< The end of the file being parsed.
@@ -36,7 +32,7 @@ struct Token_t: public Content_t
         STAR,               ///< '*'
         ARROW,              ///< "->"
         WHITESPACE,         ///< Any combination of contiguous spaces, tabs, newlines and returns.
-        COMMENT,            ///< A comment.
+        COMMENT,            ///< A C/C++ style comment.
         FILE_PERMISSIONS,   ///< File permissions, in square brackets (e.g., "[rw]").
         SERVER_IPC_OPTION,  ///< Server-side IPC option, in square brackets (e.g., "[async]").
         CLIENT_IPC_OPTION,  ///< Client-side IPC option, in square brackets (e.g., "[types-only]").
@@ -53,6 +49,7 @@ struct Token_t: public Content_t
         FLOAT,              ///< Standard  C style floating point number.
         STRING,             ///< String value quoted with a ' or a ".
         MD5_HASH,           ///< MD5 cryptographic hash/checksum.
+        DIRECTIVE,          ///< Preprocessor directive
     };
 
     Type_t type;        ///< The type of token.
@@ -65,7 +62,7 @@ struct Token_t: public Content_t
     Token_t* nextPtr;   ///< Ptr to the next token, closer to the end of the file.
     Token_t* prevPtr;   ///< Ptr to the previous token, closer to the beginning of the file.
 
-    Token_t(Type_t tokenType, DefFile_t* fileObjPtr, size_t lineNum, size_t columnNum);
+    Token_t(Type_t tokenType, DefFileFragment_t* fileObjPtr, size_t lineNum, size_t columnNum);
 
     // Get a human-readable string describing the type.
     static std::string TypeName(Type_t type);

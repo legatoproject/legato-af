@@ -12,37 +12,6 @@
 namespace parser
 {
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pulls whitespace and comment tokens and throws them away (although, they still get added to
- * the file's token list).
- */
-//--------------------------------------------------------------------------------------------------
-void SkipWhitespaceAndComments
-(
-    Lexer_t& lexer
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (;;)
-    {
-        if (lexer.IsMatch(parseTree::Token_t::WHITESPACE))
-        {
-            (void)lexer.Pull(parseTree::Token_t::WHITESPACE);
-        }
-        else if (lexer.IsMatch(parseTree::Token_t::COMMENT))
-        {
-            (void)lexer.Pull(parseTree::Token_t::COMMENT);
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Parse a simple section.
@@ -60,14 +29,8 @@ parseTree::SimpleSection_t* ParseSimpleSection
 {
     auto sectionPtr = new parseTree::SimpleSection_t(sectionNameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a ':' next.
     (void)lexer.Pull(parseTree::Token_t::COLON);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Expect the content token next.
     sectionPtr->AddContent(lexer.Pull(tokenType));
@@ -94,14 +57,8 @@ parseTree::TokenList_t* ParseSimpleNamedItem
 {
     auto itemPtr = parseTree::CreateTokenList(contentType, nameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect an '=' next.
     (void)lexer.Pull(parseTree::Token_t::EQUALS);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Expect the content token next.
     itemPtr->AddContent(lexer.Pull(tokenType));
@@ -129,20 +86,11 @@ parseTree::TokenList_t* ParseTokenListSection
 {
     auto sectionPtr = new parseTree::TokenListSection_t(sectionNameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a ':' next.
     (void)lexer.Pull(parseTree::Token_t::COLON);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a '{' next.
     (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Until we find a closing '}', keep calling the provided content parser function to parse
     // the next content item.
@@ -152,14 +100,13 @@ parseTree::TokenList_t* ParseTokenListSection
         {
             std::stringstream msg;
             msg << "Unexpected end-of-file before end of " << sectionNameTokenPtr->text
-                << " section starting at line " << sectionNameTokenPtr->line
-                << " character " << sectionNameTokenPtr->column << ".";
+                << " section.\n"
+                << sectionNameTokenPtr->GetLocation()
+                << ": note: Section starts here.";
             lexer.ThrowException(msg.str());
         }
 
         sectionPtr->AddContent(lexer.Pull(tokenType));
-
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Pull out the '}' and make that the last token in the section.
@@ -189,20 +136,11 @@ parseTree::TokenList_t* ParseTokenListNamedItem
 {
     auto itemPtr = parseTree::CreateTokenList(contentType, nameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect an '=' next.
     (void)lexer.Pull(parseTree::Token_t::EQUALS);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a '(' next.
     (void)lexer.Pull(parseTree::Token_t::OPEN_PARENTHESIS);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Until we find a closing ')', keep pulling out content tokens and skipping whitespace and
     // comments after each.
@@ -213,14 +151,13 @@ parseTree::TokenList_t* ParseTokenListNamedItem
             std::stringstream msg;
             msg << "Unexpected end-of-file before end of " << itemPtr->TypeName()
                 << " named '" << nameTokenPtr->text
-                << "' starting at line " << nameTokenPtr->line
-                << " character " << nameTokenPtr->column << ".";
+                << "'.\n"
+                << nameTokenPtr->GetLocation()
+                << ": note: " << itemPtr->TypeName() << " starts here.";
             lexer.ThrowException(msg.str());
         }
 
         itemPtr->AddContent(lexer.Pull(tokenType));
-
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Pull out the ')' and make that the last token in the section.
@@ -251,20 +188,11 @@ parseTree::CompoundItemList_t* ParseComplexSection
 {
     auto sectionPtr = new parseTree::ComplexSection_t(sectionNameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a ':' next.
     (void)lexer.Pull(parseTree::Token_t::COLON);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a '{' next.
     (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Until we find a closing '}', keep calling the provided content parser function to parse
     // the next content item.
@@ -274,14 +202,13 @@ parseTree::CompoundItemList_t* ParseComplexSection
         {
             std::stringstream msg;
             msg << "Unexpected end-of-file before end of " << sectionNameTokenPtr->text
-                << " section starting at line " << sectionNameTokenPtr->line
-                << " character " << sectionNameTokenPtr->column << ".";
+                << " section.\n"
+                << sectionNameTokenPtr->GetLocation()
+                << ": note: Section starts here.";
             lexer.ThrowException(msg.str());
         }
 
         sectionPtr->AddContent(contentParserFunc(lexer));
-
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Pull out the '}' and make that the last token in the section.
@@ -310,20 +237,11 @@ parseTree::CompoundItemList_t* ParseNamedComplexSection
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a '=' next.
     (void)lexer.Pull(parseTree::Token_t::EQUALS);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a '{' next.
     (void)lexer.Pull(parseTree::Token_t::OPEN_CURLY);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Until we find a closing '}', keep calling the provided content parser function to parse
     // the next content item.
@@ -333,14 +251,13 @@ parseTree::CompoundItemList_t* ParseNamedComplexSection
         {
             std::stringstream msg;
             msg << "Unexpected end-of-file before end of " << sectionPtr->firstTokenPtr->text
-                << " section starting at line " << sectionPtr->firstTokenPtr->line
-                << " character " << sectionPtr->firstTokenPtr->column << ".";
+                << " section.\n"
+                << sectionPtr->firstTokenPtr->GetLocation()
+                << ": note: Section starts here.";
             lexer.ThrowException(msg.str());
         }
 
         sectionPtr->AddContent(contentParserFunc(lexer));
-
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Pull out the '}' and make that the last token in the section.
@@ -408,18 +325,10 @@ void ParseFile
     Lexer_t lexer(defFilePtr);
     lexer.beVerbose = beVerbose;
 
-    // Expect a list of any combination of zero or more whitespace, comment, or sections.
+    // Expect a list of any combination of sections.
     while (!lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
     {
-        if (lexer.IsMatch(parseTree::Token_t::WHITESPACE))
-        {
-            (void)lexer.Pull(parseTree::Token_t::WHITESPACE);
-        }
-        else if (lexer.IsMatch(parseTree::Token_t::COMMENT))
-        {
-            (void)lexer.Pull(parseTree::Token_t::COMMENT);
-        }
-        else if (lexer.IsMatch(parseTree::Token_t::NAME))
+        if (lexer.IsMatch(parseTree::Token_t::NAME))
         {
             defFilePtr->sections.push_back(sectionParserFunc(lexer));
         }
@@ -451,12 +360,10 @@ static parseTree::TokenList_t* ParseBundledItem
     if (lexer.IsMatch(parseTree::Token_t::FILE_PERMISSIONS))
     {
         permissionsPtr = lexer.Pull(parseTree::Token_t::FILE_PERMISSIONS);
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Expect a build host file system path followed by a target host file system path.
     parseTree::Token_t* buildHostPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
     parseTree::Token_t* targetPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
 
     // Create a new bundled item.
@@ -535,9 +442,7 @@ static parseTree::TokenList_t* ParseRequiredFileOrDir
 {
     // Expect a source file system path followed by a destination file system path.
     parseTree::Token_t* srcPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
     parseTree::Token_t* destPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
 
     // Create a new item.
     auto itemPtr = parseTree::CreateTokenList(type, srcPathPtr);
@@ -602,14 +507,11 @@ parseTree::TokenList_t* ParseRequiredDevice
     if (lexer.IsMatch(parseTree::Token_t::FILE_PERMISSIONS))
     {
         permissionsPtr = lexer.Pull(parseTree::Token_t::FILE_PERMISSIONS);
-        SkipWhitespaceAndComments(lexer);
     }
 
     // Expect a source file system path followed by a destination file system path.
     parseTree::Token_t* srcPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
     parseTree::Token_t* destPathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
-    SkipWhitespaceAndComments(lexer);
 
     // Create a new item.
     parseTree::Token_t* firstPtr = (permissionsPtr != NULL ? permissionsPtr : srcPathPtr);
@@ -774,14 +676,8 @@ parseTree::TokenList_t* ParseWatchdogTimeout
 
     auto sectionPtr = new parseTree::SimpleSection_t(sectionNameTokenPtr);
 
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
-
     // Expect a ':' next.
     (void)lexer.Pull(parseTree::Token_t::COLON);
-
-    // Skip over any whitespace or comments.
-    SkipWhitespaceAndComments(lexer);
 
     // Expect the content token next.  It could be the word "never" or an integer (number of ms).
     parseTree::Token_t* tokenPtr;

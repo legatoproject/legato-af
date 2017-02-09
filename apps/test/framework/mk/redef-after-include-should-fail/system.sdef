@@ -1,0 +1,11 @@
+buildVars:
+{
+    INCLUDE_FILENAME=include
+}
+
+#include ${INCLUDE_FILENAME}.def
+
+buildVars:
+{
+    INCLUDE_FILENAME=nothing
+}

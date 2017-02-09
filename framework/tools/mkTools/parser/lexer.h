@@ -29,11 +29,14 @@ class Lexer_t
         // Check if the next sequence of text in the file could match a given type of token.
         bool IsMatch(parseTree::Token_t::Type_t type);
 
-        // Pull a token from the file being parsed. Advances past the token in the file.
+        // Pull a token from the file being parsed. Advances to the next token in the file.
         parseTree::Token_t* Pull(parseTree::Token_t::Type_t type);
 
         // Attempt to convert a token one type to another.
         void ConvertToName(parseTree::Token_t* tokenPtr);
+
+        // Find if a build variable has been used by the lexer in a processing directive
+        parseTree::Token_t *FindVarUse(const std::string &name);
 
         // true = print progress messages to the standard output stream.
         bool beVerbose;
@@ -42,16 +45,32 @@ class Lexer_t
         void ThrowException(const std::string& message) __attribute__ ((noreturn));
         void UnexpectedChar(const std::string& message) __attribute__ ((noreturn));
 
-        parseTree::DefFile_t* filePtr;  ///< Pointer to the File object for the file being parsed.
-
     private:
+        // Lexer context.  As each new file is included, a new context will be created.
+        struct LexerContext_t
+        {
+            parseTree::DefFileFragment_t* filePtr;  ///< Pointer to the File object for the file being parsed.
 
-        std::ifstream inputStream;      ///< File input stream from which tokens will be matched.
-        char nextChar;                  ///< Next character to match.
-        size_t line;                    ///< File line number.
-        size_t column;                  ///< Char index on line (treat tab & return same as space).
+            std::ifstream inputStream;      ///< File input stream from which tokens will be matched.
+            char nextChar;                  ///< Next character to match.
+            size_t line;                    ///< File line number.
+            size_t column;                  ///< Char index on line (treat tab & return same as space).
+            LexerContext_t(parseTree::DefFileFragment_t *filePtr);
+        };
+
+        std::stack<LexerContext_t> context;
+        std::map<std::string, parseTree::Token_t*> usedVars; ///< All variables which have been
+                                                             /// used by processing directives.
+                                                             /// These variables should not be
+                                                             /// overriden or the results may be
+                                                             /// confusing.
+
+        void NextToken();
+        void ProcessDirective();
+        void ProcessIncludeDirective();
 
         bool IsMatchBoolean();
+        parseTree::Token_t* PullRaw(parseTree::Token_t::Type_t type);
         void PullConstString(parseTree::Token_t* tokenPtr, const char* tokenString);
         void PullWhitespace(parseTree::Token_t* tokenPtr);
         void PullComment(parseTree::Token_t* tokenPtr);
@@ -74,6 +93,7 @@ class Lexer_t
         void PullQuoted(parseTree::Token_t* tokenPtr, char quoteChar);
         void PullEnvVar(parseTree::Token_t* tokenPtr);
         void PullMd5(parseTree::Token_t* tokenPtr);
+        void PullDirective(parseTree::Token_t* tokenPtr);
         size_t Lookahead(char* buffPtr, size_t n);
         void AdvanceOneCharacter(parseTree::Token_t* tokenPtr);
         void AdvanceOneCharacter(std::string& string);

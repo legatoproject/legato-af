@@ -13,7 +13,7 @@
 doxygen.*.log
 doxygen.*.err
 _build_*
-system.sdef
+/system.sdef
 binaries
 
 # Update pack files
@@ -23,6 +23,10 @@ binaries
 *.swp
 *.swo
 *.swn
+
+# Emacs
+*~
+\#*\#
 
 # Eclipse / Developer Studio
 .cproject
