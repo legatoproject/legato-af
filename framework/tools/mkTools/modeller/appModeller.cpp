@@ -1559,7 +1559,7 @@ model::App_t* GetApp
 {
     // Save the old CURDIR environment variable value and set it to the dir containing this file.
     auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::GetContainingDir(adefPath));
+    envVars::Set("CURDIR", path::MakeAbsolute(path::GetContainingDir(adefPath)));
 
     // Parse the .adef file.
     const auto adefFilePtr = parser::adef::Parse(adefPath, buildParams.beVerbose);

@@ -1070,7 +1070,7 @@ model::Component_t* GetComponent
 
     // Save the old CURDIR environment variable value and set it to the dir containing this file.
     auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", componentDir);
+    envVars::Set("CURDIR", path::MakeAbsolute(componentDir));
 
     // Parse the .cdef file.
     auto cdefFilePath = path::Combine(componentDir, "Component.cdef");

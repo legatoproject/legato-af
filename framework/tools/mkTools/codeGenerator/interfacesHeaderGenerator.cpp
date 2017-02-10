@@ -73,7 +73,7 @@ void GenerateCLangInterfacesHeader
     {
         interfacePtr->GetInterfaceFiles(cFiles);
         fileStream << "#include \""
-                   << path::Combine(buildParams.workingDir, cFiles.interfaceFile)
+                   << cFiles.interfaceFile
                    << "\"\n";
     }
 
@@ -82,7 +82,7 @@ void GenerateCLangInterfacesHeader
     {
         interfacePtr->GetInterfaceFiles(cFiles);
         fileStream << "#include \""
-                   << path::Combine(buildParams.workingDir, cFiles.interfaceFile)
+                   << cFiles.interfaceFile
                    << "\"\n";
     }
 
@@ -91,7 +91,7 @@ void GenerateCLangInterfacesHeader
     {
         interfacePtr->GetInterfaceFiles(cFiles);
         fileStream << "#include \""
-                   << path::Combine(buildParams.workingDir, cFiles.interfaceFile)
+                   << cFiles.interfaceFile
                    << "\"\n";
     }
 

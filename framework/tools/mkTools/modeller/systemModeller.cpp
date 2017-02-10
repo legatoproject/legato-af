@@ -887,7 +887,7 @@ model::System_t* GetSystem
 {
     // Save the old CURDIR environment variable value and set it to the dir containing this file.
     auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::GetContainingDir(sdefPath));
+    envVars::Set("CURDIR", path::MakeAbsolute(path::GetContainingDir(sdefPath)));
 
     // Parse the .sdef file.
     const auto sdefFilePtr = parser::sdef::Parse(sdefPath, buildParams.beVerbose);

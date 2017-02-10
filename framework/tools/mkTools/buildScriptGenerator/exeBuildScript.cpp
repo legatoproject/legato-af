@@ -439,6 +439,7 @@ void Generate
     // a set of generic rules.
     GenerateCommentHeader(script, exePtr);
     std::string includes;
+    includes = " -I " + buildParams.workingDir;
     for (const auto& dir : buildParams.interfaceDirs)
     {
         includes += " -I" + dir;

@@ -181,7 +181,7 @@ model::Module_t* GetModule
 {
     // Save the old CURDIR environment variable value and set it to the dir containing this file.
     auto oldDir = envVars::Get("CURDIR");
-    envVars::Set("CURDIR", path::GetContainingDir(mdefPath));
+    envVars::Set("CURDIR", path::MakeAbsolute(path::GetContainingDir(mdefPath)));
 
     auto mdefFilePtr = parser::mdef::Parse(mdefPath, buildParams.beVerbose);
     auto modulePtr = new model::Module_t(mdefFilePtr);
