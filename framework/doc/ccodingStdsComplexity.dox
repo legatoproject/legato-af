@@ -1,0 +1,408 @@
+/** @page ccodingStdsComplexity Complexity Standards
+
+@section codeComplexCyclomatic Cyclomatic Complexity
+
+Cyclomatic complexity is a measurement of the complexity of code within a function. It is measured
+by counting branches within a function. Each function gets a starting value of 1, and 1 is added
+for every "if" (or "?"), every loop (for, do, or while), and every "case".
+For example, the following code has a cyclomatic complexity of 3:
+
+@code
+int main(int argc, char** argv)
+{
+    int i;
+    int result = 0;
+
+    if (argc <= 0)
+    {
+        printf("No arguments provided.\n");
+        result = 1;
+    }
+    else
+    {
+        printf("argc = %d\n", argc);
+
+        for (i = 0; i < argc; i++)
+        {
+            printf("argv[%d] = '%s'\n", argv[i]);
+        }
+    }
+    return result;
+}
+@endcode
+
+Higher levels of cyclomatic complexity are correlated with higher defect density.
+-  All functions @b should have a cyclomatic complexity of @b 10 or less.
+-  All functions @b must have a cyclomatic complexity of less than @B 15.
+
+@section codingComplexFanOut Fan-Out
+
+Fan-out is a measurement of the number of different functions that are called by a given function,
+plus the number of data structures that it updates. High levels of fan-out are indicative of
+insufficient abstraction and are correlated with higher defect density.
+
+For example, the following function has a fan-out of 5:
+@code
+static int Log(int value)
+{
+    if (IsAboveThreshold(value))
+    {
+        LogEntry_t* entryPtr = AllocEntry();
+        if (entryPtr == NULL)
+        {
+            ReportError("Out of memory!");
+        }
+        else
+        {
+            entryPtr->value = value;
+            entryPtr->timestamp = GetTimestamp();
+
+            // Add the entry to the log entry list.
+            LogEntryList[NextEntryIndex++] = entryPtr;
+            if (NextExtryIndex >= LOG_SIZE)
+            {
+                NextEntryIndex = 0; // wrap around
+            }
+            if (NextEntryIndex == LastEntryIndex)
+            {
+                ReportError("Log overflow! Log entry discarded.");
+                LastEntryIndex = (LastEntryIndex + 1) % LOG_SIZE;
+            }
+        }
+    }
+}
+@endcode
+
+The functions @c IsAboveThreshold(), @c AllocEntry(), @c ReportError(), and @c GetTimestamp() are
+called by the @c Log() function. In addition, the "Log" data structure (consisting of the variables
+LogEntryList, NextEntryIndex, and LastEntryIndex) is updated by the Log() function. Note that the
+second and subsequent calls to the same function are not counted. So, even though ReportError() is
+called twice by Log(), it only contributes 1 to the fan-out.
+Ideally, fan-out should be kept to @b 7 or less.
+Fan-out must be kept to @b 10 or less.
+
+@section codingComplexRecursion Recursion
+
+Recursion can be dangerous because it can result in stack overruns. Don't use recursion, unless you
+can clearly highlight the recursion and prove to the reader of your code that the recursion will be
+bounded well within the limits of even the smallest stack space that could reasonably be allocated
+to your thread.
+
+@section codingComplexGotos Gotos
+"goto" statements should not be used. If they are used, they must be used sparingly as a
+jump-to-exception-handling mechanism.
+
+@code
+{
+    Rec_t* recPtr = CreateRec();
+
+    ...
+
+    if (x > LIMIT)
+    {
+        goto fault;
+    }
+
+    ...
+
+    SaveRec(recPtr);
+    return SUCCESS;
+
+fault:
+
+    ReleaseRec(recPtr);
+    return FAILED;
+}
+@endcode
+
+@section codingFormatGlobalVariables Global Variables
+
+Global variables are variables that are exported to other modules (i.e., have a scope that spans
+multiple files).
+
+Global variables are dangerous because:
+-  they don't allow protections from multithreaded race conditions,
+-  they reduce maintainability by increasing coupling.
+
+Globals must not be used. Use accessor functions instead.
+
+@note file-scope static variables are fine.
+
+@section codingExtern Extern
+
+When global variables are not used and all inter-module interfaces are defined in header files, the
+"extern" keyword is not needed. Don't use it. Use of "extern" is an indication of poor coding
+practices.
+
+@section codingComplexHeap Heap
+
+Depending on the algorithm used, dynamic memory allocation using a memory heap (i.e., using malloc,
+free, and variants of malloc, such as calloc, realloc, strdup, etc.) can lead to heap fragmentation,
+resulting in unexpected runtime failures. Furthermore, heap allocation and deallocation can be very
+slow in some cases.
+
+Use memory pools instead. Memory pools eliminate internal fragmentation, run in O(1) time (for both
+allocation and deallocation), can be named for diagnostics purposes, allow finer-grained memory
+allocation statistics collection, and can provide OO constructor and destructor functionality.
+
+@section codingComplexFuctionParams Function Parameter Lists
+
+The number of parameters passed to any given function should be kept as low as possible. Functions
+with less parameters tend to be easier to understand and easier to use. As a general guideline, C
+functions should have 4 parameters or less.
+
+@section codingComplexConstPointers Const Pointers
+
+Pointer type function parameters must be declared @c const if the object pointed to will not be
+modified by the function it is being passed to.
+
+Pointer type return values must be declared @c const if the object being returned must not be
+modified by the caller.
+
+@section codingComplexMultithreading Multithreading
+
+Sometimes multithreading can be a powerful tool, allowing functionally related code to be grouped
+into a single flow of control where it would otherwise be fragmented into small chunks that can run
+without blocking. However, multithreading can easily become the source of some of the most nasty
+bugs.
+
+@section codingComplexFuctionMacros Function-Like Macros
+
+Function-like macros are preprocessor expressions that are used like function calls, ie:
+@code #define CUBE(x)     ((x)*(x)*(x)) @endcode
+
+Function-like macros are often used for efficiency because the macro is expanded in place which
+avoids the overhead of a function call.
+
+However, function-like macros have many pitfalls, for example:
+@code
+
+// This is an unsafe macro because the argument x is evaluated more than once.
+#define CUBE(x)     (x*x*x)
+
+int main(int argc, char *argv[])
+{
+    int y = 0;
+
+    int x = 3;
+    y = CUBE(x); // Works fine; y = 9.
+
+    x = 2;
+    y = CUBE(++x); // y = 60 because x is incremented 3 times on most compilers.
+
+    y = CUBE(1 + 2); // y = 7 because the expansion is y = (1 + 2 * 1 + 2 * 1 + 2).
+}
+@endcode
+
+Avoid defining function-like macros.  Static inline functions should be used in place of
+function-like macros where possible.  If a function-like macro must be defined be aware of the
+following rules and recommendations: @c PRE31-C, @c PRE32-C, @c PRE00-C, @c PRE01-C, @c PRE10-C.
+
+@section codingComplexVariableSideEffects Variable Side Effects
+
+Side effects can cause unexpected results when used as parameters to unsafe macros as illustrated
+above.  It may also be difficult to determine if a library function is implemented as a macro,
+therefore it is best to avoid using side effects on function parameters unless it is clear that they
+are not implemented as unsafe macros.  See PRE31-C for more information.
+
+Side effects should not be used in operands to @c sizeof.  The @c sizeof operator generally computes
+its results at compile time and therefore does not generally evaluate its operands.  This can lead
+to unexpected results if side effects are used in the operand.
+
+For example:
+
+@code
+int n = 5;
+size_t s = sizeof(n++);
+
+printf("n = %d", n);  // Expect this to print 'n = 6' but it actually prints 'n = 5'.
+@endcode
+
+See EXP44-C for more information.
+The order of evaluation of expressions with side effects is also unreliable.  For example:
+
+@code
+// This is undefined behavior.
+i = i++ + 3;
+
+// This is well defined behavior.
+i++;
+i = i + 3;
+@endcode
+
+Generally, side effects can lead to unexpected behaviors and should be avoided.
+
+@section codingComplexSideEffects Procedural Side Effects
+
+A function is considered to exhibit procedural side effects when it modifies state in a non-obvious
+way.  In the following example, the GetUserID function gets the user ID given a user name.  The user
+ID is returned in an out parameter and the functions return value is a status code indicating
+possible errors.  Although, this function modifies the state of its return value and the out
+parameter, uidPtr, these modifications are not considered procedural side effects because they
+obvious from the functions declaration.  However, the function also sets the shell program that is
+used when the user logins in, if the shell program is not already set.  This is not obvious from the
+function declaration and is considered a procedural side effect.
+
+@code
+static le_result_t GetUserID
+(
+    const char* userNamePtr,    ///< [IN] Name of the user to get the ID for.
+    uid_t* uidPtr               ///< [OUT] User ID.
+)
+{
+    // Get information about the user.
+    errno = 0;
+    struct passwd* userInfoPtr = getpwnam(userNamePtr);
+
+    if (userInfoPtr == NULL)
+    {
+        if (errno != 0)
+        {
+            // Handle error.
+            ...
+        }
+
+        return LE_NOT_FOUND;
+    }
+
+    // Set the uid in the out parameter.
+    *uidPtr = userInfoPtr->pw_uid;
+
+    // Set the login shell to /bin/sh if it is not already set.
+    if (userInfoPtr->pw_shell == NULL)
+    {
+        // Set login shell.
+        ...
+    }
+
+    return LE_OK;
+}
+@endcode
+
+Procedural side effects makes program logic more difficult to follow and should be avoided.
+
+@section codingComplexSignals Signals
+
+Signals are kernel generated messages that cause asynchronous handlers to be called.  Properly using
+signals is difficult due to the many subtle issues associated with asynchronous handlers.  It is
+recommended that the synchronous le_signals() API be used instead.  If asynchronous signal handlers
+must be used be aware of the following issues:
+-  Only async-safe functions should be called in a signal handler.
+-  Mutexes cannot be used in a signal handler.
+-  Standard signals are queued.
+-  Real time signals are queued.
+-  Signal dispositions are per process.
+-  Signal dispositions are inherited through a fork but not an exec.
+-  Signals are delivered to a process not a thread.  If multiple threads have handlers for the same
+   signal there is no guarantee which handler will be called.
+-  Asynchronous signal handling should be implemented with care.
+
+@section codingComplexBitFields Bit Fields
+
+Bit fields are sometimes used to store flag values, ie:
+
+@code
+struct
+{
+    unsigned int northZone : 1;
+    unsigned int eastZone : 1;
+    unsigned int westZone : 1;
+    unsigned int southZone : 1;
+}
+LightSwitch;
+
+LightSwitch.northZone = 0;
+LightSwitch.eastZone = 0;
+LightSwitch.westZone = 0;
+LightSwitch.southZone = 0;
+@endcode
+
+However, the internal layout of the bit fields in a structure is up to the compiler (compiler
+decides how to align and pad the bit fields).  This can lead to misunderstandings of how a bit field
+should be accessed.  For example, because bit fields are often packed into a single storage unit the
+following code contains a race condition.
+
+@code
+struct
+{
+    unsigned int northZone : 1;
+    unsigned int eastZone : 1;
+    unsigned int westZone : 1;
+    unsigned int southZone : 1;
+}
+LightSwitch;
+
+static void* Thread1(void* contextPtr)
+{
+    LightSwitch.northZone = 1;
+    return NULL;
+}
+
+static void* Thread2(void* contextPtr)
+{
+    LightSwitch.eastZone = 2;
+    return NULL;
+}
+@endcode
+
+See @c EXP11-C, @c CON32-C, @c INT12-C for other issues related to bit fields.  Bit fields are
+almost always unnecessary and should be avoided.
+
+@section codingComplexFlexiableArrays Flexible Arrays
+
+Flexible arrays are declared by having an array as the last element of a struct, for example:
+@code
+static struct DynamicArray
+{
+    size_t len;
+    char data[];
+}
+
+static struct DynamicArray* CreateDynamicArray(size_t lenOfArray)
+{
+    struct DynamicArray* newArrayPtr = malloc(sizeof(struct DynamicArray) + (lenOfArray));
+
+    /* Check and handle errors. */
+
+    return newArrayPtr;
+}
+@endcode
+
+As can be seen from the code example above memory for the flexible array needs to be allocated
+dynamically.  The programmer should also remember to account for the array size when copying arrays
+and when passing the struct as a parameter.
+
+@code
+static struct DynamicArray
+{
+    size_t len;
+    char data[];
+}
+
+static int Bar(struct DynamicArray someData)
+{
+    // Because the struct is passed by value the struct is copied and again does not account for the
+    // data array.
+}
+
+static void Foo(size_t lenOfArray)
+{
+    struct DynamicArray* array1Ptr = malloc(sizeof(struct DynamicArray) + (lenOfArray));
+
+    struct DynamicArray* array2Ptr = malloc(sizeof(struct DynamicArray) + (lenOfArray));
+
+    /* Initialize array1Ptr */
+
+    /* ... */
+
+    *array2Ptr = *array1Ptr  // Only the len member is copied the data array is not copied.
+
+    Bar(*array2Ptr);
+}
+@endcode
+
+Flexible arrays are generally not necessary and should be avoided.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

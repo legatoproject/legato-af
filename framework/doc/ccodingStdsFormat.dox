@@ -1,0 +1,726 @@
+/** @page ccodingStdsFormat Formatting Standards
+
+@section codingFormattingMultiIncGuards Multiple Inclusion Guards
+
+In order to prevent multiple declaration errors due to multiple inclusion of the same header file,
+every header file must include a "multiple inclusion guard" of this form:
+
+@code
+#ifndef UNIQUE_INCLUDE_GUARD
+#define UNIQUE_INCLUDE_GUARD
+
+...
+
+#endif
+@endcode
+
+@c "UNIQUE_INCLUDE_GUARD" must be replaced with a macro name that is certain to be unique to this
+header file. To ensure this uniqueness, the macro name should contain the name of the file
+(converted to all upper case, with underscores separating words), be prefixed with a name or
+abbreviation that is unique to the module that the header file is a part of, have
+@c "_INCLUDE_GUARD" as a suffix.
+
+For example, the "Converter" module's inter-module interface file "converter.h" in the Sierra
+Wireless (SWI) "Transmogrifier" component could contain a multiple inclusion guard macro named
+like this:
+
+@c SWI_TMOG_CONVERTER_INCLUDE_GUARD
+No code (other than comments) in a header file may reside outside of that file's multiple inclusion
+guard.
+For example:
+
+@code
+// Only comments allowed here.
+
+#ifndef SWI_TMOG_CONVERTER_INCLUDE_GUARD
+#define SWI_TMOG_CONVERTER_INCLUDE_GUARD
+
+// Any code can go here.
+
+#endif // SWI_TMOG_CONVERTER_INCLUDE_GUARD
+
+// Only comments allowed here, but preferably nothing but the end of file should be here.
+@endcode
+
+To allow these include guard macros to be renamed (in case the file is renamed, the code changes
+hands, a naming conflict is found, etc.) and to avoid confusing future maintainers, these macros
+should not be used for anything else other than the multiple inclusion guard.
+
+@note When modifying pre-existing code that contains multiple-inclusion guards, use the
+multiple-inclusion guard style of the pre-existing code, rather than using our style of
+multiple-inclusion guard.
+
+@section codingFormatingLineLength Line Length
+
+Lines of code should not be longer than 100 columns.
+
+@section codingPreExistingCode Pre-Existing Code
+
+When modifying pre-existing code, the style of the pre-existing code should be used over any of the
+standards listed below. However, even when modifying pre-existing code, the standards listed above
+still apply to those parts that you modify. Although, you would not be expected to rewrite a complex
+pre-existing function just because you made a very small change to it.
+
+@section codingFormatNaming Naming
+
+Naming is arguably one of the most important aspects of coding. The impact that naming has on
+readability (and therefore reviewability and maintainability) cannot be understated. Extra time
+spent on choosing the right names or correcting poor naming is almost certainly going to pay back
+several times over in future savings of time and effort in peer reviews, testing, troubleshooting,
+and renovations (refactoring, re-engineering, and design and implementation of new requirements).
+
+@subsection codingFormatNamingDescriptive Be Descriptive
+
+The most important requirement for names of identifiers, files, etc. is that they describe what they
+are. Don't call a pointer to a timer "p", or "tp" (is that toilet paper?). Call it "timerPtr". At a
+glance, it's extremely obvious what a "timerPtr" is.
+
+It is, however, acceptable for loop counters to be numbered simply "i" (or "j" for a nested loop, or
+"k" for a nested nested loop), because these are common usages, not only in programming, but also in
+mathematics.
+
+It is also acceptable for variables with very limited scope (i.e., limited to a handful of lines of
+code) to have very simplified names, if that improves readability through the reduction of clutter.
+For example, "t" becomes more acceptable for a timer reference if it is used in a tiny code block,
+such as the following:
+
+@code
+static void StartTimer(void)
+{
+    le_timer_Ref_t t = le_timer_Create(TimerPool);
+    le_timer_SetInterval(t, TIMER_INTERVAL);
+    le_timer_SetExpiryHandler(t, TimerExpired, NULL);
+    le_timer_Start(t);
+}
+@endcode
+
+@subsection codingFormatNamingPrefixes Prefixes
+
+Often, an identifier prefix is needed to prevent naming conflicts between identifiers that are
+exported to other modules as a part of an interface. For example, two interfaces may each define a
+function called "GetSize". To prevent naming conflicts (and to avoid programmer confusion), each of
+those interfaces prefixes its "GetSize" function identifier with its own, unique prefix. Of course,
+these prefixes are also needed for other things besides functions: types, variables, files, and
+macros. This section defines the general structure of these prefixes, while other sections define
+the specific prefixing rules for types, variables, functions, etc.
+
+The structure of an interface-specific prefix differs based on the scope of the interface. The
+possible scopes are:
+- inter-component - an interface implemented by one component and used by other components
+- inter-module - and interface implemented by one module and used by other modules within the same
+  component.
+
+@note Inter-module interfaces could also be called intra-component interfaces, but "intra" looks and
+sounds too much like "inter", so "inter-module" is the preferred term.
+
+Each part of the prefix must start with a lower case letter (unless it is a macro prefix) and must
+be separated from other parts of the identifier using underscores.
+Underscores are used instead of capitalization to separate the parts of the prefix and to separate
+the prefix from the identifier for several reasons:
+-  To make the prefix visibly stand out clearly from the rest of the identifier.
+-  Because abbreviations tend to often be acronyms, which sometimes get capitalized improperly when
+   using camel case.
+-  To make machine parsing of these identifiers easier.
+
+@subsubsection codingNamingPrefixInterCompInt Inter-Component Interfaces
+
+Inter-component interfaces have prefixes containing at least two parts:
+-  company abbreviation
+-  interface name abbreviation
+
+The company abbreviation indicates what company the interface belongs to. For interfaces owned by
+Sierra Wireless, this could be "swi". For open-source projects, the abbreviation would indicate
+which project the interface belongs to. For example, interfaces defined as part of the "Legato AF"
+project could start with "le_".
+
+The interface name abbreviation is simply an abbreviation of the interface's name. For example, a
+"memory management API" might have @c mem as its abbreviation. This abbreviation should not be
+longer than 5 characters. @b Two @b to @b four characters is preferred.
+
+So, for example, a timer API owned by Sierra Wireless might have the prefix @c swi_tmr:
+
+@code
+typedef struct swi_tmr* swi_tmr_Ref_t;
+
+swi_tmr_Ref_t swi_tmr_Create(void);
+void swi_tmr_SetInterval(swi_tmr_Ref_t timer, uint32_t intervalInMs);
+void swi_tmr_Start(swi_tmr_Ref_t timer);
+...
+while the Legato Memory Management API could have the prefix "le_mem".
+typedef struct le_mem_Pool* le_mem_PoolRef_t;
+
+le_mem_PoolRef_t le_mem_CreatePool(size_t blockSizeInBytes);
+@endcode
+
+@subsubsection codingNamingIntModInt Inter-Module Interfaces
+
+Inter-module interfaces have only one part to their prefix: an interface name abbreviation. For
+example, a "Registration List" module may use the prefix @c rlist_, while a "Registration" module,
+which implements the Registration objects that get stored in the Registration List might use the
+prefix @c reg_:
+
+@code
+void rlist_Add(reg_Ref_t registration);
+void rlist_Remove(reg_Ref_t registration);
+reg_Ref_t rlist_FindByName(const char* name);
+@endcode
+
+Because inter-module interfaces are not seen outside of the component in which they are defined, it
+is impossible to have a naming conflict between an inter-module interface in one component and an
+inter-module interface in another component (Actually, there could still be a conflict at the link
+stage, if the symbols are allowed to leak out, but a linker script file can be used to prevent this
+quite easily). Furthermore, because all interfaces imported from outside a component will have both
+a company prefix and an interface name abbreviation, it is impossible to have a naming conflict
+between an inter-component interface and an inter-module interface. The difference in the prefixes
+also highlights the scope differences of the identifiers, which can be very significant to those who
+have to read the code someday. That is, someone looking at a piece of code can easily see whether
+there is coupling with other components or just other modules within the same component.
+
+@subsection codingFormatNamingFiles Files
+
+As with other forms of identifiers, the most important requirement for file names is that they must
+be descriptive. e.g., the name of the file must clearly describe what the file contains.
+
+Also important, however, is that files must be named in such a way that their names will not
+conflict with the names of other files. This is mainly important for include files. For example,
+don't call one of your header files "time.h", because that name will conflict with the C standard
+library file of the same name. To this end, inter-component interface headers must be prefixed with
+the company abbreviation as described above. (For example, the Sierra Wireless "Transmogrify" API
+include file could be named something like "swi_transmog.h".) But, prefixes are not required on
+files that are only visible within a limited scope (e.g., implementation files or inter-module
+interfaces only visible inside a single software component).
+
+@subsection codingFormatNamingMacros Macros
+
+Macros can be used in similar ways to variables and functions, but their behavior has subtle
+differences that can result in bugs or code bloat if used incorrectly. Compiler errors and warnings
+resulting from macro substitution can also be somewhat cryptic and difficult to understand if it
+isn't obvious that the code involved is a macro. Therefore, it is important to be able to easily
+distinguish visually a macro from a non-macro when reading code. To this end, macro names must be
+all uppercase, with words separated using underscores.
+
+Names of macros can also conflict with the names of macros defined in include files from other
+modules. To reduce the chances of a naming conflict, any macros exported to other modules must have
+a prefix, and even macros only used within a single file should have a prefix if the names are
+likely to conflict with names defined in standard C libraries and other included code that doesn't
+use prefixes. Prefix rules are defined above.
+
+@subsection codingNamingTypes Types
+
+@subsubsection codingFormatNamingTypesSuffix Suffix
+
+Types are distinctly different from instances, and yet it is possible to name them such that it can
+be hard to tell whether something is a type or a variable when reading the code. Furthermore, naming
+conflicts can occur between types and variables and even between types and functions. To prevent
+these sorts of issues, type names are always given an "_t" suffix.
+
+@subsubseciton codingFormatNamingTypesPrefix Prefix
+
+If a type is defined in a header file, there's the possibility that its name may conflict with the
+ name of another type defined elsewhere. To prevent such conflicts, all types that are defined
+ inside header files must have a prefix as defined above.
+Types that are defined inside implementation (.c) files don't need such a prefix. They have file
+scope, and imported types will have prefixes, so naming conflicts are highly unlikely.
+The prefix (if any) must be all lower-case.
+
+@subsubsection codingFormatNamingTypesName Name
+
+After the prefix (if any), the rest of the type name must be in CamelCase, beginning with an
+uppercase character.
+
+@code
+// Inside a .c file:
+typedef size_t ObjectCount_t;
+// Inside the Sierra Wireless "Foo" component's API .h file:
+typedef size_t swi_foo_ObjectCount_t;
+@endcode
+
+@subsubsection codingFormatNamingCardinalTypes Cardinal Types
+
+Cardinal types (e.g., int, uint, int32, bool) are exempt from having a prefix or suffix because
+naming a variable @c bool or @c int would not be very descriptive, so there's little point in trying
+to avoid such naming conflicts.
+
+Most cardinal types are built into the language and we are not allowed to change their names
+(nor would we want to -- imagine the confusion and the 3rd-party integration problems!).
+
+@subsubsection codingFormatNamingEnumMembers Enumeration Members
+
+Enumeration members are constants that are used in a very similar way to macro constants. To clearly
+identify them as literal constants, they must be named using all upper-case with underscores
+separating words.
+
+Also like macros, names of enumeration members can also conflict with the names of macros and
+enumeration members defined in include files from other modules. To reduce the chances of a naming
+conflict, any members of enumerations exported to other modules must have a prefix, and even members
+of enumerations only used within a single file should have a prefix if the names are likely to
+conflict with names defined in standard C libraries and other included code that doesn't use
+prefixes. Prefix rules are defined above.
+
+@subsubsection codingFormatNamingStructUnionName Struct and Union Namespaces
+
+When a structure or union is defined, it's possible to give a name to that structure or union within
+a separate namespace. In the following example, @c MessageBody and @c Message are in the union and
+struct namespaces, but @c MessageBody_t and @c Message_t are not:
+
+@code
+typedef union MessageBody
+{
+    Request_t request;
+    Response_t response;
+}
+MessageBody_t;
+
+typedef struct Message
+{
+    MessageType_t type;
+    MessageBody_t body;
+}
+Message_t;
+@endcode
+
+All uses of a name in the struct namespace must be preceded by the keyword "struct". Likewise, all
+uses of a name in the union namespace must be preceded by the keyword "union". Because these
+identifiers always appear with "struct" or "union" right before them, there is no confusion as to
+whether they are types, variables or functions; and because they are in a separate namespace,
+there's no possibility of naming conflicts with identifiers outside of the struct and union
+namespaces. Therefore, these names are exempt from having an "_t" suffix. However, if these are
+defined in a header file, they still must have a prefix to prevent naming conflicts with other
+identifiers defined by other components in the same namespace.
+
+@subsubsection codingFormatNamingStructUnionMbmr Structure and Union Members
+
+The names of members of structures and unions must start with a lower-case letter and use camel case
+to separate words.
+Because structure and union member names are always used in context (in a dereference expression),
+there is no confusing them with other types' members (assuming the structure or union reference
+identifier is well named). Therefore, no prefix is needed on structure or union member names.
+
+For example:
+
+@code
+typedef struct
+{
+    char* textBufferPtr;
+    int   textLength;
+
+    ...
+}
+MyStructure_t;
+
+static void PrintTextBuffer(MyStructure_t* objectPtr)
+{
+    int i;
+    for (i = 0; i < objectPtr->textLength; i++)
+    {
+        PrintChar(objectPtr->textBufferPtr[i]);
+    }
+}
+@endcode
+
+@note Only stack variable names and struct/union member names can (and must) start with lower-case
+letters.
+
+@subsection codingFormatNamingFunctions Functions
+
+@subsubsection codingFormatNamingFunctionsPrefix Prefix
+
+If a function is defined in a header file, there's the possibility that its name may conflict with
+the name of another function defined elsewhere. To prevent such conflicts, all functions defined
+inside header files must have a prefix as defined above.
+
+Functions that are defined inside implementation (.c) files don't need an inter-component or
+inter-module prefix. Functions defined inside .c files have file scope and any imported functions
+will have inter-component or inter-module prefixes, so naming conflicts are highly unlikely.
+
+In addition, if a function belongs to a specific type of object (i.e., class) in an object oriented
+interface, its prefix must have an additional object name part. The object name part of a prefix
+must start with a lowercase letter and must be separated from other parts of the identifier using
+underscores. If the object name is made up of multiple words, they must be separated using
+capitalization of the first letter of the second and subsequent words in the object name (e.g.,
+"ipRoute" or "simCard").
+
+For example:
+
+@code
+pool = le_mem_CreatePool(sizeof(MyObject_t), "My objects");  // This function doesn't belong to a class.
+le_mem_pool_Expand(pool, numObjects);  // This is one of the "pool" class's functions.
+objPtr = le_mem_pool_Alloc(pool); // This also belongs to the "pool" class.
+objSize = le_mem_block_GetSize(objPtr);  // This function belongs to the "block" class.
+@endcode
+
+@subsubsection codingNamingFunctionCC Camel Case
+
+After the prefix (if any), the rest of the function name should be in CamelCase, starting with an
+uppercase letter.
+
+@subsubsection codingNamingFunctionVerbage Verbage
+
+Function names must contain a verb, because they are active. They should also contain an object,
+unless the object is obvious in the prefix.
+
+To be consistent with Java conventions, the verb should come before the object.
+
+Examples are: @c GetTimeRemaining(), @c le_mem_CreatePool(), and @c swi_timer_Start().
+
+Additionally, functions that return boolean results should be named as a question, for example
+@c le_net_IsOnLine().
+
+@subsection codingFormatNamingVarFunction Variables and Function Parameters
+
+@subsubsection codingNamingVarFunctionCC Camel Case
+
+Variable names and function parameter names should be in CamelCase.
+
+@subsubsection codingNamingVarFunctionVerb Verbage
+
+Boolean type variables should be named as a question, for example:
+
+@code
+static bool IsInitialized = false;
+@endcode
+
+@subsubsection codingNamingVarFunctionPre Prefix
+
+Variables are never defined inside header files, and therefore they never need prefixes.
+
+@subsubsection codingNamingVarFunctionPointers Pointers
+
+Pointers are used very differently than non-pointer variables. Not only does a range of new
+operators become available for use with pointers, but mathematical operations take on a whole new
+meaning when used with pointers. As a result, it is important to distinguish pointer variables from
+non-pointer variables. Therefore, the names of pointer variables must end in @c Ptr.
+
+@code int index = 0;
+int* indexPtr = &index;
+@endcode
+
+There is an exception when working with opaque types. This is because pointers are often used
+to implement opaque types in C. For example, a header file might contain something like this:
+
+@code typedef struct foo_Sandwich* foo_SandwichRef_t; @endcode
+
+This defines a type that can be used to refer to a "Sandwich" object. Note that struct foo_Sandwich
+is never defined outside of the "foo" module (and may not even be defined inside of the foo module).
+Therefore, to all outsiders, this reference looks like a pointer to an incomplete type and cannot be
+dereferenced. Inside the "foo" module, struct foo_Sandwich could be defined or this pointer type
+could even be used to hold an integer, a char, or anything else that is the same size or smaller
+than a pointer. For example, a "file reference" could be implemented on some systems as an integer
+file descriptor. In these cases, because the reference is an opaque type that is never used as a
+pointer by anyone outside of the module that implements it, and because it might not be a pointer at
+all even inside the module that implements it, variables of opaque pointer types don't need a @c Ptr
+suffix.
+
+@subsubsection codingFormatNamingStackVar Stack Variables
+
+Variables that exist on the stack are function parameters and "automatic variables" (non-static
+variables declared inside of functions). When these variables go out of scope, they disappear. That
+is, their memory is released to be later used for other purposes. To make it obvious that these
+variables are stack variables and not static variables, they must start with a lower-case letter.
+Because the scope of these variables is limited to within a specific function or compound block
+within a function, they need not have a prefix to avoid naming conflicts with variables in other
+scopes.
+
+For example:
+
+@code
+static void Function(int numericParameter)
+{
+    char* stringAutoVariable;
+    ...
+}
+@endcode
+
+@note Only stack variable names and struct/union member names can (and must) start with lower-case
+letters.
+
+@subsubsection codingFormatNamingStaticVar Static Variables
+
+Static variables are not stored in either the stack or the heap. They are statically allocated in
+the data segment of the process's address space. Furthermore, they have scope limited to either a
+compound statement (if defined inside a function), or a file (if defined outside of all functions).
+Because these variables are never visible outside of a file, they don't need any special prefix to
+prevent naming conflicts with variables from other files. But, because they are stored differently
+than variables on the stack (and don't disappear when they go out of scope), they start with an
+upper-case letter to distinguish them from stack variables.
+
+For example:
+
+@code
+static int CallCounter = 0;  // This is a file-scope variable.
+
+static void Function(int numericParameter)
+{
+    static bool WasCalledBefore = FALSE;
+    char* stringAutoVariable;
+
+    if (!WasCalledBefore)
+    {
+        ...
+        WasCalledBefore = TRUE;
+    }
+
+    CallCounter++;
+    ...
+}
+@endcode
+
+@subsection codingFormatAbbrv Abbreviations
+
+In the interests of having manageable-length identifiers, developers often abbreviate words when
+constructing identifiers. Unfortunately, if these abbreviations are not carefully chosen, they can
+often create confusion.
+
+Following is a list of acceptable abbreviations (in alphabetical order of abbreviated word). Other
+abbreviations should be created with care and consideration for readability and prevailing norms.
+@note This list is still a work-in-progress. Please feel free to propose additions to it.
+
+| Original Word         | Abbreviation  |
+|-----------------------|---------------|
+| acknowledge           | ack           |
+| allocate              | alloc         |
+| concatenate           | cat           |
+| delete                | del           |
+| file descriptor       | fd            |
+| forward               | fwd           |
+| initialize            | init          |
+| iterator              | it            |
+| message               | msg           |
+| negative acknowledge  | nack          |
+| number                | num           |
+| number of             | count         |
+| pointer               | ptr           |
+| previous              | prev          |
+| receive               | rx            |
+| reference             | ref           |
+| register              | reg           |
+| transaction           | txn           |
+| transmit              | tx            |
+
+@section codingCommenting Commenting
+
+If anything not completely obvious is going on, it must be documented clearly using comments.  To
+ensure clarity, comments should be free of spelling and grammar mistakes.  This is especially
+important as most of the comments in interface files (.h, .api, .etc) are made available to the
+public through external documentation.
+
+Comments should also be used to improve readability, wherever appropriate.
+However, there's no point in commenting the obvious, like this:
+
+@code
+// Set the flag
+isReady = TRUE;
+@endcode
+
+Comments should focus mainly on the @b why, as opposed to the what or the how. The code should be
+written in such a way that what the code is doing and how it is doing it is obvious given how nicely
+named the identifiers are and how cleanly structured the code is. If it isn't, please consider
+rewriting the code. If rewriting it to make the what and how more obvious is not practical, then do
+please comment the what and the how, but rewriting for clarity of the code is preferred.
+
+What cannot often be conveyed in the code itself is why the code is doing what it is doing. This is
+the most valuable information to have in comments, since it can shine light on pitfalls and help
+quickly identify whether design change options are viable. Often, the why was learned the hard way,
+so documenting it can save others from having to learn it the hard way too. Also, sometimes things
+are done arbitrarily, which is good to know too so people don't have to fear that making changes to
+it might break something in some subtle way.
+
+C++ style comments are permitted in C code. All modern compilers which implement the C99 standard
+support them.
+
+Each module should contain a module comment block at the top of the file that describes the module's
+purpose. The header comment block should be formatted like this:
+
+@verbatim
+/**
+ * @file le_basics.h
+ *
+ * There are certain cardinal types and commonly-used constants that form the most basic
+ * foundation upon which everything else is built.  These include things such as
+ * error codes, portable integer types, and helpful macros to make ugly things nicer to
+ * look at and easier to use.
+ *
+ * Copyright (C) Sierra Wireless, Inc.
+ */
+@endverbatim
+
+@note See Copyright Notices for information regarding the copyright notice in the file header.
+
+Each function should be preceded by a comment block that describes the purpose of the function, its
+possible return values and any side effects that it may have. The function blocks should be
+formatted like this:
+
+@verbatim
+//-----------------------------------------------------------------------------------------
+/**
+ * Creates a sub-pool.
+ *
+ * See @ref sub_pools for more information.
+ *
+ * @return
+ *      A reference to the sub-pool.
+ */
+//------------------------------------------------------------------------------------------
+le_mem_PoolRef_t le_mem_CreateSubPool
+(
+    le_mem_PoolRef_t    pool,       ///< [IN] The super-pool.
+    const char*         name,       ///< [IN] The name of the sub-pool (will be copied
+                                    ///  into the sub-pool).
+    size_t              numObjects  ///< [IN] The number of objects to take from the
+                                    ///  super-pool.
+);
+@endverbatim
+
+Function parameters should be documented with comments after the parameter as shown in the example
+above. Placing the comments after the parameters as opposed to in the function comment block keeps
+the comments and parameters together and makes the comments either to read. It also serves as a
+reminder to the developer to update the comments when the parameters are changed.
+
+The function description must follow the following template:
+
+@verbatim
+//----------------------------------------------------------------------------------------
+/**
+* My function description.
+*
+* @return
+*  - LE_OK on success
+*  - LE_FAULT on failure
+*/
+//-----------------------------------------------------------------------------------------
+@endverbatim
+
+And not:
+
+@verbatim
+//----------------------------------------------------------------------------------------
+/**
+* My function description.
+*
+* @return LE_OK on success
+* @return LE_FAULT on failure
+*/
+//----------------------------------------------------------------------------------------
+@endvabatim
+
+A struct should be documented in a similar manner where each field has comments proceeding it, for
+example:
+
+@verbatim
+//----------------------------------------------------------------------------------------
+/**
+ * List of memory pool statistics.
+ */
+//-----------------------------------------------------------------------------------------
+typedef struct
+{
+    uint64_t    numAllocs;      ///< The number of times an object has been allocated from this pool.
+    size_t      numFree;        ///< The number of free objects currently available in this pool.
+    size_t      numOverflows;   ///< The number of times le_mem_ForceAlloc() had to expand the pool.
+}
+le_mem_PoolStats_t;
+@endverbatim
+
+Enumerated types should also be documented in a similar manner.
+
+@verbatim
+//------------------------------------------------------------------------------------------
+/**
+ * Standard result codes.
+ *
+ * @note All error codes are negative integers, thereby allowing functions returning signed
+ *       integers to return non-negative values when successful or standard error codes on failure.
+ */
+//------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_OK = 0,              ///< Successful.
+    LE_NOT_FOUND = -1,      ///< The referenced item does not exist or could not be found.
+    LE_NOT_POSSIBLE = -2,   ///< It is not possible to perform the requested action.
+    LE_OUT_OF_RANGE = -3,   ///< An index or other value is out of range.
+    LE_NO_MEMORY = -4,      ///< Insufficient memory is available.
+    LE_NOT_PERMITTED = -5,  ///< Current user does not have permission to perform requested action.
+    LE_FAULT = -6,          ///< Unspecified internal error.
+    LE_COMM_ERROR = -7,     ///< Communications error.
+    LE_TIMEOUT = -8,        ///< A time-out occurred.
+    LE_OVERFLOW = -9,       ///< An overflow occurred or would have occurred.
+    LE_WOULD_BLOCK = -10,   ///< Would have blocked if non-blocking behaviour was not requested.
+}
+le_result_t;
+@endverbatim
+
+However, if the meaning of the constants in an enumerated type are obvious from their names the
+comments may be omitted as in the following example:
+
+@verbatim
+//------------------------------------------------------------------------------------------
+/**
+ * Colour type.
+ */
+//------------------------------------------------------------------------------------------
+static typedef enum
+{
+    RED = 0,
+    YELLOW = 1,
+    GREEN = 2
+}
+Colour_t;
+@endverbatim
+
+@section codingCopyrightNotices Copyright Notices
+
+In countries that are treaty members of the Berne Convention (including France, the U.S., Canada and
+China), copyright is immediately and automatically assigned as soon as a work is created. There is
+no legal requirement to explicitly state copyright ownership in order for copyright to be valid.
+However, it is best to be clear about who owns copyright on a work and what permissions they grant
+to others with respect to that work, to avoid misconceptions.
+
+The following statement must be included in every source file:
+
+@verbatim
+Copyright © Sierra Wireless, Inc.
+@endverbatim
+
+In addition, if a source code file is to be released outside of Sierra Wireless under licence
+(whether open-source or proprietary), a file containing the full license terms must be included in
+the source code distribution package (e.g., CD, zip file, public version control system directory,
+etc.), and that file must be named such that it is obvious that it contains the license (e.g.,
+"LICENSE.txt").
+
+Ideally, every file should contain a reference to the specific licence that it has been released
+under. That can be pasted in-line in the file, if it is a short licence, or it can be referred to by
+name and active Internet-accessible URL. But, this is not mandatory, unless required by the source
+code license.
+
+@note If the copyright symbol cannot be easily inserted because of the editor or character set being
+used, then (C) should be used in its place.
+
+@section codingSeparation Separation of Interface from Implementation
+
+Header files should contain only interface details. Implementation details should appear only in
+@c .c files.
+
+The separation of interface from implementation reduces coupling, which increases quality.
+
+@section codingInterfaceDocs Interface Documentation
+
+Inter-component interfaces should be documented using Doxygen. This allows documentation pages to be
+written right inside the include (.h) files.
+
+@section codingTabs Tabs
+Unfortunately, tab characters are not handled in a consistent way in editors and browsers. Some put
+tab stops at the equivalent of 8 spaces, others use 4 and, albeit rarely, other distances are
+sometimes used as well. As a result, source code containing tab characters are not rendered properly
+in all cases.
+
+Tab characters must be avoided in C source code. Spaces must be used to indent lines C code,
+instead.
+
+The standard indentation distance is 4 spaces per indentation level.
+
+Configure your editor(s) now! (...and, while you're at it, tell your editor not to automatically go
+and change pre-existing code.)
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
