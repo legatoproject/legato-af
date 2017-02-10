@@ -1693,15 +1693,11 @@ static void ProcessECallState
 
             // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
             // IVS should be able to redial if connection is lost: MSD is still necessary.
-            // No redial is necessary for PAN EU, MSD can be invalidated in this case.
+            // No redial is necessary for PAN EU.
             if (PA_ECALL_ERA_GLONASS != SystemStandard)
             {
                 // The Modem successfully completed the MSD transmission
                 // and received two AL-ACKs (positive)
-
-                // Invalidate MSD
-                InvalidateMsd();
-
                 // Clear the redial mechanism
                 RedialStop(ECALL_REDIAL_STOP_COMPLETE);
             }
@@ -1745,13 +1741,8 @@ static void ProcessECallState
         case LE_ECALL_STATE_STOPPED: /* eCall session has been stopped by PSAP
                                         or IVS le_ecall_End() */
         {
-            if (PA_ECALL_ERA_GLONASS == SystemStandard)
-            {
-                // The eCall is now correctly closed, the MSD can be invalidated.
-                // Note that MSD is already invalidated after reception of
-                // COMPLETED event for the PAN EU standard.
-                InvalidateMsd();
-            }
+            // The eCall is now correctly closed, the MSD can be invalidated.
+            InvalidateMsd();
 
             // Update eCall session state
             ECallObj.sessionState = ECALL_SESSION_STOPPED;
