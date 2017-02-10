@@ -10,5 +10,5 @@ sources:
 {
     main.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_adc.c
-    ${PA_DIR}/simu/components/le_pa/pa_adc_simu.c
+    simu/components/le_pa/pa_adc_simu.c
 }

@@ -1,0 +1,7 @@
+//--------------------------------------------------------------------------------------------------
+// Target definitions specific to localhost (native) builds.
+//
+// Copyright (C), Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+// No target-specific definitions

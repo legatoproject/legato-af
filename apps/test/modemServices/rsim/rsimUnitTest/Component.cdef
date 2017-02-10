@@ -10,5 +10,5 @@ sources:
 {
     main.c
     ${LEGATO_ROOT}/components/modemServices/rSimDaemon/le_rsim.c
-    ${PA_DIR}/simu/components/le_pa_remotesim/pa_rsim_simu.c
+    simu/components/le_pa_remotesim/pa_rsim_simu.c
 }

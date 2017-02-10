@@ -24,6 +24,7 @@ mkexe(${TEST_EXEC}
     -i ${PA_DIR}/simu/components/le_pa
     -i ${JANSSON_INC_DIR}
     -i ${LEGATO_ROOT}/
+    -s ${PA_DIR}
     ${CFLAGS}
     ${LFLAGS}
     -L "-ljansson"

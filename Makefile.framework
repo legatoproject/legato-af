@@ -6,7 +6,6 @@
 #
 # - TARGET = e.g., localhost, ar7, wp85, raspi, etc.
 # - TARGET_CC = path to the appropriate C compiler for the target.
-# - TARGET_SANDBOX_IMPORT = selector for which set of files to import into sandboxes on the target.
 # - LEGATO_FRAMEWORK_NICE_LEVEL = The "nice" level to run framework daemons at.
 # - LE_SVCDIR_SERVER_SOCKET_NAME = File system path of the Service Directory's IPC server socket.
 # - LE_SVCDIR_CLIENT_SOCKET_NAME = File system path of the Service Directory's IPC client socket.
@@ -22,9 +21,6 @@ ifndef TARGET
 endif
 ifndef TARGET_CC
   $(error TARGET_CC is not set)
-endif
-ifndef TARGET_SANDBOX_IMPORT
-  $(error TARGET_SANDBOX_IMPORT is not set)
 endif
 ifndef LEGATO_FRAMEWORK_NICE_LEVEL
   $(error LEGATO_FRAMEWORK_NICE_LEVEL is not set)
@@ -166,8 +162,7 @@ supervisor: liblegato $(BIN_DIR)
 		-s $(SRC_DIR)/supervisor \
 		--cflags=-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		--cflags=-DNO_LOG_CONTROL \
-		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL) \
-		--cflags=-D$(TARGET_SANDBOX_IMPORT)
+		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL)
 
 .PHONY: serviceDirectory
 serviceDirectory: liblegato $(BIN_DIR)

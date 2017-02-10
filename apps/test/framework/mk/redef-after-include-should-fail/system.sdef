@@ -3,7 +3,7 @@ buildVars:
     INCLUDE_FILENAME=include
 }
 
-#include ${INCLUDE_FILENAME}.def
+#include ${INCLUDE_FILENAME}.sinc
 
 buildVars:
 {

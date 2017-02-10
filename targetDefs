@@ -5,66 +5,41 @@
 # Copyright (C), Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
 
-ifeq ($(MAKECMDGOALS),localhost)
-  include targetDefs.localhost
-else ifeq ($(filter-out %_localhost,$(MAKECMDGOALS)),)
-  include targetDefs.localhost
-
-else ifeq ($(MAKECMDGOALS),ar7)
-  include targetDefs.ar7
-else ifeq ($(filter-out %_ar7,$(MAKECMDGOALS)),)
-  include targetDefs.ar7
-
-else ifeq ($(MAKECMDGOALS),ar759x)
-  include targetDefs.ar759x
-else ifeq ($(filter-out %_ar759x,$(MAKECMDGOALS)),)
-  include targetDefs.ar759x
-
-else ifeq ($(MAKECMDGOALS),ar758x)
-  include targetDefs.ar758x
-else ifeq ($(filter-out %_ar758x,$(MAKECMDGOALS)),)
-  include targetDefs.ar758x
-
-else ifeq ($(MAKECMDGOALS),ar86)
-  include targetDefs.ar86
-else ifeq ($(filter-out %_ar86,$(MAKECMDGOALS)),)
-  include targetDefs.ar86
-
-else ifeq ($(MAKECMDGOALS),wp85)
-  include targetDefs.wp85
-else ifeq ($(filter-out %_wp85,$(MAKECMDGOALS)),)
-  include targetDefs.wp85
-
-else ifeq ($(MAKECMDGOALS),wp750x)
-  include targetDefs.wp750x
-else ifeq ($(filter-out %_wp750x,$(MAKECMDGOALS)),)
-  include targetDefs.wp750x
-
-else ifeq ($(MAKECMDGOALS),wp76xx)
-  include targetDefs.wp76xx
-else ifeq ($(filter-out %_wp76xx,$(MAKECMDGOALS)),)
-  include targetDefs.wp76xx
-
-else ifeq ($(MAKECMDGOALS),virt)
-  include targetDefs.virt
-else ifeq ($(filter-out %_virt,$(MAKECMDGOALS)),)
-  include targetDefs.virt
-
-else ifeq ($(MAKECMDGOALS),raspi)
-  include targetDefs.raspi
-else ifeq ($(filter-out %_raspi,$(MAKECMDGOALS)),)
-  include targetDefs.raspi
-
-else ifeq ($(MAKECMDGOALS),docs)
-  include targetDefs.localhost
-else ifeq ($(MAKECMDGOALS),user_docs)
-  include targetDefs.localhost
-else ifeq ($(MAKECMDGOALS),implementation_docs)
-  include targetDefs.localhost
+ifneq ($(findstring $(MAKECMDGOALS),docs user_docs implementation_docs),)
+    export TARGET := localhost
+else
+        export TARGET := $(lastword $(subst _, ,$(MAKECMDGOALS)))
 endif
 
-# Include an optional targetDefs file which can be included
-# to add extra defintions, or override default ones
-ifneq (, $(wildcard targetDefs.extra))
-  include targetDefs.extra
+TARGET_CAPS := $(shell echo $(TARGET) |tr a-z A-Z)
+
+ifeq ($(TARGET),virt)
+    VIRT_TARGET_ARCH ?= arm
+    export VIRT_TARGET_ARCH
+
+    ifeq ($(VIRT_TARGET_ARCH),x86)
+        export VIRT_TOOLCHAIN_PREFIX ?= i586-poky-linux-
+    else
+        export VIRT_TOOLCHAIN_PREFIX ?= arm-poky-linux-gnueabi-
+    endif
+endif
+
+ifeq ($(TARGET),localhost)
+    ifeq ($(USE_CLANG),1)
+        export TOOLCHAIN_DIR := $(dir $(shell which clang))
+    else
+        export TOOLCHAIN_DIR := $(dir $(shell which gcc))
+    endif
+
+    SDEF_TO_USE ?= localhost.sdef
+else
+    ifeq ($($(TARGET_CAPS)_TOOLCHAIN_DIR),)
+        export $(TARGET_CAPS)_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) $(TARGET) dir)
+    endif
+
+    ifeq ($($(TARGET_CAPS)_TOOLCHAIN_PREFIX),)
+        export $(TARGET_CAPS)_TOOLCHAIN_PREFIX := $(shell $(FINDTOOLCHAIN) $(TARGET) prefix)
+    endif
+    export TOOLCHAIN_DIR := $($(TARGET_CAPS)_TOOLCHAIN_DIR)
+    export TOOLCHAIN_PREFIX := $($(TARGET_CAPS)_TOOLCHAIN_PREFIX)
 endif

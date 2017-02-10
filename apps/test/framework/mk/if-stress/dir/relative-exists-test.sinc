@@ -1,9 +1,9 @@
-#if file_exists(relative_path.inc)
-    #include relative_path.inc
+#if file_exists(relative_path.sinc)
+    #include relative_path.sinc
 #else
     relative_to_wrong_directory_1: { }
 #endif
 
-#if file_exists(present.inc)
+#if file_exists(present.sinc)
     relative_to_wrong_directory_2: { }
 #endif

@@ -11,7 +11,7 @@ buildVars:
 
 apps:
 {
-    #include "app2.def"
+    #include "app2.inc"
 }
 
 bindings:

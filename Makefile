@@ -61,41 +61,11 @@ export LE_RUNTIME_DIR := /tmp/legato/
 export LE_SVCDIR_SERVER_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryServer
 export LE_SVCDIR_CLIENT_SOCKET_NAME := $(LE_RUNTIME_DIR)serviceDirectoryClient
 
-# Define paths to various platform adaptors' directories.
-export PA_DIR := $(LEGATO_ROOT)/platformAdaptor
-
-# Define the default platform adaptors to use if not otherwise specified for a given target.
-
-export LEGATO_UTIL_PA =
-export LEGATO_AUDIO_PA =
-export LEGATO_AUDIO_PA_AMR =
-export LEGATO_AUDIO_PA_PCM =
-export LEGATO_AVC_PA =
-export LEGATO_GNSS_PA =
-export LEGATO_MODEM_PA =
-export LEGATO_MODEM_PA_ECALL =
-export LEGATO_SECSTORE_PA =
-export LEGATO_FWUPDATE_PA =
-export LEGATO_UARTMODE_PA =
-export LEGATO_MODEM_PA_RSIM =
-
-export LEGATO_AUDIO_PA_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_audio_default
-export LEGATO_AUDIO_PA_AMR_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_amr_default
-export LEGATO_AUDIO_PA_PCM_DEFAULT = $(LEGATO_ROOT)/components/audio/platformAdaptor/default/le_pa_pcm_default
-export LEGATO_AVC_PA_DEFAULT = $(LEGATO_ROOT)/components/airVantage/platformAdaptor/default/le_pa_avc_default
-export LEGATO_GNSS_PA_DEFAULT = $(LEGATO_ROOT)/components/positioning/platformAdaptor/default/le_pa_gnss_default
-export LEGATO_MODEM_PA_DEFAULT = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/default/le_pa_default
-export LEGATO_MODEM_PA_ECALL_DEFAULT = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/default/le_pa_ecall_default
-export LEGATO_SECSTORE_PA_DEFAULT = $(LEGATO_ROOT)/components/secStore/platformAdaptor/default/le_pa_secStore_default
-export LEGATO_FWUPDATE_PA_DEFAULT = $(LEGATO_ROOT)/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
-export LEGATO_UARTMODE_PA_DEFAULT = $(LEGATO_ROOT)/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
-export LEGATO_MODEM_PA_RSIM_DEFAULT = $(LEGATO_ROOT)/components/modemServices/platformAdaptor/default/le_pa_remotesim_default
-
 # Do not use clang by default.
 USE_CLANG ?= 0
 
 # Default eCall build to be ON
-INCLUDE_ECALL ?= 1
+export INCLUDE_ECALL ?= 1
 
 # Do not be verbose by default.
 export VERBOSE ?= 0
@@ -113,18 +83,13 @@ PLANTUML_PATH ?= $(LEGATO_ROOT)/3rdParty/plantuml
 # PlantUML file definition
 export PLANTUML_JAR_FILE := $(PLANTUML_PATH)/plantuml.jar
 
-# System external dependencies
-EXT_DEPS =
-
 # ========== TARGET-SPECIFIC VARIABLES ============
-
-include $(wildcard modules/*/moduleDefs)
 
 # If the user specified a goal other than "clean", ensure that all required target-specific vars
 # are defined.
 ifneq ($(MAKECMDGOALS),clean)
 
-  HOST_ARCH := $(shell uname -m)
+  export HOST_ARCH := $(shell uname -m)
   TOOLS_ARCH ?= $(HOST_ARCH)
   FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
 
@@ -138,6 +103,8 @@ ifneq ($(MAKECMDGOALS),clean)
 
 endif
 
+include $(wildcard modules/*/moduleDefs)
+
 # Legato ReadOnly system tree
 READ_ONLY ?= 0
 
@@ -148,32 +115,6 @@ STAGE_MKLEGATOIMG = stage_mklegatoimg
 ifeq ($(READ_ONLY),1)
   override STAGE_MKLEGATOIMG := stage_mklegatoimgro
 endif
-
-# ========== APP-SPECIFIC VARIABLES ============
-
-# AirVantage service
-LEGATO_APP_AVC ?= lwm2mcore
-$(info AirVantage: $(LEGATO_APP_AVC))
-ifeq ($(LEGATO_APP_AVC),lwm2mcore)
-  export LEGATO_SERVICE_AVC_APP := "$(LEGATO_ROOT)/apps/platformServices/airVantageConnector/avcService"
-
-  # Declare an external dependency as to let the airVantageConnector prepare itself
-  EXT_DEPS += extDep_avc
-
-else ifeq ($(LEGATO_APP_AVC),legacy)
-  export LEGATO_SERVICE_AVC_APP := "$(LEGATO_ROOT)/apps/platformServices/airVantage/avcService"
-else ifeq ($(LEGATO_APP_AVC),none)
-  export LEGATO_SERVICE_AVC_APP :=
-else
-  $(error "Invalid LEGATO_APP_AVC $(LEGATO_APP_AVC)")
-endif
-$(info AirVantage app: $(LEGATO_SERVICE_AVC_APP))
-
-# ========== EXTERNAL DEPENDENCIES BUILD RULES ============
-
-.PHONY: extDep_avc
-extDep_avc:
-	make -C apps/platformServices/airVantageConnector
 
 # ========== GENERIC BUILD RULES ============
 
@@ -328,7 +269,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DLEGATO_ROOT=$(LEGATO_ROOT) \
 			-DLEGATO_TARGET=$(TARGET) \
 			-DPLANTUML_JAR_FILE=$(PLANTUML_JAR_FILE) \
-			-DPA_DIR=$(PA_DIR) \
+			-DPA_DIR=$(LEGATO_ROOT)/platformAdaptor \
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
 			-DUSE_CLANG=$(USE_CLANG) \
@@ -336,8 +277,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
 			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
-			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
-			-DLEGATO_APP_AVC=$(LEGATO_APP_AVC)
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
 # Construct the staging directory with common files for embedded targets.
 # Staging directory will become /mnt/legato/ in cwe
@@ -456,9 +396,8 @@ SDEF_TO_USE ?= default.sdef
 
 SYSTEM_TARGETS = $(foreach target,$(TARGETS),system_$(target))
 .PHONY: $(SYSTEM_TARGETS)
-$(SYSTEM_TARGETS):system_%: framework_% $(EXT_DEPS)
-	rm -f system.sdef
-	ln -s $(SDEF_TO_USE) system.sdef
-	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) system.sdef \
+$(SYSTEM_TARGETS):system_%: framework_%
+	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) $(SDEF_TO_USE) \
 			$(MKSYS_FLAGS)
-
+	mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).update \
+	    build/$(TARGET)/system.$(TARGET).update

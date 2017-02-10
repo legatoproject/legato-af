@@ -1,0 +1,17 @@
+//--------------------------------------------------------------------------------------------------
+// Target definitions specific to the virtual machine target.
+//
+// Copyright (C), Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+buildVars:
+{
+    LEGATO_UTIL_PA = ${PA_DIR}/simu/components/simuConfig
+    LEGATO_AUDIO_PA = ${PA_DIR}/simu/components/le_pa_audio
+    LEGATO_MODEM_PA = ${PA_DIR}/simu/components/le_pa
+    LEGATO_GNSS_PA = ${PA_DIR}/simu/components/le_pa_gnss
+    LEGATO_AVC_PA = ${PA_DIR}/simu/components/le_pa_avc
+    LEGATO_SECSTORE_PA = ${PA_DIR}/simu/components/le_pa_secStore
+    LEGATO_FWUPDATE_PA = ${PA_DIR}/simu/components/le_pa_fwupdate
+    LEGATO_QMI_RSIM_PA = ${PA_DIR}/simu/components/le_pa_remotesim
+}

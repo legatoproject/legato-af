@@ -11,6 +11,6 @@ sources:
 {
     main.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_info.c
-    ${PA_DIR}/simu/components/le_pa/pa_info_simu.c
-    ${LEGATO_MODEM_PA_DEFAULT}/pa_sim_default.c
+    simu/components/le_pa/pa_info_simu.c
+    ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_default/pa_sim_default.c
 }

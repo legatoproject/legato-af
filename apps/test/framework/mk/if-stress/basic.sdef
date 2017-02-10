@@ -1,16 +1,16 @@
-#if file_exists(present.inc)
-   #include present.inc
+#if file_exists(present.sinc)
+   #include present.sinc
 #else
 cannot_find_present_file: { }
 #endif
 
-#if file_exists ( not_present.inc )
-   #include not_present.inc
+#if file_exists ( not_present.sinc )
+   #include not_present.sinc
 
    found_missing_file: { }
 #endif
 
-#if dir_exists(present.inc)
+#if dir_exists(present.sinc)
     found_file_as_dir: { }
 #endif
 
@@ -19,7 +19,7 @@ cannot_find_present_file: { }
 #endif
 
 #if dir_exists(dir)
-    #include "dir/relative-exists-test.inc"
+    #include "dir/relative-exists-test.sinc"
 #else
     cannot_find_dir: { }
 #endif
@@ -28,10 +28,10 @@ cannot_find_present_file: { }
     present_included_empty_string: { }
 
     // Now test skipping some #if, #else, #elif, #endif and #include statements
-    #if file_exists(present.inc)
-        #include "present.inc"
+    #if file_exists(present.sinc)
+        #include "present.sinc"
     #else
-        #if exists(not_present.inc)
+        #if exists(not_present.sinc)
             /* comment containing #endif */     token// Another comment containing #endif
         #endif
 
@@ -43,10 +43,10 @@ cannot_find_present_file: { }
 
     // Now test skipping some #if, #else, #elif, #endif and #include statements
     /* similar test as above */
-    #if file_exists(present.inc)
-        #include "not_present.inc"
+    #if file_exists(present.sinc)
+        #include "not_present.sinc"
     #else
-        #if file_exists(not_present.inc)
+        #if file_exists(not_present.sinc)
             token_here_this_time/* comment containing #endif */ // Another comment containing #endif
         #endif
 

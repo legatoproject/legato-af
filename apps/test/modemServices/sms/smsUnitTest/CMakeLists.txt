@@ -19,6 +19,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_ROOT}/components/cfgEntries
     -i ${LEGATO_ROOT}/framework/c/src
     -i ${PA_DIR}/simu/components/le_pa
+    -s ${PA_DIR}
     ${CFLAGS}
     ${LFLAGS}
 )

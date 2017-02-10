@@ -17,6 +17,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
     -i ${LEGATO_ROOT}/framework/c/src
     -i ${PA_DIR}/simu/components/le_pa_remotesim
+    -s ${PA_DIR}
     ${CFLAGS}
     ${LFLAGS}
 )

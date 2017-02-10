@@ -1,0 +1,47 @@
+//--------------------------------------------------------------------------------------------------
+// Common definitions used by all Sierra systems
+//
+// Copyright (C) Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+buildVars:
+{
+    // Define paths to various platform adaptors' directories.
+    PA_DIR = ${LEGATO_ROOT}/platformAdaptor
+
+    // Define the default platform adaptors to use if not otherwise specified for a given target.
+    LEGATO_UTIL_PA = ''
+    LEGATO_AUDIO_PA = ''
+    LEGATO_AUDIO_PA_AMR = ''
+    LEGATO_AUDIO_PA_PCM = ''
+    LEGATO_AVC_PA = ''
+    LEGATO_GNSS_PA = ''
+    LEGATO_MODEM_PA = ''
+    LEGATO_MODEM_PA_ECALL = ''
+    LEGATO_SECSTORE_PA = ''
+    LEGATO_FWUPDATE_PA = ''
+    LEGATO_UARTMODE_PA = ''
+
+    LEGATO_AUDIO_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_audio_default
+    LEGATO_AUDIO_PA_AMR_DEFAULT =
+        ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_amr_default
+    LEGATO_AUDIO_PA_PCM_DEFAULT =
+        ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_pcm_default
+    LEGATO_AVC_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/airVantage/platformAdaptor/default/le_pa_avc_default
+    LEGATO_GNSS_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/positioning/platformAdaptor/default/le_pa_gnss_default
+    LEGATO_MODEM_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_default
+    LEGATO_MODEM_PA_ECALL_DEFAULT =
+        ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_ecall_default
+    LEGATO_SECSTORE_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/secStore/platformAdaptor/default/le_pa_secStore_default
+    LEGATO_FWUPDATE_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/fwupdate/platformAdaptor/default/le_pa_fwupdate_default
+    LEGATO_UARTMODE_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/uartMode/platformAdaptor/default/le_pa_uartMode_default
+    LEGATO_MODEM_PA_RSIM_DEFAULT =
+        ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_remotesim_default
+}

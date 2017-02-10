@@ -28,7 +28,7 @@ ifeq ($(VERBOSE),1)
   NINJA_FLAGS += -v
 endif
 
-HOST_ARCH := $(shell uname -m)
+export HOST_ARCH := $(shell uname -m)
 TOOLS_ARCH ?= $(HOST_ARCH)
 
 # NOTE: Ninja is used to build the mk tools.
@@ -43,8 +43,7 @@ tool-messages: ninja $(NINJA_SCRIPT)
 # Generate the ninja build script.
 $(NINJA_SCRIPT): framework/tools/mkTools/ninja-generator $(BUILD_DIR)
 	export TOOLS_ARCH=$(TOOLS_ARCH) && \
-	export HOST_ARCH=$(HOST_ARCH) && \
-		framework/tools/mkTools/ninja-generator
+	framework/tools/mkTools/ninja-generator
 
 # ninja is called ninja-build on some distros (e.g., Fedora).  Make sure ninja appears in the
 # path as "ninja" by adding a symlink to the framework's bin directory if necessary.

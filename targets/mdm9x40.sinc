@@ -1,0 +1,17 @@
+//--------------------------------------------------------------------------------------------------
+// Definitions specific to Sierra Wireless modules that are based on the Qualcomm MDM9x40 chipset
+// family.
+//
+// Copyright (C), Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+buildVars:
+{
+    LEGATO_QMI_MODEM_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa/mdm9x40/le_pa
+    LEGATO_QMI_AUDIO_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_audio/mdm9x40/le_pa_audio
+    LEGATO_QMI_FWUPDATE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_fwupdate/mdm9x40/le_pa_fwupdate
+    LEGATO_QMI_UTIL_SRC = ${PA_DIR}/qmi/src/components/swiQmi/mdm9x40/swiQmi
+    LEGATO_QMI_RSIM_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_remotesim
+}
+
+#include mdm9xxx.sinc
