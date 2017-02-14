@@ -967,6 +967,7 @@ static void DestructStream
     if (streamPtr->fd != LE_AUDIO_NO_FD)
     {
         close(streamPtr->fd);
+        streamPtr->fd = LE_AUDIO_NO_FD;
     }
 
     pa_audio_ReleasePaParameters(streamPtr);

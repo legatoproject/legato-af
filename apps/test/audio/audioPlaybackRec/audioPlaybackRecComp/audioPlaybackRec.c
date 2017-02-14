@@ -7,6 +7,7 @@
   $     <test case> [main audio path] [file's name] [option]
 
   Example:
+  $ wm8940_demo --i2s
   $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest --
   $     REC I2S /record/remote.wav WAV STOP=10
   $ app runProc audioPlaybackRec --exe=audioPlaybackRecTest -- PB I2S /usr/share/sounds/0-to-9.wav
@@ -911,7 +912,7 @@ static void ConnectAudioToFileLocalRec
     }
 }
 
-#ifdef ENABLE_CODEC
+#if (1 == ENABLE_CODEC)
 //--------------------------------------------------------------------------------------------------
 /**
  * Connect speaker and MIC to connectors
@@ -1024,7 +1025,7 @@ static void ConnectAudio
 {
     if ((strncmp(AudioTestCase,"PB",2)==0) || (strncmp(AudioTestCase,"REC",3)==0))
     {
-#ifdef ENABLE_CODEC
+#if (1 == ENABLE_CODEC)
         if (strcmp(MainAudioSoundPath,"MIC")==0)
         {
             LE_INFO("Connect MIC and SPEAKER ");
@@ -1189,7 +1190,7 @@ static void PrintUsage
             " - REC_SAMPLES (for Local samples recording) [option]",
             "",
             "Main audio paths are: (for file playback/recording only)",
-#if (ENABLE_CODEC == 1)
+#if (1 == ENABLE_CODEC)
             " - MIC (for mic/speaker)",
 #endif
             " - PCM (for devkit's codec use, execute 'wm8940_demo --pcm' command)",
