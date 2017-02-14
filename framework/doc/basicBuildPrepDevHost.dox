@@ -7,7 +7,7 @@ Legato's Linux development host needs a few things to be set up before you can b
 Run the following to install necessary packages:
 
 @verbatim
-$ sudo apt-get install build-essential python python-jinja2 cmake git subversion libsdl-dev diffstat texinfo gawk chrpath wget cpio vim zsh bash ninja-build screen sshpass bc python-git unzip libxml2-utils libcurl4-gnutls-dev zlib1g-dev
+$ sudo apt-get install build-essential python python-jinja2 cmake git subversion libsdl-dev diffstat texinfo gawk chrpath wget cpio vim zsh bash ninja-build screen sshpass bc python-git unzip libxml2-utils libcurl4-gnutls-dev zlib1g-dev libbz2-dev bsdiff libssl-dev
 @endverbatim
 
 Optional packages include: <c>vim zsh</c>

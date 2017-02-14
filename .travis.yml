@@ -18,7 +18,7 @@ install:
     python-pip python-pyparsing python-pysqlite2 cmake coreutils curl
     bison flex chrpath libgmp3-dev libmpfr-dev libreadline6-dev libtool libxml2-dev
     libxml-libxml-perl m4 ninja-build autoconf pkg-config doxygen graphviz gcovr
-    libbz2-dev bsdiff libcurl4-gnutls-dev zlib1g-dev
+    libcurl4-gnutls-dev zlib1g-dev libbz2-dev bsdiff libssl-dev
   - sudo wget -O /usr/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
   - sudo chmod +x /usr/bin/repo
   - git config --global color.ui false

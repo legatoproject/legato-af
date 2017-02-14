@@ -14,8 +14,9 @@ $ sudo apt-get install build-essential \
                        git subversion libsdl-dev \
                        diffstat texinfo gawk chrpath wget cpio \
                        vim zsh bash ninja-build screen sshpass \
-                       bc python-git unzip libxml2-utils gcovr libbz2-dev bsdiff \
-                       libcurl4-gnutls-dev zlib1g-dev
+                       bc python-git unzip libxml2-utils gcovr \
+                       libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
+                       bsdiff libssl-dev
 ```
 
 Optional packages: ```vim zsh```
