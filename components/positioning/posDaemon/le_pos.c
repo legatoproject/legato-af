@@ -1665,21 +1665,21 @@ le_result_t le_pos_Get2DLocation
         ///< [OUT] Horizontal position's accuracy in meters.
 )
 {
+    // At least one valid pointer
+    if (( latitudePtr == NULL)&&
+        ( longitudePtr == NULL)&&
+        ( hAccuracyPtr == NULL))
+    {
+        LE_KILL_CLIENT("Invalid input parameters!");
+        return LE_FAULT;
+    }
+
     int32_t     latitude;
     int32_t     longitude;
     int32_t     hAccuracy;
     le_result_t gnssResult = LE_OK;
     le_result_t posResult = LE_OK;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
-
-    // At least one valid pointer
-    if (( latitudePtr == NULL)&&
-        ( longitudePtr == NULL)&&
-        ( hAccuracyPtr == NULL))
-    {
-        LE_KILL_CLIENT("Invalid reference provided!");
-        return LE_FAULT;
-    }
 
     // Get Location
     gnssResult = le_gnss_GetLocation( positionSampleRef
@@ -1759,6 +1759,17 @@ le_result_t le_pos_Get3DLocation
         ///< [OUT] Vertical position's accuracy in meters.
 )
 {
+    // At least one valid pointer
+    if (( latitudePtr == NULL)&&
+        ( longitudePtr == NULL)&&
+        ( hAccuracyPtr == NULL)&&
+        ( altitudePtr == NULL)&&
+        ( vAccuracyPtr == NULL))
+    {
+        LE_KILL_CLIENT("Invalid input parameters!");
+        return LE_FAULT;
+    }
+
     int32_t     latitude;
     int32_t     longitude;
     int32_t     hAccuracy;
@@ -1767,17 +1778,6 @@ le_result_t le_pos_Get3DLocation
     le_result_t gnssResult = LE_OK;
     le_result_t posResult = LE_OK;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
-
-    // At least one valid pointer
-    if (( latitudePtr == NULL)&&
-        ( longitudePtr == NULL)&&
-        ( hAccuracyPtr == NULL)&&
-        ( altitudePtr == NULL)&&
-        ( vAccuracyPtr == NULL))
-    {
-        LE_KILL_CLIENT("Invalid reference provided!");
-        return LE_FAULT;
-    }
 
     // Get Location
     gnssResult = le_gnss_GetLocation( positionSampleRef
@@ -1889,18 +1889,18 @@ le_result_t le_pos_GetTime
         ///< [OUT] UTC Milliseconds into the second [range 0..999].
 )
 {
-    le_result_t posResult = LE_OK;
-    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
-
     // All pointers must be valid
     if (( hoursPtr == NULL)||
         ( minutesPtr == NULL)||
         ( secondsPtr == NULL)||
         ( millisecondsPtr == NULL))
     {
-        LE_KILL_CLIENT("Invalid reference provided!");
+        LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
     }
+
+    le_result_t posResult = LE_OK;
+    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get UTC time
     posResult = le_gnss_GetTime(positionSampleRef
@@ -1937,17 +1937,17 @@ le_result_t le_pos_GetDate
         ///< [OUT] UTC Days into the month [range 1...31].
 )
 {
-    le_result_t posResult = LE_OK;
-    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
-
     // All pointers must be valid
     if (( yearPtr == NULL)||
         ( monthPtr == NULL)||
         ( dayPtr == NULL))
     {
-        LE_KILL_CLIENT("Invalid reference provided!");
+        LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
     }
+
+    le_result_t posResult = LE_OK;
+    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get date
     posResult = le_gnss_GetDate(positionSampleRef
@@ -1983,6 +1983,16 @@ le_result_t le_pos_GetMotion
     int32_t*    vSpeedAccuracyPtr   ///< [OUT] The Vertical Speed's accuracy in m/sec.
 )
 {
+    // At least one valid pointer
+    if (( hSpeedPtr == NULL)&&
+        ( hSpeedAccuracyPtr == NULL)&&
+        ( vSpeedPtr == NULL)&&
+        ( vSpeedAccuracyPtr == NULL))
+    {
+        LE_KILL_CLIENT("Invalid input parameters!");
+        return LE_FAULT;
+    }
+
     // Horizontal speed
     uint32_t hSpeed;
     uint32_t hSpeedAccuracy;
@@ -1993,17 +2003,7 @@ le_result_t le_pos_GetMotion
     le_result_t posResult = LE_OK;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
-    // At least one valid pointer
-    if (( hSpeedPtr == NULL)&&
-        ( hSpeedAccuracyPtr == NULL)&&
-        ( vSpeedPtr == NULL)&&
-        ( vSpeedAccuracyPtr == NULL))
-    {
-        LE_KILL_CLIENT("Invalid reference provided!");
-        return LE_FAULT;
-    }
-
-   // Get horizontal speed
+    // Get horizontal speed
     gnssResult = le_gnss_GetHorizontalSpeed( positionSampleRef
                                             , &hSpeed
                                             , &hSpeedAccuracy);
@@ -2108,7 +2108,7 @@ le_result_t le_pos_GetHeading
     if (( headingPtr == NULL)&&
         ( headingAccuracyPtr == NULL))
     {
-        LE_KILL_CLIENT("Invalid reference provided!");
+        LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
     }
 
@@ -2141,20 +2141,20 @@ le_result_t le_pos_GetDirection
         ///< [OUT] Direction's accuracy estimate in degrees.
 )
 {
+    // At least one valid pointer
+    if (( directionPtr == NULL)&&
+        ( directionAccuracyPtr == NULL))
+    {
+        LE_KILL_CLIENT("Invalid input parameters!");
+        return LE_FAULT;
+    }
+
     // Direction
     uint32_t direction;
     uint32_t directionAccuracy;
     le_result_t gnssResult = LE_OK;
     le_result_t posResult = LE_OK;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
-
-    // At least one valid pointer
-    if (( directionPtr == NULL)&&
-        ( directionAccuracyPtr == NULL))
-    {
-        LE_KILL_CLIENT("Invalid reference provided!");
-        return LE_FAULT;
-    }
 
     // Get direction
     gnssResult = le_gnss_GetDirection( positionSampleRef

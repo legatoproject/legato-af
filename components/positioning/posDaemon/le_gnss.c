@@ -631,6 +631,11 @@ static void PaPositionHandler
     le_gnss_PositionSample_t*   positionSampleNodePtr=NULL;
     uint8_t i;
 
+    if (NULL == positionPtr)
+    {
+        LE_ERROR("positionPtr is Null");
+        return;
+    }
 
     LE_DEBUG("Handler Function called with PA position %p", positionPtr);
 
@@ -639,6 +644,8 @@ static void PaPositionHandler
 
     if(!NumOfPositionHandlers)
     {
+        LE_DEBUG("No positioning handlers, exit Handler Function");
+        le_mem_Release(positionPtr);
         return;
     }
 
@@ -673,7 +680,8 @@ static void PaPositionHandler
                      positionHandlerNodePtr->handlerFuncPtr);
 
             // Create a safe reference and call the client's handler
-            void* safePositionSampleRef = le_ref_CreateRef(PositionSampleMap, positionSampleNodePtr);
+            void* safePositionSampleRef = le_ref_CreateRef(PositionSampleMap,
+                                                           positionSampleNodePtr);
             if(safePositionSampleRef != NULL)
             {
                 positionHandlerNodePtr->handlerFuncPtr(safePositionSampleRef
@@ -2250,7 +2258,8 @@ void le_gnss_ReleaseSampleRef
     le_gnss_SampleRef_t    positionSampleRef    ///< [IN] The position sample's reference.
 )
 {
-    le_gnss_PositionSample_t* positionSamplePtr = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+    le_gnss_PositionSample_t* positionSamplePtr = le_ref_Lookup(PositionSampleMap,
+                                                                positionSampleRef);
 
     if ( positionSamplePtr == NULL)
     {
