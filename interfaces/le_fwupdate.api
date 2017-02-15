@@ -83,7 +83,7 @@ DEFINE MAX_VERS_LEN   = 256;
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if an input parameter is not valid
- *      - LE_TIMEOUT after 30 seconds without data recieved
+ *      - LE_TIMEOUT after 900 seconds without data recieved
  *      - LE_TERMINATED    if aborted by the user by calling
  *                          pa_fwupdate_ExecuteCommand( pa_fwupdate_CANCEL )
  *      - LE_FAULT on failure
