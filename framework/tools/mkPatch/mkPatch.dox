@@ -71,11 +71,12 @@ The -v requests the tool to be verbose and displays more informations.
 
 The --partition PART specify which partition is concerned by this delta patch. It may one of the following:
   - modem : The modem UBI image
+  - tz : The Trust-Zone image
+  - rpm : The QCT RPM image
   - aboot : The LK bootloader image
   - boot : The Linux kernel image
   - system : The Linux rootfs image
   - lefwkro : The legato image
-  - tz or rpm are currently not supported.
 
 The --ubi N gives the availability to build a patch by specifying an UBI volume id for a static squashfs image.
 The squashfs image belongs to the UBI volume id N. N is a number from 0 up to 127.

@@ -7,7 +7,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
-#include <netinet/in.h>
+#include <endian.h>
 
 #include "flash-ubi.h"
 
@@ -139,7 +139,7 @@ static PartToSpkg_t mdm9x40_PartToSpkg[] =
     { "modem",   "DSP2", "MODM", true,  },
     { "sbl",     "SBL1", "BOOT", false, },
     { "aboot",   "APBL", "BOOT", false, },
-    { "tz",      "    ", "BOOT", false, },
+    { "tz",      "TZON", "BOOT", false, },
     { "rpm",     "QRPM", "BOOT", false, },
     { NULL,      NULL,   NULL,   false, },
 };
@@ -281,10 +281,10 @@ static le_result_t ReadEcHeader
         return LE_FORMAT_ERROR;
     }
 
-    if (ntohl(ecHeaderPtr->magic) != (uint32_t)UBI_EC_HDR_MAGIC)
+    if (be32toh(ecHeaderPtr->magic) != (uint32_t)UBI_EC_HDR_MAGIC)
     {
         fprintf(stderr, "Bad magic at %lx: Expected %x, received %x\n",
-                  physEraseBlock, UBI_EC_HDR_MAGIC, ntohl(ecHeaderPtr->magic));
+                  physEraseBlock, UBI_EC_HDR_MAGIC, be32toh(ecHeaderPtr->magic));
         return LE_FAULT;
     }
 
@@ -296,26 +296,26 @@ static le_result_t ReadEcHeader
     }
 
     crc = le_crc_Crc32((uint8_t*)ecHeaderPtr, UBI_EC_HDR_SIZE_CRC, LE_CRC_START_CRC32);
-    if (ntohl(ecHeaderPtr->hdr_crc) != crc)
+    if (be32toh(ecHeaderPtr->hdr_crc) != crc)
     {
         fprintf(stderr, "Bad CRC at %lx: Calculated %x, received %x\n",
-                  physEraseBlock, crc, ntohl(ecHeaderPtr->hdr_crc));
+                  physEraseBlock, crc, be32toh(ecHeaderPtr->hdr_crc));
         return LE_FAULT;
     }
 
     if( IsVerbose )
     {
         fprintf(stderr,
-                "PEB %lx : MAGIC %c%c%c%c, EC %lld, VID %x DATA %x CRC %x\n",
+                "PEB %lx : MAGIC %c%c%c%c, EC %llu, VID %x DATA %x CRC %x\n",
                 physEraseBlock,
                 ((char *)&(ecHeaderPtr->magic))[0],
                 ((char *)&(ecHeaderPtr->magic))[1],
                 ((char *)&(ecHeaderPtr->magic))[2],
                 ((char *)&(ecHeaderPtr->magic))[3],
-                ecHeaderPtr->ec,
-                ntohl(ecHeaderPtr->vid_hdr_offset),
-                ntohl(ecHeaderPtr->data_offset),
-                ntohl(ecHeaderPtr->hdr_crc) );
+                be64toh(ecHeaderPtr->ec),
+                be32toh(ecHeaderPtr->vid_hdr_offset),
+                be32toh(ecHeaderPtr->data_offset),
+                be32toh(ecHeaderPtr->hdr_crc) );
     }
 
     return LE_OK;
@@ -361,10 +361,10 @@ static le_result_t ReadVidHeader
         return LE_FORMAT_ERROR;
     }
 
-    if (ntohl(vidHeaderPtr->magic) != (uint32_t)UBI_VID_HDR_MAGIC)
+    if (be32toh(vidHeaderPtr->magic) != (uint32_t)UBI_VID_HDR_MAGIC)
     {
         fprintf(stderr, "Bad magic at %lx: Expected %x, received %x\n",
-            physEraseBlock, UBI_VID_HDR_MAGIC, ntohl(vidHeaderPtr->magic));
+            physEraseBlock, UBI_VID_HDR_MAGIC, be32toh(vidHeaderPtr->magic));
         return LE_FAULT;
     }
 
@@ -377,14 +377,14 @@ static le_result_t ReadVidHeader
 
     crc = LE_CRC_START_CRC32;
     crc = le_crc_Crc32((uint8_t*)vidHeaderPtr, UBI_VID_HDR_SIZE_CRC, crc);
-    if (ntohl(vidHeaderPtr->hdr_crc) != crc)
+    if (be32toh(vidHeaderPtr->hdr_crc) != crc)
     {
         fprintf(stderr, "Bad CRC at %lx: Calculated %x, received %x\n",
-            physEraseBlock, crc, ntohl(vidHeaderPtr->hdr_crc));
+            physEraseBlock, crc, be32toh(vidHeaderPtr->hdr_crc));
         return LE_FAULT;
     }
 
-    if( ntohl(vidHeaderPtr->vol_id) < UBI_MAX_VOLUMES )
+    if( be32toh(vidHeaderPtr->vol_id) < UBI_MAX_VOLUMES )
     {
         if( IsVerbose )
         {
@@ -400,13 +400,13 @@ static le_result_t ReadVidHeader
                     (vidHeaderPtr->vol_type),
                     (vidHeaderPtr->copy_flag),
                     (vidHeaderPtr->compat),
-                    ntohl(vidHeaderPtr->vol_id),
-                    ntohl(vidHeaderPtr->lnum),
-                    ntohl(vidHeaderPtr->data_size),
-                    ntohl(vidHeaderPtr->used_ebs),
-                    ntohl(vidHeaderPtr->data_pad),
-                    ntohl(vidHeaderPtr->data_crc),
-                    ntohl(vidHeaderPtr->hdr_crc) );
+                    be32toh(vidHeaderPtr->vol_id),
+                    be32toh(vidHeaderPtr->lnum),
+                    be32toh(vidHeaderPtr->data_size),
+                    be32toh(vidHeaderPtr->used_ebs),
+                    be32toh(vidHeaderPtr->data_pad),
+                    be32toh(vidHeaderPtr->data_crc),
+                    be32toh(vidHeaderPtr->hdr_crc) );
         }
     }
     return LE_OK;
@@ -448,14 +448,14 @@ static le_result_t ReadVtbl
 
     for( i = 0; i < UBI_MAX_VOLUMES; i++ )
     {
-        if( (ntohl(vtblPtr[i].reserved_pebs) == (uint32_t)-1))
+        if( (be32toh(vtblPtr[i].reserved_pebs) == (uint32_t)-1))
         {
             continue;
         }
         crc = le_crc_Crc32((uint8_t*)&vtblPtr[i], UBI_VTBL_RECORD_SIZE_CRC, LE_CRC_START_CRC32);
-        if( ntohl(vtblPtr[i].crc) != crc )
+        if( be32toh(vtblPtr[i].crc) != crc )
         {
-            fprintf(stderr,"VID %d : Bad CRC %x expected %x\n", i, crc, ntohl(vtblPtr[i].crc));
+            fprintf(stderr,"VID %d : Bad CRC %x expected %x\n", i, crc, be32toh(vtblPtr[i].crc));
             return LE_FAULT;
         }
         if( vtblPtr[i].vol_type )
@@ -465,15 +465,15 @@ static le_result_t ReadVtbl
                 fprintf(stderr,
                         "VID %d RPEBS %u AL %X RPD %X VT %X UPDM %X NL %X \"%s\" FL %X CRC %X\n",
                         i,
-                        ntohl(vtblPtr[i].reserved_pebs),
-                        ntohl(vtblPtr[i].alignment),
-                        ntohl(vtblPtr[i].data_pad),
+                        be32toh(vtblPtr[i].reserved_pebs),
+                        be32toh(vtblPtr[i].alignment),
+                        be32toh(vtblPtr[i].data_pad),
                         vtblPtr[i].vol_type,
                         vtblPtr[i].upd_marker,
-                        ntohs(vtblPtr[i].name_len),
+                        be16toh(vtblPtr[i].name_len),
                         vtblPtr[i].name,
                         vtblPtr[i].flags,
-                        ntohl(vtblPtr[i].crc));
+                        be32toh(vtblPtr[i].crc));
             }
         }
         VtblMap[i].vtblPtr = &vtblPtr[i];
@@ -526,7 +526,7 @@ le_result_t ScanUbi
         {
             goto error;
         }
-        res = ReadVidHeader( fd, pebOffset, &vidHeader, ntohl(ecHeader.vid_hdr_offset) );
+        res = ReadVidHeader( fd, pebOffset, &vidHeader, be32toh(ecHeader.vid_hdr_offset) );
         if (LE_FORMAT_ERROR == res )
         {
             continue;
@@ -536,25 +536,25 @@ le_result_t ScanUbi
             fprintf(stderr,"Error when reading VID Header at %d\n", peb);
             goto error;
         }
-        if (ntohl(vidHeader.vol_id) == UBI_LAYOUT_VOLUME_ID)
+        if (be32toh(vidHeader.vol_id) == UBI_LAYOUT_VOLUME_ID)
         {
-            res = ReadVtbl( fd, pebOffset, Vtbl, ntohl(ecHeader.data_offset) );
+            res = ReadVtbl( fd, pebOffset, Vtbl, be32toh(ecHeader.data_offset) );
             if (LE_OK != res)
             {
                 fprintf(stderr,"Error when reading Vtbl at %d\n", peb);
                 goto error;
             }
         }
-        else if (ntohl(vidHeader.vol_id) < UBI_MAX_VOLUMES)
+        else if (be32toh(vidHeader.vol_id) < UBI_MAX_VOLUMES)
         {
-           VtblMap[ntohl(vidHeader.vol_id)].lebToPeb[ntohl(vidHeader.lnum)] = peb;
+           VtblMap[be32toh(vidHeader.vol_id)].lebToPeb[be32toh(vidHeader.lnum)] = peb;
            if( vidHeader.vol_type == 2 )
            {
-               VtblMap[ntohl(vidHeader.vol_id)].imageSize += ntohl(vidHeader.data_size);
+               VtblMap[be32toh(vidHeader.vol_id)].imageSize += be32toh(vidHeader.data_size);
            }
            else
            {
-               VtblMap[ntohl(vidHeader.vol_id)].imageSize += (FlashPEBSize - (2 * FlashPageSize));
+               VtblMap[be32toh(vidHeader.vol_id)].imageSize += (FlashPEBSize - (2 * FlashPageSize));
            }
         }
     }
@@ -569,15 +569,15 @@ le_result_t ScanUbi
                 fprintf(stderr,"VOL %i \"%s\" VT %u RPEBS %u\n", i,
                          Vtbl[i].name,
                          Vtbl[i].vol_type,
-                         ntohl(Vtbl[i].reserved_pebs));
+                         be32toh(Vtbl[i].reserved_pebs));
                 for( j = 0;
-                     (j < ntohl(Vtbl[i].reserved_pebs));
+                     (j < be32toh(Vtbl[i].reserved_pebs));
                      j++ ) {
                     fprintf(stderr, "%u ", VtblMap[i].lebToPeb[j] );
                 }
                 fprintf(stderr, "\n");
                 fprintf(stderr,
-                        "Volume image size = %lx (%u)\n",
+                        "Volume image size = %lx (%lu)\n",
                          VtblMap[i].imageSize, VtblMap[i].imageSize);
             }
         }
@@ -1030,7 +1030,7 @@ int main
             {
                 snprintf(OrigName, sizeof(OrigName), "%s.orig.%u.%u", partPtr, i, pid );
                 ExtractUbiData( fdr, i, OrigName, &size, &crc32Orig );
-                PatchMetaHeader.origSize = htonl(size);
+                PatchMetaHeader.origSize = htobe32(size);
             }
             close(fdr);
             if( DestPtr[0] != '/' )
@@ -1053,7 +1053,7 @@ int main
             {
                 snprintf(DestName, sizeof(DestName), "%s.dest.%u.%u", partPtr, i, pid );
                 ExtractUbiData( fdr, i, DestName, &size, &crc32Orig );
-                PatchMetaHeader.destSize = htonl(size);
+                PatchMetaHeader.destSize = htobe32(size);
             }
             close(fdr);
             if( nbVolumeOrig != nbVolumeDest )
@@ -1098,7 +1098,7 @@ int main
                 exit(1);
             }
             fstat( fdr, &st );
-            PatchMetaHeader.origSize = htonl(st.st_size);
+            PatchMetaHeader.origSize = htobe32(st.st_size);
 
             crc32Orig = LE_CRC_START_CRC32;
 
@@ -1107,7 +1107,7 @@ int main
                 crc32Orig = le_crc_Crc32( Chunk, len, crc32Orig );
             }
             close( fdr );
-            PatchMetaHeader.origCrc32 = htonl(crc32Orig);
+            PatchMetaHeader.origCrc32 = htobe32(crc32Orig);
 
             if( notUbiOpt && isUbiImage )
             {
@@ -1127,9 +1127,9 @@ int main
                 exit(1);
             }
             fstat( fdr, &st );
-            PatchMetaHeader.destSize = htonl(st.st_size);
+            PatchMetaHeader.destSize = htobe32(st.st_size);
 
-            PatchMetaHeader.ubiVolId = htonl(ubiVolId);
+            PatchMetaHeader.ubiVolId = htobe32(ubiVolId);
 
             crc32Dest = LE_CRC_START_CRC32;
 
@@ -1171,12 +1171,13 @@ int main
                     exit(1);
                 }
                 fstat( fdw, &st );
-                PatchHeader.offset = htonl(patchNum * chunkLen);
+                PatchHeader.offset = htobe32(patchNum * chunkLen);
                 patchNum++;
-                PatchHeader.number = htonl(patchNum);
-                PatchHeader.size = htonl(st.st_size);
-                printf("Patch Header: offset 0x%lx number %lu size %lu (0x%lx)\n",
-                       patchNum * chunkLen, patchNum, st.st_size, st.st_size);
+                PatchHeader.number = htobe32(patchNum);
+                PatchHeader.size = htobe32(st.st_size);
+                printf("Patch Header: offset 0x%lx number %d size %lu (0x%lx)\n",
+                       be32toh(PatchHeader.offset), be32toh(PatchHeader.number),
+                       be32toh(PatchHeader.size), be32toh(PatchHeader.size));
                 if( 0 > (len = read( fdw, PatchedChunk, st.st_size)) )
                 {
                     fprintf(stderr, "read fails: %m\n" );
@@ -1192,9 +1193,9 @@ int main
                 exit(4);
             }
 
-            PatchMetaHeader.destCrc32 = htonl(crc32Dest);
-            PatchMetaHeader.numPatches = htonl(patchNum);
-            PatchMetaHeader.segmentSize = htonl(chunkLen);
+            PatchMetaHeader.destCrc32 = htobe32(crc32Dest);
+            PatchMetaHeader.numPatches = htobe32(patchNum);
+            PatchMetaHeader.segmentSize = htobe32(chunkLen);
             memcpy( PatchMetaHeader.diffType, "BSDIFF40", 8 );
 
             lseek( fdp, 0, SEEK_SET );
@@ -1202,10 +1203,10 @@ int main
 
             printf( "PATCH METAHEADER: segsize %x numpat %x ubiVolId %u "
                     "origsz %x origcrc %x destsz %x descrc %x\n",
-                    ntohl(PatchMetaHeader.segmentSize), ntohl(PatchMetaHeader.numPatches),
-                    ntohl(PatchMetaHeader.ubiVolId),
-                    ntohl(PatchMetaHeader.origSize), ntohl(PatchMetaHeader.origCrc32),
-                    ntohl(PatchMetaHeader.destSize), ntohl(PatchMetaHeader.destCrc32));
+                    be32toh(PatchMetaHeader.segmentSize), be32toh(PatchMetaHeader.numPatches),
+                    be32toh(PatchMetaHeader.ubiVolId),
+                    be32toh(PatchMetaHeader.origSize), be32toh(PatchMetaHeader.origCrc32),
+                    be32toh(PatchMetaHeader.destSize), be32toh(PatchMetaHeader.destCrc32));
             close( fdr );
             close( fdp );
 
