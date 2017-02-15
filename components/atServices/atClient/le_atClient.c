@@ -65,6 +65,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Max length for error string
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERR_MSG_MAX 256
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Max length of thread name
  */
 //--------------------------------------------------------------------------------------------------
@@ -2125,6 +2132,14 @@ le_atClient_DeviceRef_t le_atClient_Start
 {
     char name[THREAD_NAME_MAX_LENGTH];
     static uint32_t threatCounter = 1;
+    char errMsg[ERR_MSG_MAX] = {0};
+
+    // check if the file descriptor is valid
+    if (fcntl(fd, F_GETFD) == -1)
+    {
+        LE_ERROR("%s", strerror_r(errno, errMsg, ERR_MSG_MAX));
+        return NULL;
+    }
 
     DeviceContext_t* newInterfacePtr = le_mem_ForceAlloc(DevicesPool);
 
