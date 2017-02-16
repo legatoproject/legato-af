@@ -728,6 +728,46 @@ static void Usage
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check if tool exists inside the PATH list and is executable. Else raise a message explaining
+ * the missing tool and the way to solve it.
+ */
+//--------------------------------------------------------------------------------------------------
+void CheckForTool( char *toolPtr, char *toolchainPtr )
+{
+    FILE *fdPtr;
+    char toolPath[PATH_MAX];
+    char *toolPathPtr;
+
+    snprintf( toolPath, sizeof(toolPath), "which %s", toolPtr );
+    fdPtr = popen( toolPath, "r" );
+    if( NULL == fdPtr )
+    {
+        fprintf(stderr, "popen to %s fails: %m\n", toolPath);
+        exit(1);
+    }
+    toolPathPtr = fgets( toolPath, sizeof(toolPath), fdPtr );
+    fclose( fdPtr );
+    if( !toolPathPtr )
+    {
+        fprintf(stderr,
+                "The tool '%s' is required and missing in the PATH environment variable\n"
+                "or it is not installed on this host.\n", toolPtr);
+        if( 0 == strcmp( BSDIFF, toolPtr ) )
+        {
+            fprintf(stderr,
+                    "Try a 'sudo apt-get install bsdiff' or similar to install this package\n");
+        }
+        else
+        {
+            fprintf(stderr,
+                    "Try to set the '%s' environment variable for this target\n", toolchainPtr);
+        }
+        exit(1);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Main :)
  */
 //--------------------------------------------------------------------------------------------------
@@ -758,8 +798,14 @@ int main
     int nbVolumeOrig, nbVolumeDest, nbVolume;
     int ubiIdx;
     pid_t pid = getpid();
+    char env[4096];
+    char *toolchainPtr = NULL;
+    char *toolchainEnvPtr = NULL;
+    char *envPtr = NULL;
 
     ProgName = argv[0];
+
+    CheckForTool( BSDIFF, NULL );
 
     getcwd(CurrentWorkDir, sizeof(CurrentWorkDir));
     atexit( Exithandler );
@@ -780,6 +826,7 @@ int main
                 partToSpkgPtr = mdm9x40_PartToSpkg;
                 FlashPageSize = FLASH_PAGESIZE_4K;
                 FlashPEBSize = FLASH_PEBSIZE_256K;
+                toolchainPtr = "AR759X_TOOLCHAIN_DIR";
             }
             else if( 0 == strcasecmp( *argvPtr, "ar758x" ))
             {
@@ -788,12 +835,27 @@ int main
                 partToSpkgPtr = mdm9x40_PartToSpkg;
                 FlashPageSize = FLASH_PAGESIZE_4K;
                 FlashPEBSize = FLASH_PEBSIZE_256K;
+                toolchainPtr = "AR758X_TOOLCHAIN_DIR";
             }
             else
             {
                 fprintf(stderr, "Unsupported target %s\n", *argvPtr );
                 exit(1);
             }
+            envPtr = getenv( "PATH" );
+            toolchainEnvPtr = getenv( toolchainPtr );
+            if( toolchainEnvPtr )
+            {
+                snprintf( env, sizeof(env), "PATH=%s:%s/..", envPtr, toolchainEnvPtr );
+                putenv( env );
+            }
+            else
+            {
+                fprintf(stderr,
+                        "Variable '%s' is not set for target %s\n",
+                        toolchainPtr, targetPtr);
+            }
+            CheckForTool( HDRCNV, toolchainPtr );
             ++argvPtr;
             iargc -= 2;
         }
