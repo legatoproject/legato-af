@@ -29,7 +29,8 @@ Lexer_t::LexerContext_t::LexerContext_t
 :   filePtr(filePtr),
     inputStream(filePtr->path),
     line(1),
-    column(0)
+    column(0),
+    ifNestDepth(0)
 //--------------------------------------------------------------------------------------------------
 {
     // Make sure the file exists and we were able to open it.
@@ -46,16 +47,33 @@ Lexer_t::LexerContext_t::LexerContext_t
         );
     }
 
-    // Read in the first character.
-    nextChar = inputStream.get();
+    // Read in the first characters.
+    Buffer(2);
 
-    if (!inputStream.good())
+    if (inputStream.bad())
     {
         throw mk::Exception_t(
             mk::format(LE_I18N("Failed to read from file '%s'."), filePtr->path)
         );
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Ensure at least n elements are present in the lookahead character buffer
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::LexerContext_t::Buffer
+(
+    size_t n
+)
+{
+    while (inputStream.good() && (nextChars.size() < n))
+    {
+        nextChars.push_back(inputStream.get());
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -181,42 +199,42 @@ bool Lexer_t::IsMatch
     switch (type)
     {
         case parseTree::Token_t::END_OF_FILE:
-            return (context.top().nextChar == EOF);
+            return (context.top().nextChars[0] == EOF);
 
         case parseTree::Token_t::OPEN_CURLY:
-            return (context.top().nextChar == '{');
+            return (context.top().nextChars[0] == '{');
 
         case parseTree::Token_t::CLOSE_CURLY:
-            return (context.top().nextChar == '}');
+            return (context.top().nextChars[0] == '}');
 
         case parseTree::Token_t::OPEN_PARENTHESIS:
-            return (context.top().nextChar == '(');
+            return (context.top().nextChars[0] == '(');
 
         case parseTree::Token_t::CLOSE_PARENTHESIS:
-            return (context.top().nextChar == ')');
+            return (context.top().nextChars[0] == ')');
 
         case parseTree::Token_t::COLON:
-            return (context.top().nextChar == ':');
+            return (context.top().nextChars[0] == ':');
 
         case parseTree::Token_t::EQUALS:
-            return (context.top().nextChar == '=');
+            return (context.top().nextChars[0] == '=');
 
         case parseTree::Token_t::DOT:
-            return (context.top().nextChar == '.');
+            return (context.top().nextChars[0] == '.');
 
         case parseTree::Token_t::STAR:
-            return (context.top().nextChar == '*');
+            return (context.top().nextChars[0] == '*');
 
         case parseTree::Token_t::ARROW:
-            return ((context.top().nextChar == '-') && (context.top().inputStream.peek() == '>'));
+            return ((context.top().nextChars[0] == '-') && (context.top().nextChars[1] == '>'));
 
         case parseTree::Token_t::WHITESPACE:
-            return IsWhitespace(context.top().nextChar);
+            return IsWhitespace(context.top().nextChars[0]);
 
         case parseTree::Token_t::COMMENT:
-            if (context.top().nextChar == '/')
+            if (context.top().nextChars[0] == '/')
             {
-                int secondChar = context.top().inputStream.peek();
+                int secondChar = context.top().nextChars[1];
                 return ((secondChar == '/') || (secondChar == '*'));
             }
             else
@@ -227,11 +245,11 @@ bool Lexer_t::IsMatch
         case parseTree::Token_t::FILE_PERMISSIONS:
         case parseTree::Token_t::SERVER_IPC_OPTION:
         case parseTree::Token_t::CLIENT_IPC_OPTION:
-            return (context.top().nextChar == '[');
+            return (context.top().nextChars[0] == '[');
 
         case parseTree::Token_t::ARG:
             // Can be anything in a FILE_PATH, plus the equals sign (=).
-            if (context.top().nextChar == '=')
+            if (context.top().nextChars[0] == '=')
             {
                 return true;
             }
@@ -240,22 +258,22 @@ bool Lexer_t::IsMatch
         case parseTree::Token_t::FILE_PATH:
             // Can be anything in a FILE_NAME, plus the forward slash (/).
             // If it starts with a slash, it could be a comment or a file path.
-            if (context.top().nextChar == '/')
+            if (context.top().nextChars[0] == '/')
             {
                 // If it's not a comment, then it's a file path.
-                int secondChar = context.top().inputStream.peek();
+                int secondChar = context.top().nextChars[1];
                 return ((secondChar != '/') && (secondChar != '*'));
             }
             // *** FALL THROUGH ***
 
         case parseTree::Token_t::FILE_NAME:
-            return (   IsFileNameChar(context.top().nextChar)
-                       || (context.top().nextChar == '\'')   // Could be in single-quotes.
-                       || (context.top().nextChar == '"') ); // Could be in quotes.
+            return (   IsFileNameChar(context.top().nextChars[0])
+                       || (context.top().nextChars[0] == '\'')   // Could be in single-quotes.
+                       || (context.top().nextChars[0] == '"') ); // Could be in quotes.
 
         case parseTree::Token_t::IPC_AGENT:
             // Can start with the same characters as a NAME or GROUP_NAME, plus '<'.
-            if (context.top().nextChar == '<')
+            if (context.top().nextChars[0] == '<')
             {
                 return true;
             }
@@ -264,17 +282,17 @@ bool Lexer_t::IsMatch
         case parseTree::Token_t::NAME:
         case parseTree::Token_t::GROUP_NAME:
         case parseTree::Token_t::DOTTED_NAME:
-            return (   islower(context.top().nextChar)
-                       || isupper(context.top().nextChar)
-                       || (context.top().nextChar == '_') );
+            return (   islower(context.top().nextChars[0])
+                       || isupper(context.top().nextChars[0])
+                       || (context.top().nextChars[0] == '_') );
 
         case parseTree::Token_t::INTEGER:
-            return (isdigit(context.top().nextChar));
+            return (isdigit(context.top().nextChars[0]));
 
         case parseTree::Token_t::SIGNED_INTEGER:
-            return (   (context.top().nextChar == '+')
-                       || (context.top().nextChar == '-')
-                       || isdigit(context.top().nextChar));
+            return (   (context.top().nextChars[0] == '+')
+                       || (context.top().nextChars[0] == '-')
+                       || isdigit(context.top().nextChars[0]));
 
         case parseTree::Token_t::BOOLEAN:
             return IsMatchBoolean();
@@ -286,16 +304,78 @@ bool Lexer_t::IsMatch
             throw mk::Exception_t(LE_I18N("Internal error: STRING lookahead not implemented."));
 
         case parseTree::Token_t::MD5_HASH:
-            return isxdigit(context.top().nextChar);
+            return isxdigit(context.top().nextChars[0]);
 
         case parseTree::Token_t::DIRECTIVE:
-            return context.top().nextChar == '#';
+            return context.top().nextChars[0] == '#';
     }
 
     throw mk::Exception_t(LE_I18N("Internal error: IsMatch(): Invalid token type requested."));
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Skip over a single token, regardless of the type.
+ *
+ * This only skips non-whitespace tokens.  To skip whitespace or comments, use NextToken().
+ *
+ * @note This function does minimal validation on the pulled token, so may allow invalid tokens.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::SkipToNextDirective
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Still need to add skipped text to list of tokens.  Treat it as a single comment for now.
+    // Might be nice to actually tokenize but add as "inactive" or similar, but for now
+    // can't tokenize without also parsing (see LE-6223).
+    parseTree::Token_t* phonyTokenPtr = new parseTree::Token_t(parseTree::Token_t::COMMENT,
+                                                               context.top().filePtr,
+                                                               context.top().line,
+                                                               context.top().column);
+
+    while (true)
+    {
+        switch (context.top().nextChars[0])
+        {
+            case '#':
+                // Found a directive
+                return;
+
+            case '/':
+            {
+                int secondChar = context.top().nextChars[1];
+                if (secondChar == '/' ||
+                    secondChar == '*')
+                {
+                    // Found a comment.  Pull the whole thing as it may contain embedded directives
+                    // that should be ignored.
+                    PullComment(phonyTokenPtr);
+                }
+                else
+                {
+                    AdvanceOneCharacter(phonyTokenPtr);
+                }
+
+                break;
+            }
+
+            case '"':
+            case '\'':
+                // Found a quoted string.  Pull the whole thing as it may contain embedded
+                // directives that should be ignored.
+                PullQuoted(phonyTokenPtr, context.top().nextChars[0]);
+                break;
+
+            default:
+                AdvanceOneCharacter(phonyTokenPtr);
+                break;
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -315,11 +395,11 @@ parseTree::Token_t* Lexer_t::PullRaw
     {
         case parseTree::Token_t::END_OF_FILE:
 
-            if (context.top().nextChar != EOF)
+            if (context.top().nextChars[0] != EOF)
             {
                 ThrowException(
                     mk::format(LE_I18N("Expected end-of-file, but found '%c'."),
-                               (char)context.top().nextChar)
+                               (char)context.top().nextChars[0])
                 );
             }
             break;
@@ -489,10 +569,31 @@ parseTree::Token_t* Lexer_t::Pull
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Pull a token or directive from the file being parsed, moving the point to the start of the next
+ * token or directive.
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::Token_t* Lexer_t::PullTokenOrDirective
+(
+    parseTree::Token_t::Type_t type
+)
+//--------------------------------------------------------------------------------------------------
+{
+    parseTree::Token_t* tokenPtr = PullRaw(type);
+
+    NextTokenOrDirective();
+
+    return tokenPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Move to the start of the next interesting token in the input stream.
  *
- * Interesting is currently non-whitespace, non-comment.  Any uninteresting tokens are still added
- * to the token list for the file, but not returned by Lexer_t::Pull()
+ * Interesting is currently non-whitespace, non-comment, non-directive.  Any uninteresting tokens
+ * are still added to the token list for the file, but not returned by Lexer_t::Pull().  This
+ * function will expand directives in place.
  */
 //--------------------------------------------------------------------------------------------------
 void Lexer_t::NextToken
@@ -503,15 +604,9 @@ void Lexer_t::NextToken
 {
     for (;;)
     {
-        if (IsMatch(parseTree::Token_t::WHITESPACE))
-        {
-            (void)PullRaw(parseTree::Token_t::WHITESPACE);
-        }
-        else if (IsMatch(parseTree::Token_t::COMMENT))
-        {
-            (void)PullRaw(parseTree::Token_t::COMMENT);
-        }
-        else if (IsMatch(parseTree::Token_t::DIRECTIVE))
+        NextTokenOrDirective();
+
+        if (IsMatch(parseTree::Token_t::DIRECTIVE))
         {
             ProcessDirective();
         }
@@ -538,10 +633,96 @@ void Lexer_t::NextToken
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Move to the start of the next interesting token or directive in the input stream.
+ *
+ * Interesting is currently non-whitespace, non-comment, non-directive.  Any uninteresting tokens
+ * are still added to the token list for the file, but not returned by Lexer_t::Pull().
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::NextTokenOrDirective
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (;;)
+    {
+        if (IsMatch(parseTree::Token_t::WHITESPACE))
+        {
+            (void)PullRaw(parseTree::Token_t::WHITESPACE);
+        }
+        else if (IsMatch(parseTree::Token_t::COMMENT))
+        {
+            (void)PullRaw(parseTree::Token_t::COMMENT);
+        }
+        else
+        {
+            return;
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset lexer back to state immedately after the given token.
+ *
+ * No pointers can be retained to tokens which are reset, as these tokens will be deleted.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::ResetTo(parseTree::Token_t* resetTokenPtr)
+{
+    // Start at the last token from the file and work backwards
+    auto lastTokenPtr = resetTokenPtr->nextPtr;
+    while (lastTokenPtr->nextPtr != NULL)
+    {
+        lastTokenPtr = lastTokenPtr->nextPtr;
+    }
+
+    // But don't rewind past whitespace or comments
+    auto firstTokenPtr = resetTokenPtr;
+    while (firstTokenPtr->nextPtr->type == parseTree::Token_t::COMMENT ||
+           firstTokenPtr->nextPtr->type == parseTree::Token_t::WHITESPACE)
+    {
+        firstTokenPtr = firstTokenPtr->nextPtr;
+    }
+
+    while (lastTokenPtr != firstTokenPtr)
+    {
+        auto prevTokenPtr = lastTokenPtr->prevPtr;
+
+        // Shouldn't backtrack into another file
+        if (lastTokenPtr->filePtr != context.top().filePtr)
+        {
+            resetTokenPtr->ThrowException(LE_I18N("Internal Error: Attempting to reset lookahead "
+                                                  "across file boundary"));
+        }
+
+        // Re-add the text to the buffer
+        context.top().nextChars.insert(context.top().nextChars.begin(),
+                                       lastTokenPtr->text.begin(),
+                                       lastTokenPtr->text.end());
+
+        // Reset column & line numbers
+        context.top().line = lastTokenPtr->line;
+        context.top().column = lastTokenPtr->column;
+
+        // And delete this token and remove it from the token list
+        delete lastTokenPtr;
+        prevTokenPtr->nextPtr = NULL;
+        lastTokenPtr = prevTokenPtr;
+    }
+
+    // Finally advance to the next token
+    NextToken();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Process a single directive.
  *
  * The directives supported by mk* tools are:
  *   - #include "file": Include another file in this one.
+ *   - #if, #elif, #else and #endif: Conditionally process sections of a file.
  */
 //--------------------------------------------------------------------------------------------------
 void Lexer_t::ProcessDirective
@@ -561,6 +742,22 @@ void Lexer_t::ProcessDirective
     if (directivePtr->text == std::string("#include"))
     {
         ProcessIncludeDirective();
+    }
+    else if (directivePtr->text == std::string("#if"))
+    {
+        ProcessIfDirective();
+    }
+    else if (directivePtr->text == std::string("#elif"))
+    {
+        ProcessElifDirective();
+    }
+    else if (directivePtr->text == std::string("#else"))
+    {
+        ProcessElseDirective();
+    }
+    else if (directivePtr->text == std::string("#endif"))
+    {
+        ProcessEndifDirective();
     }
     else
     {
@@ -588,12 +785,7 @@ void Lexer_t::ProcessIncludeDirective
     auto filePath = path::Unquote(envVars::DoSubstitution(includePathPtr->text,
                                                           &substitutedVars));
 
-    for (auto substitutedVar: substitutedVars)
-    {
-        // No need to check if variable is already in usedVars list as insert will simply
-        // fail in that case, leaving the original definition intact).
-        usedVars.insert(std::make_pair(substitutedVar, includePathPtr));
-    }
+    MarkVarsUsed(substitutedVars, includePathPtr);
 
     auto curDir = path::GetContainingDir(context.top().filePtr->path);
 
@@ -621,6 +813,375 @@ void Lexer_t::ProcessIncludeDirective
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Process an if directive.
+ *
+ * This skips to the start of the active section of the conditional block.  A conditional block
+ * looks like:
+ *
+ *     #if <condition>                // Initial #if statement
+ *         // #if block
+ *         // statements ...
+ *     #elif <condition>              // Zero or more
+ *         // #elif block             // #elif blocks
+ *         // statements ...
+ *     #else                          // Optional
+ *         // #else block             // #else block
+ *         // statements
+ *     #endif                         // Final #endif
+ *
+ *  - Skip nothing if condition on #if block is true, otherwise
+ *  - Skip to start of first #elif block whose condition evaluates to true, otherwise
+ *  - Skip to start of #else block, if one exists, finally
+ *  - Skip to statement after #endif if there's no #else block.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::ProcessIfDirective
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    bool haveElif;
+    bool skip;
+
+    // Now inside the if statement, so increase the nesting depth.
+    context.top().ifNestDepth++;
+
+    do
+    {
+        // If the expression is false, skip this section.
+        skip = !PullAndEvalBoolExpression();
+
+        if (skip)
+        {
+            parseTree::Token_t *nextToken;
+
+            nextToken = SkipConditional(true /*allowElse*/,
+                                        false /*don't skipElse*/);
+
+            if (nextToken->text == "#endif")
+            {
+                // Hit the end of the conditional without any active sections, so just mark as
+                // left the conditional.
+                context.top().ifNestDepth--;
+
+                return;
+            }
+
+            haveElif = (nextToken->text == "#elif");
+        }
+        else
+        {
+            haveElif = false;
+        }
+    } while (haveElif);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process an else directive.
+ *
+ * Since #if/#elif processing skips over any inactive #else blocks, this will only be called
+ * if this marks the end of an active #if/#elif block.  Skip straight to final #endif.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::ProcessElseDirective
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (context.top().ifNestDepth > 0)
+    {
+        (void)SkipConditional(false /*don't allowElse*/,
+                              false /*don't skipElse*/);
+    }
+    else
+    {
+        ThrowException("Unexpected '#else' found.");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process an elif directive.
+ *
+ * Since #if/#elif processing skips over any inactive #elif blocks, this will only be called
+ * if this marks the end of an active #if/#elif block.  Skip straight to final #endif.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::ProcessElifDirective
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (context.top().ifNestDepth > 0)
+    {
+        (void)SkipConditional(true /*allowElse*/,
+                              true /*skipElse*/);
+    }
+    else
+    {
+        ThrowException("Unexpected '#elif' found.");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process an endif directive.
+ *
+ * Since #if/#elif processing skips over any inactive #elif blocks, this will only be called
+ * if this marks the end of an active #if/#elif block.  Not really important for #endif though --
+ * always just decrement the nesting depth.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::ProcessEndifDirective
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (context.top().ifNestDepth > 0)
+    {
+        --(context.top().ifNestDepth);
+        return;
+    }
+    else
+    {
+        ThrowException("Unexpected '#endif' found.");
+    }
+}
+
+//
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Skip until the end of a conditional section.
+ *
+ * There are three cases where a section is skipped:
+ *
+ * Case 1: hit false expression; skip to start of next condition.
+ *
+ *     #if <false expression>  //<-- currently here
+ *         // statements
+ *     #elif //<-- skip to here, returning this #elif token
+ *           //    (could also be #else or #endif directive)
+ *
+ * Case 2a: hit end of #if or #elif block terminated by an #elif; skip to #endif.
+ *
+ *     #if <true expression>
+ *         // statements
+ *     #elif //<-- currently here
+ *         // statements
+ *     #elif
+ *         // statements
+ *     #else
+ *         // statements
+ *     #endif //<-- skip to here, returning #endif token.  #elif and #else allowed to be skipped.
+ *
+ * Case 2b: Hit #if in section being skipped.  Skip straight to #endif.
+ *
+ *     #if <false condition>
+ *         #if //<-- currently here
+ *             // statements
+ *         #else
+ *             // statements
+ *         #endif //<-- skip to here.
+ *
+ * Case 3: Hit end of #if or #elif block terminated by an #else.  Skip to #endif.
+ *
+ *     #if <true condition>
+ *         // statements
+ *     #else //<-- currently here
+ *         // statements
+ *     #endif //<-- skip to here.  #elif and #else are not allowed as an #else has already been
+ *            //    seen.
+ *
+ * @returns the token that ends the conditional section
+ */
+//--------------------------------------------------------------------------------------------------
+parseTree::Token_t *Lexer_t::SkipConditional
+(
+    bool allowElse,  ///< Is #else or #elif allowed?
+    bool skipElse    ///< Skip over #else/#elif sections, straight to final #endif?
+)
+//--------------------------------------------------------------------------------------------------
+{
+    while (true)
+    {
+        if (IsMatch(parseTree::Token_t::DIRECTIVE))
+        {
+            parseTree::Token_t* directivePtr = PullTokenOrDirective(parseTree::Token_t::DIRECTIVE);
+
+            if (directivePtr->text == std::string("#include"))
+            {
+                // Ignore #include directives.
+            }
+            else if (directivePtr->text == std::string("#if"))
+            {
+                // Skip contents of embedded '#if'
+                SkipConditional(true, true);
+            }
+            else if (directivePtr->text == std::string("#else") ||
+                     directivePtr->text == std::string("#elif"))
+            {
+                if (!allowElse)
+                {
+                    ThrowException("Unexpected processing directive '" + directivePtr->text + "'");
+                }
+
+                if (!skipElse)
+                {
+                    return directivePtr;
+                }
+
+                // If an "#else" has been found, no more else blocks are allowed.
+                if (directivePtr->text == std::string("#else"))
+                {
+                    allowElse = false;
+                }
+            }
+            else if (directivePtr->text == std::string("#endif"))
+            {
+                return directivePtr;
+            }
+            else
+            {
+                ThrowException("Unrecognized processing directive '" + directivePtr->text + "'");
+            }
+        }
+        else if (IsMatch(parseTree::Token_t::END_OF_FILE))
+        {
+            ThrowException("Unexpected end-of-file inside conditional.");
+        }
+        else
+        {
+            SkipToNextDirective();
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pull and evaluate a boolean expression which is recognizable by the preprocessor.
+ */
+//--------------------------------------------------------------------------------------------------
+bool Lexer_t::PullAndEvalBoolExpression
+(
+    void
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (IsMatch(parseTree::Token_t::FILE_PATH))
+    {
+        std::set<std::string> substitutedVarsOperand1;
+        std::set<std::string> substitutedVarsOperand2;
+
+        // A predicate or first operand of an infix operator
+        parseTree::Token_t* namePtr = PullTokenOrDirective(parseTree::Token_t::FILE_PATH);
+
+        if (IsMatch(parseTree::Token_t::EQUALS))
+        {
+            parseTree::Token_t* operand1Ptr = namePtr;
+
+            // This is an infix equality operator -- check if left and right operands are equal
+            (void)PullTokenOrDirective(parseTree::Token_t::EQUALS);
+
+            parseTree::Token_t* operand2Ptr = PullTokenOrDirective(parseTree::Token_t::FILE_PATH);
+
+            std::string operand1 = path::Unquote(envVars::DoSubstitution(operand1Ptr->text,
+                                                                         &substitutedVarsOperand1));
+            MarkVarsUsed(substitutedVarsOperand1, operand1Ptr);
+
+            std::string operand2 = path::Unquote(envVars::DoSubstitution(operand2Ptr->text,
+                                                                         &substitutedVarsOperand2));
+            MarkVarsUsed(substitutedVarsOperand2, operand2Ptr);
+
+            return operand1 == operand2;
+        }
+        else if (IsMatch(parseTree::Token_t::OPEN_PARENTHESIS))
+        {
+            bool result;
+
+            // This is a predicate.  Evaluate the predicate.
+            (void)PullTokenOrDirective(parseTree::Token_t::OPEN_PARENTHESIS);
+
+            if (namePtr->text == std::string("file_exists"))
+            {
+                std::set<std::string> substitutedVars;
+                parseTree::Token_t* fileNamePtr = PullTokenOrDirective(
+                    parseTree::Token_t::FILE_PATH
+                );
+                std::string fileName = path::Unquote(envVars::DoSubstitution(fileNamePtr->text,
+                                                                             &substitutedVars));
+                auto curDir = path::GetContainingDir(context.top().filePtr->path);
+
+                result = (file::FindFile(fileName, { curDir }) != "");
+
+                MarkVarsUsed(substitutedVars, fileNamePtr);
+            }
+            else if (namePtr->text == std::string("dir_exists"))
+            {
+                std::set<std::string> substitutedVars;
+                parseTree::Token_t* fileNamePtr = PullTokenOrDirective(
+                    parseTree::Token_t::FILE_PATH
+                );
+                std::string fileName = path::Unquote(envVars::DoSubstitution(fileNamePtr->text,
+                                                                             &substitutedVars));
+                auto curDir = path::GetContainingDir(context.top().filePtr->path);
+
+                result = (file::FindDirectory(fileName, { curDir }) != "");
+
+                MarkVarsUsed(substitutedVars, fileNamePtr);
+            }
+            else
+            {
+                namePtr->ThrowException("Unknown predicate '" +
+                                        namePtr->text +
+                                        "'");
+            }
+
+            (void)PullTokenOrDirective(parseTree::Token_t::CLOSE_PARENTHESIS);
+
+            return result;
+        }
+        else
+        {
+            UnexpectedChar("in conditional expression.");
+        }
+    }
+    else
+    {
+        UnexpectedChar("in '#if' directive.");
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark some variables as used by the preprocessor.
+ *
+ * This prevents these variables from being redefined at a later date to ensure all expansions
+ * of a variable see the same value.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::MarkVarsUsed
+(
+    const std::set<std::string> &localUsedVars,
+    parseTree::Token_t* usingTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto substitutedVar: localUsedVars)
+    {
+        // No need to check if variable is already in usedVars list as insert will simply
+        // fail in that case, leaving the original definition intact).
+        usedVars.insert(std::make_pair(substitutedVar, usingTokenPtr));
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Check if a valid boolean value (true, false, on, or off) is waiting in the input stream.
  *
  * @return true if a valid boolean is waiting.  false otherwise.
@@ -632,48 +1193,21 @@ bool Lexer_t::IsMatchBoolean
 )
 //--------------------------------------------------------------------------------------------------
 {
-    char lookaheadBuff[6]; // Longest boolean value is "false" (5 chars, plus one after).
-    size_t n = 0;
+    static const char true_string[] = "true",
+        false_string[] = "false",
+        on_string[] = "on",
+        off_string[] = "off";
 
-    bool result = false;
-
-    switch (context.top().nextChar)
-    {
-        case 't':
-
-            n = Lookahead(lookaheadBuff, 4);
-
-            if (   (n == 4)
-                   && (strncmp(lookaheadBuff, "true", 4) == 0))
-            {
-                result = true;
-            }
-            break;
-
-        case 'f':
-
-            n = Lookahead(lookaheadBuff, 5);
-
-            if (   (n == 5)
-                   && (strncmp(lookaheadBuff, "false", 5) == 0))
-            {
-                result = true;
-            }
-            break;
-
-        case 'o':
-
-            n = Lookahead(lookaheadBuff, 3); // "off" is 3 bytes long.
-
-            if (   ((n >= 2) && (strncmp(lookaheadBuff, "on", 2) == 0))
-                   || ((n == 3) && (strncmp(lookaheadBuff, "off", 3) == 0))  )
-            {
-                result = true;
-            }
-            break;
-    }
-
-    return result;
+    // Need at most 5 characters (for false)
+    context.top().Buffer(5);
+    return std::equal(true_string, true_string + sizeof(true_string) - 1,
+                      context.top().nextChars.begin()) ||
+        std::equal(false_string, false_string + sizeof(false_string) - 1,
+                   context.top().nextChars.begin()) ||
+        std::equal(on_string, on_string + sizeof(on_string) - 1,
+                   context.top().nextChars.begin()) ||
+        std::equal(off_string, off_string + sizeof(off_string) - 1,
+                   context.top().nextChars.begin());
 }
 
 
@@ -695,7 +1229,7 @@ void Lexer_t::PullConstString
 
     while (*charPtr != '\0')
     {
-        if (context.top().nextChar != *charPtr)
+        if (context.top().nextChars[0] != *charPtr)
         {
             UnexpectedChar(mk::format(LE_I18N("Unexpected character %%s. Expected '%s'"),
                                       tokenString));
@@ -719,14 +1253,16 @@ void Lexer_t::PullWhitespace
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto startPos = context.top().inputStream.tellg();
+    size_t start_line = context.top().line,
+        start_column = context.top().column;
 
-    while (IsWhitespace(context.top().nextChar))
+    while (IsWhitespace(context.top().nextChars[0]))
     {
         AdvanceOneCharacter(tokenPtr);
     }
 
-    if (startPos == context.top().inputStream.tellg())
+    if ((start_line == context.top().line) &&
+        (start_column == context.top().column))
     {
         ThrowException(LE_I18N("Expected whitespace."));
     }
@@ -745,7 +1281,7 @@ void Lexer_t::PullComment
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar != '/')
+    if (context.top().nextChars[0] != '/')
     {
         ThrowException(LE_I18N("Expected '/' at start of comment."));
     }
@@ -754,33 +1290,33 @@ void Lexer_t::PullComment
     AdvanceOneCharacter(tokenPtr);
 
     // Figure out which kind of comment it is.
-    if (context.top().nextChar == '/')
+    if (context.top().nextChars[0] == '/')
     {
         // C++ style comment, terminated by either new-line or end-of-file.
         AdvanceOneCharacter(tokenPtr);
-        while ((context.top().nextChar != '\n') && (context.top().nextChar != EOF))
+        while ((context.top().nextChars[0] != '\n') && (context.top().nextChars[0] != EOF))
         {
             AdvanceOneCharacter(tokenPtr);
         }
     }
-    else if (context.top().nextChar == '*')
+    else if (context.top().nextChars[0] == '*')
     {
         // C style comment, terminated by "*/" digraph.
         AdvanceOneCharacter(tokenPtr);
         for (;;)
         {
-            if (context.top().nextChar == '*')
+            if (context.top().nextChars[0] == '*')
             {
                 AdvanceOneCharacter(tokenPtr);
 
-                if (context.top().nextChar == '/')
+                if (context.top().nextChars[0] == '/')
                 {
                     AdvanceOneCharacter(tokenPtr);
 
                     break;
                 }
             }
-            else if (context.top().nextChar == EOF)
+            else if (context.top().nextChars[0] == EOF)
             {
                 ThrowException(
                     mk::format(LE_I18N("Unexpected end-of-file before end of comment.\n"
@@ -811,17 +1347,17 @@ void Lexer_t::PullInteger
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (!isdigit(context.top().nextChar))
+    if (!isdigit(context.top().nextChars[0]))
     {
         UnexpectedChar(LE_I18N("Unexpected character %s at beginning of integer."));
     }
 
-    while (isdigit(context.top().nextChar))
+    while (isdigit(context.top().nextChars[0]))
     {
         AdvanceOneCharacter(tokenPtr);
     }
 
-    if (context.top().nextChar == 'K')
+    if (context.top().nextChars[0] == 'K')
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -839,8 +1375,8 @@ void Lexer_t::PullSignedInteger
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   (context.top().nextChar == '-')
-           || (context.top().nextChar == '+'))
+    if (   (context.top().nextChars[0] == '-')
+           || (context.top().nextChars[0] == '+'))
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -860,27 +1396,27 @@ void Lexer_t::PullBoolean
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar == 't')
+    if (context.top().nextChars[0] == 't')
     {
         PullConstString(tokenPtr, "true");
     }
-    else if (context.top().nextChar == 'f')
+    else if (context.top().nextChars[0] == 'f')
     {
         PullConstString(tokenPtr, "false");
     }
-    else if (context.top().nextChar == 'o')
+    else if (context.top().nextChars[0] == 'o')
     {
         AdvanceOneCharacter(tokenPtr);
 
-        if (context.top().nextChar == 'n')
+        if (context.top().nextChars[0] == 'n')
         {
             AdvanceOneCharacter(tokenPtr);
         }
-        else if (context.top().nextChar == 'f')
+        else if (context.top().nextChars[0] == 'f')
         {
             AdvanceOneCharacter(tokenPtr);
 
-            if (context.top().nextChar != 'f')
+            if (context.top().nextChars[0] != 'f')
             {
                 ThrowException(LE_I18N("Unexpected boolean value.  Only 'true', 'false', "
                                        "'on', or 'off' allowed."));
@@ -908,38 +1444,38 @@ void Lexer_t::PullFloat
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   (isdigit(context.top().nextChar) == false)
-           && (context.top().nextChar != '+')
-           && (context.top().nextChar != '-'))
+    if (   (isdigit(context.top().nextChars[0]) == false)
+           && (context.top().nextChars[0] != '+')
+           && (context.top().nextChars[0] != '-'))
     {
         UnexpectedChar(LE_I18N("Unexpected character %s at beginning of floating point value."));
     }
 
     AdvanceOneCharacter(tokenPtr);
 
-    while (isdigit(context.top().nextChar))
+    while (isdigit(context.top().nextChars[0]))
     {
         AdvanceOneCharacter(tokenPtr);
     }
 
-    if (context.top().nextChar == '.')
+    if (context.top().nextChars[0] == '.')
     {
         AdvanceOneCharacter(tokenPtr);
 
-        while (isdigit(context.top().nextChar))
+        while (isdigit(context.top().nextChars[0]))
         {
             AdvanceOneCharacter(tokenPtr);
         }
     }
 
-    if (   (context.top().nextChar == 'e')
-           || (context.top().nextChar == 'E'))
+    if (   (context.top().nextChars[0] == 'e')
+           || (context.top().nextChars[0] == 'E'))
     {
         AdvanceOneCharacter(tokenPtr);
 
-        if (   (isdigit(context.top().nextChar) == false)
-               && (context.top().nextChar != '+')
-               && (context.top().nextChar != '-'))
+        if (   (isdigit(context.top().nextChars[0]) == false)
+               && (context.top().nextChars[0] != '+')
+               && (context.top().nextChars[0] != '-'))
         {
             UnexpectedChar(LE_I18N("Unexpected character %s in exponent part of"
                                    " floating point value."));
@@ -947,7 +1483,7 @@ void Lexer_t::PullFloat
 
         AdvanceOneCharacter(tokenPtr);
 
-        while (isdigit(context.top().nextChar))
+        while (isdigit(context.top().nextChars[0]))
         {
             AdvanceOneCharacter(tokenPtr);
         }
@@ -966,10 +1502,10 @@ void Lexer_t::PullString
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   (context.top().nextChar == '"')
-           || (context.top().nextChar == '\''))
+    if (   (context.top().nextChars[0] == '"')
+           || (context.top().nextChars[0] == '\''))
     {
-        PullQuoted(tokenPtr, context.top().nextChar);
+        PullQuoted(tokenPtr, context.top().nextChars[0]);
     }
     else
     {
@@ -989,7 +1525,7 @@ void Lexer_t::PullFilePermissions
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar != '[')
+    if (context.top().nextChars[0] != '[')
     {
         ThrowException(LE_I18N("Expected '[' at start of file permissions."));
     }
@@ -998,7 +1534,7 @@ void Lexer_t::PullFilePermissions
     AdvanceOneCharacter(tokenPtr);
 
     // Must be something between the square brackets.
-    if (context.top().nextChar == ']')
+    if (context.top().nextChars[0] == ']')
     {
         ThrowException(LE_I18N("Empty file permissions."));
     }
@@ -1007,18 +1543,18 @@ void Lexer_t::PullFilePermissions
     do
     {
         // Check for end-of-file or illegal character in file permissions.
-        if (context.top().nextChar == EOF)
+        if (context.top().nextChars[0] == EOF)
         {
             ThrowException(LE_I18N("Unexpected end-of-file before end of file permissions."));
         }
-        else if ((context.top().nextChar != 'r') && (context.top().nextChar != 'w') && (context.top().nextChar != 'x'))
+        else if ((context.top().nextChars[0] != 'r') && (context.top().nextChars[0] != 'w') && (context.top().nextChars[0] != 'x'))
         {
             UnexpectedChar(LE_I18N("Unexpected character %s inside file permissions."));
         }
 
         AdvanceOneCharacter(tokenPtr);
 
-    } while (context.top().nextChar != ']');
+    } while (context.top().nextChars[0] != ']');
 
     // Eat the trailing ']'.
     AdvanceOneCharacter(tokenPtr);
@@ -1085,7 +1621,7 @@ void Lexer_t::PullIpcOption
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar != '[')
+    if (context.top().nextChars[0] != '[')
     {
         ThrowException(LE_I18N("Expected '[' at start of IPC option."));
     }
@@ -1094,7 +1630,7 @@ void Lexer_t::PullIpcOption
     AdvanceOneCharacter(tokenPtr);
 
     // Must be something between the square brackets.
-    if (context.top().nextChar == ']')
+    if (context.top().nextChars[0] == ']')
     {
         ThrowException(LE_I18N("Empty IPC option."));
     }
@@ -1103,18 +1639,18 @@ void Lexer_t::PullIpcOption
     do
     {
         // Check for end-of-file or illegal character in option.
-        if (context.top().nextChar == EOF)
+        if (context.top().nextChars[0] == EOF)
         {
             ThrowException(LE_I18N("Unexpected end-of-file before end of IPC option."));
         }
-        else if ((context.top().nextChar != '-') && !islower(context.top().nextChar))
+        else if ((context.top().nextChars[0] != '-') && !islower(context.top().nextChars[0]))
         {
             UnexpectedChar(LE_I18N("Unexpected character %s inside option."));
         }
 
         AdvanceOneCharacter(tokenPtr);
 
-    } while (context.top().nextChar != ']');
+    } while (context.top().nextChars[0] != ']');
 
     // Eat the trailing ']'.
     AdvanceOneCharacter(tokenPtr);
@@ -1134,30 +1670,31 @@ void Lexer_t::PullArg
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar == '"')
+    if (context.top().nextChars[0] == '"')
     {
         PullQuoted(tokenPtr, '"');
     }
-    else if (context.top().nextChar == '\'')
+    else if (context.top().nextChars[0] == '\'')
     {
         PullQuoted(tokenPtr, '\'');
     }
     else
     {
-        auto startPos = context.top().inputStream.tellg();
+        size_t start_line = context.top().line;
+        size_t start_column = context.top().column;
 
-        while (IsArgChar(context.top().nextChar))
+        while (IsArgChar(context.top().nextChars[0]))
         {
-            if (context.top().nextChar == '$')
+            if (context.top().nextChars[0] == '$')
             {
                 PullEnvVar(tokenPtr);
             }
             else
             {
-                if (context.top().nextChar == '/')
+                if (context.top().nextChars[0] == '/')
                 {
                     // Check for comment start.
-                    int secondChar = context.top().inputStream.peek();
+                    int secondChar = context.top().nextChars[1];
                     if ((secondChar == '/') || (secondChar == '*'))
                     {
                         break;
@@ -1170,13 +1707,14 @@ void Lexer_t::PullArg
 
         // If no characters were matched, then the first character is an invalid argument
         // character.
-        if (startPos == context.top().inputStream.tellg())
+        if ((start_line == context.top().line) &&
+            (start_column == context.top().column))
         {
-            if (isprint(context.top().nextChar))
+            if (isprint(context.top().nextChars[0]))
             {
                 ThrowException(
                     mk::format(LE_I18N("Invalid character '%c' in argument."),
-                               (char)context.top().nextChar)
+                               (char)context.top().nextChars[0])
                 );
             }
             else
@@ -1201,30 +1739,31 @@ void Lexer_t::PullFilePath
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar == '"')
+    if (context.top().nextChars[0] == '"')
     {
         PullQuoted(tokenPtr, '"');
     }
-    else if (context.top().nextChar == '\'')
+    else if (context.top().nextChars[0] == '\'')
     {
         PullQuoted(tokenPtr, '\'');
     }
     else
     {
-        auto startPos = context.top().inputStream.tellg();
+        size_t start_line = context.top().line,
+            start_column = context.top().column;
 
-        while (IsFilePathChar(context.top().nextChar))
+        while (IsFilePathChar(context.top().nextChars[0]))
         {
-            if (context.top().nextChar == '$')
+            if (context.top().nextChars[0] == '$')
             {
                 PullEnvVar(tokenPtr);
             }
             else
             {
-                if (context.top().nextChar == '/')
+                if (context.top().nextChars[0] == '/')
                 {
                     // Check for comment start.
-                    int secondChar = context.top().inputStream.peek();
+                    int secondChar = context.top().nextChars[1];
                     if ((secondChar == '/') || (secondChar == '*'))
                     {
                         break;
@@ -1237,13 +1776,14 @@ void Lexer_t::PullFilePath
 
         // If no characters were matched, then the first character is an invalid file path
         // character.
-        if (startPos == context.top().inputStream.tellg())
+        if (start_line == context.top().line &&
+            start_column == context.top().column)
         {
-            if (isprint(context.top().nextChar))
+            if (isprint(context.top().nextChars[0]))
             {
                 ThrowException(
                     mk::format(LE_I18N("Invalid character '%c' in file path."),
-                               (char)context.top().nextChar)
+                               (char)context.top().nextChars[0])
                 );
             }
             else
@@ -1268,21 +1808,22 @@ void Lexer_t::PullFileName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (context.top().nextChar == '"')
+    if (context.top().nextChars[0] == '"')
     {
         PullQuoted(tokenPtr, '"');
     }
-    else if (context.top().nextChar == '\'')
+    else if (context.top().nextChars[0] == '\'')
     {
         PullQuoted(tokenPtr, '\'');
     }
     else
     {
-        auto startPos = context.top().inputStream.tellg();
+        size_t start_line = context.top().line,
+            start_column = context.top().column;
 
-        while (IsFileNameChar(context.top().nextChar))
+        while (IsFileNameChar(context.top().nextChars[0]))
         {
-            if (context.top().nextChar == '$')
+            if (context.top().nextChars[0] == '$')
             {
                 PullEnvVar(tokenPtr);
             }
@@ -1294,13 +1835,14 @@ void Lexer_t::PullFileName
 
         // If no characters were matched, then the first character is an invalid file name
         // character.
-        if (startPos == context.top().inputStream.tellg())
+        if ((start_line == context.top().line) &&
+            (start_column == context.top().column))
         {
-            if (isprint(context.top().nextChar))
+            if (isprint(context.top().nextChars[0]))
             {
                 ThrowException(
                     mk::format(LE_I18N("Invalid character '%c' in name."),
-                               (char)context.top().nextChar)
+                               (char)context.top().nextChars[0])
                 );
             }
             else
@@ -1323,9 +1865,9 @@ void Lexer_t::PullName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || (context.top().nextChar == '_') )
+    if (   islower(context.top().nextChars[0])
+           || isupper(context.top().nextChars[0])
+           || (context.top().nextChars[0] == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1336,10 +1878,10 @@ void Lexer_t::PullName
                                " or an underscore ('_')."));
     }
 
-    while (   islower(context.top().nextChar)
-              || isupper(context.top().nextChar)
-              || isdigit(context.top().nextChar)
-              || (context.top().nextChar == '_') )
+    while (   islower(context.top().nextChars[0])
+              || isupper(context.top().nextChars[0])
+              || isdigit(context.top().nextChars[0])
+              || (context.top().nextChars[0] == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1361,14 +1903,14 @@ void Lexer_t::PullDottedName
     {
         PullName(tokenPtr);
 
-        if (context.top().nextChar == '.')
+        if (context.top().nextChars[0] == '.')
         {
             AdvanceOneCharacter(tokenPtr);
         }
     }
-    while (   islower(context.top().nextChar)
-              || isupper(context.top().nextChar)
-              || (context.top().nextChar == '_'));
+    while (   islower(context.top().nextChars[0])
+              || isupper(context.top().nextChars[0])
+              || (context.top().nextChars[0] == '_'));
 }
 
 
@@ -1383,9 +1925,9 @@ void Lexer_t::PullGroupName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || (context.top().nextChar == '_') )
+    if (   islower(context.top().nextChars[0])
+           || isupper(context.top().nextChars[0])
+           || (context.top().nextChars[0] == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1396,11 +1938,11 @@ void Lexer_t::PullGroupName
                                "('a'-'z' or 'A'-'Z') or an underscore ('_')."));
     }
 
-    while (   islower(context.top().nextChar)
-              || isupper(context.top().nextChar)
-              || isdigit(context.top().nextChar)
-              || (context.top().nextChar == '_')
-              || (context.top().nextChar == '-') )
+    while (   islower(context.top().nextChars[0])
+              || isupper(context.top().nextChars[0])
+              || isdigit(context.top().nextChars[0])
+              || (context.top().nextChars[0] == '_')
+              || (context.top().nextChars[0] == '-') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1418,23 +1960,23 @@ void Lexer_t::PullIpcAgentName
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto firstChar = context.top().nextChar;
+    auto firstChar = context.top().nextChars[0];
 
     // User names are enclosed in angle brackets (e.g., "<username>").
     if (firstChar == '<')
     {
         AdvanceOneCharacter(tokenPtr);
 
-        while (   islower(context.top().nextChar)
-                  || isupper(context.top().nextChar)
-                  || isdigit(context.top().nextChar)
-                  || (context.top().nextChar == '_')
-                  || (context.top().nextChar == '-') )
+        while (   islower(context.top().nextChars[0])
+                  || isupper(context.top().nextChars[0])
+                  || isdigit(context.top().nextChars[0])
+                  || (context.top().nextChars[0] == '_')
+                  || (context.top().nextChars[0] == '-') )
         {
             AdvanceOneCharacter(tokenPtr);
         }
 
-        if (context.top().nextChar != '>')
+        if (context.top().nextChars[0] != '>')
         {
             UnexpectedChar(LE_I18N("Unexpected character %s in user name.  "
                                    "Must be terminated with '>'."));
@@ -1445,16 +1987,16 @@ void Lexer_t::PullIpcAgentName
         }
     }
     // App names have the same rules as C programming language identifiers.
-    else if (   islower(context.top().nextChar)
-                || isupper(context.top().nextChar)
-                || (context.top().nextChar == '_') )
+    else if (   islower(context.top().nextChars[0])
+                || isupper(context.top().nextChars[0])
+                || (context.top().nextChars[0] == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
 
-        while (   islower(context.top().nextChar)
-                  || isupper(context.top().nextChar)
-                  || isdigit(context.top().nextChar)
-                  || (context.top().nextChar == '_') )
+        while (   islower(context.top().nextChars[0])
+                  || isupper(context.top().nextChars[0])
+                  || isdigit(context.top().nextChars[0])
+                  || (context.top().nextChars[0] == '_') )
         {
             AdvanceOneCharacter(tokenPtr);
         }
@@ -1486,14 +2028,14 @@ void Lexer_t::PullQuoted
     // Eat the leading quote.
     AdvanceOneCharacter(tokenPtr);
 
-    while (context.top().nextChar != quoteChar)
+    while (context.top().nextChars[0] != quoteChar)
     {
         // Don't allow end of file or end of line characters inside the quoted string.
-        if (context.top().nextChar == EOF)
+        if (context.top().nextChars[0] == EOF)
         {
             ThrowException(LE_I18N("Unexpected end-of-file before end of quoted string."));
         }
-        if ((context.top().nextChar == '\n') || (context.top().nextChar == '\r'))
+        if ((context.top().nextChars[0] == '\n') || (context.top().nextChars[0] == '\r'))
         {
             ThrowException(LE_I18N("Unexpected end-of-line before end of quoted string."));
         }
@@ -1525,16 +2067,16 @@ void Lexer_t::PullEnvVar
 
     // If the next character is a curly brace, remember that we need to look for the closing curly.
     bool hasCurlies = false;    // true if ${ENV_VAR} style.  false if $ENV_VAR style.
-    if (context.top().nextChar == '{')
+    if (context.top().nextChars[0] == '{')
     {
         AdvanceOneCharacter(tokenPtr->text);
         hasCurlies = true;
     }
 
     // Pull the first character of the environment variable name.
-    if (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || (context.top().nextChar == '_') )
+    if (   islower(context.top().nextChars[0])
+           || isupper(context.top().nextChars[0])
+           || (context.top().nextChars[0] == '_') )
     {
         AdvanceOneCharacter(tokenPtr->text);
     }
@@ -1547,10 +2089,10 @@ void Lexer_t::PullEnvVar
     }
 
     // Pull the rest of the environment variable name.
-    while (   islower(context.top().nextChar)
-              || isupper(context.top().nextChar)
-              || isdigit(context.top().nextChar)
-              || (context.top().nextChar == '_') )
+    while (   islower(context.top().nextChars[0])
+              || isupper(context.top().nextChars[0])
+              || isdigit(context.top().nextChars[0])
+              || (context.top().nextChars[0] == '_') )
     {
         AdvanceOneCharacter(tokenPtr->text);
     }
@@ -1558,18 +2100,18 @@ void Lexer_t::PullEnvVar
     // If there was an opening curly brace, match the closing one now.
     if (hasCurlies)
     {
-        if (context.top().nextChar == '}')
+        if (context.top().nextChars[0] == '}')
         {
             AdvanceOneCharacter(tokenPtr->text);
         }
-        else if (context.top().nextChar == EOF)
+        else if (context.top().nextChars[0] == EOF)
         {
             ThrowException(LE_I18N("Unexpected end-of-file inside environment variable name."));
         }
         else
         {
             ThrowException(
-                mk::format(LE_I18N("'}' expected.  '%c' found."), (char)context.top().nextChar)
+                mk::format(LE_I18N("'}' expected.  '%c' found."), (char)context.top().nextChars[0])
             );
         }
     }
@@ -1590,15 +2132,15 @@ void Lexer_t::PullMd5
     // There are always exactly 32 hexadecimal digits in an md5 sum.
     for (int i = 0; i < 32; i++)
     {
-        if (   (!isdigit(context.top().nextChar))
-               && (context.top().nextChar != 'a')
-               && (context.top().nextChar != 'b')
-               && (context.top().nextChar != 'c')
-               && (context.top().nextChar != 'd')
-               && (context.top().nextChar != 'e')
-               && (context.top().nextChar != 'f')  )
+        if (   (!isdigit(context.top().nextChars[0]))
+               && (context.top().nextChars[0] != 'a')
+               && (context.top().nextChars[0] != 'b')
+               && (context.top().nextChars[0] != 'c')
+               && (context.top().nextChars[0] != 'd')
+               && (context.top().nextChars[0] != 'e')
+               && (context.top().nextChars[0] != 'f')  )
         {
-            if (IsWhitespace(context.top().nextChar))
+            if (IsWhitespace(context.top().nextChars[0]))
             {
                 ThrowException(LE_I18N("MD5 hash too short."));
             }
@@ -1610,13 +2152,13 @@ void Lexer_t::PullMd5
     }
 
     // Make sure it isn't too long.
-    if (   isdigit(context.top().nextChar)
-           || (context.top().nextChar == 'a')
-           || (context.top().nextChar == 'b')
-           || (context.top().nextChar == 'c')
-           || (context.top().nextChar == 'd')
-           || (context.top().nextChar == 'e')
-           || (context.top().nextChar == 'f')  )
+    if (   isdigit(context.top().nextChars[0])
+           || (context.top().nextChars[0] == 'a')
+           || (context.top().nextChars[0] == 'b')
+           || (context.top().nextChars[0] == 'c')
+           || (context.top().nextChars[0] == 'd')
+           || (context.top().nextChars[0] == 'e')
+           || (context.top().nextChars[0] == 'f')  )
     {
         ThrowException(LE_I18N("MD5 hash too long."));
     }
@@ -1635,7 +2177,7 @@ void Lexer_t::PullDirective
 //--------------------------------------------------------------------------------------------------
 {
     // advance past the '#'
-    if (context.top().nextChar == '#')
+    if (context.top().nextChars[0] == '#')
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1645,8 +2187,8 @@ void Lexer_t::PullDirective
                                "Must start with '#' character."));
     }
 
-    if (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar))
+    if (   islower(context.top().nextChars[0])
+           || isupper(context.top().nextChars[0]))
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1656,8 +2198,8 @@ void Lexer_t::PullDirective
                                "Must start with a letter ('a'-'z' or 'A'-'Z')."));
     }
 
-    while (   islower(context.top().nextChar)
-              || isupper(context.top().nextChar))
+    while (   islower(context.top().nextChars[0])
+              || isupper(context.top().nextChars[0]))
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1873,55 +2415,6 @@ parseTree::Token_t *Lexer_t::FindVarUse
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Lookahead n bytes in the input stream, copying those bytes into a buffer provided.
- *
- * This does not remove the bytes from the input stream.  It just "peeks" ahead at what's waiting.
- *
- * The first byte copied into the buffer will be 'nextChar'.
- *
- * If the end of the file is reached before the buffer is full, the EOF character will be copied
- * into the buffer as the last byte.
- *
- * @return the number of bytes copied into the buffer.  Could be less than the number requested
- *         if the end of file is reached.  Will never be more than the number requested.
- **/
-//--------------------------------------------------------------------------------------------------
-size_t Lexer_t::Lookahead
-(
-    char* buffPtr,  ///< Buffer to copy bytes into.
-    size_t n        ///< Number of bytes to copy into the buffer.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    if (n > 0)
-    {
-        size_t i = 1;
-        *buffPtr = context.top().nextChar;
-
-        while ((*buffPtr != EOF) && (i < n))
-        {
-            buffPtr++;
-            *buffPtr = context.top().inputStream.get();
-            i++;
-        }
-
-        n = i;
-
-        // Push back everything we pulled out of the input stream.
-        while (i > 1)
-        {
-            i--;
-            context.top().inputStream.putback(*buffPtr);
-            buffPtr--;
-        }
-    }
-
-    return n;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Advance the current file position by one character, appending the character into a given string
  * and updating the line and column numbers.
  *
@@ -1934,9 +2427,9 @@ void Lexer_t::AdvanceOneCharacter
 )
 //--------------------------------------------------------------------------------------------------
 {
-    string += context.top().nextChar;
+    string += context.top().nextChars[0];
 
-    if (context.top().nextChar == '\n')
+    if (context.top().nextChars[0] == '\n')
     {
         context.top().line++;
         context.top().column = 0;
@@ -1946,7 +2439,8 @@ void Lexer_t::AdvanceOneCharacter
         context.top().column++;
     }
 
-    context.top().nextChar = context.top().inputStream.get();
+    context.top().nextChars.pop_front();
+    context.top().Buffer(2);
 
     if (context.top().inputStream.bad())
     {
@@ -1992,7 +2486,7 @@ void Lexer_t::UnexpectedChar
 )
 //--------------------------------------------------------------------------------------------------
 {
-    throw mk::Exception_t(UnexpectedCharErrorMsg(context.top().nextChar,
+    throw mk::Exception_t(UnexpectedCharErrorMsg(context.top().nextChars[0],
                                                  context.top().line,
                                                  context.top().column,
                                                  message));

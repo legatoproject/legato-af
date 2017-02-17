@@ -33,7 +33,10 @@ static void SetBuildVar
 {
     // Make sure they're not trying to redefine one of the reserved environment variables
     // like LEGATO_ROOT
-    const auto& name = buildVarPtr->firstTokenPtr->text;
+    const auto& nameTokenPtr = buildVarPtr->firstTokenPtr;
+    const auto& name = nameTokenPtr->text;
+    bool needReset = false;
+
     if (envVars::IsReserved(name))
     {
         buildVarPtr->firstTokenPtr->ThrowException(
@@ -51,19 +54,35 @@ static void SetBuildVar
     if (value != envVars::Get(name))
     {
         auto varUsedTokenPtr = lexer.FindVarUse(name);
+
         if (varUsedTokenPtr)
         {
-            buildVarPtr->firstTokenPtr->ThrowException(
-                mk::format(LE_I18N("Cannot set value of %s; it has already been used in a "
-                                   "processing directive.\n"
-                                   "%s: note: First used here."),
-                           name, varUsedTokenPtr->GetLocation())
-            );
+            if ((varUsedTokenPtr->line > nameTokenPtr->line) ||
+                ((varUsedTokenPtr->line == nameTokenPtr->line) &&
+                 (varUsedTokenPtr->column > nameTokenPtr->column)))
+            {
+                needReset = true;
+            }
+            else
+            {
+                buildVarPtr->firstTokenPtr->ThrowException(
+                    mk::format(LE_I18N("Cannot set value of %s; it has already been used in a "
+                                       "processing directive.\n"
+                                       "%s: note: First used here."),
+                               name, varUsedTokenPtr->GetLocation())
+                );
+            }
         }
     }
 
     // Update the process environment
     envVars::Set(name, value);
+
+    // And re-parse lookahead, if needed
+    if (needReset)
+    {
+        lexer.ResetTo(valueTokenPtr);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -365,8 +384,10 @@ static parseTree::TokenList_t* ParseBuildVar
 //--------------------------------------------------------------------------------------------------
 {
     // An buildVars entry is a simple named item containing a FILE_PATH token.
+    parseTree::Token_t* nameToken = lexer.Pull(parseTree::Token_t::NAME);
+
     parseTree::TokenList_t* buildVar = ParseSimpleNamedItem(lexer,
-                                                            lexer.Pull(parseTree::Token_t::NAME),
+                                                            nameToken,
                                                             parseTree::Content_t::ENV_VAR,
                                                             parseTree::Token_t::FILE_PATH);
 
@@ -508,4 +529,3 @@ parseTree::SdefFile_t* Parse
 } // namespace adef
 
 } // namespace parser
-

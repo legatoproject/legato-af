@@ -125,7 +125,7 @@ Some useful environment variables:
  - @c CURDIR = path of the directory containing the definition file being parsed
 
 
-@section defFileFormatDirectives Include Directives
+@section defFileFormatIncludeDirectives Include Directives
 
 Definition file sections or parts of a section may be common between several related
 systems, applications or components.  For example, all systems built for a certain module may
@@ -153,6 +153,43 @@ containing the current file will be searched, followed by the
 @note If an environment variable is used in an include filename the value of that environment
 variable can't be changed in a later @c buildVars section.
 
+@section defFileFormatIfDirectives If Directives
+
+Some definition file sections or parts of sections may be needed only on certain targets, or
+in certain configurations.  To handle conditionals like this, definition files support the @c \#if,
+@c \#elif, @c \#else, and @c \#endif directives.  These function much like their C counterparts,
+allowing you to include or exclude certain sections of a Xdef file.
+
+If directives consist of an initial @c \#if directive, zero or more @c \#elif directives, optionally
+an @c \#else directive then a final @c \#endif directive marking the end of the conditional section.
+For example:
+
+@code
+#if ${INCLUDE_FEATURE} = 1
+    // Definitions to be used if INCLUDE_FEATURE is 1
+#elif dir_exists(apps/optional_app)
+    // Definitions to be used if INCLUDE_FEATURE is not 1 but apps/optional_app exists
+#else
+    // Definitions to be used if none of the above are true
+#endif
+@endcode
+
+Conditions which can be used with @c \#if directives are:
+
+ - <code>left_hand_side = right_hand_side</code>: Check if left_hand_side is equal to
+   right_hand_side after expanding environment variables.  Example uses are setting
+   different compiler flags depending on the target, or including certain apps only if a specific
+   feature is enabled.
+ - <code>dir_exists(dirpath)</code>: Checks if the directory @c dirpath exists.  Relative paths are
+   relative to the directory containing the file being processed.  Example uses include building a
+   component from source if the source is available, or using a pre-built binary module if not.
+ - <code>file_exists(filepath)</code>: Checks if the file @c filepath exists.  Relative paths are
+   relative to the directory containing the file being processed.  Uses are similar to
+   @c dir_exists.
+
+@note This feature is most commonly used in included files.  In a top level file it is usually
+easier to write a separate definition file for each configuration, or move target-specific
+portions into a target-specific include file.
 
 @section defFileFormatWhitespace Whitespace
 
