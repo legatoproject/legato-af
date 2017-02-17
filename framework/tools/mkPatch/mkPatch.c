@@ -132,16 +132,18 @@ static struct ubi_vtbl_record Vtbl[UBI_MAX_VOLUMES];
 //--------------------------------------------------------------------------------------------------
 static PartToSpkg_t mdm9x40_PartToSpkg[] =
 {
-    { "lefwkro", "USER", "APPL", true,  },
-    { "system",  "SYST", "APPL", true,  },
-    { "boot",    "APPS", "APPL", false, },
-    { "aboot",   "APBL", "APPL", false, },
-    { "modem",   "DSP2", "MODM", true,  },
-    { "sbl",     "SBL1", "BOOT", false, },
-    { "aboot",   "APBL", "BOOT", false, },
-    { "tz",      "TZON", "BOOT", false, },
-    { "rpm",     "QRPM", "BOOT", false, },
-    { NULL,      NULL,   NULL,   false, },
+    { "lefwkro",   "USER", "APPL", true,  },
+    { "system",    "SYST", "APPL", true,  },
+    { "boot",      "APPS", "APPL", false, },
+    { "aboot",     "APBL", "APPL", false, },
+    { "modem",     "DSP2", "MODM", true,  },
+    { "sbl",       "SBL1", "BOOT", false, },
+    { "aboot",     "APBL", "BOOT", false, },
+    { "tz",        "TZON", "BOOT", false, },
+    { "rpm",       "QRPM", "BOOT", false, },
+    { "customer0", "CUS0", "APPL", false, },
+    { "customer1", "CUS1", "APPL", false, },
+    { NULL,        NULL,   NULL,   false, },
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -732,7 +734,7 @@ static void Usage
  * the missing tool and the way to solve it.
  */
 //--------------------------------------------------------------------------------------------------
-void CheckForTool( char *toolPtr, char *toolchainPtr )
+static void CheckForTool( char *toolPtr, char *toolchainPtr )
 {
     FILE *fdPtr;
     char toolPath[PATH_MAX];
