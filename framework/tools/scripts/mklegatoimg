@@ -140,35 +140,36 @@ StripExeAndLibs() {
 }
 
 GenerateUbinizeCfg() {
-    IMAGE_PATH=$1
-    UBINIZE_CFG_PATH=$2
+    local image_path=$1
+    local ubinize_cfg_path=$2
 
-    rm -f $UBINIZE_CFG_PATH
-    touch $UBINIZE_CFG_PATH
-    echo "[legato-volume]" >> $UBINIZE_CFG_PATH
-    echo "mode=ubi" >> $UBINIZE_CFG_PATH
-    echo "image=$IMAGE_PATH" >> $UBINIZE_CFG_PATH
-    echo "vol_id=0" >> $UBINIZE_CFG_PATH
-    echo "vol_type=dynamic" >> $UBINIZE_CFG_PATH
-    echo "vol_name=legato" >> $UBINIZE_CFG_PATH
-    echo "vol_flags=autoresize" >> $UBINIZE_CFG_PATH
+    rm -f $ubinize_cfg_path
+    touch $ubinize_cfg_path
+    echo "[legato-volume]" >> $ubinize_cfg_path
+    echo "mode=ubi" >> $ubinize_cfg_path
+    echo "image=$image_path" >> $ubinize_cfg_path
+    echo "vol_id=0" >> $ubinize_cfg_path
+    echo "vol_type=dynamic" >> $ubinize_cfg_path
+    echo "vol_name=legato" >> $ubinize_cfg_path
+    echo "vol_flags=autoresize" >> $ubinize_cfg_path
 }
 
 CreateImgFs() {
     local img_type=${1:-yaffs2}
     local ubi_img_type=${2:-squashfs}
+    local page_size=${3:-4096}
+    local img_suffix=$4
+    local oob_size=$5
+    local peb_size=$6
 
-    echo "$TARGET: Generating the framework image ($img_type)"
+    echo "$TARGET: Generating the framework image ($img_suffix)"
 
     if [ -z "$TOOLCHAIN_DIR" ]; then
         echo "Unable to find toolchain"
         exit 1
     fi
 
-    local legato_img="$OUTPUT_DIR/legato.$img_type"
-    if [[ "$img_type" == "ubi" ]]; then
-        legato_img="$OUTPUT_DIR/legato.$ubi_img_type.$img_type"
-    fi
+    local legato_img="$OUTPUT_DIR/legato.$img_suffix"
 
     local temp_dir="$OUTPUT_DIR/legatoimg/$img_type"
     mkdir -p $temp_dir
@@ -180,7 +181,7 @@ CreateImgFs() {
             FindTool "mkyaffs2image" MKYAFFS2
             CheckRet
 
-            $MKYAFFS2 -c $PAGE_SIZE -s $OOB_SIZE "$STAGING_DIR" "$legato_img" > yaffs2.log
+            $MKYAFFS2 -c $page_size -s $oob_size "$STAGING_DIR" "$legato_img" > yaffs2.log
             CheckRet
             ;;
 
@@ -191,8 +192,7 @@ CreateImgFs() {
                 return 1
             fi
 
-            $MKUBIFS -r "$STAGING_DIR" -o "$legato_img" -m $PAGE_SIZE -e $LAB_SIZE -c $MAX_LEB_COUNT -F > ubifs.log
-            $MKSQUASHFS "$STAGING_DIR" "$legato_img" -noappend -all-root > squashfs.log
+            $MKUBIFS -r "$STAGING_DIR" -o "$legato_img" -m $page_size -e $LAB_SIZE -c $MAX_LEB_COUNT -F > ubifs.log
             CheckRet
             ;;
 
@@ -208,7 +208,7 @@ CreateImgFs() {
             ;;
 
         ubi)
-            CreateImgFs ${ubi_img_type}
+            CreateImgFs ${ubi_img_type} "" ${page_size} ${ubi_img_type} $oob_size $peb_size
 
             FindTool "ubinize" UBINIZE
             if [ $? -ne 0 ]; then
@@ -218,7 +218,7 @@ CreateImgFs() {
 
             GenerateUbinizeCfg $LEGATO_IMG ${temp_dir}/ubinize.cfg
 
-            $UBINIZE -o $legato_img -m $PAGE_SIZE -p $PEB_SIZE -s $PAGE_SIZE ${temp_dir}/ubinize.cfg > ubinize.log
+            $UBINIZE -o $legato_img -m $page_size -p $peb_size -s $page_size ${temp_dir}/ubinize.cfg > ubinize.log
             CheckRet
             ;;
 
@@ -232,10 +232,11 @@ CreateImgFs() {
 }
 
 GenerateCwe() {
-    img_path=$1
-    cwe_suffix=${2:-yaffs2}
+    local img_path=$1
+    local img_suffix=${2:-yaffs2}
+    local pid=$3
 
-    echo "$TARGET: Generating the framework cwe"
+    echo "$TARGET: Generating the framework cwe ($img_suffix)"
 
     if ! [ -f ${img_path} ] ; then
         echo "$TARGET: $img_path does not exist"
@@ -248,7 +249,7 @@ GenerateCwe() {
     FindTool "cwezip" CWEZIP
     CheckRet
 
-    local temp_dir="$OUTPUT_DIR/legatoimg/$cwe_suffix"
+    local temp_dir="$OUTPUT_DIR/legatoimg/$img_suffix"
     mkdir -p $temp_dir
 
     cd $temp_dir
@@ -269,10 +270,10 @@ GenerateCwe() {
     CheckRet
 
     # legato.cwe
-    $HDRCNV ${tmpmbn}.cwe -OH legato.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato.log
+    $HDRCNV ${tmpmbn}.cwe -OH legato.hdr -IT APPL -PT $pid -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legato.log
     CheckRet
 
-    cat legato.hdr ${tmpmbn}.cwe > $OUTPUT_DIR/legato-${cwe_suffix}.cwe
+    cat legato.hdr ${tmpmbn}.cwe > $OUTPUT_DIR/legato-${img_suffix}.cwe
     CheckRet
 
     # legatoz.cwe
@@ -280,10 +281,10 @@ GenerateCwe() {
         $CWEZIP ${tmpmbn}.cwe -c -o ${tmpmbn}.cwe.z > cwezip.log
         CheckRet
 
-        $HDRCNV ${tmpmbn}.cwe.z -OH legatoz.hdr -IT APPL -PT $PID -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz.log
+        $HDRCNV ${tmpmbn}.cwe.z -OH legatoz.hdr -IT APPL -PT $pid -V "$VERSION" -B $COMPAT_BYTE > hdrcnv-legatoz.log
         CheckRet
 
-        cat legatoz.hdr ${tmpmbn}.cwe.z > $OUTPUT_DIR/legatoz-${cwe_suffix}.cwe
+        cat legatoz.hdr ${tmpmbn}.cwe.z > $OUTPUT_DIR/legatoz-${img_suffix}.cwe
         CheckRet
     fi
 }
@@ -292,22 +293,23 @@ CreateImg_mdm9x15() {
     local img_type=${1:-yaffs2}
     local ubi_img_type=${2:-squashfs}
 
-    PAGE_SIZE=4096
-    OOB_SIZE=160
-    PEB_SIZE=256KiB
+    local page_size=4096
+    local pid='9X15'
+    local oob_size=160
+    local peb_size=256KiB
     COMPAT_BYTE=00000001
-    PLATFORM=9X15
+    PLATFORM='9X15'
     SUPPORT_COMPRESSION=true
 
     case $TARGET in
         ar7|ar86)
-            PID='A911'
+            pid='A911'
             ;;
         wp85|wp750x)
-            PID='Y912'
-            PAGE_SIZE=2048
-            OOB_SIZE=64
-            PEB_SIZE=128KiB
+            pid='Y912'
+            page_size=2048
+            oob_size=64
+            peb_size=128KiB
             ;;
         *)
             echo "Unknown product '$TARGET'"
@@ -315,29 +317,35 @@ CreateImg_mdm9x15() {
             ;;
     esac
 
-    local cwe_suffix=$img_type
+    local img_suffix=$img_type
     if [[ "$img_type" == "ubi" ]]; then
-        cwe_suffix="${ubi_img_type}.${img_type}"
+        img_suffix="${ubi_img_type}.${img_type}"
     fi
 
-    CreateImgFs $img_type $ubi_img_type
-    GenerateCwe $LEGATO_IMG $cwe_suffix
+    CreateImgFs $img_type $ubi_img_type $page_size $img_suffix $oob_size $peb_size
+    GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
 CreateImg_mdm9x28() {
     local img_type=${1:-ubi}
     local ubi_img_type=${2:-squashfs}
 
-    PAGE_SIZE=4096
-    OOB_SIZE=224
-    PEB_SIZE=256KiB
+    local page_size[0]=4096
+    local pid[0]='9X28'
+    local oob_size[0]=224
+    local peb_size[0]=256KiB
     COMPAT_BYTE=00000001
+    PLATFORM='9X28'
+    SUPPORT_COMPRESSION=false
     case $TARGET in
         ar758x)
-            PID='9X28'
             ;;
         wp76xx)
-            PID='Y921'
+            page_size[1]=2048
+            pid[0]='Y921'
+            pid[1]='Y922'
+            oob_size[1]=80
+            peb_size[1]=128KiB
             ;;
         *)
             echo "Unknown product '$TARGET'"
@@ -345,50 +353,59 @@ CreateImg_mdm9x28() {
             ;;
     esac
 
-    PLATFORM=$PID
-    SUPPORT_COMPRESSION=false
+    local img_suffix=$img_type
+    for i in ${!page_size[@]};
+    do
+        if [[ "$img_type" == "ubi" ]]; then
+            if [ ${#page_size[@]} -gt 1 ]; then
+                img_suffix="${ubi_img_type}.$(( ${page_size[$i]} / 1024 ))k.${img_type}"
+            else
+                img_suffix="${ubi_img_type}.${img_type}"
+            fi
+        fi
 
-    local cwe_suffix=$img_type
-    if [[ "$img_type" == "ubi" ]]; then
-        cwe_suffix="${ubi_img_type}.${img_type}"
-    fi
+        CreateImgFs $img_type $ubi_img_type ${page_size[$i]} $img_suffix ${oob_size[$i]} ${peb_size[$i]}
+        GenerateCwe $LEGATO_IMG $img_suffix ${pid[$i]}
 
-    CreateImgFs $img_type $ubi_img_type
-    GenerateCwe $LEGATO_IMG $cwe_suffix
+        # Last image is the default
+        export IMG_SUFFIX=$img_suffix
+    done
 }
 
 CreateImg_mdm9x40() {
     local img_type=${1:-ubi}
     local ubi_img_type=${2:-squashfs}
 
-    PAGE_SIZE=4096
-    OOB_SIZE=224
-    PEB_SIZE=256KiB
+    local page_size=4096
+    local pid='9X40'
+    local oob_size=224
+    local peb_size=256KiB
     COMPAT_BYTE=00000001
-    PID='9X40'
-    PLATFORM=$PID
+    PLATFORM='9X40'
     SUPPORT_COMPRESSION=false
 
-    local cwe_suffix=$img_type
+    local img_suffix=$img_type
     if [[ "$img_type" == "ubi" ]]; then
-        cwe_suffix="${ubi_img_type}.${img_type}"
+        img_suffix="${ubi_img_type}.${img_type}"
     fi
 
-    CreateImgFs $img_type $ubi_img_type
-    GenerateCwe $LEGATO_IMG $cwe_suffix
+    CreateImgFs $img_type $ubi_img_type $page_size $img_suffix $oob_size $peb_size
+    GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
 DefaultImg() {
-    local cwe_suffix=${1:-yaffs2}
+    local img_suffix=${1:-yaffs2}
 
-    ln -sf legato.${cwe_suffix} $OUTPUT_DIR/legato.default
+    cd $OUTPUT_DIR
 
-    if [ -e "$OUTPUT_DIR/legato-${cwe_suffix}.cwe" ]; then
-        ln -sf legato-${cwe_suffix}.cwe $OUTPUT_DIR/legato.cwe
+    ln -sf legato.${img_suffix} legato.default
+
+    if [ -e "legato-${img_suffix}.cwe" ]; then
+        ln -sf legato-${img_suffix}.cwe legato.cwe
     fi
 
-    if [ -e "$OUTPUT_DIR/legatoz-${cwe_suffix}.cwe" ]; then
-        ln -sf legatoz-${cwe_suffix}.cwe $OUTPUT_DIR/legatoz.cwe
+    if [ -e "$OUTPUT_DIR/legatoz-${img_suffix}.cwe" ]; then
+        ln -sf legatoz-${img_suffix}.cwe legatoz.cwe
     fi
 }
 
@@ -406,10 +423,9 @@ case $TARGET in
         ;;
     ar758x | wp76xx)
         CreateImg_mdm9x28 ubi squashfs
-        DefaultImg "squashfs.ubi"
+        DefaultImg $IMG_SUFFIX
         ;;
     ar759x)
-        CreateImg_mdm9x40 yaffs2
         CreateImg_mdm9x40 ubi squashfs
         DefaultImg "squashfs.ubi"
         ;;
