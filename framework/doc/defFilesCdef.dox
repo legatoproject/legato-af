@@ -99,6 +99,8 @@ square brackets:
 
 If permissions values are not specified, then read-only ([r]) is the default.
 
+@note For security reasons, files and directories cannot be both writable and executable.
+
 Directories always have executable permission set so they can be traversed. Setting the
 <c>[x]</c> permission in the @c dir: subsection causes the files under the directory to be made
 executable.

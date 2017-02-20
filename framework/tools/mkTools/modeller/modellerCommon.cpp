@@ -285,6 +285,14 @@ static model::FileSystemObject_t* GetPermissionItem
         destPathPtr = &(itemPtr->Contents()[2]->text);
 
         GetPermissions(fileSystemObjectPtr->permissions, firstTokenPtr);
+
+        // Enforce W^X on all file system objects.
+        if (fileSystemObjectPtr->permissions.IsWriteable() &&
+            fileSystemObjectPtr->permissions.IsExecutable())
+        {
+            firstTokenPtr->ThrowException(LE_I18N("For security, files cannot be both writable and "
+                                                  "executable."));
+        }
     }
     // If no permissions, default to read-only.
     else

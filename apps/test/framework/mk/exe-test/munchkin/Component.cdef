@@ -2,7 +2,7 @@ bundles:
 {
     file:
     {
-        [rxw] foo/bar /usr/local/share/
+        [rx] foo/bar /usr/local/share/
         baz /usr/local/toto
     }
 }
