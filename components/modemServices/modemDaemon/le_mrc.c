@@ -3918,8 +3918,9 @@ uint32_t le_mrc_GetServingCellLocAreaCode
  * Get the Bit mask for 2G/3G Band capabilities.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetBandCapabilities
@@ -3933,15 +3934,7 @@ le_result_t le_mrc_GetBandCapabilities
         return LE_FAULT;
     }
 
-    if ( pa_mrc_GetBandCapabilities(bandMaskPtr) != LE_OK )
-    {
-        LE_ERROR("Unable to get 2G/3G band capabilities.");
-        return LE_FAULT;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return pa_mrc_GetBandCapabilities(bandMaskPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3949,8 +3942,9 @@ le_result_t le_mrc_GetBandCapabilities
  * Get the Bit mask for LTE Band capabilities.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetLteBandCapabilities
@@ -3964,15 +3958,7 @@ le_result_t le_mrc_GetLteBandCapabilities
         return LE_FAULT;
     }
 
-    if ( pa_mrc_GetLteBandCapabilities(bandMaskPtr) != LE_OK )
-    {
-        LE_ERROR("Unable to get LTE band capabilities.");
-        return LE_FAULT;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return pa_mrc_GetLteBandCapabilities(bandMaskPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3980,8 +3966,9 @@ le_result_t le_mrc_GetLteBandCapabilities
  * Get the Bit mask for TD-SCDMA Band capabilities.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetTdScdmaBandCapabilities
@@ -3995,13 +3982,5 @@ le_result_t le_mrc_GetTdScdmaBandCapabilities
         return LE_FAULT;
     }
 
-    if ( pa_mrc_GetTdScdmaBandCapabilities(bandMaskPtr) != LE_OK )
-    {
-        LE_ERROR("Unable to get TD-SCDMA band capabilities.");
-        return LE_FAULT;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return pa_mrc_GetTdScdmaBandCapabilities(bandMaskPtr);
 }

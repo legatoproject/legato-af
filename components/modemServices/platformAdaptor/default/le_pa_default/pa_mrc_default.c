@@ -820,8 +820,9 @@ le_result_t pa_mrc_GetServingCellLocAreaCode
  * Get the Band capabilities
  *
  * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetBandCapabilities
@@ -830,7 +831,7 @@ le_result_t pa_mrc_GetBandCapabilities
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -838,8 +839,9 @@ le_result_t pa_mrc_GetBandCapabilities
  * Get the LTE Band capabilities
  *
  * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetLteBandCapabilities
@@ -848,7 +850,7 @@ le_result_t pa_mrc_GetLteBandCapabilities
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -856,8 +858,9 @@ le_result_t pa_mrc_GetLteBandCapabilities
  * Get the TD-SCDMA Band capabilities
  *
  * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetTdScdmaBandCapabilities
@@ -866,7 +869,7 @@ le_result_t pa_mrc_GetTdScdmaBandCapabilities
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------

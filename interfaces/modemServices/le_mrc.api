@@ -1925,8 +1925,9 @@ FUNCTION uint16 GetServingCellLteTracAreaCode
  * Get the Bit mask for 2G/3G Band capabilities.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  *
  * @note <b>multi-app safe</b>
  */
@@ -1941,8 +1942,9 @@ FUNCTION le_result_t GetBandCapabilities
  * Get the Bit mask for LTE Band capabilities.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  *
  * @note <b>multi-app safe</b>
  */
@@ -1957,8 +1959,9 @@ FUNCTION le_result_t GetLteBandCapabilities
  * Get the Bit mask for TD-SCDMA Band capabilities.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK              on success
+ *  - LE_FAULT           on failure
+ *  - LE_UNSUPPORTED     The platform does not support this operation.
  *
  * @note <b>multi-app safe</b>
  */

@@ -1582,33 +1582,55 @@ static void Testle_mrc_GetBandCapabilities()
     le_mrc_BandBitMask_t            bands = 0;
     le_mrc_LteBandBitMask_t         lteBands = 0;
     le_mrc_TdScdmaBandBitMask_t     tdScdmaBands = 0;
+    le_result_t res;
 
+    res = le_mrc_GetBandCapabilities(&bands);
+    LE_ASSERT(res != LE_FAULT);
     // Not supported on all platform
-    if (le_mrc_GetBandCapabilities(&bands) == LE_OK)
+    switch(res)
     {
-        LE_INFO("Get 2G/3G Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)bands);
-    }
-    else
-    {
-        LE_WARN("le_mrc_GetBandCapabilities failed");
-    }
-
-    if (le_mrc_GetLteBandCapabilities(&lteBands) == LE_OK)
-    {
-        LE_INFO("Get LTE Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)lteBands);
-    }
-    else
-    {
-        LE_WARN("le_mrc_GetLteBandCapabilities failed");
+        case LE_OK:
+            LE_INFO("Get 2G/3G Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)bands);
+            break;
+        case LE_UNSUPPORTED:
+            LE_WARN("Get 2G/3G Band Capabilities Not Supported");
+            break;
+        default:
+            LE_FATAL("le_mrc_GetBandCapabilities Failed");
+            break;
     }
 
-    if (le_mrc_GetTdScdmaBandCapabilities(&tdScdmaBands) == LE_OK)
+    res = le_mrc_GetLteBandCapabilities(&lteBands);
+    LE_ASSERT(res != LE_FAULT);
+    // Not supported on all platform
+    switch(res)
     {
-        LE_INFO("Get TD-SCDMA Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)tdScdmaBands);
+        case LE_OK:
+            LE_INFO("Get LTE Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)lteBands);
+            break;
+        case LE_UNSUPPORTED:
+            LE_WARN("Get LTE Band Capabilities Not Supported");
+            break;
+        default:
+            LE_FATAL("le_mrc_GetLteBandCapabilities Failed");
+            break;
     }
-    else
+
+    res = le_mrc_GetTdScdmaBandCapabilities(&tdScdmaBands);
+    LE_ASSERT(res != LE_FAULT);
+    // Not supported on all platform
+    switch(res)
     {
-        LE_WARN("le_mrc_GetTdScdmaBandCapabilities failed");
+        case LE_OK:
+            LE_INFO("Get TD-SCDMA Band Capabilities bit mask: 0x%016"PRIX64,
+                (uint64_t)tdScdmaBands);
+            break;
+        case LE_UNSUPPORTED:
+            LE_WARN("Get TD-SCDMA Band Capabilities Not Supported");
+            break;
+        default:
+            LE_FATAL("le_mrc_GetTdScdmaBandCapabilities Failed");
+            break;
     }
 }
 //! [Band Capabilities]
