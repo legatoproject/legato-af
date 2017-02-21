@@ -396,6 +396,10 @@ static void UpdateProgressHandler
             PrintProgressBar(percentDone, "Unpacking package");
             break;
 
+        case LE_UPDATE_STATE_DOWNLOAD_SUCCESS:
+            le_update_Install();
+            break;
+
         case LE_UPDATE_STATE_APPLYING:
             // Print progress bar if there is any noticeable progress.
             PrintProgressBar(percentDone, "Applying update");

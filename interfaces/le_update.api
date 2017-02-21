@@ -72,13 +72,12 @@
  * {
  *     switch(updateState)
  *     {
- *         case LE_UPDATE_STATE_NEW:
- *             // New update. Print this information.
- *             fprintf(stdout, "New update started\n");
- *             break;
- *
  *         case LE_UPDATE_STATE_UNPACKING:
  *             fprintf(stdout, "Unpacking: %d%% \n", percentDone);
+ *             break;
+ *
+ *         case LE_UPDATE_STATE_DOWNLOAD_SUCCESS:
+ *             le_update_Install();
  *             break;
  *
  *         case LE_UPDATE_STATE_APPLYING:
@@ -150,15 +149,16 @@ USETYPES le_limit.api;
  *     for successful installation task, state transitions look like:
  *
  *@verbatim
-    --> UNPACKING --> APPLYING --> SUCCESS.
-            |            |
-            +------------+-------> FAILED.
+    --> UNPACKING --> DOWNLOAD_SUCCESS --> APPLYING --> SUCCESS.
+            |                                 |
+            +---------------------------------+-------> FAILED.
 @endverbatim
  */
 //--------------------------------------------------------------------------------------------------
 ENUM State
 {
     STATE_UNPACKING,            ///< Unpacking update data.
+    STATE_DOWNLOAD_SUCCESS,     ///< Update data downloaded successfully.
     STATE_APPLYING,             ///< Applying update(i.e. installation/removal operation going on).
     STATE_SUCCESS,              ///< Successfully completed all update task.
     STATE_FAILED                ///< Update failed due to some error or deletion request.
@@ -224,6 +224,19 @@ FUNCTION le_result_t Start
 (
     file fd                 IN  ///< Open file descriptor from which the update can be read.
 );
+
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Install the update
+ *
+ * @return
+ *      - LE_OK if installation started.
+ *      - LE_BUSY if package download is not finished yet.
+ *      - LE_FAULT if there is an error. Check logs
+ */
+//-------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Install();
 
 
 //--------------------------------------------------------------------------------------------------

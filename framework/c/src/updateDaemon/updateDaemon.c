@@ -165,6 +165,14 @@ static le_dls_List_t ClientProgressHandlerList = LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for triggering installation.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t InstallEventId;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Error code.
  */
 //--------------------------------------------------------------------------------------------------
@@ -676,6 +684,7 @@ static void ApplyAppUpdate
         LE_CRIT("Failed to install app '%s<%s>'.", appName, md5);
         UpdateFailed(LE_UPDATE_ERR_INTERNAL_ERROR);
     }
+
 }
 
 
@@ -721,13 +730,12 @@ static void ApplyAppRemove
 //--------------------------------------------------------------------------------------------------
 static void ApplyUpdate
 (
-    void
+    void *unused
 )
 //--------------------------------------------------------------------------------------------------
 {
     State = STATE_APPLYING;
     CallStatusHandlers(LE_UPDATE_STATE_APPLYING, 0);
-
     switch (updateUnpack_GetType())
     {
         case TYPE_SYSTEM_UPDATE:
@@ -750,6 +758,8 @@ static void ApplyUpdate
         default:
             LE_FATAL("Unexpected update type %d.", updateUnpack_GetType());
     }
+
+
 }
 
 
@@ -765,13 +775,9 @@ static void UnpackDone
 //--------------------------------------------------------------------------------------------------
 {
     CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, 100);
-    // If the security unpack is already finished, go straight to the APPLYING state.
-    // Otherwise, wait for the security-unpack program to finish.
-    if (SecurityUnpackPipeline == NULL)
-    {
-        ApplyUpdate();
-    }
-    else
+    // If the security unpack isn't finished, change the state to
+    // SECURITY_CHECKING, Otherwise wait for calling le_update_Install() api.
+    if (SecurityUnpackPipeline != NULL)
     {
         State = STATE_SECURITY_CHECKING;
     }
@@ -1538,13 +1544,7 @@ static void PipelineDone
         if (WEXITSTATUS(status) == EXIT_SUCCESS)
         {
             LE_DEBUG("security-unpack completed successfully.");
-
-            // Only allowed state here is STATE_UNPACKING or STATE_SECURITY_CHECKING. If state is
-            // STATE_UNPACKING, then we return and wait for unpacking to finish (see UnpackDone()).
-            if (State == STATE_SECURITY_CHECKING)
-            {
-                ApplyUpdate();
-            }
+            CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
             return;
         }
         else if (WEXITSTATUS(status) == EXIT_FAILURE)
@@ -1761,6 +1761,56 @@ le_update_ErrorCode_t le_update_GetErrorCode()
 }
 
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Install the update
+ *
+ * @return
+ *      - LE_OK if installation started.
+ *      - LE_BUSY if package download is not finished yet.
+ *      - LE_FAULT if there is an error. Check logs
+ */
+//-------------------------------------------------------------------------------------------------
+le_result_t le_update_Install()
+{
+    if (!IsSessionValid())
+    {
+        return LE_FAULT;
+    }
+
+    le_result_t result = LE_OK;
+
+    switch (State)
+    {
+        case STATE_UNPACKING:
+        case STATE_SECURITY_CHECKING:
+            if (SecurityUnpackPipeline == NULL)
+            {
+                le_event_Report(InstallEventId, NULL, 0);
+                return LE_OK;
+            }
+            else
+            {
+                LE_ERROR("Still downloading and verifying package");
+                result = LE_BUSY;
+            }
+            break;
+
+        case STATE_APPLYING:
+            LE_ERROR("Already installing package");
+            result = LE_FAULT;
+            break;
+
+        case STATE_IDLE:
+            LE_ERROR("No pending installation. No package downloaded or it already installed");
+            result = LE_FAULT;
+            break;
+    }
+
+    return result;
+
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Ends an update session.  If the update is not finished yet, cancels it.
@@ -1936,6 +1986,9 @@ COMPONENT_INIT
 
     // Initialize the client progress handler reference counter to some random value.
     NextClientProgressHandlerRef = random();
+
+    InstallEventId = le_event_CreateId("InstallEvent", 0);
+    le_event_AddHandler("Installer", InstallEventId, ApplyUpdate);
 
     // Register SIGCHLD signal handler
     le_sig_SetEventHandler(SIGCHLD, SigChildHandler);
