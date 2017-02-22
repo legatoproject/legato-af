@@ -52,7 +52,7 @@ class Lexer_t
             parseTree::DefFileFragment_t* filePtr;  ///< Pointer to the File object for the file being parsed.
 
             std::ifstream inputStream;      ///< File input stream from which tokens will be matched.
-            char nextChar;                  ///< Next character to match.
+            int nextChar;                   ///< Next character to match.
             size_t line;                    ///< File line number.
             size_t column;                  ///< Char index on line (treat tab & return same as space).
             LexerContext_t(parseTree::DefFileFragment_t *filePtr);

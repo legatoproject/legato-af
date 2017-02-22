@@ -312,7 +312,7 @@ parseTree::Token_t* Lexer_t::PullRaw
             if (context.top().nextChar != EOF)
             {
                 ThrowException("Expected end-of-file, but found '"
-                               + std::string(&context.top().nextChar) + "'.");
+                               + std::string(1, context.top().nextChar) + "'.");
             }
             break;
 
@@ -1277,7 +1277,7 @@ void Lexer_t::PullFileName
         {
             if (isprint(context.top().nextChar))
             {
-                ThrowException("Invalid character '" + std::string(&context.top().nextChar) + "' in name.");
+                ThrowException("Invalid character '" + std::string(1, context.top().nextChar) + "' in name.");
             }
             else
             {
@@ -1538,7 +1538,7 @@ void Lexer_t::PullEnvVar
         }
         else
         {
-            ThrowException("'}' expected.  '" + std::string(&context.top().nextChar) + "' found.");
+            ThrowException("'}' expected.  '" + std::string(1, context.top().nextChar) + "' found.");
         }
     }
 }
