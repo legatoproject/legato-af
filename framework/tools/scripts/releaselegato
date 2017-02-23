@@ -153,23 +153,32 @@ StagePaComponent() {
     StageComponent $comp_name $comp_src "${@:3}"
 }
 
-StagePaComponent swiQmi          modemService        ar7 wp85 wp750x ar758x ar759x wp76xx
-StagePaComponent le_pa_audio     audioService        ar7 wp85 wp750x ar758x ar759x wp76xx
-StagePaComponent le_pa           modemService        ar7 wp85 wp750x ar758x ar759x wp76xx
-StagePaComponent le_pa_ecall     modemService        ar7 wp85 wp750x ar758x ar759x wp76xx
-StagePaComponent le_pa_gnss      positioningService  ar7 wp85 wp750x ar758x ar759x wp76xx
-StagePaComponent le_pa_avc       avcService          ar7 wp85 wp750x
-StagePaComponent le_pa_secStore  secStore            ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa_fwupdate  fwupdateService     ar7 wp85 wp750x ar758x ar759x
-StagePaComponent le_pa_uartMode  tools               ar7 wp85 wp750x ar758x ar759x wp76xx
+StagePaComponent swiQmi          modemService        ar7 wp85 ar758x ar759x wp76xx
+StagePaComponent le_pa_audio     audioService        ar7 wp85 ar758x ar759x wp76xx
+StagePaComponent le_pa           modemService        ar7 wp85 ar758x ar759x wp76xx
+StagePaComponent le_pa_ecall     modemService        ar7 wp85 ar758x ar759x wp76xx
+StagePaComponent le_pa_gnss      positioningService  ar7 wp85 ar758x ar759x wp76xx
+StagePaComponent le_pa_avc       avcService          ar7 wp85
+StagePaComponent le_pa_secStore  secStore            ar7 wp85 ar758x ar759x
+StagePaComponent le_pa_fwupdate  fwupdateService     ar7 wp85 ar758x ar759x
+StagePaComponent le_pa_uartMode  tools               ar7 wp85 ar758x ar759x wp76xx
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR
 
 # Target aliases
-if [[ $TARGETS = *ar86* ]]; then
-    ln -s ar7 $STAGE_DIR/platformAdaptor/qmi/bin/ar86
-fi
+for alias in $(echo $TARGETS | tr ',' ' '); do
+    unset target
+    case $alias in
+        ar86)           target=ar7 ;;
+        wp750x)         target=wp85 ;;
+    esac
+
+    if [ -n "$target" ]; then
+        echo "Aliasing $alias to $target"
+        ln -s $target $STAGE_DIR/platformAdaptor/qmi/bin/$alias
+    fi
+done
 
 # Remove existing git folders
 for gitdir in $(find $STAGE_DIR -name ".git"); do
