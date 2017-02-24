@@ -33,7 +33,7 @@ TOOLS_ARCH ?= $(HOST_ARCH)
 
 # NOTE: Ninja is used to build the mk tools.
 .PHONY: tools
-tools: ninja $(NINJA_SCRIPT) symlinks
+tools: ninja $(NINJA_SCRIPT) symlinks mkPatch
 	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
 
 # Generate the ninja build script.
@@ -74,3 +74,7 @@ symlinks: bin
 # Rule for creating directories.
 $(BUILD_DIR) bin:
 	mkdir -p $@
+
+.PHONY: mkPatch
+mkPatch:
+	$(MAKE) -C framework/tools/mkPatch mkPatch

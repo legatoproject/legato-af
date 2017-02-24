@@ -14,6 +14,7 @@ processes:
     }
 
     faultAction: restart
+    maxFileBytes: 2000K
 }
 
 extern:

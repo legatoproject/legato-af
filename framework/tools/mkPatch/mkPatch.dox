@@ -1,0 +1,108 @@
+/**
+
+@page Delta_Patch delta patch overview.
+
+A delta patch consists of differences between two images: the original and the destination.
+
+Applying this delta patch to the original will produce the destination.
+
+A delta patch uses bsdiff and bspatch tools: http://www.daemonology.net/bsdiff/
+
+@section mkPatch_Presentation mkPatch Presensation
+
+The tool @ref mkPatch_tool is used to create a delta patch between two images. It needs an
+original image and a destination image to construct the delta patch between them.
+The images may be RAW binary or UBI volumes.
+
+The destination image is splitted into small segments, and from each segment a patch slice
+is build preceeded by a delta patch header (@ref DeltaPatchHeader_t), describing the patch number,
+the offset of this patch and its length.
+
+All patch slices are concatenated and the "whole patch" is preceeded by a delta patch meta header (@ref DeltaPatchMetaHeader_t)
+containing the partition to patch, the UBI volume ID (if it concerns an UBI volume), the size
+of the segment, the the original image size and CRC32, the destination image size and CRC32,
+and a patch magic.
+
+Finally the whole patch is encapsulated by a CWE header.
+
+@note @ref mkPatch_tool requires bsdiff and libbz2 to be installed.
+
+@subsection mkPatch_tool mkPatch
+
+This tool has the following syntax:
+
+@verbatim usage: mkPatch -T TARGET [-o patchname] [-S 4K|2K] [-E 256K|128K] [-N] [-v]
+        {-p PART {[-U VOLID] file-orig file-dest}}
+
+   -T, --target <TARGET>
+        Specify the TARGET (mandatory - specified only one time).
+   -o, <patchname>
+        Specify the output name of the patch. Else use patch-<TARGET>.cwe as default.
+   -S, --pagesize <4K|2K>
+        Specify another page size (optional - specified only one time).
+   -E, --pebsize <256K|128K>
+        Specify another PEB size (optional - specified only one time).
+   -N, --no-spkg-header
+        Do not generate the CWE SPKG header.
+   -v, --verbose
+        Be verbose.
+   -p, --partition <PART>
+        Specify the partition where apply the patch.
+   -U, --ubi <VOLID>
+        Specify the UBI volume ID where apply the patch.
+@endverbatim
+
+The --target TARGET is one of ar759x or ar758x respectivelly. Others targets are not supported.
+
+The output CWE file is specified with -o. If not filled, the default name is patch-TARGET.cwe where TARGET
+is the TARGET selected by --target.
+
+The --pagesize specify the flash device page size expected on target. It only supports
+2K for 2048 page size and 4K for 4096 page size.
+If the --pagesize is not filled, a default value is taken according to ID specified.
+
+The --pebsize specify the flash device physical erase block expected on target. It only supports
+128K for 131072 PEB size and 256K for 262144 PEB size.
+If the --pebsize is not filled, a default value is taken according to ID specified.
+
+The -N option requests the tool to not add a CWE SPKG header. This is usefull to include a delta patch CWE inside another CWE.
+
+The -v requests the tool to be verbose and displays more informations.
+
+The --partition PART specify which partition is concerned by this delta patch. It may one of the following:
+  - modem : The modem UBI image
+  - aboot : The LK bootloader image
+  - boot : The Linux kernel image
+  - system : The Linux rootfs image
+  - lefwkro : The legato image
+  - tz or rpm are currently not supported.
+
+The --ubi N gives the availability to build a patch by specifying an UBI volume id for a static squashfs image.
+The squashfs image belongs to the UBI volume id N. N is a number from 0 up to 127.
+If the original and destination images are both UBI, this option does not need to be set.
+
+Finally the both original and destination need to be specified.
+
+The --partition PART ORIG DEST may be specified several times, if the delta patch concerns several
+partitions.
+
+@subsection mkPatch_Examples Examples
+
+To build a delta patch between two legato squashfs images belonging to the UBI volume 0, do:
+
+@verbatim mkPatch --target ar758x -o legato-patch.cwe --partition lefwkro --ubi 0 orig/legato.squashfs dest/legato.squashfs@endverbatim
+
+To build a delta patch between two Linux kernels and two rootfs in the same CWE update package, do:
+@verbatim mkPatch --target ar759x -o yocto-patch.cwe \
+          --partition boot orig/boot-yocto-mdm9x40.img dest/boot-yocto-mdm9x40.img \
+          --partition system orig/mdm9x40-image-minimal-swi-mdm9x40.ubi dest/mdm9x40-image-minimal-swi-mdm9x40.ubi@endverbatim
+
+@section ApplyDeltaPatch Apply a delta patch
+
+The delta patch CWE update package is applied with the tool @ref toolsTarget_fwUpdate download or with @ref le_fwupdate_Download API.
+
+<hr>
+
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+
+**/
