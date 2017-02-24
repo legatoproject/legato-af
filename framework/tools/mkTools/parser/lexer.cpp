@@ -602,7 +602,7 @@ void Lexer_t::ProcessIncludeDirective
     // Construct a new file fragment for the included file and move parsing to that fragment
     auto fileFragmentPtr = new parseTree::DefFileFragment_t(includePath);
 
-    context.top().filePtr->includedFiles.emplace(includePathPtr, fileFragmentPtr);
+    context.top().filePtr->includedFiles.insert(std::make_pair(includePathPtr, fileFragmentPtr));
     context.emplace(fileFragmentPtr);
 }
 
