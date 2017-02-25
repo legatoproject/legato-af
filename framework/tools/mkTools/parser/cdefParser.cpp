@@ -89,8 +89,10 @@ static parseTree::CompoundItemList_t* ParseProvidesSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + subsectionName
-                             + "' in 'provides' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'provides' section."),
+                       subsectionName)
+        );
         return NULL;
     }
 }
@@ -185,8 +187,10 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + subsectionName
-                             + "' in 'requires' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'requires' section."),
+                       subsectionName)
+        );
         return NULL;
     }
 }
@@ -209,7 +213,9 @@ static void ValidateAssetDataTypeName
         && (typeName != "float")
         && (typeName != "string"))
     {
-        lexer.ThrowException("Unknown type name, '" + typeName + ",' on asset field.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unknown type name, '%s' on asset field."), typeName)
+        );
     }
 }
 
@@ -249,7 +255,9 @@ static parseTree::Token_t* MatchDefaultValue
     }
     else
     {
-        lexer.ThrowException("Unknown type name, '" + typeName + ",' on asset field.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unknown type name, '%s' on asset field."), typeName)
+        );
     }
 
     return defaultValueTokenPtr;
@@ -345,8 +353,10 @@ static parseTree::CompoundItem_t* ParseAssetFieldTypeSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + subsectionName
-                             + "' in 'assets' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'assets' section."),
+                       subsectionName)
+        );
         return NULL;
     }
 }
@@ -423,7 +433,9 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else
     {
-        lexer.ThrowException("Unrecognized section name '" + sectionName + "'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unrecognized section name '%s'."), sectionName)
+        );
         return NULL;
     }
 }

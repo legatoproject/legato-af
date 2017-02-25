@@ -37,8 +37,9 @@ void GenerateJavaComponentMainFile
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating component-specific IPC code for component '" <<
-                     compName << "' in '" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating component-specific IPC code for component "
+                                  "'%s' in '%s'."), compName, filePath)
+                  << std::endl;
     }
 
     // Open the .java file for writing.
@@ -46,7 +47,9 @@ void GenerateJavaComponentMainFile
     std::ofstream outputFile(filePath, std::ofstream::trunc);
     if (!outputFile.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for writing."), filePath)
+        );
     }
 
     std::string apiImports;

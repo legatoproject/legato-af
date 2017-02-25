@@ -33,7 +33,8 @@ void OpenFile
 {
     if (beVerbose)
     {
-        std::cout << "Generating ninja build script: '" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating ninja build script: '%s'."), filePath)
+                  << std::endl;
     }
 
     file::MakeDir(path::GetContainingDir(filePath));
@@ -41,7 +42,9 @@ void OpenFile
     script.open(filePath, std::ofstream::trunc);
     if (!script.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for writing."), filePath)
+        );
     }
 }
 
@@ -60,7 +63,7 @@ void CloseFile
     script.close();
     if (script.fail())
     {
-        throw mk::Exception_t("Failed to close file.");
+        throw mk::Exception_t(LE_I18N("Failed to close file."));
     }
 }
 

@@ -72,8 +72,9 @@ static void GenerateAppLimitsConfig
         // This is not supported for unsandboxed apps.
         if (appPtr->isSandboxed == false)
         {
-            std::cerr << "**** Warning: File system size limit being ignored for unsandboxed"
-                      << " application '" << appPtr->name << "'." << std::endl;
+            std::cerr << mk::format(LE_I18N("** WARNING: File system size limit being ignored for"
+                                            " unsandboxed application '%s'."), appPtr->name)
+                      << std::endl;
         }
         else
         {
@@ -775,10 +776,10 @@ static std::string AssetActionTypeToStr
             return "x";
 
         case model::AssetField_t::ActionType_t::TYPE_UNSET:
-            throw mk::Exception_t("Internal error, asset actionType has been left unset.");
+            throw mk::Exception_t(LE_I18N("Internal error: Asset actionType has been left unset."));
     }
 
-    throw mk::Exception_t("Internal error, unexpected value for asset actionType.");
+    throw mk::Exception_t(LE_I18N("Internal error: Unexpected value for asset actionType."));
 }
 
 
@@ -826,8 +827,10 @@ static std::string FilterDefaultValue
     }
     else
     {
-        throw mk::Exception_t("Internal error, could not filter default value for unexpected data "
-                              "type, '" + dataType + ".'");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Internal error: Could not filter default value for unexpected "
+                               "data type '%s'."), dataType)
+        );
     }
 
     return newDefaultValue;
@@ -943,15 +946,18 @@ void Generate
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating system configuration data for app '" << appPtr->name << "'"
-                     " in file '" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating system configuration data for"
+                                        " app '%s' in file '%s'."), appPtr->name, filePath)
+                  << std::endl;
     }
 
     std::ofstream cfgStream(filePath, std::ofstream::trunc);
 
     if (cfgStream.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), filePath)
+        );
     }
 
     cfgStream << "{" << std::endl;
@@ -995,15 +1001,18 @@ static void GenerateModulesConfig
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating module configuration data in file "
-                     "'" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating module configuration data in file "
+                                        "'%s'."), filePath)
+                  << std::endl;
     }
 
     std::ofstream cfgStream(filePath, std::ofstream::trunc);
 
     if (cfgStream.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), filePath)
+        );
     }
 
     cfgStream << "{\n";
@@ -1052,15 +1061,18 @@ static void GenerateUsersConfig
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating non-app users' binding configuration data in file "
-                     "'" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating non-app users' binding configuration data "
+                                        "in file '%s'."), filePath)
+                  << std::endl;
     }
 
     std::ofstream cfgStream(filePath, std::ofstream::trunc);
 
     if (cfgStream.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), filePath)
+        );
     }
 
     cfgStream << "{\n";
@@ -1110,7 +1122,9 @@ static void AddAppConfig
 
     if (appCfgStream.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + filePath + ",' for reading.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for reading."), filePath)
+        );
     }
 
     char buffer[1024];
@@ -1140,15 +1154,18 @@ static void GenerateAppsConfig
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating app configuration data in file "
-                     "'" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating app configuration data in file '%s'."),
+                                filePath)
+                  << std::endl;
     }
 
     std::ofstream cfgStream(filePath, std::ofstream::trunc);
 
     if (cfgStream.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), filePath)
+        );
     }
 
     cfgStream << "{\n";

@@ -32,8 +32,9 @@ void GenerateCLangInterfacesHeader
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating interfaces.h for component '" << componentPtr->name << "'"
-                     "in '" << filePath << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating interfaces.h for component '%s' in '%s'."),
+                                componentPtr->name, filePath)
+                  << std::endl;
     }
 
     // Make sure the working file output directory exists.
@@ -43,7 +44,9 @@ void GenerateCLangInterfacesHeader
     std::ofstream fileStream(filePath, std::ofstream::trunc);
     if (!fileStream.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for writing."), filePath)
+        );
     }
 
     std::string includeGuardName = "__" + componentPtr->name

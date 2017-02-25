@@ -136,8 +136,10 @@ ApiFile_t* ApiFile_t::CreateApiFile
     }
     else
     {
-        throw mk::Exception_t("Internal error: Attempt to create duplicate API File object"
-                                   " for '" + canonicalPath + "' (" + path + ").");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Internal error: Attempt to create duplicate API File object"
+                               " for '%s' (%s)."), canonicalPath, path)
+        );
     }
 }
 

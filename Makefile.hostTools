@@ -36,6 +36,10 @@ TOOLS_ARCH ?= $(HOST_ARCH)
 tools: ninja $(NINJA_SCRIPT) symlinks mkPatch
 	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
 
+.PHONY: tool-messages
+tool-messages: ninja $(NINJA_SCRIPT)
+	ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT) messages
+
 # Generate the ninja build script.
 $(NINJA_SCRIPT): framework/tools/mkTools/ninja-generator $(BUILD_DIR)
 	export TOOLS_ARCH=$(TOOLS_ARCH) && \

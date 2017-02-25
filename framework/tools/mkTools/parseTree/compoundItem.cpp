@@ -118,7 +118,7 @@ TokenList_t* CreateTokenList
     switch (contentType)
     {
         case Content_t::TOKEN:
-            throw mk::Exception_t("Internal error: TOKEN is not a TokenList_t type.");
+            throw mk::Exception_t(LE_I18N("Internal error: TOKEN is not a TokenList_t type."));
 
         case Content_t::SIMPLE_SECTION:
             return new SimpleSection_t(firstTokenPtr);
@@ -127,7 +127,8 @@ TokenList_t* CreateTokenList
             return new TokenListSection_t(firstTokenPtr);
 
         case Content_t::COMPLEX_SECTION:
-            throw mk::Exception_t("Internal error: COMPLEX_SECTION is not a TokenList_t type.");
+            throw mk::Exception_t(LE_I18N("Internal error: COMPLEX_SECTION is not a "
+                                          "TokenList_t type."));
 
         case Content_t::BUNDLED_FILE:
             return new BundledFile_t(firstTokenPtr);
@@ -178,13 +179,13 @@ TokenList_t* CreateTokenList
             return new Pool_t(firstTokenPtr);
 
         case Content_t::APP:
-            throw mk::Exception_t("Internal error: APP is not a TokenList_t type.");
+            throw mk::Exception_t(LE_I18N("Internal error: APP is not a TokenList_t type."));
 
         case Content_t::MODULE:
-            throw mk::Exception_t("Internal error: MODULE is not a TokenList_t type.");
+            throw mk::Exception_t(LE_I18N("Internal error: MODULE is not a TokenList_t type."));
 
         case Content_t::ASSET:
-            throw mk::Exception_t("Internal error: ASSET is not a TokenList_t type.");
+            throw mk::Exception_t(LE_I18N("Internal error: ASSET is not a TokenList_t type."));
 
         case Content_t::ASSET_SETTING:
             return new AssetSetting_t(firstTokenPtr);
@@ -197,9 +198,9 @@ TokenList_t* CreateTokenList
 
     }
 
-    std::stringstream msg;
-    msg << "Internal error: Invalid content type: " << contentType;
-    throw mk::Exception_t(msg.str());
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Internal error: Invalid content type: %d"), contentType)
+    );
 }
 
 
@@ -228,8 +229,10 @@ const SimpleSection_t* ToSimpleSectionPtr
         return static_cast<const SimpleSection_t*>(contentItemPtr);
     }
 
-    throw mk::Exception_t("Internal error: " + contentItemPtr->TypeName()
-                               + " is not a SimpleSection_t.");
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Internal error: %s is not a SimpleSection_t."),
+                   contentItemPtr->TypeName())
+    );
 }
 
 
@@ -258,8 +261,10 @@ const TokenListSection_t* ToTokenListSectionPtr
         return static_cast<const TokenListSection_t*>(contentItemPtr);
     }
 
-    throw mk::Exception_t("Internal error: " + contentItemPtr->TypeName()
-                               + " is not a TokenListSection_t.");
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Internal error: %s is not a TokenListSection_t."),
+                   contentItemPtr->TypeName())
+    );
 }
 
 
@@ -288,8 +293,10 @@ const ComplexSection_t* ToComplexSectionPtr
         return static_cast<const ComplexSection_t*>(contentItemPtr);
     }
 
-    throw mk::Exception_t("Internal error: " + contentItemPtr->TypeName()
-                               + " is not a ComplexSection_t.");
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Internal error: %s is not a ComplexSection_t."),
+                   contentItemPtr->TypeName())
+    );
 }
 
 
@@ -343,13 +350,15 @@ const TokenList_t* ToTokenListPtr
         case Content_t::APP:
         case Content_t::MODULE:
         case Content_t::ASSET:
-            throw mk::Exception_t("Internal error: " + contentItemPtr->TypeName()
-                                  + " is not a TokenList_t.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Internal error: %s is not a TokenList_t."),
+                           contentItemPtr->TypeName())
+            );
     }
 
-    std::stringstream msg;
-    msg << "Internal error: Invalid content type: " << contentItemPtr->type;
-    throw mk::Exception_t(msg.str());
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Internal error: Invalid content type: %d"), contentItemPtr->type)
+    );
 }
 
 
@@ -384,7 +393,7 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::TOKEN:
         {
             auto tokenPtr = static_cast<const Token_t*>(contentItemPtr);
-            tokenPtr->ThrowException("Internal error: TOKEN is not a CompoundItemList_t.");
+            tokenPtr->ThrowException(LE_I18N("Internal error: TOKEN is not a CompoundItemList_t."));
         }
 
         case Content_t::SIMPLE_SECTION:
@@ -410,14 +419,16 @@ const CompoundItemList_t* ToCompoundItemListPtr
         case Content_t::ASSET_COMMAND:
         {
             auto tokenListPtr = static_cast<const TokenList_t*>(contentItemPtr);
-            tokenListPtr->ThrowException("Internal error: " + contentItemPtr->TypeName()
-                                                            + " is not a CompoundItemList_t.");
+            tokenListPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: %s is not a CompoundItemList_t."),
+                           contentItemPtr->TypeName())
+            );
         }
     }
 
-    std::stringstream msg;
-    msg << "Internal error: Invalid content type: " << contentItemPtr->type;
-    throw mk::Exception_t(msg.str());
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Internal error: Invalid content type: %d"), contentItemPtr->type)
+    );
 }
 
 

@@ -270,6 +270,11 @@ coverage_report:
 tools: version
 	$(MAKE) -f Makefile.hostTools
 
+# Rule for how to extract the build tool messages
+.PHONY: tool-messages
+tool-messages: version
+	$(MAKE) -f Makefile.hostTools tool-messages
+
 # Rule to create a "software development kit" from the tools.
 .PHONY: sdk
 sdk: tools

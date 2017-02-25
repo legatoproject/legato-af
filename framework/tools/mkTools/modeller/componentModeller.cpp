@@ -49,7 +49,9 @@ static std::string FindSourceFile
 
         if (fullFilePath.empty())
         {
-            tokenPtr->ThrowException("Couldn't find source file '" + filePath + "'.");
+            tokenPtr->ThrowException(
+                mk::format(LE_I18N("Couldn't find source file '%s'"), filePath)
+            );
         }
     }
 
@@ -97,8 +99,9 @@ static model::ApiFile_t* GetApiFilePtr
                 includedFilePath = file::FindFile(dependency, searchList);
                 if (includedFilePath.empty())
                 {
-                    tokenPtr->ThrowException("Can't find dependent .api file: "
-                                             "'" + dependency + "'.");
+                    tokenPtr->ThrowException(
+                        mk::format(LE_I18N("Can't find dependent .api file: '%s'."), dependency)
+                    );
                 }
             }
 
@@ -162,16 +165,18 @@ static void AddSources
             }
             else
             {
-                contentPtr->ThrowException("Unrecognized file name extension on source code file '"
-                                           + filePath + "'.");
+                contentPtr->ThrowException(
+                    mk::format(LE_I18N("Unrecognized file name extension on source code file"
+                                       " '%s'."), filePath)
+                );
             }
         }
     }
 
     if (componentPtr->HasIncompatibleLanguageCode())
     {
-        sectionPtr->ThrowException("C/C++ source code file can't be part of a component that also "
-                                   "has Java sources.");
+        sectionPtr->ThrowException(LE_I18N("C/C++ source code file can't be part of a component"
+                                           " that also has Java sources."));
     }
 }
 
@@ -201,7 +206,7 @@ static void AddJavaPackage
 
     if (componentPtr->HasIncompatibleLanguageCode())
     {
-        sectionPtr->ThrowException("Incompatible language insert detected.");
+        sectionPtr->ThrowException(LE_I18N("Incompatible language insert detected."));
     }
 }
 
@@ -315,13 +320,15 @@ static void AddBundledItems
                 }
                 else if (file::AnythingExists(bundledFilePtr->srcPath))
                 {
-                    bundledFileTokenListPtr->ThrowException("Not a regular file: '"
-                                                            + bundledFilePtr->srcPath + "'");
+                    bundledFileTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Not a regular file: '%s'."), bundledFilePtr->srcPath)
+                    );
                 }
                 else
                 {
-                    bundledFileTokenListPtr->ThrowException("File not found: '"
-                                                            + bundledFilePtr->srcPath + "'");
+                    bundledFileTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("File not found: '%s'."), bundledFilePtr->srcPath)
+                    );
                 }
             }
         }
@@ -348,20 +355,24 @@ static void AddBundledItems
                 }
                 else if (file::AnythingExists(bundledDirPtr->srcPath))
                 {
-                    bundledDirTokenListPtr->ThrowException("Not a directory: '"
-                                                           + bundledDirPtr->srcPath + "'");
+                    bundledDirTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Not a directory: '%s'."), bundledDirPtr->srcPath)
+                    );
                 }
                 else
                 {
-                    bundledDirTokenListPtr->ThrowException("Directory not found: '"
-                                                           + bundledDirPtr->srcPath + "'");
+                    bundledDirTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Directory not found: '%s'."), bundledDirPtr->srcPath)
+                    );
                 }
             }
         }
         else
         {
-            subsectionPtr->ThrowException("Internal error: Unexpected content item: "
-                                          + subsectionPtr->TypeName()   );
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unexpected content item: %s."),
+                           subsectionPtr->TypeName())
+            );
         }
     }
 }
@@ -415,7 +426,9 @@ static void GetProvidedApi
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[1]->ThrowException("Couldn't find file '" + contentList[1]->text + "'.");
+            contentList[1]->ThrowException(
+                mk::format(LE_I18N("Couldn't find file '%s'."), contentList[1]->text)
+            );
         }
     }
     // If the first content item is not a NAME, then it must be the file path.
@@ -425,7 +438,9 @@ static void GetProvidedApi
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[0]->ThrowException("Couldn't find file '" + contentList[0]->text + "'.");
+            contentList[0]->ThrowException(
+                mk::format(LE_I18N("Couldn't find file '%s'."), contentList[0]->text)
+            );
         }
     }
 
@@ -501,8 +516,9 @@ static void AddProvidedItems
         }
         else
         {
-            memberPtr->ThrowException("Internal error: Unexpected provided item: "
-                                      + subsectionName   );
+            memberPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unexpected provided item: %s."), subsectionName)
+            );
         }
     }
 }
@@ -534,7 +550,9 @@ static void GetRequiredApi
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[1]->ThrowException("Couldn't find file '" + contentList[1]->text + "'.");
+            contentList[1]->ThrowException(
+                mk::format(LE_I18N("Couldn't find file '%s'."), contentList[1]->text)
+            );
         }
     }
     // If the first content item is not a NAME, then it must be the file path.
@@ -544,8 +562,10 @@ static void GetRequiredApi
                                      buildParams.interfaceDirs);
         if (apiFilePath == "")
         {
-            contentList[0]->ThrowException("Couldn't find file '"
-                                           + envVars::DoSubstitution(contentList[0]->text) + "'.");
+            contentList[0]->ThrowException(
+                mk::format(LE_I18N("Couldn't find file '%s.'"),
+                           envVars::DoSubstitution(contentList[0]->text))
+            );
         }
     }
 
@@ -574,8 +594,8 @@ static void GetRequiredApi
     }
     if (typesOnly && manualStart)
     {
-        itemPtr->ThrowException("Can't use [types-only] with [manual-start] or [optional]"
-                                " for the same interface.");
+        itemPtr->ThrowException(LE_I18N("Can't use [types-only] with [manual-start] or [optional]"
+                                  " for the same interface."));
     }
 
     // Get a pointer to the .api file object.
@@ -751,7 +771,9 @@ static void AddRequiredItems
         }
         else
         {
-            memberPtr->ThrowException("Internal error: Unexpected required item: " + subsectionName);
+            memberPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unexpected required item: %s."), subsectionName)
+            );
         }
     }
 }
@@ -860,8 +882,9 @@ static void AddUserAssets
             }
             else
             {
-                assetSubsectionPtr->ThrowException("Unexpected asset subsection, '" +
-                                                   assetSubsectionName + "'.");
+                assetSubsectionPtr->ThrowException(
+                    mk::format(LE_I18N("Unexpected asset subsection, '%s'."), assetSubsectionName)
+                );
             }
         }
 
@@ -881,53 +904,58 @@ static void PrintSummary
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::cout << "== '" << componentPtr->name << "' component summary ==" << std::endl;
+    std::cout << mk::format(LE_I18N("== '%s' component summary =="), componentPtr->name)
+              << std::endl;
 
     if (componentPtr->lib != "")
     {
-        std::cout << "  Component library: '" << componentPtr->lib << "'" << std::endl;
+        std::cout << mk::format(LE_I18N("  Component library: '%s'"), componentPtr->lib)
+                  << std::endl;
 
         if (!componentPtr->cObjectFiles.empty())
         {
-            std::cout << "  C sources:" << std::endl;
+            std::cout << LE_I18N("  C sources:") << std::endl;
 
             for (auto objFilePtr : componentPtr->cObjectFiles)
             {
-                std::cout << "    '" << objFilePtr->sourceFilePath << "'" << std::endl;
+                std::cout << mk::format(LE_I18N("    '%s'"), objFilePtr->sourceFilePath)
+                          << std::endl;
             }
         }
 
         if (!componentPtr->cxxObjectFiles.empty())
         {
-            std::cout << "  C++ sources:" << std::endl;
+            std::cout << LE_I18N("  C++ sources:") << std::endl;
 
             for (auto objFilePtr : componentPtr->cxxObjectFiles)
             {
-                std::cout << "    '" << objFilePtr->sourceFilePath << "'" << std::endl;
+                std::cout << mk::format(LE_I18N("    '%s'"), objFilePtr->sourceFilePath)
+                          << std::endl;
             }
         }
     }
 
     if (!componentPtr->subComponents.empty())
     {
-        std::cout << "  Depends on components:" << std::endl;
+        std::cout << LE_I18N("  Depends on components:") << std::endl;
 
         for (auto subComponentPtr : componentPtr->subComponents)
         {
-            std::cout << "    '" << subComponentPtr->name << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s'"), subComponentPtr->name) << std::endl;
         }
     }
 
     if (!componentPtr->bundledFiles.empty())
     {
-        std::cout << "  Includes files from the build host:" << std::endl;
+        std::cout << LE_I18N("  Includes files from the build host:") << std::endl;
 
         for (auto itemPtr : componentPtr->bundledFiles)
         {
-            std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-            std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                           << "'" << std::endl;
-            std::cout << "      permissions:";
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+            std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                    itemPtr->destPath)
+                      << std::endl;
+            std::cout << LE_I18N("      permissions:");
             PrintPermissions(itemPtr->permissions);
             std::cout << std::endl;
         }
@@ -935,14 +963,15 @@ static void PrintSummary
 
     if (!componentPtr->bundledDirs.empty())
     {
-        std::cout << "  Includes directories from the build host:" << std::endl;
+        std::cout << LE_I18N("  Includes directories from the build host:") << std::endl;
 
         for (auto itemPtr : componentPtr->bundledDirs)
         {
-            std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-            std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                           << "'" << std::endl;
-            std::cout << "      permissions:";
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+            std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                    itemPtr->destPath)
+                      << std::endl;
+            std::cout << LE_I18N("      permissions:");
             PrintPermissions(itemPtr->permissions);
             std::cout << std::endl;
         }
@@ -950,56 +979,61 @@ static void PrintSummary
 
     if (!componentPtr->requiredFiles.empty())
     {
-        std::cout << "  Imports files from the target host:" << std::endl;
+        std::cout << LE_I18N("  Imports files from the target host:") << std::endl;
 
         for (auto itemPtr : componentPtr->requiredFiles)
         {
-            std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-            std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                           << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+            std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                    itemPtr->destPath)
+                      << std::endl;
         }
     }
 
     if (!componentPtr->requiredDirs.empty())
     {
-        std::cout << "  Imports directories from the target host:" << std::endl;
+        std::cout << LE_I18N("  Imports directories from the target host:") << std::endl;
 
         for (auto itemPtr : componentPtr->requiredDirs)
         {
-            std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-            std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                           << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+            std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                    itemPtr->destPath)
+                      << std::endl;
         }
     }
 
     if (!componentPtr->typesOnlyApis.empty())
     {
-        std::cout << "  Type definitions imported from:" << std::endl;
+        std::cout << LE_I18N("  Type definitions imported from:") << std::endl;
 
         for (auto itemPtr : componentPtr->typesOnlyApis)
         {
-            std::cout << "    '" << itemPtr->apiFilePtr->path << "'" << std::endl;
-            std::cout << "      With identifier prefix: '" << itemPtr->internalName << "':"
+            std::cout << mk::format(LE_I18N("    '%s'"), itemPtr->apiFilePtr->path) << std::endl;
+            std::cout << mk::format(LE_I18N("      With identifier prefix: '%s':"),
+                                    itemPtr->internalName)
                       << std::endl;
         }
     }
 
     if (!componentPtr->clientApis.empty())
     {
-        std::cout << "  IPC API client-side interfaces:" << std::endl;
+        std::cout << LE_I18N("  IPC API client-side interfaces:") << std::endl;
 
         for (auto itemPtr : componentPtr->clientApis)
         {
-            std::cout << "    '" << itemPtr->internalName << "':" << std::endl;
-            std::cout << "      API defined in: '" << itemPtr->apiFilePtr->path << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->internalName) << std::endl;
+            std::cout << mk::format(LE_I18N("      API defined in: '%s'"),
+                                    itemPtr->apiFilePtr->path)
+                      << std::endl;
             if (itemPtr->manualStart)
             {
-                std::cout << "      Automatic service connection at start-up suppressed."
+                std::cout << LE_I18N("      Automatic service connection at start-up suppressed.")
                           << std::endl;
             }
             if (itemPtr->optional)
             {
-                std::cout << "      Binding this to a service is optional."
+                std::cout << LE_I18N("      Binding this to a service is optional.")
                           << std::endl;
             }
         }
@@ -1007,20 +1041,22 @@ static void PrintSummary
 
     if (!componentPtr->serverApis.empty())
     {
-        std::cout << "  IPC API server-side interfaces:" << std::endl;
+        std::cout << LE_I18N("  IPC API server-side interfaces:") << std::endl;
 
         for (auto itemPtr : componentPtr->serverApis)
         {
-            std::cout << "    '" << itemPtr->internalName << "':" << std::endl;
-            std::cout << "      API defined in: '" << itemPtr->apiFilePtr->path << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->internalName) << std::endl;
+            std::cout << mk::format(LE_I18N("      API defined in: '%s'"), itemPtr->internalName)
+                      << std::endl;
             if (itemPtr->async)
             {
-                std::cout << "      Asynchronous server-side processing mode selected."
+                std::cout << LE_I18N("      Asynchronous server-side processing mode selected.")
                           << std::endl;
             }
             if (itemPtr->manualStart)
             {
-                std::cout << "      Automatic service advertisement at start-up suppressed."
+                std::cout << LE_I18N("      Automatic service advertisement at start-up"
+                                     " suppressed.")
                           << std::endl;
             }
         }
@@ -1028,43 +1064,48 @@ static void PrintSummary
 
     if (!componentPtr->assets.empty())
     {
-        std::cout << "  AirVantage Cloud Interface:" << std::endl;
+        std::cout << LE_I18N("  AirVantage Cloud Interface:") << std::endl;
 
         for (const auto asset : componentPtr->assets)
         {
-            std::cout << "    '" << asset->GetName() << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s'"), asset->GetName()) << std::endl;
 
             for (auto field : asset->fields)
             {
                 auto& dataType = field->GetDataType();
                 auto& name = field->GetName();
-
-                std::cout << "      ";
+                std::string actionTypeStr;
 
                 switch (field->GetActionType())
                 {
                     case model::AssetField_t::TYPE_SETTING:
-                        std::cout << "setting ";
+                        actionTypeStr =  LE_I18N("setting");
                         break;
 
                     case model::AssetField_t::TYPE_VARIABLE:
-                        std::cout << "variable ";
+                        actionTypeStr = LE_I18N("variable");
                         break;
 
                     case model::AssetField_t::TYPE_COMMAND:
-                        std::cout << "command ";
+                        actionTypeStr = LE_I18N("command");
                         break;
 
                     case model::AssetField_t::TYPE_UNSET:
-                        throw mk::Exception_t("Internal error: Unset AssetField_t action type.");
+                        throw mk::Exception_t(LE_I18N("Internal error: "
+                                                      "Unset AssetField_t action type."));
                 }
 
                 if (!dataType.empty())
                 {
-                    std::cout << dataType << " ";
+                    std::cout << mk::format(LE_I18N("      %s %s %s"),
+                                            actionTypeStr, dataType, name)
+                              << std::endl;
                 }
-
-                std::cout << name << std::endl;
+                else
+                {
+                    std::cout << mk::format(LE_I18N("      %s %s"), actionTypeStr, name)
+                              << std::endl;
+                }
             }
         }
     }
@@ -1107,8 +1148,10 @@ model::Component_t* GetComponent
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Modelling component: '" << componentPtr->name << "'" << std::endl
-                  << "  found at: '" << componentPtr->dir << "'" << std::endl;
+        std::cout << mk::format(LE_I18N("Modelling component: '%s'\n"
+                                  "  found at: '%s'"),
+                                  componentPtr->name, componentPtr->dir)
+                  << std::endl;
     }
 
     // Iterate over the .cdef file's list of sections.
@@ -1154,8 +1197,9 @@ model::Component_t* GetComponent
         }
         else
         {
-            sectionPtr->ThrowException("Internal error: Unrecognized section '" + sectionName
-                                       + "'.");
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), sectionName)
+            );
         }
     }
 
@@ -1255,7 +1299,9 @@ model::Component_t* GetComponent
     }
     if (resolvedPath.empty())
     {
-        tokenPtr->ThrowException("Couldn't find component '" + componentPath + "'.");
+        tokenPtr->ThrowException(
+            mk::format(LE_I18N("Couldn't find component '%s'."), componentPath)
+        );
     }
 
     // Get the component object.

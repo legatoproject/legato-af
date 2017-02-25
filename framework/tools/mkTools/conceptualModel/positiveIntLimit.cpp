@@ -28,7 +28,7 @@ PositiveIntLimit_t::PositiveIntLimit_t
 {
     if (defaultValue == 0)
     {
-        throw mk::Exception_t("Default value must be positive. Set to zero.");
+        throw mk::Exception_t(LE_I18N("Default value must be positive. Set to zero."));
     }
 }
 
@@ -49,7 +49,7 @@ void PositiveIntLimit_t::operator =
 {
     if (value <= 0)
     {
-        throw mk::Exception_t("Limit must be greater than zero.");
+        throw mk::Exception_t(LE_I18N("Limit must be greater than zero."));
     }
     else
     {
@@ -77,7 +77,7 @@ void PositiveIntLimit_t::operator =
     }
     else
     {
-        throw mk::Exception_t("Limit must be greater than zero.");
+        throw mk::Exception_t(LE_I18N("Limit must be greater than zero."));
     }
 }
 

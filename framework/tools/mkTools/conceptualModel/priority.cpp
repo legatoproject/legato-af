@@ -51,17 +51,17 @@ static int GetNumber
     long int number = strtol(stringPtr, &endPtr, 0);
     if ((errno == ERANGE) || (number < INT_MIN) || (number > INT_MAX))
     {
-        std::string msg = "Number '";
-        msg += stringPtr;
-        msg += "' is out of range (magnitude too large).";
-        throw mk::Exception_t(msg);
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Number '%s' is out of range (magnitude too large)."),
+                       stringPtr)
+        );
     }
 
     if (*endPtr != '\0')
     {
-        std::stringstream msg;
-        msg << "Unexpected character '" << *endPtr << "' in number '" << stringPtr << "'.";
-        throw mk::Exception_t(msg.str());
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Unexpected character '%c' in number '%s'"), *endPtr, stringPtr)
+        );
     }
 
     return (int)number;
@@ -89,8 +89,8 @@ void Priority_t::operator =
         int number = GetNumber(priority + 2);
         if ((number < 1) || (number > 32))
         {
-            throw mk::Exception_t("Real-time priority level must be between rt1 and rt32,"
-                                    " inclusive.");
+            throw mk::Exception_t(LE_I18N("Real-time priority level must be between rt1 and rt32,"
+                                          " inclusive."));
         }
 
         numericalValue = number;
@@ -113,7 +113,9 @@ void Priority_t::operator =
     }
     else
     {
-        throw mk::Exception_t(std::string("Unrecognized priority level '") + priority + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Unrecognized priority level '%s'."), priority)
+        );
     }
 
     this->value = value;
@@ -140,7 +142,7 @@ const
 {
     if (!isSet)
     {
-        throw mk::Exception_t("Fetching priority value that has not been set.");
+        throw mk::Exception_t(LE_I18N("Fetching priority value that has not been set."));
     }
 
     return value;

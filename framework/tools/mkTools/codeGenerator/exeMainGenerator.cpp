@@ -37,9 +37,10 @@ void GenerateCLangExeMain
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating startup code for executable '" << exeName << "'"
-                     " (" << exePtr->path << ") "
-                     "in '" << sourceFile << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Generating startup code for executable '%s' (%s) "
+                                        "in '%s'."),
+                                exeName, exePtr->path, sourceFile)
+                  << std::endl;
     }
 
     // Open the file as an output stream.
@@ -47,7 +48,9 @@ void GenerateCLangExeMain
     std::ofstream outputFile(sourceFile);
     if (outputFile.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + sourceFile + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), sourceFile)
+        );
     }
 
     // Generate the file header comment and #include directives.

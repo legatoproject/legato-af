@@ -78,13 +78,16 @@ ComponentInstance_t* App_t::FindComponentInstance
                 }
             }
 
-            componentTokenPtr->ThrowException("Component '" + componentName + "'"
-                                              " not found in executable "
-                                              "'" + exeName + "'.");
+            componentTokenPtr->ThrowException(
+                mk::format(LE_I18N("Component '%s' not found in executable '%s'."),
+                           componentName, exeName)
+            );
         }
     }
 
-    exeTokenPtr->ThrowException("Executable '" + exeName + "' not defined in application.");
+    exeTokenPtr->ThrowException(
+        mk::format(LE_I18N("Executable '%s' not defined in application."), exeName)
+    );
 
     return NULL;
 }
@@ -120,9 +123,11 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
 
     if (ifInstancePtr == NULL)
     {
-        interfaceTokenPtr->ThrowException("Server interface '" + interfaceName + "'"
-                                          " not found in component '" + componentName + "'"
-                                          " in executable '" + exeName + "'.");
+        interfaceTokenPtr->ThrowException(
+            mk::format(LE_I18N("Server interface '%s' not found in component '%s'"
+                               " in executable '%s'."),
+                       interfaceName, componentName, exeName)
+        );
     }
 
     return ifInstancePtr;
@@ -159,9 +164,11 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 
     if (ifInstancePtr == NULL)
     {
-        interfaceTokenPtr->ThrowException("Client interface '" + interfaceName + "'"
-                                          " not found in component '" + componentName + "'"
-                                          " in executable '" + exeName + "'.");
+        interfaceTokenPtr->ThrowException(
+            mk::format(LE_I18N("Client interface '%s' not found in component '%s'"
+                               " in executable '%s'."),
+                       interfaceName, componentName, exeName)
+        );
     }
 
     return ifInstancePtr;
@@ -189,8 +196,10 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 
     if (i == externClientInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException("App '" + name + "' has no external client-side interface"
-                                          " named '" + interfaceName + "'");
+        interfaceTokenPtr->ThrowException(
+            mk::format(LE_I18N("App '%s' has no external client-side interface named '%s'"),
+                       name, interfaceName)
+        );
     }
 
     return i->second;
@@ -240,18 +249,24 @@ ApiInterfaceInstance_t* App_t::FindInterface
                         }
                     }
 
-                    interfaceTokenPtr->ThrowException("Interface '" + interfaceTokenPtr->text
-                                                      + "' not found in component '"
-                                                      + componentInstancePtr->componentPtr->name
-                                                      + "' in executable '" + exePtr->name + "'.");
+                    interfaceTokenPtr->ThrowException(
+                        mk::format(LE_I18N("Interface '%s' not found in component '%s'"
+                                           " in executable '%s'."),
+                                   interfaceTokenPtr->text,
+                                   componentInstancePtr->componentPtr->name,
+                                   exePtr->name)
+                    );
                 }
             }
-            componentTokenPtr->ThrowException("Component '" + componentTokenPtr->text + "'"
-                                              " not found in executable '" + exePtr->name + "'.");
+            componentTokenPtr->ThrowException(
+                mk::format(LE_I18N("Component '%s' not found in executable '%s'."),
+                           componentTokenPtr->text, exePtr->name)
+            );
         }
     }
-    exeTokenPtr->ThrowException("Executable '" + exeTokenPtr->text
-                                + "' not defined in application.");
+    exeTokenPtr->ThrowException(
+        mk::format(LE_I18N("Executable '%s' not defined in application."), exeTokenPtr->text)
+    );
     return NULL;
 }
 

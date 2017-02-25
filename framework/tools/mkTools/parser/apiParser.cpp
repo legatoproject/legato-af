@@ -84,7 +84,9 @@ void GetDependencies
     // Make sure the file exists.
     if (!file::FileExists(filePath))
     {
-        throw mk::Exception_t("File not found: '" + filePath + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("File not found: '%s'."), filePath)
+        );
     }
 
     std::ifstream inputStream(filePath);
@@ -92,7 +94,9 @@ void GetDependencies
     // Make sure we were able to open the file.
     if (!inputStream.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for reading.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for reading."), filePath)
+        );
     }
 
     // Keep looking for USETYPES statements, skipping comments.
@@ -143,7 +147,9 @@ void GetDependencies
 
     if (inputStream.bad())
     {
-        throw mk::Exception_t("Failed to read from file '" + filePath + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to read from file '%s'."), filePath)
+        );
     }
 }
 

@@ -234,8 +234,10 @@ static void SetParamValue
 
     if ((info.type != ParamInfo_t::FLAG) && (param.empty()))
     {
-        throw std::runtime_error("Value missing from argument --" + info.longName +
-                                 " (-" + info.shortName + ").");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Value missing from argument --%s (-%s)."),
+                       info.longName, info.shortName)
+        );
     }
 
     switch (info.type)
@@ -244,9 +246,11 @@ static void SetParamValue
             // Flag arguments do not take extra parameters.  They're either given or not.
             if (param.empty() == false)
             {
-                throw std::runtime_error("Unexpected parameter, '" + param +
-                                         "' passed to flag argument --" + info.longName +
-                                         " (-" + info.shortName + ").");
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Unexpected parameter, '%s' passed to flag argument"
+                                       " --%s (-%s)."),
+                               param, info.longName, info.shortName)
+                );
             }
             else
             {
@@ -295,10 +299,9 @@ static void GetLongParam
     // Make sure it's not empty.
     if (argName.empty())
     {
-        std::string msg = "Malformed argument '";
-        msg += arg;
-        msg += "'.";
-        throw std::runtime_error(msg);
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Malformed argument '%s'."), arg)
+        );
     }
 
     // Extract the argument value (if there is one).
@@ -321,10 +324,9 @@ static void GetLongParam
         }
     }
 
-    std::string msg = "Unexpected parameter: '";
-    msg += arg;
-    msg += "'.";
-    throw std::runtime_error(msg);
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Unexpected parameter: '%s'."), arg)
+    );
 }
 
 
@@ -367,10 +369,9 @@ static bool GetShortParam
             {
                 if ((index + 1) >= argc)
                 {
-                    std::string msg = "Missing value for argument '";
-                    msg += argv[index];
-                    msg += "'.";
-                    throw std::runtime_error(msg);
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Missing value for argument '%s'."), argv[index])
+                    );
                 }
 
                 SetParamValue(const_cast<ParamInfo_t&>(paramIter), argv[index + 1]);
@@ -379,11 +380,9 @@ static bool GetShortParam
             }
         }
     }
-
-    std::string msg = "Unexpected parameter: '";
-    msg += argv[index];
-    msg += "'.";
-    throw std::runtime_error(msg);
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Unexpected parameter: '%s'."), argv[index])
+    );
 }
 
 
@@ -433,11 +432,11 @@ static void DisplayHelp
     //       NAME and introductory DESCRIPTION text.  Ideally, the SYNOPSIS should be auto-
     //       generated.
 
-    std::cout << std::endl << "Command line parameters" << std::endl;
+    std::cout << std::endl << LE_I18N("Command line parameters") << std::endl;
 
     for (auto param: Params)
     {
-        std::cout << "  -" << param.shortName << ", --" << param.longName;
+        std::cout << mk::format(LE_I18N("  -%s, --%s"), param.shortName, param.longName);
 
         switch (param.type)
         {
@@ -445,12 +444,12 @@ static void DisplayHelp
                 break;
 
             case ParamInfo_t::INT:
-                std::cout << ", <integer>";
+                std::cout << LE_I18N(", <integer>");
                 break;
 
             case ParamInfo_t::STRING:
             case ParamInfo_t::MULTI_STRING:
-                std::cout << ", <string>";
+                std::cout << LE_I18N(", <string>");
                 break;
         }
 
@@ -460,11 +459,11 @@ static void DisplayHelp
         {
             if (param.type == ParamInfo_t::MULTI_STRING)
             {
-                std::cout << "(Multiple, optional) ";
+                std::cout << LE_I18N("(Multiple, optional) ");
             }
             else
             {
-                std::cout << "(Optional) ";
+                std::cout << LE_I18N("(Optional) ");
             }
         }
 
@@ -508,14 +507,15 @@ void Scan
             }
             else
             {
-                throw std::runtime_error(std::string("Argument without command flag, ") +
-                                         next + ".");
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Argument without command flag, %s."), next)
+                );
             }
         }
         // If there is only a single '-', character, that's an error.
         else if (len < 2)
         {
-            throw std::runtime_error("No name given for parameter '-'");
+            throw mk::Exception_t(LE_I18N("No name given for parameter '-'"));
         }
         // If there are two leading '-' characters,
         else if (next[1] == '-')
@@ -523,7 +523,7 @@ void Scan
             // If there are only two '-' characters and nothing more, then that's an error.
             if (len < 3)
             {
-                throw std::runtime_error("No name given for parameter '--'");
+                throw mk::Exception_t(LE_I18N("No name given for parameter '--'"));
             }
 
 
@@ -544,8 +544,9 @@ void Scan
             // We only support a single character for short name params.
             if (len > 2)
             {
-                throw std::runtime_error(std::string("Bad short parameter name, ") + next +
-                                         ".");
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Bad short parameter name, %s."), next)
+                );
             }
 
 
@@ -574,8 +575,10 @@ void Scan
     {
         if ((paramIter.isOptional == false) && (paramIter.wasFound == false))
         {
-            throw std::runtime_error("Missing required parameter: --" + paramIter.longName +
-                                     " (-" + paramIter.shortName + ").");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Missing required parameter: --%s (-%s)."),
+                           paramIter.longName, paramIter.shortName)
+            );
         }
         else if ((paramIter.isOptional == true) && (paramIter.wasFound == false))
         {
@@ -600,7 +603,8 @@ void SetLooseArgHandler
 {
     if (callbackPtr == NULL)
     {
-        throw std::runtime_error("Error, a NULL parameter processing callback has been given.");
+        throw mk::Exception_t(LE_I18N("Internal error: a NULL parameter processing callback "
+                                      "has been given."));
     }
 
     LooseArgCallbacks.push_back({callbackPtr, contextPtr});
@@ -789,7 +793,9 @@ void Save
     std::ofstream argsFile(filePath);
     if (!argsFile.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for writing."), filePath)
+        );
     }
 
     // Write each arg as a line in the file.
@@ -802,7 +808,9 @@ void Save
 
         if (argsFile.fail())
         {
-            throw mk::Exception_t("Error writing to file '" + filePath + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Error writing to file '%s'."), filePath)
+            );
         }
     }
 
@@ -810,7 +818,9 @@ void Save
     argsFile.close();
     if (argsFile.fail())
     {
-        throw mk::Exception_t("Error closing file '" + filePath + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Error closing file '%s'."), filePath)
+        );
     }
 }
 
@@ -837,7 +847,8 @@ bool MatchesSaved
     {
         if (buildParams.beVerbose)
         {
-            std::cout << "Command-line arguments from previous run not found." << std::endl;
+            std::cout << LE_I18N("Command-line arguments from previous run not found.")
+                      << std::endl;
         }
         return false;
     }
@@ -846,7 +857,9 @@ bool MatchesSaved
     std::ifstream argsFile(filePath);
     if (!argsFile.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for reading.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for reading."), filePath)
+        );
     }
 
     int i;
@@ -862,7 +875,9 @@ bool MatchesSaved
         }
         else if (!argsFile.good())
         {
-            throw mk::Exception_t("Error reading from file '" + filePath + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Error reading from file '%s'."), filePath)
+            );
         }
 
         // Compare the line from the file with the argument.
@@ -884,20 +899,22 @@ different:
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Command-line arguments are different this time." << std::endl;
-        std::cout << "-- Last time (" << filePath << ") --" << std::endl;
+        std::cout << LE_I18N("Command-line arguments are different this time.") << std::endl;
+        std::cout << mk::format(LE_I18N("-- Last time (%s) --"), filePath) << std::endl;
         argsFile.clear();
         argsFile.seekg(0);
         if (!argsFile.good())
         {
-            throw mk::Exception_t("Error reading from file '" + filePath + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Error reading from file '%s'."), filePath)
+            );
         }
         while (!argsFile.eof())
         {
             argsFile.getline(lineBuff, sizeof(lineBuff));
             std::cout << lineBuff << " ";
         }
-        std::cout << std::endl << "-- This time --" << std::endl;
+        std::cout << std::endl << LE_I18N("-- This time --") << std::endl;
         for (i = 0; i < argc; i++)
         {
             std::cout << argv[i] << " ";

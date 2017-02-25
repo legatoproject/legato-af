@@ -80,8 +80,11 @@ Component_t* Component_t::CreateComponent
     }
     else
     {
-        throw mk::Exception_t("Internal error: Attempt to create duplicate Component object"
-                                   " for '" + canonicalPath + "' (" + filePtr->path + ").");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Internal error: Attempt to create duplicate Component "
+                               "object for '%s' (%s)."),
+                       canonicalPath, filePtr->path)
+        );
     }
 }
 

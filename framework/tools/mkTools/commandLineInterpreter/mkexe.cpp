@@ -99,82 +99,85 @@ static void GetCommandLineArgs
     args::AddString(&ExePath,
                     'o',
                     "output",
-                    "The path of the executable file to generate.");
+                    LE_I18N("The path of the executable file to generate."));
 
     args::AddOptionalString(&BuildParams.libOutputDir,
                             ".",
                             'l',
                             "lib-output-dir",
-                            "Specify the directory into which any generated runtime libraries"
-                            " should be put.");
+                            LE_I18N("Specify the directory into which any generated runtime"
+                                    " libraries should be put."));
 
     args::AddOptionalString(&BuildParams.workingDir,
                             "./_build",
                             'w',
                             "object-dir",
-                            "Specify the directory into which any intermediate build artifacts"
-                            " (such as .o files and generated source code files) should be put.");
+                            LE_I18N("Specify the directory into which any intermediate build"
+                                    " artifacts (such as .o files and generated source code files)"
+                                    " should be put."));
 
     args::AddOptionalString(&BuildParams.target,
                             "localhost",
                             't',
                             "target",
-                            "Specify the target device to build for (localhost | ar7).");
+                            LE_I18N("Specify the target device to build for (localhost | ar7)."));
 
     args::AddMultipleString('i',
                             "interface-search",
-                            "Add a directory to the interface search path.",
+                            LE_I18N("Add a directory to the interface search path."),
                             interfaceDirPush);
 
     args::AddMultipleString('c',
                             "component-search",
-                            "(DEPRECATED) Add a directory to the source search path (same as -s).",
+                            LE_I18N("(DEPRECATED) Add a directory to the source search path"
+                                    " (same as -s)."),
                             sourceDirPush);
 
     args::AddMultipleString('s',
                             "source-search",
-                            "Add a directory to the source search path.",
+                            LE_I18N("Add a directory to the source search path."),
                             sourceDirPush);
 
     args::AddOptionalFlag(&BuildParams.beVerbose,
                           'v',
                           "verbose",
-                          "Set into verbose mode for extra diagnostic information.");
+                          LE_I18N("Set into verbose mode for extra diagnostic information."));
 
     args::AddMultipleString('C',
                             "cflags",
-                            "Specify extra flags to be passed to the C compiler.",
+                            LE_I18N("Specify extra flags to be passed to the C compiler."),
                             cFlagsPush);
 
     args::AddMultipleString('X',
                             "cxxflags",
-                            "Specify extra flags to be passed to the C++ compiler.",
+                            LE_I18N("Specify extra flags to be passed to the C++ compiler."),
                             cxxFlagsPush);
 
     args::AddMultipleString('L',
                             "ldflags",
-                            "Specify extra flags to be passed to the linker when linking "
-                            "executables.",
+                            LE_I18N("Specify extra flags to be passed to the linker when linking "
+                                    "executables."),
                             ldFlagsPush);
 
 
     args::AddOptionalFlag(&DontRunNinja,
-                           'n',
-                           "dont-run-ninja",
-                           "Even if a build.ninja file exists, ignore it, parse all inputs, and"
-                           " generate all output files, including a new copy of the build.ninja,"
-                           " then exit without running ninja.  This is used by the build.ninja to"
-                           " to regenerate itself and any other files that need to be regenerated"
-                           " when the build.ninja finds itself out of date.");
+                          'n',
+                          "dont-run-ninja",
+                          LE_I18N("Even if a build.ninja file exists, ignore it, parse all inputs,"
+                                  " and generate all output files, including a new copy of the"
+                                  " build.ninja, then exit without running ninja.  This is used by"
+                                  " the build.ninja to to regenerate itself and any other files"
+                                  " that need to be regenerated when the build.ninja finds itself"
+                                  " out of date."));
 
     args::AddOptionalFlag(&BuildParams.codeGenOnly,
                           'g',
                           "generate-code",
-                          "Only generate code, but don't compile or link anything."
-                          " The interface definition (include) files will be generated, along"
-                          " with component and executable main files."
-                          " This is useful for supporting context-sensitive auto-complete and"
-                          " related features in source code editors, for example.");
+                          LE_I18N("Only generate code, but don't compile or link anything."
+                                  " The interface definition (include) files will be generated,"
+                                  " along with component and executable main files."
+                                  " This is useful for supporting context-sensitive auto-complete"
+                                  " and related features in source code editors, for example."));
 
     // Any remaining parameters on the command-line are treated as content items to be included
     // in the executable.
@@ -254,9 +257,9 @@ static void VerifyAtLeastOneSourceFile
 {
     // Check for C or C++ source files being built directly into the exe (outside of components).
     if (   (ExePtr->hasCOrCppCode == false)
-        && (ExePtr->hasJavaCode == false))
+           && (ExePtr->hasJavaCode == false))
     {
-        throw mk::Exception_t("Executable doesn't contain any source code files.");
+        throw mk::Exception_t(LE_I18N("Executable doesn't contain any source code files."));
     }
 }
 
@@ -279,7 +282,8 @@ static void ConstructObjectModel
 
     if (BuildParams.beVerbose)
     {
-        std::cout << "Making executable '" << ExePtr->path << "'" << std::endl;
+        std::cout << mk::format(LE_I18N("Making executable '%s'"), ExePtr->path)
+                  << std::endl;
     }
 
     // For each item of content, we have to figure out what type of content it is and
@@ -291,14 +295,17 @@ static void ConstructObjectModel
         {
             if (BuildParams.beVerbose)
             {
-                std::cout << "Adding C source file '" << contentName << "' to executable."
+                std::cout << mk::format(LE_I18N("Adding C source file '%s' to executable."),
+                                        contentName)
                           << std::endl;
             }
 
             auto sourceFilePath = file::FindFile(contentName, BuildParams.sourceDirs);
             if (sourceFilePath == "")
             {
-                throw mk::Exception_t("Can't find file: '" + contentName + "'.");
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Can't find file: '%s'."), contentName)
+                );
             }
             sourceFilePath = path::MakeAbsolute(sourceFilePath);
 
@@ -316,14 +323,17 @@ static void ConstructObjectModel
         {
             if (BuildParams.beVerbose)
             {
-                std::cout << "Adding C++ source file '" << contentName << "' to executable."
+                std::cout << mk::format(LE_I18N("Adding C++ source file '%s' to executable."),
+                                        contentName)
                           << std::endl;
             }
 
             auto sourceFilePath = file::FindFile(contentName, BuildParams.sourceDirs);
             if (sourceFilePath == "")
             {
-                throw mk::Exception_t("Can't find file: '" + contentName + "'.");
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Can't find file: '%s'."), contentName)
+                );
             }
             sourceFilePath = path::MakeAbsolute(sourceFilePath);
 
@@ -341,7 +351,8 @@ static void ConstructObjectModel
         {
             if (BuildParams.beVerbose)
             {
-                std::cout << "Adding library '" << contentName << "' to executable." << std::endl;
+                std::cout << mk::format(LE_I18N("Adding library '%s' to executable."), contentName)
+                          << std::endl;
             }
 
             BuildParams.ldFlags += " " + contentName;
@@ -353,7 +364,9 @@ static void ConstructObjectModel
 
             if (BuildParams.beVerbose)
             {
-                std::cout << "Adding component '" << componentPath << "' to executable." << std::endl;
+                std::cout << mk::format(LE_I18N("Adding component '%s' to executable."),
+                                        componentPath)
+                          << std::endl;
             }
 
             AddComponentToExe(componentPath);
@@ -361,10 +374,11 @@ static void ConstructObjectModel
         // It's none of the above.
         else
         {
-            std::cerr << "*** ERROR: Couldn't identify content item '"
-                      << contentName << "'." << std::endl;
+            std::cerr << mk::format(LE_I18N("** ERROR: Couldn't identify content item '%s'."),
+                                    contentName)
+                      << std::endl;
 
-            std::cerr << "Searched in the following locations:" << std::endl;
+            std::cerr << LE_I18N("Searched in the following locations:") << std::endl;
             for (auto path : BuildParams.sourceDirs)
             {
                 std::cerr << "    " << path << std::endl;
@@ -376,7 +390,7 @@ static void ConstructObjectModel
 
     if (errorFound)
     {
-        throw mk::Exception_t("Unable to identify one or more requested content items.");
+        throw mk::Exception_t(LE_I18N("Unable to identify one or more requested content items."));
     }
 
     // Make all interfaces "external", because the executable is outside of any app.

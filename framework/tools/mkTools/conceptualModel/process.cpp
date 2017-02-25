@@ -28,29 +28,30 @@ static void CheckName
 {
     if (name.length() > LIMIT_MAX_PROCESS_NAME_LEN)
     {
-        parseTreePtr->ThrowException("Process name '" + name + "' is too long."
-                                     "  Must be a maximum of " +
-                                     std::to_string(LIMIT_MAX_PROCESS_NAME_LEN) + " bytes.");
+        parseTreePtr->ThrowException(
+            mk::format(LE_I18N("Process name '%s' is too long.  Must be a maximum of %d bytes."),
+                       name, LIMIT_MAX_PROCESS_NAME_LEN)
+        );
     }
 
     if (name.empty())
     {
-        parseTreePtr->ThrowException("Empty process name.");
+        parseTreePtr->ThrowException(LE_I18N("Empty process name."));
     }
 
     if ((name == ".") || (name == ".."))
     {
-        parseTreePtr->ThrowException("Process name cannot be '.' or '..'.");
+        parseTreePtr->ThrowException(LE_I18N("Process name cannot be '.' or '..'."));
     }
 
     if (name.find(':') != std::string::npos)
     {
-        parseTreePtr->ThrowException("Process name cannot contain a colon (':').");
+        parseTreePtr->ThrowException(LE_I18N("Process name cannot contain a colon (':')."));
     }
 
     if (name.find('/') != std::string::npos)
     {
-        parseTreePtr->ThrowException("Process name cannot contain a slash ('/').");
+        parseTreePtr->ThrowException(LE_I18N("Process name cannot contain a slash ('/')."));
     }
 }
 

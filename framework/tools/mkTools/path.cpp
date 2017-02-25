@@ -176,8 +176,10 @@ std::string Minimize
                         // the root, then throw an exception.
                         if (isAbsolute)
                         {
-                            throw mk::Exception_t("File system path '" + path
-                                                       + "' attempts to leave the root directory.");
+                            throw mk::Exception_t(
+                                mk::format(LE_I18N("File system path '%s' attempts to leave "
+                                                   "the root directory."), path)
+                            );
                         }
 
                         // If we are at the shallowest depth we've seen so far in a relative path,
@@ -311,7 +313,7 @@ std::string Minimize
 
             case '\0':  // std::string can contain null chars in the middle, but that's not valid
                         // in a file system path
-                throw mk::Exception_t("Invalid (null) character in the middle of a path.");
+                throw mk::Exception_t(LE_I18N("Invalid (null) character in the middle of a path."));
                 break;
 
             default:
@@ -336,8 +338,10 @@ std::string Minimize
             {
                 if (isAbsolute)
                 {
-                    throw mk::Exception_t("File system path '" + path
-                                               + "' attempts to leave the root directory.");
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("File system path '%s' attempts to leave "
+                                           "the root directory."), path)
+                    );
                 }
                 result += "..";
             }
@@ -450,7 +454,9 @@ std::string MakeCanonical
 
     if (cannonicalPath == NULL)
     {
-        throw mk::Exception_t("Path '" + path + "' does not exist or is malformed.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Path '%s' does not exist or is malformed."), path)
+        );
     }
 
     return std::string(cannonicalPath);
@@ -479,7 +485,8 @@ std::string GetContainingDir
     size_t pos = path.find_last_not_of('/');
     if (pos == std::string::npos)
     {
-        throw mk::Exception_t("Directory paths outside the root directory are not permitted.");
+        throw mk::Exception_t(LE_I18N("Directory paths outside the root directory are not"
+                                      " permitted."));
     }
 
     // Find the last '/' in the path (excluding the trailing slashes).
@@ -640,7 +647,9 @@ std::string RemoveSuffix
 {
     if (!path::HasSuffix(path, suffix))
     {
-        throw mk::Exception_t("Path '" + path + "' does not end in '" + suffix + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Path '%s' does not end in '%s'."), path, suffix)
+        );
     }
 
     return path.substr(0, (path.length() - suffix.length()));
@@ -756,7 +765,9 @@ std::string GetLibShortName
     // Strip off the "lib" prefix.
     if (name.compare(0, 3, "lib") != 0)
     {
-        throw mk::Exception_t("Library file name '" + name + "' doesn't start with 'lib'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Library file name '%s' doesn't start with 'lib'."), name)
+        );
     }
     name = name.substr(3);
 
@@ -779,8 +790,10 @@ std::string GetLibShortName
         return name.substr(0, name.length() - 2);
     }
 
-    throw mk::Exception_t("Library file path '" + path
-                          + "' does not appear to be either '.a' or '.so'.");
+    throw mk::Exception_t(
+        mk::format(LE_I18N("Library file path '%s' does not appear to be either '.a' or '.so'."),
+                   path)
+    );
 }
 
 
@@ -827,7 +840,7 @@ std::string GetIdentifierSafeName
 
     if (length == 0)
     {
-        throw mk::Exception_t("Empty name cannot be made identifier-safe.");
+        throw mk::Exception_t(LE_I18N("Empty name cannot be made identifier-safe."));
     }
 
     // The first character of the identifier cannot be a digit.
@@ -859,8 +872,10 @@ std::string GetIdentifierSafeName
     // (i.e., is not just a bunch of underscores).
     if (meaningfulCharCount == 0)
     {
-        throw mk::Exception_t("Name '" + name
-                              + "' contained no characters safe for use in an identifier.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Name '%s' contained no characters safe for use in an identifier."),
+                       name)
+        );
     }
 
     return result;

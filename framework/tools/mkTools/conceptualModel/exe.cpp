@@ -100,7 +100,7 @@ const
     }
     else
     {
-        throw mk::Exception_t("Unexpected language for main executable.");
+        throw mk::Exception_t(LE_I18N("Unexpected language for main executable."));
     }
 
     ObjectFile_t mainObjectFile(objectName, sourceName);

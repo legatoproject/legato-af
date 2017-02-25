@@ -38,8 +38,9 @@ void RunNinja
     {
         if (buildParams.beVerbose)
         {
-            std::cout << "Executing ninja build system..." << std::endl;
-            std::cout << "$ ninja -v -d explain -f " << ninjaFilePath << std::endl;
+            std::cout << LE_I18N("Executing ninja build system...") << std::endl;
+            std::cout << mk::format(LE_I18N("$ ninja -v -d explain -f %s"), ninjaFilePath)
+                      << std::endl;
 
             (void)execlp("ninja",
                          "ninja",
@@ -61,8 +62,9 @@ void RunNinja
 
         int errCode = errno;
 
-        throw mk::Exception_t("Failed to execute ninja ("
-                                   + std::string(strerror(errCode)) + ").");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to execute ninja (%s)."), strerror(errCode))
+        );
     }
 }
 

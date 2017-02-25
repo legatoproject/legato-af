@@ -3,7 +3,7 @@
  * @file lexer.cpp Lexical Analyzer (Lexer) for the mk* tools.
  *
  * @warning Don't use isalpha() or isalnum() in this file, because their results are
-            locale-dependent.
+ locale-dependent.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -35,11 +35,15 @@ Lexer_t::LexerContext_t::LexerContext_t
     // Make sure the file exists and we were able to open it.
     if (!file::FileExists(filePtr->path))
     {
-        throw mk::Exception_t("File not found: '" + filePtr->path + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("File not found: '%s'."), filePtr->path)
+        );
     }
     if (!inputStream.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePtr->path + "' for reading.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for reading."), filePtr->path)
+        );
     }
 
     // Read in the first character.
@@ -47,7 +51,9 @@ Lexer_t::LexerContext_t::LexerContext_t
 
     if (!inputStream.good())
     {
-        throw mk::Exception_t("Failed to read from file '" + filePtr->path + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to read from file '%s'."), filePtr->path)
+        );
     }
 }
 
@@ -88,9 +94,9 @@ static inline bool IsWhitespace
     // NOTE: Can't use isspace() because it accepts vertical tabs and form feeds, which are
     //       not allowed in def files.
     return (   (character == ' ')
-            || (character == '\t')
-            || (character == '\n')
-            || (character == '\r')   );
+               || (character == '\t')
+               || (character == '\n')
+               || (character == '\r')   );
 }
 
 
@@ -109,17 +115,17 @@ static inline bool IsFileNameChar
 {
     // NOTE: Don't use isalpha() or isalnum(), because their results are locale-dependent.
     return (   islower(character)
-            || isupper(character)
-            || isdigit(character)
-            || (character == '.')
-            || (character == '_')
-            || (character == '$')  // Start of environment variable.
-            || (character == '-')
-            || (character == ':')
-            || (character == ';')
-            || (character == '+')
-            || (character == '=')
-            || (character == '?') );
+               || isupper(character)
+               || isdigit(character)
+               || (character == '.')
+               || (character == '_')
+               || (character == '$')  // Start of environment variable.
+               || (character == '-')
+               || (character == ':')
+               || (character == ';')
+               || (character == '+')
+               || (character == '=')
+               || (character == '?') );
 }
 
 
@@ -138,7 +144,7 @@ static inline bool IsFilePathChar
 {
     // Can be anything in a FILE_NAME, plus the forward slash (/).
     return (   IsFileNameChar(character)
-            || (character == '/') );
+               || (character == '/') );
 }
 
 
@@ -157,7 +163,7 @@ static inline bool IsArgChar
 {
     // Can be anything in a FILE_PATH, plus the equals sign (=).
     return (   IsFilePathChar(character)
-            || (character == '=') );
+               || (character == '=') );
 }
 
 
@@ -244,8 +250,8 @@ bool Lexer_t::IsMatch
 
         case parseTree::Token_t::FILE_NAME:
             return (   IsFileNameChar(context.top().nextChar)
-                    || (context.top().nextChar == '\'')   // Could be in single-quotes.
-                    || (context.top().nextChar == '"') ); // Could be in quotes.
+                       || (context.top().nextChar == '\'')   // Could be in single-quotes.
+                       || (context.top().nextChar == '"') ); // Could be in quotes.
 
         case parseTree::Token_t::IPC_AGENT:
             // Can start with the same characters as a NAME or GROUP_NAME, plus '<'.
@@ -259,25 +265,25 @@ bool Lexer_t::IsMatch
         case parseTree::Token_t::GROUP_NAME:
         case parseTree::Token_t::DOTTED_NAME:
             return (   islower(context.top().nextChar)
-                    || isupper(context.top().nextChar)
-                    || (context.top().nextChar == '_') );
+                       || isupper(context.top().nextChar)
+                       || (context.top().nextChar == '_') );
 
         case parseTree::Token_t::INTEGER:
             return (isdigit(context.top().nextChar));
 
         case parseTree::Token_t::SIGNED_INTEGER:
             return (   (context.top().nextChar == '+')
-                    || (context.top().nextChar == '-')
-                    || isdigit(context.top().nextChar));
+                       || (context.top().nextChar == '-')
+                       || isdigit(context.top().nextChar));
 
         case parseTree::Token_t::BOOLEAN:
             return IsMatchBoolean();
 
         case parseTree::Token_t::FLOAT:
-            throw mk::Exception_t("Internal bug: FLOAT lookahead not implemented.");
+            throw mk::Exception_t(LE_I18N("Internal error: FLOAT lookahead not implemented."));
 
         case parseTree::Token_t::STRING:
-            throw mk::Exception_t("Internal bug: STRING lookahead not implemented.");
+            throw mk::Exception_t(LE_I18N("Internal error: STRING lookahead not implemented."));
 
         case parseTree::Token_t::MD5_HASH:
             return isxdigit(context.top().nextChar);
@@ -286,7 +292,7 @@ bool Lexer_t::IsMatch
             return context.top().nextChar == '#';
     }
 
-    throw mk::Exception_t("Internal bug: IsMatch(): Invalid token type requested.");
+    throw mk::Exception_t(LE_I18N("Internal error: IsMatch(): Invalid token type requested."));
 }
 
 
@@ -311,8 +317,10 @@ parseTree::Token_t* Lexer_t::PullRaw
 
             if (context.top().nextChar != EOF)
             {
-                ThrowException("Expected end-of-file, but found '"
-                               + std::string(1, context.top().nextChar) + "'.");
+                ThrowException(
+                    mk::format(LE_I18N("Expected end-of-file, but found '%c'."),
+                               (char)context.top().nextChar)
+                );
             }
             break;
 
@@ -556,7 +564,10 @@ void Lexer_t::ProcessDirective
     }
     else
     {
-        ThrowException("Unrecognized processing directive '" + directivePtr->text + "'");
+        ThrowException(
+            mk::format(LE_I18N("Unrecognized processing directive '%s'"),
+                       directivePtr->text)
+        );
     }
 }
 
@@ -596,7 +607,9 @@ void Lexer_t::ProcessIncludeDirective
 
     if (includePath == "")
     {
-        ThrowException("File '" + filePath + "' not found.");
+        ThrowException(
+            mk::format(LE_I18N("File '%s' not found."), filePath)
+        );
     }
 
     // Construct a new file fragment for the included file and move parsing to that fragment
@@ -631,7 +644,7 @@ bool Lexer_t::IsMatchBoolean
             n = Lookahead(lookaheadBuff, 4);
 
             if (   (n == 4)
-                && (strncmp(lookaheadBuff, "true", 4) == 0))
+                   && (strncmp(lookaheadBuff, "true", 4) == 0))
             {
                 result = true;
             }
@@ -642,7 +655,7 @@ bool Lexer_t::IsMatchBoolean
             n = Lookahead(lookaheadBuff, 5);
 
             if (   (n == 5)
-                && (strncmp(lookaheadBuff, "false", 5) == 0))
+                   && (strncmp(lookaheadBuff, "false", 5) == 0))
             {
                 result = true;
             }
@@ -653,7 +666,7 @@ bool Lexer_t::IsMatchBoolean
             n = Lookahead(lookaheadBuff, 3); // "off" is 3 bytes long.
 
             if (   ((n >= 2) && (strncmp(lookaheadBuff, "on", 2) == 0))
-                || ((n == 3) && (strncmp(lookaheadBuff, "off", 3) == 0))  )
+                   || ((n == 3) && (strncmp(lookaheadBuff, "off", 3) == 0))  )
             {
                 result = true;
             }
@@ -684,7 +697,8 @@ void Lexer_t::PullConstString
     {
         if (context.top().nextChar != *charPtr)
         {
-            UnexpectedChar(" Expected '" + std::string(tokenString) + "'");
+            UnexpectedChar(mk::format(LE_I18N("Unexpected character %%s. Expected '%s'"),
+                                      tokenString));
         }
 
         AdvanceOneCharacter(tokenPtr);
@@ -714,7 +728,7 @@ void Lexer_t::PullWhitespace
 
     if (startPos == context.top().inputStream.tellg())
     {
-        ThrowException("Expected whitespace.");
+        ThrowException(LE_I18N("Expected whitespace."));
     }
 }
 
@@ -733,7 +747,7 @@ void Lexer_t::PullComment
 {
     if (context.top().nextChar != '/')
     {
-        ThrowException("Expected '/' at start of comment.");
+        ThrowException(LE_I18N("Expected '/' at start of comment."));
     }
 
     // Eat the leading '/'.
@@ -768,10 +782,10 @@ void Lexer_t::PullComment
             }
             else if (context.top().nextChar == EOF)
             {
-                std::stringstream msg;
-                msg << "Unexpected end-of-file before end of comment.\n"
-                    << tokenPtr->GetLocation() << ": note: Comment starts here.";
-                ThrowException(msg.str());
+                ThrowException(
+                    mk::format(LE_I18N("Unexpected end-of-file before end of comment.\n"
+                                       "%s: note: Comment starts here."), tokenPtr->GetLocation())
+                );
             }
             else
             {
@@ -781,7 +795,7 @@ void Lexer_t::PullComment
     }
     else
     {
-        ThrowException("Expected '/' or '*' at start of comment.");
+        ThrowException(LE_I18N("Expected '/' or '*' at start of comment."));
     }
 }
 
@@ -799,7 +813,7 @@ void Lexer_t::PullInteger
 {
     if (!isdigit(context.top().nextChar))
     {
-        UnexpectedChar("at beginning of integer.");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of integer."));
     }
 
     while (isdigit(context.top().nextChar))
@@ -826,7 +840,7 @@ void Lexer_t::PullSignedInteger
 //--------------------------------------------------------------------------------------------------
 {
     if (   (context.top().nextChar == '-')
-        || (context.top().nextChar == '+'))
+           || (context.top().nextChar == '+'))
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -868,8 +882,8 @@ void Lexer_t::PullBoolean
 
             if (context.top().nextChar != 'f')
             {
-                ThrowException("Unexpected boolean value.  Only 'true', 'false', "
-                               "'on', or 'off' allowed.");
+                ThrowException(LE_I18N("Unexpected boolean value.  Only 'true', 'false', "
+                                       "'on', or 'off' allowed."));
             }
 
             AdvanceOneCharacter(tokenPtr);
@@ -877,8 +891,8 @@ void Lexer_t::PullBoolean
     }
     else
     {
-        UnexpectedChar("at beginning of boolean value.  "
-                       "Only 'true', 'false', 'on', or 'off' allowed.");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of boolean value.  "
+                               "Only 'true', 'false', 'on', or 'off' allowed."));
     }
 }
 
@@ -895,10 +909,10 @@ void Lexer_t::PullFloat
 //--------------------------------------------------------------------------------------------------
 {
     if (   (isdigit(context.top().nextChar) == false)
-        && (context.top().nextChar != '+')
-        && (context.top().nextChar != '-'))
+           && (context.top().nextChar != '+')
+           && (context.top().nextChar != '-'))
     {
-        UnexpectedChar("at beginning of floating point value.");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of floating point value."));
     }
 
     AdvanceOneCharacter(tokenPtr);
@@ -919,15 +933,16 @@ void Lexer_t::PullFloat
     }
 
     if (   (context.top().nextChar == 'e')
-        || (context.top().nextChar == 'E'))
+           || (context.top().nextChar == 'E'))
     {
         AdvanceOneCharacter(tokenPtr);
 
         if (   (isdigit(context.top().nextChar) == false)
-            && (context.top().nextChar != '+')
-            && (context.top().nextChar != '-'))
+               && (context.top().nextChar != '+')
+               && (context.top().nextChar != '-'))
         {
-            UnexpectedChar("in exponent part of floating point value.");
+            UnexpectedChar(LE_I18N("Unexpected character %s in exponent part of"
+                                   " floating point value."));
         }
 
         AdvanceOneCharacter(tokenPtr);
@@ -952,13 +967,13 @@ void Lexer_t::PullString
 //--------------------------------------------------------------------------------------------------
 {
     if (   (context.top().nextChar == '"')
-        || (context.top().nextChar == '\''))
+           || (context.top().nextChar == '\''))
     {
         PullQuoted(tokenPtr, context.top().nextChar);
     }
     else
     {
-        ThrowException("Expected string literal.");
+        ThrowException(LE_I18N("Expected string literal."));
     }
 }
 
@@ -976,7 +991,7 @@ void Lexer_t::PullFilePermissions
 {
     if (context.top().nextChar != '[')
     {
-        ThrowException("Expected '[' at start of file permissions.");
+        ThrowException(LE_I18N("Expected '[' at start of file permissions."));
     }
 
     // Eat the leading '['.
@@ -985,7 +1000,7 @@ void Lexer_t::PullFilePermissions
     // Must be something between the square brackets.
     if (context.top().nextChar == ']')
     {
-        ThrowException("Empty file permissions.");
+        ThrowException(LE_I18N("Empty file permissions."));
     }
 
     // Continue until terminated by ']'.
@@ -994,11 +1009,11 @@ void Lexer_t::PullFilePermissions
         // Check for end-of-file or illegal character in file permissions.
         if (context.top().nextChar == EOF)
         {
-            ThrowException("Unexpected end-of-file before end of file permissions.");
+            ThrowException(LE_I18N("Unexpected end-of-file before end of file permissions."));
         }
         else if ((context.top().nextChar != 'r') && (context.top().nextChar != 'w') && (context.top().nextChar != 'x'))
         {
-            UnexpectedChar("inside file permissions.");
+            UnexpectedChar(LE_I18N("Unexpected character %s inside file permissions."));
         }
 
         AdvanceOneCharacter(tokenPtr);
@@ -1025,9 +1040,11 @@ void Lexer_t::PullServerIpcOption
 
     // Check that it's one of the valid server-side options.
     if (   (tokenPtr->text != "[manual-start]")
-        && (tokenPtr->text != "[async]") )
+           && (tokenPtr->text != "[async]") )
     {
-        ThrowException("Invalid server-side IPC option: '" + tokenPtr->text + "'");
+        ThrowException(
+            mk::format(LE_I18N("Invalid server-side IPC option: '%s'"), tokenPtr->text)
+        );
     }
 }
 
@@ -1047,10 +1064,12 @@ void Lexer_t::PullClientIpcOption
 
     // Check that it's one of the valid client-side options.
     if (   (tokenPtr->text != "[manual-start]")
-        && (tokenPtr->text != "[types-only]")
-        && (tokenPtr->text != "[optional]") )
+           && (tokenPtr->text != "[types-only]")
+           && (tokenPtr->text != "[optional]") )
     {
-        ThrowException("Invalid client-side IPC option: '" + tokenPtr->text + "'");
+        ThrowException(
+            mk::format(LE_I18N("Invalid client-side IPC option: '%s'"), tokenPtr->text)
+        );
     }
 }
 
@@ -1068,7 +1087,7 @@ void Lexer_t::PullIpcOption
 {
     if (context.top().nextChar != '[')
     {
-        ThrowException("Expected '[' at start of IPC option.");
+        ThrowException(LE_I18N("Expected '[' at start of IPC option."));
     }
 
     // Eat the leading '['.
@@ -1077,7 +1096,7 @@ void Lexer_t::PullIpcOption
     // Must be something between the square brackets.
     if (context.top().nextChar == ']')
     {
-        ThrowException("Empty IPC option.");
+        ThrowException(LE_I18N("Empty IPC option."));
     }
 
     // Continue until terminated by ']'.
@@ -1086,11 +1105,11 @@ void Lexer_t::PullIpcOption
         // Check for end-of-file or illegal character in option.
         if (context.top().nextChar == EOF)
         {
-            ThrowException("Unexpected end-of-file before end of IPC option.");
+            ThrowException(LE_I18N("Unexpected end-of-file before end of IPC option."));
         }
         else if ((context.top().nextChar != '-') && !islower(context.top().nextChar))
         {
-            UnexpectedChar("inside option.");
+            UnexpectedChar(LE_I18N("Unexpected character %s inside option."));
         }
 
         AdvanceOneCharacter(tokenPtr);
@@ -1155,13 +1174,14 @@ void Lexer_t::PullArg
         {
             if (isprint(context.top().nextChar))
             {
-                std::stringstream msg;
-                msg << "Invalid character '" << context.top().nextChar << "' in argument.";
-                ThrowException(msg.str());
+                ThrowException(
+                    mk::format(LE_I18N("Invalid character '%c' in argument."),
+                               (char)context.top().nextChar)
+                );
             }
             else
             {
-                ThrowException("Invalid (non-printable) character in argument.");
+                ThrowException(LE_I18N("Invalid (non-printable) character in argument."));
             }
         }
     }
@@ -1221,13 +1241,14 @@ void Lexer_t::PullFilePath
         {
             if (isprint(context.top().nextChar))
             {
-                std::stringstream msg;
-                msg << "Invalid character '" << context.top().nextChar << "' in file path.";
-                ThrowException(msg.str());
+                ThrowException(
+                    mk::format(LE_I18N("Invalid character '%c' in file path."),
+                               (char)context.top().nextChar)
+                );
             }
             else
             {
-                ThrowException("Invalid (non-printable) character in file path.");
+                ThrowException(LE_I18N("Invalid (non-printable) character in file path."));
             }
         }
     }
@@ -1277,11 +1298,14 @@ void Lexer_t::PullFileName
         {
             if (isprint(context.top().nextChar))
             {
-                ThrowException("Invalid character '" + std::string(1, context.top().nextChar) + "' in name.");
+                ThrowException(
+                    mk::format(LE_I18N("Invalid character '%c' in name."),
+                               (char)context.top().nextChar)
+                );
             }
             else
             {
-                ThrowException("Invalid (non-printable) character in name.");
+                ThrowException(LE_I18N("Invalid (non-printable) character in name."));
             }
         }
     }
@@ -1300,21 +1324,22 @@ void Lexer_t::PullName
 //--------------------------------------------------------------------------------------------------
 {
     if (   islower(context.top().nextChar)
-        || isupper(context.top().nextChar)
-        || (context.top().nextChar == '_') )
+           || isupper(context.top().nextChar)
+           || (context.top().nextChar == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
     else
     {
-        UnexpectedChar("at beginning of name. Names must start with a letter ('a'-'z' or 'A'-'Z')"
-                       " or an underscore ('_').");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of name. "
+                               "Names must start with a letter ('a'-'z' or 'A'-'Z')"
+                               " or an underscore ('_')."));
     }
 
     while (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || isdigit(context.top().nextChar)
-           || (context.top().nextChar == '_') )
+              || isupper(context.top().nextChar)
+              || isdigit(context.top().nextChar)
+              || (context.top().nextChar == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1342,8 +1367,8 @@ void Lexer_t::PullDottedName
         }
     }
     while (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || (context.top().nextChar == '_'));
+              || isupper(context.top().nextChar)
+              || (context.top().nextChar == '_'));
 }
 
 
@@ -1359,22 +1384,23 @@ void Lexer_t::PullGroupName
 //--------------------------------------------------------------------------------------------------
 {
     if (   islower(context.top().nextChar)
-        || isupper(context.top().nextChar)
-        || (context.top().nextChar == '_') )
+           || isupper(context.top().nextChar)
+           || (context.top().nextChar == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
     else
     {
-        UnexpectedChar("at beginning of group name. Group names must start with a letter "
-                       "('a'-'z' or 'A'-'Z') or an underscore ('_').");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of group name. "
+                               "Group names must start with a letter "
+                               "('a'-'z' or 'A'-'Z') or an underscore ('_')."));
     }
 
     while (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || isdigit(context.top().nextChar)
-           || (context.top().nextChar == '_')
-           || (context.top().nextChar == '-') )
+              || isupper(context.top().nextChar)
+              || isdigit(context.top().nextChar)
+              || (context.top().nextChar == '_')
+              || (context.top().nextChar == '-') )
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1400,17 +1426,18 @@ void Lexer_t::PullIpcAgentName
         AdvanceOneCharacter(tokenPtr);
 
         while (   islower(context.top().nextChar)
-               || isupper(context.top().nextChar)
-               || isdigit(context.top().nextChar)
-               || (context.top().nextChar == '_')
-               || (context.top().nextChar == '-') )
+                  || isupper(context.top().nextChar)
+                  || isdigit(context.top().nextChar)
+                  || (context.top().nextChar == '_')
+                  || (context.top().nextChar == '-') )
         {
             AdvanceOneCharacter(tokenPtr);
         }
 
         if (context.top().nextChar != '>')
         {
-            UnexpectedChar("in user name.  Must be terminated with '>'.");
+            UnexpectedChar(LE_I18N("Unexpected character %s in user name.  "
+                                   "Must be terminated with '>'."));
         }
         else
         {
@@ -1419,24 +1446,25 @@ void Lexer_t::PullIpcAgentName
     }
     // App names have the same rules as C programming language identifiers.
     else if (   islower(context.top().nextChar)
-             || isupper(context.top().nextChar)
-             || (context.top().nextChar == '_') )
+                || isupper(context.top().nextChar)
+                || (context.top().nextChar == '_') )
     {
         AdvanceOneCharacter(tokenPtr);
 
         while (   islower(context.top().nextChar)
-               || isupper(context.top().nextChar)
-               || isdigit(context.top().nextChar)
-               || (context.top().nextChar == '_') )
+                  || isupper(context.top().nextChar)
+                  || isdigit(context.top().nextChar)
+                  || (context.top().nextChar == '_') )
         {
             AdvanceOneCharacter(tokenPtr);
         }
     }
     else
     {
-        UnexpectedChar("at beginning of IPC agent name. App names must start with a letter "
-                       "('a'-'z' or 'A'-'Z') or an underscore ('_').  User names must be inside"
-                       " angle brackets ('<username>').");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of IPC agent name. "
+                               "App names must start with a letter "
+                               "('a'-'z' or 'A'-'Z') or an underscore ('_').  User names must be "
+                               "inside angle brackets ('<username>')."));
     }
 
 }
@@ -1463,11 +1491,11 @@ void Lexer_t::PullQuoted
         // Don't allow end of file or end of line characters inside the quoted string.
         if (context.top().nextChar == EOF)
         {
-            ThrowException("Unexpected end-of-file before end of quoted string.");
+            ThrowException(LE_I18N("Unexpected end-of-file before end of quoted string."));
         }
         if ((context.top().nextChar == '\n') || (context.top().nextChar == '\r'))
         {
-            ThrowException("Unexpected end-of-line before end of quoted string.");
+            ThrowException(LE_I18N("Unexpected end-of-line before end of quoted string."));
         }
 
         AdvanceOneCharacter(tokenPtr);
@@ -1505,22 +1533,24 @@ void Lexer_t::PullEnvVar
 
     // Pull the first character of the environment variable name.
     if (   islower(context.top().nextChar)
-        || isupper(context.top().nextChar)
-        || (context.top().nextChar == '_') )
+           || isupper(context.top().nextChar)
+           || (context.top().nextChar == '_') )
     {
         AdvanceOneCharacter(tokenPtr->text);
     }
     else
     {
-        UnexpectedChar("at beginning of environment variable name.  Must start with a letter"
-                       " ('a'-'z' or 'A'-'Z') or an underscore ('_').");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of"
+                               " environment variable name.  "
+                               "Must start with a letter ('a'-'z' or 'A'-'Z') or"
+                               " an underscore ('_')."));
     }
 
     // Pull the rest of the environment variable name.
     while (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar)
-           || isdigit(context.top().nextChar)
-           || (context.top().nextChar == '_') )
+              || isupper(context.top().nextChar)
+              || isdigit(context.top().nextChar)
+              || (context.top().nextChar == '_') )
     {
         AdvanceOneCharacter(tokenPtr->text);
     }
@@ -1534,11 +1564,13 @@ void Lexer_t::PullEnvVar
         }
         else if (context.top().nextChar == EOF)
         {
-            ThrowException("Unexpected end-of-file inside environment variable name.");
+            ThrowException(LE_I18N("Unexpected end-of-file inside environment variable name."));
         }
         else
         {
-            ThrowException("'}' expected.  '" + std::string(1, context.top().nextChar) + "' found.");
+            ThrowException(
+                mk::format(LE_I18N("'}' expected.  '%c' found."), (char)context.top().nextChar)
+            );
         }
     }
 }
@@ -1559,19 +1591,19 @@ void Lexer_t::PullMd5
     for (int i = 0; i < 32; i++)
     {
         if (   (!isdigit(context.top().nextChar))
-            && (context.top().nextChar != 'a')
-            && (context.top().nextChar != 'b')
-            && (context.top().nextChar != 'c')
-            && (context.top().nextChar != 'd')
-            && (context.top().nextChar != 'e')
-            && (context.top().nextChar != 'f')  )
+               && (context.top().nextChar != 'a')
+               && (context.top().nextChar != 'b')
+               && (context.top().nextChar != 'c')
+               && (context.top().nextChar != 'd')
+               && (context.top().nextChar != 'e')
+               && (context.top().nextChar != 'f')  )
         {
             if (IsWhitespace(context.top().nextChar))
             {
-                ThrowException("MD5 hash too short.");
+                ThrowException(LE_I18N("MD5 hash too short."));
             }
 
-            UnexpectedChar("in MD5 hash.");
+            UnexpectedChar(LE_I18N("Unexpected character %s in MD5 hash."));
         }
 
         AdvanceOneCharacter(tokenPtr);
@@ -1579,14 +1611,14 @@ void Lexer_t::PullMd5
 
     // Make sure it isn't too long.
     if (   isdigit(context.top().nextChar)
-        || (context.top().nextChar == 'a')
-        || (context.top().nextChar == 'b')
-        || (context.top().nextChar == 'c')
-        || (context.top().nextChar == 'd')
-        || (context.top().nextChar == 'e')
-        || (context.top().nextChar == 'f')  )
+           || (context.top().nextChar == 'a')
+           || (context.top().nextChar == 'b')
+           || (context.top().nextChar == 'c')
+           || (context.top().nextChar == 'd')
+           || (context.top().nextChar == 'e')
+           || (context.top().nextChar == 'f')  )
     {
-        ThrowException("MD5 hash too long.");
+        ThrowException(LE_I18N("MD5 hash too long."));
     }
 }
 
@@ -1609,22 +1641,23 @@ void Lexer_t::PullDirective
     }
     else
     {
-        UnexpectedChar("at beginning of processing directive.  Must start with '#' character.");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of processing directive.  "
+                               "Must start with '#' character."));
     }
 
     if (   islower(context.top().nextChar)
-        || isupper(context.top().nextChar))
+           || isupper(context.top().nextChar))
     {
         AdvanceOneCharacter(tokenPtr);
     }
     else
     {
-        UnexpectedChar("at beginning of processing directive.  Must start with a letter"
-                       " ('a'-'z' or 'A'-'Z').");
+        UnexpectedChar(LE_I18N("Unexpected character %s at beginning of processing directive.  "
+                               "Must start with a letter ('a'-'z' or 'A'-'Z')."));
     }
 
     while (   islower(context.top().nextChar)
-           || isupper(context.top().nextChar))
+              || isupper(context.top().nextChar))
     {
         AdvanceOneCharacter(tokenPtr);
     }
@@ -1665,22 +1698,19 @@ std::string Lexer_t::UnexpectedCharErrorMsg
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::stringstream msg;
-
-    msg << context.top().filePtr->path << ":" << lineNum << ":" << columnNum << ": error: ";
+    std::string charAsString;
 
     if (isprint(unexpectedChar))
     {
-        msg << "Unexpected character '" << unexpectedChar << "' ";
+        charAsString = "'" + std::string(1, unexpectedChar) + "'";
     }
     else
     {
-        msg << "Unexpected non-printable character ";
+        charAsString = LE_I18N("<unprintable>");
     }
 
-    msg << message;
-
-    return msg.str();
+    return mk::format((LE_I18N("%s:%d:%d: error: ") + message).c_str(),
+                      context.top().filePtr->path, lineNum, columnNum, charAsString);
 }
 
 
@@ -1700,15 +1730,17 @@ void Lexer_t::ConvertToName
     const char* charPtr = tokenPtr->text.c_str();
 
     if (   (!islower(charPtr[0]))
-        && (!isupper(charPtr[0]))
-        && (charPtr[0] != '_') )
+           && (!isupper(charPtr[0]))
+           && (charPtr[0] != '_') )
     {
         throw mk::Exception_t(UnexpectedCharErrorMsg(charPtr[0],
-                                                          tokenPtr->line,
-                                                          tokenPtr->column,
-                                                          "at beginning of name. Names must start"
-                                                          " with a letter ('a'-'z' or 'A'-'Z')"
-                                                          " or an underscore ('_')."));
+                                                     tokenPtr->line,
+                                                     tokenPtr->column,
+                                                     LE_I18N("Unexpected character %s"
+                                                             " at beginning of name."
+                                                             " Names must start"
+                                                             " with a letter ('a'-'z' or 'A'-'Z')"
+                                                             " or an underscore ('_').")));
     }
 
     charPtr++;
@@ -1716,17 +1748,18 @@ void Lexer_t::ConvertToName
     while (*charPtr != '\0')
     {
         if (   (!islower(*charPtr))
-            && (!isupper(*charPtr))
-            && (!isdigit(*charPtr))
-            && (*charPtr != '_') )
+               && (!isupper(*charPtr))
+               && (!isdigit(*charPtr))
+               && (*charPtr != '_') )
         {
             throw mk::Exception_t(UnexpectedCharErrorMsg(charPtr[0],
-                                                              tokenPtr->line,
-                                                              tokenPtr->column,
-                                                              "Names may only contain letters"
-                                                              " ('a'-'z' or 'A'-'Z'),"
-                                                              " numbers ('0'-'9')"
-                                                              " and underscores ('_')."));
+                                                         tokenPtr->line,
+                                                         tokenPtr->column,
+                                                         LE_I18N("Unexpected character %s.  "
+                                                                 "Names may only contain letters"
+                                                                 " ('a'-'z' or 'A'-'Z'),"
+                                                                 " numbers ('0'-'9')"
+                                                                 " and underscores ('_').")));
         }
 
         charPtr++;
@@ -1842,7 +1875,7 @@ void Lexer_t::AdvanceOneCharacter
 
     if (context.top().inputStream.bad())
     {
-        ThrowException("Failed to fetch next character from file.");
+        ThrowException(LE_I18N("Failed to fetch next character from file."));
     }
 }
 
@@ -1859,12 +1892,14 @@ void Lexer_t::ThrowException
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::stringstream msg;
+    std::string formattedMessage;
 
-    msg << context.top().filePtr->path << ":"
-        << context.top().line << ":" << context.top().column << ": error: " << message;
+    formattedMessage = mk::format(LE_I18N("%s:%d:%d: error: %s"),
+                                  context.top().filePtr->path,
+                                  context.top().line % context.top().column,
+                                  message);
 
-    throw mk::Exception_t(msg.str());
+    throw mk::Exception_t(formattedMessage);
 }
 
 

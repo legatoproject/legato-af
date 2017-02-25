@@ -111,93 +111,98 @@ static void GetCommandLineArgs
         {
             if (AdefFilePath != "")
             {
-                throw mk::Exception_t("Only one app definition (.adef) file allowed.");
+                throw mk::Exception_t(LE_I18N("Only one app definition (.adef) file allowed."));
             }
             AdefFilePath = param;
         };
 
     args::AddMultipleString('a',
                             "append-to-version",
-                            "Specify a suffix to append to the application version specified"
-                            " in the .adef file.  Will automatically insert a '.' between the"
-                            " .adef's version string and any version strings specified on the"
-                            " command-line.  Multiple occurences of this argument will be"
-                            " combined into a single string.",
+                            LE_I18N("Specify a suffix to append to the application version"
+                                    " specified in the .adef file."
+                                    "  Will automatically insert a '.' between the .adef's version"
+                                    " string and any version strings specified on the command-line."
+                                    "  Multiple occurences of this argument will be combined into"
+                                    " a single string."),
                             versionPush);
 
     args::AddOptionalString(&OutputDir,
                             ".",
                             'o',
                             "output-dir",
-                            "Specify the directory into which the final, built application file"
-                            "(ready to be installed on the target) should be put.");
+                            LE_I18N("Specify the directory into which the final, built application"
+                                    " file (ready to be installed on the target) should be put."));
 
     args::AddOptionalString(&BuildParams.workingDir,
                             "",
                             'w',
                             "object-dir",
-                            "Specify the directory into which any intermediate build artifacts"
-                            " (such as .o files and generated source code files) should be put.");
+                            LE_I18N("Specify the directory into which any intermediate build"
+                                    " artifacts (such as .o files and generated source code files)"
+                                    " should be put."));
 
     args::AddMultipleString('i',
                             "interface-search",
-                            "Add a directory to the interface search path.",
+                            LE_I18N("Add a directory to the interface search path."),
                             ifPathPush);
 
     args::AddMultipleString('c',
                             "component-search",
-                            "(DEPRECATED) Add a directory to the source search path (same as -s).",
+                            LE_I18N("(DEPRECATED) Add a directory to the source search path"
+                                    " (same as -s)."),
                             sourcePathPush);
 
     args::AddMultipleString('s',
                             "source-search",
-                            "Add a directory to the source search path.",
+                            LE_I18N("Add a directory to the source search path."),
                             sourcePathPush);
 
     args::AddOptionalString(&BuildParams.target,
                             "localhost",
                             't',
                             "target",
-                            "Set the compile target (localhost|ar7).");
+                            LE_I18N("Set the compile target (localhost|ar7)."));
 
     args::AddOptionalFlag(&BuildParams.beVerbose,
                           'v',
                           "verbose",
-                          "Set into verbose mode for extra diagnostic information.");
+                          LE_I18N("Set into verbose mode for extra diagnostic information."));
 
     args::AddMultipleString('C',
                             "cflags",
-                            "Specify extra flags to be passed to the C compiler.",
+                            LE_I18N("Specify extra flags to be passed to the C compiler."),
                             cFlagsPush);
 
     args::AddMultipleString('X',
                             "cxxflags",
-                            "Specify extra flags to be passed to the C++ compiler.",
+                            LE_I18N("Specify extra flags to be passed to the C++ compiler."),
                             cxxFlagsPush);
 
     args::AddMultipleString('L',
                             "ldflags",
-                            "Specify extra flags to be passed to the linker when linking "
-                            "executables.",
+                            LE_I18N("Specify extra flags to be passed to the linker when linking "
+                                    "executables."),
                             ldFlagsPush);
 
     args::AddOptionalFlag(&DontRunNinja,
                            'n',
                            "dont-run-ninja",
-                           "Even if a build.ninja file exists, ignore it, delete the staging area,"
-                           " parse all inputs, and generate all output files, including a new copy"
-                           " of the build.ninja, then exit without running ninja.  This is used by"
-                           " the build.ninja to to regenerate itself and any other files that need"
-                           " to be regenerated when the build.ninja finds itself out of date.");
+                          LE_I18N("Even if a build.ninja file exists, ignore it, delete the"
+                                  " staging area, parse all inputs, and generate all output files,"
+                                  " including a new copy of the build.ninja, then exit without"
+                                  " running ninja.  This is used by the build.ninja to to"
+                                  " regenerate itself and any other files that need to be"
+                                  " regenerated when the build.ninja finds itself out of date."));
 
     args::AddOptionalFlag(&BuildParams.codeGenOnly,
                           'g',
                           "generate-code",
-                          "Only generate code, but don't compile, link, or bundle anything."
-                          " The interface definition (include) files will be generated, along"
-                          " with component and executable main files and configuration files."
-                          " This is useful for supporting context-sensitive auto-complete and"
-                          " related features in source code editors, for example.");
+                          LE_I18N("Only generate code, but don't compile, link, or bundle anything."
+                                  " The interface definition (include) files will be generated,"
+                                  " along with component and executable main files and"
+                                  " configuration files."
+                                  " This is useful for supporting context-sensitive auto-complete"
+                                  " and related features in source code editors, for example."));
 
     // Any remaining parameters on the command-line are treated as the .adef file path.
     // Note: there should only be one parameter not prefixed by an argument identifier.
@@ -208,7 +213,7 @@ static void GetCommandLineArgs
     // Were we given an application definition file path?
     if (AdefFilePath == "")
     {
-        throw std::runtime_error("An application definition must be supplied.");
+        throw mk::Exception_t(LE_I18N("An application definition must be supplied."));
     }
 
     // Make sure we have the .adef file's absolute path (for improved error reporting).

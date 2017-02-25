@@ -28,7 +28,7 @@ void NonNegativeIntLimit_t::operator =
 {
     if (value < 0)
     {
-        throw mk::Exception_t("Limit must not be negative.");
+        throw mk::Exception_t(LE_I18N("Limit must not be negative."));
     }
     else
     {

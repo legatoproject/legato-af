@@ -141,8 +141,9 @@ static void ModelAppOverrides
         }
         else
         {
-            subsectionPtr->ThrowException("Internal error: Unexpected subsection "
-                                          "'" + subsectionName + "'.");
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unexpected subsection '%'."), subsectionName)
+            );
         }
     }
 }
@@ -182,17 +183,20 @@ static void ModelApp
     {
         if (appSpec.empty())
         {
-            std::cerr << "Ignoring empty app specification" << std::endl;
+            std::cerr << LE_I18N("** Warning: Ignoring empty app specification") << std::endl;
             return;
         }
 
-        std::cerr << "Looked in the following places:" << std::endl;
+        std::string formattedMsg =
+            mk::format(LE_I18N("Can't find definition file (.adef) for app specification"
+                               " '%s'.\n"
+                               "note: Looked in the following places:\n"), appSpec);
+
         for (auto& dir : buildParams.sourceDirs)
         {
-            std::cerr << "  '" << dir << "'" << std::endl;
+            formattedMsg += "    '" + dir + "'\n";
         }
-        sectionPtr->ThrowException("Can't find definition file (.adef) for app specification "
-                                   "'" + appSpec + "'.");
+        sectionPtr->ThrowException(formattedMsg);
     }
 
     // Check for duplicates.
@@ -208,7 +212,7 @@ static void ModelApp
 
     if (buildParams.beVerbose)
     {
-        std::cout << "System contains app '" << appName << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("System contains app '%s'."), appName) << std::endl;
     }
 
     // Model this app.
@@ -277,24 +281,26 @@ static void ModelKernelModule
 
     if (modulePath.empty())
     {
-        std::cerr << "Looked in the following places:" << std::endl;
+        std::string formattedMsg =
+            mk::format(LE_I18N("Can't find definition file (.mdef) "
+                               "for module specification '%s'.\n"
+                               "note: Looked in the following places:\n"), moduleSpec);
         for (auto& dir : buildParams.sourceDirs)
         {
-            std::cerr << "  '" << dir << "'" << std::endl;
+            formattedMsg += "    '" + dir + "'\n";
         }
-        sectionPtr->ThrowException("Can't find definition (.mdef) file for module specification "
-                                   "'" + moduleSpec + "'.");
+        sectionPtr->ThrowException(formattedMsg);
     }
 
     // Check for duplicates.
     auto modulesIter = systemPtr->modules.find(moduleName);
     if (modulesIter != systemPtr->modules.end())
     {
-        std::stringstream msg;
-        msg << "Module '" << moduleName << "' added to the system more than once.\n"
-            << modulesIter->second->parseTreePtr->firstTokenPtr->GetLocation()
-            << "Previously added here.";
-        sectionPtr->ThrowException(msg.str());
+        sectionPtr->ThrowException(
+            mk::format(LE_I18N("Module '%s' added to the system more than once.\n"
+                               "%s: note: Previously added here."),
+                       moduleName, modulesIter->second->parseTreePtr->firstTokenPtr->GetLocation())
+        );
     }
 
     // Model this module.
@@ -305,7 +311,7 @@ static void ModelKernelModule
 
     if (buildParams.beVerbose)
     {
-        std::cout << "System contains module '" << moduleName << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("System contains module '%s'."), moduleName) << std::endl;
     }
 }
 
@@ -431,7 +437,13 @@ static void AddNonAppUserBinding
             << i->second->parseTreePtr->firstTokenPtr->GetLocation()
             << "Previous binding was here.";
 
-        bindingPtr->parseTreePtr->ThrowException(msg.str());
+        bindingPtr->parseTreePtr->ThrowException(
+            mk::format(LE_I18N("Duplicate binding of client-side interface '%s'"
+                               " belonging to non-app user '%s'.\n"
+                               "%s: note: Previous binding was here."),
+                       interfaceName, userName,
+                       i->second->parseTreePtr->firstTokenPtr->GetLocation())
+        );
     }
 
     // Add the binding to the user.
@@ -502,9 +514,11 @@ static void ModelBindingsSection
                     if (   appPtr->wildcardBindings.find(bindingPtr->clientIfName)
                         != appPtr->wildcardBindings.end())
                     {
-                        std::cout << "Replacing previous wildcard binding '"
-                                  << bindingPtr->clientAgentName << ".*."
-                                  << bindingPtr->clientIfName << "'." << std::endl;
+                        std::cout << mk::format(LE_I18N("Replacing previous wildcard binding"
+                                                        " '%s.*.%s'."),
+                                                bindingPtr->clientAgentName,
+                                                bindingPtr->clientIfName)
+                                  << std::endl;
                     }
                 }
 
@@ -525,9 +539,10 @@ static void ModelBindingsSection
                 {
                     if (clientIfPtr->bindingPtr != NULL)
                     {
-                        std::cout << "Overriding binding of '"
-                                  << bindingPtr->clientAgentName << "."
-                                  << bindingPtr->clientIfName << "'." << std::endl;
+                        std::cout << mk::format(LE_I18N("Overriding binding of '%s.%s'."),
+                                                bindingPtr->clientAgentName,
+                                                bindingPtr->clientIfName)
+                                  << std::endl;
                     }
                 }
 
@@ -548,9 +563,10 @@ static void ModelBindingsSection
                 {
                     if (clientIfPtr->bindingPtr != NULL)
                     {
-                        std::cout << "Overriding binding of '"
-                                  << bindingPtr->clientAgentName << "."
-                                  << bindingPtr->clientIfName << "'." << std::endl;
+                        std::cout << mk::format(LE_I18N("Overriding binding of '%s.%s'."),
+                                                bindingPtr->clientAgentName,
+                                                bindingPtr->clientIfName)
+                                  << std::endl;
                     }
                 }
 
@@ -633,11 +649,12 @@ static void ModelCommandsSection
         auto commandIter = systemPtr->commands.find(commandPtr->name);
         if (commandIter != systemPtr->commands.end())
         {
-            std::stringstream msg;
-            msg << "Command name '" << commandPtr->name << "' used more than once.\n"
-                << commandIter->second->parseTreePtr->firstTokenPtr->GetLocation()
-                << "Previously used here.";
-            tokens[0]->ThrowException(msg.str());
+            tokens[0]->ThrowException(
+                mk::format(LE_I18N("Command name '%s' used more than once.\n"
+                                   "%s: note: Previously used here."),
+                           commandPtr->name,
+                           commandIter->second->parseTreePtr->firstTokenPtr->GetLocation())
+            );
         }
 
         // The second token is the app name.
@@ -649,7 +666,8 @@ static void ModelCommandsSection
         // Make sure the path is absolute.
         if (!path::IsAbsolute(commandPtr->exePath))
         {
-            tokens[2]->ThrowException("Command executable path inside app must begin with '/'.");
+            tokens[2]->ThrowException(LE_I18N("Command executable path inside app must begin"
+                                              " with '/'."));
         }
 
         // NOTE: It would be nice to check that the exePath points to something that is executable
@@ -738,8 +756,10 @@ model::System_t* GetSystem
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Modelling system: '" << systemPtr->name << "'" << std::endl
-                  << "  defined in: '" << sdefFilePtr->path << "'" << std::endl;
+        std::cout << mk::format(LE_I18N("Modelling system: '%s'\n"
+                                        "  defined in '%s'"),
+                                systemPtr->name, sdefFilePtr->path)
+                  << std::endl;
     }
 
     // Lists of things that need to be modelled near the end.
@@ -785,8 +805,9 @@ model::System_t* GetSystem
         }
         else
         {
-            sectionPtr->ThrowException("Internal error: Unrecognized section '" + sectionName
-                                       + "'.");
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), sectionName)
+            );
         }
     }
 

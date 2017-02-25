@@ -47,8 +47,10 @@ void ProcessEnv_t::SetMaxPriority
     // Make sure that no processes are started at a priority higher than the maximum allowed.
     if (startPriority.IsSet() && (startPriority > maxPriority))
     {
-        std::cerr << "Warning: clamping start priority level '" << startPriority.Get()
-                  << "' to maximum priority level '" << priority << "'." << std::endl;
+        std::cerr << mk::format(LE_I18N("** WARNING: clamping start priority level '%s'"
+                                        " to maximum priority level '%s'."),
+                                startPriority.Get(), priority)
+                  << std::endl;
         startPriority = maxPriority;
     }
 }
@@ -71,8 +73,10 @@ void ProcessEnv_t::SetStartPriority
     // Make sure that no processes are started at a priority higher than the maximum allowed.
     if (maxPriority.IsSet() && (startPriority > maxPriority))
     {
-        std::cerr << "Warning: clamping start priority level '" << priority
-                  << "' to maximum priority level '" << maxPriority.Get() << "'." << std::endl;
+        std::cerr << mk::format(LE_I18N("** WARNING: clamping start priority level '%s' "
+                                        "to maximum priority level '%s'."),
+                                priority, maxPriority.Get())
+                  << std::endl;
         startPriority = maxPriority;
     }
 }

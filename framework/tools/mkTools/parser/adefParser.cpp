@@ -224,8 +224,10 @@ static parseTree::CompoundItem_t* ParseProcessesSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + subsectionName
-                             + "' in 'processes' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'processes' section."),
+                       subsectionName)
+        );
         return NULL;
     }
 }
@@ -292,8 +294,10 @@ static parseTree::CompoundItem_t* ParseProvidesSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + subsectionName
-                             + "' in 'provides' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'provides' section."),
+                       subsectionName)
+        );
         return NULL;
     }
 }
@@ -325,8 +329,8 @@ static parseTree::RequiredConfigTree_t* ParseRequiredConfigTree
             && (permissionsPtr->text != "[rw]")
             && (permissionsPtr->text != "[wr]") )
         {
-            permissionsPtr->ThrowException("Invalid access permissions "
-                                           "for configuration tree.");
+            permissionsPtr->ThrowException(LE_I18N("Invalid access permissions "
+                                                   "for configuration tree."));
         }
 
         itemPtr = new parseTree::RequiredConfigTree_t(permissionsPtr);
@@ -350,9 +354,9 @@ static parseTree::RequiredConfigTree_t* ParseRequiredConfigTree
     }
     else
     {
-        lexer.ThrowException("Unexpected token in configTree Subsection. "
-                             "File permissions (e.g., '[rw]') or "
-                             "config tree name or '.' expected.");
+        lexer.ThrowException(LE_I18N("Unexpected token in configTree Subsection. "
+                                     "File permissions (e.g., '[rw]') or "
+                                     "config tree name or '.' expected."));
     }
 
     if (itemPtr == NULL)
@@ -385,8 +389,9 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
 
     if (subsectionName == "api")
     {
-        subsectionNameTokenPtr->PrintWarning("'api' subsection in 'requires' section is deprecated"
-                                             " in .adef files.  Use the extern section instead.");
+        subsectionNameTokenPtr->PrintWarning(LE_I18N("'api' subsection in 'requires' section is "
+                                                     "deprecated in .adef files.  "
+                                                     "Use the extern section instead."));
 
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseExternApiInterface);
     }
@@ -408,8 +413,10 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + subsectionName
-                             + "' in 'requires' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'requires' section."),
+                       subsectionName)
+        );
         return NULL;
     }
 }
@@ -474,8 +481,8 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else if (sectionName == "provides")
     {
-        sectionNameTokenPtr->PrintWarning("'provides' section is deprecated in .adef files."
-                                          " Use the extern section instead.");
+        sectionNameTokenPtr->PrintWarning(LE_I18N("'provides' section is deprecated in .adef files."
+                                                  " Use the extern section instead."));
 
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseProvidesSubsection);
     }
@@ -505,7 +512,9 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else
     {
-        lexer.ThrowException("Unrecognized section name '" + sectionName + "'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unrecognized section name '%s'."), sectionName)
+        );
         return NULL;
     }
 

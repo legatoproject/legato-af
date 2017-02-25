@@ -37,7 +37,7 @@ bool DirectoryExists
     struct stat statBuffer;
 
     return (   (stat(path.c_str(), &statBuffer) == 0)
-            && S_ISDIR(statBuffer.st_mode)  );
+               && S_ISDIR(statBuffer.st_mode)  );
 }
 
 
@@ -57,7 +57,7 @@ bool FileExists
     struct stat statBuffer;
 
     return (   (stat(path.c_str(), &statBuffer) == 0)
-            && S_ISREG(statBuffer.st_mode)  );
+               && S_ISREG(statBuffer.st_mode)  );
 }
 
 
@@ -93,8 +93,9 @@ bool AnythingExists
 
     int err = errno;
 
-    throw mk::Exception_t("stat() failed (" + std::string(strerror(err)) + ") for path '"
-                               + path + "'.");
+    throw mk::Exception_t(
+        mk::format(LE_I18N("stat() failed (%s) for path '%s'."), std::string(strerror(err)), path)
+    );
 }
 
 
@@ -311,13 +312,9 @@ void MakeDir
         {
             int err = errno;
 
-            std::string msg = "Failed to create directory '";
-            msg += path;
-            msg += "' (";
-            msg += strerror(err);
-            msg += ")";
-
-            throw mk::Exception_t(msg);
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Failed to create directory '%s' (%s)"), path, strerror(err))
+            );
         }
     }
 }
@@ -345,7 +342,7 @@ void DeleteDir
 
     if (path == "")
     {
-        throw mk::Exception_t("Attempt to delete using an empty path.");
+        throw mk::Exception_t(LE_I18N("Attempt to delete using an empty path."));
     }
 
     // Get the status of whatever exists at that path.
@@ -358,22 +355,25 @@ void DeleteDir
             int result = system(commandLine.c_str());
             if (result != EXIT_SUCCESS)
             {
-                std::stringstream buffer;
-                buffer << "Failed to execute command '" << commandLine << "'"
-                       << " result: " << result;
-                throw mk::Exception_t(buffer.str());
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Failed to execute command '%s' result: %d"),
+                               commandLine, result)
+                );
             }
         }
         else
         {
-            throw mk::Exception_t("Object at path '" + path + "' is not a directory."
-                                       " Aborting deletion.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Object at path '%s' is not a directory. Aborting deletion."),
+                           path)
+            );
         }
     }
     else if (errno != ENOENT)
     {
-        throw mk::Exception_t("Failed to delete directory at '" + path + "'"
-                                   " (" + strerror(errno) + ").");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to delete directory at '%s' (%s)."), path, strerror(errno))
+        );
     }
 }
 
@@ -399,7 +399,7 @@ void DeleteFile
 
     if (path == "")
     {
-        throw mk::Exception_t("Attempt to delete using an empty path.");
+        throw mk::Exception_t(LE_I18N("Attempt to delete using an empty path."));
     }
 
     // Get the status of whatever exists at that path.
@@ -412,22 +412,24 @@ void DeleteFile
             int result = system(commandLine.c_str());
             if (result != EXIT_SUCCESS)
             {
-                std::stringstream buffer;
-                buffer << "Failed to execute command '" << commandLine << "'"
-                       << " result: " << result;
-                throw mk::Exception_t(buffer.str());
+                throw mk::Exception_t(
+                    mk::format(LE_I18N("Failed to execute command '%s' result: %d"),
+                               commandLine, result)
+                );
             }
         }
         else
         {
-            throw mk::Exception_t("Object at path '" + path + "' is not a file."
-                                       " Aborting deletion.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Object at path '%s' is not a file. Aborting deletion."), path)
+            );
         }
     }
     else if (errno != ENOENT)
     {
-        throw mk::Exception_t("Failed to delete file at '" + path + "'"
-                                   " (" + strerror(errno) + ").");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to delete file at '%s' (%s)."), path, strerror(errno))
+        );
     }
 }
 

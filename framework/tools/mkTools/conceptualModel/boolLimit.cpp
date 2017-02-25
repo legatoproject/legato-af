@@ -30,7 +30,7 @@ const
 {
     if (!isSet)
     {
-        throw mk::Exception_t("Fetching boolean limit that has not been set.");
+        throw mk::Exception_t(LE_I18N("Fetching boolean limit that has not been set."));
     }
 
     return value;

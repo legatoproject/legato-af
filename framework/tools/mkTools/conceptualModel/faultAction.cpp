@@ -41,7 +41,9 @@ void FaultAction_t::operator =
     }
     else
     {
-        throw mk::Exception_t("Unknown fault action '" + action + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Unknown fault action '%s'."), action)
+        );
     }
 }
 
@@ -64,7 +66,7 @@ const
 {
     if (!isSet)
     {
-        throw mk::Exception_t("Fetching fault action limit that has not been set.");
+        throw mk::Exception_t(LE_I18N("Fetching fault action limit that has not been set."));
     }
 
     return value;

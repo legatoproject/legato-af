@@ -35,10 +35,10 @@ static std::string AssetActionTypeToStr
             return "command";
 
         case model::AssetField_t::ActionType_t::TYPE_UNSET:
-            throw mk::Exception_t("Internal error, asset actionType has been left unset.");
+            throw mk::Exception_t(LE_I18N("Internal error: asset actionType has been left unset."));
     }
 
-    throw mk::Exception_t("Internal error, unexpected value for asset actionType.");
+    throw mk::Exception_t(LE_I18N("Internal error: unexpected value for asset actionType."));
 }
 
 
@@ -67,7 +67,9 @@ static std::string AssetDataTypeToAvDt
 
     if (found == dataTypeMap.end())
     {
-        throw mk::Exception_t("Internal error, unexpected data type:, '" + assetDataType + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Internal error: unexpected data type: '%s'."), assetDataType)
+        );
     }
 
     return found->second;
@@ -170,14 +172,17 @@ void GenerateManifest
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Generating Air Vantage manifest: " << filePath << std::endl;
+        std::cout << mk::format(LE_I18N("Generating Air Vantage manifest: %s"), filePath)
+                  << std::endl;
     }
 
     // Open the file for writing.
     std::ofstream outFile(filePath);
     if (outFile.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + filePath + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open, '%s' for writing."), filePath)
+        );
     }
 
     // Write the file's contents.

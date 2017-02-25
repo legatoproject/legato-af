@@ -191,7 +191,9 @@ void Token_t::ThrowException
 const
 //--------------------------------------------------------------------------------------------------
 {
-    throw mk::Exception_t(GetLocation() + ": error: " + message);
+    throw mk::Exception_t(
+        mk::format(LE_I18N("%s: error: %s"), GetLocation(), message)
+    );
 }
 
 
@@ -209,8 +211,8 @@ void Token_t::PrintWarning
 const
 //--------------------------------------------------------------------------------------------------
 {
-    std::cerr << "** WARNING: " << std::endl
-              << GetLocation() << ": warning: " << message
+    std::cerr << LE_I18N("** WARNING: ") << std::endl
+              << mk::format(LE_I18N("%s: warning: %s"), GetLocation(), message)
               << std::endl;
 }
 

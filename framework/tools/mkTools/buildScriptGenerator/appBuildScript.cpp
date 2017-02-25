@@ -238,13 +238,16 @@ static void GenerateDirBundleBuildStatements
         if (errno != ENOTDIR)
         {
             int err = errno;
-            exceptionFunc("Can't access file or directory '" + srcPath + "'"
-                          " (" + strerror(err) + ")");
+            exceptionFunc(
+                mk::format(LE_I18N("Can't access file or directory '%s' (%s)"), srcPath, strerror(err))
+            );
         }
         // If the source is not a directory,
         else
         {
-            exceptionFunc("Not a directory: '" + srcPath + "'.");
+            exceptionFunc(
+                mk::format(LE_I18N("Not a directory: '%s'."), srcPath)
+            );
         }
     }
 
@@ -262,8 +265,10 @@ static void GenerateDirBundleBuildStatements
         {
             if (errno != 0)
             {
-                exceptionFunc("Internal error: readdir() failed.  Errno = "
-                              + std::string(strerror(errno)));
+                exceptionFunc(
+                    mk::format(LE_I18N("Internal error: readdir() failed.  Errno = %s"),
+                               strerror(errno))
+                );
             }
             else
             {
@@ -300,8 +305,10 @@ static void GenerateDirBundleBuildStatements
             // If this is anything else, we don't support it.
             else
             {
-                exceptionFunc("File system object is not a directory or a file: '"
-                              + entrySrcPath + "'.");
+                exceptionFunc(
+                    mk::format(LE_I18N("File system object is not a directory or a file: '%s'."),
+                               entrySrcPath)
+                );
             }
         }
     }

@@ -96,8 +96,10 @@ static void GetCommandLineArgs
         static bool matched = false;
         if (matched)
         {
-            throw mk::Exception_t("Only one component allowed. First is '" + ComponentPath
-                              + "'.  Second is '" + param + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Only one component allowed. First is '%s'.  Second is '%s'."),
+                           ComponentPath, param)
+            );
         }
         matched = true;
 
@@ -109,89 +111,96 @@ static void GetCommandLineArgs
                              "",
                              'o',
                              "output-path",
-                             "Specify the complete path name of the component library to be built.");
+                            LE_I18N("Specify the complete path name of the component library"
+                                    " to be built."));
 
     args::AddOptionalString(&BuildParams.libOutputDir,
                              ".",
                              'l',
                              "lib-output-dir",
-                             "Specify the directory into which any generated runtime libraries"
-                             " should be put.  (This option ignored if -o specified.)");
+                            LE_I18N("Specify the directory into which any generated runtime"
+                                    " libraries should be put. "
+                                    " (This option ignored if -o specified.)"));
 
     args::AddOptionalString(&BuildParams.workingDir,
                              "_build",
                              'w',
                              "object-dir",
-                             "Specify the directory into which any intermediate build artifacts"
-                             " (such as .o files and generated source code files) should be put.");
+                            LE_I18N("Specify the directory into which any intermediate build"
+                                    " artifacts (such as .o files and generated source code files)"
+                                    " should be put."));
 
     args::AddOptionalString(&BuildParams.target,
                              "localhost",
                              't',
                              "target",
-                             "Specify the target device to build for (e.g., localhost or ar7).");
+                            LE_I18N("Specify the target device to build for"
+                                    " (e.g., localhost or ar7)."));
 
     args::AddMultipleString('i',
-                             "interface-search",
-                             "Add a directory to the interface search path.",
-                             interfaceDirPush);
+                            "interface-search",
+                            LE_I18N("Add a directory to the interface search path."),
+                            interfaceDirPush);
 
     args::AddMultipleString('c',
-                             "component-search",
-                             "(DEPRECATED) Add a directory to the source search path (same as -s).",
-                             sourceDirPush);
+                            "component-search",
+                            LE_I18N("(DEPRECATED) Add a directory to the source search path"
+                                    " (same as -s)."),
+                            sourceDirPush);
 
     args::AddMultipleString('s',
-                             "source-search",
-                             "Add a directory to the source search path.",
-                             sourceDirPush);
+                            "source-search",
+                            LE_I18N("Add a directory to the source search path."),
+                            sourceDirPush);
 
     args::AddOptionalFlag(&BuildParams.beVerbose,
-                           'v',
-                           "verbose",
-                           "Set into verbose mode for extra diagnostic information.");
+                          'v',
+                          "verbose",
+                          LE_I18N("Set into verbose mode for extra diagnostic information."));
 
     args::AddMultipleString('C',
-                             "cflags",
-                             "Specify extra flags to be passed to the C compiler.",
-                             cFlagsPush);
+                            "cflags",
+                            LE_I18N("Specify extra flags to be passed to the C compiler."),
+                            cFlagsPush);
 
     args::AddMultipleString('X',
-                             "cxxflags",
-                             "Specify extra flags to be passed to the C++ compiler.",
-                             cxxFlagsPush);
+                            "cxxflags",
+                            LE_I18N("Specify extra flags to be passed to the C++ compiler."),
+                            cxxFlagsPush);
 
     args::AddMultipleString('L',
-                             "ldflags",
-                             "Specify extra flags to be passed to the linker when linking "
-                             "executables.",
-                             ldFlagsPush);
+                            "ldflags",
+                            LE_I18N("Specify extra flags to be passed to the linker when linking "
+                                    "executables."),
+                            ldFlagsPush);
 
     args::AddOptionalFlag(&IsStandAlone,
-                           'a',
-                           "stand-alone",
-                           "Build the component library and all its sub-components' libraries"
-                           " such that the component library can be loaded and run"
-                           " without the help of mkexe or mkapp.  This is useful when integrating"
-                           " with third-party code that is built using some other build system." );
+                          'a',
+                          "stand-alone",
+                          LE_I18N("Build the component library and all its sub-components'"
+                                  " libraries such that the component library can be loaded and run"
+                                  " without the help of mkexe or mkapp.  This is useful when"
+                                  " integrating with third-party code that is built using some"
+                                  " other build system."));
 
     args::AddOptionalFlag(&DontRunNinja,
-                           'n',
-                           "dont-run-ninja",
-                           "Even if a build.ninja file exists, ignore it, parse all inputs, and"
-                           " generate all output files, including a new copy of the build.ninja,"
-                           " then exit without running ninja.  This is used by the build.ninja to"
-                           " to regenerate itself and any other files that need to be regenerated"
-                           " when the build.ninja finds itself out of date.");
+                          'n',
+                          "dont-run-ninja",
+                          LE_I18N("Even if a build.ninja file exists, ignore it, parse all inputs,"
+                                  " and generate all output files, including a new copy of the"
+                                  " build.ninja, then exit without running ninja.  This is used by"
+                                  " the build.ninja to to regenerate itself and any other files"
+                                  " that need to be regenerated when the build.ninja finds itself"
+                                  " out of date."));
 
     args::AddOptionalFlag(&BuildParams.codeGenOnly,
                           'g',
                           "generate-code",
-                          "Only generate code, but don't compile or link anything."
-                          " The interface definition (include) files will be generated, along"
-                          " with component main files."
-                          " This is useful for supporting context-sensitive auto-complete and"
-                          " related features in source code editors, for example.");
+                          LE_I18N("Only generate code, but don't compile or link anything."
+                                  " The interface definition (include) files will be generated,"
+                                  " along with component main files."
+                                  " This is useful for supporting context-sensitive auto-complete"
+                                  " and related features in source code editors, for example."));
 
     // Any remaining parameters on the command-line are treated as a component path.
     // Note: there should only be one.
@@ -203,7 +212,7 @@ static void GetCommandLineArgs
     // Were we given a component?
     if (ComponentPath == "")
     {
-        throw std::runtime_error("A component must be supplied on the command line.");
+        throw mk::Exception_t(LE_I18N("A component must be supplied on the command line."));
     }
 
     // Add the current working directory to the list of source search directories and the
@@ -264,7 +273,9 @@ void MakeComponent
     auto foundPath = file::FindComponent(ComponentPath, BuildParams.sourceDirs);
     if (foundPath == "")
     {
-        throw mk::Exception_t("Couldn't find component '" + ComponentPath + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Couldn't find component '%s'."), ComponentPath)
+        );
     }
     ComponentPath = path::MakeAbsolute(foundPath);
 

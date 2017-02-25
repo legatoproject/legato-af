@@ -98,12 +98,12 @@ parseTree::TokenList_t* ParseTokenListSection
     {
         if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
         {
-            std::stringstream msg;
-            msg << "Unexpected end-of-file before end of " << sectionNameTokenPtr->text
-                << " section.\n"
-                << sectionNameTokenPtr->GetLocation()
-                << ": note: Section starts here.";
-            lexer.ThrowException(msg.str());
+            lexer.ThrowException(
+                mk::format(LE_I18N("Unexpected end-of-file before end of %s section.\n"
+                                   "%s: note: Section starts here."),
+                           sectionNameTokenPtr->text,
+                           sectionNameTokenPtr->GetLocation())
+            );
         }
 
         sectionPtr->AddContent(lexer.Pull(tokenType));
@@ -148,13 +148,12 @@ parseTree::TokenList_t* ParseTokenListNamedItem
     {
         if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
         {
-            std::stringstream msg;
-            msg << "Unexpected end-of-file before end of " << itemPtr->TypeName()
-                << " named '" << nameTokenPtr->text
-                << "'.\n"
-                << nameTokenPtr->GetLocation()
-                << ": note: " << itemPtr->TypeName() << " starts here.";
-            lexer.ThrowException(msg.str());
+            lexer.ThrowException(
+                mk::format(LE_I18N("Unexpected end-of-file before end of %s named '%s'.\n"
+                                   "%s: note: %s starts here."),
+                           itemPtr->TypeName(), nameTokenPtr->text,
+                           nameTokenPtr->GetLocation(), itemPtr->TypeName())
+            );
         }
 
         itemPtr->AddContent(lexer.Pull(tokenType));
@@ -201,11 +200,12 @@ parseTree::CompoundItemList_t* ParseComplexSection
         if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
         {
             std::stringstream msg;
-            msg << "Unexpected end-of-file before end of " << sectionNameTokenPtr->text
-                << " section.\n"
-                << sectionNameTokenPtr->GetLocation()
-                << ": note: Section starts here.";
-            lexer.ThrowException(msg.str());
+            lexer.ThrowException(
+                mk::format(LE_I18N("Unexpected end-of-file before end of %s section.\n"
+                                   "%s: note: Section starts here."),
+                           sectionNameTokenPtr->text,
+                           sectionNameTokenPtr->GetLocation())
+            );
         }
 
         sectionPtr->AddContent(contentParserFunc(lexer));
@@ -249,12 +249,12 @@ parseTree::CompoundItemList_t* ParseNamedComplexSection
     {
         if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
         {
-            std::stringstream msg;
-            msg << "Unexpected end-of-file before end of " << sectionPtr->firstTokenPtr->text
-                << " section.\n"
-                << sectionPtr->firstTokenPtr->GetLocation()
-                << ": note: Section starts here.";
-            lexer.ThrowException(msg.str());
+            lexer.ThrowException(
+                mk::format(LE_I18N("Unexpected end-of-file before end of %s section.\n"
+                                   "%s: note: Section starts here."),
+                           sectionPtr->firstTokenPtr->text,
+                           sectionPtr->firstTokenPtr->GetLocation())
+            );
         }
 
         sectionPtr->AddContent(contentParserFunc(lexer));
@@ -318,7 +318,8 @@ void ParseFile
 {
     if (beVerbose)
     {
-        std::cout << "Parsing file: '" << defFilePtr->path << "'." << std::endl;
+        std::cout << mk::format(LE_I18N("Parsing file: '%s'."), defFilePtr->path)
+                  << std::endl;
     }
 
     // Create a Lexer for this file.
@@ -334,7 +335,7 @@ void ParseFile
         }
         else
         {
-            lexer.UnexpectedChar("");
+            lexer.UnexpectedChar(LE_I18N("Unexpected character %s"));
         }
     }
 }
@@ -410,8 +411,10 @@ parseTree::CompoundItemList_t* ParseBundlesSubsection
     }
     else
     {
-        lexer.ThrowException("Unexpected subsection name '" + nameTokenPtr->text
-                             + "' in 'bundles' section.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unexpected subsection name '%s' in 'bundles' section."),
+                       nameTokenPtr->text)
+        );
     }
 
     // Create a closure that knows which type of item should be parsed and how to parse it.
@@ -555,8 +558,11 @@ parseTree::TokenList_t* ParseFaultAction
         && (content != "stopApp")
         && (content != "reboot") )
     {
-        lexer.ThrowException("Invalid fault action '" + content + "'. Must be one of 'ignore',"
-                             " 'restart', 'restartApp', 'stopApp', or 'reboot'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Invalid fault action '%s'. Must be one of 'ignore',"
+                               " 'restart', 'restartApp', 'stopApp', or 'reboot'."),
+                       content)
+        );
     }
 
     return sectionPtr;
@@ -608,13 +614,17 @@ parseTree::TokenList_t* ParsePriority
 
             if ((number < 1) || (number > 32))
             {
-                lexer.ThrowException("Real-time priority level " + content + " out of range."
-                                     "  Must be in the range 'rt1' through 'rt32'.");
+                lexer.ThrowException(
+                    mk::format(LE_I18N("Real-time priority level %s out of range."
+                                       "  Must be in the range 'rt1' through 'rt32'."), content)
+                );
             }
         }
         else
         {
-            lexer.ThrowException("Invalid priority '" + content + "'.");
+            lexer.ThrowException(
+                mk::format(LE_I18N("Invalid priority '%s'."), content)
+            );
         }
     }
 
@@ -649,8 +659,11 @@ parseTree::TokenList_t* ParseWatchdogAction
         && (content != "stopApp")
         && (content != "reboot") )
     {
-        lexer.ThrowException("Invalid watchdog action '" + content + "'. Must be one of 'ignore',"
-                             " 'restart', 'restartApp', 'stop', 'stopApp', or 'reboot'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Invalid watchdog action '%s'. Must be one of 'ignore',"
+                               " 'restart', 'restartApp', 'stop', 'stopApp', or 'reboot'."),
+                       content)
+        );
     }
 
     return sectionPtr;
@@ -687,8 +700,10 @@ parseTree::TokenList_t* ParseWatchdogTimeout
 
         if (tokenPtr->text != "never")
         {
-            lexer.ThrowException("Invalid watchdog timeout value '" + tokenPtr->text + "'. Must be"
-                                 " an integer or the word 'never'.");
+            lexer.ThrowException(
+                mk::format(LE_I18N("Invalid watchdog timeout value '%s'. Must be"
+                                   " an integer or the word 'never'."), tokenPtr->text)
+            );
         }
     }
     else if (lexer.IsMatch(parseTree::Token_t::INTEGER))
@@ -697,7 +712,9 @@ parseTree::TokenList_t* ParseWatchdogTimeout
     }
     else
     {
-        lexer.ThrowException("Invalid watchdog timeout. Must be an integer or the word 'never'.");
+        lexer.ThrowException(
+            LE_I18N("Invalid watchdog timeout. Must be an integer or the word 'never'.")
+        );
     }
 
     sectionPtr->AddContent(tokenPtr);

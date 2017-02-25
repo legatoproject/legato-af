@@ -33,7 +33,9 @@ void GenerateJavaExeMain
     std::ofstream outputFile(sourceFile);
     if (outputFile.is_open() == false)
     {
-        throw mk::Exception_t("Could not open, '" + sourceFile + ",' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), sourceFile)
+        );
     }
 
     auto& exeName = exePtr->name;

@@ -10,7 +10,7 @@ Run the following to install necessary packages:
 $ sudo apt-get install build-essential python python-jinja2 cmake git subversion libsdl-dev diffstat texinfo gawk chrpath wget cpio vim zsh bash ninja-build screen sshpass bc python-git unzip libxml2-utils libcurl4-gnutls-dev zlib1g-dev libbz2-dev bsdiff libssl-dev
 @endverbatim
 
-Optional packages include: <c>vim zsh</c>
+Optional packages include: <c>vim zsh gettext</c>
 
 @section basicBuildPrepDevHost_uninstCache Uninstall ccache
 

@@ -52,7 +52,9 @@ App_t* System_t::FindApp
 
     if (appIter == apps.end())
     {
-        appTokenPtr->ThrowException("No such app '" + appName + "' in the system.");
+        appTokenPtr->ThrowException(
+            mk::format(LE_I18N("No such app '%s' in the system."), appName)
+        );
     }
 
     return appIter->second;
@@ -84,8 +86,10 @@ ApiServerInterfaceInstance_t* System_t::FindServerInterface
 
     if (interfaceIter == appPtr->externServerInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException("No such external server-side interface "
-                                          "'" + interfaceName + "' on app '" + appName + "'.");
+        interfaceTokenPtr->ThrowException(
+            mk::format(LE_I18N("No such external server-side interface '%s' on app '%s'."),
+                       interfaceName, appName)
+        );
     }
 
     return interfaceIter->second;

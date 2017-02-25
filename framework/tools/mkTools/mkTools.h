@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <list>
+#include <limits>
 #include <vector>
 #include <stack>
 #include <map>
@@ -27,12 +28,12 @@
 #include <fstream>
 #include <sstream>
 
-
 #include "exception.h"
 #include "buildParams.h"
 #include "envVars.h"
 #include "path.h"
 #include "file.h"
+#include "format.h"
 #include "md5.h"
 #include "parseTree/parseTree.h"
 #include "parser/parser.h"
@@ -43,5 +44,7 @@
 #include "configGenerator/configGenerator.h"
 #include "avManifestGenerator/avManifestGenerator.h"
 
+// Allow xgettext to pull all error messages.  Also prepares for localization
+#define LE_I18N(x) (x)
 
 #endif  // LEGATO_MKTOOLS_H_INCLUDE_GUARD

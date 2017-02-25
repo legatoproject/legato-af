@@ -57,13 +57,15 @@ static void AddBundledItems
                 }
                 else if (file::AnythingExists(bundledFilePtr->srcPath))
                 {
-                    bundledFileTokenListPtr->ThrowException("Not a regular file: '"
-                                                            + bundledFilePtr->srcPath + "'");
+                    bundledFileTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Not a regular file: '%s'."), bundledFilePtr->srcPath)
+                    );
                 }
                 else
                 {
-                    bundledFileTokenListPtr->ThrowException("File not found: '"
-                                                            + bundledFilePtr->srcPath + "'");
+                    bundledFileTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("File not found: '%s'."),  bundledFilePtr->srcPath)
+                    );
                 }
             }
         }
@@ -89,20 +91,24 @@ static void AddBundledItems
                 }
                 else if (file::AnythingExists(bundledDirPtr->srcPath))
                 {
-                    bundledDirTokenListPtr->ThrowException("Not a directory: '"
-                                                           + bundledDirPtr->srcPath + "'");
+                    bundledDirTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Not a directory: '%s'."), bundledDirPtr->srcPath)
+                    );
                 }
                 else
                 {
-                    bundledDirTokenListPtr->ThrowException("Directory not found: '"
-                                                           + bundledDirPtr->srcPath + "'");
+                    bundledDirTokenListPtr->ThrowException(
+                        mk::format(LE_I18N("Directory not found: '%s'."), bundledDirPtr->srcPath)
+                    );
                 }
             }
         }
         else
         {
-            subsectionPtr->ThrowException("Internal error: Unexpected content item: "
-                                          + subsectionPtr->TypeName()   );
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unexpected content item: %s."),
+                           subsectionPtr->TypeName())
+            );
         }
     }
 }
@@ -163,7 +169,9 @@ static void AddExecutable
 
     if (insertion.second == false)
     {
-        throw mk::Exception_t("Duplicate executable found: " + exePtr->name);
+        exePtr->exeDefPtr->ThrowException(
+            mk::format(LE_I18N("Duplicate executable found: %s."), exePtr->name)
+        );
     }
 
     // Add all the components used in the executable to the app's list of components.
@@ -178,8 +186,8 @@ static void AddExecutable
     if (   (exePtr->hasCOrCppCode == false)
         && (exePtr->hasJavaCode == false))
     {
-        exePtr->exeDefPtr->ThrowException("Executable doesn't contain any components that have"
-                                          " source code files.");
+        exePtr->exeDefPtr->ThrowException(LE_I18N("Executable doesn't contain any components"
+                                                  " that have source code files."));
     }
 }
 
@@ -204,8 +212,9 @@ static void AddExecutables
 
             if (buildParams.beVerbose)
             {
-                std::cout << "Application '" << appPtr->name << "' contains executable '"
-                          << exeName << "'." << std::endl;
+                std::cout << mk::format(LE_I18N("Application '%s' contains executable '%s'."),
+                                        appPtr->name, exeName)
+                          << std::endl;
             }
 
             // Compute the path to the executable, relative to the app's working directory
@@ -227,9 +236,11 @@ static void AddExecutables
                 {
                     if (buildParams.beVerbose)
                     {
-                        std::cout << "Executable '" << exeName << "' in application '"
-                                  << appPtr->name << "' contains component '" << componentPtr->name
-                                  << "' (" << componentPtr->dir << ")." << std::endl;
+                        std::cout << mk::format(LE_I18N("Executable '%s' in application '%s'"
+                                                        " contains component '%s' (%s)."),
+                                                exeName, appPtr->name,
+                                                componentPtr->name, componentPtr->dir)
+                                  << std::endl;
                     }
 
                     // Add an instance of the component to the executable.
@@ -308,8 +319,9 @@ static void AddProvidedItems
         }
         else
         {
-            subsectionPtr->ThrowException("INTERNAL ERROR: Unrecognized section '"
-                                          + subsectionName + "'.");
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), subsectionName)
+            );
         }
     }
 }
@@ -358,8 +370,10 @@ static void AddConfigTree
     // Check for duplicates.
     if (appPtr->configTrees.find(fileName) != appPtr->configTrees.end())
     {
-        treeNameTokenPtr->ThrowException("Configuration tree '" + fileName
-                                         + "' appears in application more than once.");
+        treeNameTokenPtr->ThrowException(
+            mk::format(LE_I18N("Configuration tree '%s' appears in application more than once."),
+                       fileName)
+        );
     }
 
     // Add config tree access permissions to the app.
@@ -431,8 +445,10 @@ static void AddRequiredItems
         }
         else
         {
-            subsectionPtr->ThrowException("INTERNAL ERROR: Unrecognized section '"
-                                          + subsectionName + "'.");
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."),
+                           subsectionName)
+            );
         }
     }
 }
@@ -457,8 +473,10 @@ static void AddProcesses
         auto processSpecPtr = dynamic_cast<const parseTree::RunProcess_t*>(itemPtr);
         if (processSpecPtr == NULL)
         {
-            itemPtr->ThrowException("Internal error: '" + itemPtr->TypeName()
-                                    + "'' is not a RunProcess_t.");
+            itemPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: '%s'' is not a RunProcess_t."),
+                           itemPtr->TypeName())
+            );
         }
 
         auto procPtr = new model::Process_t(processSpecPtr);
@@ -564,8 +582,9 @@ static void AddProcessesSection
         }
         else
         {
-            subsectionPtr->ThrowException("INTERNAL ERROR: Unrecognized section '"
-                                          + subsectionName + "'.");
+            subsectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), subsectionName)
+            );
         }
     }
 }
@@ -608,11 +627,11 @@ static void MarkInterfaceExternal
     // If the interface is already marked external, this is a duplicate.
     if (ifInstancePtr->externMarkPtr != NULL)
     {
-        std::stringstream msg;
-        msg << "Same interface marked 'extern' more than once.\n"
-            << ifInstancePtr->externMarkPtr->GetLocation()
-            << ": note: Previously done here.";
-        nameTokenPtr->ThrowException(msg.str());
+        nameTokenPtr->ThrowException(
+            mk::format(LE_I18N("Same interface marked 'extern' more than once.\n"
+                               "%s: note: Previously done here."),
+                       ifInstancePtr->externMarkPtr->GetLocation())
+        );
     }
 
     // Mark it external and assign it the external name.
@@ -645,7 +664,9 @@ static void MakeInterfaceExternal
     if (   (appPtr->externServerInterfaces.find(name) != appPtr->externServerInterfaces.end())
         || (appPtr->externClientInterfaces.find(name) != appPtr->externClientInterfaces.end()) )
     {
-        nameTokenPtr->ThrowException("Duplicate external interface name: '" + name + "'.");
+        nameTokenPtr->ThrowException(
+            mk::format(LE_I18N("Duplicate external interface name: '%s'."), name)
+        );
     }
 
     // Find the component instance.
@@ -657,8 +678,10 @@ static void MakeInterfaceExternal
 
     if ((clientIfPtr == NULL) && (serverIfPtr == NULL))
     {
-        nameTokenPtr->ThrowException("Interface '" + interfaceName + "' not found in component "
-                                     "'" + componentName + "' in executable '" + exeName + "'.");
+        nameTokenPtr->ThrowException(
+            mk::format(LE_I18N("Interface '%s' not found in component '%s' in executable '%s'."),
+                       interfaceName, componentName, exeName)
+        );
     }
 
     // Mark the interface "external", and add it to the appropriate list of external interfaces.
@@ -802,7 +825,7 @@ static void AddBindings
             if (   appPtr->wildcardBindings.find(bindingPtr->clientIfName)
                 != appPtr->wildcardBindings.end())
             {
-                tokens[1]->ThrowException("Duplicate wildcard binding.");
+                tokens[1]->ThrowException(LE_I18N("Duplicate wildcard binding."));
             }
 
             // Add to list of wildcard bindings.
@@ -820,7 +843,7 @@ static void AddBindings
             // Check for multiple bindings of the same client-side interface.
             if (clientIfPtr->bindingPtr != NULL)
             {
-                tokens[0]->ThrowException("Client interface bound more than once.");
+                tokens[0]->ThrowException(LE_I18N("Client interface bound more than once."));
             }
 
             // Record the binding in the client-side interface object.
@@ -862,20 +885,23 @@ static void PrintBindingSummary
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::cout << indent << "'" << clientIfName
-              << "' -> bound to service '" << bindingPtr->serverIfName << "'";
+    std::cout << indent;
     switch (bindingPtr->serverType)
     {
         case model::Binding_t::INTERNAL:
-            std::cout << " on another exe inside the same app.";
+            std::cout << mk::format(LE_I18N("'%s' -> bound to service '%s'"
+                                            " on another exe inside the same app."),
+                                    clientIfName, bindingPtr->serverIfName);
             break;
         case model::Binding_t::EXTERNAL_APP:
-            std::cout << " served by app '"
-                      << bindingPtr->serverAgentName << "'.";
+            std::cout << mk::format(LE_I18N("'%s' -> bound to service '%s' served by app '%s'."),
+                                    clientIfName, bindingPtr->serverIfName,
+                                    bindingPtr->serverAgentName);
             break;
         case model::Binding_t::EXTERNAL_USER:
-            std::cout << " served by user <"
-                      << bindingPtr->serverAgentName << ">.";
+            std::cout << mk::format(LE_I18N("'%s' -> bound to service '%s' served by user <%s>."),
+                                    clientIfName, bindingPtr->serverIfName,
+                                    bindingPtr->serverAgentName);
             break;
     }
 }
@@ -892,36 +918,38 @@ void PrintSummary
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::cout << std::endl << "== '" << appPtr->name << "' application summary ==" << std::endl
+    std::cout << std::endl
+              << mk::format(LE_I18N("== '%s' application summary =="), appPtr->name) << std::endl
               << std::endl;
 
     if (!appPtr->components.empty())
     {
-        std::cout << "  Uses components:" << std::endl;
+        std::cout << LE_I18N("  Uses components:") << std::endl;
 
         for (auto componentPtr : appPtr->components)
         {
-            std::cout << "    '" << componentPtr->name << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s'"), componentPtr->name) << std::endl;
         }
     }
 
     if (!appPtr->executables.empty())
     {
-        std::cout << "  Builds executables:" << std::endl;
+        std::cout << LE_I18N("  Builds executables:") << std::endl;
 
         for (auto mapItem : appPtr->executables)
         {
             auto exePtr = mapItem.second;
 
-            std::cout << "    '" << exePtr->name << "'" << std::endl;
+            std::cout << mk::format(LE_I18N("    '%s'"), exePtr->name) << std::endl;
 
             if (!exePtr->componentInstances.empty())
             {
-                std::cout << "      Instantiates components:" << std::endl;
+                std::cout << LE_I18N("      Instantiates components:") << std::endl;
 
                 for (const auto& componentInstancePtr : exePtr->componentInstances)
                 {
-                    std::cout << "        '" << componentInstancePtr->componentPtr->name << "'"
+                    std::cout << mk::format(LE_I18N("        '%s'"),
+                                            componentInstancePtr->componentPtr->name)
                               << std::endl;
                 }
             }
@@ -930,14 +958,15 @@ void PrintSummary
 
     if (!appPtr->bundledFiles.empty())
     {
-        std::cout << "  Includes files from the build host:" << std::endl;
+        std::cout << LE_I18N("  Includes files from the build host:") << std::endl;
 
         for (auto itemPtr : appPtr->bundledFiles)
         {
-            std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-            std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                           << "'" << std::endl;
-            std::cout << "      permissions:";
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+            std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                    itemPtr->destPath)
+                      << std::endl;
+            std::cout << LE_I18N("      permissions:");
             PrintPermissions(itemPtr->permissions);
             std::cout << std::endl;
         }
@@ -945,14 +974,15 @@ void PrintSummary
 
     if (!appPtr->bundledDirs.empty())
     {
-        std::cout << "  Includes directories from the build host:" << std::endl;
+        std::cout << LE_I18N("  Includes directories from the build host:") << std::endl;
 
         for (auto itemPtr : appPtr->bundledDirs)
         {
-            std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-            std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                           << "'" << std::endl;
-            std::cout << "      permissions:";
+            std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+            std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                    itemPtr->destPath)
+                      << std::endl;
+            std::cout << LE_I18N("      permissions:");
             PrintPermissions(itemPtr->permissions);
             std::cout << std::endl;
         }
@@ -960,58 +990,71 @@ void PrintSummary
 
     if (!appPtr->isSandboxed)
     {
-        std::cout << "  WARNING: This application is UNSANDBOXED." << std::endl;
+        std::cout << LE_I18N("  WARNING: This application is UNSANDBOXED.") << std::endl;
     }
     else
     {
-        std::cout << "  Runs inside a sandbox." << std::endl;
+        std::cout << LE_I18N("  Runs inside a sandbox.") << std::endl;
         if (!appPtr->requiredFiles.empty())
         {
-            std::cout << "  Imports the following files from the target host:" << std::endl;
+            std::cout << LE_I18N("  Imports the following files from the target host:")
+                      << std::endl;
 
             for (auto itemPtr : appPtr->requiredFiles)
             {
-                std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-                std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                               << "'" << std::endl;
+                std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+                std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                        itemPtr->destPath)
+                          << std::endl;
             }
         }
 
         if (!appPtr->requiredDirs.empty())
         {
-            std::cout << "  Imports the following directories from the target host:" << std::endl;
+            std::cout << LE_I18N("  Imports the following directories from the target host:")
+                      << std::endl;
 
             for (auto itemPtr : appPtr->requiredDirs)
             {
-                std::cout << "    '" << itemPtr->srcPath << "':" << std::endl;
-                std::cout << "      appearing inside app as: '" << itemPtr->destPath
-                                                               << "'" << std::endl;
+                std::cout << mk::format(LE_I18N("    '%s':"), itemPtr->srcPath) << std::endl;
+                std::cout << mk::format(LE_I18N("      appearing inside app as: '%s'"),
+                                        itemPtr->destPath)
+                          << std::endl;
             }
         }
 
-        std::cout << "  Has the following limits:" << std::endl;
-        std::cout << "    maxSecureStorageBytes: " << appPtr->maxSecureStorageBytes.Get() << std::endl;
-        std::cout << "    maxThreads: " << appPtr->maxThreads.Get() << std::endl;
-        std::cout << "    maxMQueueBytes: " << appPtr->maxMQueueBytes.Get() << std::endl;
-        std::cout << "    maxQueuedSignals: " << appPtr->maxQueuedSignals.Get() << std::endl;
-        std::cout << "    maxMemoryBytes: " << appPtr->maxMemoryBytes.Get() << std::endl;
-        std::cout << "    cpuShare: " << appPtr->cpuShare.Get() << std::endl;
-        std::cout << "    maxFileSystemBytes: " << appPtr->maxFileSystemBytes.Get() << std::endl;
+        std::cout << LE_I18N("  Has the following limits:") << std::endl;
+        std::cout << mk::format(LE_I18N("    maxSecureStorageBytes: %d"),
+                                appPtr->maxSecureStorageBytes.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    maxThreads: %d"), appPtr->maxThreads.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    maxMQueueBytes: %d"), appPtr->maxMQueueBytes.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    maxQueuedSignals: %d"), appPtr->maxQueuedSignals.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    maxMemoryBytes: %d"), appPtr->maxMemoryBytes.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    cpuShare: %d"), appPtr->cpuShare.Get())
+                  << std::endl;
+        std::cout << mk::format(LE_I18N("    maxFileSystemBytes: %d"),
+                                appPtr->maxFileSystemBytes.Get())
+                  << std::endl;
 
         // Config Tree access.
-        std::cout << "  Has access to the following configuration trees:" << std::endl;
-        std::cout << "    Its own tree: read + write" << std::endl;
+        std::cout << LE_I18N("  Has access to the following configuration trees:") << std::endl;
+        std::cout << LE_I18N("    Its own tree: read + write") << std::endl;
         for (const auto& mapEntry : appPtr->configTrees)
         {
-            std::cout << "    " << mapEntry.first << ": ";
+            std::cout << mk::format(LE_I18N("    %s: "), mapEntry.first);
 
             if (mapEntry.second.IsWriteable())
             {
-                std::cout << "read + write" << std::endl;
+                std::cout << LE_I18N("read + write") << std::endl;
             }
             else
             {
-                std::cout << "read only" << std::endl;
+                std::cout << LE_I18N("read only") << std::endl;
             }
         }
     }
@@ -1019,12 +1062,12 @@ void PrintSummary
     // Start trigger.
     if (appPtr->startTrigger == model::App_t::AUTO)
     {
-        std::cout << "  Will be started automatically when the Legato framework starts."
+        std::cout << LE_I18N("  Will be started automatically when the Legato framework starts.")
                   << std::endl;
     }
     else
     {
-        std::cout << "  Will only start when requested to start." << std::endl;
+        std::cout << LE_I18N("  Will only start when requested to start.") << std::endl;
     }
 
     // Process list
@@ -1037,70 +1080,81 @@ void PrintSummary
 
             for (auto procPtr : procEnvPtr->processes)
             {
-                std::cout << "  When started, will run process:"
-                             " '" << procPtr->GetName() << "'" << std::endl;
+                std::cout << mk::format(LE_I18N("  When started, will run process: '%s'"),
+                                        procPtr->GetName())
+                          << std::endl;
 
                 // Exe path.
-                std::cout << "    Executing file: '" << procPtr->exePath << "'" << std::endl;
+                std::cout << mk::format(LE_I18N("    Executing file: '%s'"), procPtr->exePath)
+                          << std::endl;
 
                 // Command-line args.
                 if (procPtr->commandLineArgs.empty())
                 {
-                    std::cout << "    Without any command line arguments." << std::endl;
+                    std::cout << LE_I18N("    Without any command line arguments.") << std::endl;
                 }
                 else
                 {
-                    std::cout << "    With the following command line arguments:" << std::endl;
+                    std::cout << LE_I18N("    With the following command line arguments:")
+                              << std::endl;
                     for (const auto& arg : procPtr->commandLineArgs)
                     {
-                        std::cout << "      '" << arg << "'" << std::endl;
+                        std::cout << mk::format(LE_I18N("      '%s'"), arg)
+                                  << std::endl;
                     }
                 }
 
                 // Priority.
                 if (procEnvPtr->GetStartPriority().IsSet())
                 {
-                    std::cout << "    At priority: "
-                              << procEnvPtr->GetStartPriority().Get() << std::endl;
+                    std::cout << mk::format(LE_I18N("    At priority: %s"),
+                                            procEnvPtr->GetStartPriority().Get())
+                              << std::endl;
                 }
 
                 // Environment variables.
-                std::cout << "    With the following environment variables:" << std::endl;
+                std::cout << LE_I18N("    With the following environment variables:") << std::endl;
                 for (const auto& pair : procEnvPtr->envVars)
                 {
-                    std::cout << "      " << pair.first << "=" << pair.second << std::endl;
+                    std::cout << mk::format(LE_I18N("      %s=%s"), pair.first, pair.second)
+                              << std::endl;
                 }
 
                 // Fault action.
                 if (procEnvPtr->faultAction.IsSet())
                 {
-                    std::cout << "    Fault recovery action: "
-                              << procEnvPtr->faultAction.Get() << std::endl;
+                    std::cout << mk::format(LE_I18N("    Fault recovery action: %s"),
+                                            procEnvPtr->faultAction.Get()) << std::endl;
                 }
                 else
                 {
-                    std::cout << "    Fault recovery action: ignore (default)" << std::endl;
+                    std::cout << LE_I18N("    Fault recovery action: ignore (default)")
+                              << std::endl;
                 }
 
                 // Watchdog.
                 if (procEnvPtr->watchdogTimeout.IsSet())
                 {
-                    std::cout << "    Watchdog timeout: " << procEnvPtr->watchdogTimeout.Get()
+                    std::cout << mk::format(LE_I18N("    Watchdog timeout: %d"),
+                                            procEnvPtr->watchdogTimeout.Get())
                               << std::endl;
                 }
                 else if (appPtr->watchdogTimeout.IsSet())
                 {
-                    std::cout << "    Watchdog timeout: " << appPtr->watchdogTimeout.Get()
+                    std::cout << mk::format(LE_I18N("    Watchdog timeout: %d"),
+                                            appPtr->watchdogTimeout.Get())
                               << std::endl;
                 }
                 if (procEnvPtr->watchdogAction.IsSet())
                 {
-                    std::cout << "    Watchdog action: " << procEnvPtr->watchdogAction.Get()
+                    std::cout << mk::format(LE_I18N("    Watchdog action: %s"),
+                                            procEnvPtr->watchdogAction.Get())
                               << std::endl;
                 }
                 else if (appPtr->watchdogAction.IsSet())
                 {
-                    std::cout << "    Watchdog action: " << appPtr->watchdogAction.Get()
+                    std::cout << mk::format(LE_I18N("    Watchdog action: %s"),
+                                            appPtr->watchdogAction.Get())
                               << std::endl;
                 }
                 if (   (!procEnvPtr->watchdogTimeout.IsSet())
@@ -1108,35 +1162,41 @@ void PrintSummary
                     && (!appPtr->watchdogTimeout.IsSet())
                     && (!appPtr->watchdogAction.IsSet())  )
                 {
-                    std::cout << "    Watchdog timeout: disabled" << std::endl;
+                    std::cout << LE_I18N("    Watchdog timeout: disabled") << std::endl;
                 }
 
                 // Limits.
                 if (appPtr->isSandboxed)
                 {
-                    std::cout << "    With the following limits:" << std::endl;
-                    std::cout << "      Max. core dump file size: "
-                              << procEnvPtr->maxCoreDumpFileBytes.Get() << " bytes" << std::endl;
-                    std::cout << "      Max. file size: "
-                              << procEnvPtr->maxFileBytes.Get() << " bytes" << std::endl;
-                    std::cout << "      Max. locked memory size: "
-                              << procEnvPtr->maxLockedMemoryBytes.Get() << " bytes" << std::endl;
-                    std::cout << "      Max. number of file descriptors: "
-                              << procEnvPtr->maxFileDescriptors.Get() << std::endl;
+                    std::cout << LE_I18N("    With the following limits:") << std::endl;
+                    std::cout << mk::format(LE_I18N("      Max. core dump file size: %d bytes"),
+                                            procEnvPtr->maxCoreDumpFileBytes.Get())
+                              << std::endl;
+                    std::cout << mk::format(LE_I18N("      Max. file size: %d bytes"),
+                                            procEnvPtr->maxFileBytes.Get())
+                              << std::endl;
+                    std::cout << mk::format(LE_I18N("      Max. locked memory size: %d bytes"),
+                                            procEnvPtr->maxLockedMemoryBytes.Get())
+                              << std::endl;
+                    std::cout << mk::format(LE_I18N("      Max. number of file descriptors: %d"),
+                                            procEnvPtr->maxFileDescriptors.Get())
+                              << std::endl;
                 }
             }
         }
     }
     if ((!containsAtLeastOneProcess) && appPtr->isSandboxed)
     {
-        std::cout << "  When \"started\", will create a sandbox without running anything in it."
+        std::cout << LE_I18N("  When \"started\", will create a sandbox without running anything"
+                             " in it.")
                   << std::endl;
     }
 
     // Groups
     if (appPtr->isSandboxed && !appPtr->groups.empty())
     {
-        std::cout << "  Will be a member of the following access control groups:" << std::endl;
+        std::cout << LE_I18N("  Will be a member of the following access control groups:")
+                  << std::endl;
         for (auto& group : appPtr->groups)
         {
             std::cout << "    " << group << std::endl;
@@ -1151,7 +1211,9 @@ void PrintSummary
     {
         auto exePtr = mapItem.second;
 
-        std::cout << "  Executable '" << exePtr->name << "':" << std::endl;
+        std::cout << mk::format(LE_I18N("  Executable '%s':"),
+                                exePtr->name)
+                  << std::endl;
 
         for (auto componentInstancePtr : exePtr->componentInstances)
         {
@@ -1173,38 +1235,42 @@ void PrintSummary
         }
         if (!(serverIfs.empty()))
         {
-            std::cout << "    Serves the following IPC API interfaces:" << std::endl;
+            std::cout << LE_I18N("    Serves the following IPC API interfaces:") << std::endl;
         }
         for (auto ifPtr : serverIfs)
         {
-            std::cout << "      '" << ifPtr->name << "'" << std::endl
-                      << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+            std::cout << mk::format(LE_I18N("      '%s'"), ifPtr->name) << std::endl
+                      << mk::format(LE_I18N("        API defined in: '%s'"),
+                                    ifPtr->ifPtr->apiFilePtr->path)
                       << std::endl;
         }
         if (!(requiredClientIfs.empty()) || !(boundClientIfs.empty()))
         {
-            std::cout << "    Has the following client-side IPC API interfaces:" << std::endl;
+            std::cout << LE_I18N("    Has the following client-side IPC API interfaces:")
+                      << std::endl;
 
             for (auto ifPtr : boundClientIfs)
             {
                 PrintBindingSummary("      ", ifPtr->name, ifPtr->bindingPtr);
 
                 std::cout << std::endl
-                          << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+                          << mk::format(LE_I18N("        API defined in: '%s'"),
+                                        ifPtr->ifPtr->apiFilePtr->path)
                           << std::endl;
             }
 
             for (auto ifPtr : requiredClientIfs)
             {
-                std::cout << "      '" << ifPtr->name << "' -> UNBOUND." << std::endl
-                          << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+                std::cout << mk::format(LE_I18N("      '%s' -> UNBOUND."), ifPtr->name) << std::endl
+                          << mk::format(LE_I18N("        API defined in: '%s'"),
+                                        ifPtr->ifPtr->apiFilePtr->path)
                           << std::endl;
             }
         }
     }
     if (!appPtr->wildcardBindings.empty())
     {
-        std::cout << "  Has the following \"wildcard\" interface bindings:" << std::endl;
+        std::cout << LE_I18N("  Has the following \"wildcard\" interface bindings:") << std::endl;
 
         for (const auto& mapEntry: appPtr->wildcardBindings)
         {
@@ -1228,7 +1294,8 @@ static void PrintWarning
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::cerr << "** Warning: application '" << appPtr->name << "': " << warning << std::endl;
+    std::cerr << mk::format(LE_I18N("** WARNING: application %s: %s"), appPtr->name, warning)
+              << std::endl;
 }
 
 
@@ -1255,10 +1322,10 @@ void CheckForLimitsConflicts
 
         if (maxLockedMemoryBytes > maxMemoryBytes)
         {
-            std::stringstream warning;
-            warning << "maxLockedMemoryBytes (" << maxLockedMemoryBytes
-                    << ") will be limited by the maxMemoryBytes limit (" << maxMemoryBytes << ").";
-            PrintWarning(appPtr, warning.str());
+            PrintWarning(appPtr,
+                         mk::format(LE_I18N("maxLockedMemoryBytes (%d) will be limited by the "
+                                            "maxMemoryBytes limit (%d)."),
+                                    maxLockedMemoryBytes, maxMemoryBytes));
         }
 
         size_t maxFileBytes = procEnvPtr->maxFileBytes.Get();
@@ -1266,30 +1333,28 @@ void CheckForLimitsConflicts
 
         if (maxCoreDumpFileBytes > maxFileBytes)
         {
-            std::stringstream warning;
-            warning << "maxCoreDumpFileBytes (" << maxCoreDumpFileBytes
-                    << ") will be limited by the maxFileBytes limit (" << maxFileBytes << ").";
-            PrintWarning(appPtr, warning.str());
+            PrintWarning(appPtr,
+                         mk::format(LE_I18N("maxCoreDumpFileBytes (%d) will be limited by "
+                                            "the maxFileBytes limit (%d)."),
+                                    maxCoreDumpFileBytes, maxFileBytes));
         }
 
         if (maxCoreDumpFileBytes > maxFileSystemBytes)
         {
-            std::stringstream warning;
-            warning << "maxCoreDumpFileBytes (" << maxCoreDumpFileBytes
-                    << ") will be limited by the maxFileSystemBytes limit ("
-                    << maxFileSystemBytes << ") if the core file is inside the sandbox temporary"
-                    " file system.";
-            PrintWarning(appPtr, warning.str());
+            PrintWarning(appPtr,
+                         mk::format(LE_I18N("maxCoreDumpFileBytes (%d) will be limited by "
+                                            "the maxFileSystemBytes limit (%d) if the core file "
+                                            "is inside the sandbox temporary file system."),
+                                    maxCoreDumpFileBytes, maxFileSystemBytes));
         }
 
         if (maxFileBytes > maxFileSystemBytes)
         {
-            std::stringstream warning;
-            warning << "maxFileBytes (" << maxFileBytes
-                    << ") will be limited by the maxFileSystemBytes limit ("
-                    << maxFileSystemBytes << ") if the file is inside the sandbox temporary"
-                    " file system.";
-            PrintWarning(appPtr, warning.str());
+            PrintWarning(appPtr,
+                         mk::format(LE_I18N("maxFileBytes (%d) will be limited by "
+                                            "the maxFileSystemBytes limit (%d) if the file is "
+                                            "inside the sandbox temporary file system."),
+                                    maxFileBytes, maxFileSystemBytes));
         }
     }
 }
@@ -1363,8 +1428,9 @@ model::App_t* GetApp
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Modelling application: '" << appPtr->name << "'" << std::endl
-                  << "  defined in: '" << adefFilePtr->path << "'" << std::endl;
+        std::cout << mk::format(LE_I18N("Modelling application: '%s'\n"
+                                        "  defined in '%s'"), appPtr->name, adefFilePtr->path)
+                  << std::endl;
     }
 
     // Lists of things that need to be modelled near the end.
@@ -1472,8 +1538,9 @@ model::App_t* GetApp
         }
         else
         {
-            sectionPtr->ThrowException("Internal error: Unrecognized section '" + sectionName
-                                       + "'.");
+            sectionPtr->ThrowException(
+                mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), sectionName)
+            );
         }
     }
 

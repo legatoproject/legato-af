@@ -33,7 +33,9 @@ void WatchdogAction_t::operator =
         && (action != "reboot")
        )
     {
-        throw mk::Exception_t("Unknown watchdog action '" + action + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Unknown watchdog action '%s'."), action)
+        );
     }
     else
     {
@@ -61,7 +63,7 @@ const
 {
     if (!isSet)
     {
-        throw mk::Exception_t("Fetching watchdog action that has not been set.");
+        throw mk::Exception_t(LE_I18N("Fetching watchdog action that has not been set."));
     }
 
     return value;

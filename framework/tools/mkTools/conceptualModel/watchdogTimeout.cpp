@@ -32,8 +32,8 @@ void WatchdogTimeout_t::operator =
     }
     else
     {
-        throw mk::Exception_t("watchdogTimeout must be a positive number of milliseconds,"
-                                   " 0 (expire immediately) or -1 (never expire).");
+        throw mk::Exception_t(LE_I18N("watchdogTimeout must be a positive number of milliseconds,"
+                                " 0 (expire immediately) or -1 (never expire)."));
     }
 }
 
@@ -53,8 +53,8 @@ void WatchdogTimeout_t::operator =
 {
     if (never != "never")
     {
-        throw mk::Exception_t("WatchdogTimeout must be a positive number of milliseconds or"
-                                   " 'never'.");
+        throw mk::Exception_t(LE_I18N("WatchdogTimeout must be a positive number of milliseconds or"
+                                      " 'never'."));
     }
     else
     {
@@ -84,7 +84,7 @@ const
 {
     if (!isSet)
     {
-        throw mk::Exception_t("Fetching watchdog timeout that has not been set.");
+        throw mk::Exception_t(LE_I18N("Fetching watchdog timeout that has not been set."));
     }
 
     return value;

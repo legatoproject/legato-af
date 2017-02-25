@@ -36,7 +36,8 @@ model::Module_t* GetModule
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Modelling module defined in: '" << mdefPath << "'" << std::endl;
+        std::cout << mk::format(LE_I18N("Modelling module defined in: '%s'"), mdefPath)
+                  << std::endl;
     }
 
     for (auto sectionPtr : mdefFilePtr->sections)
@@ -60,14 +61,16 @@ model::Module_t* GetModule
             if (!path::HasSuffix(modulePath, ".ko"))
             {
                 // Throw exception: not a kernel module
-                sectionPtr->ThrowException("File '" + modulePath +
-                                           "' is not a kernel module (*.ko).");
+                sectionPtr->ThrowException(
+                    mk::format(LE_I18N("File '%s' is not a kernel module (*.ko)."), modulePath)
+                );
             }
             if (!file::FileExists(modulePath))
             {
                 // Throw exception: file doesn't exist
-                sectionPtr->ThrowException("Module file " + modulePath +
-                                           " does not exist.");
+                sectionPtr->ThrowException(
+                    mk::format(LE_I18N("Module file '%s' does not exist."),  modulePath)
+                );
             }
             modulePtr->SetPath(modulePath);
         }
@@ -77,7 +80,9 @@ model::Module_t* GetModule
     if (modulePtr->path.empty())
     {
         // Throw generic exception at file level
-        throw std::runtime_error(mdefPath + ": error: Missing section 'preBuilt'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("%s: error: Missing section 'preBuilt'."), mdefPath)
+        );
     }
 
     // Restore the previous contents of the CURDIR environment variable.

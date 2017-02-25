@@ -36,8 +36,9 @@ static void SetBuildVar
     const auto& name = buildVarPtr->firstTokenPtr->text;
     if (envVars::IsReserved(name))
     {
-        buildVarPtr->firstTokenPtr->ThrowException(name
-                                                   + " is a reserved environment variable name.");
+        buildVarPtr->firstTokenPtr->ThrowException(
+            mk::format(LE_I18N("%s is a reserved environment variable name."), name)
+        );
     }
 
     // Unquote and do environment variable substitution
@@ -52,11 +53,12 @@ static void SetBuildVar
         auto varUsedTokenPtr = lexer.FindVarUse(name);
         if (varUsedTokenPtr)
         {
-            buildVarPtr->firstTokenPtr->ThrowException("Cannot set value of " + name +
-                                                       "; it has already been used in a"
-                                                       " processing directive.\n" +
-                                                       varUsedTokenPtr->GetLocation() + ": note:"
-                                                       " First used here.");
+            buildVarPtr->firstTokenPtr->ThrowException(
+                mk::format(LE_I18N("Cannot set value of %s; it has already been used in a "
+                                   "processing directive.\n"
+                                   "%s: note: First used here."),
+                           name, varUsedTokenPtr->GetLocation())
+            );
         }
     }
 
@@ -94,7 +96,8 @@ static parseTree::CompoundItem_t* ParseAppPreloadedSection
     }
     else
     {
-        lexer.ThrowException("'preloaded' section must contain 'true', 'false', or an MD5 hash.");
+        lexer.ThrowException(LE_I18N("'preloaded' section must contain 'true', 'false', "
+                                     "or an MD5 hash."));
     }
 
     return sectionPtr;
@@ -123,17 +126,17 @@ static parseTree::CompoundItem_t* ParseAppOverride
 
     // Branch based on the section name.
     if (   (sectionName == "cpuShare")
-        || (sectionName == "maxCoreDumpFileBytes")
-        || (sectionName == "maxFileBytes")
-        || (sectionName == "maxFileDescriptors")
-        || (sectionName == "maxFileSystemBytes")
-        || (sectionName == "maxLockedMemoryBytes")
-        || (sectionName == "maxMemoryBytes")
-        || (sectionName == "maxMQueueBytes")
-        || (sectionName == "maxQueuedSignals")
-        || (sectionName == "watchdogTimeout")
-        || (sectionName == "maxThreads")
-        || (sectionName == "maxSecureStorageBytes") )
+           || (sectionName == "maxCoreDumpFileBytes")
+           || (sectionName == "maxFileBytes")
+           || (sectionName == "maxFileDescriptors")
+           || (sectionName == "maxFileSystemBytes")
+           || (sectionName == "maxLockedMemoryBytes")
+           || (sectionName == "maxMemoryBytes")
+           || (sectionName == "maxMQueueBytes")
+           || (sectionName == "maxQueuedSignals")
+           || (sectionName == "watchdogTimeout")
+           || (sectionName == "maxThreads")
+           || (sectionName == "maxSecureStorageBytes") )
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
     }
@@ -174,7 +177,9 @@ static parseTree::CompoundItem_t* ParseAppOverride
     }
     else
     {
-        lexer.ThrowException("Unrecognized app override section name '" + sectionName + "'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unrecognized app override section name '%s'."), sectionName)
+        );
         return NULL;
     }
 }
@@ -210,12 +215,13 @@ static parseTree::CompoundItemList_t* ParseApp
         {
             if (lexer.IsMatch(parseTree::Token_t::END_OF_FILE))
             {
-                std::stringstream msg;
-                msg << "Unexpected end-of-file before end of application override list for app '"
-                    << itemPtr->firstTokenPtr->text << "'.\n"
-                    << itemPtr->firstTokenPtr->GetLocation()
-                    << ": note: Appliction override list starts here.";
-                lexer.ThrowException(msg.str());
+                lexer.ThrowException(
+                    mk::format(LE_I18N("Unexpected end-of-file before end of application override "
+                                       "list for app '%s'.\n"
+                                       "%s: note: Appliction override list starts here."),
+                               itemPtr->firstTokenPtr->text,
+                               itemPtr->firstTokenPtr->GetLocation())
+                );
             }
 
             itemPtr->AddContent(ParseAppOverride(lexer));
@@ -279,7 +285,7 @@ static parseTree::Binding_t* ParseBinding
         // Check that the "IPC agent" is an app.
         if (bindingPtr->firstTokenPtr->text[0] == '<')
         {
-            lexer.ThrowException("Wildcard bindings not permitted for non-app users.");
+            lexer.ThrowException(LE_I18N("Wildcard bindings not permitted for non-app users."));
         }
 
         // Expect a "*.interfaceName" to follow.
@@ -299,9 +305,12 @@ static parseTree::Binding_t* ParseBinding
             // Check that the "IPC agent" is an app.
             if (bindingPtr->firstTokenPtr->text[0] == '<')
             {
-                lexer.ThrowException("Too many parts to client-side interface specification for"
-                                     " non-app user '" + bindingPtr->firstTokenPtr->text + "'."
-                                     " Can only override internal interface bindings for apps.");
+                lexer.ThrowException(
+                    mk::format(LE_I18N("Too many parts to client-side interface specification for"
+                                       " non-app user '%s'."
+                                       " Can only override internal interface bindings for apps."),
+                               bindingPtr->firstTokenPtr->text)
+                );
             }
 
             // For the internal interface binding override, we have already pulled the token
@@ -324,7 +333,8 @@ static parseTree::Binding_t* ParseBinding
     // If a '*' comes next, then it's an (illegal) attempt to do a server-side wildcard binding.
     if (lexer.IsMatch(parseTree::Token_t::STAR))
     {
-        lexer.ThrowException("Wildcard bindings not permitted for server-side interfaces.");
+        lexer.ThrowException(LE_I18N("Wildcard bindings not permitted for"
+                                     " server-side interfaces."));
     }
     bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
 
@@ -333,8 +343,8 @@ static parseTree::Binding_t* ParseBinding
     // interface on the server side.
     if (lexer.IsMatch(parseTree::Token_t::DOT))
     {
-        lexer.ThrowException("Too many parts to server-side interface specification."
-                             " Can only bind to external interfaces in .sdef files.");
+        lexer.ThrowException(LE_I18N("Too many parts to server-side interface specification."
+                                     " Can only bind to external interfaces in .sdef files."));
     }
 
     return bindingPtr;
@@ -447,7 +457,9 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else
     {
-        lexer.ThrowException("Unrecognized section name '" + sectionName + "'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unrecognized section name '%s'."), sectionName)
+        );
         return NULL;
     }
 }

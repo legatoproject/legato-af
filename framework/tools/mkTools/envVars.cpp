@@ -63,7 +63,9 @@ std::string GetRequired
 
     if (value == nullptr)
     {
-        throw std::runtime_error("The required environment value, " + name + ", has not been set.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("The required environment value %s has not been set."), name)
+        );
     }
 
     return value;
@@ -85,8 +87,9 @@ void Set
 {
     if (setenv(name.c_str(), value.c_str(), true /* overwrite existing */) != 0)
     {
-        throw mk::Exception_t("Failed to set environment variable '" + name + "' to '"
-                              + value + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to set environment variable '%s' to '%s'."), name, value)
+        );
     }
 }
 
@@ -115,7 +118,7 @@ void SetTargetSpecific
     std::string path = GetRequired("LEGATO_ROOT");
     if (path.empty())
     {
-        throw mk::Exception_t("LEGATO_ROOT environment variable is empty.");
+        throw mk::Exception_t(LE_I18N("LEGATO_ROOT environment variable is empty."));
     }
     path = path::Combine(path, "build/" + target);
     Set("LEGATO_BUILD", path.c_str());
@@ -126,8 +129,10 @@ void SetTargetSpecific
     {
         if (setenv("LEGATO_SYSROOT", sysRoot.c_str(), false /* not overwrite existing */) != 0)
         {
-            throw mk::Exception_t("Failed to set LEGATO_SYSROOT environment variable to '"
-                                       + sysRoot + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Failed to set LEGATO_SYSROOT environment variable to '%s'."),
+                           sysRoot)
+            );
         }
     }
 }
@@ -267,8 +272,8 @@ std::string DoSubstitution
                 }
                 else
                 {
-                    throw mk::Exception_t("Invalid character inside bracketed environment"
-                                               "variable name.");
+                    throw mk::Exception_t(LE_I18N("Invalid character inside bracketed environment"
+                                                  "variable name."));
                 }
                 break;
         }
@@ -280,7 +285,7 @@ std::string DoSubstitution
             break;
 
         case AFTER_DOLLAR:
-            throw mk::Exception_t("Environment variable name missing after '$'.");
+            throw mk::Exception_t(LE_I18N("Environment variable name missing after '$'."));
 
         case UNBRACKETED_VAR_NAME:
             // The end of the string terminates the environment variable name.
@@ -295,7 +300,7 @@ std::string DoSubstitution
             break;
 
         case BRACKETED_VAR_NAME:
-            throw mk::Exception_t("Closing brace missing from environment variable.");
+            throw mk::Exception_t(LE_I18N("Closing brace missing from environment variable."));
     }
 
     return result;
@@ -338,7 +343,9 @@ void Save
     std::ofstream saveFile(filePath);
     if (!saveFile.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for writing.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for writing."), filePath)
+        );
     }
 
     // Write each environment variable as a line in the file.
@@ -348,7 +355,9 @@ void Save
 
         if (saveFile.fail())
         {
-            throw mk::Exception_t("Error writing to file '" + filePath + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Error writing to file '%s'."), filePath)
+            );
         }
     }
 
@@ -356,7 +365,9 @@ void Save
     saveFile.close();
     if (saveFile.fail())
     {
-        throw mk::Exception_t("Error closing file '" + filePath + "'.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Error closing file '%s'."), filePath)
+        );
     }
 }
 
@@ -381,7 +392,7 @@ bool MatchesSaved
     {
         if (buildParams.beVerbose)
         {
-            std::cout << "Environment variables from previous run not found." << std::endl;
+            std::cout << LE_I18N("Environment variables from previous run not found.") << std::endl;
         }
         return false;
     }
@@ -390,7 +401,9 @@ bool MatchesSaved
     std::ifstream saveFile(filePath);
     if (!saveFile.is_open())
     {
-        throw mk::Exception_t("Failed to open file '" + filePath + "' for reading.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to open file '%s' for reading."), filePath)
+        );
     }
 
     int i;
@@ -405,14 +418,17 @@ bool MatchesSaved
         {
             if (buildParams.beVerbose)
             {
-                std::cout << "Env var '" << environ[i] << "' was added." << std::endl;
+                std::cout << mk::format(LE_I18N("Env var '%s' was added."), environ[i])
+                          << std::endl;
             }
 
             goto different;
         }
         else if (!saveFile.good())
         {
-            throw mk::Exception_t("Error reading from file '" + filePath + "'.");
+            throw mk::Exception_t(
+                mk::format(LE_I18N("Error reading from file '%s'."), filePath)
+            );
         }
 
         // Compare the line from the file with the environment variable.
@@ -420,7 +436,8 @@ bool MatchesSaved
         {
             if (buildParams.beVerbose)
             {
-                std::cout << "Env var '" << lineBuff << "' became '" << environ[i] << "'." << std::endl;
+                std::cout << mk::format(LE_I18N("Env var '%s' became '%s'."), lineBuff, environ[i])
+                          << std::endl;
             }
 
             goto different;
@@ -437,14 +454,15 @@ bool MatchesSaved
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Env var '" << lineBuff << "' was removed." << std::endl;
+        std::cout << mk::format(LE_I18N("Env var '%s' was removed."), lineBuff)
+                  << std::endl;
     }
 
 different:
 
     if (buildParams.beVerbose)
     {
-        std::cout << "Environment variables are different this time." << std::endl;
+        std::cout << LE_I18N("Environment variables are different this time.") << std::endl;
     }
     return false;
 }

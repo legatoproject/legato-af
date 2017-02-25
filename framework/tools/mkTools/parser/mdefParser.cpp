@@ -48,7 +48,9 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else
     {
-        lexer.ThrowException("Unrecognized keyword '" + sectionName + "'.");
+        lexer.ThrowException(
+            mk::format(LE_I18N("Unrecognized keyword '%s'."), sectionName)
+        );
         return NULL;
     }
 

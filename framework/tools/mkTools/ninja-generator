@@ -50,10 +50,10 @@ then
 fi
 
 # Get a list of all the .cpp files.
-SOURCES=`find $SOURCE_DIR -name '*.cpp'`
+SOURCES=$(find $SOURCE_DIR -name '*.cpp' |tr '\n' ' ')
 
 # Compute a list of all the .o files.
-OBJECTS=`ObjectsFromSources $SOURCES`
+OBJECTS=$(ObjectsFromSources $SOURCES)
 
 cat > $NINJA_SCRIPT <<EOF
 # Build script for the Legato mk tools.
@@ -84,6 +84,12 @@ rule PreCompile
   depfile = \$out.d
   command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS -g -o \$out \$in
 
+rule GetMessages
+  description = Extracting messages
+  command = xgettext -d "mkTools" -L C++ -k_ --flag=_:1:pass-c-format --boost --force-po \$
+                     --copyright-holder="Sierra Wireless Inc." \$
+                     --package-name="mkTools" -o \$out \$in
+
 build \$builddir/mk : Link $OBJECTS
 
 build \$precompiledHeader : PreCompile $SOURCE_DIR/mkTools.h
@@ -95,6 +101,12 @@ rule RegenNinjaScript
             $NINJA_SCRIPT_GENERATOR
 
 build $NINJA_SCRIPT : RegenNinjaScript | $NINJA_SCRIPT_GENERATOR
+
+build \$builddir/mkTools.po : GetMessages $SOURCES
+
+build messages : phony \$builddir/mkTools.po
+
+default \$builddir/mk
 
 EOF
 

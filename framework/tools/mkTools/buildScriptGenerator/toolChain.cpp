@@ -88,8 +88,10 @@ static std::string GetCrossBuildToolChainDir
 
     if(envValue.empty())
     {
-        throw std::runtime_error("Attempting to build for target '" + target + ", but '"
-                                 + varName + "' is not set.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Attempting to build for target '%s', but '%s' is not set."),
+                       target, varName)
+        );
     }
 
     return envValue;
@@ -286,7 +288,9 @@ std::string GetSysRootPath
 
     if (output == NULL)
     {
-        throw mk::Exception_t("Could not exec '" + commandLine + "' to get sysroot path.");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not exec '%s' to get sysroot path."), commandLine)
+        );
     }
 
     char buffer[1024] = { 0 };
@@ -294,8 +298,10 @@ std::string GetSysRootPath
 
     if (fgets(buffer, bufferSize, output) != buffer)
     {
-        std::cerr << "Warning: Failed to receive sysroot path from compiler '" << compilerPath
-                  << "' (errno: " << strerror(errno) << ")." << std::endl;
+        std::cerr <<
+            mk::format(LE_I18N("** WARNING: Failed to receive sysroot path from compiler '%s' "
+                               "(errno: %s)."), compilerPath, strerror(errno))
+                  << std::endl;
         buffer[0] = '\0';
     }
     else
@@ -311,8 +317,9 @@ std::string GetSysRootPath
     // Yocto >= 1.8 returns '/not/exist' as a sysroot path
     if (buffer == std::string("/not/exist"))
     {
-        std::cerr << "Warning: Invalid sysroot returned from compiler '" << compilerPath
-                  << "' (returned '" << buffer << "')." << std::endl;
+        std::cerr << mk::format(LE_I18N("** WARNING: Invalid sysroot returned from compiler '%s' "
+                                        "(returned '%s')."), compilerPath, buffer)
+                  << std::endl;
         buffer[0] = '\0';
     }
 
@@ -321,24 +328,26 @@ std::string GetSysRootPath
 
     if (result == -1)
     {
-        std::stringstream msg;
-        msg << "Failed to receive the sysroot path from the compiler '" << compilerPath
-            << "'. pclose() errno = " << strerror(errno);
-        throw mk::Exception_t(msg.str());
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to receive the sysroot path from the compiler '%s'. "
+                               "pclose() errno = %s"), compilerPath, strerror(errno))
+        );
     }
     else if (!WIFEXITED(result))
     {
-        std::stringstream msg;
-        msg << "Failed to receive the sysroot path from the compiler '" << compilerPath
-            << "'. Compiler was interrupted by something.";
-        throw mk::Exception_t(msg.str());
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to receive the sysroot path from the compiler '%s'. "
+                               "Compiler was interrupted by something."),
+                       compilerPath)
+        );
     }
     else if (WEXITSTATUS(result) != EXIT_SUCCESS)
     {
-        std::stringstream msg;
-        msg << "Failed to receive the sysroot path from the compiler '" << compilerPath
-            << "'. Compiler '' exited with code " << WEXITSTATUS(result);
-        throw mk::Exception_t(msg.str());
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Failed to receive the sysroot path from the compiler '%s'. "
+                               "Compiler exited with code %d"),
+                       compilerPath, WEXITSTATUS(result))
+        );
     }
 
     return buffer;

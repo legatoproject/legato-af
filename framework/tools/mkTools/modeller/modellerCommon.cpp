@@ -65,17 +65,20 @@ void CheckBindingTarget
         auto appMapIter = systemPtr->apps.find(bindingPtr->serverAgentName);
         if (appMapIter == systemPtr->apps.end())
         {
-            bindingPtr->parseTreePtr->ThrowException("Binding to non-existent server app '"
-                                                     + bindingPtr->serverAgentName + "'.");
+            bindingPtr->parseTreePtr->ThrowException(
+                mk::format(LE_I18N("Binding to non-existent server app '%s'."),
+                           bindingPtr->serverAgentName)
+            );
         }
         auto appPtr = appMapIter->second;
 
         auto ifMapIter = appPtr->externServerInterfaces.find(bindingPtr->serverIfName);
         if (ifMapIter == appPtr->externServerInterfaces.end())
         {
-            bindingPtr->parseTreePtr->ThrowException("Binding to non-existent server interface '"
-                                                     + bindingPtr->serverIfName + "' on "
-                                                     "app '" + bindingPtr->serverAgentName + "'.");
+            bindingPtr->parseTreePtr->ThrowException(
+                mk::format(LE_I18N("Binding to non-existent server interface '%s' on app '%s'."),
+                           bindingPtr->serverIfName, bindingPtr->serverAgentName)
+            );
         }
     }
 }
@@ -128,22 +131,23 @@ void EnsureClientInterfacesBound
                             // has been marked "extern" or not).
                             else if (ifInstancePtr->externMarkPtr != NULL)
                             {
-                                throw mk::Exception_t("Client interface '"
-                                                      + appPtr->name + "."
-                                                      + ifInstancePtr->name + "' (aka '"
-                                                      + appPtr->name + "."
-                                                      + exePtr->name + "."
-                                                      + componentInstancePtr->componentPtr->name
-                                                      + "."
-                                                      + ifInstancePtr->ifPtr->internalName
-                                                      + "') is not bound to anything.");
+                                throw mk::Exception_t(
+                                    mk::format(LE_I18N("Client interface '%s.%s'"
+                                                       " (aka '%s.%s.%s.%s')"
+                                                       " is not bound to anything."),
+                                               appPtr->name, ifInstancePtr->name,
+                                               appPtr->name, exePtr->name,
+                                               componentInstancePtr->componentPtr->name,
+                                               ifInstancePtr->ifPtr->internalName)
+                                );
                             }
                             else
                             {
-                                throw mk::Exception_t("Client interface '"
-                                                      + appPtr->name + "."
-                                                      + ifInstancePtr->name
-                                                      + "' is not bound to anything.");
+                                throw mk::Exception_t(
+                                    mk::format(LE_I18N("Client interface '%s.%s' "
+                                                       "is not bound to anything."),
+                                               appPtr->name, ifInstancePtr->name)
+                                );
                             }
                         }
                     }
@@ -199,16 +203,19 @@ void EnsureClientInterfacesSatisfied
                         }
                         else
                         {
-                            throw mk::Exception_t("Client interface '"
-                                                  + ifInstancePtr->ifPtr->internalName
-                                                  + "' of component '"
-                                                  + componentInstancePtr->componentPtr->name
-                                                  + "' in executable '" + exePtr->name
-                                                  + "' is unsatisfied. It must either be declared"
-                                                  " an external (inter-app) required interface"
-                                                  " (in a \"requires: api:\" section in the .adef)"
-                                                  " or be bound to a server side interface"
-                                                  " (in the \"bindings:\" section of the .adef).");
+                            throw mk::Exception_t(
+                                mk::format(LE_I18N("Client interface '%s' of component '%s' "
+                                                   "in executable '%s' is unsatisfied. "
+                                                   "It must either be declared"
+                                                   " an external (inter-app) required interface"
+                                                   " (in a \"requires: api:\" section"
+                                                   " in the .adef)"
+                                                   " or be bound to a server side interface"
+                                                   " (in the \"bindings:\" section"
+                                                   " of the .adef)."),
+                                           ifInstancePtr->ifPtr->internalName,
+                                           componentInstancePtr->componentPtr->name)
+                            );
                         }
                     }
                 }
@@ -340,7 +347,7 @@ model::FileSystemObject_t* GetRequiredFileOrDir
     // The source path must not end in a slash.
     if (srcPath.back() == '/')
     {
-        srcPathTokenPtr->ThrowException("Required item's path must not end in a '/'.");
+        srcPathTokenPtr->ThrowException(LE_I18N("Required item's path must not end in a '/'."));
     }
 
     // If the destination path ends in a slash, append the last path node from the source to it.
@@ -378,13 +385,58 @@ model::FileSystemObject_t* GetRequiredDevice
     // Execute permissions are not allowed on devices.
     if (permPtr->permissions.IsExecutable())
     {
-        throw std::invalid_argument("Execute permission is not allowed on devices: '"
-                                                + permPtr->srcPath + "'");
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Execute permission is not allowed on devices: '%s'."),
+                       permPtr->srcPath)
+        );
     }
 
     return permPtr;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handles suffixes for integer values.
+ *
+ * Note: sets errno to ERANGE if the value is out of range or suffix is not a recognized suffix.
+ *
+ * @return the value
+ */
+//--------------------------------------------------------------------------------------------------
+template<class T>
+static T HandleSuffix(
+    T value,
+    const char *suffix
+)
+//--------------------------------------------------------------------------------------------------
+{
+    switch (*suffix)
+    {
+        case '\0':
+            break;
+        case 'K':
+            if ((value >= 0 && value <= std::numeric_limits<T>::max() / 1024) ||
+                (value < 0 && value >= std::numeric_limits<T>::lowest() / 1024))
+            {
+                value *= 1024;
+            }
+            else
+            {
+                errno = ERANGE;
+            }
+
+            if (*(suffix + 1) != '\0')
+            {
+                errno = ERANGE;
+            }
+            break;
+        default:
+            errno = ERANGE;
+    }
+
+    return value;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -406,16 +458,15 @@ size_t GetNonNegativeInt
     char* endPtr;
     errno = 0;
     size_t result = strtoul(valueTokenPtr->text.c_str(), &endPtr, 0);
+
+    result = HandleSuffix(result, endPtr);
+
     if (errno != 0)
     {
-        std::stringstream msg;
-        msg << "Value must be an integer between 0 and " << ULONG_MAX << ", with an optional 'K'"
-               " suffix.";
-        valueTokenPtr->ThrowException(msg.str());
-    }
-    if (*endPtr == 'K')
-    {
-        result *= 1024;
+        valueTokenPtr->ThrowException(
+            mk::format(LE_I18N("Value must be an integer between 0 and %d, "
+                               "with an optional 'K' suffix."), ULONG_MAX)
+        );
     }
 
     return result;
@@ -441,16 +492,15 @@ ssize_t GetInt
     char* endPtr;
     errno = 0;
     size_t result = strtol(valueTokenPtr->text.c_str(), &endPtr, 0);
+
+    result = HandleSuffix(result, endPtr);
+
     if (errno != 0)
     {
-        std::stringstream msg;
-        msg << "Value must be an integer between " << LONG_MIN << " and " << LONG_MAX
-            << ", with an optional 'K' suffix.";
-        valueTokenPtr->ThrowException(msg.str());
-    }
-    if (*endPtr == 'K')
-    {
-        result *= 1024;
+        valueTokenPtr->ThrowException(
+            mk::format(LE_I18N("Value must be an integer between %d and %d,"
+                               " with an optional 'K' suffix."), LONG_MIN, LONG_MAX)
+        );
     }
 
     return result;
@@ -473,14 +523,25 @@ size_t GetPositiveInt
 )
 //--------------------------------------------------------------------------------------------------
 {
-    size_t result = GetNonNegativeInt(sectionPtr);
+    size_t result;
+
+    try
+    {
+        result = GetNonNegativeInt(sectionPtr);
+    }
+    catch (mk::Exception_t &e)
+    {
+        // Force result out of range to throw error with correct range (1-ULONG_MAX)
+        // even for negative numbers or invalid formats
+        result = 0;
+    }
 
     if (result == 0)
     {
-        std::stringstream msg;
-        msg << "Value must be an integer between 1 and " << ULONG_MAX << ", with an optional 'K'"
-               " suffix.";
-        sectionPtr->Contents()[0]->ThrowException(msg.str());
+        sectionPtr->Contents()[0]->ThrowException(
+            mk::format(LE_I18N("Value must be an integer between 1 and %d, with an optional 'K'"
+                               " suffix."), ULONG_MAX)
+        );
     }
 
     return result;
@@ -500,15 +561,15 @@ void PrintPermissions
 {
     if (permissions.IsReadable())
     {
-        std::cout << " read";
+        std::cout << LE_I18N(" read");
     }
     if (permissions.IsWriteable())
     {
-        std::cout << " write";
+        std::cout << LE_I18N(" write");
     }
     if (permissions.IsExecutable())
     {
-        std::cout << " execute";
+        std::cout << LE_I18N(" execute");
     }
 }
 
@@ -577,7 +638,8 @@ void SetStart
     }
     else
     {
-        sectionPtr->Contents()[0]->ThrowException("Internal error: unexpected startup option.");
+        sectionPtr->Contents()[0]->ThrowException(LE_I18N("Internal error: "
+                                                          "unexpected startup option."));
     }
 }
 
@@ -596,7 +658,7 @@ void SetWatchdogAction
 {
     if (appPtr->watchdogAction.IsSet())
     {
-        sectionPtr->ThrowException("Only one watchdogAction section allowed.");
+        sectionPtr->ThrowException(LE_I18N("Only one watchdogAction section allowed."));
     }
     appPtr->watchdogAction = sectionPtr->Text();
 }
@@ -616,7 +678,7 @@ void SetWatchdogTimeout
 {
     if (appPtr->watchdogTimeout.IsSet())
     {
-        sectionPtr->ThrowException("Only one watchdogTimeout section allowed.");
+        sectionPtr->ThrowException(LE_I18N("Only one watchdogTimeout section allowed."));
     }
 
     auto tokenPtr = sectionPtr->Contents()[0];
