@@ -362,11 +362,14 @@ stage_mklegatoimg:
 .PHONY: stage_localhost
 stage_localhost:
 
+.PHONY: stage_shared
+stage_shared:
+	install targetFiles/shared/bin/start build/$(TARGET)/staging
+
 # ==== 9x15-based Sierra Wireless modules ====
 
 .PHONY: stage_9x15
-stage_9x15:
-	install targetFiles/shared/bin/start build/$(TARGET)/staging
+stage_9x15: stage_shared
 
 .PHONY: stage_ar7 stage_ar86 stage_wp85 stage_wp750x
 stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 stage_mklegatoimg
@@ -374,8 +377,7 @@ stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 stage_mk
 # ==== AR758X (9x28-based Sierra Wireless modules) ====
 
 .PHONY: stage_9x28
-stage_9x28:
-	install targetFiles/shared/bin/start build/$(TARGET)/staging
+stage_9x28: stage_shared
 
 .PHONY: stage_ar758x stage_wp76xx
 stage_ar758x stage_wp76xx: stage_embedded stage_9x28 stage_mklegatoimg
@@ -383,8 +385,7 @@ stage_ar758x stage_wp76xx: stage_embedded stage_9x28 stage_mklegatoimg
 # ==== AR759X (9x40-based Sierra Wireless modules) ====
 
 .PHONY: stage_9x40
-stage_9x40:
-	install targetFiles/shared/bin/start build/$(TARGET)/staging
+stage_9x40: stage_shared
 
 .PHONY: stage_ar759x
 stage_ar759x: stage_embedded stage_9x40 stage_mklegatoimg
@@ -392,21 +393,12 @@ stage_ar759x: stage_embedded stage_9x40 stage_mklegatoimg
 # ==== Virtual ====
 
 .PHONY: stage_virt
-stage_virt: stage_embedded
-	# Install default startup scripts.
-	install -d build/$(TARGET)/staging/mnt/flash/startupDefaults
-	install targetFiles/virt/startup/* -t build/$(TARGET)/staging/mnt/flash/startupDefaults
+stage_virt: stage_embedded stage_shared stage_mklegatoimg
 
 # ==== Raspberry Pi ====
 
-.PHONY: stage_raspi_startup
-stage_raspi_startup:
-	# Install default startup scripts.
-	install -d build/$(TARGET)/staging/
-	install targetFiles/shared/bin/start build/$(TARGET)/staging
-
 .PHONY: stage_raspi
-stage_raspi: stage_embedded stage_raspi_startup stage_mklegatoimg
+stage_raspi: stage_embedded stage_shared stage_mklegatoimg
 
 # ========== RELEASE ============
 

@@ -108,7 +108,7 @@ function do_start {
 }
 
 function do_stop {
-    QEMU_PID_FILE="$SCRIPT_DIR/qemu.pid"
+    QEMU_PID_FILE="$USER_DIR/qemu.pid"
 
     if [ -e "$QEMU_PID_FILE" ]; then
         QEMU_PID=$(cat $QEMU_PID_FILE)
@@ -137,6 +137,11 @@ function CheckLegatoRoot {
 }
 
 CheckForHelp $@
+
+# By default, store images & configuration in script directory
+if [ -z "$USER_DIR" ]; then
+    USER_DIR="$HOME/.legato/virt"
+fi
 
 if [[ "$COMMAND" == "start" ]]; then
     do_start

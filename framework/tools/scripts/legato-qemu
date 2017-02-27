@@ -26,10 +26,11 @@ if [[ "$1" == "--help" ]]; then
     echo -e ""
     echo -e "DESCRIPTION"
     echo -e "\tPrepare an launch qemu to host an instance of Legato."
-    echo -e "\tAlso fetch qemu images and check for updates."
+    echo -e "\tAlso fetches qemu images from official servers and check for updates."
     echo -e ""
     echo -e "ENVIRONMENT"
     echo -e "\tThis script is parametrized through environment variables."
+    echo -e "\t\tOPT_LEGATO_IMG: Path to a Legato image"
     echo -e "\t\tOPT_TARGET: Platform to emulate"
     echo -e "\t\tOPT_PERSIST: Make changes to the image persistant or not"
     echo -e "\t\tOPT_KMESG: Kernel messages to console"
@@ -98,117 +99,161 @@ COLOR_OK="\033[1;32m"
 COLOR_RESET="\033[0m"
 
 function message {
-    COLOR=$1
-    MESSAGE=$2
-    echo -e $COLOR $MESSAGE $COLOR_RESET
+    local color=$1
+    local message=$2
+    echo -e $color $message $COLOR_RESET
 }
 
 function check_ret {
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        exit $RETVAL
+    local retval=$?
+    if [ $retval -ne 0 ]; then
+        message $COLOR_ERROR "Exit Code $RETVAL"
+        exit $retval
     fi
 }
 
 function img_url_for_target {
-    TARGET=$1
+    local target=$1
+    local img_type=$2
 
-    # Determine QEmu Image source
-    if [ -z "$IMG_MIRROR" ]; then
-        if cat /etc/resolv.conf | grep "sierrawireless.local" > /dev/null; then
-            IMG_MIRROR="http://get-legato/yocto/latest/latest/${TARGET}/images"
-        else
-            IMG_MIRROR="http://downloads.sierrawireless.com/legato/virt"
-        fi
+    local swi_dev=false
+    if grep -q "sierrawireless.local" /etc/resolv.conf; then
+        swi_dev=true
     fi
 
-    export IMG_SRC=$IMG_MIRROR/img-$TARGET.tar.bz2
-    echo $IMG_SRC
+    # Determine QEmu Image source
+    if [[ "$img_type" == "yocto" ]]; then
+        if [ -z "$IMG_MIRROR_LINUX" ]; then
+            if $swi_dev; then
+                IMG_MIRROR_LINUX="http://get-legato/yocto/merged/latest/${target}/images"
+            else
+                IMG_MIRROR_LINUX="http://downloads.sierrawireless.com/legato/virt"
+            fi
+        fi
+
+        IMG_SRC="${IMG_MIRROR_LINUX}/img-${target}.tar.bz2"
+
+    elif [[ "$img_type" == "legato" ]]; then
+        if [ -z "$IMG_MIRROR_LEGATO" ]; then
+            if $swi_dev; then
+                IMG_MIRROR_LEGATO="http://get-legato/legato/merged/latest/${target}"
+            else
+                IMG_MIRROR_LEGATO="http://downloads.sierrawireless.com/legato/latest/${target}"
+            fi
+        fi
+
+        IMG_SRC="${IMG_MIRROR_LEGATO}/legato.squashfs"
+
+    else
+        message $COLOR_ERROR "Unknown image type '$img_type'"
+        exit 1
+    fi
+
+    export IMG_SRC
 }
 
 function img_get_timestamp {
-    TARGET=$1
+    local target=$1
+    local img_type=$2
 
-    img_url_for_target $TARGET
+    img_url_for_target $target $img_type
 
     # Get image timestamp from server
-    export IMAGE_TS=$(curl -I $IMG_SRC 2> /dev/null |grep "Last-Modified" |sed -e 's/Last-Modified: //g' |xargs -i date -d "{}" +"%s")
+    export IMG_TIMESTAMP=$(curl -I $IMG_SRC 2> /dev/null | sed -e 's/Last-Modified: //g;t;d' | xargs -i date -d "{}" +"%s")
 }
 
-function img_set_timestamp {
-    TARGET=$1
-    IMAGE_TS=$2
+function img_save_timestamp {
+    local target=$1
+    local img_type=$2
+    local img_timestamp=$3
 
-    if [ -z "$IMAGE_TS" ]; then
+    local img_dest=$USER_DIR/img-$target
+
+    if [ -z "$img_timestamp" ]; then
         message $COLOR_ERROR "Invalid timestamp"
         return
     fi
 
-    message $COLOR_INFO "Saving image timestamp ($IMAGE_TS)"
-    echo $IMAGE_TS > $USER_DIR/img-$TARGET/.img-timestamp
+    message $COLOR_INFO "Saving image timestamp ($img_timestamp)"
+    local ts_file="$img_dest/.img-timestamp-${img_type}"
+    echo $img_timestamp > "$ts_file"
 }
 
 function check_new_image {
-    TARGET=$1
-    IMG_DEST=$USER_DIR/img-$TARGET
+    local target=$1
+    local img_type=$2
 
-    img_get_timestamp $TARGET
+    local img_dest=$USER_DIR/img-$target
 
-    if [ -e "$IMG_DEST/.img-timestamp" ]; then
-        CURRENT_IMAGE_TS=$(cat "$IMG_DEST/.img-timestamp")
+    img_get_timestamp $target $img_type
 
-        if [ -z "$CURRENT_IMAGE_TS" ]; then
+    local current_img_timestamp=0
+
+    local ts_file="$img_dest/.img-timestamp-${img_type}"
+    if [ -e "$ts_file" ]; then
+        current_img_timestamp=$(cat "$ts_file")
+
+        if [ -z "$current_img_timestamp" ]; then
             message $COLOR_WARN "Invalid timestamp"
-            m $IMG_DEST/.img-timestamp
-            CURRENT_IMAGE_TS=0
+            rm -f "$ts_file"
+            current_img_timestamp=0
         fi
-    else
-        CURRENT_IMAGE_TS=0
     fi
 
-    if [ $(($IMAGE_TS - $CURRENT_IMAGE_TS)) -ne 0 ]; then
-        message $COLOR_WARN "New image available, delete $IMG_DEST to upgrade"
+    if [ -z "$IMG_TIMESTAMP" ]; then
+        message $COLOR_WARN "Unable to determine if a new image is available"
+    elif [ $IMG_TIMESTAMP -ne $current_img_timestamp ]; then
+        message $COLOR_WARN "New image available, delete $img_dest to upgrade"
     fi
 }
 
 # Fetch image from server
 function fetch_image {
-    TARGET=$1
-    IMG_DEST=$USER_DIR/img-$TARGET
-    img_url_for_target $TARGET
+    local target=$1
+    local img_type=$2
 
-    if [ -e "$IMG_DEST/rootfs.qcow2" ]; then
-        check_new_image $TARGET
+    local img_dest=$USER_DIR/img-$target
+
+    img_url_for_target $target $img_type
+
+    if ( [[ "$img_type" == "yocto" ]] && [ -e "$img_dest/rootfs.qcow2" ] ) ||
+       ( [[ "$img_type" == "legato" ]] && [ -e "$img_dest/legato.squashfs" ] ); then
+
+        check_new_image $target $img_type
 
         return 0
     fi
 
-    message $COLOR_INFO "Fetching image from server"
+    message $COLOR_INFO "Fetching image for '$img_type' from server"
 
-    if ! [ -e "$IMG_DEST" ]; then
-        message $COLOR_INFO "Create $IMG_DEST to hold images ..."
-        mkdir -p $IMG_DEST
+    if ! [ -e "$img_dest" ]; then
+        message $COLOR_INFO "Create $img_dest to hold images ..."
+        mkdir -p $img_dest
     fi
 
     message $COLOR_INFO "Fetching images from $IMG_SRC ..."
-    (cd $IMG_DEST && curl -L $IMG_SRC | tar jx)
+    (cd $img_dest && wget -O $(basename $IMG_SRC) -L $IMG_SRC)
     if [ $? -ne 0 ]; then
         message $COLOR_ERROR "Failed to retrieve image"
         exit 1
     fi
 
-    img_get_timestamp $TARGET
-    img_set_timestamp $TARGET $IMAGE_TS
+    if [[ "$IMG_SRC" == *.tar.bz2 ]]; then
+        (cd $img_dest && tar jxf $(basename $IMG_SRC))
+        check_ret
+    fi
+
+    img_get_timestamp $target $img_type
+    img_save_timestamp $target $img_type $IMG_TIMESTAMP
 }
 
 # Create snapshot from image
 function create_snapshot {
-    IMG_SRC=$1
-    IMG_DEST=$2
+    local img_src=$1
+    local img_dest=$2
 
     message $COLOR_INFO "Create snapshot from rootfs ..."
-    qemu-img create -f qcow2 -b $IMG_SRC $IMG_DEST
+    qemu-img create -f qcow2 -b $img_src $img_dest
     check_ret
 }
 
@@ -221,24 +266,24 @@ verlt() {
 }
 
 function get_qemu_version {
-    qemu_bin_path=$1
+    local qemu_bin_path=$1
 
-    qemu_version=$($qemu_bin_path --version |sed 's/.*version \([\.0-9]*\).*/\1/g')
+    qemu_version=$($qemu_bin_path --version | sed 's/.*version \([\.0-9]*\).*/\1/g;t;d')
 
     message $COLOR_INFO "Testing QEmu candidate '$qemu_bin_path': version $qemu_version"
 }
 
 # Find qemu
 function find_qemu_bin {
-    QEMU_BIN=qemu-system-$QEMU_ARCH
-    message $COLOR_MSG "Looking for $QEMU_BIN ..."
+    local qemu_bin_name=qemu-system-$QEMU_ARCH
+    message $COLOR_MSG "Looking for $qemu_bin_name ..."
 
     unset best_bin
     best_version="0"
 
     # In path
-    if which $QEMU_BIN > /dev/null; then
-        qemu_bin=$(which $QEMU_BIN)
+    if which $qemu_bin_name > /dev/null; then
+        qemu_bin=$(which $qemu_bin_name)
         get_qemu_version $qemu_bin
         best_version=$qemu_version
         best_bin=$qemu_bin
@@ -246,7 +291,7 @@ function find_qemu_bin {
 
     # In toolchains dir
     for toolchain_dir in $(env |grep '_TOOLCHAIN_DIR' | sed 's/[A-Z0-9]*_TOOLCHAIN_DIR=//g'); do
-        qemu_bin="$toolchain_dir/../$QEMU_BIN"
+        qemu_bin="$toolchain_dir/../$qemu_bin_name"
         if [ -e "$qemu_bin" ]; then
             get_qemu_version $qemu_bin
             verlt $best_version $qemu_version
@@ -258,7 +303,7 @@ function find_qemu_bin {
     done
 
     if [ -z "$best_bin" ]; then
-        message $COLOR_ERROR "Unable to find qemu candidate for $QEMU_BIN, please install qemu"
+        message $COLOR_ERROR "Unable to find qemu candidate for '$qemu_bin_name', please install qemu"
         exit 1
     fi
 
@@ -274,7 +319,7 @@ SCRIPT_DIR=$( cd `dirname "$0"` && pwd )
 
 # By default, store images & configuration in script directory
 if [ -z "$USER_DIR" ]; then
-    USER_DIR=$SCRIPT_DIR
+    USER_DIR="$HOME/.legato/virt"
 fi
 
 ARG_COMMON=""
@@ -301,16 +346,24 @@ fi
 function configure_virt_common {
     message $COLOR_TITLE "Virtual target ($VIRT_TARGET_ARCH)"
 
-    fetch_image $OPT_TARGET
+    fetch_image $OPT_TARGET 'yocto'
 
-    # Let the image define it's own default arguments for QEmu
-    # it is still possible to override them after that
+    # Let the image define it's own default arguments for QEmu.
+    # It is still possible to override them after that.
     if [ -e $USER_DIR/img-$OPT_TARGET/qemu-config ]; then
         source $USER_DIR/img-$OPT_TARGET/qemu-config
     fi
 
     KERNEL_IMG=$USER_DIR/img-$OPT_TARGET/kernel
     ROOTFS_IMG=$USER_DIR/img-$OPT_TARGET/rootfs.qcow2
+
+    LEGATO_IMG="$USER_DIR/img-$OPT_TARGET/legato.squashfs"
+    if [ -e "$LEGATO_ROOT/build/virt/legato.squashfs" ]; then
+        # Use the local image if available
+        ln -sf $LEGATO_ROOT/build/virt/legato.squashfs $LEGATO_IMG
+    else
+        fetch_image $OPT_TARGET 'legato'
+    fi
 }
 
 if [[ "$OPT_TARGET" == "virt-x86" ]]; then
@@ -330,7 +383,7 @@ elif [[ "$OPT_TARGET" == "virt-arm" ]]; then
     configure_virt_common
 
 else
-    echo "This target is not supported"
+    message $COLOR_ERROR "This target is not supported"
     exit -1
 fi
 
@@ -348,6 +401,11 @@ else
         create_snapshot $ROOTFS_IMG $ROOTFS_IMG_VOLATILE
         ROOTFS_IMG=$ROOTFS_IMG_VOLATILE
     fi
+fi
+
+# Legato image
+if [ -e "$LEGATO_IMG" ]; then
+    ARG_LEGATO="-hdb ${LEGATO_IMG}"
 fi
 
 # Kernel Messages
@@ -470,7 +528,7 @@ message $COLOR_MSG " => $CMDLINE"
 message $COLOR_MSG "QEmu binary ($QEMU_ARCH):"
 message $COLOR_MSG " => $QEMU_BIN ($QEMU_VERSION)"
 
-ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB"
+ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB"
 message $COLOR_MSG "QEmu arguments:"
 message $COLOR_MSG " => $ARGS"
 

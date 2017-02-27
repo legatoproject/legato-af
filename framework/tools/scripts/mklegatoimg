@@ -156,9 +156,9 @@ GenerateUbinizeCfg() {
 
 CreateImgFs() {
     local img_type=${1:-yaffs2}
-    local ubi_img_type=${2:-squashfs}
-    local page_size=${3:-4096}
-    local img_suffix=$4
+    local img_suffix=${2:-$img_type}
+    local ubi_img_type=${3:-squashfs}
+    local page_size=${4:-4096}
     local oob_size=$5
     local peb_size=$6
 
@@ -208,7 +208,7 @@ CreateImgFs() {
             ;;
 
         ubi)
-            CreateImgFs ${ubi_img_type} "" ${page_size} ${ubi_img_type} $oob_size $peb_size
+            CreateImgFs ${ubi_img_type} ${ubi_img_type} "" ${page_size} $oob_size $peb_size
 
             FindTool "ubinize" UBINIZE
             if [ $? -ne 0 ]; then
@@ -322,7 +322,7 @@ CreateImg_mdm9x15() {
         img_suffix="${ubi_img_type}.${img_type}"
     fi
 
-    CreateImgFs $img_type $ubi_img_type $page_size $img_suffix $oob_size $peb_size
+    CreateImgFs $img_type $img_suffix $ubi_img_type $page_size $oob_size $peb_size
     GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
@@ -365,7 +365,7 @@ CreateImg_mdm9x28() {
             fi
         fi
 
-        CreateImgFs $img_type $ubi_img_type ${page_size[$i]} $img_suffix ${oob_size[$i]} ${peb_size[$i]}
+        CreateImgFs $img_type $img_suffix $ubi_img_type ${page_size[$i]} ${oob_size[$i]} ${peb_size[$i]}
         GenerateCwe $LEGATO_IMG $img_suffix ${pid[$i]}
 
         # Last image is the default
@@ -390,7 +390,7 @@ CreateImg_mdm9x40() {
         img_suffix="${ubi_img_type}.${img_type}"
     fi
 
-    CreateImgFs $img_type $ubi_img_type $page_size $img_suffix $oob_size $peb_size
+    CreateImgFs $img_type $img_suffix $ubi_img_type $page_size $oob_size $peb_size
     GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
@@ -432,6 +432,11 @@ case $TARGET in
         ;;
     raspi)
         CreateImgFs squashfs
+        DefaultImg "squashfs"
+        ;;
+    virt*)
+        CreateImgFs squashfs
+        DefaultImg "squashfs"
         ;;
     ?)
         echo "$0: nothing to do for target $TARGET"
@@ -439,3 +444,4 @@ case $TARGET in
 esac
 
 exit 0
+

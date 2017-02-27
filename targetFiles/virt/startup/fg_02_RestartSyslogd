@@ -1,5 +1,0 @@
-#!/bin/sh
-
-# Restarting syslogd with the proper options and with our label.
-/usr/bin/killall syslogd
-/sbin/syslogd -C2000 &
