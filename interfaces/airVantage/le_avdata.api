@@ -68,14 +68,53 @@
  * only do something in response to the AV server, or it can work independently of the AV server
  * updating variables when it has a new value, and reading settings only when it needs the value.
  *
- * @section le_avdata_observe Observe
+ * @section le_avdata_timeseries Time Series
  *
- * If the @ref howToAVData_enableObserve "Observe" is enabled, the AirVantage Server will send
- * observe requests on all user-defined assets of an app.
+ * This feature enables user apps to collect data when the device is offline. A time series
+ * record can be initialized using le_avdata_CreateRecord() and data can be accumulated using
+ * le_avdata_RecordInt(), le_avdata_RecordFloat(), le_avdata_RecordBool and le_avdata_RecordString
+ * with a specified time stamp (milliseconds elapsed since epoch). User apps can then open an
+ * @c avms session, and push the collected history data using le_avdata_PushRecord(). The callback
+ * used when calling le_avdata_PushRecord() will indicate whether the push has been successful or not.
  *
- * Whenever an app (asset) changes a field value by using le_avdata_Set*(), it'll trigger a
- * notify if Observe is enabled on that asset. The notify contains only the value of the changed
- * field.
+ * @note: The push callback is not supported in the current release.
+ *
+ * This code sample shows how to collect data and send to the server (assuming session is opened)
+ *
+ * @code
+ *
+ * static void PushCallbackHandler
+ * (
+ *     le_avdata_PushStatus_t status,
+ *     void* contextPtr
+ * )
+ * {
+ *     if (status == LE_AVDATA_SENT_SUCCESS)
+ *     {
+ *         // data pushed successfully
+ *     }
+ * }
+ *
+ * static void SendData()
+ * {
+ *     struct timeval tv;
+ *     uint64_t utcMilliSec;
+ *     le_result_t result;
+ *
+ *     le_avdata_RecordRef_t recRef = le_avdata_CreateRecord();
+ *
+ *     gettimeofday(&tv, NULL);
+ *     utcMilliSec = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000; // get current time
+ *     result = le_avdata_RecordFloat(recRef, "speed", 0.08, utcMilliSec);
+ *
+ *     if (result != LE_OK)
+ *     {
+ *          le_avdata_PushRecord(recRef, PushCallbackHandler, NULL);
+ *     }
+ *
+ *     le_avdata_DeleteRecord(recRef);
+ * }
+ * @endcode
  *
  * @section le_avdata_fatal Fatal Behavior
  *
@@ -341,3 +380,166 @@ FUNCTION SetBinary
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * A record reference
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Record;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximum length of a path name (TODO: verify value)
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PATH_NAME_LEN = 128;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Status of the data push (TODO: Provide additional status to troubleshoot delivery problems)
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PushStatus
+{
+    SENT_SUCCESS,
+    SENT_FAILED
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for pushing data result.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CallbackResult
+(
+    PushStatus status IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a timeseries record
+ *
+ * @return Reference to the record
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Record CreateRecord
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a timeseries record
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeleteRecord
+(
+    Record recordRef IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accumulate int data
+ *
+ * @note The client will be terminated if the recordRef is not valid, or the resource doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordInt
+(
+    Record recordRef IN,
+    string path[PATH_NAME_LEN] IN,
+    int32 value IN,
+    uint64 timestamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accumulate float data
+ *
+ * @note The client will be terminated if the recordRef is not valid, or the resource doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordFloat
+(
+    Record recordRef IN,
+    string path[PATH_NAME_LEN] IN,
+    double value IN,
+    uint64 timestamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accumulate boolean data
+ *
+ * @note The client will be terminated if the recordRef is not valid, or the resource doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordBool
+(
+    Record recordRef IN,
+    string path[PATH_NAME_LEN] IN,
+    bool value IN,
+    uint64 timestamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Accumulate string data
+ *
+ * @note The client will be terminated if the recordRef is not valid, or the resource doesn't exist
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RecordString
+(
+    Record recordRef IN,
+    string path[PATH_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] IN,
+    uint64 timestamp
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Push record to the server
+ *
+* @return:
+ *      - LE_OK on success.
+ *      - LE_FAULT on any other error
+ *
+ * * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PushRecord
+(
+    Record recordRef,
+    CallbackResult handler
+);
