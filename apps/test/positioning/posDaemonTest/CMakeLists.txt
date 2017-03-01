@@ -45,6 +45,8 @@ mkexe(  ${APP_TARGET}
             -i ${LEGATO_ROOT}/components
     )
 
+add_dependencies(${APP_TARGET} cunit)
+
 if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
     add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
     set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)

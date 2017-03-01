@@ -12,4 +12,5 @@ mkexe(  ${APP_TARGET}
             ${CUNIT_LIBRARIES}
         )
 
+add_dependencies(${APP_TARGET} cunit)
 add_test(${APP_TARGET} ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
