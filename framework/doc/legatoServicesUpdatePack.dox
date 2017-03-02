@@ -7,12 +7,10 @@ See @ref legatoServicesUpdate for more info on tools available for creating upda
 The Update Daemon accepts <b>update pack</b> files that contain software/firmware update
 instructions and associated data (e.g., libraries, executables, resource files).
 
-Update packs can have multiple @b sections. Each @b section starts with a JSON @b description.
-Optionally, a @b payload can follow.
+If the Update Pack has payload, it's expected to start immediately after the last byte of JSON data
+(no padding or alignment bytes between).
 
-If the section has payload, it's expected to start immediately after the last byte of JSON data
-(no padding or alignment bytes between). If there's no payload, but there's another
-section, the next byte after the task's description will be the next section's description.
+@note Support for multiple Update Pack sections was removed in 16.10.
 
 @section updatePack_jsonData JSON Data
 
@@ -43,7 +41,7 @@ System update description fields are:
 Field   = Description
 ----------------------------------------------------------------------------------------------------
 command = string = "updateSystem"
-md5     = string = MD5 hash of system's build staging area (excluding <c>info.properties</c> file).
+md5     = string = MD5 hash of system's build staging area (excluding info.properties file).
 size    = integer = Number of bytes of payload associated.
 @endverbatim
 
@@ -148,7 +146,6 @@ Code sample:
 }
 @endverbatim
 
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
