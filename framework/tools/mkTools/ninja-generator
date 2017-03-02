@@ -72,8 +72,7 @@ rule Link
 rule Compile
   description = Compiling mk tools sources
   depfile = \$out.d
-  command = mkdir -p \`dirname \$out\` && \$
-            $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS -Wall -Werror \$
+  command = $COMPILER -MMD -MF \$out.d $TOOLS_ARCH_FLAGS -Wall -Werror \$
                       -include $BUILD_DIR/mkTools.h \$
                       -I$SOURCE_DIR \$
                       -c \$in \$

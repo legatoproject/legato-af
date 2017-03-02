@@ -195,20 +195,10 @@ static void GenerateFileBundleBuildStatement
 
     if (bundledFiles.find(destPath) == bundledFiles.end())
     {
-        script << "build " << destPath << " : BundleFile " << srcPath
-               << " | " << containingDir << "\n"
+        script << "build " << destPath << " : BundleFile " << srcPath << "\n"
                << "  modeFlags = " << PermissionsToModeFlags(permissions) << "\n";
 
         bundledFiles.insert(destPath);
-
-        // If the destination directory doesn't already have a build statement for it,
-        // create one to make the directory.
-        if (bundledFiles.find(containingDir) == bundledFiles.end())
-        {
-            script << "build " << containingDir << " : MakeDir\n\n";
-
-            bundledFiles.insert(containingDir);
-        }
     }
 }
 

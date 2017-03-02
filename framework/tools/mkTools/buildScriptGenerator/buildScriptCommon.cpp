@@ -199,11 +199,6 @@ void GenerateBuildRules
               "  command = ifgen --output-dir $outputDir $ifgenFlags $in\n"
               "\n";
 
-    // Generate a rule for creating a directory.
-    script << "rule MakeDir\n"
-              "  description = Creating directory\n"
-              "  command = mkdir -p \"$out\" || [ -d \"$out\" ]\n\n";
-
     // Generate a rule for creating a hard link.
     script << "rule HardLink\n"
               "  description = Creating hard link\n"
@@ -777,8 +772,7 @@ void GenerateJavaBuildCommand
     // The intermediate directory will be required, so add a rule to make sure that it exits.  Then
     // generate the rule to compile the Java code into .class files, and to package them up into a
     // .jar file.
-    script << "build " << classDestPath << " : MakeDir\n\n"
-              "build " << outputJar << " $\n"
+    script << "build " << outputJar << " $\n"
               "  : CompileJava";
 
     for (auto& source : sources)
