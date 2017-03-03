@@ -68,8 +68,8 @@ COMPONENT_INIT
 
     // Get file size
     size_t fileSize = 0;
-    LE_ASSERT_OK(le_fs_GetSize(filePath, (uint32_t*)&fileSize));
-    LE_DEBUG("File size of '%s': %d", filePath, (int)fileSize);
+    LE_ASSERT_OK(le_fs_GetSize(filePath, &fileSize));
+    LE_DEBUG("File size of '%s': %zu", filePath, fileSize);
     LE_ASSERT(strlen((char*)dataToWrite) == fileSize);
 
     // Seek negative offset from the beginning
@@ -172,7 +172,7 @@ COMPONENT_INIT
     LE_DEBUG("Moving file from '%s' to '%s'", filePath, newFilePath);
     LE_ASSERT_OK(le_fs_Move(filePath, newFilePath));
     // Check that old file cannot be opened
-    LE_ASSERT(LE_FAULT == le_fs_Open(filePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
+    LE_ASSERT(LE_OK != le_fs_Open(filePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
 
     // Open the file
     LE_DEBUG("Open file '%s'", newFilePath);
@@ -206,8 +206,8 @@ COMPONENT_INIT
 
     // Get file size
     fileSize = 0;
-    LE_ASSERT_OK(le_fs_GetSize(newFilePath, (uint32_t*)&fileSize));
-    LE_DEBUG("File size of '%s': %d", newFilePath, (int)fileSize);
+    LE_ASSERT_OK(le_fs_GetSize(newFilePath, &fileSize));
+    LE_DEBUG("File size of '%s': %zu", newFilePath, fileSize);
     LE_ASSERT((2 * strlen((char*)dataToWrite)) == fileSize);
 
     // Create and open a new file
@@ -226,7 +226,7 @@ COMPONENT_INIT
     LE_DEBUG("Deleting file '%s'",deleteFilePath);
     LE_ASSERT_OK(le_fs_Delete(deleteFilePath));
     // Check that deleted file cannot be opened
-    LE_ASSERT(LE_FAULT == le_fs_Open(deleteFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
+    LE_ASSERT(LE_OK != le_fs_Open(deleteFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
 
     // Create and open a new file
     const char loremFilePath[PATH_LENGTH] = "/bar/foo/lorem_ipsum.txt";
@@ -338,7 +338,7 @@ facilisis erat, a imperdiet risus eleifend nec.";
     const char wrongFilePath[PATH_LENGTH] = "foo/bar/";
     LE_DEBUG("Test error cases with file path '%s'", wrongFilePath);
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Open(wrongFilePath, LE_FS_RDWR, &fileRef));
-    LE_ASSERT(LE_BAD_PARAMETER == le_fs_GetSize(wrongFilePath, (uint32_t*)&fileSize));
+    LE_ASSERT(LE_BAD_PARAMETER == le_fs_GetSize(wrongFilePath, &fileSize));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Delete(wrongFilePath));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Move(loremFilePath, loremFilePath));
 

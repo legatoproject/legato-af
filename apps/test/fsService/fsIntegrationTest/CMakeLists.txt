@@ -2,4 +2,5 @@
 # Copyright (C) Sierra Wireless Inc.
 #*******************************************************************************
 
-mkapp(fsTest.adef)
+mkapp(fsTest.adef
+      -i ${LEGATO_ROOT}/interfaces/fsServices)

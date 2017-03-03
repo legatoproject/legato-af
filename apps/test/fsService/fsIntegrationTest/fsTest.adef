@@ -22,4 +22,3 @@ bindings:
 {
     fsTest.fsTest.le_fs -> fsService.le_fs
 }
-

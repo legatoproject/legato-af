@@ -10,15 +10,140 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "pa_fs.h"
-
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Type casting of file reference. Only support 32 and 64 bit wide reference.
+ * Default prefix path for RW if nothing is defined in the config tree
  */
 //--------------------------------------------------------------------------------------------------
-#define FS_CAST(x) (int32_t)((uintptr_t)(x) & 0xFFFFFFFF)
+#define FS_PREFIX_DATA_PATH      "/data/le_fs/"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default prefix path variable for looking in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define FS_PREFIX_PATH_CFG       "/fsPrefixPath"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of fileRef managed by the service
+ */
+//--------------------------------------------------------------------------------------------------
+#define FS_MAX_FILE_REF          32
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File structure
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_fs_FileRef_t fileRef;  ///< The file reference to exchange with clients
+    int fd;                   ///< The file descriptor
+}
+File_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default prefixes path used by the daemon. If NULL, the daemon will reject all open/rename/delete
+ * operations
+ */
+//--------------------------------------------------------------------------------------------------
+static char* FsPrefixPtr = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool to store the file structures
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t FsFileRefPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe reference map for the file structure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t FsFileRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds the prefix to the filePath to access
+ *
+ * @return
+ *  - NULL if the prefix is not set
+ *  - Otherwise a pointer on the full path string related to the le_fs directory
+ */
+//--------------------------------------------------------------------------------------------------
+static char* BuildPathName
+(
+    char* pathPtr,            ///< [OUT] Full file path with prefix
+    size_t pathSize,          ///< [IN]  Length of the full path array
+    const char* filePathPtr   ///< [IN]  File path
+)
+{
+    if (NULL == FsPrefixPtr)
+    {
+        return NULL;
+    }
+    snprintf(pathPtr, pathSize, "%s%s", FsPrefixPtr, filePathPtr);
+    return pathPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to create the directories of a file path if some do not exist
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
+ *  - LE_NOT_POSSIBLE   A directory in the tree belongs to a Read-Only space and cannot be created
+ *  - LE_FAULT          The function fails while creating or accessing to a directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MkDirTree
+(
+    const char* filePathPtr   ///< [IN]  Directory path
+)
+{
+    char* slashPtr = (char *)filePathPtr;
+    char dirPath[PATH_MAX];
+
+    if (NULL == FsPrefixPtr)
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    while ((slashPtr = strchr (slashPtr + 1, '/')))
+    {
+        memset(dirPath, 0, PATH_MAX);
+        strncat(strncpy(dirPath, FsPrefixPtr, PATH_MAX), filePathPtr, slashPtr - filePathPtr);
+        if ((-1 == mkdir(dirPath, S_IRWXU)) && (EEXIST != errno))
+        {
+            return (EROFS == errno) ? LE_NOT_POSSIBLE : LE_FAULT;
+        }
+    }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a file ref is deallocated
+ */
+//--------------------------------------------------------------------------------------------------
+static void FsFileRefDestructor
+(
+    void* objPtr
+)
+{
+    File_t* filePtr = (File_t*) objPtr;
+
+    if (NULL != filePtr)
+    {
+        // Release the reference
+        le_ref_DeleteRef(FsFileRefMap, filePtr->fileRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs
@@ -32,6 +157,9 @@
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist
+ *  - LE_NOT_PERMITTED  Access denied to the file or to a directory in the path
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -42,6 +170,10 @@ le_result_t le_fs_Open
     le_fs_FileRef_t* fileRefPtr     ///< [OUT] File reference (if successful)
 )
 {
+    mode_t mode = 0;
+    int fd;
+    char path[PATH_MAX];
+
     // Check if the pointers are set
     if (NULL == filePathPtr)
     {
@@ -53,6 +185,8 @@ le_result_t le_fs_Open
         LE_ERROR("NULL file handler pointer!");
         return LE_BAD_PARAMETER;
     }
+
+    *fileRefPtr = (le_fs_FileRef_t)NULL;
 
     // Check if the file path starts with '/'
     if ('/' != *filePathPtr)
@@ -68,7 +202,66 @@ le_result_t le_fs_Open
         return LE_BAD_PARAMETER;
     }
 
-    return pa_fs_Open(filePathPtr, accessMode, (int32_t *)fileRefPtr);
+    if (LE_FS_RDONLY & accessMode)
+    {
+        mode |= O_RDONLY;
+    }
+    if (LE_FS_WRONLY & accessMode)
+    {
+        mode |= O_WRONLY;
+    }
+    if (LE_FS_RDWR & accessMode)
+    {
+        mode |= O_RDWR;
+    }
+    if (LE_FS_CREAT & accessMode)
+    {
+        mode |= O_CREAT;
+    }
+    if (LE_FS_TRUNC & accessMode)
+    {
+        mode |= O_TRUNC;
+    }
+    if (LE_FS_APPEND & accessMode)
+    {
+        mode |= O_APPEND;
+    }
+    if (LE_FS_SYNC & accessMode)
+    {
+        mode |= O_SYNC;
+    }
+
+    if ((mode & O_CREAT) && (LE_OK != MkDirTree(filePathPtr)))
+    {
+        return LE_FAULT;
+    }
+
+    if (NULL == BuildPathName(path, PATH_MAX, filePathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    fd = open(path, mode, S_IRUSR | S_IWUSR);
+    if (-1 < fd)
+    {
+        File_t* tmpFilePtr = le_mem_ForceAlloc(FsFileRefPool);
+        tmpFilePtr->fd = fd;
+        tmpFilePtr->fileRef = le_ref_CreateRef(FsFileRefMap, tmpFilePtr);
+        *fileRefPtr = (le_fs_FileRef_t)(tmpFilePtr->fileRef);
+        return LE_OK;
+    }
+    else if (ENOENT == errno)
+    {
+        return LE_NOT_FOUND;
+    }
+    else if (EACCES == errno)
+    {
+        return LE_NOT_PERMITTED;
+    }
+    else
+    {
+        return LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -85,7 +278,24 @@ le_result_t le_fs_Close
     le_fs_FileRef_t fileRef     ///< [IN] File reference
 )
 {
-    return pa_fs_Close(FS_CAST(fileRef));
+    File_t* filePtr;
+    int rc;
+
+    filePtr = le_ref_Lookup(FsFileRefMap, fileRef);
+    if (NULL == filePtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    rc = close(filePtr->fd);
+    if (!rc)
+    {
+        le_mem_Release(filePtr);
+    }
+    else
+    {
+        LE_ERROR("Failed to close descriptor %d: %m", filePtr->fd);
+    }
+    return (!rc) ? LE_OK : LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -107,6 +317,9 @@ le_result_t le_fs_Read
                                  ///< [OUT] Number of bytes read when this function returns
 )
 {
+    File_t* filePtr;
+    int rc;
+
     // Check if the pointers are set
     if (NULL == bufPtr)
     {
@@ -134,7 +347,24 @@ le_result_t le_fs_Read
         return LE_OK;
     }
 
-    return pa_fs_Read(FS_CAST(fileRef), bufPtr, bufNumElementsPtr);
+    filePtr = le_ref_Lookup(FsFileRefMap, fileRef);
+    if (NULL == filePtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    do
+    {
+        rc = read(filePtr->fd, bufPtr, *bufNumElementsPtr);
+    }
+    while ((-1 == rc) && (EINTR == errno));
+
+    if (-1 == rc)
+    {
+        return LE_FAULT;
+    }
+
+    *bufNumElementsPtr = rc;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -145,6 +375,7 @@ le_result_t le_fs_Read
  * @return
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNDERFLOW      The write succeed but was not able to write all bytes
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -155,6 +386,9 @@ le_result_t le_fs_Write
     size_t bufNumElements     ///< [IN] Number of bytes to write
 )
 {
+    File_t* filePtr;
+    int rc;
+
     // Check if the pointer is set
     if (NULL == bufPtr)
     {
@@ -177,7 +411,27 @@ le_result_t le_fs_Write
         return LE_OK;
     }
 
-    return pa_fs_Write(FS_CAST(fileRef), bufPtr, bufNumElements);
+    filePtr = le_ref_Lookup(FsFileRefMap, fileRef);
+    if (NULL == filePtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    do
+    {
+        rc = write(filePtr->fd, bufPtr, bufNumElements);
+    }
+    while ((-1 == rc) && (EINTR == errno));
+
+    if (-1 == rc)
+    {
+        return LE_FAULT;
+    }
+
+    if (rc != bufNumElements)
+    {
+        return LE_UNDERFLOW;
+    }
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -198,21 +452,47 @@ le_result_t le_fs_Seek
     int32_t* currentOffsetPtr   ///< [OUT] Offset from the beginning after the seek operation
 )
 {
+    File_t* filePtr;
+    int whence = 0;
+    off_t rc;
+
     // Check if the pointer is set
     if (NULL == currentOffsetPtr)
     {
         LE_ERROR("NULL current offset pointer!");
         return LE_BAD_PARAMETER;
     }
-    if (position > LE_FS_SEEK_END)
+    if (LE_FS_SEEK_SET == position)
+    {
+        whence = SEEK_SET;
+    }
+    else if (LE_FS_SEEK_CUR == position)
+    {
+        whence = SEEK_CUR;
+    }
+    else if (LE_FS_SEEK_END == position)
+    {
+        whence = SEEK_END;
+    }
+    else
     {
         LE_ERROR("Wrong seek position!");
         return LE_BAD_PARAMETER;
     }
 
-    le_result_t result = pa_fs_Seek(FS_CAST(fileRef), (off_t*)&offset, position);
-    *currentOffsetPtr = offset;
-    return result;
+    filePtr = le_ref_Lookup(FsFileRefMap, fileRef);
+    if (NULL == filePtr)
+    {
+        return LE_BAD_PARAMETER;
+    }
+    rc = lseek(filePtr->fd, (off_t)offset, whence);
+
+    if (-1 == rc)
+    {
+        return LE_FAULT;
+    }
+    *currentOffsetPtr = (int32_t)rc;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -223,15 +503,20 @@ le_result_t le_fs_Seek
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_fs_GetSize
 (
     const char* filePathPtr,    ///< [IN]  File path
-    uint32_t* sizePtr           ///< [OUT] File size (if successful)
+    size_t* sizePtr             ///< [OUT] File size (if successful)
 )
 {
+    int rc;
+    struct stat st;
+    char path[PATH_MAX];
+
     // Check if the pointers are set
     if (NULL == filePathPtr)
     {
@@ -251,7 +536,19 @@ le_result_t le_fs_GetSize
         return LE_BAD_PARAMETER;
     }
 
-    return pa_fs_GetSize(filePathPtr, (size_t*)sizePtr);
+    if (NULL == BuildPathName(path, PATH_MAX, filePathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    rc = stat(path, &st);
+
+    if (-1 == rc)
+    {
+        return LE_FAULT;
+    }
+    *sizePtr = st.st_size;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -262,6 +559,10 @@ le_result_t le_fs_GetSize
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_NOT_FOUND      The file does not exist or a directory in the path does not exist
+ *  - LE_NOT_PERMITTED  The access right fails to delete the file or access is not granted to a
+ *                      a directory in the path
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -270,6 +571,9 @@ le_result_t le_fs_Delete
     const char* filePathPtr     ///< [IN] File path
 )
 {
+    int rc;
+    char path[PATH_MAX];
+
     // Check if the pointer is set
     if (NULL == filePathPtr)
     {
@@ -284,7 +588,24 @@ le_result_t le_fs_Delete
         return LE_BAD_PARAMETER;
     }
 
-    return pa_fs_Delete(filePathPtr);
+    if (NULL == BuildPathName(path, PATH_MAX, filePathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    rc = unlink(path);
+    if ((-1 == rc) && (ENOENT == errno))
+    {
+        return LE_NOT_FOUND;
+    }
+    else if ((-1 == rc) && ((EACCES == errno) || (EPERM == errno)))
+    {
+        return LE_NOT_PERMITTED;
+    }
+    else
+    {
+        return (!rc) ? LE_OK : LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -305,6 +626,10 @@ le_result_t le_fs_Move
     const char* destPathPtr     ///< [IN] New path to file
 )
 {
+    int rc;
+    char srcPath[PATH_MAX];
+    char destPath[PATH_MAX];
+
     // Check if the pointers are set
     if (NULL == srcPathPtr)
     {
@@ -336,7 +661,29 @@ le_result_t le_fs_Move
         return LE_BAD_PARAMETER;
     }
 
-    return pa_fs_Move(srcPathPtr, destPathPtr);
+    if (NULL == BuildPathName(srcPath, PATH_MAX, srcPathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    if (NULL == BuildPathName(destPath, PATH_MAX, destPathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    rc = rename(srcPath, destPath);
+    if ((-1 == rc) && (ENOENT == errno))
+    {
+        return LE_NOT_FOUND;
+    }
+    else if ((-1 == rc) && ((EACCES == errno) || (EPERM == errno)))
+    {
+        return LE_NOT_PERMITTED;
+    }
+    else
+    {
+        return (!rc) ? LE_OK : LE_FAULT;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -346,5 +693,92 @@ le_result_t le_fs_Move
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    //No further initialization needed
+    le_result_t res;
+    static char fsPrefixPath[PATH_MAX];
+    char* fsPrefixArray[] =
+    {
+        FS_PREFIX_DATA_PATH,
+        "/tmp" FS_PREFIX_DATA_PATH,
+        NULL,
+    };
+    char** tempFsPrefixPtr = fsPrefixArray;
+    le_cfg_IteratorRef_t fsPrefixCfg = le_cfg_CreateReadTxn("fsService:");
+
+    // Get the fsPrefixPath from config DB
+    if (le_cfg_NodeExists(fsPrefixCfg, FS_PREFIX_PATH_CFG))
+    {
+        int len;
+
+        memset(fsPrefixPath, 0, sizeof(fsPrefixPath));
+        if (LE_OK != le_cfg_GetString(fsPrefixCfg,
+                                      FS_PREFIX_PATH_CFG,
+                                      fsPrefixPath,
+                                      sizeof(fsPrefixPath), ""))
+        {
+            LE_CRIT("No FS prefix path registered '/fsPrefixPath'");
+            goto end;
+        }
+        len = strlen(fsPrefixPath);
+        if ((!len) || ('/' != fsPrefixPath[0]))
+        {
+            LE_CRIT("FS prefix path should start by /");
+            goto end;
+        }
+        if (('/' != fsPrefixPath[len - 1]))
+        {
+            strncat(fsPrefixPath, "/", sizeof(fsPrefixPath) - len - 1);
+        }
+        FsPrefixPtr = "";
+        if (LE_OK != MkDirTree(fsPrefixPath))
+        {
+            FsPrefixPtr = NULL;
+            LE_CRIT("Unable to create directory '%s'", fsPrefixPath);
+            goto end;
+        }
+        FsPrefixPtr = fsPrefixPath;
+        goto end;
+    }
+
+    do
+    {
+        if (-1 == access(*tempFsPrefixPtr, R_OK | W_OK | X_OK))
+        {
+            if (ENOENT == errno)
+            {
+                FsPrefixPtr = "";
+                res = MkDirTree(*tempFsPrefixPtr);
+                if (LE_OK == res)
+                {
+                    FsPrefixPtr = *tempFsPrefixPtr;
+                    break;
+                }
+                else if (LE_NOT_POSSIBLE == res)
+                {
+                    tempFsPrefixPtr++;
+                }
+                else
+                {
+                    FsPrefixPtr = NULL;
+                    LE_CRIT("Unable to create directory '%s'", *tempFsPrefixPtr);
+                    goto end;
+                }
+            }
+        }
+    }
+    while (*tempFsPrefixPtr);
+
+end:
+    if (NULL == FsPrefixPtr)
+    {
+        LE_CRIT("fsService is unusable because no valid prefix path");
+    }
+
+    le_cfg_CancelTxn(fsPrefixCfg);
+
+    FsFileRefPool = le_mem_CreatePool("FsFileRefPool", sizeof(File_t));
+    le_mem_ExpandPool (FsFileRefPool, FS_MAX_FILE_REF);
+    le_mem_SetDestructor(FsFileRefPool, FsFileRefDestructor);
+
+    // Create the Safe Reference Map to use for data profile object Safe References.
+    FsFileRefMap = le_ref_CreateMap("FsFileRefMap", FS_MAX_FILE_REF);
 }

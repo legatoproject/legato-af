@@ -14,10 +14,16 @@ sources:
 cflags:
 {
     -I$LEGATO_ROOT/components/fsService/platformAdaptor/inc
+    -I$LEGATO_ROOT/components/cfgEntries
 }
 
 requires:
 {
+    api:
+    {
+        le_cfg.api
+    }
+
     component:
     {
         $LEGATO_FS_PA_DEFAULT

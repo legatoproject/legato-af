@@ -7,8 +7,8 @@
  * <HR>
  *
  * The File System (FS) service allows accessing the file system on different platforms:
- * - the Legato file system is used for Read/Write platforms
- * - the modem internal file system is used for Read Only platforms
+ * - providing a Read/Write space to create/store/read files.
+ * - on Read Only platforms, the /tmp/data/le_fs is used as base of the FS sevice.
  *
  * The File System service offers the following file operations:
  * - open a file with le_fs_Open()
@@ -20,8 +20,9 @@
  * - delete a file with le_fs_Delete()
  * - move a file with le_fs_Move()
  *
- * @warning The modem internal file system is not designed to replace the Legato file system on
- * Read Only platforms: this FS service is reserved for internal use.
+ * The files and directories tree used by the fsDaemon may be set by the user with the config
+ * tree variable fsService:/fsPrefixPath.
+ * If it is not set, the path /data/le_fs is used if writeable. Else, it uses /tmp/data/le_fs.
  *
  * @section le_fs_binding IPC interfaces binding
  *
@@ -119,6 +120,9 @@ REFERENCE File;
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist
+ *  - LE_NOT_PERMITTED  Access denied to the file or to a directory in the path
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -168,6 +172,7 @@ FUNCTION le_result_t Read
  * @return
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNDERFLOW      The write succeed but was not able to write all bytes
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
@@ -203,13 +208,14 @@ FUNCTION le_result_t Seek
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSize
 (
     string filePath[PATH_MAX_LEN]   IN, ///< File path
-    uint32 size                     OUT ///< File size (if successful)
+    size size                       OUT ///< File size (if successful)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -220,6 +226,10 @@ FUNCTION le_result_t GetSize
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_OVERFLOW       The file path is too long.
+ *  - LE_NOT_FOUND      The file does not exist or a directory in the path does not exist
+ *  - LE_NOT_PERMITTED  The access right fails to delete the file or access is not granted to a
+ *                      a directory in the path
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
