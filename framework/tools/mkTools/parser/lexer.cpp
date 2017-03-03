@@ -1896,7 +1896,8 @@ void Lexer_t::ThrowException
 
     formattedMessage = mk::format(LE_I18N("%s:%d:%d: error: %s"),
                                   context.top().filePtr->path,
-                                  context.top().line % context.top().column,
+                                  context.top().line,
+                                  context.top().column,
                                   message);
 
     throw mk::Exception_t(formattedMessage);
