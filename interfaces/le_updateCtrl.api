@@ -82,6 +82,18 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * State of the system.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SystemState
+{
+    SYSTEMSTATE_GOOD,      ///< "good"
+    SYSTEMSTATE_BAD,       ///< "bad"
+    SYSTEMSTATE_PROBATION  ///< "tried N" or untried.
+};
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Prevent all updates (and roll-backs) until further notice.
@@ -102,17 +114,17 @@ FUNCTION Allow();
 /**
  * Prevent the probation period from ending.
  *
- * @note Ignored if the probation period has already ended.
+ * @return false if lock failed (for example if not in a probation period).
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION LockProbation();
+FUNCTION bool LockProbation();
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Cancels a call to LockProbation(), allow the probation period to end.
  *
- * @note Ignored if the probation period has already ended.
+ * @note Must match previous successful call to LockProbation().
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION UnlockProbation();
@@ -143,3 +155,14 @@ FUNCTION le_result_t MarkGood
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION FailProbation();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current system state.
+ *
+ * @note Can only be called if updates have been deferred or if a probation lock is held.
+ * Otherwise the system state could change between the time this function is called and when
+ * the return value is checked.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SystemState GetSystemState();

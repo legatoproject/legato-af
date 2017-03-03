@@ -207,6 +207,21 @@ static void DecrementProbationLocks
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Does the client hold a probation lock?
+ *
+ * @return true if the client holds a probation lock
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsClientProbationLocked
+(
+    pid_t clientPid
+)
+{
+    ClientLockCountObj_t* obj = le_hashmap_Get(ClientLockCountsContainer, &clientPid);
+    return (obj != NULL) && (obj->LockProbationCount > 0);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -258,6 +273,22 @@ static void DecrementDefers
             AggregateDeferCount--;
         }
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Does the client have a defer count?
+ *
+ * @return true if the client is deferring updates
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsClientDeferring
+(
+    pid_t clientPid
+)
+{
+    ClientLockCountObj_t* obj = le_hashmap_Get(ClientLockCountsContainer, &clientPid);
+    return (obj != NULL) && (obj->DeferCount > 0);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -373,7 +404,7 @@ void le_updateCtrl_Allow
  * @note Ignored if the probation period has already ended.
  */
 //--------------------------------------------------------------------------------------------------
-void le_updateCtrl_LockProbation
+bool le_updateCtrl_LockProbation
 (
     void
 )
@@ -385,8 +416,11 @@ void le_updateCtrl_LockProbation
         if (sysStatus_Status() == SYS_PROBATION)
         {
             IncrementProbationLocks(clientPid);
+            return true;
         }
     }
+
+    return false;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -536,3 +570,39 @@ void le_updateCtrl_FailProbation
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current system state.
+ *
+ * @note Can only be called if updates have been deferred or if a probation lock is held.
+ * Otherwise the system state could change between the time this function is called and when
+ * the return value is checked.
+ */
+//--------------------------------------------------------------------------------------------------
+le_updateCtrl_SystemState_t le_updateCtrl_GetSystemState
+(
+    void
+)
+{
+    pid_t clientPid = GetClientPid();
+
+    if ((!IsClientDeferring(clientPid)) &&
+        (!IsClientProbationLocked(clientPid)))
+    {
+        LE_KILL_CLIENT("Client trying to get system state without lock.");
+    }
+
+    switch (sysStatus_Status())
+    {
+        case SYS_GOOD:
+            return LE_UPDATECTRL_SYSTEMSTATE_GOOD;
+        case SYS_BAD:
+            return LE_UPDATECTRL_SYSTEMSTATE_BAD;
+        case SYS_PROBATION:
+            return LE_UPDATECTRL_SYSTEMSTATE_PROBATION;
+        default:
+            LE_FATAL("Unknown system status");
+    }
+
+    return LE_UPDATECTRL_SYSTEMSTATE_BAD;
+}
