@@ -1,3 +1,4 @@
+
 //--------------------------------------------------------------------------------------------------
 /**
  * @page c_le_avdata AirVantage Data
@@ -127,39 +128,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------------------------------
-/**
- * @file le_avdata_interface.h
- *
- * Legato @ref c_le_avdata include file.
- *
- * Copyright (C) Sierra Wireless Inc.
- */
-//--------------------------------------------------------------------------------------------------
-
 
 //--------------------------------------------------------------------------------------------------
 /**
- * An asset data instance reference
+ * Define the maximum length of a path name (TODO: verify value)
  */
 //--------------------------------------------------------------------------------------------------
-REFERENCE AssetInstance;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Define the maximum length of an asset name (TODO: verify value)
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE ASSET_NAME_LEN = 47;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Define the maximum length of a field name (TODO: verify value)
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE FIELD_NAME_LEN = 47;
+DEFINE PATH_NAME_LEN = 128;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -172,62 +147,140 @@ DEFINE STRING_VALUE_LEN = 255;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum length of a binary data field (TODO: verify value)
+ * Resource access modes.
+ *   Variable: read
+ *   Setting: read, write
+ *   Command: execute
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE BINARY_VALUE_LEN = 255;
+ENUM AccessMode
+{
+    ACCESS_VARIABLE,
+    ACCESS_SETTING,
+    ACCESS_COMMAND
+};
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler for field activity
+ * Resource access types
  */
 //--------------------------------------------------------------------------------------------------
-HANDLER FieldHandler
+BITMASK AccessType
+{
+    ACCESS_READ,
+    ACCESS_WRITE,
+    ACCESS_EXEC
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data types
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM DataType
+{
+    DATA_TYPE_NONE,
+    DATA_TYPE_INT,
+    DATA_TYPE_FLOAT,
+    DATA_TYPE_BOOL,
+    DATA_TYPE_STRING
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Argument list reference, for command only.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE ArgumentList;
+
+
+
+// TODO:
+/*
+Problems:
+1. Current assumption of user calling a Set/Get function in a "ResourceHandler" is wrong. The 
+   Set/Get funtion calls are happening in a separate event so the order of things happening is not
+   what I expected.
+
+2. Currently a HANDLER doesn't seem to support OUT params. So the the result of a command execution
+   can't be communicated back to the AVC Daemon.
+
+
+Proposed Actions:
+1. Modify ifgen so HANDLER supports OUT params.  Other than command result, the most updated "read"
+   value can also be communicated back to AVC daemon in the same event.
+
+2. Somehow make the Set/Get function happen in the same event?  Unsure how this can be done. Also
+   curious how Prush handled this.
+
+3. Instead of a generic "ResourceEvent" and "ResourceHandler", have 3 sets of events and handlers
+   for read, write, and execute, since their handlers all require different params.  Argument list
+   is only for execute, and only the read handler needs the OUT param for the updated value, for
+   example.
+
+   ... on second thought #3 might not be a good idea, since we might need 3 different types of 
+   AssetData_t.
+
+*/
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for resource activity
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER ResourceHandler
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN
+    string path[PATH_NAME_LEN] IN,
+    AccessType accessType IN,
+    ArgumentList ArgumentListRef IN,
+    le_result_t result OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This event provides information on field activity
+ * Upon resource access on the server side, the registered handler is called.
+ *
+ * For "variables" (read-only), the handler does NOT require a "set" call to be made.
+ *
+ * For "settings" (read/write), the same handler is called for both read and write.
+ *
+ * For read and write, the handlers are there to provide instant value update:
+ *
+ *  - If the av server is reading, then the handler is called BEFORE the value is read from the
+ *    internal storage and sent to av server, so the handler has a chance to get the latest value
+ *    from the hardware.
+ *
+ *  - If the av server is writing, then the handler is called AFTER the value is received from av
+ *    server and written to the internal storage, so the handler is able to set the hardware with
+ *    the latest value from the av server.
  */
 //--------------------------------------------------------------------------------------------------
-EVENT FieldEvent
+EVENT ResourceEvent
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
-    FieldHandler handler
+    string path[PATH_NAME_LEN] IN,
+    ResourceHandler handler
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create an instance of AirVantage asset
+ * Create a resource. Data type is determined upon the first call to a Set function.
  *
- * @return Reference to the asset instance
- *
- * @note It is a fatal error if the asset isn't defined.
+ * @return:
+ *      - LE_OK on success
+ *      - LE_DUPLICATE if path already being called by CreateResource before.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION AssetInstance Create
+FUNCTION le_result_t CreateResource
 (
-    string assetName[ASSET_NAME_LEN] IN
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Delete an instance of AirVantage asset
- *
- * @note It's a fatal error if the instRef isn't valid
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION Delete
-(
-    AssetInstance instRef IN
+    string path[PATH_NAME_LEN] IN,
+    AccessMode accessMode
 );
 
 
@@ -235,13 +288,16 @@ FUNCTION Delete
 /**
  * Get the value of an integer setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION GetInt
+FUNCTION le_result_t GetInt
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     int32 value OUT
 );
 
@@ -250,27 +306,33 @@ FUNCTION GetInt
 /**
  * Set the value of an integer variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetInt
+FUNCTION le_result_t SetInt
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     int32 value IN
 );
+
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the value of a float setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION GetFloat
+FUNCTION le_result_t GetFloat
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     double value OUT
 );
 
@@ -279,13 +341,15 @@ FUNCTION GetFloat
 /**
  * Set the value of a float variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetFloat
+FUNCTION le_result_t SetFloat
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     double value IN
 );
 
@@ -294,13 +358,16 @@ FUNCTION SetFloat
 /**
  * Get the value of a boolean setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION GetBool
+FUNCTION le_result_t GetBool
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     bool value OUT
 );
 
@@ -309,13 +376,15 @@ FUNCTION GetBool
 /**
  * Set the value of a boolean variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetBool
+FUNCTION le_result_t SetBool
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     bool value IN
 );
 
@@ -324,13 +393,16 @@ FUNCTION SetBool
 /**
  * Get the value of a string setting field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION GetString
+FUNCTION le_result_t GetString
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     string value[STRING_VALUE_LEN] OUT
 );
 
@@ -339,44 +411,101 @@ FUNCTION GetString
 /**
  * Set the value of a string variable field
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetString
+FUNCTION le_result_t SetString
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
+    string path[PATH_NAME_LEN] IN,
     string value[STRING_VALUE_LEN] IN
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value of a binary data setting field
+ * Get the bool argument with the specified name.
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION GetBinary
+FUNCTION le_result_t GetBoolArg
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
-    uint8 value[BINARY_VALUE_LEN] OUT
+    ArgumentList argumentListRef IN,
+    string argName[STRING_VALUE_LEN] IN,
+    bool boolArg OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the value of a binary data variable field
+ * Get the float argument with the specified name.
  *
- * @note It's a fatal error if the instRef isn't valid, or the field doesn't exist
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION SetBinary
+FUNCTION le_result_t GetFloatArg
 (
-    AssetInstance instRef IN,
-    string fieldName[FIELD_NAME_LEN] IN,
-    uint8 value[BINARY_VALUE_LEN] IN
+    ArgumentList argumentListRef IN,
+    string argName[STRING_VALUE_LEN] IN,
+    double floatArg OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the int argument with the specified name.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetIntArg
+(
+    ArgumentList argumentListRef IN,
+    string argName[STRING_VALUE_LEN] IN,
+    int32 intArg OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the string argument with the specified name.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetStringArg
+(
+    ArgumentList argumentListRef IN,
+    string argName[STRING_VALUE_LEN] IN,
+    string strArg[STRING_VALUE_LEN] OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the length of the string argument of the specified name.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_NOT_FOUND if argument doesn't exist, or its data type doesn't match the API.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetStringArgLength
+(
+    ArgumentList argumentListRef IN,
+    string argName[STRING_VALUE_LEN] IN,
+    int32 strArgLen OUT
 );
 
 
@@ -386,14 +515,6 @@ FUNCTION SetBinary
  */
 //--------------------------------------------------------------------------------------------------
 REFERENCE Record;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Define the maximum length of a path name (TODO: verify value)
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE PATH_NAME_LEN = 128;
 
 
 //--------------------------------------------------------------------------------------------------
