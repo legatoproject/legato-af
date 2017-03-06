@@ -8,3 +8,5 @@ mkapp(dogTestNever.adef)
 mkapp(dogTestNeverNow.adef)
 mkapp(dogTestRevertAfterTimeout.adef)
 mkapp(dogTestWolfPack.adef)
+
+mkapp(dogTestNonSandboxed.adef)

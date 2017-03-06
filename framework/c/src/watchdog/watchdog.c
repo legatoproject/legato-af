@@ -247,7 +247,7 @@ static void WatchdogHandleExpiry
         uid_t appId = expiredDog->appId;
 
 
-        if (LE_OK == user_GetAppName(appId, appName, sizeof(appName) ))
+        if (LE_OK == le_appInfo_GetName(procId, appName, sizeof(appName) ))
         {
             LE_CRIT("app %s, proc %d timed out", appName, procId);
         }
@@ -368,7 +368,7 @@ static le_clk_Time_t GetConfigKickTimeoutInterval
     int proc_milliseconds = CFG_TIMEOUT_USE_DEFAULT;
     int app_milliseconds = CFG_TIMEOUT_USE_DEFAULT;
 
-    if (LE_OK == user_GetAppName(appId, appName, sizeof(appName) ))
+    if (LE_OK == le_appInfo_GetName(procId, appName, sizeof(appName) ))
     {    // Check if there is a config for the process name first else check under the app name
 
         // It's a real app. Let's look up the config!
@@ -421,7 +421,7 @@ static le_clk_Time_t GetConfigKickTimeoutInterval
         // TODO: Find a way to get the configured watchdog timeout duration for unsandboxed
         //       apps, which run as root.
         proc_milliseconds = defaultTimeout;
-        LE_WARN("Unknown app with uid %u requested watchdog - using default timeout %d ms", appId,
+        LE_WARN("Unknown app with pid %d requested watchdog - using default timeout %d ms", procId,
           proc_milliseconds);
     }
     return MakeTimerInterval(proc_milliseconds);
@@ -623,6 +623,7 @@ COMPONENT_INIT
     InitializeTimerContainer();
     SystemProcessNotifySupervisor();
     wdog_ConnectService();
+    le_appInfo_ConnectService();
 
     le_msg_AddServiceCloseHandler (le_wdog_GetServiceRef(), CleanUpClosedClient, NULL);
     LE_INFO("The watchdog service is ready");
