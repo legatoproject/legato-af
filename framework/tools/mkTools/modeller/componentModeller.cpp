@@ -61,6 +61,33 @@ static std::string FindSourceFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Adds the commands from a given "externalBuild:" section to a given Component_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddExternalBuild
+(
+    model::Component_t* componentPtr,
+    parseTree::CompoundItem_t* sectionPtr ///< The parse tree object for the "externalBuild:"
+                                          ///  section.
+)
+{
+    auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
+
+    for (auto contentPtr: tokenListPtr->Contents())
+    {
+        componentPtr->externalBuildCommands.push_back(
+            path::Unquote(envVars::DoSubstitution(contentPtr->text))
+        );
+    }
+
+    if (componentPtr->HasIncompatibleLanguageCode())
+    {
+        componentPtr->ThrowIncompatibleLanguageException(sectionPtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the source files from a given "sources:" section to a given Component_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -110,8 +137,7 @@ static void AddSources
 
     if (componentPtr->HasIncompatibleLanguageCode())
     {
-        sectionPtr->ThrowException(LE_I18N("C/C++ source code file can't be part of a component"
-                                           " that also has Java sources."));
+        componentPtr->ThrowIncompatibleLanguageException(sectionPtr);
     }
 }
 
@@ -141,7 +167,7 @@ static void AddJavaPackage
 
     if (componentPtr->HasIncompatibleLanguageCode())
     {
-        sectionPtr->ThrowException(LE_I18N("Incompatible language insert detected."));
+        componentPtr->ThrowIncompatibleLanguageException(sectionPtr);
     }
 }
 
@@ -1094,7 +1120,11 @@ model::Component_t* GetComponent
     {
         const std::string& sectionName = sectionPtr->firstTokenPtr->text;
 
-        if (sectionName == "sources")
+        if (sectionName == "externalBuild")
+        {
+            AddExternalBuild(componentPtr, sectionPtr);
+        }
+        else if (sectionName == "sources")
         {
             AddSources(componentPtr, sectionPtr, buildParams);
         }

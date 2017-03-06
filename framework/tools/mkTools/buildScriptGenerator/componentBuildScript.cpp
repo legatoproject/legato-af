@@ -80,6 +80,17 @@ static void GenerateCommonCAndCxxFlags
         script << " -I$builddir/" << path::GetContainingDir(cFiles.interfaceFile);
     }
 
+    // Subcomponents with external builds do not interface via interfaces, so add these components
+    // directly
+    for (auto subComponentPtr : componentPtr->subComponents)
+    {
+        if (subComponentPtr->HasExternalBuild())
+        {
+            script << " -I" << subComponentPtr->dir
+                   << " -I$builddir/" << subComponentPtr->workingDir;
+        }
+    }
+
     // For each server-side USETYPES statement, include the server code generation directory.
     // NOTE: It's very important that this comes after the serverApis, because the server
     //       may serve the async version of an API that another API uses types from, and
@@ -136,6 +147,13 @@ static void GetImplicitDependencies
             script << " " << subComponentPtr->lib;
         }
 
+        // If the sub-component has an external build step, this component depends on that
+        // build step being run
+        if (subComponentPtr->HasExternalBuild())
+        {
+            script << " " << subComponentPtr->name + "ExternalBuild";
+        }
+
         // Component also depends on whatever the sub-component depends on.
         // NOTE: Might be able to optimize this out for sub-components that build to a library,
         //       because the sub-component library will depend on those other things, so depending
@@ -145,6 +163,58 @@ static void GetImplicitDependencies
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Does this component depend on components with external build steps.
+ **/
+//--------------------------------------------------------------------------------------------------
+static bool HasExternalDependencies
+(
+    const model::Component_t* componentPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // For each sub-component,
+    for (auto subComponentPtr : componentPtr->subComponents)
+    {
+        // If the sub-component has an external build step, this component depends on that
+        // build step being run
+        if (subComponentPtr->HasExternalBuild())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to a given script the list of dependencies with external compile steps.  These must be
+ * added as compile (rather than link) dependencies since an external build step could generate
+ * configuration .h files.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GetExternalDependencies
+(
+    std::ofstream& script,  ///< Build script to write to.
+    const model::Component_t* componentPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // For each sub-component,
+    for (auto subComponentPtr : componentPtr->subComponents)
+    {
+        // If the sub-component has an external build step, this component depends on that
+        // build step being run
+        if (subComponentPtr->HasExternalBuild())
+        {
+            script << " " << subComponentPtr->name + "ExternalBuild";
+        }
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,6 +239,12 @@ void GetDependentLibLdFlags
             script << " \"-L" << path::GetContainingDir(subComponentPtr->lib) << "\"";
 
             script << " -l" << path::GetLibShortName(subComponentPtr->lib);
+        }
+
+        // If the component has an external build, add the external build's working directory.
+        if (subComponentPtr->HasExternalBuild())
+        {
+            script << " \"-L$builddir" << subComponentPtr->dir << "\"";
         }
 
         // Link with whatever this component depends on.
@@ -334,6 +410,7 @@ static void GenerateComponentLibBuildStatement
     // Add implicit dependencies.
     script << " |";
     GetImplicitDependencies(script, componentPtr);
+    GetExternalDependencies(script, componentPtr);
     script << "\n";
 
     // Define the ldFlags variable.
@@ -363,6 +440,12 @@ static void GenerateCSourceBuildStatement
     // Create the build statement.
     script << "build $builddir/" << objFilePtr->path << ":"
               " CompileC " << objFilePtr->sourceFilePath;
+
+    if (HasExternalDependencies(componentPtr))
+    {
+        script << " | ";
+        GetExternalDependencies(script, componentPtr);
+    }
 
     // Add order-only dependencies for all the generated .h files that will be needed by the
     // component.  This ensures that the .c files won't be compiled until all the .h files are
@@ -404,6 +487,12 @@ static void GenerateCxxSourceBuildStatement
     // Create the build statement.
     script << "build $builddir/" << objFilePtr->path << ":"
               " CompileCxx " << objFilePtr->sourceFilePath;
+
+    if (HasExternalDependencies(componentPtr))
+    {
+        script << " | ";
+        GetExternalDependencies(script, componentPtr);
+    }
 
     // Add order-only dependencies for all the generated .h files that will be needed by the
     // component.  This ensures that the .c files won't be compiled until all the .h files are
@@ -540,6 +629,34 @@ void GenerateBuildStatements
                                  sourceList,
                                  { legatoJarPath },
                                  { legatoJarPath });
+    }
+    else if (componentPtr->HasExternalBuild())
+    {
+        // Create external build commands for each line
+        std::list<std::string>::const_iterator commandPtr;
+        int lineno;
+        for (commandPtr = componentPtr->externalBuildCommands.begin(),
+                 lineno = 0;
+             commandPtr != componentPtr->externalBuildCommands.end();
+             ++commandPtr, ++lineno)
+        {
+            script << "build " << componentPtr->name << "ExternalBuild_line"
+                   << lineno
+                   << " : BuildExternal";
+            if (0 != lineno)
+            {
+                script << " | " << componentPtr->name << "ExternalBuild_line" << (lineno - 1);
+            }
+            script << std::endl;
+            script << "  workingdir = " << componentPtr->workingDir << std::endl
+                   << "  externalCommand = " << EscapeString(*commandPtr) << std::endl;
+        }
+
+        // Overall build depends on last line
+        script << "build " << componentPtr->name << "ExternalBuild : phony "
+               << componentPtr->name << "ExternalBuild_line"
+               << (lineno - 1);
+        script << "\n\n";
     }
 }
 

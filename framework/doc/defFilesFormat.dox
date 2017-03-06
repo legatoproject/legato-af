@@ -124,6 +124,7 @@ Some useful environment variables:
  - @c LEGATO_SYSROOT = path of the directory containing the target device's system files
  - @c CURDIR = path of the directory containing the definition file being parsed
 
+A double dollar sign ('$$') is replaced by a dollar sign ('$').
 
 @section defFileFormatIncludeDirectives Include Directives
 

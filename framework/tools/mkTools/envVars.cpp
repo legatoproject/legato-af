@@ -220,14 +220,25 @@ std::string DoSubstitution
                 // ** FALL THROUGH **
 
             case UNBRACKETED_VAR_NAME:
-
+                // A double $$ is just a $, not an environment variable.
+                if ((*i == '$') && envVarName.empty())
+                {
+                    result += *i;
+                    state = NORMAL;
+                }
                 // The first character in the env var name can be an alpha character or underscore.
                 // The remaining can be alphanumeric or underscore.
-                if (   (isalpha(*i))
-                    || (!envVarName.empty() && isdigit(*i))
-                    || (*i == '_') )
+                else if (   (isalpha(*i))
+                         || (!envVarName.empty() && isdigit(*i))
+                         || (*i == '_') )
                 {
                     envVarName += *i;
+                }
+                else if (envVarName.empty())
+                {
+                    throw mk::Exception_t(
+                        mk::format(LE_I18N("Empty environment variable name in string '%s'"), path)
+                    );
                 }
                 else
                 {
@@ -260,6 +271,14 @@ std::string DoSubstitution
                 }
                 else if (*i == '}') // Make sure properly terminated with closing curly.
                 {
+                    if (envVarName.empty())
+                    {
+                        throw mk::Exception_t(
+                            mk::format(LE_I18N("Empty environment variable name in string '%s'"),
+                                       path)
+                        );
+                    }
+
                     // Mark variable name as used
                     if (usedVarsPtr)
                     {

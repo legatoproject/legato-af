@@ -178,6 +178,62 @@ cxxflags:
 }
 @endcode
 
+@section defFilesCdef_externalBuild externalBuild
+
+Specifies a list of commands required to build this component using an external build process.
+These commands will be executed in order by the shell, similarly to make recipes.  This
+may be used to build third-party libraries which need to be built from source but are not part of
+of the target filesystem.
+
+@note As with make, sh is used as the shell for executing commands regardless of what shell
+the user uses.  If an alternate shell or long scripts are needed, these can be placed in a
+separate shell script, and that shell script called here.
+
+If @c externalBuild: section is used in a component, the @c sources: section cannot be used.
+
+@note @c CC, @c CXX, @c CFLAGS, @c CXXFLAGS, and @c LDFLAGS are set to the target compiler
+and compiler flags when running the external build commands.  The current directory for the command
+will be the component's object directory.  This makes it easy to build and configure
+packages based on GNU autotools.  See example below.
+
+For example, suppose a component requires the libwarpspeed.so library, which is a third-party
+library built using autoconf and make.  First create a Component.cdef for the warpspeed library in
+that library's directory:
+
+@code
+bundles:
+{
+    file:
+    {
+        [x] libwarpspeed.so /usr/lib
+    }
+}
+
+externalBuild:
+{
+    "${CURDIR}/configure --target=$${TARGET_TOOLCHAIN_PREFIX%-}"
+    make
+}
+@endcode
+
+Then add
+
+@code
+requires:
+{
+    component:
+    {
+        warpspeed
+    }
+
+    lib:
+    {
+        libwarpspeed.so
+    }
+}
+@endcode
+
+to the Component.cdef of any component that needs this library.
 
 @section defFilesCdef_ldFlags ldflags
 

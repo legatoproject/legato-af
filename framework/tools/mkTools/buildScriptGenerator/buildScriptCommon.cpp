@@ -68,6 +68,32 @@ void CloseFile
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Escape ninja special characters (e.g. $) within a string.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string EscapeString
+(
+    const std::string &inputString
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string escapedString;
+
+    for (char c: inputString)
+    {
+        if (c == '$')
+        {
+            escapedString.push_back('$');
+        }
+
+        escapedString.push_back(c);
+    }
+
+    return escapedString;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -198,6 +224,14 @@ void GenerateBuildRules
               "  description = Build kernel driver module\n"
               "  command = make -C $in\n"
               "\n";
+
+    // Generate rules for running external tools
+    script << "rule BuildExternal\n"
+              "  description = Running external build step\n"
+              "  command = CC=" << cCompilerPath << " $\n"
+              "            CXX=" << cxxCompilerPath << " $\n"
+              "            CFLAGS=\"$cFlags\" CXXFLAGS=\"$cxxFlags\" LDFLAGS=\"$ldFlags\""
+              "            cd $builddir/$workingdir; $externalCommand\n";
 
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"

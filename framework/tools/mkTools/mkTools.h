@@ -15,18 +15,21 @@
 #define LEGATO_MKTOOLS_H_INCLUDE_GUARD
 
 
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <limits>
+#include <list>
+#include <map>
+#include <memory>
+#include <set>
+#include <sstream>
+#include <stack>
 #include <stdexcept>
 #include <string>
-#include <list>
-#include <limits>
 #include <vector>
-#include <stack>
-#include <map>
-#include <set>
-#include <memory>
-#include <iostream>
-#include <fstream>
-#include <sstream>
+
 
 #include "exception.h"
 #include "buildParams.h"

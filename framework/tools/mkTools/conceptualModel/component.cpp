@@ -91,6 +91,29 @@ Component_t* Component_t::CreateComponent
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Throw error message about incompatible source or build methods.
+ */
+//--------------------------------------------------------------------------------------------------
+void Component_t::ThrowIncompatibleLanguageException
+(
+    const parseTree::CompoundItem_t* conflictSectionPtr
+) const
+//--------------------------------------------------------------------------------------------------
+{
+    if (HasExternalBuild())
+    {
+        conflictSectionPtr->ThrowException(LE_I18N("A component with an external build step cannot"
+                                                   " have source files."));
+    }
+    else
+    {
+        conflictSectionPtr->ThrowException(LE_I18N("A component can only use one source file"
+                                                   " language."));
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Constructor.
  **/
 //--------------------------------------------------------------------------------------------------

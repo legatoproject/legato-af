@@ -32,6 +32,7 @@ struct Component_t
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
     std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
     std::list<JavaPackage_t*> javaPackages; ///< List of packages of Java code.
+    std::list<std::string> externalBuildCommands; ///< List of external build commands.
 
     std::set<std::string> staticLibs;   ///< Static library files to be linked with the exe.
 
@@ -92,11 +93,25 @@ struct Component_t
         return javaPackages.empty() != true;
     }
 
+    // Is the component built using an external build process
+    bool HasExternalBuild() const
+    {
+        return externalBuildCommands.empty() != true;
+    }
+
     // Does the component have code in multiple languages that are incompatible?
     bool HasIncompatibleLanguageCode() const
     {
-        return (HasJavaCode()) && (HasCOrCppCode());
+        int buildMethods = 0;
+        if (HasCOrCppCode())    { ++buildMethods; }
+        if (HasJavaCode())      { ++buildMethods; }
+        if (HasExternalBuild()) { ++buildMethods; }
+
+        return buildMethods > 1;
     }
+
+    void ThrowIncompatibleLanguageException(const parseTree::CompoundItem_t* conflictSectionPtr)
+        const __attribute__((noreturn));
 
 protected:
 
