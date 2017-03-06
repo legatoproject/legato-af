@@ -58,6 +58,9 @@ typedef struct
     int                 eventQueueFd;       ///< eventfd(2) file descriptor for the Event Queue.
     void*               contextPtr;         ///< Context pointer from last Handler called.
     event_LoopState_t   state;              ///< Current state of the event loop.
+    uint64_t            liveEventCount;     ///< Number of events ready for dequeing.  Ensures
+                                            ///< balance between queued events and monitored fds
+                                            ///< in le_event_ServiceLoop().
 }
 event_PerThreadRec_t;
 

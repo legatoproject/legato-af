@@ -1,0 +1,12 @@
+executables:
+{
+    test = (serviceLoopTest)
+}
+
+processes:
+{
+    run:
+    {
+        (test)
+    }
+}

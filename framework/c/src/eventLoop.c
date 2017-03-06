@@ -1518,7 +1518,7 @@ int le_event_GetFd
  *
  * @return
  *  - LE_OK if there is more to be done.
- *  - LE_WOULD_BLOCK if there is nothing left to do for now.
+ *  - LE_WOULD_BLOCK if there were no events to process.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_event_ServiceLoop
@@ -1531,9 +1531,31 @@ le_result_t le_event_ServiceLoop
     int epollFd = perThreadRecPtr->epollFd;
     struct epoll_event epollEventList[MAX_EPOLL_EVENTS];
 
-    // Ask epoll what, if anything, has happened on any of the file descriptors that we are
-    // monitoring using our epoll fd.  (NOTE: This is non-blocking.)
-    int result = epoll_wait(epollFd, epollEventList, NUM_ARRAY_MEMBERS(epollEventList), 0);
+    // If there are still live events remaining in the queue, process a single event, then return
+    if (perThreadRecPtr->liveEventCount--)
+    {
+        ProcessOneEventReport(perThreadRecPtr); // This function assumes the mutex is NOT locked.
+
+        return LE_OK;
+    }
+
+    int result;
+
+    do
+    {
+        // If no events on the queue, try to refill the event queue.
+        // Ask epoll what, if anything, has happened on any of the file descriptors that we are
+        // monitoring using our epoll fd.  (NOTE: This is non-blocking.)
+        result = epoll_wait(epollFd, epollEventList, NUM_ARRAY_MEMBERS(epollEventList), 0);
+
+        if ((result < 0) && (EINTR == errno))
+        {
+            // If epoll was interrupted,
+            // Check if someone has cancelled the thread and terminate the thread now, if so.
+            pthread_testcancel();
+        }
+    }
+    while ((result < 0) && (EINTR == errno));
 
     // If something happened on one or more of the monitored file descriptors,
     if (result > 0)
@@ -1560,18 +1582,11 @@ le_result_t le_event_ServiceLoop
             }
         }
     }
-    // Otherwise, if an epoll_wait() reported an error, hopefully it's just an interruption
-    // by a signal (EINTR).  Anything else is a fatal error.
+    // Otherwise, check if an epoll_wait() reported an error.
+    // Interruptions are tested above, so this is always a fatal error.
     else if (result < 0)
     {
-        if (errno != EINTR)
-        {
-            LE_FATAL("epoll_wait() failed.  errno = %d (%m).", errno);
-        }
-
-        // It was just EINTR, so we are okay to go back to sleep.  But first,
-        // check if someone has cancelled the thread and terminate the thread now, if so.
-        pthread_testcancel();
+        LE_FATAL("epoll_wait() failed.  errno = %d (%m).", errno);
     }
     // Otherwise, if epoll_wait() returned zero, then either this function was called without
     // waiting for the eventfd to be readable, or the eventfd was readable momentarily, but
@@ -1586,30 +1601,19 @@ le_result_t le_event_ServiceLoop
 
     // Read the eventfd to reset it to zero so epoll stops telling us about it until more
     // are added.
-    (void)ReadEventFd(perThreadRecPtr);
+    perThreadRecPtr->liveEventCount = ReadEventFd(perThreadRecPtr);
 
-    // If there is something on the Event Queue, process one thing.
-    int oldState = Lock();
-
-    if (!le_sls_IsEmpty(&perThreadRecPtr->eventQueue))
+    // If events were read, process the top event
+    if (perThreadRecPtr->liveEventCount--)
     {
-        Unlock(oldState);
+        ProcessOneEventReport(perThreadRecPtr);
 
-        ProcessOneEventReport(perThreadRecPtr); // This function assumes the mutex is NOT locked.
-
-        oldState = Lock();
+        return LE_OK;
     }
-
-    // The caller needs to know if there is more stuff waiting on the Event Queue.
-    le_result_t returnCode = LE_OK;
-    if (le_sls_IsEmpty(&perThreadRecPtr->eventQueue))
+    else
     {
-        returnCode = LE_WOULD_BLOCK;
+        return LE_WOULD_BLOCK;
     }
-
-    Unlock(oldState);
-
-    return returnCode;
 }
 
 
