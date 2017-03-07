@@ -308,13 +308,12 @@ static le_result_t ReadEcHeader
     if( IsVerbose )
     {
         fprintf(stderr,
-                "PEB %lx : MAGIC %c%c%c%c, EC %llu, VID %x DATA %x CRC %x\n",
+                "PEB %lx : MAGIC %c%c%c%c, VID %x DATA %x CRC %x\n",
                 physEraseBlock,
                 ((char *)&(ecHeaderPtr->magic))[0],
                 ((char *)&(ecHeaderPtr->magic))[1],
                 ((char *)&(ecHeaderPtr->magic))[2],
                 ((char *)&(ecHeaderPtr->magic))[3],
-                be64toh(ecHeaderPtr->ec),
                 be32toh(ecHeaderPtr->vid_hdr_offset),
                 be32toh(ecHeaderPtr->data_offset),
                 be32toh(ecHeaderPtr->hdr_crc) );
@@ -341,19 +340,18 @@ static le_result_t ReadVidHeader
     off_t vidOffset                ///< [IN] Offset of VID header in physical block
 )
 {
-    le_result_t res;
     uint32_t crc;
     int i;
 
     if( 0 > lseek( fd, physEraseBlock + vidOffset, SEEK_SET ) )
     {
         fprintf(stderr,"lseek fails: %m\n");
-        return res;
+        return LE_FAULT;
     }
     if ( 0 > read( fd, (uint8_t*)vidHeaderPtr, UBI_VID_HDR_SIZE ) )
     {
         fprintf(stderr,"read fails: %m\n");
-        return res;
+        return LE_FAULT;
     }
 
     for( i = 0; (i < UBI_VID_HDR_SIZE) && (((uint8_t*)vidHeaderPtr)[i] == 0xFF); i++ );
@@ -432,20 +430,19 @@ static le_result_t ReadVtbl
     off_t vtblOffset               ///< [IN] Offset of VTBL in physical block
 )
 {
-    le_result_t res;
     uint32_t crc;
     int i;
 
     if( 0 > lseek( fd, physEraseBlock + vtblOffset, SEEK_SET ) )
     {
         fprintf(stderr,"lseek fails: %m\n");
-        return res;
+        return LE_FAULT;
     }
     if (0 > read( fd, (uint8_t*)vtblPtr,
                                 UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE ) )
     {
         fprintf(stderr,"read fails: %m\n");
-        return res;
+        return LE_FAULT;
     }
 
     for( i = 0; i < UBI_MAX_VOLUMES; i++ )
@@ -781,7 +778,6 @@ int main
 {
     char tmpName[PATH_MAX];
     int fdr, fdw, fdp;
-    int destLen;
     int len, patchNum = 0;
     int iargc = argc;
     char **argvPtr = &argv[1];
@@ -1177,7 +1173,7 @@ int main
                 patchNum++;
                 PatchHeader.number = htobe32(patchNum);
                 PatchHeader.size = htobe32(st.st_size);
-                printf("Patch Header: offset 0x%lx number %d size %lu (0x%lx)\n",
+                printf("Patch Header: offset 0x%x number %d size %u (0x%x)\n",
                        be32toh(PatchHeader.offset), be32toh(PatchHeader.number),
                        be32toh(PatchHeader.size), be32toh(PatchHeader.size));
                 if( 0 > (len = read( fdw, PatchedChunk, st.st_size)) )
