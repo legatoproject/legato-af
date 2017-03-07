@@ -495,6 +495,7 @@ LE_SHARED le_result_t pa_sim_CloseLogicalChannel
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sim_SendApdu
 (
+    uint8_t        channel, ///< [IN] Logical channel.
     const uint8_t* apduPtr, ///< [IN] APDU message buffer
     uint32_t       apduLen, ///< [IN] APDU message length in bytes
     uint8_t*       respPtr, ///< [OUT] APDU message response.
@@ -571,6 +572,7 @@ LE_SHARED le_result_t pa_sim_ConfirmSimToolkitCommand
  *      - LE_NOT_FOUND      - The function failed to select the SIM card for this operation
  *                          - The requested SIM file is not found
  *      - LE_OVERFLOW       Response buffer is too small to copy the SIM answer.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_sim_SendCommand

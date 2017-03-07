@@ -17,6 +17,8 @@ For AR755x, AR8652, and WP8548, these are the p1, p2, p3 parameters:
  - path parameter contains the path of the elementary file from the master file in hexadecimal
  (e.g. "3F007FFF", "3F007F20"). The path is mandatory for all commands.
 
+@warning le_sim_SendCommand() API is not supported on AR758x and AR759x platforms.
+
 @section platformConstraintsSim_swap Hot-swap
 
 Your platform might need a reboot to detect a SIM card insertion or removal.

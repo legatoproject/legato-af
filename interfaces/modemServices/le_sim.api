@@ -474,6 +474,7 @@ ENUM Manufacturer
     GEMALTO,            ///< Gemalto.
     G_AND_D,            ///< G&D.
     MORPHO,             ///< Morpho.
+    VALID,              ///< Valid.
     MANUFACTURER_MAX
 };
 
@@ -980,6 +981,7 @@ FUNCTION le_result_t SendApdu
  *      - LE_NOT_FOUND      - The function failed to select the SIM card for this operation
  *                          - The requested SIM file is not found
  *      - LE_OVERFLOW       Response buffer is too small to copy the SIM answer.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SendCommand

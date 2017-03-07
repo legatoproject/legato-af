@@ -567,6 +567,12 @@ void simTest_SimAccess
                                          rspImsi2,
                                          &rspImsiLen2);
 
+    if (LE_UNSUPPORTED == res)
+    {
+        LE_WARN("le_sim_SendCommand() API not supported by the platform");
+        return;
+    }
+
     if (res != LE_OK)
     {
         strcpy(dfGsmPath, "3F007F20");

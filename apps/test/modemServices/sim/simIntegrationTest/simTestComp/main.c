@@ -185,8 +185,6 @@ COMPONENT_INIT
         const char* pin;
         const char* puk;
 
-
-
         // Get the pin and puk codes
         if (le_arg_NumArgs() == 4)
         {
@@ -243,12 +241,17 @@ COMPONENT_INIT
     // Test: send apdu
     else if (strcmp(testString, "access") == 0)
     {
-        // Call the test function
-        simTest_SimAccess(cardId);
+       // Call the test function
+       LE_INFO("======== Test SIM access Test Started ========");
+       simTest_SimAccess(cardId);
+       LE_INFO("======== Test SIM access Test SUCCESS ========");
     }
     else
     {
         PrintUsage();
         exit(EXIT_FAILURE);
     }
+
+    LE_INFO("SimTest done");
+    exit(EXIT_SUCCESS);
 }

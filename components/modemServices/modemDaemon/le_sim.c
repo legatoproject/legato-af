@@ -143,7 +143,9 @@ static ApduMsg_t EcsSwapApduReq[LE_SIM_MANUFACTURER_MAX] =
     // G_AND_D
     { 5, {0x00, 0xB6, 0x01, 0x00, 0x00} },
     // MORPHO
-    { 13, {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x99, 0x5F, 0x01, 0x81} }
+    { 13, {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x99, 0x5F, 0x01, 0x81} },
+    // VALID
+    { 13 , {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x80, 0x58, 0x01, 0x81} }
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -160,7 +162,9 @@ static ApduMsg_t CommercialSwapApduReq[LE_SIM_MANUFACTURER_MAX] =
     // G_AND_D
     { 5, {0x00, 0xB6, 0x02, 0x00, 0x00} },
     // MORPHO
-    { 13, {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x99, 0x5F, 0x01, 0x80} }
+    { 13, {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x99, 0x5F, 0x01, 0x80} },
+    // VALID
+    { 13 , {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x80, 0x58, 0x01, 0x80} }
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -185,21 +189,21 @@ static le_result_t LocalSwap
 {
     uint8_t  channel = 0;
 
+    // Get the logical channel to send APDu command.
+    if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
+    {
+        LE_ERROR("Cannot open Logical Channel!");
+        return LE_FAULT;
+    }
 
-    if (manufacturer == LE_SIM_G_AND_D)
+    if (LE_SIM_G_AND_D == manufacturer)
     {
         uint8_t  pduReq[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xD2, 0x76, 0x00,
                              0x01, 0x18, 0x00, 0x02, 0xFF, 0x34, 0x10, 0x25,
                              0x89, 0xC0, 0x02, 0x10, 0x01};
 
-        // APDU command to select the applet
-        if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
-        {
-            LE_ERROR("Cannot open Logical Channel!");
-            return LE_FAULT;
-        }
         pduReq[0] = channel;
-        if (pa_sim_SendApdu(pduReq, sizeof(pduReq),
+        if (pa_sim_SendApdu(channel, pduReq, sizeof(pduReq),
                             NULL, NULL) != LE_OK)
         {
             LE_ERROR("Cannot send APDU message!");
@@ -208,7 +212,8 @@ static le_result_t LocalSwap
         swapApduReqPtr[0] = channel;
     }
 
-    if (pa_sim_SendApdu(swapApduReqPtr,
+    if (pa_sim_SendApdu(channel,
+                        swapApduReqPtr,
                         swapApduLen,
                         NULL, NULL) != LE_OK)
     {
@@ -216,16 +221,14 @@ static le_result_t LocalSwap
         return LE_FAULT;
     }
 
-    if (manufacturer == LE_SIM_G_AND_D)
+    if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
     {
-        if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
-        {
-            LE_ERROR("Cannot close Logical Channel!");
-            return LE_FAULT;
-        }
+        LE_ERROR("Cannot close Logical Channel!");
+        return LE_FAULT;
     }
 
-    if ((manufacturer == LE_SIM_OBERTHUR) || (manufacturer == LE_SIM_MORPHO))
+    if ( (manufacturer == LE_SIM_OBERTHUR)
+         || (manufacturer == LE_SIM_MORPHO) )
     {
         return LE_OK;
     }
@@ -359,7 +362,7 @@ static void NewSimStateHandler
     pa_sim_Event_t* eventPtr
 )
 {
-    Sim_t*           simPtr = NULL;
+    Sim_t*           simPtr;
     Sim_Event_t      simEvent;
 
     LE_DEBUG("New SIM state.%d for sim identifier.%d (eventPtr %p)", eventPtr->state,
@@ -713,7 +716,7 @@ bool le_sim_IsPresent
 )
 {
     le_sim_States_t  state;
-    Sim_t*           simPtr = NULL;
+    Sim_t*           simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -808,7 +811,7 @@ le_result_t le_sim_EnterPIN
 )
 {
     pa_sim_Pin_t pinloc;
-    Sim_t*       simPtr = NULL;
+    Sim_t*       simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -878,7 +881,7 @@ le_result_t le_sim_ChangePIN
 {
     pa_sim_Pin_t oldpinloc;
     pa_sim_Pin_t newpinloc;
-    Sim_t*       simPtr = NULL;
+    Sim_t*       simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -954,7 +957,7 @@ int32_t le_sim_GetRemainingPINTries
 )
 {
     uint32_t  attempts=0;
-    Sim_t*    simPtr = NULL;
+    Sim_t*    simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1003,7 +1006,7 @@ le_result_t le_sim_Unlock
 )
 {
     pa_sim_Pin_t  pinloc;
-    Sim_t*        simPtr = NULL;
+    Sim_t*        simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1071,7 +1074,7 @@ le_result_t le_sim_Lock
 )
 {
     pa_sim_Pin_t pinloc;
-    Sim_t*       simPtr = NULL;
+    Sim_t*       simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1142,7 +1145,7 @@ le_result_t le_sim_Unblock
 {
     pa_sim_Puk_t pukloc;
     pa_sim_Pin_t newpinloc;
-    Sim_t*       simPtr = NULL;
+    Sim_t*       simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1467,7 +1470,7 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
     le_sim_Manufacturer_t manufacturer    ///< [IN] The card manufacturer.
 )
 {
-    Sim_t* simPtr = NULL;
+    Sim_t* simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1518,7 +1521,7 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
     le_sim_Manufacturer_t manufacturer    ///< [IN] The card manufacturer.
 )
 {
-    Sim_t* simPtr = NULL;
+    Sim_t* simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1568,7 +1571,7 @@ le_result_t le_sim_IsEmergencyCallSubscriptionSelected
 )
 {
     le_result_t res;
-    Sim_t*      simPtr = NULL;
+    Sim_t*      simPtr;
 
     if (simId >= LE_SIM_ID_MAX)
     {
@@ -1626,7 +1629,7 @@ le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
         ///< [IN] Handler's context.
 )
 {
-    le_event_HandlerRef_t handlerRef = NULL;
+    le_event_HandlerRef_t handlerRef;
 
     if (handlerPtr == NULL)
     {
@@ -1755,8 +1758,11 @@ le_result_t le_sim_SendApdu
         ///< [INOUT]
 )
 {
+    le_result_t res;
+    uint8_t  channel = 0;
+
     if ((commandApduNumElements > LE_SIM_APDU_MAX_BYTES) ||
-        (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
+                    (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
     {
         LE_ERROR("Too many elements");
         return LE_BAD_PARAMETER;
@@ -1773,10 +1779,27 @@ le_result_t le_sim_SendApdu
         return LE_NOT_FOUND;
     }
 
-    return pa_sim_SendApdu(commandApduPtr,
-                           commandApduNumElements,
-                           responseApdu,
-                           responseApduNumElementsPtr);
+    // Get the logical channel to send APDu command.
+    if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
+    {
+        LE_ERROR("Cannot open Logical Channel!");
+        return LE_FAULT;
+    }
+
+    res = pa_sim_SendApdu(channel,
+        commandApduPtr,
+        commandApduNumElements,
+        responseApdu,
+        responseApduNumElementsPtr);
+
+    // Close the logical channel.
+    if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
+    {
+        LE_ERROR("Cannot open Logical Channel!");
+        return LE_FAULT;
+    }
+
+    return res;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1790,6 +1813,7 @@ le_result_t le_sim_SendApdu
  *      - LE_NOT_FOUND      - The function failed to select the SIM card for this operation
  *                          - The requested SIM file is not found
  *      - LE_OVERFLOW       Response buffer is too small to copy the SIM answer.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_SendCommand
