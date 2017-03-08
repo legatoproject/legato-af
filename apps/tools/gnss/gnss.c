@@ -471,7 +471,7 @@ static int SetAcquisitionRate
 //-------------------------------------------------------------------------------------------------
 static int SetConstellation
 (
-    const char* constellationPtr
+    const char* constellationPtr   ///< [IN] GNSS constellation used in solution.
 )
 {
     uint32_t constellationMask = 0;
@@ -574,7 +574,7 @@ static int SetConstellation
 //-------------------------------------------------------------------------------------------------
 static int SetAgpsMode
 (
-    const char* agpsModePtr
+    const char* agpsModePtr    ///< [IN] agps to set.
 )
 {
     le_gnss_AssistedMode_t suplAgpsMode;
@@ -698,7 +698,7 @@ static int GetTtff
             printf("TTFF(Time to First Fix) = %ums\n", ttff);
             break;
         case LE_BUSY:
-            printf("The position is not fixed and TTFF can't be measured. See logs for details\n");
+            printf("TTFF not calculated (Position not fixed)\n");
             break;
         case LE_NOT_PERMITTED:
             printf("The GNSS device is not started or disabled. See logs for details\n");
@@ -1523,19 +1523,12 @@ static int GetSatelliteStatus
 
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
-    if (result == LE_OK)
+    if ((result == LE_OK) || (result == LE_OUT_OF_RANGE))
     {
         printf("satsInView %d - satsTracking %d - satsUsed %d\n",
-                satsInViewCount,
-                satsTrackingCount,
-                satsUsedCount);
-    }
-    else if (result == LE_OUT_OF_RANGE)
-    {
-        printf("Satellite status invalid [%d, %d, %d]\n",
-                satsInViewCount,
-                satsTrackingCount,
-                satsUsedCount);
+               (satsInViewCount == UINT8_MAX) ? 0: satsInViewCount,
+               (satsTrackingCount == UINT8_MAX) ? 0: satsTrackingCount,
+               (satsUsedCount == UINT8_MAX) ? 0: satsUsedCount);
     }
     else
     {
@@ -1633,7 +1626,7 @@ static int DoPosFix
         else if (result == LE_BUSY)
         {
             count++;
-            printf("TTFF not calculated (Position not fixed) BUSY\n");
+            printf("TTFF not calculated (Position not fixed)\n");
             sleep(1);
         }
         else
@@ -1655,8 +1648,8 @@ static int DoPosFix
 //--------------------------------------------------------------------------------------------------
 static void PositionHandlerFunction
 (
-    le_gnss_SampleRef_t positionSampleRef,
-    void* contextPtr
+    le_gnss_SampleRef_t positionSampleRef,    ///< [IN] Position sample reference
+    void* contextPtr                          ///< [IN] The context pointer
 )
 {
 
@@ -1756,7 +1749,7 @@ static void PositionHandlerFunction
 //--------------------------------------------------------------------------------------------------
 static void* PositionThread
 (
-    void* context
+    void* contextPtr             ///< [IN] The context pointer
 )
 {
     le_gnss_ConnectService();
@@ -1784,14 +1777,6 @@ static int WatchGnssInfo
 {
     le_thread_Ref_t positionThreadRef;
 
-    uint32_t ttff;
-    le_result_t result = le_gnss_GetTtff(&ttff);
-
-    if (result != LE_OK)
-    {
-        printf("Position not fixed. Try 'gnss fix' to fix position\n");
-        return EXIT_FAILURE;
-    }
     // Add Position Handler
     positionThreadRef = le_thread_Create("PositionThread",PositionThread,NULL);
     le_thread_Start(positionThreadRef);
@@ -1854,7 +1839,7 @@ void
 //-------------------------------------------------------------------------------------------------
 static void GetGnssParams
 (
-    const char *params
+    const char *params      ///< [IN] gnss parameters.
 )
 {
 
@@ -1896,17 +1881,6 @@ static void GetGnssParams
              (strcmp(params, "posInfo") == 0)
             )
     {
-
-        // TODO: Check whether device is in active state, then check ttff value.
-        uint32_t ttff;
-        le_result_t result = le_gnss_GetTtff(&ttff);
-
-        if (result != LE_OK)
-        {
-            printf("Position not fixed. Try 'gnss fix' to fix position\n");
-            exit(EXIT_FAILURE);
-        }
-
         // Copy the param
         strcpy(ParamsName, params);
 
@@ -1933,8 +1907,8 @@ static void GetGnssParams
 //-------------------------------------------------------------------------------------------------
 static int SetGnssParams
 (
-    const char * argNamePtr,
-    const char * argValPtr
+    const char * argNamePtr,    ///< [IN] gnss parameters.
+    const char * argValPtr      ///< [IN] gnss parameters.
 )
 {
     int status = EXIT_FAILURE;
