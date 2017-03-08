@@ -30,16 +30,23 @@
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Max characters for constellations name.
+ */
+//-------------------------------------------------------------------------------------------------
+#define CONSTELLATIONS_NAME_LEN     256
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Different type of constellation.
  * {@
  */
 //-------------------------------------------------------------------------------------------------
-#define CONSTELLATION_GPS           1
-#define CONSTELLATION_GLONASS       2
-#define CONSTELLATION_BEIDOU        4
-#define CONSTELLATION_GALILEO       8
+#define CONSTELLATION_GPS           0x1
+#define CONSTELLATION_GLONASS       0x2
+#define CONSTELLATION_BEIDOU        0x4
+#define CONSTELLATION_GALILEO       0x8
 #define CONSTELLATION_SBAS          0x10
-#define CONSTELLATION_QZSS          0x12
+#define CONSTELLATION_QZSS          0x20
 // @}
 
 //-------------------------------------------------------------------------------------------------
@@ -57,7 +64,6 @@ static le_gnss_PositionHandlerRef_t PositionHandlerRef;
 //-------------------------------------------------------------------------------------------------
 static char ParamsName[128] = "";
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the help text to stdout.
@@ -68,106 +74,104 @@ void PrintGnssHelp
     void
 )
 {
-    puts("\
-            NAME:\n\
-                gnss - Used to access different functionality of gnss\n\
-            \n\
-            SYNOPSIS:\n\
-                gnss help\n\
-                gnss <enable/disable>\n\
-                gnss <start/stop>\n\
-                gnss restart <RestartType>\n\
-                gnss fix [FixTime in seconds]\n\
-                gnss get <parameter>\n\
-                gnss get posInfo\n\
-                gnss set constellation <ConstellationType>\n\
-                gnss set agpsMode <ModeType>\n\
-                gnss set acqRate <acqRate in milliseconds>\n\
-                gnss set nmeaSentences <nmeaMask>\n\
-                gnss watch [WatchPeriod in seconds]\n\
-            \n\
-            DESCRIPTION:\n\
-                gnss help\n\
-                    - Print this help message and exit\n\
-                \n\
-                gnss <enable/disable>\n\
-                    - Enable/disable gnss device\n\
-                \n\
-                gnss <start/stop>\n\
-                    - Start/stop gnss device\n\
-                \n\
-                gnss restart <RestartType>\n\
-                    - Restart gnss device. Allowed when device in 'active' state. Restart type can\n\
-                      be as follows:\n\
-                         - hot\n\
-                         - warm\n\
-                         - cold\n\
-                         - factory\n\
-                    See GNSS topics in the Legato docs for more info on these restart types.\n\
-                \n\
-                gnss fix [FixTime in seconds]\n\
-                    - Loop for certain time for first position fix. Here, FixTime is optional.\n\
-                      Default time(60s) will be used if not specified\n\
-                \n\
-                gnss get <parameter>\n\
-                    - Used to get different gnss parameter. Parameters and their descriptions as follow:\n\
-                         - ttff --> Time to First Fix (milliseconds)\n\
-                         - acqRate       --> Acquisition Rate (unit milliseconds)\n\
-                         - agpsMode      --> Agps Mode\n\
-                         - nmeaSentences --> Enabled NMEA sentences (bit mask)\n\
-                         - constellation --> GNSS constellation\n\
-                         - posState      --> Position fix state(no fix, 2D, 3D etc)\n\
-                         - loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n\
-                         - alt           --> Altitude (Altitude, Vertical accuracy)\n\
-                         - loc3d         --> 3D location (latitude, longitude, altitude, horizontal accuracy,\n\
-                                             vertical accuracy)\n\
-                         - gpsTime       --> Get last updated gps time\n\
-                         - time          --> Time of the last updated location\n\
-                         - timeAcc       --> Time accuracy in milliseconds\n\
-                         - date          --> Date of the last updated location\n\
-                         - hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal Speed accuracy)\n\
-                         - vSpeed        --> Vertical speed(Vertical Speed, Vertical Speed accuracy)\n\
-                         - motion        --> Motion data (Horizontal Speed, Horizontal Speed accuracy,\n\
-                                             Vertical Speed, Vertical Speed accuracy)\n\
-                         - direction     --> Direction indication\n\
-                         - satInfo       --> Satellites Vehicle information\n\
-                         - satStat       --> Satellites Vehicle status\n\
-                         - dop           --> Dilution Of Precision for the fixed position\n\
-                         - posInfo       --> Get all current position info of the device\n\
-                         - status       --> Get gnss device's current status\n\
-                \n\
-                gnss set constellation <ConstellationType>\n\
-                    - Used to set constellation. Allowed when device in 'ready' state. May require\n\
-                      platform reboot, refer to platform documentation for details. ConstellationType\n\
-                      can be as follows:\n\
-                         - 1 --> GPS\n\
-                         - 2 --> GLONASS\n\
-                         - 4 --> BEIDOU\n\
-                         - 8 --> GALILEO\n\
-                      Please use sum of the values to set multiple constellation, e.g., 3 for GPS+GLONASS\n\
-                      15 for GPS+GLONASS+BEIDOU+GALILEO\n\
-                \n\
-                gnss set agpsMode <ModeType>\n\
-                    - Used to set agps mode. ModeType can be as follows:\n\
-                         - alone --> Standalone agps mode\n\
-                         - msBase --> MS-based agps mode\n\
-                         - msAssist --> MS-assisted agps mode\n\
-                \n\
-                gnss set acqRate <acqRate in milliseconds>\n\
-                    - Used to set acquisition rate. Available when device is in 'ready' state.\n\
-                \n\
-                gnss set nmeaSentences <nmeaMask>\n\
-                    - Used to set the enabled NMEA sentences. \n\
-                      Bit mask should be set with hexadecimal values, e.g., 7FFF\n\
-                \n\
-                gnss watch [WatchPeriod in seconds]\n\
-                    - Used to monitor all gnss information (position, speed, satellites used, etc.).\n\
-                      Here, WatchPeriod is optional. Default time(600s) will be used if not specified.\n\
-                \n\
-            Please note, some commands require gnss device to be in specific state (and platform reboot)\n\
-            to produce valid result. See GNSS topics in the Legato docs for more info.\n\
-         ");
+    puts("\n\t\tNAME:\n"
+         "\t\t\tgnss - Used to access different functionality of gnss\n\n"
+         "\t\tSYNOPSIS:\n"
+         "\t\t\tgnss help\n"
+         "\t\t\tgnss <enable/disable>\n"
+         "\t\t\tgnss <start/stop>\n"
+         "\t\t\tgnss restart <RestartType>\n"
+         "\t\t\tgnss fix [FixTime in seconds]\n"
+         "\t\t\tgnss get <parameter>\n"
+         "\t\t\tgnss get posInfo\n"
+         "\t\t\tgnss set constellation <ConstellationType>\n"
+         "\t\t\tgnss set agpsMode <ModeType>\n"
+         "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
+         "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
+         "\t\t\tgnss watch [WatchPeriod in seconds]\n\n"
+         "\t\tDESCRIPTION:\n"
+         "\t\t\tgnss help\n"
+         "\t\t\t\t- Print this help message and exit\n\n"
+         "\t\t\tgnss <enable/disable>\n"
+         "\t\t\t\t- Enable/disable gnss device\n\n"
+         "\t\t\tgnss <start/stop>\n"
+         "\t\t\t\t- Start/stop gnss device\n\n"
+         "\t\t\tgnss restart <RestartType>\n"
+         "\t\t\t\t- Restart gnss device. Allowed when device in 'active' state. Restart type can\n"
+         "\t\t\t\t  be as follows:\n"
+         "\t\t\t\t\t- hot\n"
+         "\t\t\t\t\t- warm\n"
+         "\t\t\t\t\t- cold\n"
+         "\t\t\t\t\t- factory\n"
+         "\t\t\t\tTo know more about these restart types, please look at: \n"
+         "\t\t\t\t           http://legato.io/legato-docs/latest/c_gnss.html\n\n"
+         "\t\t\tgnss fix [FixTime in seconds]\n"
+         "\t\t\t\t- Loop for certain time for first position fix. Here, FixTime is optional.\n"
+         "\t\t\t\t  Default time(60s) will be used if not specified\n\n"
+         "\t\t\tgnss get <parameter>\n"
+         "\t\t\t\t- Used to get different gnss parameter.\n"
+         "\t\t\t\t  Follows parameters and their descriptions :\n"
+         "\t\t\t\t\t- ttff          --> Time to First Fix (milliseconds)\n"
+         "\t\t\t\t\t- acqRate       --> Acquisition Rate (unit milliseconds)\n"
+         "\t\t\t\t\t- agpsMode      --> Agps Mode\n"
+         "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
+         "\t\t\t\t\t- constellation --> GNSS constellation\n"
+         "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
+         "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
+         "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
+         "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
+         "\t\t\t\t\t                    horizontal accuracy, vertical accuracy)\n"
+         "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
+         "\t\t\t\t\t- time          --> Time of the last updated location\n"
+         "\t\t\t\t\t- timeAcc       --> Time accuracy in milliseconds\n"
+         "\t\t\t\t\t- date          --> Date of the last updated location\n"
+         "\t\t\t\t\t- hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal\n"
+         "\t\t\t\t\t                    Speed accuracy)\n"
+         "\t\t\t\t\t- vSpeed        --> Vertical speed(Vertical Speed, Vertical Speed accuracy)\n"
+         "\t\t\t\t\t- motion        --> Motion data (Horizontal Speed, Horizontal Speed accuracy,\n"
+         "\t\t\t\t\t                    Vertical Speed, Vertical Speed accuracy)\n"
+         "\t\t\t\t\t- direction     --> Direction indication\n"
+         "\t\t\t\t\t- satInfo       --> Satellites Vehicle information\n"
+         "\t\t\t\t\t- satStat       --> Satellites Vehicle status\n"
+         "\t\t\t\t\t- dop           --> Dilution Of Precision for the fixed position\n"
+         "\t\t\t\t\t- posInfo       --> Get all current position info of the device\n"
+         "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
+         "\t\t\tgnss set constellation <ConstellationType>\n"
+         "\t\t\t\t- Used to set constellation. Allowed when device in 'ready' state. May require\n"
+         "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
+         "\t\t\t\t  ConstellationType can be as follows:\n"
+         "\t\t\t\t\t- 1 ---> GPS\n"
+         "\t\t\t\t\t- 2 ---> GLONASS\n"
+         "\t\t\t\t\t- 4 ---> BEIDOU\n"
+         "\t\t\t\t\t- 8 ---> GALILEO\n"
+         "\t\t\t\t\t- 16 --> SBAS\n"
+         "\t\t\t\t\t- 32 --> QZSS\n"
+         "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
+         "\t\t\t\t3 for GPS+GLONASS, 63 for GPS+GLONASS+BEIDOU+GALILEO+SBAS+QZSS\n\n"
+         "\t\t\tgnss set agpsMode <ModeType>\n"
+         "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
+         "\t\t\t\t\t- alone -----> Standalone agps mode\n"
+         "\t\t\t\t\t- msBase ----> MS-based agps mode\n"
+         "\t\t\t\t\t- msAssist --> MS-assisted agps mode\n\n"
+         "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
+         "\t\t\t\t- Used to set acquisition rate.\n"
+         "\t\t\t\t  Please note that it is available when the device is 'ready' state.\n\n"
+         "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
+         "\t\t\t\t- Used to set the enabled NMEA sentences. \n"
+         "\t\t\t\t  Bit mask should be set with hexadecimal values, e.g. 7FFF\n\n"
+         "\t\t\tgnss watch [WatchPeriod in seconds]\n"
+         "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
+         "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
+         "\t\t\t\t  specified\n\n"
+         "\tPlease note, some commands require gnss device to be in specific state\n"
+         "\t(and platform reboot) to produce valid result. Please look :\n"
+         "\thttp://legato.io/legato-docs/latest/howToGNSS.html,\n"
+         "\thttp://legato.io/legato-docs/latest/c_gnss.html and platform documentation for more\n"
+         "\tdetails.\n"
+         );
 }
+
+
 
 
 //-------------------------------------------------------------------------------------------------
@@ -470,7 +474,7 @@ static int SetConstellation
     const char* constellationPtr
 )
 {
-    int32_t constellationMask = 0;
+    uint32_t constellationMask = 0;
 
     char *endPtr;
     errno = 0;
@@ -482,44 +486,44 @@ static int SetConstellation
         exit(EXIT_FAILURE);
     }
 
-    char constellationStr[256] = "[";
+    char constellationStr[CONSTELLATIONS_NAME_LEN] = "[";
     if (constellationSum & CONSTELLATION_GPS)
     {
-        constellationMask |= LE_GNSS_CONSTELLATION_GPS;
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GPS;
         constellationSum -= CONSTELLATION_GPS;
-        strcat(constellationStr, "GPS ");
+        strncat(constellationStr, "GPS ", CONSTELLATIONS_NAME_LEN);
     }
     if (constellationSum & CONSTELLATION_GLONASS)
     {
-        constellationMask |= LE_GNSS_CONSTELLATION_GLONASS;
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GLONASS;
         constellationSum -= CONSTELLATION_GLONASS;
-        strcat(constellationStr, "GLONASS ");
+        strncat(constellationStr, "GLONASS ", CONSTELLATIONS_NAME_LEN);
     }
     if (constellationSum & CONSTELLATION_BEIDOU)
     {
-        constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_BEIDOU;
         constellationSum -= CONSTELLATION_BEIDOU;
-        strcat(constellationStr, "BEIDOU ");
+        strncat(constellationStr, "BEIDOU ", CONSTELLATIONS_NAME_LEN);
     }
     if (constellationSum & CONSTELLATION_GALILEO)
     {
-        constellationMask = LE_GNSS_CONSTELLATION_GALILEO;
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GALILEO;
         constellationSum -= CONSTELLATION_GALILEO;
-        strcat(constellationStr, "GALILEO");
+        strncat(constellationStr, "GALILEO ", CONSTELLATIONS_NAME_LEN);
     }
     if (constellationSum & CONSTELLATION_SBAS)
     {
-        constellationMask = LE_GNSS_CONSTELLATION_SBAS;
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_SBAS;
         constellationSum -= CONSTELLATION_SBAS;
-        strcat(constellationStr, "SBAS");
+        strncat(constellationStr, "SBAS ", CONSTELLATIONS_NAME_LEN);
     }
     if (constellationSum & CONSTELLATION_QZSS)
     {
-        constellationMask = LE_GNSS_CONSTELLATION_QZSS;
+        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_QZSS;
         constellationSum -= CONSTELLATION_QZSS;
-        strcat(constellationStr, "QZSS");
+        strncat(constellationStr, "QZSS ", CONSTELLATIONS_NAME_LEN);
     }
-    strcat(constellationStr, "]");
+    strncat(constellationStr, "]", CONSTELLATIONS_NAME_LEN);
 
     LE_INFO("Setting constellation %s",constellationStr);
 
@@ -768,24 +772,22 @@ static int GetConstellation
     le_gnss_ConstellationBitMask_t constellationMask;
     le_result_t result = le_gnss_GetConstellation(&constellationMask);
 
+    printf("ConstellationType %d\n", constellationMask);
+
     if (result == LE_OK)
     {
-        if (constellationMask & LE_GNSS_CONSTELLATION_GPS)
-        {
-            printf("GPS activated\n");
-        }
-        if (constellationMask & LE_GNSS_CONSTELLATION_GLONASS)
-        {
-            printf("GLONASS activated\n");
-        }
-        if (constellationMask & LE_GNSS_CONSTELLATION_BEIDOU)
-        {
-            printf("BEIDOU activated\n");
-        }
-        if (constellationMask & LE_GNSS_CONSTELLATION_GALILEO)
-        {
-            printf("BEIDOU activated\n");
-        }
+        (constellationMask & LE_GNSS_CONSTELLATION_GPS)     ? printf("GPS activated\n") :
+                                                              printf("GPS not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_GLONASS) ? printf("GLONASS activated\n") :
+                                                              printf("GLONASS not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_BEIDOU)  ? printf("BEIDOU activated\n") :
+                                                              printf("BEIDOU not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("GALILEO activated\n") :
+                                                              printf("GALILEO not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("SBAS activated\n") :
+                                                              printf("SBAS not activated\n");
+        (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("QZSS activated\n") :
+                                                              printf("QZSS not activated\n");
     }
     else
     {
