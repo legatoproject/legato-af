@@ -1154,9 +1154,9 @@ FUNCTION le_result_t GetTimeStamp
     string  timestamp[TIMESTAMP_MAX_LEN] OUT ///< Message time stamp (in text mode).
                                              ///<      string format: "yy/MM/dd,hh:mm:ss+/-zz"
                                              ///<      (Year/Month/Day,Hour:Min:Seconds+/-TimeZone)
-                                             /// The time zone indicates the difference, expressed
-                                             /// in quarters of an hours between the local time
-                                             ///  and GMT.
+                                             ///< The time zone indicates the difference, expressed
+                                             ///< in quarters of an hours between the local time
+                                             ///<  and GMT.
 );
 
 //--------------------------------------------------------------------------------------------------

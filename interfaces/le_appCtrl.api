@@ -162,7 +162,7 @@ FUNCTION le_result_t SetDevicePerm
 HANDLER TraceAttachHandler
 (
     App appRef IN,                              ///< Ref to the app.
-    int pid IN,                                 ///< PID of a process that can be attached to.
+    int32 pid IN,                               ///< PID of a process that can be attached to.
     string procName[le_limit.PROC_NAME_LEN] IN  ///< Name of the process name.
 );
 
@@ -191,7 +191,7 @@ EVENT TraceAttach
 FUNCTION TraceUnblock
 (
     App appRef IN,                              ///< Ref to the app.
-    int pid IN                                  ///< PID of the process to unblock.
+    int32 pid IN                                ///< PID of the process to unblock.
 );
 
 

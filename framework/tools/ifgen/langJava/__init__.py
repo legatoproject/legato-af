@@ -1,24 +1,27 @@
-
-# --------------------------------------------------------------------------------------------------
 #
-#  Initialization for the Java language generator.
+# Init file for the C language package
 #
-#  Copyright (C) Sierra Wireless Inc.
+# Copyright (C) Sierra Wireless Inc.
 #
-# --------------------------------------------------------------------------------------------------
 
-import commandLib
-import codeTypes
-import interfaceParser
+import codeGenHelpers
 
+def AddLangArgumentGroup(argParser):
+    pass
 
+# Custom filters needed for C templates
+Filters = { 'FormatHeaderComment': codeGenHelpers.FormatHeaderComment,
+            'FormatType':          codeGenHelpers.FormatType,
+            'FormatBoxedType':     codeGenHelpers.FormatBoxedType,
+            'DefaultValue':        codeGenHelpers.GetDefaultValue,
+            'FormatParameter':     codeGenHelpers.FormatParameter,
+            'indent':              codeGenHelpers.IndentCode }
 
-# --------------------------------------------------------------------------------------------------
-# Entry point for the host script to get our code generation API.
-# --------------------------------------------------------------------------------------------------
-def GetCommandLib():
-    # Specify the codeTypes library for the interface parser to use, and return our implementation
-    # of the command lib.
-    interfaceParser.SetCodeTypeLibrary(codeTypes)
+# No custom tests for C templates
+Tests = { }
 
-    return commandLib
+Globals = {  }
+
+GeneratedFiles = { 'interface' : 'io/legato/api/%s.java',
+                   'client' : 'io/legato/api/implementation/%sClient.java',
+                   'server' : 'io/legato/api/implementation/%sServer.java' }

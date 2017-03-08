@@ -40,5 +40,5 @@ USETYPES le_limit.api;
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Remove
 (
-    string appName[1..le_limit.APP_NAME_LEN] IN ///< Name of the app to remove.
+    string appName[le_limit.APP_NAME_LEN] IN ///< Name of the app to remove.
 );

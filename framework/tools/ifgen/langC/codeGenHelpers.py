@@ -1,0 +1,195 @@
+#
+# Functions for easing writing templates.
+#
+# These are:
+#  - filters format single elements or small lists which would be hard to write into the
+# template directly.
+#  - tests to switch between templates depending on the type of item being formated
+#  - global helper functions
+#
+# Copyright (C) Sierra Wirless Inc.
+#
+
+import interfaceIR
+
+#---------------------------------------------------------------------------------------------------
+# Global objects used by the C API
+#---------------------------------------------------------------------------------------------------
+_CONTEXT_TYPE = interfaceIR.BasicType("context", 4)
+
+#---------------------------------------------------------------------------------------------------
+# Filters
+#---------------------------------------------------------------------------------------------------
+
+def FormatHeaderComment(comment):
+    """
+    Format a header comment into a C-style Doxygen comment
+    """
+    commentLines = comment.split(u'\n')
+    prefix = u' *'
+    result = u'/**' + commentLines[0] + u'\n'
+    for commentLine in commentLines[1:-1]:
+        result += prefix + commentLine + u'\n'
+        if commentLine.strip() == u'@verbatim':
+            prefix = u''
+        elif commentLine.strip() == u'@endverbatim':
+            prefix = u' *'
+    # If comment ends on a trailing newline, replace newline '/' to close the comment, otherwise
+    # need a full comment close.  But trailing newline is the common case.
+    if commentLines[-1].strip() == u'':
+        result += u' */'
+    else:
+        result += prefix + commentLines[-1] + u'*/'
+    return result
+
+def FormatDirection(direction):
+    if direction == interfaceIR.DIR_IN:
+        return "IN"
+    elif direction == interfaceIR.DIR_OUT:
+        return "OUT"
+    else:
+        return "INOUT"
+
+def FormatType(apiType):
+    """Produce a C type from an API type"""
+    BasicTypeMapping = {
+        interfaceIR.UINT8_TYPE:  "uint8_t",
+        interfaceIR.UINT16_TYPE: "uint16_t",
+        interfaceIR.UINT32_TYPE: "uint32_t",
+        interfaceIR.UINT64_TYPE: "uint64_t",
+        interfaceIR.INT8_TYPE:   "int8_t",
+        interfaceIR.INT16_TYPE:  "int16_t",
+        interfaceIR.INT32_TYPE:  "int32_t",
+        interfaceIR.INT64_TYPE:  "int64_t",
+        interfaceIR.BOOL_TYPE:   "bool",
+        interfaceIR.CHAR_TYPE:   "char",
+        interfaceIR.DOUBLE_TYPE: "double",
+        interfaceIR.SIZE_TYPE:   "size_t",
+        interfaceIR.STRING_TYPE: "char*",
+        interfaceIR.FILE_TYPE:   "int",
+        interfaceIR.RESULT_TYPE: "le_result_t",
+        interfaceIR.ONOFF_TYPE:  "le_onoff_t",
+        _CONTEXT_TYPE: "void*"
+    }
+    if apiType == None:
+        return "void"
+    elif isinstance(apiType, interfaceIR.BasicType):
+        return BasicTypeMapping[apiType]
+    elif isinstance(apiType, interfaceIR.ReferenceType):
+        return "%s_%sRef_t" % (apiType.iface.name, apiType.name)
+    elif isinstance(apiType, interfaceIR.HandlerType):
+        return "%s_%sFunc_t" % (apiType.iface.name, apiType.name)
+    else:
+        return "%s_%s_t" % (apiType.iface.name, apiType.name)
+
+def FormatParameterName(parameter, forceInput=False):
+    if (isinstance(parameter, interfaceIR.ArrayParameter)
+        or isinstance(parameter.apiType, interfaceIR.HandlerType)
+        or (not forceInput
+            and (parameter.direction & interfaceIR.DIR_OUT) == interfaceIR.DIR_OUT
+            and not isinstance(parameter, interfaceIR.StringParameter))):
+        return parameter.name + "Ptr"
+    else:
+        return parameter.name
+
+def FormatParameterPtr(parameter):
+    """Get a pointer to the storage indicated by the parameter from a parameter"""
+    if (parameter.direction & interfaceIR.DIR_OUT) == interfaceIR.DIR_OUT:
+        # Output parameters, and arrays and strings are themselves pointers
+        return FormatParameterName(parameter)
+    else:
+        # Everything else needs to have its address taken
+        return "&" + FormatParameterName(parameter)
+
+
+def FormatParameter(parameter, forceInput=False):
+    if isinstance(parameter, interfaceIR.StringParameter):
+        return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
+                FormatType(parameter.apiType) + " " + parameter.name)
+    elif isinstance(parameter, interfaceIR.ArrayParameter):
+        return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
+                FormatType(parameter.apiType) + "* " + parameter.name + "Ptr")
+    elif isinstance(parameter.apiType, interfaceIR.HandlerType):
+        return FormatType(parameter.apiType) + " " + parameter.name + "Ptr"
+    elif forceInput or parameter.direction == interfaceIR.DIR_IN:
+        return FormatType(parameter.apiType) + " " + parameter.name
+    else:
+        return FormatType(parameter.apiType) + "* " + parameter.name + "Ptr"
+
+def GetParameterCount(param):
+    """
+    Get actual number of elements in a array or string passed as a parameter.
+    """
+    if param.direction == interfaceIR.DIR_IN:
+        if isinstance(param, interfaceIR.StringParameter):
+            return "strlen(%s)" % (param.name,)
+        elif isinstance(param, interfaceIR.ArrayParameter):
+            return "%sNumElements" % (param.name,)
+    else:
+        if isinstance(param, interfaceIR.StringParameter):
+            return "%sNumElements" % (param.name,)
+        elif isinstance(param, interfaceIR.ArrayParameter):
+            # TODO: Replace with (*...) once finished checking generated API
+            return "*%sNumElementsPtr" % (param.name,)
+
+def GetParameterCountPtr(param):
+    """
+    Get address of the count of elements in a array or string passed as a parameter.
+    """
+    if param.direction == interfaceIR.DIR_IN:
+        if isinstance(param, interfaceIR.StringParameter):
+            return None
+        elif isinstance(param, interfaceIR.ArrayParameter):
+            return "&%sNumElements" % (param.name,)
+    else:
+        if isinstance(param, interfaceIR.StringParameter):
+            return "&%sNumElements" % (param.name,)
+        else:
+            return "%sNumElementsPtr" % (param.name,)
+
+#---------------------------------------------------------------------------------------------------
+# Global functions
+#---------------------------------------------------------------------------------------------------
+class SizeParameter(interfaceIR.Parameter):
+    """
+    C adds size parameters to the API for some string and array parameters.  Define a class for
+    them here
+    """
+    def __init__(self, relatedParameter, direction):
+        super(SizeParameter, self).__init__(interfaceIR.SIZE_TYPE,
+                                            relatedParameter.name + 'NumElements',
+                                            direction)
+        self.relatedParameter = relatedParameter
+
+def IterCAPIParameters(function):
+    """
+    Given a list of parameters, yield the parameters which are present in the C API.
+
+    Effectively this coverts character array + size to null-terminated character array parameters
+    for both input & output parameters, and otherwise passes through unmodified.
+    """
+    for parameter in function.parameters:
+        if isinstance(parameter, interfaceIR.ArrayParameter):
+            # Arrays have added size parameters indicating number of elements and/or buffer size
+            if parameter.direction == interfaceIR.DIR_IN:
+                yield parameter
+                yield SizeParameter(parameter, interfaceIR.DIR_IN)
+            elif parameter.direction == interfaceIR.DIR_OUT:
+                yield parameter
+                yield SizeParameter(parameter, interfaceIR.DIR_INOUT)
+        elif (isinstance(parameter, interfaceIR.StringParameter) and
+            parameter.direction == interfaceIR.DIR_OUT):
+            # String out parameters take a maximum string size
+            yield parameter
+            yield SizeParameter(parameter, interfaceIR.DIR_IN)
+        elif isinstance(parameter.apiType, interfaceIR.HandlerType):
+            # Handlers get an extra context parameter
+            yield parameter
+            yield interfaceIR.Parameter(_CONTEXT_TYPE, 'contextPtr')
+        else:
+            # All other parameters just pass through
+            yield parameter
+
+    # Handlers have an extra context pointer added on at the end.
+    if isinstance(function, interfaceIR.HandlerType):
+        yield interfaceIR.Parameter(_CONTEXT_TYPE, 'contextPtr')

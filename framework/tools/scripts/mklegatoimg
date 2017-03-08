@@ -211,12 +211,12 @@ SetSmackAttr() {
     # If SMACK attributes are defined in the targetDefs.<target>, set them
     if [ -n "$SMACK_ATTR_NAME" -a -n "$SMACK_ATTR_VALUE" ]; then
         for file in `find "$STAGING_DIR"`; do
-            if [ -d $file ]; then
-                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" $file
-            elif [ -f $file -a ! -h $file ]; then
-                $SETFATTR -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" $file
-            elif [ -f $file -a -h $file ]; then
-                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" $file
+            if [ -d "$file" ]; then
+                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
+            elif [ -f "$file" -a ! -h "$file" ]; then
+                $SETFATTR -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
+            elif [ -f "$file" -a -h "$file" ]; then
+                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" "$file"
             fi
         done
     fi

@@ -381,7 +381,7 @@ static void GenerateBuildStatement
         script << "\n"
                   "  ifgenFlags = --gen-interface"
                   " --name-prefix " << ifPtr->internalName <<
-                  " --file-prefix " << ifPtr->internalName << " $ifgenFlags\n"
+                  " $ifgenFlags\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(cFiles.interfaceFile) << "\n"
                   "\n";
     }
@@ -470,8 +470,7 @@ static void GenerateBuildStatement
     }
     if (!generatedFiles.empty())
     {
-        ifgenFlags += " --name-prefix " + ifPtr->internalName
-                   +  " --file-prefix " + ifPtr->internalName;
+        ifgenFlags += " --name-prefix " + ifPtr->internalName;
         script << "build" << generatedFiles <<
                   ": GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
         GetIncludedApis(script, ifPtr->apiFilePtr);
@@ -631,8 +630,7 @@ static void GenerateBuildStatement
         {
             ifgenFlags += " --async-server";
         }
-        ifgenFlags += " --name-prefix " + ifPtr->internalName
-                   +  " --file-prefix " + ifPtr->internalName;
+        ifgenFlags += " --name-prefix " + ifPtr->internalName;
         script << "build" << generatedFiles << ":"
                   " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
         GetIncludedApis(script, ifPtr->apiFilePtr);

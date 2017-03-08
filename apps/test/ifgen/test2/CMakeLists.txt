@@ -20,9 +20,9 @@ add_custom_command (
 
 
 add_custom_command (
-    OUTPUT client.c server.c
+    OUTPUT example_client.c example_server.c
     COMMAND ${IFGEN_TOOL} ${CMAKE_CURRENT_SOURCE_DIR}/example.api
-                          --gen-all --no-default-prefix
+                          --gen-all --name-prefix=example
     DEPENDS example.api common_interface.h common_server.h
 )
 
@@ -37,8 +37,8 @@ set(TEST_SCRIPT testIfGen2.sh)
 set(TEST_CLIENT testIfGen2_client)
 set(TEST_SERVER testIfGen2_server)
 
-add_legato_internal_executable(${TEST_CLIENT} client.c clientMain.c)
-add_legato_internal_executable(${TEST_SERVER} server.c serverMain.c)
+add_legato_internal_executable(${TEST_CLIENT} example_client.c clientMain.c)
+add_legato_internal_executable(${TEST_SERVER} example_server.c serverMain.c)
 
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
@@ -51,8 +51,8 @@ set(TEST_SCRIPT testMulti2.sh)
 set(TEST_CLIENT testMulti2_client)
 set(TEST_SERVER testMulti2_server)
 
-add_legato_internal_executable(${TEST_CLIENT} client.c multiClientMain.c)
-add_legato_internal_executable(${TEST_SERVER} server.c multiServerMain.c)
+add_legato_internal_executable(${TEST_CLIENT} example_client.c multiClientMain.c)
+add_legato_internal_executable(${TEST_SERVER} example_server.c multiServerMain.c)
 
 # This goes into the "tests" directory, with all the other executables
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
@@ -70,8 +70,7 @@ add_custom_command (
                           --gen-server-interface
                           --gen-local
                           --async-server
-                          --file-prefix async_
-                          --no-default-prefix
+                          --name-prefix=async
     DEPENDS example.api common_interface.h
 )
 
@@ -80,7 +79,7 @@ set(TEST_SCRIPT testAsync2.sh)
 set(TEST_CLIENT testAsync2_client)
 set(TEST_SERVER testAsync2_server)
 
-add_legato_internal_executable(${TEST_CLIENT} client.c clientMain.c)
+add_legato_internal_executable(${TEST_CLIENT} example_client.c clientMain.c)
 add_legato_internal_executable(${TEST_SERVER} async_server.c asyncServerMain.c)
 
 # This goes into the "tests" directory, with all the other executables

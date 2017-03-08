@@ -113,7 +113,7 @@ FUNCTION SetStdIn
 (
     Ref appProcRef IN,              ///< Application process to start.
     file stdInFd IN                 ///< File descriptor to use as the app proc's standard in.
-                                    ///  -1 means direct to /dev/null.
+                                    ///< -1 means direct to /dev/null.
 );
 
 
@@ -130,7 +130,7 @@ FUNCTION SetStdOut
 (
     Ref appProcRef IN,              ///< Application process to start.
     file stdOutFd IN                ///< File descriptor to use as the app proc's standard out.
-                                    ///  -1 means direct to logs.
+                                    ///<  -1 means direct to logs.
 );
 
 
@@ -147,7 +147,7 @@ FUNCTION SetStdErr
 (
     Ref appProcRef IN,              ///< Application process to start.
     file stdErrFd IN                ///< File descriptor to use as the app proc's standard error.
-                                    ///  -1 means direct to logs.
+                                    ///< -1 means direct to logs.
 );
 
 

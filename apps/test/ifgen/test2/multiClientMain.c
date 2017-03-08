@@ -3,7 +3,7 @@
  */
 
 #include "legato.h"
-#include "interface.h"
+#include "example_interface.h"
 #include "le_print.h"
 
 
@@ -29,17 +29,17 @@ void test1(void)
     char response[21];
     char more[21];
 
-    allParameters(COMMON_TWO,
-                  &value,
-                  data,
-                  4,
-                  output,
-                  &length,
-                  "input string",
-                  response,
-                  sizeof(response),
-                  more,
-                  sizeof(more));
+    example_allParameters(COMMON_TWO,
+                          &value,
+                          data,
+                          4,
+                          output,
+                          &length,
+                          "input string",
+                          response,
+                          sizeof(response),
+                          more,
+                          sizeof(more));
 
     LE_PRINT_VALUE("%i", value);
     LE_PRINT_ARRAY("%i", length, output);
@@ -47,7 +47,7 @@ void test1(void)
     LE_PRINT_VALUE("%s", more);
 }
 
-static TestAHandlerRef_t HandlerRef;
+static example_TestAHandlerRef_t HandlerRef;
 static const char* ClientMessage = "initial value";
 
 
@@ -78,22 +78,22 @@ static void HandleTestA
         banner("Test 2 again");
         LE_PRINT_VALUE("%i", count);
 
-        HandlerRef = AddTestAHandler(HandleTestA, (void*)ClientMessage);
+        HandlerRef = example_AddTestAHandler(HandleTestA, (void*)ClientMessage);
         LE_PRINT_VALUE("%p", HandlerRef);
 
         LE_DEBUG("Triggering TestA yet again for count=%i\n", count);
-        TriggerTestA();
+        example_TriggerTestA();
     }
 }
 
 void test2(void)
 {
 
-    HandlerRef = AddTestAHandler(HandleTestA, (void*)ClientMessage);
+    HandlerRef = example_AddTestAHandler(HandleTestA, (void*)ClientMessage);
     LE_PRINT_VALUE("%p", HandlerRef);
 
     LE_DEBUG("Triggering TestA\n");
-    TriggerTestA();
+    example_TriggerTestA();
 
     // Need to allow the event loop to process the trigger.
     // The rest of the test will be continued in the handler.
@@ -122,17 +122,17 @@ void test3(void)
     char response[21];
     char more[21];
 
-    allParameters(COMMON_THREE,
-                  &value,
-                  data,
-                  4,
-                  output,
-                  &length,
-                  "new thread string",
-                  response,
-                  sizeof(response),
-                  more,
-                  sizeof(more));
+    example_allParameters(COMMON_THREE,
+                          &value,
+                          data,
+                          4,
+                          output,
+                          &length,
+                          "new thread string",
+                          response,
+                          sizeof(response),
+                          more,
+                          sizeof(more));
 
     LE_PRINT_VALUE("%i", value);
     LE_PRINT_ARRAY("%i", length, output);
@@ -158,7 +158,7 @@ void* NewThread
 )
 {
     // Init IPC for the new thread
-    ConnectService();
+    example_ConnectService();
 
     banner("New Thread Started");
 
@@ -178,7 +178,7 @@ void* NewThread
 COMPONENT_INIT
 {
     // Init IPC for the main thread
-    ConnectService();
+    example_ConnectService();
 
     // Get the client message from the first parameter on the command line
     if (le_arg_NumArgs() > 0)

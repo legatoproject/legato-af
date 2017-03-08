@@ -1,0 +1,127 @@
+{#- Packing/unpacking macros -#}
+{%- macro PackInputs(parameterList) %}
+    {%- for parameter in parameterList
+        if parameter is InParameter
+           or parameter is StringParameter
+           or parameter is ArrayParameter %}
+    {%- if parameter is not InParameter %}
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|GetParameterCountPtr}}, sizeof(size_t) );
+    {%- elif parameter is StringParameter %}
+    _msgBufPtr = PackString( _msgBufPtr, {{parameter|FormatParameterName}} );
+    {%- elif parameter is ArrayParameter %}
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|GetParameterCountPtr}}, sizeof(size_t) );
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|FormatParameterName}},
+                             {#- #} {{parameter|GetParameterCount}}
+                             {#- #}*sizeof({{parameter.apiType|FormatType}}) );
+    {%- elif parameter.apiType is HandlerType %}
+    // The handlerPtr and contextPtr input parameters are stored in the client
+    // data object, and it is a safe reference to this object that is passed down
+    // as the context pointer.  The handlerPtr is not passed down.
+    // Create a new client data object and fill it in
+    _ClientData_t* _clientDataPtr = le_mem_ForceAlloc(_ClientDataPool);
+    _clientDataPtr->handlerPtr = (le_event_HandlerFunc_t){{parameter|FormatParameterName}};
+    _clientDataPtr->contextPtr = contextPtr;
+    _clientDataPtr->callersThreadRef = le_thread_GetCurrent();
+    // Create a safeRef to be passed down as the contextPtr
+    _LOCK
+    contextPtr = le_ref_CreateRef(_HandlerRefMap, _clientDataPtr);
+    _UNLOCK
+    _msgBufPtr = PackData( _msgBufPtr, &contextPtr, sizeof(void*) );
+    {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
+    le_msg_SetFd(_msgRef, {{parameter|FormatParameterName}});
+    {%- else %}
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|FormatParameterPtr}},
+                           {#- #} sizeof({{parameter.apiType|FormatType}}) );
+    {%- endif %}
+    {%- endfor %}
+{%- endmacro %}
+
+{%- macro UnpackInputs(parameterList) %}
+    {%- for parameter in parameterList
+        if parameter is InParameter
+           or parameter is StringParameter
+           or parameter is ArrayParameter %}
+    {%- if parameter is not InParameter %}
+    size_t {{parameter.name}}NumElements;
+    _msgBufPtr = UnpackData( _msgBufPtr, &{{parameter.name}}NumElements, sizeof(size_t) );
+    {%- if parameter is ArrayParameter %}
+    {#- For some reason bounds checking is not done on string parameters at the moment? #}
+    if ( {{parameter.name}}NumElements > {{parameter.maxCount}} )
+    {
+        LE_DEBUG("Adjusting {{parameter.name}}NumElements from %zd to {{parameter.maxCount}}",
+                 {#- #} {{parameter.name}}NumElements);
+        {{parameter.name}}NumElements = {{parameter.maxCount}};
+    }
+    {%- endif %}
+    {%- elif parameter is StringParameter %}
+    char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}];
+    _msgBufPtr = UnpackString( _msgBufPtr, {{parameter|FormatParameterName}},
+                               {#- #} {{parameter.maxCount + 1}} );
+    {%- elif parameter is ArrayParameter %}
+    size_t {{parameter.name}}NumElements;
+    _msgBufPtr = UnpackData( _msgBufPtr, &{{parameter.name}}NumElements,
+                             {#- #} sizeof(size_t) );
+
+    {{parameter.apiType|FormatType}} {{parameter|FormatParameterName}}
+        {#- #}[{{parameter.name}}NumElements];
+    _msgBufPtr = UnpackData( _msgBufPtr, {{parameter|FormatParameterName}},
+                             {#- #} {{parameter|GetParameterCount}}
+                             {#- #}*sizeof({{parameter.apiType|FormatType}}) );
+    {%- elif parameter.apiType is HandlerType %}
+    void *contextPtr;
+    _msgBufPtr = UnpackData( _msgBufPtr, &contextPtr, sizeof(void*) );
+    {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
+    {{parameter.apiType|FormatType}} {{parameter.name}};
+    {{parameter.name}} = le_msg_GetFd(_msgRef);
+    {%- else %}
+    {{parameter.apiType|FormatType}} {{parameter.name}};
+    _msgBufPtr = UnpackData( _msgBufPtr, &{{parameter.name}},
+                             {#- #} sizeof({{parameter.apiType|FormatType}}) );
+    {%- endif %}
+    {%- endfor %}
+{%- endmacro %}
+
+{%- macro PackOutputs(parameterList, localOutputs=False) %}
+    {%- for parameter in parameterList if parameter is OutParameter %}
+    {%- if parameter is StringParameter %}
+    _msgBufPtr = PackString( _msgBufPtr, {{parameter|FormatParameterName}} );
+    {%- elif parameter is ArrayParameter %}
+    {%- if localOutputs %}
+    _msgBufPtr = PackData( _msgBufPtr, &{{parameter.name}}NumElements, sizeof(size_t) );
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|FormatParameterName}},
+                           {#- #} {{parameter.name}}NumElements
+                           {#- #}*sizeof({{parameter.apiType|FormatType}}) );
+    {%- else %}
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|GetParameterCountPtr}}, sizeof(size_t) );
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|FormatParameterName}},
+                           {#- #} {{parameter|GetParameterCount}}
+                           {#- #}*sizeof({{parameter.apiType|FormatType}}) );
+    {%- endif %}
+    {%- else %}
+    {%- if localOutputs %}
+    _msgBufPtr = PackData( _msgBufPtr, &{{parameter.name}},
+                           {#- #} sizeof({{parameter.apiType|FormatType}}) );
+    {%- else %}
+    _msgBufPtr = PackData( _msgBufPtr, {{parameter|FormatParameterPtr}},
+                           {#- #} sizeof({{parameter.apiType|FormatType}}) );
+    {%- endif %}
+    {%- endif %}
+    {%- endfor %}
+{%- endmacro %}
+
+{%- macro UnpackOutputs(parameterList) %}
+    {%- for parameter in parameterList if parameter is OutParameter %}
+    {%- if parameter is StringParameter %}
+    _msgBufPtr = UnpackString( _msgBufPtr, {{parameter|FormatParameterName}},
+                               {#- #} {{parameter|GetParameterCount}}*sizeof(char) );
+    {%- elif parameter is ArrayParameter %}
+    _msgBufPtr = UnpackData( _msgBufPtr, {{parameter|GetParameterCountPtr}}, sizeof(size_t) );
+    _msgBufPtr = UnpackData( _msgBufPtr, {{parameter|FormatParameterName}},
+                             {#- #} {{parameter|GetParameterCount}}
+                             {#- #}*sizeof({{parameter.apiType|FormatType}}) );
+    {%- else %}
+    _msgBufPtr = UnpackData( _msgBufPtr, {{parameter|FormatParameterPtr}},
+                             {#- #} sizeof({{parameter.apiType|FormatType}}) );
+    {%- endif %}
+    {%- endfor %}
+{% endmacro %}

@@ -1,0 +1,14 @@
+/**
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on the threshold reached.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT ThresholdEvent
+(
+    ThresholdEventHandler ThresholdEventHandler
+);

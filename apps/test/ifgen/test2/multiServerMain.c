@@ -4,7 +4,7 @@
 
 
 #include "legato.h"
-#include "server.h"
+#include "example_server.h"
 #include "le_print.h"
 
 
@@ -17,7 +17,7 @@ le_event_Id_t TriggerEvent;
  * Test direct function call
  */
 //--------------------------------------------------------------------------------------------------
-void allParameters
+void example_allParameters
 (
     common_EnumExample_t a,
     uint32_t* bPtr,
@@ -57,7 +57,7 @@ void allParameters
  * Empty stub since this is already tested by other code
  */
 //--------------------------------------------------------------------------------------------------
-void FileTest
+void example_FileTest
 (
     int dataFile,
     int* dataOutPtr
@@ -77,15 +77,15 @@ static void FirstLayerTestAHandler
 )
 {
     int32_t*                  dataPtr = reportPtr;
-    TestAHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+    example_TestAHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
     clientHandlerFunc(*dataPtr, le_event_GetContextPtr());
 }
 
 
-TestAHandlerRef_t AddTestAHandler
+example_TestAHandlerRef_t example_AddTestAHandler
 (
-    TestAHandlerFunc_t handler,
+    example_TestAHandlerFunc_t handler,
     void* contextPtr
 )
 {
@@ -97,20 +97,20 @@ TestAHandlerRef_t AddTestAHandler
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
-    return (TestAHandlerRef_t)(handlerRef);
+    return (example_TestAHandlerRef_t)(handlerRef);
 }
 
 
-void RemoveTestAHandler
+void example_RemoveTestAHandler
 (
-    TestAHandlerRef_t addHandlerRef
+    example_TestAHandlerRef_t addHandlerRef
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)addHandlerRef);
 }
 
 
-void TriggerTestA
+void example_TriggerTestA
 (
     void
 )
@@ -133,19 +133,19 @@ void TriggerTestA
  */
 //--------------------------------------------------------------------------------------------------
 
-BugTestHandlerRef_t AddBugTestHandler
+example_BugTestHandlerRef_t example_AddBugTestHandler
 (
     const char* newPathPtr,
-    BugTestHandlerFunc_t handlerPtr,
+    example_BugTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return NULL;
 }
 
-void RemoveBugTestHandler
+void example_RemoveBugTestHandler
 (
-    BugTestHandlerRef_t addHandlerRef
+    example_BugTestHandlerRef_t addHandlerRef
 )
 {
 }
@@ -155,19 +155,19 @@ void RemoveBugTestHandler
  * Add these two functions to satisfy the compiler, but leave empty for now.  The callback
  * parameters tests are done elsewhere.
  */
-int32_t TestCallback
+int32_t example_TestCallback
 (
     uint32_t someParm,
     const uint8_t* dataArrayPtr,
     size_t dataArrayNumElements,
-    CallbackTestHandlerFunc_t handlerPtr,
+    example_CallbackTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return 0;
 }
 
-void TriggerCallbackTest
+void example_TriggerCallbackTest
 (
     uint32_t data
 )
@@ -184,6 +184,6 @@ COMPONENT_INIT
 {
     TriggerEvent = le_event_CreateId("Server Trigger", sizeof(int32_t));
 
-    AdvertiseService();
+    example_AdvertiseService();
 }
 

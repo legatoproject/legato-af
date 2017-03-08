@@ -1,0 +1,15 @@
+/**
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+/**
+ * Test error handling for unrecognized types.
+ */
+FUNCTION Configure
+(
+    DeviceHandle handle IN,  ///< Handle for the SPI master to configure
+    int mode IN,  ///< Choose mode options for the bus per above table
+    uint8 bits IN,  ///< bits per word, typically 8 bits per word
+    uint32 speed IN,  ///< max speed (Hz), this is slave dependant
+    int msb IN    ///< set as 0 for MSB as first bit or 1 for LSB as first bit
+);

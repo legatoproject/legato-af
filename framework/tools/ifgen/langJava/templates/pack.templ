@@ -1,0 +1,89 @@
+{#- Pack/unpack functions for Java #}
+{%- set _getterMap = { "byte": "buffer.readByte()",
+                      "short": "buffer.readShort()",
+                      "int": "buffer.readInt()",
+                      "long": "buffer.readLong()",
+                      "boolean": "buffer.readBool()",
+                      "double": "buffer.readDouble()",
+                      "String": "buffer.readString()",
+                      "FileDescriptor": "message.getFd()",
+                      "Result": "Result.fromInt(buffer.readInt())",
+                      "OnOff": "OnOff.fromInt(buffer.readInt())" } %}
+{%- set _setterMap = { "byte":  "buffer.writeByte",
+                       "short":  "buffer.writeShort",
+                       "int":  "buffer.writeInt",
+                       "long":  "buffer.writeLong",
+                       "boolean":  "buffer.writeBool",
+                       "double":  "buffer.writeDouble",
+                       "FileDescriptor":  "message.setFd",
+                       "Result":  "buffer.writeInt",
+                       "OnOff": "buffer.writeInt" } %}
+{%- macro PackValue(apiType, value) -%}
+    {%- if apiType is EnumType or apiType is BitMaskType -%}
+buffer.writeInt({{value}}.getValue());
+    {%- elif apiType is HandlerReferenceType -%}
+buffer.writeLongRef({{value}});
+    {%- elif apiType is ReferenceType -%}
+buffer.writeLongRef({{value}}.getRef());
+    {%- elif apiType is HandlerType -%}
+long ref{{value}} = handlerMap.newRef(new HandlerMapper({{value}}, true));
+buffer.writeLongRef(ref{{value}});
+    {%- elif apiType.name ==  'le_result_t' or apiType.name == 'le_onoff_t' -%}
+{{_setterMap[apiType|FormatType]}}({{value}}.getValue());
+    {%- else -%}
+{{_setterMap[apiType|FormatType]}}({{value}});
+    {%- endif %}
+{%- endmacro %}
+{%- macro PackParameter(parameter, value=None) -%}
+    {%- if not value %}{% set value=parameter.name %}{% endif %}
+    {%- if parameter is StringParameter -%}
+buffer.writeString({{value}}, {{parameter.maxCount}});
+    {%- else -%}
+{{PackValue(parameter.apiType, value)}}
+    {%- endif %}
+{%- endmacro %}
+{%- macro UnpackValue(valueType, valueName, functionName=None) -%}
+    {%- if valueType is EnumType or valueType is BitMaskType -%}
+        {{valueType|FormatType}}.fromInt(buffer.readInt())
+    {%- elif valueType is HandlerReferenceType -%}
+        buffer.readLongRef()
+    {%- elif valueType is ReferenceType -%}
+        new {{valueType|FormatType}}(buffer.readLongRef())
+    {%- elif valueType is HandlerType -%}
+    new {{valueType.iface.name}}.{{valueType.name}}()
+    {
+        private long context;
+        private ServerSession session;
+
+        @Override
+        public void handle(
+            {%- for handlerParameter in valueType.parameters %}
+            {{-handlerParameter.apiType|FormatType(false)}} _{{handlerParameter.name}}
+                {%- if not loop.last %}, {% endif %}
+            {%- endfor -%}
+        )
+        {
+            Message message = session.createMessage();
+            MessageBuffer buffer = message.getBuffer();
+
+            buffer.writeInt(MessageID_{{functionName}});
+            buffer.writeLongRef(context);
+            {%- for handlerParameter in valueType.parameters %}
+            {{PackParameter(handlerParameter, "_"+handlerParameter.name)}}
+            {%- endfor %}
+
+            message.send();
+        }
+
+        public {{valueType.iface.name}}.{{valueType.name}} setContext(long newContext,
+            {#- #} ServerSession newSession)
+        {
+            context = newContext;
+            session = newSession;
+            return this;
+        }
+    }.setContext({{valueName}}Context, currentSession)
+    {%- else  -%}
+    {{_getterMap[valueType|FormatType]}}
+    {%- endif %}
+{%- endmacro %}

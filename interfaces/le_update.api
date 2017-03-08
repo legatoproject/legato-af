@@ -66,7 +66,7 @@
  * static void UpdateProgressHandler
  * (
  *     le_update_State_t updateState,   ///< Current state of the update.
- *     uint percentDone,                ///< Percent done for current state.
+ *     uint32 percentDone,              ///< Percent done for current state.
  *     void* contextPtr                 ///< Context pointer (NULL).
  * )
  * {
@@ -191,7 +191,7 @@ HANDLER ProgressHandler
 (
     State updateState       IN,  ///< Current state of update.
 
-    uint  percentDone       IN   ///< Percent done for current state. For example, in state
+    uint32  percentDone       IN ///< Percent done for current state. For example, in state
                                  ///< UNPACKING, a percentDone of 80 means that 80% of the update
                                  ///< data has been unpacked.
 );

@@ -42,7 +42,7 @@ FUNCTION StdErr
     file fd IN,                                     ///< stderr file descriptor.
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
     string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
-    int pid IN                                      ///< PID of the process.
+    int32 pid IN                                    ///< PID of the process.
 );
 
 
@@ -61,7 +61,7 @@ FUNCTION StdOut
     file fd IN,                                     ///< stdout file descriptor.
     string appName[le_limit.APP_NAME_LEN] IN,       ///< Name of the application.
     string procName[le_limit.PROC_NAME_LEN] IN,     ///< Name of the process.
-    int pid IN                                      ///< PID of the process.
+    int32 pid IN                                    ///< PID of the process.
 );
 
 

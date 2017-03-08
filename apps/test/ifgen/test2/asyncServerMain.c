@@ -8,9 +8,9 @@
 #include "le_print.h"
 
 
-void allParameters
+void async_allParameters
 (
-    ServerCmdRef_t cmdRef,
+    async_ServerCmdRef_t cmdRef,
     common_EnumExample_t a,
     const uint32_t* dataPtr,
     size_t dataNumElements,
@@ -44,13 +44,13 @@ void allParameters
     le_utf8_Copy(response, "response string", responseNumElements, NULL);
     le_utf8_Copy(more, "more info", moreNumElements, NULL);
 
-    allParametersRespond(cmdRef, b, outputNumElements, output, response, more);
+    async_allParametersRespond(cmdRef, b, output, outputNumElements, response, more);
 }
 
 // Test file descriptor as input and output parameter
-void FileTest
+void async_FileTest
 (
-    ServerCmdRef_t _cmdRef,
+    async_ServerCmdRef_t _cmdRef,
     int dataFile
 )
 {
@@ -74,17 +74,17 @@ void FileTest
     LE_PRINT_VALUE("%s", buffer);
 
     // Return the response to the client
-    FileTestRespond(_cmdRef, dataOut);
+    async_FileTestRespond(_cmdRef, dataOut);
 }
 
 
 // Storage for the handler ref
-static TestAHandlerFunc_t HandlerRef = NULL;
+static async_TestAHandlerFunc_t HandlerRef = NULL;
 static void* ContextPtr = NULL;
 
-TestAHandlerRef_t AddTestAHandler
+async_TestAHandlerRef_t async_AddTestAHandler
 (
-    TestAHandlerFunc_t handlerRef,
+    async_TestAHandlerFunc_t handlerRef,
     void* contextPtr
 )
 {
@@ -93,17 +93,17 @@ TestAHandlerRef_t AddTestAHandler
 
     // Note: this is just for testing, and is easier than actually creating an event and using
     //       the event loop to call the handler.
-    return (TestAHandlerRef_t)10;
+    return (async_TestAHandlerRef_t)10;
 }
 
-void RemoveTestAHandler
+void async_RemoveTestAHandler
 (
-    TestAHandlerRef_t addHandlerRef
+    async_TestAHandlerRef_t addHandlerRef
 )
 {
     LE_PRINT_VALUE("%p", addHandlerRef);
 
-    if ( addHandlerRef == (TestAHandlerRef_t)10 )
+    if ( addHandlerRef == (async_TestAHandlerRef_t)10 )
     {
         HandlerRef = NULL;
         ContextPtr = NULL;
@@ -114,9 +114,9 @@ void RemoveTestAHandler
     }
 }
 
-void TriggerTestA
+void async_TriggerTestA
 (
-    ServerCmdRef_t cmdRef
+    async_ServerCmdRef_t cmdRef
 )
 {
     if ( HandlerRef != NULL )
@@ -128,30 +128,30 @@ void TriggerTestA
         LE_ERROR("Handler not registered\n");
     }
 
-    TriggerTestARespond(cmdRef);
+    async_TriggerTestARespond(cmdRef);
 
     // This will cause the server to fail, since only one response is allowed.
     LE_WARN("About to crash the server by calling 'Respond' function twice");
-    TriggerTestARespond(cmdRef);
+    async_TriggerTestARespond(cmdRef);
 }
 
 
 // Add these two functions to satisfy the compiler, but don't need to do
 // anything with them, since they are just used to verify bug fixes in
 // the handler specification.
-BugTestHandlerRef_t AddBugTestHandler
+async_BugTestHandlerRef_t async_AddBugTestHandler
 (
     const char* newPathPtr,
-    BugTestHandlerFunc_t handlerPtr,
+    async_BugTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return NULL;
 }
 
-void RemoveBugTestHandler
+void async_RemoveBugTestHandler
 (
-    BugTestHandlerRef_t addHandlerRef
+    async_BugTestHandlerRef_t addHandlerRef
 )
 {
 }
@@ -161,21 +161,21 @@ void RemoveBugTestHandler
  * Add these two functions to satisfy the compiler, but leave empty for now.  The callback
  * parameters tests are done elsewhere.
  */
-int32_t TestCallback
+int32_t async_TestCallback
 (
     uint32_t someParm,
     const uint8_t* dataArrayPtr,
     size_t dataArrayNumElements,
-    CallbackTestHandlerFunc_t handlerPtr,
+    async_CallbackTestHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     return 0;
 }
 
-void TriggerCallbackTest
+void async_TriggerCallbackTest
 (
-    ServerCmdRef_t _cmdRef,
+    async_ServerCmdRef_t _cmdRef,
     uint32_t data
 )
 {
@@ -185,5 +185,5 @@ void TriggerCallbackTest
 
 COMPONENT_INIT
 {
-    AdvertiseService();
+    async_AdvertiseService();
 }

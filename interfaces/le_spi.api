@@ -124,8 +124,8 @@ REFERENCE DeviceHandle;
 FUNCTION le_result_t Open
 (
     string deviceName [128] IN,  ///< Handle for the SPI master to  open
-    DeviceHandle handle OUT      ///<  Handle for passing to related functions in order to
-                                ///  access the SPI device
+    DeviceHandle handle OUT      ///< Handle for passing to related functions in order to
+                                 ///< access the SPI device
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -164,10 +164,10 @@ FUNCTION Close
 FUNCTION Configure
 (
     DeviceHandle handle IN,  ///< Handle for the SPI master to configure
-    int mode IN,  ///< Choose mode options for the bus per above table
+    int32 mode IN,  ///< Choose mode options for the bus per above table
     uint8 bits IN,  ///< bits per word, typically 8 bits per word
     uint32 speed IN,  ///< max speed (Hz), this is slave dependant
-    int msb IN    ///< set as 0 for MSB as first bit or 1 for LSB as first bit
+    int32 msb IN    ///< set as 0 for MSB as first bit or 1 for LSB as first bit
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ FUNCTION le_result_t WriteReadHD
     DeviceHandle handle IN,  ///< Handle for the SPI master to perform the write-read on
     uint8 writeData [MAX_WRITE_SIZE] IN, ///< TX command/address being sent to slave with size
     uint8 readData  [MAX_READ_SIZE] OUT ///< RX response from slave with number of bytes reserved
-                                       /// on master
+                                        ///< on master
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -212,7 +212,7 @@ FUNCTION le_result_t ReadHD
 (
     DeviceHandle handle IN,  ///< Handle for the SPI master to perform the read from
     uint8 readData [MAX_READ_SIZE] OUT  ///< RX response from slave with number of bytes reserved
-                                        ///  on master
+                                        ///<  on master
 );
 
 //--------------------------------------------------------------------------------------------------

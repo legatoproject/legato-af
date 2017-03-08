@@ -15,6 +15,7 @@ doxygen.*.err
 _build_*
 /system.sdef
 binaries
+/framework/tools/ifgen/cache
 
 # Update pack files
 *.update

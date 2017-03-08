@@ -66,7 +66,7 @@ FUNCTION allParameters
     uint32 output[TEN] OUT,   ///< some more comments here
     ///< and some comments here as well
 
-    string label [common.TEN..20] IN,
+    string label [20] IN,
     string response [TWENTY] OUT,
     ///< comments on final parameter, first line
     ///< and more comments
@@ -107,12 +107,12 @@ HANDLER BugTestHandler
  *     testing
  * a specific bug, as well as event comment strings.
  *
- * Uses old-style handler, for backwards compatibility testing
+ * Got rid of old-style handlers, so use a new-style handler here.
  */
 EVENT BugTest
 (
     string newPathPtr[512] IN,
-    handler BugTestHandler
+    BugTestHandler BugTestHandler
 );
 
 

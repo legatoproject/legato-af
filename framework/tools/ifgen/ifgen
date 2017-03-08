@@ -13,6 +13,12 @@ import collections
 import hashlib
 import importlib
 
+# Templating library
+import jinja2
+
+# ifgen extensions for templating library
+import ifgenJinjaExtensions
+
 # Need to init logging settings here, before any ifgen specific libraries are imported, in case
 # they call logging functions in their module level code.  Prefix the message with 'IFGEN' so that
 # it is easier to filter these messages, if ifgen is called during a build.
@@ -29,7 +35,6 @@ LogLevelMapping = dict( DEBUG=10,
 
 
 # ifgen specific libraries
-import common
 import interfaceParser
 
 
@@ -55,12 +60,6 @@ def GetInitialArguments(argList):
                         default='',
                         help='set logging level')
 
-    parser.add_argument('--trace',
-                        dest="traceList",
-                        action="append",
-                        default=[],
-                        help='enable tracing for given name')
-
     # Parse the command lines arguments for the initial args only.
     args, leftOver = parser.parse_known_args(argList)
 
@@ -79,13 +78,11 @@ def CreateArgumentParser(parentParser):
                         metavar='FILE',
                         help='name of interface file')
 
-    # TODO: This may actually be a C specific option
     parser.add_argument('--service-name',
                         dest="serviceName",
                         default='',
                         help='optional service instance name; defaults to input file name')
 
-    # TODO: This may actually be a C specific option
     parser.add_argument('--output-dir',
                         dest="outputDir",
                         default='',
@@ -115,9 +112,27 @@ def CreateArgumentParser(parentParser):
                         default=False,
                         help='print info on parsed functions; NO files are generated')
 
+    parser.add_argument('--name-prefix',
+                        dest="namePrefix",
+                        default='',
+                        help='''optional prefix for generated files/functions/types;
+                        defaults to input filename''')
+
     return parser
 
+def AddGeneratedFiles(parser, langPkg):
+    parser.add_argument('--gen-all',
+                        dest="gen_all",
+                        action='store_true',
+                        default=False,
+                        help='Generate all files')
 
+    for key, value in langPkg.GeneratedFiles.iteritems():
+        parser.add_argument('--gen-%s' % (key),
+                            dest="gen_%s" %(key.replace('-', '_')),
+                            action='store_true',
+                            default=False,
+                            help='Generate %s file' % (value % "API_NAME"))
 
 def ParseArguments(parser, argList):
     # Parse the command lines arguments
@@ -130,6 +145,9 @@ def ParseArguments(parser, argList):
     if not args.serviceName:
         args.serviceName = apiFileName
 
+    if not args.namePrefix:
+        args.namePrefix = apiFileName
+
     # fix relative paths for all paths that aren't ''
     args.importDirs = [ os.path.abspath(path) if path else path for path in args.importDirs ]
     if args.outputDir:
@@ -137,49 +155,18 @@ def ParseArguments(parser, argList):
 
     return args
 
+def AddImportsToSet(interface, importSet):
+    for key, value in interface.imports.iteritems():
+        AddImportsToSet(value, importSet)
+    importSet[interface.name] = interface
 
+def GetImports(interface):
+    """Recursively get all the interfaces an iterface depends on (including itself)"""
+    ImportSet=collections.OrderedDict()
+    for key, value in interface.imports.iteritems():
+        AddImportsToSet(value, ImportSet)
 
-def MakeImportList(data, importDirs):
-    importNameList =  interfaceParser.GetImportList(data)
-    importPathList = []
-
-    # The name does not contain any leading path or any suffix
-    for name in importNameList:
-        fullname = name+".api"
-
-        # Try to find the imported file in the given directory list
-        found = False
-        for d in importDirs:
-            path = os.path.join(d, fullname)
-            if os.path.isfile(path):
-                found = True
-                break
-
-        if not found:
-            sys.stderr.write("ERROR: '%s' not found in %s\n" % (fullname, importDirs))
-            sys.exit(1)
-
-        # Found the imported file, so add it to the path list
-        importPathList.append(path)
-
-        # Process each imported file for nested imports.  The nested imported files
-        # are added to the beginning of the list, so that they get processed first.
-        data = open(path, 'r').read()
-        importPathList = MakeImportList(data, importDirs) + importPathList
-
-    # Ensure there are no duplicates in the list.  Any duplicates that appear later
-    # in the list should be removed.  We must maintain the order of the elements in
-    # the list, since this determines the processing order.  For an OrderedDict:
-    #     "If a new entry overwrites an existing entry, the original insertion
-    #      position is left unchanged"
-    d = collections.OrderedDict()
-    for p in importPathList:
-        d[p] = 1
-    importPathList = d.keys()
-
-    return importPathList
-
-
+    return ImportSet.values()
 
 def ImportLangPkg(lang):
 
@@ -191,32 +178,25 @@ def ImportLangPkg(lang):
         langPkg = importlib.import_module(langDir)
     except ImportError:
         # Can't find the package to import
-        print >> sys.stderr, "ERROR: language package '%s' not available" % langDir
+        print >> sys.stderr, "ERROR: language '%s' not available" % langDir
         sys.exit(1)
 
-    logging.info("Using language package '%s'" % langDir)
+    logging.info("Generating interface glue for language '%s'" % langDir)
 
-    commandLib = langPkg.GetCommandLib()
-    return commandLib
+    return langPkg
 
+def CalcHash(interface):
+    """Calculate the hash, based on the hash text for the currently processd file, as well
+       as the imported files."""
+    importInterfaces = GetImports(interface)
 
-
-#
-# Calculate the hash, based on the hash text for the currently processed file, as well as all
-# the imported files.
-#
-def CalcHash(codeText, importList):
-    hashTextList = [ interfaceParser.GetHashText( open(path, 'r').read() ) for path in importList ]
-    hashTextList += interfaceParser.GetHashText(codeText)
-
-    hashText = ''.join(hashTextList)
+    hashText = ''.join([interface.text for interface in importInterfaces]) + interface.text
 
     h = hashlib.md5()
     h.update( hashText )
     hashValue = h.hexdigest()
 
     return hashValue, hashText
-
 
 
 #
@@ -237,34 +217,44 @@ def Main():
     if initialArgs.logLevel:
         logging.getLogger().setLevel(LogLevelMapping[initialArgs.logLevel])
 
-    if initialArgs.traceList:
-        common.EnableTrace(initialArgs.traceList)
-
     # Init the package for the chosen language
-    commandLib = ImportLangPkg(initialArgs.language)
+    langPkg = ImportLangPkg(initialArgs.language)
 
     # Create a parser with both language independent and language specific arguments,
     # and parse the remaining arguments
     parser = CreateArgumentParser(langParser)
-    commandLib.AddLangArgumentGroup(parser)
+
+    langSpecificParser = parser.add_argument_group("%s language specific options"
+                                                   % (initialArgs.language))
+    AddGeneratedFiles(langSpecificParser, langPkg)
+    langPkg.AddLangArgumentGroup(langSpecificParser)
 
     args = ParseArguments(parser, argList)
     #print args
 
-    # Read in the api file
-    data = open(args.interfaceFile, 'r').read()
-
-    # Create a list of all the imported files.
+    # Create a list of all the search directories
     importDirs = [ os.path.split(args.interfaceFile)[0] ] + args.importDirs
-    importList =  MakeImportList(data, importDirs)
+
+    # Parse the api file
+    interface = interfaceParser.ParseCode(args.interfaceFile, importDirs, args.namePrefix)
+
+    # Exit with error if we failed to parse the interface
+    if interface == None:
+        sys.exit(1)
 
     # If we just want the import list, then print it out and exit
     if args.getImportList:
-        print '\n'.join(importList)
+        importInterfaces = GetImports(interface)
+        print "\n".join([interface.path for interface in importInterfaces])
+        sys.exit(0)
+
+    # Handle the --dump argument here.  No need to generate any code
+    if args.dump:
+        print interface
         sys.exit(0)
 
     # Calculate the hashValue, as it is always needed
-    hashValue, hashText = CalcHash(data, importList)
+    hashValue, hashText = CalcHash(interface)
 
     # Handle the --hash argument here.  No need to generate any code
     if args.hash:
@@ -275,14 +265,60 @@ def Main():
             print hashValue
         sys.exit(0)
 
-    # Run the target language specific version of this command
-    commandLib.RunCommand(args, data, importList, hashValue)
+    # Set up the jinja2 environment
+    TemplateEnvironment = jinja2.Environment(
+        loader=jinja2.PackageLoader(langPkg.__name__),
+        autoescape=False
+    )
 
+    # Add global tests & filters
+    TemplateEnvironment.tests.update(
+        { 'BasicType':      ifgenJinjaExtensions.IsBasicType,
+          'EnumType':      ifgenJinjaExtensions.IsEnumType,
+          'BitMaskType':   ifgenJinjaExtensions.IsBitMaskType,
+          'HandlerType':   ifgenJinjaExtensions.IsHandlerType,
+          'ReferenceType': ifgenJinjaExtensions.IsReferenceType,
+          'HandlerReferenceType': ifgenJinjaExtensions.IsHandlerReferenceType,
+          'EventFunction': ifgenJinjaExtensions.IsEventFunction,
+          'HasCallbackFunction': ifgenJinjaExtensions.HasCallbackFunction,
+          'InParameter':   ifgenJinjaExtensions.IsInParameter,
+          'OutParameter':  ifgenJinjaExtensions.IsOutParameter,
+          'ArrayParameter': ifgenJinjaExtensions.IsArrayParameter,
+          'StringParameter': ifgenJinjaExtensions.IsStringParameter,
+          'AddHandlerFunction': ifgenJinjaExtensions.IsAddHandlerFunction,
+          'RemoveHandlerFunction': ifgenJinjaExtensions.IsRemoveHandlerFunction })
 
+    # Add any language-specific tests & filters
+    TemplateEnvironment.filters.update(langPkg.Filters)
+    TemplateEnvironment.tests.update(langPkg.Tests)
+    TemplateEnvironment.globals.update(langPkg.Globals)
+
+    # Generate requested files from templates
+    for fileType, fileName in langPkg.GeneratedFiles.iteritems():
+        if args.gen_all or getattr(args, 'gen_%s' % ( fileType.replace('-', '_') )):
+            destPath = os.path.join(args.outputDir, fileName % args.namePrefix)
+            destDir = os.path.dirname(destPath)
+            if destDir and not os.path.exists(destDir):
+                os.makedirs(destDir)
+            Template = TemplateEnvironment.get_template(fileName % ('TEMPLATE'))
+            Template.stream(args=args,
+                            # Although we pass full args, break out a few commonly used arguments
+                            # with easier to use names.
+                            serviceName=args.serviceName,
+                            apiName=args.namePrefix,
+                            idString=hashValue,
+                            # At this point we just need names of imports, not the full parse
+                            imports=interface.imports.keys(),
+                            types=interface.types.values(),
+                            definitions=interface.definitions.values(),
+                            functions=interface.functions.values(),
+                            events=interface.events.values(),
+                            fileComments=interface.comments)\
+                    .dump(destPath, encoding='utf-8')
 
 #
 # Init
 #
 
-Main()
-
+if __name__ == "__main__":
+    Main()

@@ -90,7 +90,7 @@ DEFINE TAG_LEN_BYTES = TAG_LEN + 1;
  * Option LE_PM_REF_COUNT to manage a reference counted wakeup source
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE REF_COUNT = (1 << 0);
+DEFINE REF_COUNT = 1;
 
 
 //--------------------------------------------------------------------------------------------------

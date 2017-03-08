@@ -540,7 +540,7 @@ FUNCTION le_result_t GetTimeSeriesStatus
     AssetInstance instRef IN,
     string fieldName[FIELD_NAME_LEN] IN,
     bool isTimeSeries OUT,
-    int numDataPoint OUT
+    int32 numDataPoint OUT
 );
 
 
