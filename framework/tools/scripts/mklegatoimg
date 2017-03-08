@@ -330,6 +330,7 @@ CreateImg_mdm9x28() {
     local img_type=${1:-ubi}
     local ubi_img_type=${2:-squashfs}
 
+    local img_indexes=(0)
     local page_size[0]=4096
     local pid[0]='9X28'
     local oob_size[0]=224
@@ -341,6 +342,7 @@ CreateImg_mdm9x28() {
         ar758x)
             ;;
         wp76xx)
+            img_indexes+=(1)
             page_size[1]=2048
             pid[0]='Y921'
             pid[1]='Y922'
@@ -354,8 +356,7 @@ CreateImg_mdm9x28() {
     esac
 
     local img_suffix=$img_type
-    for i in ${!page_size[@]};
-    do
+    for i in "${img_indexes[@]}"; do
         if [[ "$img_type" == "ubi" ]]; then
             if [ ${#page_size[@]} -gt 1 ]; then
                 img_suffix="${ubi_img_type}.$(( ${page_size[$i]} / 1024 ))k.${img_type}"
