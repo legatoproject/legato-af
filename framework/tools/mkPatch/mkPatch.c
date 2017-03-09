@@ -21,6 +21,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Defines the value of flash erased byte, ie, all bits to 1
+ */
+//--------------------------------------------------------------------------------------------------
+#define ERASED_VALUE        0xFFU
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Defines the size of the patch segment for binary images
  */
 //--------------------------------------------------------------------------------------------------
@@ -261,25 +268,42 @@ static le_result_t ReadEcHeader
     struct ubi_ec_hdr *ecHeaderPtr ///< [IN] Buffer to store read data
 )
 {
-    le_result_t res = LE_FAULT;
     uint32_t crc;
     int i;
+    int len;
 
     if( 0 > lseek( fd, (physEraseBlock * FlashPEBSize), SEEK_SET ) )
     {
-        fprintf(stderr,"lseek fails: %m\n");
-        return res;
+        fprintf(stderr, "lseek() fails: %m\n");
+        return LE_FAULT;
     }
-    if ( 0 > read( fd, (uint8_t*)ecHeaderPtr, UBI_EC_HDR_SIZE ) )
+    len = read( fd, (uint8_t*)ecHeaderPtr, UBI_EC_HDR_SIZE );
+    if ( 0 > len )
     {
-        fprintf(stderr,"read fails: %m\n");
-        return res;
+        fprintf(stderr, "read() fails: %m\n");
+        return LE_FAULT;
+    }
+    if( !len )
+    {
+        return LE_OK;
+    }
+    if( UBI_EC_HDR_SIZE != len )
+    {
+        fprintf(stderr, "Read only %d bytes, expected %ld:\n", len, UBI_EC_HDR_SIZE);
+        return LE_FAULT;
     }
 
-    for( i = 0; (i < UBI_EC_HDR_SIZE) && (((uint8_t*)ecHeaderPtr)[i] == 0xFF); i++ );
-    if (i == UBI_EC_HDR_SIZE)
+    for( i = 0; i < UBI_EC_HDR_SIZE; i++ )
     {
-        fprintf(stderr,"Block %lx is erased\n", physEraseBlock );
+        // Check for all bytes in the EC header
+        if( ERASED_VALUE != ((uint8_t*)ecHeaderPtr)[i] )
+        {
+            break;
+        }
+    }
+    if (UBI_EC_HDR_SIZE == i)
+    {
+        fprintf(stderr, "Block %lx is erased\n", physEraseBlock );
         return LE_FORMAT_ERROR;
     }
 
@@ -290,7 +314,7 @@ static le_result_t ReadEcHeader
         return LE_FAULT;
     }
 
-    if (ecHeaderPtr->version != UBI_VERSION)
+    if (UBI_VERSION != ecHeaderPtr->version)
     {
         fprintf(stderr, "Bad version at %lx: Expected %d, received %d\n",
                   physEraseBlock, UBI_VERSION, ecHeaderPtr->version);
@@ -342,22 +366,36 @@ static le_result_t ReadVidHeader
 {
     uint32_t crc;
     int i;
+    int len;
 
     if( 0 > lseek( fd, physEraseBlock + vidOffset, SEEK_SET ) )
     {
-        fprintf(stderr,"lseek fails: %m\n");
+        fprintf(stderr, "lseek() fails: %m\n");
         return LE_FAULT;
     }
-    if ( 0 > read( fd, (uint8_t*)vidHeaderPtr, UBI_VID_HDR_SIZE ) )
+    len = read( fd, (uint8_t*)vidHeaderPtr, UBI_VID_HDR_SIZE );
+    if ( 0 > len )
     {
-        fprintf(stderr,"read fails: %m\n");
+        fprintf(stderr, "read() fails: %m\n");
+        return LE_FAULT;
+    }
+    if( UBI_VID_HDR_SIZE != len )
+    {
+        fprintf(stderr, "Read only %d bytes, expected %ld:\n", len, UBI_VID_HDR_SIZE);
         return LE_FAULT;
     }
 
-    for( i = 0; (i < UBI_VID_HDR_SIZE) && (((uint8_t*)vidHeaderPtr)[i] == 0xFF); i++ );
-    if (i == UBI_VID_HDR_SIZE)
+    for( i = 0; i < UBI_VID_HDR_SIZE; i++ )
     {
-        fprintf(stderr,"Block %lx is erased\n", physEraseBlock );
+        // Check for all bytes in the Volume ID header
+        if( ERASED_VALUE != ((uint8_t*)vidHeaderPtr)[i] )
+        {
+            break;
+        }
+    }
+    if (UBI_VID_HDR_SIZE == i)
+    {
+        fprintf(stderr, "Block %lx is erased\n", physEraseBlock );
         return LE_FORMAT_ERROR;
     }
 
@@ -368,7 +406,7 @@ static le_result_t ReadVidHeader
         return LE_FAULT;
     }
 
-    if (vidHeaderPtr->version != UBI_VERSION)
+    if (UBI_VERSION != vidHeaderPtr->version)
     {
         fprintf(stderr, "Bad version at %lx: Expected %d, received %d\n",
             physEraseBlock, UBI_VERSION, vidHeaderPtr->version);
@@ -432,16 +470,23 @@ static le_result_t ReadVtbl
 {
     uint32_t crc;
     int i;
+    int len;
 
     if( 0 > lseek( fd, physEraseBlock + vtblOffset, SEEK_SET ) )
     {
-        fprintf(stderr,"lseek fails: %m\n");
+        fprintf(stderr, "lseek() fails: %m\n");
         return LE_FAULT;
     }
-    if (0 > read( fd, (uint8_t*)vtblPtr,
-                                UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE ) )
+    len = read( fd, (uint8_t*)vtblPtr, UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE );
+    if( 0 > len )
     {
-        fprintf(stderr,"read fails: %m\n");
+        fprintf(stderr, "read() fails: %m\n");
+        return LE_FAULT;
+    }
+    if( (UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE) != len )
+    {
+        fprintf(stderr, "Read only %d bytes, expected %ld:\n",
+                len, UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE);
         return LE_FAULT;
     }
 
@@ -454,7 +499,7 @@ static le_result_t ReadVtbl
         crc = le_crc_Crc32((uint8_t*)&vtblPtr[i], UBI_VTBL_RECORD_SIZE_CRC, LE_CRC_START_CRC32);
         if( be32toh(vtblPtr[i].crc) != crc )
         {
-            fprintf(stderr,"VID %d : Bad CRC %x expected %x\n", i, crc, be32toh(vtblPtr[i].crc));
+            fprintf(stderr, "VID %d : Bad CRC %x expected %x\n", i, crc, be32toh(vtblPtr[i].crc));
             return LE_FAULT;
         }
         if( vtblPtr[i].vol_type )
@@ -523,7 +568,11 @@ le_result_t ScanUbi
         }
         else if (LE_OK != res )
         {
-            goto error;
+            return LE_FAULT;
+        }
+        else
+        {
+            // Do nothing
         }
         res = ReadVidHeader( fd, pebOffset, &vidHeader, be32toh(ecHeader.vid_hdr_offset) );
         if (LE_FORMAT_ERROR == res )
@@ -532,29 +581,34 @@ le_result_t ScanUbi
         }
         if (LE_OK != res )
         {
-            fprintf(stderr,"Error when reading VID Header at %d\n", peb);
-            goto error;
+            fprintf(stderr, "Error when reading VID Header at %d\n", peb);
+            return LE_FAULT;
         }
         if (be32toh(vidHeader.vol_id) == UBI_LAYOUT_VOLUME_ID)
         {
             res = ReadVtbl( fd, pebOffset, Vtbl, be32toh(ecHeader.data_offset) );
             if (LE_OK != res)
             {
-                fprintf(stderr,"Error when reading Vtbl at %d\n", peb);
-                goto error;
+                fprintf(stderr, "Error when reading Vtbl at %d\n", peb);
+                return LE_FAULT;
             }
         }
         else if (be32toh(vidHeader.vol_id) < UBI_MAX_VOLUMES)
         {
-           VtblMap[be32toh(vidHeader.vol_id)].lebToPeb[be32toh(vidHeader.lnum)] = peb;
-           if( vidHeader.vol_type == 2 )
-           {
-               VtblMap[be32toh(vidHeader.vol_id)].imageSize += be32toh(vidHeader.data_size);
-           }
-           else
-           {
-               VtblMap[be32toh(vidHeader.vol_id)].imageSize += (FlashPEBSize - (2 * FlashPageSize));
-           }
+            VtblMap[be32toh(vidHeader.vol_id)].lebToPeb[be32toh(vidHeader.lnum)] = peb;
+            if( UBI_VID_STATIC == vidHeader.vol_type )
+            {
+                VtblMap[be32toh(vidHeader.vol_id)].imageSize += be32toh(vidHeader.data_size);
+            }
+            else
+            {
+                VtblMap[be32toh(vidHeader.vol_id)].imageSize +=
+                    (FlashPEBSize - (2 * FlashPageSize));
+            }
+        }
+        else
+        {
+            fprintf(stderr, "Unknown vol ID %x\n", be32toh(vidHeader.vol_id));
         }
     }
 
@@ -565,13 +619,14 @@ le_result_t ScanUbi
             (*nbVolumePtr)++;
             if( IsVerbose )
             {
-                fprintf(stderr,"VOL %i \"%s\" VT %u RPEBS %u\n", i,
+                fprintf(stderr, "VOL %i \"%s\" VT %u RPEBS %u\n", i,
                          Vtbl[i].name,
                          Vtbl[i].vol_type,
                          be32toh(Vtbl[i].reserved_pebs));
                 for( j = 0;
                      (j < be32toh(Vtbl[i].reserved_pebs));
-                     j++ ) {
+                     j++ )
+                {
                     fprintf(stderr, "%u ", VtblMap[i].lebToPeb[j] );
                 }
                 fprintf(stderr, "\n");
@@ -583,92 +638,111 @@ le_result_t ScanUbi
     }
     if( IsVerbose )
     {
-        fprintf(stderr,"Number of volume(s): %u\n", *nbVolumePtr);
+        fprintf(stderr, "Number of volume(s): %u\n", *nbVolumePtr);
     }
     return LE_OK;
-
-error:
-    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Check if data flashed into a an UBI volume ID is correct
+ * Extract the data image belonging to an UBI volume ID.
  *
  * @return
- *      - LE_OK        on success
- *      - LE_FAULT     if checksum is not correct
- *      - others       depending of the UBI functions return
+ *      - LE_OK            On success
+ *      - LE_FAULT         On failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t ExtractUbiData
 (
-    int fd,                        ///< [IN] Minor of the MTD device to check
-    uint32_t ubiVolId,                 ///< [IN] UBI Volume ID to check
-    char     *fileName,
-    size_t *sizePtr,
-    uint32_t *crc32Ptr
+    int       fd,           ///< [IN] Minor of the MTD device to check
+    uint32_t  ubiVolId,     ///< [IN] UBI Volume ID to check
+    char*     fileNamePtr,  ///< [IN] File name where to store the extracted image from UBI volume
+    size_t*   sizePtr,      ///< [OUT] Returned size of the extracted image
+    uint32_t* crc32Ptr      ///< [OUT] Returned computed CRC32 of the extracted image
 )
 {
+    // We use malloc(3). No alternative to this within the tool
     uint8_t* checkBlockPtr = (uint8_t*)malloc(FlashPEBSize);
 
-    int fdw = -1;
+    int fdw, rc, readLen;
     size_t size, imageSize = VtblMap[ubiVolId].imageSize;
     uint32_t blk, crc32 = LE_CRC_START_CRC32;
     le_result_t res = LE_FAULT;
 
-    fdw = open( fileName, O_WRONLY | O_TRUNC | O_CREAT, 0600 );
-    if ( 0 > fdw )
+    if( NULL == checkBlockPtr )
     {
-        fprintf(stderr,"Open of '%s' fails: %d\n", fileName, res );
-        goto error;
+        fprintf(stderr, "Malloc fails: %m\n");
+        exit(1);
     }
 
-    for( blk = 0; VtblMap[ubiVolId].lebToPeb[blk] != -1; blk++ )
+    fdw = open( fileNamePtr, O_WRONLY | O_TRUNC | O_CREAT, S_IWUSR | S_IRUSR );
+    if ( 0 > fdw )
     {
-        size = (imageSize > (FlashPEBSize - (2 * FlashPageSize)) ?
-                (FlashPEBSize - (2 * FlashPageSize)) : imageSize);
+        fprintf(stderr, "Open of '%s' fails: %d\n", fileNamePtr, res );
+        goto clean_exit;
+    }
+
+    for( blk = 0; (uint32_t)-1 != VtblMap[ubiVolId].lebToPeb[blk]; blk++ )
+    {
+        size = ((imageSize > (FlashPEBSize - (2 * FlashPageSize)))
+                  ? (FlashPEBSize - (2 * FlashPageSize))
+                  : imageSize);
         if ( 0 > lseek( fd,
                         (VtblMap[ubiVolId].lebToPeb[blk] * FlashPEBSize) + (2 * FlashPageSize),
                         SEEK_SET ) )
         {
-            fprintf(stderr,"lseek fails: %m\n");
-            goto error;
+            fprintf(stderr, "lseek() fails: %m\n");
+            goto clean_exit;
         }
-        if ( 0 > read( fd, checkBlockPtr, size) )
+        readLen = 0;
+        do
         {
-            fprintf(stderr,"read fails: %m\n");
-            goto error;
+            rc = read( fd, checkBlockPtr, size );
+            if ( (0 > rc) && ((EAGAIN == errno) || (EINTR == errno)) )
+            {
+                // Do nothing: we redo the loop
+            }
+            else if ( 0 > rc )
+            {
+                fprintf(stderr, "read() fails: %m\n");
+                goto clean_exit;
+            }
+            else if( 0 == rc )
+            {
+                fprintf(stderr, "read() end-of-file. File is corrupted\n");
+                goto clean_exit;
+            }
+            else
+            {
+                readLen += rc;
+            }
         }
+        while( readLen < size );
 
         imageSize -= size;
         crc32 = le_crc_Crc32( checkBlockPtr, (uint32_t)size, crc32);
         if ( 0 > write( fdw, checkBlockPtr, size) )
         {
-            fprintf(stderr,"write fails: %m\n");
-            goto error;
+            fprintf(stderr, "write() fails: %m\n");
+            goto clean_exit;
         }
     }
     *sizePtr = VtblMap[ubiVolId].imageSize;
     *crc32Ptr = crc32;
     if( IsVerbose )
     {
-        fprintf(stderr,"File '%s', Size %lx CRC %x\n", fileName, imageSize, crc32);
+        fprintf(stderr, "File '%s', Size %lx CRC %x\n", fileNamePtr, imageSize, crc32);
     }
 
-    close( fdw );
-    free(checkBlockPtr);
-    return LE_OK;
+    res = LE_OK;
 
-error:
+clean_exit:
     if( fdw > -1)
     {
         close( fdw );
     }
-    if( checkBlockPtr )
-    {
-        free(checkBlockPtr);
-    }
+    // We use free(3). No alternative to this within the tool
+    free(checkBlockPtr);
     return res;
 }
 
@@ -686,7 +760,32 @@ static void Exithandler
     snprintf( CmdBuf, sizeof(CmdBuf),
               "rm -rf /tmp/patchdir.%u",
               getpid() );
-    system( CmdBuf );
+    (void)system( CmdBuf );
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Call system(3) with the command given. In case of error, call exit(3). Return only if system(3)
+ * has succeed
+ */
+//--------------------------------------------------------------------------------------------------
+static void ExecSystem
+(
+    char* cmdPtr
+)
+{
+    int rc;
+
+    if( IsVerbose )
+    {
+        printf("system(%s)\n", cmdPtr);
+    }
+    rc = system( cmdPtr );
+    if( (!WIFEXITED(rc)) || WEXITSTATUS(rc) )
+    {
+        fprintf(stderr,"system(%s) fails: rc=%d\n", cmdPtr, rc);
+        exit(2);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -731,11 +830,15 @@ static void Usage
  * the missing tool and the way to solve it.
  */
 //--------------------------------------------------------------------------------------------------
-static void CheckForTool( char *toolPtr, char *toolchainPtr )
+static void CheckForTool
+(
+    char *toolPtr,
+    char *toolchainPtr
+)
 {
-    FILE *fdPtr;
-    char toolPath[PATH_MAX];
-    char *toolPathPtr;
+    FILE* fdPtr;
+    char  toolPath[PATH_MAX];
+    char* toolPathPtr;
 
     snprintf( toolPath, sizeof(toolPath), "which %s", toolPtr );
     fdPtr = popen( toolPath, "r" );
@@ -751,10 +854,11 @@ static void CheckForTool( char *toolPtr, char *toolchainPtr )
         fprintf(stderr,
                 "The tool '%s' is required and missing in the PATH environment variable\n"
                 "or it is not installed on this host.\n", toolPtr);
-        if( 0 == strcmp( BSDIFF, toolPtr ) )
+        if( !toolchainPtr )
         {
             fprintf(stderr,
-                    "Try a 'sudo apt-get install bsdiff' or similar to install this package\n");
+                    "Try a 'sudo apt-get install %s' or similar to install this package\n",
+                    toolPtr);
         }
         else
         {
@@ -772,34 +876,34 @@ static void CheckForTool( char *toolPtr, char *toolchainPtr )
 //--------------------------------------------------------------------------------------------------
 int main
 (
-    int argc,
-    char **argv
+    int    argc,
+    char** argv
 )
 {
     char tmpName[PATH_MAX];
     int fdr, fdw, fdp;
     int len, patchNum = 0;
     int iargc = argc;
-    char **argvPtr = &argv[1];
+    char** argvPtr = &argv[1];
     struct stat st;
     unsigned int crc32Orig, crc32Dest;
     unsigned int ubiVolId = (uint32_t)-1;
     size_t chunkLen;
-    char *partPtr = NULL;
-    char *pckgPtr = NULL;
-    char *productPtr = NULL;
-    char *targetPtr = NULL;
-    char *outPtr = NULL;
-    PartToSpkg_t *partToSpkgPtr = NULL;
+    char* partPtr = NULL;
+    char* pckgPtr = NULL;
+    char* productPtr = NULL;
+    char* targetPtr = NULL;
+    char* outPtr = NULL;
+    PartToSpkg_t* partToSpkgPtr = NULL;
     bool noSpkgHeader = false;
     bool isUbiImage = false;
     int nbVolumeOrig, nbVolumeDest, nbVolume;
     int ubiIdx;
     pid_t pid = getpid();
     char env[4096];
-    char *toolchainPtr = NULL;
-    char *toolchainEnvPtr = NULL;
-    char *envPtr = NULL;
+    char* toolchainPtr = NULL;
+    char* toolchainEnvPtr = NULL;
+    char* envPtr = NULL;
 
     ProgName = argv[0];
 
@@ -808,8 +912,16 @@ int main
     getcwd(CurrentWorkDir, sizeof(CurrentWorkDir));
     atexit( Exithandler );
     snprintf( CmdBuf, sizeof(CmdBuf), "/tmp/patchdir.%u", pid );
-    mkdir(CmdBuf, 0777);
-    chdir(CmdBuf);
+    if( -1 == mkdir(CmdBuf, (mode_t)(S_IRWXU | S_IRWXG | S_IRWXO)) )
+    {
+        fprintf(stderr, "Failed to create directory '%s': %m\n", CmdBuf);
+        exit( 1 );
+    }
+    if( -1 == chdir(CmdBuf) )
+    {
+        fprintf(stderr, "Failed to change directory to '%s': %m\n", CmdBuf);
+        exit( 1 );
+    }
 
     while( argc > 1 )
     {
@@ -862,7 +974,7 @@ int main
         {
             if( outPtr )
             {
-                fprintf(stderr,"Output file %s is already specified\n", outPtr);
+                fprintf(stderr, "Output file %s is already specified\n", outPtr);
                 exit(1);
             }
             ++argvPtr;
@@ -943,7 +1055,10 @@ int main
 
     while( iargc > 1 )
     {
-        int notUbiOpt = 1;
+        int notUbiOpt;
+
+        nbVolumeOrig = 1;
+        nbVolumeDest = 1;
 
         if( (iargc >= 5) &&
             ((0 == strcmp(*argvPtr, "--partition")) || (0 == strcmp(*argvPtr, "-p"))) )
@@ -951,7 +1066,7 @@ int main
             int ip;
 
             ++argvPtr;
-            for( ip = 0; partToSpkgPtr[ip].partName; ip++ )
+            for( ip = 0; partToSpkgPtr && (partToSpkgPtr[ip].partName); ip++ )
             {
                 if( 0 == strcmp( *argvPtr, partToSpkgPtr[ip].partName ) )
                 {
@@ -973,15 +1088,22 @@ int main
 
         notUbiOpt = (strcmp(*argvPtr, "--ubi")) && (strcmp(*argvPtr, "-U"));
 
-        if( !((iargc >= 5 && (!notUbiOpt))
-            || iargc >= 3) )
+        if( !(((iargc >= 5) && (!notUbiOpt)) || iargc >= 3) )
         {
             Usage();
         }
 
         if( !notUbiOpt )
         {
-            sscanf( *(++argvPtr), "%u", &ubiVolId);
+            char *endPtr;
+
+            errno = 0;
+            ubiVolId = strtoul( *(++argvPtr), &endPtr, 10 );
+            if( (errno) || (*endPtr) || (UBI_MAX_VOLUMES <= ubiVolId) )
+            {
+                fprintf(stderr, "Incorrect UBI volume ID '%s'\n", *argvPtr );
+                exit( 1 );
+            }
             argvPtr++;
             OrigPtr = *(argvPtr++);
             DestPtr = *(argvPtr++);
@@ -1017,7 +1139,8 @@ int main
             {
                 snprintf(OrigName, sizeof(OrigName), "%s", OrigPtr);
             }
-            if( 0 > (fdr = open( OrigName, O_RDONLY )) )
+            fdr = open( OrigName, O_RDONLY );
+            if( 0 > fdr )
             {
                 fprintf(stderr, "Unable to open origin file %s: %m\n", OrigName);
                 exit(1);
@@ -1039,7 +1162,8 @@ int main
             {
                 snprintf(DestName, sizeof(DestName), "%s", DestPtr);
             }
-            if( 0 > (fdr = open( DestName, O_RDONLY )) )
+            fdr = open( DestName, O_RDONLY );
+            if( 0 > fdr )
             {
                 fprintf(stderr, "(1)Unable to open destination file %s: %m\n", DestName);
                 exit(1);
@@ -1058,9 +1182,10 @@ int main
             {
                 char yn;
 
-                fprintf(stderr,"Number of volumes differs between original (%u) and destination (%u)\n",
+                fprintf(stderr,
+                        "Number of volumes differs between original (%u) and destination (%u)\n",
                         nbVolumeOrig, nbVolumeDest);
-                fprintf(stderr,"Build patch anyway [y/N] ? ");
+                fprintf(stderr, "Build patch anyway [y/N] ? ");
                 yn = getchar();
                 if( toupper(yn) != 'Y' )
                 {
@@ -1069,7 +1194,7 @@ int main
             }
         }
         ubiIdx = 0;
-        nbVolume = (nbVolumeOrig > nbVolumeDest ? nbVolumeDest : nbVolumeOrig);
+        nbVolume = (nbVolumeOrig > nbVolumeDest) ? nbVolumeDest : nbVolumeOrig;
         do
         {
             patchNum = 0;
@@ -1090,7 +1215,8 @@ int main
             {
                 snprintf(OrigName, sizeof(OrigName), "%s", OrigPtr);
             }
-            if( 0 > (fdr = open( OrigName, O_RDONLY )) )
+            fdr = open( OrigName, O_RDONLY );
+            if( 0 > fdr )
             {
                 fprintf(stderr, "Unable to open origin file %s: %m\n", OrigName);
                 exit(1);
@@ -1119,7 +1245,8 @@ int main
             {
                 snprintf(DestName, sizeof(DestName), "%s", DestPtr);
             }
-            if( 0 > (fdr = open( DestName, O_RDONLY )) )
+            fdr = open( DestName, O_RDONLY );
+            if( 0 > fdr )
             {
                 fprintf(stderr, "Unable to open destination file %s: %m\n", DestPtr);
                 exit(1);
@@ -1134,7 +1261,8 @@ int main
             snprintf( tmpName, sizeof(tmpName),
                       "patch.%u.bin",
                       pid );
-            if( 0 > (fdp = open( tmpName, O_WRONLY | O_TRUNC | O_CREAT, 0644 )) )
+            fdp = open( tmpName, O_WRONLY | O_TRUNC | O_CREAT, S_IWUSR | S_IRUSR );
+            if( 0 > fdp )
             {
                 fprintf(stderr, "Unable to open patch file %s: %m\n", tmpName);
                 exit(1);
@@ -1145,7 +1273,8 @@ int main
             {
                 crc32Dest = le_crc_Crc32( Chunk, len, crc32Dest );
                 snprintf( tmpName, sizeof(tmpName), "patchdest.%u.bin.%d", pid, patchNum );
-                if( 0 <= (fdw = open( tmpName, O_WRONLY | O_TRUNC | O_CREAT, 0600 )) )
+                fdw = open( tmpName, O_WRONLY | O_TRUNC | O_CREAT, S_IWUSR | S_IRUSR );
+                if( 0 <= fdw )
                 {
                     write( fdw, Chunk, len );
                     close( fdw );
@@ -1161,9 +1290,10 @@ int main
                 {
                     printf( "%s\n", CmdBuf );
                 }
-                system( CmdBuf );
+                ExecSystem( CmdBuf );
                 snprintf( tmpName, sizeof(tmpName), "patched.%u.bin.%d", pid, patchNum );
-                if( 0 > (fdw = open( tmpName, O_RDONLY )) )
+                fdw = open( tmpName, O_RDONLY );
+                if( 0 > fdw )
                 {
                     fprintf(stderr, "Unable to open destination file %s: %m\n", tmpName);
                     exit(1);
@@ -1176,9 +1306,10 @@ int main
                 printf("Patch Header: offset 0x%x number %d size %u (0x%x)\n",
                        be32toh(PatchHeader.offset), be32toh(PatchHeader.number),
                        be32toh(PatchHeader.size), be32toh(PatchHeader.size));
-                if( 0 > (len = read( fdw, PatchedChunk, st.st_size)) )
+                len = read( fdw, PatchedChunk, st.st_size );
+                if( 0 > len )
                 {
-                    fprintf(stderr, "read fails: %m\n" );
+                    fprintf(stderr, "read() fails: %m\n" );
                     exit(4);
                 }
                 close(fdw);
@@ -1187,7 +1318,7 @@ int main
             }
             if( len < 0 )
             {
-                fprintf(stderr, "read fails: %m\n" );
+                fprintf(stderr, "read() fails: %m\n" );
                 exit(4);
             }
 
@@ -1215,11 +1346,12 @@ int main
             {
                 printf("%s\n", CmdBuf);
             }
-            system( CmdBuf );
+            ExecSystem( CmdBuf );
             snprintf( tmpName, sizeof(tmpName), "patch.%u.hdr", pid );
-            if( 0 > (fdw = open( tmpName, O_RDWR )) )
+            fdw = open( tmpName, O_RDWR );
+            if( 0 > fdw )
             {
-                fprintf(stderr,"failed to open patch header file %s: %m\n", tmpName );
+                fprintf(stderr, "failed to open patch header file %s: %m\n", tmpName );
                 exit(5);
             }
             lseek( fdw, MISC_OPTS_OFFSET, SEEK_SET );
@@ -1242,9 +1374,9 @@ int main
                           "cat patch.%u.hdr patch.%u.bin >>patch.%u.cwe",
                           pid, pid, pid );
             }
-            system( CmdBuf );
+            ExecSystem( CmdBuf );
             snprintf( CmdBuf, sizeof(CmdBuf), "rm -f patch*.%u.bin*", pid );
-            system( CmdBuf );
+            ExecSystem( CmdBuf );
         }
         while( (ubiIdx < nbVolume) );
     }
@@ -1254,23 +1386,19 @@ int main
         snprintf( CmdBuf, sizeof(CmdBuf),
                   HDRCNV " patch.%u.cwe -OH patch.%u.cwe.hdr -IT %s -PT %s -V \"1.0\" -B 00000001",
                   pid, pid, pckgPtr, productPtr );
-        if( IsVerbose )
-        {
-            printf("%s\n", CmdBuf);
-        }
-        system( CmdBuf );
+        ExecSystem( CmdBuf );
         snprintf( CmdBuf, sizeof(CmdBuf),
                   "cat patch.%u.cwe.hdr patch.%u.cwe >%s/patch-%s.cwe",
                   pid, pid, CurrentWorkDir, targetPtr );
-        system( CmdBuf );
+        ExecSystem( CmdBuf );
     }
     chdir(CurrentWorkDir);
     snprintf( CmdBuf, sizeof(CmdBuf), "rm -rf /tmp/patchdir.%u", pid );
-    system( CmdBuf );
+    ExecSystem( CmdBuf );
     if( outPtr )
     {
         snprintf( CmdBuf, sizeof(CmdBuf), "mv patch-%s.cwe %s", targetPtr, outPtr );
-        system( CmdBuf );
+        ExecSystem( CmdBuf );
     }
 
     exit( 0 );
