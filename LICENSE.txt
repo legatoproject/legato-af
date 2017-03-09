@@ -1,7 +1,0 @@
-Copyright (c) 2014, Sierra Wireless, Inc. All rights reserved.
-
-Legato software is licensed under Mozilla Public License, v. 2.0 (MPL).
-
-The Source Code Form (as defined in the MPL) of Legato software is subject to the terms of the MPL if you register at www.developer.sierrawireless.com with a verified email address.  Any subsequent licensee to the “Covered Software” (as defined by the MPL) must also agree to register at www.developer.sierrawireless.com with a verified email address. A copy of the MPL is available at http://mozilla.org/MPL/2.0/.
-
-This Source Code Form is "Incompatible With Secondary Licenses", as defined by the Mozilla Public License v2.0.
