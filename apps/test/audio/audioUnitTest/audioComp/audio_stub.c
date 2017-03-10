@@ -1,5 +1,5 @@
 /**
- * This module implements some stub for audio unit tetst.
+ * This module implements some stub for audio unit test.
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -49,4 +49,18 @@ le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler
 )
 {
     return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the priority of a thread.  (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t MyThreadSetPriority
+(
+    le_thread_Ref_t         thread,     ///< [in]
+    le_thread_Priority_t    priority    ///< [in]
+)
+{
+    return LE_OK;
 }

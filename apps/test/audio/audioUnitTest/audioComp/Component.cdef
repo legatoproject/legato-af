@@ -10,10 +10,12 @@ requires:
 sources:
 {
     ${LEGATO_ROOT}/components/audio/le_audio.c
+    ${LEGATO_ROOT}/components/audio/le_media.c
     audio_stub.c
 }
 
 cflags:
 {
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+    -Dle_thread_SetPriority=MyThreadSetPriority
 }

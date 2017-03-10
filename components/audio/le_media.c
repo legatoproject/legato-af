@@ -934,6 +934,12 @@ static le_result_t InitMediaThread
         mediaCtxPtr->threadSemaphore = NULL;
     }
 
+    // Increase thread priority for file playback to avoid underflow
+    if ( LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY == streamPtr->audioInterface )
+    {
+        le_thread_SetPriority(streamPtr->mediaThreadRef, LE_THREAD_PRIORITY_RT_3);
+    }
+
     le_thread_SetJoinable(streamPtr->mediaThreadRef);
 
     le_thread_AddChildDestructor(streamPtr->mediaThreadRef,

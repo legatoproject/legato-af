@@ -14,7 +14,7 @@ processes:
     }
     maxFileBytes: 5000K
     faultAction: restart
-    priority: medium
+    priority: rt3
 }
 
 extern:
