@@ -432,9 +432,16 @@ ApiInterfaceInstance_t::ApiInterfaceInstance_t
     externMarkPtr(NULL)
 //--------------------------------------------------------------------------------------------------
 {
-    name = componentInstancePtr->exePtr->name
-         + '.' + componentInstancePtr->componentPtr->name
-         + '.' + internalName;
+    if (componentInstancePtr == NULL)
+    {
+        name = internalName;
+    }
+    else
+    {
+        name = componentInstancePtr->exePtr->name
+             + '.' + componentInstancePtr->componentPtr->name
+             + '.' + internalName;
+    }
 }
 
 
@@ -445,7 +452,7 @@ ApiInterfaceInstance_t::ApiInterfaceInstance_t
 //--------------------------------------------------------------------------------------------------
 ApiClientInterfaceInstance_t::ApiClientInterfaceInstance_t
 (
-    ComponentInstance_t* cInstPtr,  ///< Component instance this interface instance belongs to.
+    ComponentInstance_t* cInstPtr,  ///< Component instance this i/f instance belongs to (or NULL).
     ApiClientInterface_t* p
 )
 //--------------------------------------------------------------------------------------------------

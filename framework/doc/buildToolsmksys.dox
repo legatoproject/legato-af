@@ -1,11 +1,9 @@
 /** @page buildToolsmksys mksys
 
-<i>Support for @c mksys is incomplete.</i> <br>
-
-Make System: run @c mksys  to generate a system bundle to install and run on a target.
+Make System: run @c mksys to generate a system bundle to install and run on a target.
 
 System bundles are compressed archives containing a collection of apps and access control
-configuration settings that allow them to interact with each other, as defined within an
+configuration settings that allow the apps to interact with each other, as defined within an
 @ref defFilesSdef ".sdef file".
 
 The main input for @c mksys is an @ref defFilesSdef file that contains these definitions:
@@ -14,15 +12,15 @@ The main input for @c mksys is an @ref defFilesSdef file that contains these def
  - limits, environment variables, and configuration settings to add or
    override.
 
-@c mksys will parse the .sdef file, find the .adef files for the apps, build the
-apps, generate on-target access control configuration settings, and bundle everything
-into a system bundle for installation on the target device.
+@c mksys will parse the @c .sdef file, find the @c .adef or @c .app files for the apps, build or
+bundle the apps, generate on-target access control configuration settings, and bundle everything
+into a system bundle for atomic (all or nothing) installation on the target device.
 
-@note @c mksys can also help to validate target bindings.  @c mkapp only knows about the app it's
-building. Things like typos in binding values won't be detected, but will show up with your app
-hanging. After running mksys, if your app hangs, run <c>sdir list</c> (@ref toolsTarget_sdir) to
-determine if it's failing because it's unbound, or the server isn't running: @c sdir list shows
-services that are running.
+@c mksys can also help to validate inter-app dependencies and conflicts, while
+@ref buildToolsmkapp can't because it only knows about the one app it's building.
+For example, certain typos in binding values won't be detected by @ref buildToolsmkapp and
+can cause your app to hang at start-up.  @c mksys can catch these errors
+at build time.
 
 To display usage, run
 @verbatim mksys --help@endverbatim

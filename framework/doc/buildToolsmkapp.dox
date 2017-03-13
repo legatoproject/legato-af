@@ -2,8 +2,9 @@
 
 Make Application: run @c mkapp to generate an app bundle to install and run on a target.
 
-Application bundles are compressed archives containing everything that needs to be sent to your
-target device to install your app.
+Application bundles are compressed archives that can be used to:
+ - Install your application on a target.
+ - Update your app to a new version.
 
 The main input for @c mkapp is an @ref defFilesAdef file that contains these definitions:
 
@@ -23,8 +24,33 @@ for installation on the target.
 To display usage, run
 @verbatim mkapp --help@endverbatim
 
-@note @c mkapp only knows about the app it's building. Typos in binding values won't be detected,
-but your app will hang. The note in @ref buildToolsmksys has details how to troubleshoot.
+@note Use of @ref buildToolsmksys is encouraged vs. using @c mkapp. @ref buildToolsmksys produces a
+full system bundle which has the following benefits:
+
+ - limits the risk of leaving your target in a bad state
+ - performs some inter-app consistency checks (e.g., checks for typos in bindings)
+ - ensures that all apps are updated together
+ - reduces the chances of an app hanging at start-up
+
+However there are occasions when you want or need to distribute an application for inclusion in
+another users system, but you cannot distribute the source code for this application.  In that case
+you can use the @c -b switch to mkapp.  For example, building a simple helloWorld style application:
+
+@verbatim mkapp -t wp85 helloWorld.adef -b@endverbatim
+
+This will produce a file called @c helloWorld.wp85.app and it is a binary app bundle.  To use this
+binary application, simply include it in your system's sdef applications section like you would
+normally:
+
+@verbatim
+apps:
+{
+    helloWorld.wp85.app
+}
+@endverbatim
+
+Note that this binary application is compiled specifically for the given target, so an app compiled
+for one target is not necessarily compatible with another target.
 
 See @ref defFilesAdef files for details on app def files.
 

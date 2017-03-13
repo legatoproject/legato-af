@@ -112,17 +112,29 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
     const std::string& componentName = componentTokenPtr->text;
     const std::string& interfaceName = interfaceTokenPtr->text;
 
-    // Find the component instance specified.
-    auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+    const std::string fullName = exeName + "." + componentName + "." + interfaceName;
+    auto iter = externServerInterfaces.find(fullName);
 
-    // Find the interface in the component instance's list of server interfaces,
-    auto ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
+    ApiServerInterfaceInstance_t* ifInstancePtr;
 
-    if (ifInstancePtr == NULL)
+    if (iter != externServerInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException("Server interface '" + interfaceName + "'"
-                                          " not found in component '" + componentName + "'"
-                                          " in executable '" + exeName + "'.");
+        ifInstancePtr = iter->second;
+    }
+    else
+    {
+        // Find the component instance specified.
+        auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+        // Find the interface in the component instance's list of server interfaces,
+        ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
+
+        if (ifInstancePtr == NULL)
+        {
+            interfaceTokenPtr->ThrowException("Server interface '" + interfaceName + "'"
+                                              " not found in component '" + componentName + "'"
+                                              " in executable '" + exeName + "'.");
+        }
     }
 
     return ifInstancePtr;
@@ -151,17 +163,29 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
     const std::string& componentName = componentTokenPtr->text;
     const std::string& interfaceName = interfaceTokenPtr->text;
 
-    // Find the component instance specified.
-    auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+    const std::string fullName = exeName + "." + componentName + "." + interfaceName;
+    auto iter = preBuiltClientInterfaces.find(fullName);
 
-    // Find the interface in the component instance's list of client interfaces,
-    auto ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
+    ApiClientInterfaceInstance_t* ifInstancePtr;
 
-    if (ifInstancePtr == NULL)
+    if (iter != preBuiltClientInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException("Client interface '" + interfaceName + "'"
-                                          " not found in component '" + componentName + "'"
-                                          " in executable '" + exeName + "'.");
+        ifInstancePtr = iter->second;
+    }
+    else
+    {
+        // Find the component instance specified.
+        auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+        // Find the interface in the component instance's list of client interfaces,
+        ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
+
+        if (ifInstancePtr == NULL)
+        {
+            interfaceTokenPtr->ThrowException("Client interface '" + interfaceName + "'"
+                                              " not found in component '" + componentName + "'"
+                                              " in executable '" + exeName + "'.");
+        }
     }
 
     return ifInstancePtr;
@@ -189,8 +213,14 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 
     if (i == externClientInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException("App '" + name + "' has no external client-side interface"
-                                          " named '" + interfaceName + "'");
+        i = preBuiltClientInterfaces.find(interfaceName);
+
+        if (i == preBuiltClientInterfaces.end())
+        {
+            interfaceTokenPtr->ThrowException("App '" + name
+                                              + "' has no external client-side interface"
+                                              " named '" + interfaceName + "'");
+        }
     }
 
     return i->second;

@@ -169,7 +169,7 @@ std::string GetFileNameExtension
 /**
  * Checks whether a given path has one of the suffixes in a given list of suffixes.
  *
- * @return  The suffix found, or an emptry string ("") if not found.
+ * @return  The suffix found, or an empty string ("") if not found.
  */
 //--------------------------------------------------------------------------------------------------
 std::string HasSuffix

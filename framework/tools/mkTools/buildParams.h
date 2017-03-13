@@ -30,6 +30,7 @@ struct BuildParams_t
     std::string             cxxFlags;           ///< Flags to be passed to the C++ compiler.
     std::string             ldFlags;            ///< Flags to be passed to the linker.
     bool                    codeGenOnly;        ///< true = only generate code, don't compile, etc.
+    bool                    binPack;            ///< true = generate a binary package for redist.
 
     /// Constructor
     BuildParams_t();

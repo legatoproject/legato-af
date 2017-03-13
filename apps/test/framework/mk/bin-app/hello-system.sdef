@@ -1,0 +1,11 @@
+
+apps:
+{
+    hello.$LEGATO_TARGET.app
+}
+
+bindings:
+{
+    // Bind to the non-app user to make sure that this works.
+    hello.le_info -> <root>.le_info
+}

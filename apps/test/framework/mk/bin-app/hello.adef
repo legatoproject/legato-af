@@ -1,0 +1,58 @@
+
+version: 1.0
+
+executables:
+{
+    helloWorld = ( helloComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( helloWorld )
+    }
+
+    priority: medium
+}
+
+requires:
+{
+    device:
+    {
+        [wr] /dev/ttyAT /dev/ttyAT
+    }
+
+    file:
+    {
+        /legato/systems/current/version /etc/version
+        /proc/cpuinfo /etc/cpuinfo
+    }
+
+    dir:
+    {
+        /tmp /etc/tmpFs
+    }
+
+    configTree:
+    {
+        [w] .
+    }
+}
+
+bindings:
+{
+    helloWorld.helloComponent.le_info -> modemService.le_info
+    helloWorld.helloComponent.le_cfg -> <root>.le_cfg
+}
+
+extern:
+{
+    helloWorld.helloComponent.le_info
+    greeter = helloWorld.helloComponent.greet
+}

@@ -197,6 +197,68 @@ static void ModelAppOverrides
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Run the tar command to decompress a given app file into the build directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static void UntarBinApp
+(
+    const std::string& appPath,
+    const std::string& destPath,
+    const parseTree::App_t* sectionPtr,
+    bool isVerbose
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string flags = isVerbose ? "xvf" : "xf";
+    std::string cmdLine = "tar " + flags + " \"" + appPath + "\" -C " + destPath;
+
+    file::MakeDir(destPath);
+    int retVal = system(cmdLine.c_str());
+
+    if (retVal != 0)
+    {
+        std::stringstream msg;
+        msg << "Binary app '" << appPath << "' could not be extracted.";
+        sectionPtr->ThrowException(msg.str());
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Look for the binary app's .adef file in it's extraction directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static std::string FindBinAppAdef
+(
+    const parseTree::App_t* sectionPtr,
+    const std::string& basePath
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto filePaths = file::ListFiles(basePath);
+
+    for (auto fileName : filePaths)
+    {
+        auto pos = fileName.rfind('.');
+
+        if (pos != std::string::npos)
+        {
+            std::string suffix = fileName.substr(pos);
+
+            if (suffix == ".adef")
+            {
+                return path::MakeAbsolute(path::Combine(basePath, fileName));
+            }
+        }
+    }
+
+    sectionPtr->ThrowException("Error could not find binary app .adef file.");
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Creates an App_t object for a given app's subsection within an "apps:" section.
  */
 //--------------------------------------------------------------------------------------------------
@@ -209,31 +271,52 @@ static void ModelApp
 //--------------------------------------------------------------------------------------------------
 {
     std::string appName;
-    std::string adefPath;
+    std::string filePath;
 
-    // The first token in the app subsection could be the name of an app or a .adef file path.
-    // Find the app name and .adef file.
+    // The first token in the app subsection could be the name of an app or a .adef/.app file path.
+    // Find the app name and .adef/.app file.
     const auto appSpec = path::Unquote(envVars::DoSubstitution(sectionPtr->firstTokenPtr->text));
+
+    // Build a proper .app suffix that includes the target that the app was built against.
+    const std::string appSuffix = "." + buildParams.target + ".app";
+    bool isBinApp = false;
+
     if (path::HasSuffix(appSpec, ".adef"))
     {
         appName = path::RemoveSuffix(path::GetLastNode(appSpec), ".adef");
-        adefPath = file::FindFile(appSpec, buildParams.sourceDirs);
+        filePath = file::FindFile(appSpec, buildParams.sourceDirs);
+    }
+    else if (path::HasSuffix(appSpec, appSuffix))
+    {
+        appName = path::RemoveSuffix(path::GetLastNode(appSpec), appSuffix);
+        filePath = file::FindFile(appSpec, buildParams.sourceDirs);
+        isBinApp = true;
     }
     else
     {
         appName = path::GetLastNode(appSpec);
-        adefPath = file::FindFile(appSpec + ".adef", buildParams.sourceDirs);
+        filePath = file::FindFile(appSpec + ".adef", buildParams.sourceDirs);
+
+        if (filePath.empty())
+        {
+            filePath = file::FindFile(appSpec + appSuffix, buildParams.sourceDirs);
+            isBinApp = true;
+        }
     }
 
-    if (adefPath.empty())
+    // If neither adef nor app file has been found, report the error now.
+    if (filePath.empty())
     {
-        std::cerr << "Looked in the following places:" << std::endl;
+        std::string formattedMsg = "Can't find definition file (" + appName + ".adef)"
+                                   " or binary app (" + appName + appSuffix + ")"
+                                   " for app specification '" + appSpec + "'.\n"
+                                   "Note: Looked in the following places:\n";
         for (auto& dir : buildParams.sourceDirs)
         {
-            std::cerr << "  '" << dir << "'" << std::endl;
+            formattedMsg += "    '" + dir + "'\n";
         }
-        sectionPtr->ThrowException("Can't find definition file (.adef) for app specification "
-                                   "'" + appSpec + "'.");
+
+        sectionPtr->ThrowException(formattedMsg);
     }
 
     // Check for duplicates.
@@ -246,13 +329,29 @@ static void ModelApp
         sectionPtr->ThrowException(msg.str());
     }
 
+    // If this is a binary-only app, then extract it now.
+    if (isBinApp)
+    {
+        std::string dirPath = path::Combine(buildParams.workingDir, "binApps/" + appName);
+        std::string newAdefPath = path::Combine(dirPath, appName + ".adef");
+
+        if (buildParams.beVerbose)
+        {
+            std::cout << "Extracting binary-only app from '" << filePath << "', "
+                      << "to '" << dirPath << "'." << std::endl;
+        }
+
+        UntarBinApp(filePath, dirPath, sectionPtr, buildParams.beVerbose);
+        filePath = FindBinAppAdef(sectionPtr, path::MakeAbsolute(dirPath) + "/");
+    }
+
     if (buildParams.beVerbose)
     {
         std::cout << "System contains app '" << appName << "'." << std::endl;
     }
 
     // Model this app.
-    auto appPtr = GetApp(adefPath, buildParams);
+    auto appPtr = GetApp(filePath, buildParams);
     appPtr->parseTreePtr = sectionPtr;
 
     systemPtr->apps[appName] = appPtr;
@@ -525,8 +624,8 @@ static void ModelBindingsSection
             // There are three different forms of client interface specifications:
             // - app.interface = set/override an external interface binding.
             // - app.exe.comp.interface = override an internal interface binding.
-            // - app.*.interface = override an internal wildcard binding.
-            if (tokens[1]->type == parseTree::Token_t::STAR) // wildcard binding
+            // - app.*.interface = override an internal pre-built binding.
+            if (tokens[1]->type == parseTree::Token_t::STAR) // pre-built interface binding
             {
                 // 0         1    2    3         4
                 // IPC_AGENT STAR NAME IPC_AGENT NAME
@@ -535,19 +634,29 @@ static void ModelBindingsSection
                 bindingPtr->clientIfName = tokens[2]->text;
                 GetBindingServerSide(bindingPtr, tokens[3], tokens[4], systemPtr);
 
+                auto i = appPtr->preBuiltClientInterfaces.find(bindingPtr->clientIfName);
+
+                if (i == appPtr->preBuiltClientInterfaces.end())
+                {
+                    tokens[2]->ThrowException("App '" + appPtr->name + "'"
+                                              " doesn't have a pre-built client-side interface"
+                                              " named '" + bindingPtr->clientIfName + "'.");
+                }
+
+                auto interfacePtr = i->second;
+
                 if (beVerbose)
                 {
-                    if (   appPtr->wildcardBindings.find(bindingPtr->clientIfName)
-                        != appPtr->wildcardBindings.end())
+                    if (interfacePtr->bindingPtr != NULL)
                     {
-                        std::cout << "Replacing previous wildcard binding '"
+                        std::cout << "Overriding binding of pre-built interface '"
                                   << bindingPtr->clientAgentName << ".*."
                                   << bindingPtr->clientIfName << "'." << std::endl;
                     }
                 }
 
-                // Update the list of wildcard bindings.
-                appPtr->wildcardBindings[bindingPtr->clientIfName] = bindingPtr;
+                // Update the interface's binding.
+                interfacePtr->bindingPtr = bindingPtr;
             }
             else if (tokens.size() == 4) // external interface binding
             {

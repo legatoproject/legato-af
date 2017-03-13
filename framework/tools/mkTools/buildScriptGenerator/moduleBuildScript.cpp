@@ -49,8 +49,6 @@ void GenerateBuildStatements
     const model::Module_t* modulePtr,
     const mk::BuildParams_t& buildParams
 )
-
-
 //--------------------------------------------------------------------------------------------------
 {
     // Add build statement for copying the .ko file

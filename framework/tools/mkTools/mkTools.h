@@ -41,6 +41,7 @@
 #include "codeGenerator/codeGenerator.h"
 #include "configGenerator/configGenerator.h"
 #include "avManifestGenerator/avManifestGenerator.h"
+#include "adefGenerator/exportedAdefGenerator.h"
 
 
 #endif  // LEGATO_MKTOOLS_H_INCLUDE_GUARD

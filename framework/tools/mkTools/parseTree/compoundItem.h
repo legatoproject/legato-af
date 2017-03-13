@@ -178,7 +178,7 @@ struct RequiredApi_t : TokenList_t
 //--------------------------------------------------------------------------------------------------
 struct RequiredConfigTree_t : TokenList_t
 {
-    RequiredConfigTree_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_CONFIG_TREE, firstTokenPtr) {}
+    RequiredConfigTree_t(Token_t* firstTokenPtr): TokenList_t(REQUIRED_CONFIG_TREE, firstTokenPtr){}
 };
 
 
@@ -189,7 +189,7 @@ struct RequiredConfigTree_t : TokenList_t
 //--------------------------------------------------------------------------------------------------
 struct ExternApiInterface_t : TokenList_t
 {
-    ExternApiInterface_t(Token_t* firstTokenPtr): TokenList_t(EXTERN_API_INTERFACE, firstTokenPtr) {}
+    ExternApiInterface_t(Token_t* firstTokenPtr): TokenList_t(EXTERN_API_INTERFACE, firstTokenPtr){}
 };
 
 

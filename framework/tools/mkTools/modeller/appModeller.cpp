@@ -258,8 +258,8 @@ static void AddExecutables
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Iterate over a section containing a list of extern API interfaces, and add pointers to those
- * extern API interface items to the list provided.
+ * Walk the parse tree for an "extern:" section looking for extern API interfaces. Adds a
+ * pointer to each found items to the list provided.
  */
 //--------------------------------------------------------------------------------------------------
 static void AddExternApiInterfaces
@@ -269,47 +269,148 @@ static void AddExternApiInterfaces
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Iterate over its contents.
+    // Each item in the section is either an ExternApiInterface_t or a ComplexSection_t.
+    // We are looking for the ExternApiInterface_t items.
     for (auto itemPtr : sectionPtr->Contents())
     {
-        // Each item in the section is an ExternApiInterface_t.
-        // Add each to the list of extern API interfaces to be processed later.
-        interfaces.push_back(dynamic_cast<parseTree::ExternApiInterface_t*>(itemPtr));
+        if (itemPtr->type == parseTree::Content_t::EXTERN_API_INTERFACE)
+        {
+            // Add to the list of extern API interfaces to be processed later.
+            interfaces.push_back(dynamic_cast<parseTree::ExternApiInterface_t*>(itemPtr));
+        }
     }
 }
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Model a "provides:" section in a .adef file.  Any "provided APIs" will be added to the list
- * of extern API interfaces to be processed later.
+ * Get the API file and interface name for a pre-built interface found in an entry in a "requires:"
+ * or "provides:" subsection of an "extern:" section.
+ *
+ * @return Pointer to the API File object.
  */
 //--------------------------------------------------------------------------------------------------
-static void AddProvidedItems
+static model::ApiFile_t* GetPreBuiltInterface
 (
-    model::App_t* appPtr,
-    std::list<const parseTree::ExternApiInterface_t*>& interfaces, ///< [OUT] List of extern items.
-    const parseTree::Content_t* sectionPtr
+    std::string& interfaceName, ///< [OUT] String to be filled with the interface name.
+    const parseTree::TokenList_t* itemPtr,
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    for (auto subsectionPtr : ToCompoundItemListPtr(sectionPtr)->Contents())
+    const auto& contentList = itemPtr->Contents();
+
+    // If the first content item is a DOTTED NAME then it's the interface name, and the API file
+    // path will follow.
+    std::string apiFilePath;
+    if (contentList[0]->type == parseTree::Token_t::DOTTED_NAME)
     {
-        auto& subsectionName = subsectionPtr->firstTokenPtr->text;
-
-        if (subsectionName == "api")
+        interfaceName = contentList[0]->text;
+        apiFilePath = file::FindFile(envVars::DoSubstitution(contentList[1]->text),
+                                     buildParams.interfaceDirs);
+        if (apiFilePath == "")
         {
-            // The "api" section is a complex section.
-            auto apiSectionPtr = ToComplexSectionPtr(subsectionPtr);
-
-            // Add all the items in this section to the list of extern API interfaces to be
-            // processed later.
-            AddExternApiInterfaces(interfaces, apiSectionPtr);
+            contentList[1]->ThrowException("Couldn't find file '" + contentList[1]->text + "'.");
         }
-        else
+    }
+    // If the first content item is not a NAME, then it must be the API file path.
+    else
+    {
+        auto apiFileName = envVars::DoSubstitution(contentList[0]->text);
+        apiFilePath = file::FindFile(apiFileName,
+                                     buildParams.interfaceDirs);
+        if (apiFilePath == "")
         {
-            subsectionPtr->ThrowException("INTERNAL ERROR: Unrecognized section '"
-                                          + subsectionName + "'.");
+            contentList[0]->ThrowException("Couldn't find file, '"
+                                           + apiFileName + "'.");
+        }
+    }
+
+    // Get a pointer to the .api file object.
+    auto apiFilePtr = GetApiFilePtr(apiFilePath, buildParams.interfaceDirs, contentList[0]);
+
+    // If no interface name was specified, then use the .api file's default prefix.
+    if (interfaceName.empty())
+    {
+        interfaceName = apiFilePtr->defaultPrefix;
+    }
+
+    return apiFilePtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Walk the parse tree for an "extern:" section looking for "requires:" and "provides:" sections.
+ * When found, adds their pre-built IPC API interfaces to the App object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ModelPreBuiltInterfaces
+(
+    model::App_t* appPtr,
+    const parseTree::ComplexSection_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Each item in the section is either an ExternApiInterface_t, or a ComplexSection_t.
+    // We are looking for the ComplexSection_t objects.
+    for (auto itemPtr : sectionPtr->Contents())
+    {
+        if (itemPtr->type == parseTree::Content_t::COMPLEX_SECTION)
+        {
+            const auto subsectionPtr = dynamic_cast<parseTree::ComplexSection_t*>(itemPtr);
+            const auto& subsectionName = subsectionPtr->firstTokenPtr->text;
+
+            if (subsectionName == "requires")
+            {
+                // Each item in the section is a RequiredApi_t.
+                for (auto itemPtr : subsectionPtr->Contents())
+                {
+                    const auto contentPtr = dynamic_cast<parseTree::RequiredApi_t*>(itemPtr);
+
+                    std::string interfaceName;
+                    auto apiFilePtr = GetPreBuiltInterface(interfaceName, contentPtr, buildParams);
+
+                    // Create ApiClientInterface_t and ApiClientInterfaceInstance_t objects.
+                    auto ifPtr = new model::ApiClientInterface_t(apiFilePtr,
+                                                                 NULL, // component is unknown
+                                                                 interfaceName);
+                    auto ifInstancePtr = new model::ApiClientInterfaceInstance_t(NULL, ifPtr);
+
+                    // Add the interface instance object to the app's list of pre-built client-side
+                    // interfaces.
+                    appPtr->preBuiltClientInterfaces[interfaceName] = ifInstancePtr;
+                }
+            }
+            else if (subsectionName == "provides")
+            {
+                // Each item in the section is a ProvidedApi_t.
+                for (auto itemPtr : subsectionPtr->Contents())
+                {
+                    const auto contentPtr = dynamic_cast<parseTree::ProvidedApi_t*>(itemPtr);
+
+                    std::string interfaceName;
+                    auto apiFilePtr = GetPreBuiltInterface(interfaceName, contentPtr, buildParams);
+
+                    // Create ApiServerInterface_t and ApiServerInterfaceInstance_t objects.
+                    auto ifPtr = new model::ApiServerInterface_t(apiFilePtr,
+                                                                 NULL,  // component is unknown
+                                                                 interfaceName,
+                                                                 false); // Don't care if async
+                    auto ifInstancePtr = new model::ApiServerInterfaceInstance_t(NULL, ifPtr);
+
+                    // Add the interface instance object to the app's list of pre-built server-side
+                    // interfaces.
+                    appPtr->preBuiltServerInterfaces[interfaceName] = ifInstancePtr;
+                }
+            }
+            else
+            {
+                itemPtr->ThrowException("Internal error: unexpected subsection '"
+                                        + subsectionName
+                                        + "' in extern section.");
+            }
         }
     }
 }
@@ -369,15 +470,12 @@ static void AddConfigTree
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Model a "requires:" section.  Any "required APIs" will be added to the provided list of
- * extern API interfaces for later processing.  Everything else is added to the app model
- * immediately.
+ * Model a "requires:" section.
  */
 //--------------------------------------------------------------------------------------------------
 static void AddRequiredItems
 (
     model::App_t* appPtr,
-    std::list<const parseTree::ExternApiInterface_t*>& interfaces, ///< [OUT] List of extern items.
     const parseTree::Content_t* sectionPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -386,13 +484,7 @@ static void AddRequiredItems
     {
         auto& subsectionName = subsectionPtr->firstTokenPtr->text;
 
-        if (subsectionName == "api")
-        {
-            // Add all the items in this section to the list of extern API interfaces to be
-            // processed later.
-            AddExternApiInterfaces(interfaces, ToComplexSectionPtr(subsectionPtr));
-        }
-        else if (subsectionName == "file")
+        if (subsectionName == "file")
         {
             for (auto itemPtr : parseTree::ToCompoundItemListPtr(subsectionPtr)->Contents())
             {
@@ -728,6 +820,7 @@ static void GetBindingServerSide
     // startIndex   startIndex + 1  startIndex + 2
     // NAME         NAME            NAME            = internal binding
     // IPC_AGENT    NAME                            = external binding
+    // STAR         NAME                            = internal binding to pre-built binary server
 
     // External binding?
     if (tokens[startIndex]->type == parseTree::Token_t::IPC_AGENT)
@@ -746,7 +839,15 @@ static void GetBindingServerSide
             bindingPtr->serverAgentName = serverAgentName;
         }
     }
-    else // Internal binding.
+    // Internal binding to pre-built binary? (*.interface)
+    else if (tokens[startIndex]->type == parseTree::Token_t::STAR)
+    {
+        bindingPtr->serverType = model::Binding_t::INTERNAL;
+        bindingPtr->serverAgentName = appPtr->name;
+        bindingPtr->serverIfName = tokens[startIndex + 1]->text;
+    }
+    // Internal binding to exe built by mk tools (exe.component.interface).
+    else
     {
         // Find the interface that matches this specification.
         auto serverIfPtr = appPtr->FindServerInterface(tokens[startIndex],
@@ -789,7 +890,7 @@ static void AddBindings
         bindingPtr->clientType = model::Binding_t::INTERNAL;
         bindingPtr->clientAgentName = appPtr->name;
 
-        // Is this a "wildcard binding" of all unspecified client interfaces with a given name?
+        // Is this a binding of pre-built client interfaces with a given name?
         if (tokens[0]->type == parseTree::Token_t::STAR)
         {
             // 0    1    2         3    4
@@ -798,17 +899,31 @@ static void AddBindings
             bindingPtr->clientIfName = tokens[1]->text;
             GetBindingServerSide(bindingPtr, tokens, 2, appPtr);
 
-            // Check for multiple bindings of the same client-side wildcard.
-            if (   appPtr->wildcardBindings.find(bindingPtr->clientIfName)
-                != appPtr->wildcardBindings.end())
+            // Look up the interface object.
+            auto i = appPtr->preBuiltClientInterfaces.find(bindingPtr->clientIfName);
+
+            if (i == appPtr->preBuiltClientInterfaces.end())
             {
-                tokens[1]->ThrowException("Duplicate wildcard binding.");
+                auto str = "No such client-side pre-built interface '" + bindingPtr->clientIfName + "'.";
+                tokens[1]->ThrowException(str);
             }
 
-            // Add to list of wildcard bindings.
-            appPtr->wildcardBindings[bindingPtr->clientIfName] = bindingPtr;
+            auto interfacePtr = i->second;
+
+            // Check for multiple bindings of the same client-side pre-built interface.
+            if (interfacePtr->bindingPtr != NULL)
+            {
+                std::stringstream msg;
+                msg << "Duplicate binding of pre-built client-side interface '"
+                    << bindingPtr->clientIfName << "'. Previous binding is at line "
+                    << interfacePtr->bindingPtr->parseTreePtr->firstTokenPtr->line << ".";
+                tokens[1]->ThrowException(msg.str());
+            }
+
+            // Store the binding.
+            interfacePtr->bindingPtr = bindingPtr;
         }
-        else // Specific client interface binding (not a wildcard binding).
+        else // Normal client interface binding.
         {
             // 0    1    2    3         4    5
             // NAME NAME NAME IPC_AGENT NAME      = external binding to user or app
@@ -1202,13 +1317,39 @@ void PrintSummary
             }
         }
     }
-    if (!appPtr->wildcardBindings.empty())
+    if (!appPtr->preBuiltServerInterfaces.empty())
     {
-        std::cout << "  Has the following \"wildcard\" interface bindings:" << std::endl;
+        std::cout << "  Has the following server-side interfaces on pre-built executables:"
+                  << std::endl;
 
-        for (const auto& mapEntry: appPtr->wildcardBindings)
+        for (const auto& mapEntry: appPtr->preBuiltServerInterfaces)
         {
-            PrintBindingSummary("    ", mapEntry.first, mapEntry.second);
+            auto ifPtr = mapEntry.second;
+            std::cout << "    '" << ifPtr->name << "'" << std::endl
+                      << "      API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+                      << std::endl;
+        }
+    }
+    if (!appPtr->preBuiltClientInterfaces.empty())
+    {
+        std::cout << "  Has the following client-side interfaces on pre-built executables:"
+                  << std::endl;
+
+        for (const auto& mapEntry: appPtr->preBuiltClientInterfaces)
+        {
+            auto ifPtr = mapEntry.second;
+
+            if (ifPtr->bindingPtr != NULL)
+            {
+                PrintBindingSummary("    ", ifPtr->name, ifPtr->bindingPtr);
+            }
+            else
+            {
+                std::cout << "      '" << ifPtr->name << "' -> UNBOUND.";
+            }
+            std::cout << std::endl
+                      << "        API defined in: '" << ifPtr->ifPtr->apiFilePtr->path << "'"
+                      << std::endl;
         }
     }
 
@@ -1401,7 +1542,9 @@ model::App_t* GetApp
         }
         else if (sectionName == "extern")
         {
-            AddExternApiInterfaces(externApiInterfaces, ToComplexSectionPtr(sectionPtr));
+            auto complexSectionPtr = dynamic_cast<parseTree::ComplexSection_t*>(sectionPtr);
+            AddExternApiInterfaces(externApiInterfaces, complexSectionPtr);
+            ModelPreBuiltInterfaces(appPtr, complexSectionPtr, buildParams);
         }
         else if (sectionName == "groups")
         {
@@ -1435,13 +1578,9 @@ model::App_t* GetApp
         {
             processesSections.push_back(sectionPtr);
         }
-        else if (sectionName == "provides")
-        {
-            AddProvidedItems(appPtr, externApiInterfaces, sectionPtr);
-        }
         else if (sectionName == "requires")
         {
-            AddRequiredItems(appPtr, externApiInterfaces, sectionPtr);
+            AddRequiredItems(appPtr, sectionPtr);
         }
         else if (sectionName == "sandboxed")
         {
@@ -1480,8 +1619,8 @@ model::App_t* GetApp
     // Model all process environments and processes.
     AddProcessesSections(appPtr, processesSections);
 
-    // Process IPC API externs.  This must be done after all components and executables have
-    // been modelled.
+    // Process IPC API externs on executables built by the mk tools.
+    // This must be done after all components and executables have been modelled.
     MakeInterfacesExternal(appPtr, externApiInterfaces);
 
     // Process bindings.  This must be done after all the components and executables have been

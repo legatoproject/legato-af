@@ -38,15 +38,6 @@ bindings:
     magicHello.greetClient.hello -> internalGreetServer.greetServer.hello
 }
 
-requires:
-{
-    api: // DEPRECATED
-    {
-//      hello = hello.greetClient.hello
-//      magic = magic.magicClient.magic
-    }
-}
-
 extern:
 {
 //      magic = magicHello.magicClient.magic

@@ -167,6 +167,10 @@ void GenerateManifest
 
     // Get the application's version.
     std::string versionStr = appPtr->version;
+    if (versionStr == "")
+    {
+        versionStr = "unknown";
+    }
 
     if (buildParams.beVerbose)
     {

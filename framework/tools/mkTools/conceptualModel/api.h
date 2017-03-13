@@ -102,7 +102,7 @@ struct ApiRef_t
 {
     ApiFile_t* apiFilePtr;    ///< Pointer to the API file object.
 
-    Component_t* componentPtr;  ///< Pointer to the component.
+    Component_t* componentPtr;  ///< Pointer to the component (NULL if unknown).
 
     const std::string internalName;   ///< Name used inside the component to refer to the interface.
 
@@ -177,7 +177,7 @@ struct Binding_t;
 //--------------------------------------------------------------------------------------------------
 struct ApiInterfaceInstance_t
 {
-    /// Component instance this interface instance belongs to.
+    /// Component instance this interface instance belongs to (NULL = pre-built interface).
     ComponentInstance_t* componentInstancePtr;
 
     std::string name;   ///< Name used to identify this interface to the service directory.

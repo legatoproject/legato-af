@@ -631,6 +631,70 @@ void SetWatchdogTimeout
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a pointer to the API File object for a given .api file path.
+ **/
+//--------------------------------------------------------------------------------------------------
+model::ApiFile_t* GetApiFilePtr
+(
+    const std::string& apiFile,
+    const std::list<std::string>& searchList,   ///< List of dirs to search for .api files.
+    const parseTree::Token_t* tokenPtr  ///< Token to use to throw error exceptions.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto apiFilePtr = model::ApiFile_t::GetApiFile(apiFile);
+
+    if (apiFilePtr == NULL)
+    {
+        apiFilePtr = model::ApiFile_t::CreateApiFile(apiFile);
+
+        // Handler function that gets called for each USETYPES in the .api file.
+        // Finds that .api file and adds it to this .api file's list of includes.
+        auto handler = [&apiFilePtr, &searchList, &tokenPtr](std::string&& dependency)
+        {
+            // Check if there is api suffix and if not add .api, as suffixes are not
+            // required in USETYPES
+            if (!path::HasSuffix(dependency, ".api"))
+            {
+                dependency += ".api";
+            }
+
+            // First look in the same directory as the .api file that is doing the including.
+            auto dir = path::GetContainingDir(apiFilePtr->path);
+            std::string includedFilePath = file::FindFile(dependency, { dir });
+
+            // If not found there, look through the search directory list.
+            if (includedFilePath.empty())
+            {
+                includedFilePath = file::FindFile(dependency, searchList);
+                if (includedFilePath.empty())
+                {
+                    tokenPtr->ThrowException("Can't find dependent .api file: "
+                                             "'" + dependency + "'.");
+                }
+            }
+
+            // Get the API File object for the included file.
+            auto includedFilePtr = GetApiFilePtr(includedFilePath, searchList, tokenPtr);
+
+            // Mark the included file "included".
+            includedFilePtr->isIncluded = true;
+
+            // Add the included file to the list of files included by the including file.
+            apiFilePtr->includes.push_back(includedFilePtr);
+        };
+
+        // Parse the .api file to figure out what it depends on.  Call the handler function
+        // for each .api file that is included.
+        parser::api::GetDependencies(apiFile, handler);
+    }
+
+    return apiFilePtr;
+}
+
+
 
 
 } // namespace modeller
