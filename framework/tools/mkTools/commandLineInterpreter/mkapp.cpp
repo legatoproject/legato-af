@@ -204,6 +204,15 @@ static void GetCommandLineArgs
                                   " This is useful for supporting context-sensitive auto-complete"
                                   " and related features in source code editors, for example."));
 
+    args::AddOptionalFlag(&BuildParams.binPack,
+                          'b',
+                          "bin-pack",
+                          LE_I18N("Generate a binary-app package instead of a .update file."
+                                  " Binary-app packages can be used to distribute an application"
+                                  " without its original source code.  This binary app package file"
+                                  " is intended to be included in a system definition (.sdef) "
+                                  " file's 'apps:' section in place of a .adef file."));
+
     // Any remaining parameters on the command-line are treated as the .adef file path.
     // Note: there should only be one parameter not prefixed by an argument identifier.
     args::SetLooseArgHandler(adefFileNameSet);
@@ -323,6 +332,13 @@ void MakeApp
 
     // Generate code for all the components in the app.
     GenerateCode(appPtr->components, BuildParams);
+
+    // If we're building for binary distribution, then generate the redistributable .adef file to
+    // go with the app.
+    if (BuildParams.binPack)
+    {
+        adefGen::GenerateExportedAdef(appPtr, BuildParams);
+    }
 
     // Generate the build script for the application.
     ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);

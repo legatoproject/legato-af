@@ -115,19 +115,32 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
     const std::string& componentName = componentTokenPtr->text;
     const std::string& interfaceName = interfaceTokenPtr->text;
 
-    // Find the component instance specified.
-    auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+    const std::string fullName = exeName + "." + componentName + "." + interfaceName;
+    auto iter = externServerInterfaces.find(fullName);
 
-    // Find the interface in the component instance's list of server interfaces,
-    auto ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
+    ApiServerInterfaceInstance_t* ifInstancePtr;
 
-    if (ifInstancePtr == NULL)
+    if (iter != externServerInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException(
-            mk::format(LE_I18N("Server interface '%s' not found in component '%s'"
-                               " in executable '%s'."),
-                       interfaceName, componentName, exeName)
-        );
+        ifInstancePtr = iter->second;
+    }
+    else
+    {
+        // Find the component instance specified.
+        auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+        // Find the interface in the component instance's list of server interfaces,
+        ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
+
+        if (ifInstancePtr == NULL)
+        {
+            interfaceTokenPtr->ThrowException(
+                              mk::format(LE_I18N("Server interface '%s' not found in component '%s'"
+                                                 " in executable '%s'."),
+                                         interfaceName,
+                                         componentName,
+                                         exeName));
+        }
     }
 
     return ifInstancePtr;
@@ -156,19 +169,32 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
     const std::string& componentName = componentTokenPtr->text;
     const std::string& interfaceName = interfaceTokenPtr->text;
 
-    // Find the component instance specified.
-    auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+    const std::string fullName = exeName + "." + componentName + "." + interfaceName;
+    auto iter = preBuiltClientInterfaces.find(fullName);
 
-    // Find the interface in the component instance's list of client interfaces,
-    auto ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
+    ApiClientInterfaceInstance_t* ifInstancePtr;
 
-    if (ifInstancePtr == NULL)
+    if (iter != preBuiltClientInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException(
-            mk::format(LE_I18N("Client interface '%s' not found in component '%s'"
-                               " in executable '%s'."),
-                       interfaceName, componentName, exeName)
-        );
+        ifInstancePtr = iter->second;
+    }
+    else
+    {
+        // Find the component instance specified.
+        auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+        // Find the interface in the component instance's list of client interfaces,
+        ifInstancePtr = componentInstancePtr->FindClientInterface(interfaceName);
+
+        if (ifInstancePtr == NULL)
+        {
+            interfaceTokenPtr->ThrowException(
+                        mk::format(LE_I18N("Client interface '%s' not found in component '%s'"
+                                            " in executable '%s'."),
+                                    interfaceName,
+                                    componentName,
+                                    exeName));
+        }
     }
 
     return ifInstancePtr;
@@ -196,10 +222,15 @@ ApiClientInterfaceInstance_t* App_t::FindClientInterface
 
     if (i == externClientInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException(
-            mk::format(LE_I18N("App '%s' has no external client-side interface named '%s'"),
-                       name, interfaceName)
-        );
+        i = preBuiltClientInterfaces.find(interfaceName);
+
+        if (i == preBuiltClientInterfaces.end())
+        {
+            interfaceTokenPtr->ThrowException(
+                    mk::format(LE_I18N("App '%s' has no external client-side interface named '%s'"),
+                               name,
+                               interfaceName));
+        }
     }
 
     return i->second;

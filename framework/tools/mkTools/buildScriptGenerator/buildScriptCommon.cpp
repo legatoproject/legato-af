@@ -211,7 +211,7 @@ void GenerateBuildRules
               "\n";
 
     // Generate a rule for copying a file.
-    script << "rule CopyF\n"
+    script << "rule CopyFile\n"
               "  description = Copying file\n"
               "  command = cp -d -f -T $in $out && $\n"
               "            chmod $modeFlags $out\n"

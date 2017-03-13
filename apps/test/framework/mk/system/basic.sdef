@@ -24,7 +24,5 @@ bindings:
 
 bindings:
 {
-    app1.*.if -> <bar>.if
-//    app1.exe.client.foo -> <bar>.if
     app2.client -> <baz>.server
 }

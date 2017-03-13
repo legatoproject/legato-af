@@ -15,16 +15,10 @@ processes:
     }
 }
 
-provides:   // DEPRECATED
-{
-    api:
-    {
-        hello = greeter.greetServer.hello
-    }
-}
-
 extern:
 {
     snub = snubber.greetServer.hello
     magician.magician.magic
+
+    hello = greeter.greetServer.hello
 }

@@ -1769,6 +1769,81 @@ void Lexer_t::ConvertToName
     tokenPtr->type = parseTree::Token_t::NAME;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Attempt to convert a given token to a DOTTED_NAME token.
+ *
+ * @throw mk::Exception_t if the token contains characters or character sequences that are not
+ * allowed in a DOTTED_NAME.
+ */
+//--------------------------------------------------------------------------------------------------
+void Lexer_t::ConvertToDottedName
+(
+    parseTree::Token_t* tokenPtr,
+    size_t& dotCount
+)
+//--------------------------------------------------------------------------------------------------
+{
+    const char* charPtr = tokenPtr->text.c_str();
+
+    dotCount = 0;
+
+    if (   (!islower(charPtr[0]))
+           && (!isupper(charPtr[0]))
+           && (charPtr[0] != '_') )
+    {
+        throw mk::Exception_t(UnexpectedCharErrorMsg(charPtr[0],
+                                                     tokenPtr->line,
+                                                     tokenPtr->column,
+                                                     LE_I18N("Unexpected character %s"
+                                                             " at beginning of a dotted name."
+                                                             " Dotted names must start"
+                                                             " with a letter ('a'-'z' or 'A'-'Z')"
+                                                             " or an underscore ('_').")));
+    }
+
+    charPtr++;
+
+    while (*charPtr != '\0')
+    {
+        if (*charPtr == '.')
+        {
+            dotCount++;
+            if (*(charPtr + 1) == '.')
+            {
+                throw mk::Exception_t(UnexpectedCharErrorMsg(charPtr[0],
+                                                            tokenPtr->line,
+                                                            tokenPtr->column,
+                                                            LE_I18N("Can not have two consecutive"
+                                                                    " dots, ('..') within a dotted"
+                                                                    " name.")));
+            }
+        }
+        else if (   (!islower(*charPtr))
+                 && (!isupper(*charPtr))
+                 && (!isdigit(*charPtr))
+                 && (*charPtr != '_'))
+        {
+            throw mk::Exception_t(UnexpectedCharErrorMsg(charPtr[0],
+                                                         tokenPtr->line,
+                                                         tokenPtr->column,
+                                                         LE_I18N("Unexpected character %s.  "
+                                                                 "Dotted names may only contain"
+                                                                 " letters ('a'-'z' or 'A'-'Z'),"
+                                                                 " numbers ('0'-'9'),"
+                                                                 " underscores ('_') and"
+                                                                 " periods ('.').")));
+        }
+
+        charPtr++;
+    }
+
+    // Everything looks fine.  Convert token type now.
+    tokenPtr->type = parseTree::Token_t::DOTTED_NAME;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Find if an environment or build variable has been used by the lexer.

@@ -35,6 +35,9 @@ class Lexer_t
         // Attempt to convert a token one type to another.
         void ConvertToName(parseTree::Token_t* tokenPtr);
 
+        // Attempt to convert a given token to a DOTTED_NAME token.
+        void ConvertToDottedName(parseTree::Token_t* tokenPtr, size_t& dotCount);
+
         // Find if a build variable has been used by the lexer in a processing directive
         parseTree::Token_t *FindVarUse(const std::string &name);
 

@@ -33,12 +33,15 @@ static parseTree::Binding_t* ParseBinding
 
     // In a .adef, the binding must be one of the following forms:
     //   External bindings:
-    //      "*.clientInterface -> app.exportedInterface"
     //      "clientExe.clientComponent.clientInterface -> app.exportedInterface"
-    //      "*.clientInterface -> <user>.exportedInterface"
     //      "clientExe.clientComponent.clientInterface -> <user>.exportedInterface"
+    //      "*.clientInterface -> app.exportedInterface"
+    //      "*.clientInterface -> <user>.exportedInterface"
     //   Internal bindings:
     //      "clientExe.clientComponent.clientInterface -> serverExe.serverComponent.serverInterface"
+    //      "clientExe.clientComponent.clientInterface -> *.serverInterface"
+    //      "*.clientInterface -> serverExe.serverComponent.serverInterface"
+    //      "*.clientInterface -> *.serverInterface"
 
     // Match the client side first.
     if (lexer.IsMatch(parseTree::Token_t::STAR))
@@ -59,18 +62,36 @@ static parseTree::Binding_t* ParseBinding
     // ->
     (void)lexer.Pull(parseTree::Token_t::ARROW);
 
-    // Match the server side.
-    auto firstServerTokenPtr = lexer.Pull(parseTree::Token_t::IPC_AGENT);
-    bindingPtr->AddContent(firstServerTokenPtr);
-    (void)lexer.Pull(parseTree::Token_t::DOT);
-    bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
-    if (lexer.IsMatch(parseTree::Token_t::DOT))
+    // Match the server side.  Can be
+    //  "serverExe.serverComponent.serverInterface" (internal server)
+    //  "app.exportedInterface"                     (external server in app)
+    //  "<user>.exportedInterface"                  (external non-app server)
+    //  "*.serverInterface"                         (internal pre-built binary server)
+    if (lexer.IsMatch(parseTree::Token_t::STAR))
     {
-        // The first part of the server-side specification is actually an exe name.
-        lexer.ConvertToName(firstServerTokenPtr);
-
+        //  "*.serverInterface"                         (internal pre-built binary server)
+        auto starPtr = lexer.Pull(parseTree::Token_t::STAR);
+        bindingPtr->AddContent(starPtr);
         (void)lexer.Pull(parseTree::Token_t::DOT);
         bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+    }
+    else
+    {
+        // Assume it's going to be an external binding, so the first part is an app name or <user>.
+        auto firstServerTokenPtr = lexer.Pull(parseTree::Token_t::IPC_AGENT);
+        bindingPtr->AddContent(firstServerTokenPtr);
+        (void)lexer.Pull(parseTree::Token_t::DOT);
+        bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+
+        // But, if there's a second '.', then it must be an internal binding.
+        if (lexer.IsMatch(parseTree::Token_t::DOT))
+        {
+            // The first part of the server-side specification is actually an exe name.
+            lexer.ConvertToName(firstServerTokenPtr);
+
+            (void)lexer.Pull(parseTree::Token_t::DOT);
+            bindingPtr->AddContent(lexer.Pull(parseTree::Token_t::NAME));
+        }
     }
 
     return bindingPtr;
@@ -235,6 +256,134 @@ static parseTree::CompoundItem_t* ParseProcessesSubsection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse an API item from inside a "required:" subsection within an "extern:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::RequiredApi_t* ParseExternRequiredApi
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    parseTree::Token_t* aliasPtr = NULL;
+
+    // Assume there's only a file path.
+    parseTree::Token_t* apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+
+    // If there's an '=' following it, then attempt to convert it into an alias (NAME)
+    // and pull out the '=' and the actual API file path.
+    if (lexer.IsMatch(parseTree::Token_t::EQUALS))
+    {
+        size_t dotCount;
+
+        lexer.ConvertToDottedName(apiFilePathPtr, dotCount);
+
+        if (   (dotCount != 0)
+            && (dotCount != 2))
+        {
+            lexer.ThrowException(LE_I18N("Wrong number of parts in client-side interface name. Must"
+                                         " be either a single interface name or an executable name,"
+                                         " component name and interface name separated by dots"
+                                         " (e.g., \"exeName.componentName.ifName\""));
+        }
+
+        aliasPtr = apiFilePathPtr;
+        (void)lexer.Pull(parseTree::Token_t::EQUALS);
+        apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+    }
+
+    // Create parse tree node for this.
+    parseTree::Token_t* firstPtr = (aliasPtr != NULL ? aliasPtr : apiFilePathPtr);
+    auto apiPtr = new parseTree::RequiredApi_t(firstPtr);
+
+    // Add its contents.
+    if (aliasPtr != NULL)
+    {
+        apiPtr->AddContent(aliasPtr);
+    }
+    apiPtr->AddContent(apiFilePathPtr);
+
+    // Accept an [optional] option flag, if present.
+    if (lexer.IsMatch(parseTree::Token_t::CLIENT_IPC_OPTION))
+    {
+        apiPtr->AddContent(lexer.Pull(parseTree::Token_t::CLIENT_IPC_OPTION));
+
+        if (lexer.IsMatch(parseTree::Token_t::CLIENT_IPC_OPTION))
+        {
+            lexer.ThrowException(LE_I18N("Only one option is allowed for client-side interfaces on"
+                                         " pre-built executables."));
+        }
+    }
+
+    return apiPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse an API item from inside a "provided:" subsection within an "extern:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::ProvidedApi_t* ParseExternProvidedApi
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    parseTree::Token_t* aliasPtr = NULL;
+
+    // Assume there's only a file path.
+    parseTree::Token_t* apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+
+    // If there's an '=' following it, then attempt to convert it into an alias (NAME)
+    // and pull out the '=' and the actual API file path.
+    if (lexer.IsMatch(parseTree::Token_t::EQUALS))
+    {
+        size_t dotCount;
+
+        lexer.ConvertToDottedName(apiFilePathPtr, dotCount);
+
+        if (   (dotCount != 0)
+            && (dotCount != 2))
+        {
+            lexer.ThrowException(LE_I18N("Wrong number of parts in server-side interface name. Must"
+                                         " be either a single interface name or an executable name,"
+                                         " component name and interface name separated by dots"
+                                         " (e.g., \"exeName.componentName.ifName\""));
+        }
+
+        aliasPtr = apiFilePathPtr;
+        (void)lexer.Pull(parseTree::Token_t::EQUALS);
+        apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
+    }
+
+    // Create a new Provided API item.
+    parseTree::Token_t* firstPtr = (aliasPtr != NULL ? aliasPtr : apiFilePathPtr);
+    auto apiPtr = new parseTree::ProvidedApi_t(firstPtr);
+
+    // Add its contents.
+    if (aliasPtr != NULL)
+    {
+        apiPtr->AddContent(aliasPtr);
+    }
+    apiPtr->AddContent(apiFilePathPtr);
+
+    if (lexer.IsMatch(parseTree::Token_t::SERVER_IPC_OPTION))
+    {
+        lexer.ThrowException(LE_I18N("No options are valid for server-side interfaces on"
+                                     " pre-built executables."));
+    }
+
+    return apiPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse an API interface item from inside an "extern:" section.
  *
  * @return Pointer to the item.
@@ -242,17 +391,17 @@ static parseTree::CompoundItem_t* ParseProcessesSubsection
 //--------------------------------------------------------------------------------------------------
 static parseTree::TokenList_t* ParseExternApiInterface
 (
-    Lexer_t& lexer
+    Lexer_t& lexer,
+    parseTree::Token_t* firstTokenPtr   ///< Ptr to the first token in the extern API interface.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Must be of the form "alias = exe.component.interface"
-    // or "exe.component.interface" (without the alias).
-
-    auto firstTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
     auto ifPtr = parseTree::CreateTokenList(parseTree::CompoundItem_t::EXTERN_API_INTERFACE,
                                             firstTokenPtr);
     ifPtr->AddContent(firstTokenPtr);
+
+    // Must be of the form "alias = exe.component.interface"
+    // or "exe.component.interface" (without the alias).
 
     if (lexer.IsMatch(parseTree::Token_t::EQUALS) || lexer.IsMatch(parseTree::Token_t::WHITESPACE))
     {
@@ -273,32 +422,45 @@ static parseTree::TokenList_t* ParseExternApiInterface
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Parse a subsection inside a "provides:" section.
+ * Parse an item from inside an "extern:" section.
  *
  * @return Pointer to the item.
  */
 //--------------------------------------------------------------------------------------------------
-static parseTree::CompoundItem_t* ParseProvidesSubsection
+static parseTree::CompoundItem_t* ParseExternItem
 (
     Lexer_t& lexer
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto subsectionNameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
+    // Could be either an extern API interface or a "requires:" or "provides:" subsection.
+    // All of these start with a name.
+    auto nameTokenPtr = lexer.Pull(parseTree::Token_t::NAME);
 
-    const std::string& subsectionName = subsectionNameTokenPtr->text;
-
-    if (subsectionName == "api")
+    // If it's a ':' next, then it must be a subsection.
+    if (lexer.IsMatch(parseTree::Token_t::COLON))
     {
-        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseExternApiInterface);
+        const std::string& name = nameTokenPtr->text;
+
+        if (name == "requires")
+        {
+            return ParseComplexSection(lexer, nameTokenPtr, ParseExternRequiredApi);
+        }
+        else if (name == "provides")
+        {
+            return ParseComplexSection(lexer, nameTokenPtr, ParseExternProvidedApi);
+        }
+        else
+        {
+            lexer.ThrowException(
+                mk::format(LE_I18N("Unexpected subsection name '%s' in 'extern' section."),
+                           nameTokenPtr));
+        }
     }
+    // If a ':' is not next, then it must be an extern API interface.
     else
     {
-        lexer.ThrowException(
-            mk::format(LE_I18N("Unexpected subsection name '%s' in 'provides' section."),
-                       subsectionName)
-        );
-        return NULL;
+        return ParseExternApiInterface(lexer, nameTokenPtr);
     }
 }
 
@@ -387,15 +549,7 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
 
     const std::string& subsectionName = subsectionNameTokenPtr->text;
 
-    if (subsectionName == "api")
-    {
-        subsectionNameTokenPtr->PrintWarning(LE_I18N("'api' subsection in 'requires' section is "
-                                                     "deprecated in .adef files.  "
-                                                     "Use the extern section instead."));
-
-        return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseExternApiInterface);
-    }
-    else if (subsectionName == "configTree")
+    if (subsectionName == "configTree")
     {
         return ParseComplexSection(lexer, subsectionNameTokenPtr, ParseRequiredConfigTree);
     }
@@ -415,8 +569,7 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
     {
         lexer.ThrowException(
             mk::format(LE_I18N("Unexpected subsection name '%s' in 'requires' section."),
-                       subsectionName)
-        );
+                       subsectionName));
         return NULL;
     }
 }
@@ -469,7 +622,7 @@ static parseTree::CompoundItem_t* ParseSection
     }
     else if (sectionName == "extern")
     {
-        return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseExternApiInterface);
+        return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseExternItem);
     }
     else if (sectionName == "groups")
     {
@@ -478,13 +631,6 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "processes")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseProcessesSubsection);
-    }
-    else if (sectionName == "provides")
-    {
-        sectionNameTokenPtr->PrintWarning(LE_I18N("'provides' section is deprecated in .adef files."
-                                                  " Use the extern section instead."));
-
-        return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseProvidesSubsection);
     }
     else if (sectionName == "requires")
     {

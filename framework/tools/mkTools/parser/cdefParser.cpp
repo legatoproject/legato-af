@@ -45,7 +45,7 @@ static parseTree::ProvidedApi_t* ParseProvidedApi
         apiFilePathPtr = lexer.Pull(parseTree::Token_t::FILE_PATH);
     }
 
-    // Create a new token list item.
+    // Create a new Provided API item.
     parseTree::Token_t* firstPtr = (aliasPtr != NULL ? aliasPtr : apiFilePathPtr);
     auto apiPtr = new parseTree::ProvidedApi_t(firstPtr);
 

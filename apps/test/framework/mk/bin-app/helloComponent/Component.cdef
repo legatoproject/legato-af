@@ -1,0 +1,37 @@
+
+sources:
+{
+    hello.c
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_info.api
+    }
+}
+
+provides:
+{
+    api:
+    {
+        $CURDIR/../interfaces/greet.api
+    }
+}
+
+bundles:
+{
+    file:
+    {
+              $CURDIR/data/a.dat  /bin/qbert.dat
+              $CURDIR/data/b.dat  /lib/
+        [wr]  $CURDIR/data/c.dat  /foo/
+    }
+
+    dir:
+    {
+        $CURDIR/data /data
+    }
+}

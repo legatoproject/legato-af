@@ -2,7 +2,7 @@
 
 This topic provides details about Legato's Application Definition file.
 
-See @ref howToSecurity for details on how to @ref howToSecuritySandboxConfigSample and understand
+See @ref howToSecurity for details on how to @ref howToSecuritySandboxUse and understand
 @ref howToSecuritySandboxLimits_app "app" and @ref howToSecuritySandboxLimits_process "process"
 limits.
 
@@ -57,20 +57,38 @@ bindings:
 }
 @endcode
 
-If client-side code was built using the @c ifgen tool or
-@ref buildToolsmkcomp or @ref buildToolsmkexe with requires or bundles sections,
-the tool reading your .adef file won't know about the client-side interface. Use a special
-work-around to bind those interfaces:
+If client-side code was built using the @ref buildToolsifgen tool, the code built using
+@ref buildToolsmkcomp or @ref buildToolsmkexe and the pre-built executable was added to the app
+using a @c requires: or @c bundles: section then the tool reading your @c .adef file won't know
+about the client-side interface.
+
+You will need to use the following work-around to bind the interfaces:
 
 @code
 bindings:
 {
-    *.le_data -> dataConnectionService.le_data
+*   *.le_data -> dataConnectionService.le_data
 }
 @endcode
 
 This would bind any unknown client-side @c le_data interfaces in the current app to the @c le_data
 server-side interface on the @c dataConnectionService app.
+
+If server-side code was built using the @ref buildToolsifgen tool and a compiler or using
+the mk tools and this executable was added to your app using a @c requires: or @c bundles: section,
+the tool reading your @c .adef file won't know about the server-side interface. Use this
+work-around if you need to bind to one of those interfaces inside your own app:
+
+@code
+bindings:
+{
+    clientExe.clientComponent.clientInterface -> *.le_data
+}
+@endcode
+
+This would bind the known client-side interface <c>clientExe.clientComponent.clientInterface</c>
+to the unknown server-side @c le_data interface served by a pre-built executable inside the current
+app.
 
 @section defFilesAdef_bundles bundles
 
@@ -446,19 +464,19 @@ Process name and command-line arguments are optional.
 @code
 run:
 {
-    ( myexe )
+    ( myExe )
 }
 @endcode
 
 If the process name isn't specified, then the process will be given the same name as the
-executable it's running (e.g.  @c myexe)
+executable it's running (e.g.  @c myExe)
 
 A given executable can be launched multiple times.
 @code
 run:
 {
-    process1 = ( myexe )
-    process2 = ( myexe )
+    process1 = ( myExe )
+    process2 = ( myExe )
 }
 @endcode
 
@@ -466,14 +484,14 @@ Command-line arguments passed to the process when started can appear after the e
 @code
 run:
 {
-    ( myexe --foo )
+    ( myExe --foo )
 }
 @endcode
 
 @code
 run:
 {
-    ( myexe --bar  // Note that the command-line can be broken into multiple lines for readability.
+    ( myExe --bar  // Note that the command-line can be broken into multiple lines for readability.
             --toto ) // And it can be commented too.
 }
 @endcode
@@ -539,9 +557,9 @@ Processes with any realtime priority will preempt processes with high, medium, l
 idle priorities.
 
 @warning Processes assigned realtime priorities preempt Legato framework processes.
-         Ensure that your design relinquinshes the CPU appropriately. Processes assigned a
-         realtime priority aren't constrained by an app's cpu share even if the process later changes
-         to a non-realtime priority. This also applies to all threads the process spawns.
+         Ensure that your design relinquishes the CPU appropriately. Processes assigned a
+         realtime priority aren't constrained by an app's cpu share even if the process later
+         changes to a non-realtime priority. This also applies to all threads the process spawns.
 
 @code
 priority: medium
@@ -642,9 +660,38 @@ watchdogTimeout: never  // Disable watchdog for these processes.
 
 @section defFilesAdef_extern extern
 
-Declares that an IPC API interface is available for binding via
-@ref defFilesSdef_bindings ".sdef file's bindings section"
-or @ref defFilesAdef_bindings ".adef file's bindings section".
+Externs indicate which of your app's IPC API interfaces should be made available for binding to the
+IPC API interfaces of other apps. (The binding is preferably done in @ref defFilesSdef_bindings 
+"a .sdef file's bindings section", but may also be done in @ref defFilesAdef_bindings
+"a .adef file's bindings section".)
+
+For example,
+
+@code
+extern:
+{
+    aliasName = exeName.componentName.interfaceName
+}
+@endcode
+
+This also creates an alias for each interface that doesn't include any internal implementation
+details of your app.
+
+Inside your app, its interfaces are identified using the names of the executables and components
+that implement them.  Exposing these details outside your app can create maintainability problems
+later (see https://en.wikipedia.org/wiki/Information_hiding).
+
+Externally, the interface will be identified using the app name and the external alias
+(@c appName.aliasName), thereby hiding from other apps the details of which executable and component
+implements the interface.  Encapsulating the app's implementation details allows them to be changed
+later without affecting other apps that communicate with this app.  Only if an app's external
+interface changes would any other app be affected.
+
+Use period characters  ('.') to seperate components of an interface.  (E.g., executables,
+components, interface names.)  External aliases must not contain any period characters ('.').
+
+When the external alias has the same name that the component uses as the interface name, it's
+possible to save time by omitting the <c>aliasName =</c> part.  For example,
 
 @code
 extern:
@@ -653,25 +700,15 @@ extern:
 }
 @endcode
 
-Internal interface instances are identified by the executable, component, and
-interface names.  The different interface instance identifier parts are
-separated by a period (‘.’).
-
-Outside the app, the interface will be identified using the app name and the interface name
-(<c>appName.interfaceName</c>), thereby hiding from other apps the details of what executable
-and component within the app implements the interface.
-
-To have other apps see an interface with a different name,
-add <c> differentName = </c> in front of the interface specification:
+This is equivalent to
 
 @code
 extern:
 {
-    differentName = exeName.componentName.interfaceName
+    interfaceName = exeName.componentName.interfaceName
 }
 @endcode
 
-The interface will then appear outside the app as <c>appName.differentName</c>.
 
 @subsection defFilesAdef_externServer Server-side Example
 
@@ -703,6 +740,90 @@ extern:
 
 If this app were called thermostat, then to outsiders (e.g., in a @c .sdef file or another app's
 @c .adef file), the interface would be called <c>thermostat.temperature</c>.
+
+@subsection defFilesAdef_externBinding Binding Example
+
+To bind the client-side interface to the server-side interface (service) defined above, a @c .sdef
+file could contain the following:
+
+@code
+bindings:
+{
+    thermostat.temperature -> thermometer.spaceTemp
+}
+@endcode
+
+
+@subsection defFilesAdef_externRequiresProvides requires and provides
+
+The @c requires: and @c provides: subsections within the @c extern: section are used only when apps
+contain pre-built binary executables that have Legato IPC API interfaces.  For example, when someone
+uses @ref buildToolsifgen to generate code that they compile into an executable and add to their
+app using a @c bundles: section in a @c .cdef or @c .adef file, then the Legato build tools
+(@ref buildToolsmkapp or @ref buildToolsmksys) can't tell that this executable has IPC interfaces
+available for binding.
+
+@note @c requires: and @c provides: subsections are generated by @ref buildToolsmkapp when the
+@c --bin-pack command-line option is used to generate a pre-built binary version of an app.  While
+the @c requires: and @c provides: subsections @e can be used within the @c extern: section in
+situations like the example given above, they are not normally used in hand-coded @c .adef files.
+
+@code
+extern:
+{
+    provides:
+    {
+        spaceTemp = $CURDIR/interfaces/temperature.api
+    }
+}
+@endcode
+
+Service "spaceTemp" implements the IPC API defined in @c interfaces/temperature.api under the
+directory containing the @c .adef file.
+
+@code
+extern:
+{
+    requires:
+    {
+        temperature = $CURDIR/interfaces/temperature.api
+    }
+}
+@endcode
+
+The app has a client-side interface called "temperature" that requires a service that implements the
+IPC API defined in <c>interfaces/temperature.api</c> under the directory containing the app's
+@c .adef file.  The app's "temperature" interface must be bound to a service that implements this temperature API using a @c bindings: section in a @c .sdef file
+
+@code
+bindings:
+{
+    clientApp.temperature -> serverApp.spaceTemp
+}
+@endcode
+
+or elsewhere in the app's @c .adef file
+
+@code
+bindings:
+{
+*   *.temperature -> serverApp.spaceTemp
+}
+@endcode
+
+Client-side pre-built interfaces can be marked "optional" to tell @ref buildToolsmksys not to
+generate an error if the interface is not bound to anything.
+
+@code
+extern:
+{
+    requires:
+    {
+        temperature = $CURDIR/interfaces/temperature.api [optional]
+    }
+}
+@endcode
+
 
 @section defFilesAdef_requires requires
 
@@ -997,7 +1118,7 @@ version: 0.3a
 @endcode
 
 @note
- - The @b <c>--append-to-version</c> option to @c mkapp can be used to add to the app's
+ - The @b <c>--append-to-version</c> option to @ref buildToolsmkapp can be used to add to the app's
    version string.
  - <b><c>app foo version</c></b> can be run on-target to get the version string of the app called "foo".
 

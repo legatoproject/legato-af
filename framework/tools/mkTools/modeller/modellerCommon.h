@@ -188,6 +188,19 @@ void SetWatchdogTimeout
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a pointer to the API File object for a given .api file path.
+ **/
+//--------------------------------------------------------------------------------------------------
+model::ApiFile_t* GetApiFilePtr
+(
+    const std::string& apiFile,
+    const std::list<std::string>& searchList,   ///< List of dirs to search for .api files.
+    const parseTree::Token_t* tokenPtr  ///< Token to use to throw error exceptions.
+);
+
+
 
 } // namespace modeller
 

@@ -50,8 +50,6 @@ void GenerateBuildStatements
     const model::Module_t* modulePtr,
     const mk::BuildParams_t& buildParams
 )
-
-
 //--------------------------------------------------------------------------------------------------
 {
     script << "build " << "$builddir/" << modulePtr->koFilePtr->path << ": ";

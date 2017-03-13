@@ -324,7 +324,12 @@ std::string GetSysRootPath
     }
 
     // Close the connection and collect the exit code from the compiler.
-    int result = pclose(output);
+    int result;
+    do
+    {
+        result = pclose(output);
+
+    } while ((result == -1) && (errno == EINTR));
 
     if (result == -1)
     {

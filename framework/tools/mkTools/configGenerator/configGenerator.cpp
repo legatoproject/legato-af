@@ -676,9 +676,17 @@ static void GenerateBindingsConfig
             }
         }
     }
-    for (const auto& mapEntry: appPtr->wildcardBindings)
+    for (const auto& mapEntry: appPtr->preBuiltClientInterfaces)
     {
-        GenerateBindingConfig(cfgStream, mapEntry.second);
+        const auto interfacePtr = mapEntry.second;
+
+        if (interfacePtr->bindingPtr == NULL)
+        {
+            throw mk::Exception_t("Binary app '" + appPtr->name + "' interface binding '" +
+                                  interfacePtr->ifPtr->apiFilePtr->defaultPrefix + "' missing.");
+        }
+
+        GenerateBindingConfig(cfgStream, interfacePtr->bindingPtr);
     }
 
     cfgStream << "  }" << std::endl << std::endl;

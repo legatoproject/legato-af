@@ -72,13 +72,18 @@ struct App_t
     /// Map of configuration tree names to access permissions (see permissions.h).
     std::map<std::string, Permissions_t> configTrees;
 
-    // Set of "wildcard bindings" for this app, keyed by client interface name.
-    std::map<std::string, Binding_t*> wildcardBindings;
+    /// Set of server-side IPC API interfaces provided by pre-built binaries in this app.
+    /// Keyed by server interface name.
+    std::map<std::string, ApiServerInterfaceInstance_t*> preBuiltServerInterfaces;
 
-    // Map of server interfaces that external entities can bind to (key is external name).
+    /// Set of client-side IPC API interfaces required by pre-built binaries in this app.
+    /// Keyed by client interface name.
+    std::map<std::string, ApiClientInterfaceInstance_t*> preBuiltClientInterfaces;
+
+    /// Map of server interfaces that external entities can bind to (key is external name).
     std::map<std::string, ApiServerInterfaceInstance_t*> externServerInterfaces;
 
-    // Map of client interfaces marked for later binding to external services (key is external name)
+    /// Map of client interfaces marked for later binding to external services (key is external name)
     std::map<std::string, ApiClientInterfaceInstance_t*> externClientInterfaces;
 
     // Function for finding component instance.  Throw exception if not found.

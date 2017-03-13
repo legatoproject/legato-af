@@ -19,10 +19,18 @@ binaries
 # Update pack files
 *.update
 
+# Binary app files
+*.localhost.app
+*.virt.app
+*.wp85.app
+
 # Vim
 *.swp
 *.swo
 *.swn
+
+# Visual Studio Code
+.vscode
 
 # Emacs
 *~

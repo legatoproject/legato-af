@@ -20,6 +20,18 @@ struct FileSystemObject_t
     /// Constructor
     FileSystemObject_t(const parseTree::TokenList_t* tokenListPtr): parseTreePtr(tokenListPtr) {}
 
+    FileSystemObject_t
+    (
+        const std::string& newSrcPath,
+        const std::string& destPath,
+        const Permissions_t& permissions
+    )
+    :   srcPath(newSrcPath),
+        destPath(destPath),
+        permissions(permissions)
+    {
+    }
+
     const parseTree::TokenList_t* parseTreePtr;   ///< Pointer to related object in the parse tree.
 
     std::string srcPath;        ///< File system path where the object is found.
