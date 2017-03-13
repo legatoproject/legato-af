@@ -754,6 +754,7 @@ COMPONENT_INIT
                 }
                 else if (LE_NOT_POSSIBLE == res)
                 {
+                    FsPrefixPtr = NULL;
                     tempFsPrefixPtr++;
                 }
                 else
@@ -763,6 +764,16 @@ COMPONENT_INIT
                     goto end;
                 }
             }
+            else
+            {
+                LE_ERROR("Failed to access \"%s\": %m", *tempFsPrefixPtr);
+                tempFsPrefixPtr++;
+            }
+        }
+        else
+        {
+            FsPrefixPtr = *tempFsPrefixPtr;
+            break;
         }
     }
     while (*tempFsPrefixPtr);
@@ -771,6 +782,10 @@ end:
     if (NULL == FsPrefixPtr)
     {
         LE_CRIT("fsService is unusable because no valid prefix path");
+    }
+    else
+    {
+        LE_INFO("Daemon started: FS prefix path \"%s\"", FsPrefixPtr);
     }
 
     le_cfg_CancelTxn(fsPrefixCfg);
