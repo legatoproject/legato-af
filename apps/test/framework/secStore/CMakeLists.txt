@@ -37,4 +37,6 @@ mkapp(  secStoreTestGlobal.adef
             secStoreTestGlobal/*
      )
 
-add_subdirectory(secStoreUnitTest)
+if ($ENV{TARGET} MATCHES "localhost")
+    add_subdirectory(secStoreUnitTest)
+endif()

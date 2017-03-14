@@ -22,7 +22,9 @@ function(add_secstore_test TEST_NAME)
         -i ${LEGATO_ROOT}/framework/c/src
         -i ${LEGATO_ROOT}/framework/c/src/appCfg
         -i ${PA_DIR}/simu/components/le_pa_secStore
+        -i ${PA_DIR}/simu/components/simuConfig
         -C "-fvisibility=default -g"
+        --cflags="-DWITHOUT_SIMUCONFIG"
         ${CFLAGS}
         ${LFLAGS}
     )

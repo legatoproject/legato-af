@@ -8,6 +8,7 @@ OFFSET_PORT=${OFFSET_PORT:=10000}
 TELNET_PORT=${TELNET_PORT:=$(($OFFSET_PORT + 21))}
 SSH_PORT=${SSH_PORT:=$(($OFFSET_PORT + 22))}
 SIMU_PORT=${SIMU_PORT:=$(($OFFSET_PORT + 5000))}
+ONLY_PREPARE=${ONLY_PREPARE:-0}
 
 ROOTFS_METHOD=-sd
 
@@ -30,11 +31,13 @@ if [[ "$1" == "--help" ]]; then
     echo -e ""
     echo -e "ENVIRONMENT"
     echo -e "\tThis script is parametrized through environment variables."
+    echo -e "\t\tONLY_PREPARE: Do not run qemu, only prepare the environment"
     echo -e "\t\tOPT_LEGATO_IMG: Path to a Legato image"
     echo -e "\t\tOPT_TARGET: Platform to emulate"
     echo -e "\t\tOPT_PERSIST: Make changes to the image persistant or not"
     echo -e "\t\tOPT_KMESG: Kernel messages to console"
     echo -e "\t\tOPT_GDB: Launch GDB server to qemu"
+    echo -e "\t\tOPT_KVM: Enable Hardware Acceleration (KVM)"
     echo -e "\t\tOPT_SERIAL: Bearer for serial port"
     echo -e "\t\t            - (blank, default) = Serial to console"
     echo -e "\t\t            - telnet = Serial to telnet"
@@ -69,6 +72,11 @@ fi
 # GDB Server
 if [ -z "$OPT_GDB" ]; then
     OPT_GDB=0
+fi
+
+# KVM
+if [ -z "$OPT_KVM" ]; then
+    OPT_KVM=0
 fi
 
 # Serial
@@ -257,11 +265,13 @@ function create_snapshot {
     check_ret
 }
 
-verlte() {
+# Version compare: less than or equal
+function verlte {
     [  "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
 }
 
-verlt() {
+# Version compare: less than
+function verlt {
     [ "$1" = "$2" ] && return 1 || verlte $1 $2
 }
 
@@ -304,7 +314,9 @@ function find_qemu_bin {
 
     if [ -z "$best_bin" ]; then
         message $COLOR_ERROR "Unable to find qemu candidate for '$qemu_bin_name', please install qemu"
-        exit 1
+        if [[ "$ONLY_PREPARE" != 1 ]]; then
+            exit 1
+        fi
     fi
 
     QEMU_BIN=$best_bin
@@ -346,23 +358,28 @@ fi
 function configure_virt_common {
     message $COLOR_TITLE "Virtual target ($VIRT_TARGET_ARCH)"
 
-    fetch_image $OPT_TARGET 'yocto'
+    if [ -z "$KERNEL_IMG" ] && [ -z "$ROOTFS_IMG" ]; then
+        fetch_image $OPT_TARGET 'yocto'
 
-    # Let the image define it's own default arguments for QEmu.
-    # It is still possible to override them after that.
-    if [ -e $USER_DIR/img-$OPT_TARGET/qemu-config ]; then
-        source $USER_DIR/img-$OPT_TARGET/qemu-config
+        # Let the image define it's own default arguments for QEmu.
+        # It is still possible to override them after that.
+        if [ -e $USER_DIR/img-$OPT_TARGET/qemu-config ]; then
+            source $USER_DIR/img-$OPT_TARGET/qemu-config
+        fi
+
+        KERNEL_IMG="$USER_DIR/img-$OPT_TARGET/kernel"
+        ROOTFS_IMG="$USER_DIR/img-$OPT_TARGET/rootfs.qcow2"
     fi
 
-    KERNEL_IMG=$USER_DIR/img-$OPT_TARGET/kernel
-    ROOTFS_IMG=$USER_DIR/img-$OPT_TARGET/rootfs.qcow2
+    if [ -z "$LEGATO_IMG" ]; then
+        LEGATO_IMG="$USER_DIR/img-$OPT_TARGET/legato.squashfs"
 
-    LEGATO_IMG="$USER_DIR/img-$OPT_TARGET/legato.squashfs"
-    if [ -e "$LEGATO_ROOT/build/virt/legato.squashfs" ]; then
-        # Use the local image if available
-        ln -sf $LEGATO_ROOT/build/virt/legato.squashfs $LEGATO_IMG
-    else
-        fetch_image $OPT_TARGET 'legato'
+        if [ -e "$LEGATO_ROOT/build/virt/legato.squashfs" ]; then
+            # Use the local image if available
+            ln -sf $LEGATO_ROOT/build/virt/legato.squashfs $LEGATO_IMG
+        else
+            fetch_image $OPT_TARGET 'legato'
+        fi
     fi
 }
 
@@ -393,8 +410,8 @@ else
     message $COLOR_MSG "Volatile mode (changes won't be committed to the rootfs)"
     ARG_PERSIST="-snapshot"
 
-    mkdir -p $USER_DIR/img-$TARGET
-    ROOTFS_IMG_VOLATILE=$USER_DIR/img-$TARGET/rootfs.snapshot
+    mkdir -p $USER_DIR/img-$OPT_TARGET
+    ROOTFS_IMG_VOLATILE=$USER_DIR/img-$OPT_TARGET/rootfs.snapshot
 
     # Create snapshot from real rootfs if it doesn't exist
     if ! [ -e "$ROOTFS_IMG_VOLATILE" ]; then
@@ -405,7 +422,7 @@ fi
 
 # Legato image
 if [ -e "$LEGATO_IMG" ]; then
-    ARG_LEGATO="-hdb ${LEGATO_IMG}"
+    ARG_LEGATO="-drive format=raw,index=1,file=${LEGATO_IMG}"
 fi
 
 # Kernel Messages
@@ -420,6 +437,11 @@ fi
 if [ "$OPT_GDB" -eq 1 ]; then
     message $COLOR_MSG "GDB Server"
     ARG_GDB="-s"
+fi
+
+# KVM
+if [[ "$OPT_KVM" == "1" ]] && [[ "$OPT_TARGET" == "virt-x86"* ]]; then
+    ARG_KVM="--enable-kvm"
 fi
 
 # Serial
@@ -470,7 +492,7 @@ else
 fi
 
 # Sound
-if pulseaudio --check; then
+if which pulseaudio > /dev/null && pulseaudio --check; then
     message $COLOR_INFO " => Sound through PulseAudio"
     export QEMU_AUDIO_DRV=pa
 else
@@ -480,7 +502,7 @@ fi
 
 # QEmu Pid file
 if true; then
-    PID_FILE=$USER_DIR/qemu.pid
+    PID_FILE=${PID_FILE:-$USER_DIR/qemu.pid}
 
     if [ -e "$PID_FILE" ]; then
         PID=$(cat $PID_FILE)
@@ -528,7 +550,7 @@ message $COLOR_MSG " => $CMDLINE"
 message $COLOR_MSG "QEmu binary ($QEMU_ARCH):"
 message $COLOR_MSG " => $QEMU_BIN ($QEMU_VERSION)"
 
-ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB"
+ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM"
 message $COLOR_MSG "QEmu arguments:"
 message $COLOR_MSG " => $ARGS"
 
@@ -536,6 +558,11 @@ message $COLOR_OK "Starting ..."
 
 if [ "$OPT_KMESG" -ne 1 ]; then
    message $COLOR_WARN " Kernel logs disabled, it should take few seconds to boot"
+fi
+
+if [[ "$ONLY_PREPARE" == 1 ]]; then
+    message $COLOR_MSG "Only preparing"
+    exit 0
 fi
 
 $QEMU_BIN $ARGS -append "$CMDLINE"

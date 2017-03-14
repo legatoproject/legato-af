@@ -65,39 +65,32 @@ CheckRet()
 
 echo "Building app $APP_NAME."
 mkapp $APP_NAME.adef -t $TARGET_TYPE
-
 CheckRet
 
 echo "Installing app $APP_NAME on the target."
 app install $APP_NAME.$TARGET_TYPE.update $TARGET_IP
-
 CheckRet
 
 echo "Tracing app $APP_NAME on the target."
 # -t to create a remote interactive shell.  Make the shell trap the SIGINT so that ctrl-c does not
 # kill the shell but does get passed to sbtrace.
 SshToTarget -t "trap '' 2; $BIN_PATH/sbtrace $APP_NAME -o /tmp/traceReq"
-
 CheckRet
 
 # Check if the file exists.
 SshToTarget "test -e /tmp/traceReq"
-
 if [ $? -eq 0 ]; then
     echo "Appending result of trace to adef file." &&
     printf "\n" >> $APP_NAME.adef &&
     SshToTarget "cat /tmp/traceReq" >> $APP_NAME.adef
-
     CheckRet
 
     echo "Rebuilding app $APP_NAME."
     mkapp $APP_NAME.adef -t $TARGET_TYPE
-
     CheckRet
 
     echo "Re-installing app $APP_NAME on the target."
     app install $APP_NAME.$TARGET_TYPE.update $TARGET_IP
-
     CheckRet
 
     echo "Done tracing and rebuilding app $APP_NAME."

@@ -72,6 +72,7 @@ TestMatches () {
 #---------------------------------------------------------------------------------------------------
 InstallApp () {
     app=$1
+    checkOk=${2:-true}
     file=$app
 
     if ! [ -e $file ]; then
@@ -89,7 +90,36 @@ InstallApp () {
 
     echo "Installing '$app' (instapp $file $targetAddr)"
     instapp $file $targetAddr
-    CheckRet
+    ret=$?
+
+    if [ $ret -ne 0 ]; then
+        if [[ "$checkOk" == "true" ]]; then
+            echo "Install failed"
+            exit 1
+        else
+            echo "Install failed: ignoring"
+        fi
+    fi
+
+    return $ret
+}
+
+#---------------------------------------------------------------------------------------------------
+# Return 0 if given app is running, and 1 otherwise.
+#---------------------------------------------------------------------------------------------------
+IsAppRunning () {
+    local appName=$1
+
+    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"running\"")
+
+    if [ $numMatches -eq 0 ]
+    then
+        # App is not running.
+        return 1
+    else
+        # App is running.
+        return 0
+    fi
 }
 
 #---------------------------------------------------------------------------------------------------

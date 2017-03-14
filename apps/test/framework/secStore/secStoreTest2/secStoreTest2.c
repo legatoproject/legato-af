@@ -245,7 +245,7 @@ static void Test6
     result = le_secStore_Read("file2", (uint8_t*)outBuffer, &outBufferSize);
     LE_FATAL_IF(result != LE_NOT_FOUND, "read failed: [%s]", LE_RESULT_TXT(result));
 
-    if (strcmp(outBuffer, "") != 0)
+    if (outBuffer[0] != '\0')
     {
         LE_FATAL("Reading secStore item resulting in unexpected item contents: [%s]", outBuffer);
     }

@@ -66,7 +66,11 @@ CheckAppIsInstalled "helloWorld"
 
 echo "Attempt to install a corrupted version of the helloWorld app."
 cd "$scriptDir"
-InstallApp helloWorld.ar7
+InstallApp helloWorld.ar7 false
+if [ $? -eq 0 ]; then
+    echo "Expected the install to fail"
+    exit 1
+fi
 
 echo "Check that the helloWorld app is still installed."
 CheckAppIsInstalled "helloWorld"
@@ -77,3 +81,4 @@ CheckAppIsRunning "helloWorld"
 
 echo "App Fall Back Test Passed!"
 exit 0
+

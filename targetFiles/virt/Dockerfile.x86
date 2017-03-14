@@ -1,0 +1,34 @@
+FROM alpine
+
+ENV VIRT_TARGET_ARCH x86
+ENV QEMU_ARCH x86_64
+
+RUN ( \
+        apk update && \
+        apk add wget bash qemu-system-${QEMU_ARCH} \
+    )
+
+ADD legato-qemu /legato/
+ADD kernel /legato/
+ADD rootfs.qcow2 /legato/
+ADD legato.squashfs /legato/
+
+ENV KERNEL_IMG /legato/kernel
+ENV ROOTFS_IMG /legato/rootfs.qcow2
+ENV LEGATO_IMG /legato/legato.squashfs
+ENV PID_FILE   /tmp/qemu.pid
+
+# No offset at the port level, so:
+# - telnet is available on 21
+# - SSH on 22
+# - simu control on 5000
+ENV OFFSET_PORT 0
+
+VOLUME /legato
+
+EXPOSE 21
+EXPOSE 22
+EXPOSE 5000
+
+ENTRYPOINT ["/legato/legato-qemu"]
+

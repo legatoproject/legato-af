@@ -24,3 +24,4 @@ CheckRet
 
 echo "SMACK API Test Passed!"
 exit 0
+

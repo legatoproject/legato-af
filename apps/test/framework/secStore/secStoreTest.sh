@@ -9,22 +9,6 @@ OnFail() {
     echo "Secure Storage Test Failed!"
 }
 
-IsAppRunning()
-{
-    appName=$1
-
-    numMatches=$(ssh root@$targetAddr "$BIN_PATH/app status $appName | grep -c \"running\"")
-
-    if [ $numMatches -eq 0 ]
-    then
-        # App is not running.
-        return 1
-    else
-        # App is running.
-        return 0
-    fi
-}
-
 # TODO: test.shlib might be a better place for this? TBD.
 ClearTargetLog()
 {

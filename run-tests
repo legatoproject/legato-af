@@ -119,17 +119,19 @@ function CleanBuild()
 
 function TargetIdentify()
 {
-    echo "Identifying target ..."
-    TARGET_MODEL=$(ssh -o ConnectTimeout=5 root@$DEST_IP "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2> /dev/null)
-    if [ -z "$TARGET_MODEL" ]; then
-        echo "Unable to determine remote target model"
-        exit 1
-    fi
-
-    TARGET_TYPE=$($SOURCEDIR/bin/gettargettype $TARGET_MODEL)
     if [ -z "$TARGET_TYPE" ]; then
-        echo "Unable to determine remote target type"
-        exit 1
+        echo "Identifying target ..."
+        TARGET_MODEL=$(ssh -o ConnectTimeout=5 -p $TARGET_SSH_PORT  root@$DEST_IP "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2> /dev/null)
+        if [ -z "$TARGET_MODEL" ]; then
+            echo "Unable to determine remote target model"
+            exit 1
+        fi
+
+        TARGET_TYPE=$($SOURCEDIR/bin/gettargettype $TARGET_MODEL)
+        if [ -z "$TARGET_TYPE" ]; then
+            echo "Unable to determine remote target type"
+            exit 1
+        fi
     fi
 
     echo "Testing Legato on $DEST_IP (type = $TARGET_TYPE)"
@@ -154,8 +156,8 @@ function TargetUpdateLegato()
 
 function TargetUnitTest()
 {
-    if [ "$DEST_IP" == "" ]; then
-        echo "Target IP address is not available. Unit testing on target will be skipped."
+    if [ -z "$DEST_IP" ]; then
+        echo "Target IP address (DEST_IP) is not available. Unit testing on target will be skipped."
         return
     fi
 

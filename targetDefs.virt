@@ -28,6 +28,7 @@ endif
 
 export TOOLCHAIN_DIR := $(VIRT_TOOLCHAIN_DIR)
 export TARGET := virt
+export LEGATO_UTIL_PA := $(PA_DIR)/simu/components/simuConfig
 export LEGATO_AUDIO_PA := $(PA_DIR)/simu/components/le_pa_audio
 export LEGATO_MODEM_PA := $(PA_DIR)/simu/components/le_pa
 export LEGATO_GNSS_PA := $(PA_DIR)/simu/components/le_pa_gnss

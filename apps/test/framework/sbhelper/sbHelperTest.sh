@@ -3,15 +3,8 @@
 LoadTestLib
 
 targetAddr=$1
-targetType=${2:-ar7}
+targetType=${2:-wp85}
 appName=fileAccess
-
-
-IsAppRunning()
-{
-    $(ssh root@$targetAddr "$BIN_PATH/app status $1 | grep -q \"running\"")
-}
-
 
 echo "******** Sandboxing Tools Test Starting ***********"
 
@@ -27,7 +20,6 @@ ssh root@$targetAddr "$BIN_PATH/app start $appName"
 sleep 1
 
 IsAppRunning "$appName"
-
 if [ $? -ne 0 ]; then
     echo "Sandboxing Tools Test Failed!"
     exit 1

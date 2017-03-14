@@ -943,6 +943,7 @@ static le_result_t Read
     }
 
     char path[SECSTOREADMIN_MAX_PATH_BYTES] = {0};
+    le_result_t result;
 
     if(isGlobal)
     {
@@ -971,7 +972,16 @@ static le_result_t Read
     }
 
     // Read the item from the secure storage.
-    return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
+    result = pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
+
+    // If there is an error, make sure that the buffer is empty.
+    if ( (LE_OK != result) && (bufNumElementsPtr > 0) )
+    {
+        bufPtr[0] = 0;
+        *bufNumElementsPtr = 0;
+    }
+
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
