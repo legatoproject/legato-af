@@ -53,6 +53,7 @@ int main(int argc, const char** argv)
     {
         std::cerr << LE_I18N("** ERROR:") << std::endl
                   << e.what() << std::endl;
+        return EXIT_FAILURE;
     }
     catch (std::exception& e)
     {
