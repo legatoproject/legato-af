@@ -12,7 +12,7 @@ requires:
     {
         le_cfg.api
 
-        # Manual start after notifying supervisor of start -- otherwise watchdog hangs on start.
+        // Manual start after notifying supervisor of start -- otherwise watchdog hangs on start.
         le_appInfo.api      [manual-start]
         supervisor/wdog.api [manual-start]
     }
