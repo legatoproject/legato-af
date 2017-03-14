@@ -22,45 +22,51 @@ HOST_ARCH=$(uname -m)
 TARGET=$1
 CMD=${2:-dir}
 
+TOOLCHAIN_DIRS=()
+
+AppendYoctoBuildToolchain() {
+    local build_dir=$1
+    local gcc_prefix=$2
+
+    TOOLCHAIN_DIRS+=("${LEGATO_ROOT}/../${build_dir}/tmp/sysroots/${HOST_ARCH}-linux/usr/bin/${gcc_prefix}")
+}
+
 # Select the appropriate list of toolchain directories to search, in order of preference
 # (most preferred first) based on the target name given.
 case "$TARGET" in
 ar7 | ar86)
-    TOOLCHAIN_DIRS=(
-        /opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        /opt/swi/y14-ext/tmp/sysroots/$HOST_ARCH-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
-        )
+    AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
+    AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
+    TOOLCHAIN_DIRS+=(/opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
     ;;
 wp85 | wp750x)
-    TOOLCHAIN_DIRS=(
-        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        )
+    AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
+    AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
+    TOOLCHAIN_DIRS+=(/opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
     ;;
 ar758x | wp76xx)
-    TOOLCHAIN_DIRS=(
-        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        )
+    AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
+    AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
+    TOOLCHAIN_DIRS+=(/opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
     ;;
 ar759x)
-    TOOLCHAIN_DIRS=(
-        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        )
+    AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
+    AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
+    TOOLCHAIN_DIRS+=(/opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
     ;;
-raspi | virt_arm)
-    TOOLCHAIN_DIRS=(
-        /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
-        /opt/swi/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        /opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        /opt/swi/y16/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        /opt/swi/y16-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-        )
+raspi)
+    TOOLCHAIN_DIRS+=(/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin)
+    TOOLCHAIN_DIRS+=(/opt/swi/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
+    TOOLCHAIN_DIRS+=(/opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
+    ;;
+virt_arm)
+    AppendYoctoBuildToolchain 'build_virt-arm' 'arm-poky-linux-gnueabi'
+    TOOLCHAIN_DIRS+=(/opt/swi/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
+    TOOLCHAIN_DIRS+=(/opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
     ;;
 virt_x86)
-    TOOLCHAIN_DIRS=(
-        /opt/poky/1.6.1/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
-        /opt/poky/y16/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
-        /opt/poky/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux
-        )
+    AppendYoctoBuildToolchain 'build_virt-x86' 'i586-poky-linux'
+    TOOLCHAIN_DIRS+=(/opt/poky/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux)
     ;;
 help | --help | -h)
     PrintHelp
@@ -74,7 +80,7 @@ help | --help | -h)
 esac
 
 check_toolchain_dir() {
-    dir=$1
+    local dir=$1
 
     COMPILER_EXEC=gcc
     if [[ "$USE_CLANG" == "1" ]]; then
