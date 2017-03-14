@@ -263,4 +263,16 @@ void le_sig_DeleteAll
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Install handler to show stack and signal informations on SIGSEGV/ILL/BUS/TRAP/FPE signals.
+ * Called automatically by main().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sig_InstallShowStackHandler
+(
+    void
+);
+
+
 #endif // LEGATO_SIGNALS_INCLUDE_GUARD

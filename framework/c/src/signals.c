@@ -17,6 +17,12 @@
 #include "legato.h"
 #include "limit.h"
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <ucontext.h>
+#include <syslog.h>
+#include <execinfo.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -72,11 +78,18 @@ static pthread_key_t SigMonKey;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Port to use for start and attach a gdbserver(1) to itself. If 0, no gdbserver(1) is started
+ */
+//--------------------------------------------------------------------------------------------------
+static int GdbServerPort = 0;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prefix for the monitor's name.  The monitor's name is this prefix plus the name of the thread.
  */
 //--------------------------------------------------------------------------------------------------
 #define SIG_STR     "Sig"
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -162,6 +175,277 @@ static void OurSigHandler
         else if ( (numBytesRead == -1) && (errno != EINTR) )
         {
             LE_FATAL("Could not read from signal fd: %m");
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Our show stack signal handler. This signal handler is called only when SEGV, ILL, BUS, FPE, ABRT
+ * TRAP are raised. It will show useful informations: signal, fault address, fault PC, registers,
+ * stack and back-trace. It also dumps the process maps.
+ * Note: Because these signals are raised from low-level, we should avoid any usage of malloc(3),
+ * syslog(3) and others services like these from stdio(3).
+ * Note: This code may be architecture dependant: supports arm, x86_64 and i686.
+ * Note: Non-safe functions used:
+ *        - snprintf
+ *        - backtrace (x86_64, i686)
+ */
+//--------------------------------------------------------------------------------------------------
+static void ShowStackSignalHandler
+(
+    int sigNum,
+    siginfo_t* sigInfoPtr,
+    void* sigVoidPtr
+)
+{
+    char sigString[256];
+    int fd;
+    struct sigcontext* ctxPtr = (struct sigcontext *)&(((ucontext_t*)sigVoidPtr)->uc_mcontext);
+    pid_t tid = syscall(SYS_gettid);
+
+    // Show process, pid and tid
+    snprintf(sigString, sizeof(sigString), "PROCESS: %d ,TID %d\n", getpid(), tid);
+    write(2, sigString, strlen(sigString));
+
+    // Show signal, fault address and fault PC
+    snprintf(sigString, sizeof(sigString), "SIGNAL: %d, ADDR %p, AT %p\n",
+             sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr,
+#ifdef __arm__
+             (void*)ctxPtr->arm_pc
+#elif defined(__i686__)
+             (void*)ctxPtr->eip
+#elif defined(__x86_64__)
+             (void*)ctxPtr->rip
+#else
+             NULL
+#endif
+             );
+    write(2, sigString, strlen(sigString));
+
+    // Explain signal
+    switch( sigNum )
+    {
+        case SIGSEGV:
+                    snprintf(sigString, sizeof(sigString), "ILLEGAL ADDRESS %p\n",
+                             (void*)sigInfoPtr->si_addr);
+                    break;
+        case SIGFPE:
+                    snprintf(sigString, sizeof(sigString), "FLOATING POINT EXCEPTION AT %p\n",
+                             (void*)sigInfoPtr->si_addr);
+                    break;
+        case SIGTRAP:
+                    snprintf(sigString, sizeof(sigString), "TRAP AT %p\n",
+                             (void*)sigInfoPtr->si_addr);
+                    break;
+        case SIGABRT:
+                    snprintf(sigString, sizeof(sigString), "ABORT\n");
+                    break;
+        case SIGILL:
+                    snprintf(sigString, sizeof(sigString), "ILLEGAL INSTRUCTION AT %p\n",
+                             (void*)sigInfoPtr->si_addr);
+                    break;
+        case SIGBUS:
+                    snprintf(sigString, sizeof(sigString), "BUS ERROR AT %p\n",
+                             (void*)sigInfoPtr->si_addr);
+                    break;
+        default:
+                    snprintf(sigString, sizeof(sigString), "UNEXPECTED SIGNAL %d\n",
+                             sigNum);
+                    break;
+    }
+    write(2, sigString, strlen(sigString));
+
+    // Dump the back-trace, registers and stack
+    snprintf(sigString, sizeof(sigString), "BACKTRACE\n");
+    write(2, sigString, strlen(sigString));
+#ifdef __arm__
+    {
+        int addr;
+        int* base = (int*)__builtin_frame_address(0);
+        int* frame = base;
+
+        for (addr = ctxPtr->arm_pc; ;)
+        {
+            // On arm, current frame points to previous LR. The previous frame is stored into
+            // the word before PC. We have
+            // FP[0] -> LR[1]
+            //          FP[1] -> LR[2]
+            //                   FP[2] -> ...
+            snprintf(sigString, sizeof(sigString), "%s at %08x\n",
+                     (addr == ctxPtr->arm_pc ? "PC" : "LR"), addr);
+            write(2, sigString, strlen(sigString));
+            if (addr == ctxPtr->arm_pc)
+            {
+                addr = ctxPtr->arm_lr;
+                frame = (int*)*(frame-1);
+                continue;
+            }
+            if (!(frame = (int *)*(frame-1)) || (frame > (base + 1024*1024)) || (frame < base))
+            {
+                // Exit if FP[n] == 0, or if FP[n] is less than FP[0] or if FP[0] is outside 1MB
+                break;
+            }
+            addr = *frame;
+        }
+        snprintf(sigString, sizeof(sigString),
+                 "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
+                 ctxPtr->arm_r0, ctxPtr->arm_r1, ctxPtr->arm_r2,
+                 ctxPtr->arm_r3, ctxPtr->arm_r4, ctxPtr->arm_r5);
+        write(2, sigString, strlen(sigString));
+        snprintf(sigString, sizeof(sigString),
+                 "r6  %08lx r7  %08lx r8  %08lx r9  %08lx r10 %08lx cpsr %08lx\n",
+                 ctxPtr->arm_r6, ctxPtr->arm_r7, ctxPtr->arm_r8,
+                 ctxPtr->arm_r9, ctxPtr->arm_r10, ctxPtr->arm_cpsr);
+        write(2, sigString, strlen(sigString));
+        snprintf(sigString, sizeof(sigString),
+                 "fp  %08lx ip  %08lx sp  %08lx lr  %08lx pc  %08lx\n",
+                 ctxPtr->arm_fp, ctxPtr->arm_ip, ctxPtr->arm_sp,
+                 ctxPtr->arm_lr, ctxPtr->arm_pc);
+        write(2, sigString, strlen(sigString));
+        snprintf(sigString, sizeof(sigString),
+                 "STACK %08lx, FRAME %08lx\n", ctxPtr->arm_sp, ctxPtr->arm_fp);
+        write(2, sigString, strlen(sigString));
+        for (addr = 0, frame = (int*)ctxPtr->arm_sp; addr < 256; addr += 8, frame += 8)
+        {
+            snprintf(sigString, sizeof(sigString),
+                     "%08x: %08x %08x %08x %08x %08x %08x %08x %08x\n",
+                     (int)frame,
+                     frame[0], frame[1], frame[2], frame[3],
+                     frame[4], frame[5], frame[6], frame[7]);
+            write(2, sigString, strlen(sigString));
+        }
+    }
+#else
+    {
+        void *retSp[12];
+        size_t nRetSp;
+        int n;
+        nRetSp = backtrace( &retSp[0], 12 );
+        // Skip HandleSignal() and <signal handler called> frames
+        for (n = 2; n < nRetSp; n++)
+        {
+            snprintf(sigString, sizeof(sigString),
+                     "#%d : %p\n", n-2, (void*)retSp[n]);
+            write(2, sigString, strlen(sigString));
+        }
+    }
+#endif
+
+    // Dump the process map. Useful for usage with objdump(1) and gdb(1)
+    snprintf(sigString, sizeof(sigString), "PROCESS MAP\n");
+    write(2, sigString, strlen(sigString));
+    snprintf(sigString, sizeof(sigString), "/proc/%d/maps", getpid());
+    fd = open(sigString, O_RDONLY);
+    if (-1 != fd)
+    {
+        int rc, len;
+        // We cannot use stdio(3) services. Print line by line
+        do
+        {
+            for (len = 0; len < sizeof(sigString); len++)
+            {
+                rc = read( fd, sigString + len, 1 );
+                if (0 >= rc)
+                {
+                     break;
+                }
+                if ('\n' == sigString[len])
+                {
+                    write(2, sigString, len + 1);
+                    break;
+                }
+            }
+        }
+        while( 0 < rc );
+        close(fd);
+    }
+
+    // Check if a gdbserver(1) port is set (not zero). If yes, try to launch a
+    // gdbserver(1) attached to ourself.
+    if (GdbServerPort)
+    {
+        char gdbServerPortString[10], pidString[10];
+        int gdbPid, gdbStatus;
+        snprintf(gdbServerPortString, sizeof(gdbServerPortString), ":%u", GdbServerPort);
+        snprintf(pidString, sizeof(pidString), "%d", getpid());
+        char *gdbArg[] =
+        {
+             "gdbserver",
+             gdbServerPortString,
+             "--attach",
+             pidString,
+             NULL,
+        };
+        if (0 == (gdbPid = fork()))
+        {
+            execvpe( gdbArg[0], gdbArg, NULL );
+        }
+        wait(&gdbStatus);
+    }
+
+    // Raise this signal to our self to produce a core, if configured.
+    raise(sigNum);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Install the ShowStackSignalHandler to show information and dump stack
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sig_InstallShowStackHandler
+(
+    void
+)
+{
+    int ret;
+    struct sigaction sa;
+    char* gdbPtr;
+    char* signalShowInfoPtr;
+
+    if ((signalShowInfoPtr = getenv("SIGNAL_SHOW_INFO")))
+    {
+        if ((0 == strcasecmp(signalShowInfoPtr, "disable")) ||
+            (0 == strcasecmp(signalShowInfoPtr, "no")))
+        {
+            LE_WARN("Handle of SEGV/ILL/BUS/FPE/ABRT and show information disabled");
+            return;
+        }
+    }
+    sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))ShowStackSignalHandler;
+    sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND;
+    ret = sigaction( SIGSEGV, &sa, NULL );
+    if( ret )
+    {
+        LE_CRIT( "Unable to install signal handler for SIGSEGV : %m\n" );
+    }
+    ret = sigaction( SIGBUS, &sa, NULL );
+    if( ret )
+    {
+        LE_CRIT( "Unable to install signal handler for SIGBUS : %m\n" );
+    }
+    ret = sigaction( SIGILL, &sa, NULL );
+    if( ret )
+    {
+        LE_CRIT( "Unable to install signal handler for SIGILL : %m\n" );
+    }
+    ret = sigaction( SIGFPE, &sa, NULL );
+    if( ret )
+    {
+        LE_CRIT( "Unable to install signal handler for SIGFPE : %m\n" );
+    }
+    ret = sigaction( SIGABRT, &sa, NULL );
+    if( ret )
+    {
+        LE_CRIT( "Unable to install signal handler for SIGABRT : %m\n" );
+    }
+
+    if ((gdbPtr = getenv("GDBSERVER_PORT")))
+    {
+        if (1 != sscanf(gdbPtr, "%u", &GdbServerPort))
+        {
+            LE_WARN("Incorrect GDBSERVER_PORT=%s. Discarded...", gdbPtr);
         }
     }
 }
@@ -398,4 +682,3 @@ void le_sig_DeleteAll
         le_mem_Release(monitorObjPtr);
     }
 }
-

@@ -91,7 +91,7 @@ rule Compile
 
 rule Link
   description = Linking liblegato
-  command = $TARGET_CC -shared -o \$out \$in -lpthread -lrt $NINJA_LDFLAGS
+  command = $TARGET_CC -shared -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
 
 build $LIBLEGATO : Link $LIBLEGATO_OBJECTS
 

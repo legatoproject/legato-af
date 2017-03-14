@@ -189,6 +189,10 @@ void GenerateCLangExeMain
                       "    event_QueueComponentInit(" << initFuncName << ");\n";
     }
 
+    outputFile << "    // Set the Signal Fault handler\n"
+                  "    le_sig_InstallShowStackHandler();\n"
+                  "\n";
+
     // Start the event loop and finish up the file.
     outputFile << "    LE_DEBUG(\"== Starting Event Processing Loop ==\");\n"
                   "    le_event_RunLoop();\n"

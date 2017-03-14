@@ -33,4 +33,4 @@ add_subdirectory(lists)
 add_subdirectory(log)
 add_subdirectory(memPool)
 add_subdirectory(utf8)
-
+add_subdirectory(signalShowStack)
