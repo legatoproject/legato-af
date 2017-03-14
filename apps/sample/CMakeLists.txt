@@ -17,6 +17,9 @@ add_custom_target(samples
 # Simple client/server application
 add_subdirectory(helloWorld)
 
+# Simple client/server java application
+add_subdirectory(javaHelloWorld)
+
 # Simple client application + server application
 add_subdirectory(helloIpc)
 

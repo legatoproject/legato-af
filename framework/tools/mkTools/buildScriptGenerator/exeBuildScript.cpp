@@ -316,7 +316,7 @@ void GenerateBuildStatements
         std::string classDestPath;
 
         std::list<std::string> classPath = { legatoJarPath };
-        std::list<std::string> dependencies = { legatoJarPath, classDestPath };
+        std::list<std::string> dependencies = { legatoJarPath };
 
         if (exePtr->appPtr != NULL)
         {

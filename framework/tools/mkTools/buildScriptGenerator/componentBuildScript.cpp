@@ -539,7 +539,7 @@ void GenerateBuildStatements
                                  classDestPath,
                                  sourceList,
                                  { legatoJarPath },
-                                 { legatoJarPath, classDestPath });
+                                 { legatoJarPath });
     }
 }
 

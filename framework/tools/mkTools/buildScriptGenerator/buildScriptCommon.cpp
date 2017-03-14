@@ -183,8 +183,13 @@ void GenerateBuildRules
     // Generate rules for compiling Java code.
     script << "rule CompileJava\n"
               "  description = Compiling Java source\n"
-              "  command = javac -cp $classPath -d $classDestPath $in && $\n"
-              "            jar -cf $out -C $classDestPath .\n"
+              "  command = javac -cp $classPath -d `dirname $out` $in && touch $out\n"
+              "\n";
+
+    script << "rule MakeJar\n"
+              "  description = Making JAR file\n"
+              "  command = cd `dirname $in` && find `dirname $in` -name '*.class' -printf '%P\\n'"
+                             "|xargs jar -cf $out\n"
               "\n";
 
     // Generate rules for building drivers.
@@ -769,10 +774,9 @@ void GenerateJavaBuildCommand
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // The intermediate directory will be required, so add a rule to make sure that it exits.  Then
-    // generate the rule to compile the Java code into .class files, and to package them up into a
+    // Generate the rule to compile the Java code into .class files, and to package them up into a
     // .jar file.
-    script << "build " << outputJar << " $\n"
+    script << "build " << path::Combine(classDestPath, "build.stamp") << " $\n"
               "  : CompileJava";
 
     for (auto& source : sources)
@@ -800,9 +804,23 @@ void GenerateJavaBuildCommand
         script << *iter;
     }
 
-    script << "\n"
-              "  classDestPath = " << classDestPath << "\n"
-              "\n";
+    script << "\n\n";
+
+    script << "build " << outputJar << " $\n"
+              "  : MakeJar " << path::Combine(classDestPath, "build.stamp") << "\n"
+              "  classPath = ";
+
+    for (auto iter = classPath.begin(); iter != classPath.end(); ++iter)
+    {
+        if (iter != classPath.begin())
+        {
+            script << ":";
+        }
+
+        script << *iter;
+    }
+
+    script << "\n\n";
 }
 
 

@@ -1,0 +1,17 @@
+
+version: 1.0.0
+maxFileSystemBytes: 512K
+executables:
+{
+    helloJava = ( javaHelloWorldComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( helloJava )
+    }
+    maxCoreDumpFileBytes: 512K
+    maxFileBytes: 512K
+}
