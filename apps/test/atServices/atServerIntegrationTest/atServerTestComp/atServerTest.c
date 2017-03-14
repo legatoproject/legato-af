@@ -31,6 +31,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Extern function
+ */
+//--------------------------------------------------------------------------------------------------
+
+void automaticTest_Init
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * AtCmd_t definition
  */
 //--------------------------------------------------------------------------------------------------
@@ -189,6 +200,14 @@ static void AtBridgeHandler
     void* contextPtr
 );
 
+void automaticTest_AtTestHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * AT Commands definition
@@ -251,6 +270,12 @@ static AtCmd_t AtCmdCreation[] =
         .cmdRef = NULL,
         .handlerPtr = AtBridgeHandler,
         .contextPtr = &TestCtx
+    },
+    {
+        .atCmdPtr = "AT+TEST",
+        .cmdRef = NULL,
+        .handlerPtr = automaticTest_AtTestHandler,
+        .contextPtr = &TestCtx.bridgeRef
     },
 };
 
@@ -775,7 +800,6 @@ static void MyCallEventHandler
 )
 {
     LE_INFO("callEvent %d", callEvent);
-
     DialContext_t* dialCtxPtr = contextPtr;
 
     if (callEvent == LE_MCC_EVENT_ALERTING)
@@ -1044,5 +1068,7 @@ COMPONENT_INIT
     le_thread_Start(le_thread_Create("SocketThread",
                                      SocketThread,
                                      &TestCtx));
+
+    automaticTest_Init();
 }
 

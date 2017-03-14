@@ -10,4 +10,5 @@ requires:
 sources:
 {
     atServerTest.c
+    automaticTest.c
 }

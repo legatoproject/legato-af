@@ -283,10 +283,15 @@ static void AtEchoCmdHandler
                                                LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
             if (0 == strncmp(param, "1", strlen("1")))
             {
+                LE_ASSERT(le_atServer_EnableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
+                                                                            == LE_BAD_PARAMETER);
                 LE_ASSERT(le_atServer_EnableEcho(atSessionPtr->devRef) == LE_OK);
             }
             else if (0 == strncmp(param, "0", strlen("0")))
             {
+                LE_ASSERT(le_atServer_DisableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
+                                                                            == LE_BAD_PARAMETER);
+
                 LE_ASSERT(le_atServer_DisableEcho(atSessionPtr->devRef) == LE_OK);
             }
             else
@@ -459,7 +464,7 @@ static void CloseCmdHandler
 
         break;
     case LE_ATSERVER_TYPE_ACT:
-        LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, ""));
+        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
         LE_ASSERT(le_atServer_Close(atSessionPtr->devRef) == LE_OK);
         break;
 
@@ -673,12 +678,11 @@ static void CleanUp
  *
  */
 //--------------------------------------------------------------------------------------------------
-void* AtServer
+void AtServer
 (
-    void* contextPtr
+    SharedData_t* sharedDataPtr
 )
 {
-    SharedData_t* sharedDataPtr;
     struct sockaddr_un addr;
     int i = 0;
 
@@ -766,47 +770,25 @@ void* AtServer
         },
     };
 
-    sharedDataPtr = (SharedData_t *)contextPtr;
-
     LE_INFO("Server Started");
 
     le_thread_AddDestructor(CleanUp,(void *)&ServerData);
 
-    pthread_mutex_lock(&sharedDataPtr->mutex);
-
     ServerData.socketFd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (ServerData.socketFd == -1)
-    {
-        LE_ERROR("socket failed: %s", strerror(errno));
-        return NULL;
-    }
+    LE_ASSERT(ServerData.socketFd != -1);
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family= AF_UNIX;
     strncpy(addr.sun_path, sharedDataPtr->devPathPtr, sizeof(addr.sun_path)-1);
 
-    if (bind(ServerData.socketFd, (struct sockaddr*) &addr, sizeof(addr)) == -1)
-    {
-        LE_ERROR("bind failed: %s", strerror(errno));
-        return NULL;
-    }
+    LE_ASSERT(bind(ServerData.socketFd, (struct sockaddr*) &addr, sizeof(addr)) != -1);
 
-    if (listen(ServerData.socketFd, 1) == -1)
-    {
-        LE_ERROR("listen failed: %s", strerror(errno));
-        return NULL;
-    }
+    LE_ASSERT(listen(ServerData.socketFd, 1) != -1);
 
-    sharedDataPtr->ready = true;
-    pthread_cond_signal(&sharedDataPtr->cond);
-    pthread_mutex_unlock(&sharedDataPtr->mutex);
+    le_sem_Post(sharedDataPtr->semRef);
 
     ServerData.connFd = accept(ServerData.socketFd, NULL, NULL);
-    if (ServerData.connFd == -1)
-    {
-        LE_ERROR("accept failed: %s", strerror(errno));
-        return NULL;
-    }
+    LE_ASSERT(ServerData.connFd != -1);
 
     // test for bad file descriptor
     AtSession.devRef = le_atServer_Open(-1);
@@ -820,12 +802,6 @@ void* AtServer
     AtSession.devRef = le_atServer_Open(dup(ServerData.connFd));
     LE_ASSERT(AtSession.devRef != NULL);
     sharedDataPtr->devRef = AtSession.devRef;
-
-    // Echo function tests
-    LE_ASSERT(le_atServer_EnableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
-        == LE_BAD_PARAMETER);
-    LE_ASSERT(le_atServer_DisableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
-        == LE_BAD_PARAMETER);
 
     // AT commands handling tests
     AtSession.cmdsCount = NUM_ARRAY_MEMBERS(atCmdCreation);
@@ -845,7 +821,5 @@ void* AtServer
         i++;
     }
 
-    le_event_RunLoop();
-
-    return NULL;
+    le_sem_Post(sharedDataPtr->semRef);
 }

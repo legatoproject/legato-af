@@ -1486,12 +1486,10 @@ le_result_t le_atClient_SetIntermediateResponse
         return LE_BAD_PARAMETER;
     }
 
-    char *interPtr = strdup(intermediatePtr);
-
-    if (strcmp(interPtr, "\0") != 0)
+    if (strcmp(intermediatePtr, "\0") != 0)
     {
         char *savePtr;
-        interPtr = strtok_r(interPtr,"|", &savePtr);
+        char * interPtr = strtok_r((char*) intermediatePtr,"|", &savePtr);
 
         while(interPtr != NULL)
         {
@@ -1556,11 +1554,10 @@ le_result_t le_atClient_SetFinalResponse
         return LE_BAD_PARAMETER;
     }
 
-    char *respPtr = strdup(responsePtr);
-    if (strcmp(respPtr, "\0") != 0)
+    if (strcmp(responsePtr, "\0") != 0)
     {
         char *savePtr;
-        respPtr = strtok_r(respPtr,"|", &savePtr);
+        char * respPtr = strtok_r((char*) responsePtr,"|", &savePtr);
 
         while(respPtr != NULL)
         {

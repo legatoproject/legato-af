@@ -171,13 +171,6 @@ static le_mem_PoolRef_t  RspStringPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The memory pool for EventIdList objects
- */
-//--------------------------------------------------------------------------------------------------
-static le_mem_PoolRef_t EventIdPool;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Map for devices
  */
 //--------------------------------------------------------------------------------------------------
@@ -196,28 +189,6 @@ static le_ref_MapRef_t   SubscribedCmdRefMap;
  */
 //--------------------------------------------------------------------------------------------------
 static le_hashmap_Ref_t   CmdHashMap;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * List for all eventId objects
- */
-//--------------------------------------------------------------------------------------------------
-static le_dls_List_t    EventIdList;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * EventIdList structure.
- * Objects use to manage a pool of eventId.
- *
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    le_event_Id_t   eventId; ///< the eventId
-    bool            isUsed;  ///< is it used?
-    le_dls_Link_t   link;    ///< link for eventIdList
-}
-EventIdList_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -305,8 +276,6 @@ typedef struct
 {
     le_atServer_CmdRef_t    cmdRef;                                 ///< cmd refrence
     char                    cmdName[LE_ATDEFS_COMMAND_MAX_BYTES];   ///< Command to send
-    le_event_Id_t           eventId;                                ///< event id associated to the
-                                                                    ///< AT command
     le_atServer_AvailableDevice_t availableDevice;                  ///< device to send unsol rsp
     le_atServer_Type_t      type;                                   ///< cmd type
     le_dls_List_t           paramList;                              ///< parameters list
@@ -315,8 +284,10 @@ typedef struct
     bool                    bridgeCmd;                              ///< is command created by the
                                                                     ///< AT bridge
     le_msg_SessionRef_t     sessionRef;                             ///< session reference
-    bool                    handlerExists;
     bool                    isDialCommand;                          ///< specific dial command
+    le_atServer_CommandHandlerFunc_t handlerFunc;                   ///< Handler associated with the
+                                                                    ///< AT command
+    void*                   handlerContextPtr;                      ///< client handler context
 }
 ATCmdSubscribed_t;
 
@@ -504,85 +475,6 @@ CmdParserFunc_t CmdParserTab[PARSE_MAX][PARSE_MAX] =
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function finds or creates an eventId into the EventIdList
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_event_Id_t GetEventId
-(
-    void
-)
-{
-    EventIdList_t*      currentPtr=NULL;
-    le_dls_Link_t*      linkPtr = le_dls_Peek(&EventIdList);
-    char                eventIdName[24];
-    int32_t             eventIdIdx = 1;
-
-    while (linkPtr!=NULL)
-    {
-        currentPtr = CONTAINER_OF(linkPtr,
-                                  EventIdList_t,
-                                  link);
-
-        if (!currentPtr->isUsed)
-        {
-            LE_DEBUG("Found one unused eventId (%p)", currentPtr->eventId);
-            currentPtr->isUsed = true;
-            return currentPtr->eventId;
-        }
-        linkPtr = le_dls_PeekNext(&EventIdList,linkPtr);
-
-        eventIdIdx++;
-    }
-
-    snprintf(eventIdName, sizeof(eventIdName), "atCmd-%d", eventIdIdx);
-
-    currentPtr = le_mem_ForceAlloc(EventIdPool);
-    currentPtr->eventId = le_event_CreateId(eventIdName, sizeof(ATCmdSubscribed_t*));
-    currentPtr->isUsed = true;
-    currentPtr->link = LE_DLS_LINK_INIT;
-
-    le_dls_Queue(&EventIdList, &(currentPtr->link));
-
-    LE_DEBUG("Create a new eventId (%p)", currentPtr->eventId);
-
-    return currentPtr->eventId;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function releases an eventId from the EventIdList
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void ReleaseEventId
-(
-    le_event_Id_t eventId
-)
-{
-    le_dls_Link_t* linkPtr = le_dls_Peek(&EventIdList);
-
-    while (linkPtr!=NULL)
-    {
-        EventIdList_t* currentPtr = CONTAINER_OF(linkPtr,
-                                                    EventIdList_t,
-                                                    link);
-
-        if (currentPtr->eventId == eventId)
-        {
-            LE_DEBUG("Found eventId to release (%p)", currentPtr->eventId);
-            currentPtr->isUsed = false;
-            return;
-        }
-        linkPtr = le_dls_PeekNext(&EventIdList,linkPtr);
-    }
-
-    LE_DEBUG("could not found eventId to release");
-    return;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function is the destructor for ATCmdSubscribed_t struct
  *
  */
@@ -608,9 +500,6 @@ static void AtCmdPoolDestructor
                                     link);
         le_mem_Release(paramPtr);
     }
-
-    // release eventID
-    ReleaseEventId(cmdPtr->eventId);
 
     le_ref_DeleteRef(SubscribedCmdRefMap, cmdPtr->cmdRef);
 }
@@ -858,7 +747,7 @@ static le_result_t GetAtCmdContext
         else if ( cmdParserPtr->currentCmdPtr->processing )
         {
             LE_DEBUG("AT command currently in processing");
-            return LE_FAULT;
+            return LE_BUSY;
         }
 
         cmdParserPtr->currentCmdPtr->processing = true;
@@ -901,14 +790,14 @@ static le_result_t ParseTypeRead
 )
 {
     *cmdParserPtr->currentCharPtr='\0';
+    le_result_t res = GetAtCmdContext(cmdParserPtr);
 
-    if (GetAtCmdContext(cmdParserPtr) == LE_OK)
+    if (res == LE_OK)
     {
         cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_READ;
-        return LE_OK;
     }
 
-    return LE_FAULT;
+    return res;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1295,14 +1184,14 @@ static le_result_t ParseEqual
 )
 {
     *cmdParserPtr->currentCharPtr='\0';
+    le_result_t res = GetAtCmdContext(cmdParserPtr);
 
-    if (GetAtCmdContext(cmdParserPtr) == LE_OK)
+    if (res == LE_OK)
     {
         cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_PARA;
-        return LE_OK;
     }
 
-    return LE_FAULT;
+    return res;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1406,21 +1295,21 @@ static le_result_t ParseLastChar
     CmdParser_t* cmdParserPtr
 )
 {
-    LE_DEBUG("ParseLastChar");
-
     if ( cmdParserPtr->currentCmdPtr == NULL )
     {
+        le_result_t res;
+
         // Put character in upper case
         *cmdParserPtr->currentCharPtr = toupper(*cmdParserPtr->currentCharPtr);
 
-        if (GetAtCmdContext(cmdParserPtr) == LE_OK)
+        res = GetAtCmdContext(cmdParserPtr);
+
+        if (res == LE_OK)
         {
             cmdParserPtr->currentCmdPtr->type = LE_ATSERVER_TYPE_ACT;
         }
-        else
-        {
-            return LE_FAULT;
-        }
+
+        return res;
     }
 
     return LE_OK;
@@ -1572,39 +1461,67 @@ static void ParseAtCmd
             return;
         }
 
-        if (CmdParserTab[cmdParserPtr->lastCmdParserState][cmdParserPtr->cmdParser](cmdParserPtr)
-                                                                                           != LE_OK)
+        le_result_t res;
+        res = CmdParserTab[cmdParserPtr->lastCmdParserState][cmdParserPtr->cmdParser](cmdParserPtr);
+
+        if (res == LE_OK)
+        {
+            cmdParserPtr->lastCmdParserState = cmdParserPtr->cmdParser;
+            cmdParserPtr->currentCharPtr++;
+
+            if (cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr)
+            {
+                cmdParserPtr->cmdParser = PARSE_LAST;
+            }
+        }
+        else
         {
             LE_ERROR("Error in parsing AT command, lastState %d, current state %d",
                                                         cmdParserPtr->lastCmdParserState,
                                                         cmdParserPtr->cmdParser);
-            devPtr->finalRsp.final = LE_ATSERVER_ERROR;
-            devPtr->finalRsp.customStringAvailable = false;
 
-            if (cmdParserPtr->currentCmdPtr)
+            if (res == LE_BUSY)
             {
-                cmdParserPtr->currentCmdPtr->processing = false;
+                LE_INFO("AT command busy");
+            }
+            else
+            {
+                if (cmdParserPtr->currentCmdPtr)
+                {
+                    cmdParserPtr->currentCmdPtr->processing = false;
+                }
             }
 
-            SendFinalRsp(devPtr);
-
-            return;
-        }
-
-        cmdParserPtr->lastCmdParserState = cmdParserPtr->cmdParser;
-        cmdParserPtr->currentCharPtr++;
-
-        if (cmdParserPtr->currentCharPtr > cmdParserPtr->lastCharPtr)
-        {
-            cmdParserPtr->cmdParser = PARSE_LAST;
+            goto sendErrorRsp;
         }
     }
 
     if (cmdParserPtr->currentCmdPtr)
     {
-        le_event_Report(cmdParserPtr->currentCmdPtr->eventId,
-                        &cmdParserPtr->currentCmdPtr, sizeof(ATCmdSubscribed_t*));
+        ATCmdSubscribed_t* cmdPtr = cmdParserPtr->currentCmdPtr;
+
+        if (cmdPtr->handlerFunc)
+        {
+            (cmdPtr->handlerFunc)( cmdPtr->cmdRef,
+                                   cmdPtr->type,
+                                   le_dls_NumLinks(&(cmdPtr->paramList)),
+                                   cmdPtr->handlerContextPtr );
+        }
+        else
+        {
+            // Command exists, but no handler associate to it
+            cmdParserPtr->currentCmdPtr->processing = false;
+            goto sendErrorRsp;
+        }
     }
+
+    return;
+
+sendErrorRsp:
+    devPtr->finalRsp.final = LE_ATSERVER_ERROR;
+    devPtr->finalRsp.customStringAvailable = false;
+
+    SendFinalRsp(devPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1784,27 +1701,6 @@ static le_result_t SendUnsolicitedResponse
     SendUnsolRsp(devPtr, rspStringPtr);
 
     return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer AT command events Handler.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerAtCmdHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    ATCmdSubscribed_t** cmdPtr = reportPtr;
-    le_atServer_CommandHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-
-    clientHandlerFunc((*cmdPtr)->cmdRef,
-                      (*cmdPtr)->type,
-                      le_dls_NumLinks(&((*cmdPtr)->paramList)),
-                      le_event_GetContextPtr());
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2238,9 +2134,7 @@ le_atServer_CmdRef_t le_atServer_Create
 
     cmdPtr->availableDevice = LE_ATSERVER_ALL_DEVICES;
     cmdPtr->paramList = LE_DLS_LIST_INIT;
-    cmdPtr->eventId = GetEventId();
     cmdPtr->sessionRef = le_atServer_GetClientSessionRef();
-    cmdPtr->handlerExists = false;
 
     // Check for specific DIAL command
     if (strncmp(namePtr, "ATD", 3) == 0)
@@ -2310,7 +2204,6 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
         ///< [IN]
 )
 {
-    le_event_HandlerRef_t handlerRef = NULL;
     ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
 
     if (!cmdPtr)
@@ -2319,28 +2212,16 @@ le_atServer_CommandHandlerRef_t le_atServer_AddCommandHandler
         return NULL;
     }
 
-    if (cmdPtr->handlerExists)
+    if (cmdPtr->handlerFunc)
     {
         LE_INFO("Handler already exists");
         return NULL;
     }
 
-    char name[30];
-    memset(name,0,30);
-    snprintf(name, 30, "%s-handler", cmdPtr->cmdName);
+    cmdPtr->handlerFunc = handlerPtr;
+    cmdPtr->handlerContextPtr = contextPtr;
 
-    LE_DEBUG("Add handler to: %s", cmdPtr->cmdName);
-
-    handlerRef = le_event_AddLayeredHandler(name,
-                                            cmdPtr->eventId,
-                                            FirstLayerAtCmdHandler,
-                                            (le_event_HandlerFunc_t)handlerPtr);
-
-    le_event_SetContextPtr(handlerRef, contextPtr);
-
-    cmdPtr->handlerExists = true;
-
-    return (le_atServer_CommandHandlerRef_t)(handlerRef);
+    return (le_atServer_CommandHandlerRef_t)(cmdPtr->cmdRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2356,7 +2237,13 @@ void le_atServer_RemoveCommandHandler
 {
     if (handlerRef)
     {
-        le_event_RemoveHandler((le_event_HandlerRef_t) handlerRef);
+        ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, handlerRef);
+
+        if (cmdPtr)
+        {
+            cmdPtr->handlerFunc = NULL;
+            cmdPtr->handlerContextPtr = NULL;
+        }
     }
 }
 
@@ -2916,8 +2803,6 @@ COMPONENT_INIT
                                     le_hashmap_HashString,
                                     le_hashmap_EqualsString
                                    );
-    EventIdPool = le_mem_CreatePool("ATServerEventIdPool", sizeof(EventIdList_t));
-    le_mem_ExpandPool(EventIdPool, CMD_POOL_SIZE);
 
     // Parameters pool allocation
     ParamStringPool = le_mem_CreatePool("ParamStringPool",sizeof(ParamString_t));
@@ -2926,9 +2811,6 @@ COMPONENT_INIT
     // Parameters pool allocation
     RspStringPool = le_mem_CreatePool("RspStringPool",sizeof(RspString_t));
     le_mem_ExpandPool(RspStringPool,RSP_POOL_SIZE);
-
-    // init EventIdList
-    EventIdList = LE_DLS_LIST_INIT;
 
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(
