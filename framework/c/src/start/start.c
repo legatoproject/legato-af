@@ -1530,6 +1530,7 @@ int main
     // Bind mount if they are not already mounted.
     BindMount("/mnt/flash/legato", "/legato");
     BindMount("/mnt/flash/home", "/home");
+    MakeDir("/home/root");
 
     daemon_Daemonize(5000); // 5 second timeout in case older supervisor is installed.
 

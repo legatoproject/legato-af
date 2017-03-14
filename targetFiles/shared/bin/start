@@ -23,9 +23,6 @@ case "$1" in
         # Where the Unix time-stamp is the count in seconds since the Epoch.
         echo "core-%e-%t" > /proc/sys/kernel/core_pattern
 
-        # Create home folder for root user. This is needed when flash is blank.
-        mkdir -p /home/root
-
         # Add LEGATO_SYSTEM_PATH to /etc/profile if it is not added there.
         grep -F $LEGATO_SYSTEM_PATH /etc/profile >/dev/null
         if [ $? -ne 0 ]; then
