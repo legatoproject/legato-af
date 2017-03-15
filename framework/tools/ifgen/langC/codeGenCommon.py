@@ -67,6 +67,7 @@ __attribute__((unused)) static void* PackData(void* msgBufPtr, const void* dataP
 {
     // todo: should check for buffer overflow, but not sure what to do if it happens
     //       i.e. is it a fatal error, or just return a result
+    LE_FATAL_IF(NULL==dataPtr, "Pointer is NULL");
 
     memcpy( msgBufPtr, dataPtr, dataSize );
     return ( msgBufPtr + dataSize );

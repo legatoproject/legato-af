@@ -175,6 +175,10 @@ _msgBufPtr = PackData( _msgBufPtr, {parm.serverAddr}, {parm.numBytes} );\
 _msgBufPtr = PackData( _msgBufPtr, {parm.serverAddr}, {parm.numBytes} );\
 """
 
+    nullPtrCheck = """\
+if ( NULL == {parm.name} ) LE_FATAL("{parm.name} is NULL");\
+"""
+
     # Ensure that the array/string length is not greater than the maximum from the API definition.
     # This only applies to IN arrays/strings, because only IN arrays/strings have a maxValue.
     maxValueCheck = """\
@@ -416,6 +420,9 @@ class StringParmData(BaseParmData):
         # For strings, the "value" of the parameter is actually the string length.
         # self.value is used when comparing against minValue/maxValue;
         self.value = "strlen(%s)" % self.name
+
+        # Explicitely does not allow null strings to be passed as arguments.
+        self.nullCheck = True
 
         # IN strings do not have an explicit length parameter, so the minValue/maxValue checks
         # will be done against the length of the string parameter itself.

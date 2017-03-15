@@ -42,6 +42,9 @@ FuncImplTemplate = """
 
     // Range check values, if appropriate
     $ for p in func.parmListIn
+    $ if p.nullCheck
+    {{ p.nullPtrCheck.format( parm=p ) }}
+    $ endif
     $ if p.maxValue:
     {{ p.maxValueCheck.format( parm=p ) }}
     $ endif
