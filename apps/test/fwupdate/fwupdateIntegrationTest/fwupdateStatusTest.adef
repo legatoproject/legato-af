@@ -1,0 +1,27 @@
+sandboxed: false
+
+executables:
+{
+    fwupdateStatusTest = ( fwupdateStatusTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (fwupdateStatusTest)
+    }
+}
+
+start: manual
+
+bindings:
+{
+    fwupdateStatusTest.fwupdateStatusTest.le_fwupdate -> fwupdateService.le_fwupdate
+}
+

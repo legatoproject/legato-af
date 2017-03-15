@@ -10,3 +10,9 @@ requires:
         le_fwupdate.api
     }
 }
+
+cflags:
+{
+    -I$LEGATO_ROOT/3rdParty/include
+}
+

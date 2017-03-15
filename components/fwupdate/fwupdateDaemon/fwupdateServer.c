@@ -11,48 +11,22 @@
 #include "pa_fwupdate.h"
 
 //==================================================================================================
-//                                       Private Functions
-//==================================================================================================
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to be treated at device init
- */
-//--------------------------------------------------------------------------------------------------
-static void SyncAtStartupCheck
-(
-    void
-)
-{
-    bool sync;
-    le_result_t result;
-    /* Check if a SYNC operation needs to be made */
-    result = pa_fwupdate_DualSysCheckSync (&sync);
-    LE_DEBUG ("pa_fwupdate_DualSysCheckSync %d sync %d", result, sync);
-    if ((result == LE_OK) && sync)
-    {
-        /* Make a sync operation */
-        result = le_fwupdate_DualSysSync();
-        if (result != LE_OK)
-        {
-            LE_ERROR ("FW update component init: Sync failure %d", result);
-        }
-    }
-}
-
-
-//==================================================================================================
 //                                       Public API Functions
 //==================================================================================================
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Download the firmware image file to the modem.
+ * Download the firmware image file into the update partition. The function can also be used to
+ * resume the download if the @c le_fwupdate_InitDownload function is not called before.
  *
  * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if an input parameter is not valid
- *      - LE_FAULT on failure
+ *      - LE_OK              On success
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_FAULT           On failure
  *
  * @note
  *      The process exits, if an invalid file descriptor (e.g. negative) is given.
@@ -78,11 +52,118 @@ le_result_t le_fwupdate_Download
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check whether both systems are synchronized, and launch the synchronization accordingly. Then,
+ * the function clears the resume context. So, if the function is called before calling the
+ * @c le_fwupdate_Download function, this last one will initiate a full installation instead of
+ * performing a resume.
+ *
+ * @return
+ *      - LE_OK    On success
+ *      - LE_FAULT On failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_InitDownload
+(
+    void
+)
+{
+    return pa_fwupdate_InitDownload();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the downloaded update package write position.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER Invalid parameter
+ *      - LE_FAULT on failure
+ */;
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_GetResumePosition
+(
+    size_t *positionPtr     ///< [OUT] Update package read position
+)
+{
+    return pa_fwupdate_GetResumePosition(positionPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the update status, which is either the last status of the systems swap if it failed, or
+ * the status of the secondary bootloader (SBL).
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER Invalid parameter
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_GetUpdateStatus
+(
+    le_fwupdate_UpdateStatus_t *statusPtr, ///< [OUT] Returned update status
+    char *statusLabelPtr,                  ///< [OUT] Points to the string matching the status
+    size_t statusLabelLength               ///< [IN]  Maximum label length
+)
+{
+    le_result_t result = LE_BAD_PARAMETER;
+    pa_fwupdate_UpdateStatus_t paStatus;
+
+    // Check the parameters
+    if (NULL == statusPtr)
+    {
+        LE_ERROR("Invalid parameter.");
+        return result;
+    }
+
+    // Get the update status from the PA
+    result = pa_fwupdate_GetUpdateStatus(&paStatus, statusLabelPtr, statusLabelLength);
+
+    if (LE_OK == result)
+    {
+        switch (paStatus)
+        {
+            case PA_FWUPDATE_UPDATE_STATUS_OK:
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_OK;
+                break;
+            case PA_FWUPDATE_UPDATE_STATUS_PARTITION_ERROR:
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_PARTITION_ERROR;
+                break;
+            case PA_FWUPDATE_UPDATE_STATUS_DWL_ONGOING:
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_DWL_ONGOING;
+                break;
+            case PA_FWUPDATE_UPDATE_STATUS_DWL_FAILED:
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_DWL_FAILED;
+                break;
+            case PA_FWUPDATE_UPDATE_STATUS_DWL_TIMEOUT:
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_DWL_TIMEOUT;
+                break;
+            case PA_FWUPDATE_UPDATE_STATUS_UNKNOWN:
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_UNKNOWN;
+                break;
+            default:
+                LE_ERROR("Invalid PA status (%d)!", paStatus);
+                *statusPtr = LE_FWUPDATE_UPDATE_STATUS_UNKNOWN;
+                break;
+        }
+    }
+    else
+    {
+        LE_ERROR("Unable to determine the FW update status!");
+        *statusPtr = LE_FWUPDATE_UPDATE_STATUS_UNKNOWN;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the firmware version string
  *
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -121,6 +202,7 @@ le_result_t le_fwupdate_GetFirmwareVersion
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_OVERFLOW if version string to big to fit in provided buffer
  *      - LE_FAULT for any other errors
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -167,9 +249,8 @@ le_result_t le_fwupdate_DualSysSyncState
     bool *isSync ///< [OUT] true if both systems are synchronized, false otherwise
 )
 {
-    le_result_t result = LE_FAULT;
     /* Get the dual system synchronization state from PA */
-    result = pa_fwupdate_DualSysGetSyncState( isSync );
+    le_result_t result = pa_fwupdate_DualSysGetSyncState( isSync );
 
     LE_DEBUG ("result %d, isSync %d", result, *isSync);
     return result;
@@ -181,10 +262,14 @@ le_result_t le_fwupdate_DualSysSyncState
  *
  * After the reset, the UPDATE and ACTIVE systems will be swapped.
  *
+ * @note On success, a device reboot is initiated without returning any value.
+ *
+ * @note This API is only functional on platforms which support dual system.
+ *
  * @deprecated This API will be removed and should not be used for further development.
  *
  * @return
- *      - LE_OK            On success
+ *      - LE_BUSY          Download is ongoing, swap is not allowed
  *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_FAULT         On failure
  *
@@ -195,27 +280,20 @@ le_result_t le_fwupdate_DualSysSwap
     void
 )
 {
-    le_result_t result = pa_fwupdate_DualSysSwap (false);
-
-    if (result == LE_OK)
-    {
-        /* request modem to check if there is NVUP files to apply
-         * no need to check the result as SSID are already modified we need to reset */
-        pa_fwupdate_NvupApply();
-        /* make a system reset */
-        pa_fwupdate_Reset();
-        /* at this point the system is reseting */
-    }
-
-    LE_DEBUG ("result %d", result);
+    le_result_t result;
+    /* request the swap */
+    result = pa_fwupdate_DualSysSwap(false);
+    /* the previous function returns only if there has been an error */
+    LE_ERROR(" !!! Error %s", LE_RESULT_TXT(result));
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a full system reset with a systems SYNC.
+ * Request a systems SYNC.
  *
- * After the reset, the UPDATE system will be synchronised with the ACTIVE one.
+ * The UPDATE system will be synchronised with the ACTIVE one.
+ * @note This API is only functional on platforms which support dual system.
  *
  * @deprecated This API will be removed and should not be used for further development.
  *
@@ -232,11 +310,6 @@ le_result_t le_fwupdate_DualSysSync
 )
 {
     le_result_t result = pa_fwupdate_DualSysSync();
-    if (result == LE_FAULT)
-    {
-        LE_DEBUG ("sync failure --> pass SW update to NORMAL");
-        result = pa_fwupdate_SetState (PA_FWUPDATE_STATE_NORMAL);
-    }
     LE_DEBUG ("result %d", result);
     return result;
 }
@@ -247,11 +320,11 @@ le_result_t le_fwupdate_DualSysSync
  *
  * After the reset, the UPDATE and ACTIVE systems will be swapped and synchronized.
  *
+ * @note On success, a device reboot is initiated without returning any value.
+ *
  * @deprecated This API will be removed and should not be used for further development.
  *
  * @return
- *      - LE_OK            On success
- *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_FAULT         On failure
  *
  */
@@ -262,20 +335,10 @@ le_result_t le_fwupdate_DualSysSwapAndSync
 )
 {
     le_result_t result;
-
-    /* Program the SWAP */
-    result = pa_fwupdate_DualSysSwap (true);
-    if (result == LE_OK)
-    {
-        /* request modem to check if there is NVUP files to apply
-         * no need to check the result as SSID are already modified we need to reset */
-        pa_fwupdate_NvupApply();
-        /* make a system reset */
-        pa_fwupdate_Reset();
-        /* at this point the system is reseting */
-    }
-
-    LE_DEBUG ("result %d", result);
+    /* request the swap and sync */
+    result = pa_fwupdate_DualSysSwap(true);
+    /* the previous function returns only if there has been an error */
+    LE_ERROR(" !!! Error %s", LE_RESULT_TXT(result));
     return result;
 }
 
@@ -286,6 +349,5 @@ le_result_t le_fwupdate_DualSysSwapAndSync
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    SyncAtStartupCheck();
 }
 

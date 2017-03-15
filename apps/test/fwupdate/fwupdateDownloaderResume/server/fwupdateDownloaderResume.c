@@ -1,8 +1,29 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @file fwupdateDownloader.c
+ * @file fwupdateDownloaderResume.c
  *
- * fwupdate downloader implementation
+ * fwupdate downloader with resume behavior implementation
+ *
+ * The firmware update process can be invoked remotely by sending an update package on
+ * the TCP port 5001.
+ *
+ * For example by using netcat:
+ * @verbatim
+ * nc [-q 0] <target_ip> 5001 < <spkg_name.cwe>
+ * @endverbatim
+ *
+ * @note The default port is 5001 but it can be changed in the source code.
+ *
+ * @note If the cwe file is not correct, a timeout of 900 seconds may occur when the firmware update
+ * process is expecting incoming data.
+ *
+ * @note If no data are sent by the host to the firmware update process during more than 900 seconds,
+ * a timeout will occur and the download will fail.
+ *
+ * @note If the download is interrupted before the end for any reason, you can resume it by relaunch
+ *  the command.
+ *
+ * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -21,7 +42,15 @@
  * @note this is an arbitrary value and can be changed as required
  */
 //--------------------------------------------------------------------------------------------------
-#define FWUPDATE_SERVER_PORT 5000
+#define FWUPDATE_SERVER_PORT 5001
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Buffer size
+ */
+//--------------------------------------------------------------------------------------------------
+#define BUF_SIZE 1024
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -34,25 +63,40 @@
 //--------------------------------------------------------------------------------------------------
 static le_result_t CheckSystemState
 (
-    void
+    size_t *resumePositionPtr        ///< resume position pointer
 )
 {
     le_result_t result;
     bool isSync;
 
-    result = le_fwupdate_DualSysSyncState(&isSync);
-    if (result != LE_OK)
+    result = le_fwupdate_GetResumePosition(resumePositionPtr);
+    if ((result == LE_OK) && (*resumePositionPtr != 0))
     {
-        LE_ERROR("Sync State check failed. Error %s", LE_RESULT_TXT(result));
-        return LE_FAULT;
+        LE_INFO("resume download at position 0x%x", *resumePositionPtr);
     }
-    if (false == isSync)
-    {
-        result = le_fwupdate_DualSysSync();
+    else
+    {// no resume context found => do a normal download
+        LE_INFO("normal download");
+
+        if (resumePositionPtr)
+        {
+            *resumePositionPtr = 0;
+        }
+
+        result = le_fwupdate_DualSysSyncState(&isSync);
         if (result != LE_OK)
         {
-            LE_ERROR("SYNC operation failed. Error %s", LE_RESULT_TXT(result));
+            LE_ERROR("Sync State check failed. Error %s", LE_RESULT_TXT(result));
             return LE_FAULT;
+        }
+        if (false == isSync)
+        {
+            result = le_fwupdate_DualSysSync();
+            if (result != LE_OK)
+            {
+                LE_ERROR("SYNC operation failed. Error %s", LE_RESULT_TXT(result));
+                return LE_FAULT;
+            }
         }
     }
 
@@ -86,26 +130,67 @@ static void SocketEventHandler
     }
     else
     {
+        size_t resumePosition;
+
         LE_INFO("Connected ...");
 
-        result = CheckSystemState();
+        result = CheckSystemState(&resumePosition);
 
         if (result == LE_OK)
         {
-            result = le_fwupdate_Download(connFd);
+            if (resumePosition)
+            {// we are doing a resume download
 
-            LE_INFO("Download result=%s", LE_RESULT_TXT(result));
-            if (result == LE_OK)
-            {
-                le_fwupdate_DualSysSwapAndSync();
-                // if this function returns so there is an error => do a SYNC
-                LE_ERROR("Swap And Sync failed -> Sync");
-                result = le_fwupdate_DualSysSync();
-                if (result != LE_OK)
+                LE_INFO("resumePosition = %d", resumePosition);
+
+                while (resumePosition)
                 {
-                    LE_ERROR("SYNC failed");
+                    ssize_t readCount;
+                    uint32_t buf[BUF_SIZE];
+                    size_t length = (resumePosition > BUF_SIZE) ? BUF_SIZE : resumePosition;
+
+                    readCount = read(connFd, buf, length);
+                    if (readCount == -1)
+                    {
+                        LE_ERROR("read error %m");
+                        break;
+                    }
+                    else
+                    {
+                        if (readCount)
+                        {
+                            resumePosition -= readCount;
+                        }
+                        else
+                        {
+                            LE_INFO("end of file");
+                            break;
+                        }
+                    }
                 }
-                // TODO send an error message to the host
+            }
+
+            if (resumePosition)
+            {// error
+                LE_ERROR("end of file with resumePosition != 0 (%d)", resumePosition);
+                le_fwupdate_InitDownload();
+            }
+            else
+            {
+                result = le_fwupdate_Download(connFd);
+
+                LE_INFO("Download result=%s", LE_RESULT_TXT(result));
+                if (result == LE_OK)
+                {
+                    le_fwupdate_DualSysSwapAndSync();
+                    // if this function returns so there is an error => do a SYNC
+                    LE_ERROR("Swap And Sync failed -> Sync");
+                    result = le_fwupdate_DualSysSync();
+                    if (result != LE_OK)
+                    {
+                        LE_ERROR("SYNC failed");
+                    }
+                }
             }
         }
         else
@@ -142,7 +227,7 @@ static void SocketListenerHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function must be called to initialize the FW UPDATE DOWNLOADER module.
+ * This function must be called to initialize the FW UPDATE DOWNLOADER RESUME module.
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
@@ -151,7 +236,7 @@ COMPONENT_INIT
     int ret, optVal = 1;
     int sockFd;
 
-    LE_INFO("FW UPDATE DOWNLOADER starts");
+    LE_INFO("FW UPDATE DOWNLOADER RESUME starts");
 
     // Create the socket
     sockFd = socket (AF_INET, SOCK_STREAM, 0);

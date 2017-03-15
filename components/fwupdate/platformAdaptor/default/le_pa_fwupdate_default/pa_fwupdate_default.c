@@ -11,15 +11,18 @@
 #include "legato.h"
 #include "pa_fwupdate.h"
 
-
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Download the firmware image file to the modem.
+ * This function starts a package download to the device.
+ *
+ * @warning This API is a blocking API. It needs to be called in a dedicated thread.
  *
  * @return
- *      - LE_OK on success
- *      - LE_FAULT on failure
+ *      - LE_OK              On success
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_FAULT           On failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_Download
@@ -31,6 +34,49 @@ le_result_t pa_fwupdate_Download
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the update package write position.
+ *
+ * @note This is actually the position within the update package, not the one once the update
+ * package is processed (unzipping, extracting, ... ).
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_GetResumePosition
+(
+    size_t *positionPtr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the last update status.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER Invalid parameter
+ *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_GetUpdateStatus
+(
+    pa_fwupdate_UpdateStatus_t *statusPtr, ///< [OUT] Returned update status
+    char *statusLabelPtr,                  ///< [OUT] String matching the status
+    size_t statusLabelLength               ///< [IN] Maximum length of the status description
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -39,6 +85,7 @@ le_result_t pa_fwupdate_Download
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED not supported
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_Read
@@ -49,7 +96,6 @@ le_result_t pa_fwupdate_Read
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -71,7 +117,6 @@ le_result_t pa_fwupdate_GetFirmwareVersion
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -144,7 +189,7 @@ le_result_t pa_fwupdate_DualSysSync
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_DualSysGetSyncState
 (
-    bool *isSync ///< Indicates if both systems are synchronized
+    bool *isSyncPtr ///< [OUT] Indicates if both systems are synchronized
 )
 {
     LE_ERROR("Unsupported function called");
@@ -167,6 +212,25 @@ void pa_fwupdate_Reset
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function which indicates if a Sync operation is needed (swap & sync operation)
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_UNSUPPORTED   the feature is not supported
+ *      - LE_FAULT         else
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_DualSysCheckSync
+(
+    bool *isSyncReqPtr ///< [OUT] Indicates if synchronization is requested
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Request a full system reset with a systems SWAP and systems SYNC.
  *
  * After the reset, the UPDATE and ACTIVE systems will be swapped and synchronized.
@@ -181,25 +245,6 @@ void pa_fwupdate_Reset
 le_result_t le_fwupdate_DualSysSwapAndSync
 (
     void
-)
-{
-    LE_ERROR("Unsupported function called");
-    return LE_FAULT;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function which indicates if a Sync operation is needed (swap & sync operation)
- *
- * @return
- *      - LE_OK            on success
- *      - LE_UNSUPPORTED   the feature is not supported
- *      - LE_FAULT         else
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_DualSysCheckSync
-(
-    bool *isSyncReq ///< Indicates if synchronization is requested
 )
 {
     LE_ERROR("Unsupported function called");
@@ -257,7 +302,7 @@ le_result_t pa_fwupdate_NvupDelete
 le_result_t pa_fwupdate_NvupWrite
 (
     size_t length,                      ///< [IN] data length
-    uint8_t* data,                      ///< [IN] input data
+    uint8_t* dataPtr,                   ///< [IN] input data
     bool isEnd                          ///< [IN] flag to indicate the end of the file
 )
 {
@@ -276,6 +321,25 @@ le_result_t pa_fwupdate_NvupWrite
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_fwupdate_NvupApply
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the resume context
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_InitDownload
 (
     void
 )

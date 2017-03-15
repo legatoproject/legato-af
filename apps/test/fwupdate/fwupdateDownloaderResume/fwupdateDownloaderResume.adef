@@ -1,0 +1,22 @@
+
+sandboxed: false
+
+executables:
+{
+    fwupdateDownloaderResume = ( server )
+}
+
+processes:
+{
+    run:
+    {
+        (fwupdateDownloaderResume)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    fwupdateDownloaderResume.server.le_fwupdate -> fwupdateService.le_fwupdate
+}

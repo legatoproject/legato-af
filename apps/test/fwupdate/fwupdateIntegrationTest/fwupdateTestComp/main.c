@@ -16,6 +16,7 @@
 
 #include "interfaces.h"
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Print function.
@@ -58,6 +59,7 @@ static void PrintUsage
             "fwupdateTest -- do_swap: make a swap and reboot the device",
             "fwupdateTest -- do_sync: synchronize the sub systems",
             "fwupdateTest -- do_swapsync: make a Swap & Sync operation",
+            "fwupdateTest -- do_initdwnld: make an init download operation",
             "",
     };
 
@@ -78,9 +80,10 @@ COMPONENT_INIT
     const char* testString = "";
     const char* secondString = "";
     le_result_t result;
-    char string[100] = {0};
+    char string[100];
 
     LE_INFO("Start fwupdate app.");
+    memset (string, 0, sizeof(string));
 
     /* Get the test identifier */
     if (le_arg_NumArgs() >= 1)
@@ -102,7 +105,8 @@ COMPONENT_INIT
     {
         bool isSync;
         result = le_fwupdate_DualSysSyncState (&isSync);
-        snprintf(string, sizeof(string), "fwupdateTest: sync_state -> result %d isSync %d", result, isSync);
+        snprintf (string, sizeof(string), "fwupdateTest: sync_state -> result %d isSync %d", result,
+                  isSync);
         Print (string);
         exit(0);
     }
@@ -110,10 +114,11 @@ COMPONENT_INIT
     {
         bool isSync;
         result = le_fwupdate_DualSysSync ();
-        snprintf(string, sizeof(string), "fwupdateTest: Sync -> result %d", result);
+        snprintf (string, sizeof(string),  "fwupdateTest: Sync -> result %d", result);
         Print (string);
         result = le_fwupdate_DualSysSyncState (&isSync);
-        snprintf(string, sizeof(string), "fwupdateTest: sync_state -> result %d isSync %d", result, isSync);
+        snprintf (string, sizeof(string), "fwupdateTest: sync_state -> result %d isSync %d", result,
+                  isSync);
         Print (string);
         exit(0);
     }
@@ -129,7 +134,7 @@ COMPONENT_INIT
         else
         {
             result = le_fwupdate_Download (fd);
-            snprintf(string, sizeof(string), "le_fwupdate_Download %d", result);
+            snprintf (string, sizeof(string), "le_fwupdate_Download %d", result);
             Print (string);
             close (fd);
         }
@@ -138,14 +143,21 @@ COMPONENT_INIT
     else if (0 == strcmp(testString, "do_swapsync"))
     {
         result = le_fwupdate_DualSysSwapAndSync();
-        snprintf(string, sizeof(string), "le_fwupdate_DualSysSwapAndSync %d", result);
+        snprintf (string, sizeof(string), "le_fwupdate_DualSysSwapAndSync %d", result);
         Print (string);
         exit(0);
     }
     else if (0 == strcmp(testString, "do_swap"))
     {
         result = le_fwupdate_DualSysSwap();
-        snprintf(string, sizeof(string), "le_fwupdate_DualSysSwap %d", result);
+        snprintf (string, sizeof(string), "le_fwupdate_DualSysSwap %d", result);
+        Print (string);
+        exit(0);
+    }
+    else if (0 == strcmp(testString, "do_initdwnld"))
+    {
+        result = le_fwupdate_InitDownload();
+        snprintf (string, sizeof(string), "le_fwupdate_InitDownload %d", result);
         Print (string);
         exit(0);
     }

@@ -13,11 +13,6 @@
  * Firmware update is useful when the image comes from an alternative source, rather than as an
  * over-the-air update through the AirVantage service.
  *
- * @todo
- *  - support resuming partial download
- *  - support detailed update status
- *
- *
  * @section le_fwupdate_binding IPC interfaces binding
  *
  * All the functions of this API are provided by the @b le_fwupdate service.
@@ -52,6 +47,25 @@
  * application processor has restarted, the @ref le_info_version APIs can be used to determine
  * whether the firmware has been updated to the new version.
  *
+ * @section le_fwupdate_resume Update Firmware Image Download Resume
+ *
+ * During the download, the flash programming position is saved. Thanks to this position, fwupdate
+ * service is able to resume the download without downloading the update package at the beginning.
+ *
+ * By default, the fwupdate service download API is resuming the previous download: new data
+ * received through this API will be programmed at the resume position.
+ *
+ * @note
+ * A download can be resumed when:
+ * - le_fwupdate_Download() API has previously returned LE_CLOSED or LE_TIMEOUT
+ * - A reset occured during last le_fwupdate_Download() processing (Legato/full system reset)
+ * - No resume can be performed in other cases.
+ *
+ * A complete download can be forced by calling le_fwupdate_InitDownload(). Resume position
+ * is set to 0.
+ *
+ * The current resume position can be retrieved by calling le_fwupdate_GetResumePosition().
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -75,18 +89,41 @@
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_VERS_LEN   = 256;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the update status label
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE STATUS_LABEL_LENGTH_MAX = 32;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Download the firmware image file.
+ * Update status
+ * Indicates either a success or the defective image partition.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UpdateStatus
+{
+    UPDATE_STATUS_OK,              ///< Last update succeeded
+    UPDATE_STATUS_PARTITION_ERROR, ///< At least, a partition is corrupted
+    UPDATE_STATUS_DWL_ONGOING,     ///< Downloading in progress
+    UPDATE_STATUS_DWL_FAILED,      ///< Last downloading failed
+    UPDATE_STATUS_DWL_TIMEOUT,     ///< Last downloading ended with timeout
+    UPDATE_STATUS_UNKNOWN          ///< Unknown status. It has to be the last one.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Download the firmware image file. The function can also be used to resume the download if the
+ * le_fwupdate_InitDownload() function is not called before.
  *
  * @return
- *      - LE_OK on success
- *      - LE_BAD_PARAMETER if an input parameter is not valid
- *      - LE_TIMEOUT after 900 seconds without data recieved
- *      - LE_TERMINATED    if aborted by the user by calling
- *                          pa_fwupdate_ExecuteCommand( pa_fwupdate_CANCEL )
- *      - LE_FAULT on failure
+ *      - LE_OK              On success
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_FAULT           On failure
  *
  * @note
  *      The process exits, if an invalid file descriptor (e.g. negative) is given.
@@ -99,13 +136,63 @@ FUNCTION le_result_t Download
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the firmware version string
+ * Download initialization:
+ *  - for single and dual systems, it resets resume position,
+ *  - for dual systems, it synchronizes the systems if needed.
+ *
+ * @note
+ *      When invoked, resuming a previous download is not possible, a full update package has to be
+ *      downloaded.
+ *
+ * @return
+ *      - LE_OK      On success
+ *      - LE_FAULT   On failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t InitDownload
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the downloaded update package write position.
+ *
+ * @return
+ *      - LE_OK              On success
+ *      - LE_BAD_PARAMETER   The given parameter is invalid.
+ *      - LE_FAULT           On failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetResumePosition
+(
+    size position  OUT    ///< Update package read position
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the update status.
  *
  * @return
  *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_OVERFLOW if version string to big to fit in provided buffer
- *      - LE_FAULT for any other errors
+ *      - LE_BAD_PARAMETER Invalid parameter
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUpdateStatus
+(
+    UpdateStatus status                         OUT, ///< Returned update status
+    string statusLabel[STATUS_LABEL_LENGTH_MAX] OUT  ///< Description of the status
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the firmware version string
+ *
+ * @return
+ *      - LE_OK          on success
+ *      - LE_NOT_FOUND   if the version string is not available
+ *      - LE_OVERFLOW    if version string to big to fit in provided buffer
+ *      - LE_FAULT       for any other errors
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -122,10 +209,10 @@ FUNCTION le_result_t GetFirmwareVersion
  * Get the bootloader version string
  *
  * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_OVERFLOW if version string to big to fit in provided buffer
- *      - LE_FAULT for any other errors
+ *      - LE_OK          on success
+ *      - LE_NOT_FOUND   if the version string is not available
+ *      - LE_OVERFLOW    if version string to big to fit in provided buffer
+ *      - LE_FAULT       for any other errors
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -139,6 +226,7 @@ FUNCTION le_result_t GetBootloaderVersion
 //--------------------------------------------------------------------------------------------------
 /**
  * Function which indicates if Active and Update systems are synchronized
+ *
  * @note This API is only available on platforms which support dual system.
  *
  * @deprecated This API will be removed and should not be used for further development.
@@ -146,6 +234,7 @@ FUNCTION le_result_t GetBootloaderVersion
  * @return
  *      - LE_OK            On success
  *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_FAULT         On failure
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DualSysSyncState
@@ -158,13 +247,16 @@ FUNCTION le_result_t DualSysSyncState
  * Request a full system reset with a systems swap.
  *
  * After the reset, the UPDATE and ACTIVE systems will be swapped.
+ *
  * @note When this API is correctly treated, a device reboot is initiated without returning any
  * value.
+ *
  * @note This API is only available on platforms which support dual system.
  *
  * @deprecated This API will be removed and should not be used for further development.
  *
  * @return
+ *      - LE_BUSY          Download is ongoing, swap is not allowed
  *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_FAULT         On failure
  *

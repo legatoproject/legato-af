@@ -1,0 +1,24 @@
+sources:
+{
+    fwupdateDownloaderResume.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_FWUPDATE
+    }
+
+    api:
+    {
+        le_fwupdate.api
+    }
+}
+
+

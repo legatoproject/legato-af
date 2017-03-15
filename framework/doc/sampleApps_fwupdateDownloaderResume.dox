@@ -1,20 +1,23 @@
-/** @page sampleApps_fwupdateDownloader Firmware Update Downloader
+/** @page sampleApps_fwupdateDownloaderResume Firmware Update Downloader with Resume
 
 The firmware update process can be invoked remotely by sending an update package on
-the TCP port 5000.
+the TCP port 5001.
 
 For example by using netcat:
 @verbatim
-nc [-q 0] <target_ip> 5000 < <spkg_name.cwe>
+nc [-q 0] <target_ip> 5001 < <spkg_name.cwe>
 @endverbatim
 
-@note The default port is 5000 but it can be changed in the source code.
+@note The default port is 5001 but it can be changed in the source code.
 
 @note If the cwe file is not correct, a timeout of 900 seconds may occur when the firmware update
 process is expecting incoming data.
 
 @note If no data are sent by the host to the firmware update process during more than 900 seconds,
 a timeout will occur and the download will fail.
+
+@note If the download is interrupted before the end for any reason, you can resume it by relaunch
+ the command.
 
 <HR>
 

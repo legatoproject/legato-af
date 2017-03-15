@@ -44,6 +44,9 @@ SYNOPSIS:\n\
     fwupdate help\n\
     fwupdate download FILE\n\
     fwupdate query\n\
+    fwupdate install\n\
+    fwupdate markGood\n\
+    fwupdate fullInstall FILE\n\
 \n\
 DESCRIPTION:\n\
     fwupdate help\n\
@@ -51,12 +54,25 @@ DESCRIPTION:\n\
 \n\
     fwupdate download FILE\n\
       - Download the given CWE file; if '-' is given as the FILE, then use stdin.\n\
-        After a successful download, the modem will reset.\n\
+        After a successful download:\n\
+               - the modem will reset on single systems,\n\
+               - wait another command on dual systems\n\
 \n\
     fwupdate query\n\
       - Query the current firmware version. This includes the modem firmware version, the\n\
         bootloader version, and the linux kernel version.\n\
         This can be used after a download and modem reset, to confirm the firmware version.\n\
+\n\
+    fwupdate install\n\
+      - Install a previously downloaded firmware or go back to the old system if the running\n\
+        system is not marked good (DualSys platform only)\n\
+\n\
+    fwupdate markGood\n\
+      - Mark good the current system (DualSys platform only)\n\
+\n\
+    fwupdate fullInstall FILE\n\
+      - do download, install and markGood in one time (DualSys platform only)\n\
+        After a successful download, the modem will reset\n\
 ";
 
 
@@ -141,12 +157,12 @@ static void TryConnect
 //--------------------------------------------------------------------------------------------------
 static le_result_t DownloadFirmware
 (
-    const char* fileName    ///< Name of file containing firmware image
+    const char* fileNamePtr    ///< Name of file containing firmware image
 )
 {
     int fd;
 
-    if ( strcmp(fileName, "-") == 0 )
+    if ( strcmp(fileNamePtr, "-") == 0 )
     {
         // Use stdin
         fd = STDIN_FILENO;
@@ -154,13 +170,13 @@ static le_result_t DownloadFirmware
     else
     {
         // Open the file
-        fd = open( fileName, O_RDONLY);
+        fd = open( fileNamePtr, O_RDONLY);
         LE_PRINT_VALUE("%d", fd);
 
         if ( fd == -1 )
         {
             // Inform the user of the error; it's also useful to log this info
-            printf("Can't open file '%s' : %m\n", fileName);
+            printf("Can't open file '%s' : %m\n", fileNamePtr);
             return LE_FAULT;
         }
     }
@@ -170,6 +186,9 @@ static le_result_t DownloadFirmware
     // Connected to service so continue
     printf("Download started ...\n");
     fflush(stdout);
+
+    // force a fresh download on dualsys platform
+    le_fwupdate_InitDownload();
 
     LE_PRINT_VALUE("%d", fd);
     if ( le_fwupdate_Download(fd) == LE_OK )
@@ -238,6 +257,95 @@ static le_result_t QueryVersion
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Process the download firmware command
+ *
+ * @return
+ *      - LE_OK if the download was successful
+ *      - LE_FAULT if there was an issue during the download process
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t InstallFirmware
+(
+    void
+)
+{
+    le_fwupdate_UpdateStatus_t status;
+    char statusStr[LE_FWUPDATE_STATUS_LABEL_LENGTH_MAX];
+
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+
+    if (le_fwupdate_GetUpdateStatus(&status, statusStr, sizeof(statusStr)) != LE_OK)
+    {
+        printf("Error reading update status\n");
+        return LE_FAULT;
+    }
+
+    if (status != LE_FWUPDATE_UPDATE_STATUS_OK)
+    {
+        printf("Bad status (%s), install not possible.\n", statusStr);
+        return LE_FAULT;
+    }
+
+    printf("Install the firmware, the system will reboot ...\n");
+    return le_fwupdate_DualSysSwap();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark good the current firmware
+ *
+ * @return
+ *      - LE_OK if the download was successful
+ *      - LE_FAULT if there was an issue during the download process
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MarkGoodFirmware
+(
+    void
+)
+{
+    bool isSync;
+    le_result_t result;
+
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+
+    result = le_fwupdate_DualSysSyncState(&isSync);
+    if ((result == LE_OK) && isSync)
+    {
+        return LE_OK;
+    }
+
+    return le_fwupdate_DualSysSync();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Download, install and mark good a firmware
+ *
+ * @return
+ *      - LE_OK if the download was successful
+ *      - LE_FAULT if there was an issue during the download process
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FullInstallFirmware
+(
+    const char* fileNamePtr    ///< Name of file containing firmware image
+)
+{
+    le_result_t result;
+
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+
+    result = DownloadFirmware(fileNamePtr);
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    return le_fwupdate_DualSysSwapAndSync();
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -257,7 +365,7 @@ COMPONENT_INIT
             exit(EXIT_SUCCESS);
         }
 
-        else if ( strcmp(command, "download") == 0 )
+        else if ( 0 == strcmp(command, "download") )
         {
             // Get the filename of the firmware image; could be '-' if stdin
             if (le_arg_NumArgs() > 1)
@@ -275,7 +383,7 @@ COMPONENT_INIT
             }
         }
 
-        else if ( strcmp(command, "query") == 0 )
+        else if ( 0 == strcmp(command, "query") )
         {
             if (QueryVersion() == LE_OK)
             {
@@ -283,6 +391,44 @@ COMPONENT_INIT
             }
 
             exit(EXIT_FAILURE);
+        }
+
+        else if ( 0 == strcmp(command, "install") )
+        {
+            if ( InstallFirmware() == LE_OK )
+            {
+                exit(EXIT_SUCCESS);
+            }
+
+            exit(EXIT_FAILURE);
+        }
+
+        else if ( 0 == strcmp(command, "markGood") )
+        {
+            if ( MarkGoodFirmware() == LE_OK )
+            {
+                exit(EXIT_SUCCESS);
+            }
+
+            exit(EXIT_FAILURE);
+        }
+
+        else if ( 0 == strcmp(command, "fullInstall") )
+        {
+            // Get the filename of the firmware image; could be '-' if stdin
+            if (le_arg_NumArgs() > 1)
+            {
+                if ( FullInstallFirmware(le_arg_GetArg(1)) == LE_OK )
+                {
+                    exit(EXIT_SUCCESS);
+                }
+
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+                printf("Missing FILE\n\n");
+            }
         }
 
         else

@@ -54,3 +54,4 @@ MKSYS_FLAGS += -C "-DPDP_MAX_MULTIPDP=8"
 # Set this variable to generate a tree with stripped executables and libraries
 STRIP_STAGING_TREE ?= 1
 
+SDEF_TO_USE = modules/Dualsys/ar758x.sdef

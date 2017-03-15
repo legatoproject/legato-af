@@ -54,19 +54,78 @@ typedef enum pa_fwupdate_state
 }
 pa_fwupdate_state_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Update status
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum pa_fwupdate_UpdateStatus
+{
+    PA_FWUPDATE_UPDATE_STATUS_OK,              ///< Last update succeeded
+    PA_FWUPDATE_UPDATE_STATUS_PARTITION_ERROR, ///< At least, one partition is corrupted
+    PA_FWUPDATE_UPDATE_STATUS_DWL_ONGOING,     ///< Downloading in progress
+    PA_FWUPDATE_UPDATE_STATUS_DWL_FAILED,      ///< Last downloading failed
+    PA_FWUPDATE_UPDATE_STATUS_DWL_TIMEOUT,     ///< Last downloading stopped due to timeout
+    PA_FWUPDATE_UPDATE_STATUS_UNKNOWN          ///< Unknown status. It has to be the last one.
+} pa_fwupdate_UpdateStatus_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Download the firmware image file to the modem.
+ * This function starts a package download to the device.
+ *
+ * @warning This API is a blocking API. It needs to be called in a dedicated thread.
  *
  * @return
- *      - LE_OK on success
- *      - LE_FAULT on failure
+ *      - LE_OK              On success
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_FAULT           On failure
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_fwupdate_Download
 (
     int fd   ///< [IN] File descriptor of the image, opened to the start of the image.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the update package write position.
+ *
+ * @note This is actually the position within the update package, not the one once the update
+ * package is processed (unzipping, extracting, ... ).
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_BAD_PARAMETER bad parameter
+ *      - LE_FAULT         on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetResumePosition
+(
+    size_t *positionPtr     ///< [OUT] Update package read position
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Return the last update status.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER Invalid parameter
+ *      - LE_FAULT on failure
+ *      - LE_UNSUPPORTED not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetUpdateStatus
+(
+    pa_fwupdate_UpdateStatus_t *statusPtr, ///< [OUT] Returned update status
+    char *statusLabelPtr,                  ///< [OUT] String matching the status
+    size_t statusLabelLength               ///< [IN] Maximum length of the status description
 );
 
 
@@ -90,9 +149,10 @@ LE_SHARED le_result_t pa_fwupdate_Read
  * Get the firmware version string
  *
  * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_OK            on success
+ *      - LE_NOT_FOUND     if the version string is not available
+ *      - LE_OVERFLOW      if version string to big to fit in provided buffer
+ *      - LE_BAD_PARAMETER bad parameter
  *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
@@ -108,9 +168,10 @@ LE_SHARED le_result_t pa_fwupdate_GetFirmwareVersion
  * Get the bootloader version string
  *
  * @return
- *      - LE_OK on success
- *      - LE_NOT_FOUND if the version string is not available
- *      - LE_OVERFLOW if version string to big to fit in provided buffer
+ *      - LE_OK            on success
+ *      - LE_NOT_FOUND     if the version string is not available
+ *      - LE_OVERFLOW      if version string to big to fit in provided buffer
+ *      - LE_BAD_PARAMETER bad parameter
  *      - LE_FAULT for any other errors
  */
 //--------------------------------------------------------------------------------------------------
@@ -137,10 +198,12 @@ LE_SHARED le_result_t pa_fwupdate_DualSysSync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Program a swap between active and update systems
+ * Request a full system reset with a systems swap and optionally a sync
+ *
+ * @note On success, a device reboot is initiated without returning any value.
  *
  * @return
- *      - LE_OK             on success
+ *      - LE_BUSY           download is ongoing, swap is not allowed
  *      - LE_UNSUPPORTED    the feature is not supported
  *      - LE_FAULT          on failure
  */
@@ -157,12 +220,13 @@ LE_SHARED le_result_t pa_fwupdate_DualSysSwap
  * @return
  *      - LE_OK            on success
  *      - LE_UNSUPPORTED   the feature is not supported
- *      - LE_FAULT         else
+ *      - LE_BAD_PARAMETER bad parameter
+ *      - LE_FAULT         on failure
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_fwupdate_DualSysGetSyncState
 (
-    bool *isSync ///< Indicates if both systems are synchronized
+    bool *isSyncPtr ///< [OUT] Indicates if both systems are synchronized
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -183,12 +247,13 @@ LE_SHARED void pa_fwupdate_Reset
  * @return
  *      - LE_OK            on success
  *      - LE_UNSUPPORTED   the feature is not supported
+ *      - LE_BAD_PARAMETER bad parameter
  *      - LE_FAULT         else
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_fwupdate_DualSysCheckSync
 (
-    bool *isSyncReq ///< Indicates if synchronization is requested
+    bool *isSyncReqPtr ///< [OUT] Indicates if synchronization is requested
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -229,12 +294,13 @@ LE_SHARED le_result_t pa_fwupdate_NvupDelete
  *      - LE_OK             on success
  *      - LE_UNSUPPORTED    the feature is not supported
  *      - LE_FAULT          on failure
+ *      - others            Depending of the underlying operations
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_fwupdate_NvupWrite
 (
     size_t length,                      ///< [IN] data length
-    uint8_t* data,                      ///< [IN] input data
+    uint8_t* dataPtr,                   ///< [IN] input data
     bool isEnd                          ///< [IN] flag to indicate the end of the file
 );
 
@@ -249,6 +315,21 @@ LE_SHARED le_result_t pa_fwupdate_NvupWrite
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_fwupdate_NvupApply
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize the resume context
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_InitDownload
 (
     void
 );
