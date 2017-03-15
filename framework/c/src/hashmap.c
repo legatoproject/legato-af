@@ -1193,6 +1193,46 @@ bool le_hashmap_EqualsUInt32
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Long integer hashing function. This can be used as a paramter to le_hashmap_Create if the key to
+ * the table is a uint64_t
+ *
+ * @return  Returns the hash value of the uint64_t pointed to by intToHash
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+size_t le_hashmap_HashUInt64
+(
+    const void* intToHashPtr    ///< [in] Pointer to the long integer to be hashed
+)
+{
+    uint64_t ui = *((uint64_t *)intToHashPtr);
+    return (size_t)ui;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Long integer equality function. This can be used as a paramter to le_hashmap_Create if the key to
+ * the table is a uint64_t
+ *
+ * @return  Returns true if the integers are equal, false otherwise
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+bool le_hashmap_EqualsUInt64
+(
+    const void* firstIntPtr,    ///< [in] Pointer to the first long integer for comparing.
+    const void* secondIntPtr    ///< [in] Pointer to the second long integer for comparing.
+)
+{
+    int a = *((uint64_t*) firstIntPtr);
+    int b = *((uint64_t*) secondIntPtr);
+    return a == b;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pointer hashing function. This can be used as a parameter to le_hashmap_Create() if the key to
  * the table is an pointer or reference. Simply pass in the address as the key.
  *

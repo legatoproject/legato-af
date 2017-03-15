@@ -48,7 +48,7 @@
  * @subsection c_hashmap_tips Tip
  *
  * The code sample shows some pre-defined functions for certain
- * key types. The key types supported are uint32_t and strings. The strings must be
+ * key types. The key types supported are uint32_t, uint64_t and strings. The strings must be
  * NULL terminated.
  *
  * Tables can also have their own hash and equality functions,
@@ -588,6 +588,37 @@ bool le_hashmap_EqualsUInt32
 (
     const void* firstIntPtr,    ///< [in] Pointer to the first integer for comparing.
     const void* secondIntPtr    ///< [in] Pointer to the second integer for comparing.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Long integer hashing function. This can be used as a paramter to le_hashmap_Create if the key to
+ * the table is a uint64_t
+ *
+ * @return  Returns the hash value of the uint64_t pointed to by intToHash
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+size_t le_hashmap_HashUInt64
+(
+    const void* intToHashPtr    ///< [in] Pointer to the long integer to be hashed
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Long integer equality function. This can be used as a paramter to le_hashmap_Create if the key to
+ * the table is a uint64_t
+ *
+ * @return  Returns true if the integers are equal, false otherwise
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+bool le_hashmap_EqualsUInt64
+(
+    const void* firstIntPtr,    ///< [in] Pointer to the first long integer for comparing.
+    const void* secondIntPtr    ///< [in] Pointer to the second long integer for comparing.
 );
 
 //--------------------------------------------------------------------------------------------------
