@@ -151,6 +151,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <fcntl.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <signal.h>
