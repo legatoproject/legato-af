@@ -40,3 +40,6 @@ mkapp(  secStoreTestGlobal.adef
 if ($ENV{TARGET} MATCHES "localhost")
     add_subdirectory(secStoreUnitTest)
 endif()
+
+# This is a C test
+add_dependencies(tests_c secStoreTest1a secStoreTest1b secStoreTest2 secStoreTestGlobal)

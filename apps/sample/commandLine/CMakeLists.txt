@@ -6,4 +6,4 @@
 mkapp(fileInfo.adef)
 
 # This is a sample application
-add_dependencies(samples fileInfo)
+add_dependencies(samples_c fileInfo)

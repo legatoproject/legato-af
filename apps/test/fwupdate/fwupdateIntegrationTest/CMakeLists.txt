@@ -14,3 +14,5 @@ if((LEGATO_TARGET MATCHES "ar758x") OR (LEGATO_TARGET MATCHES "ar759x"))
     )
 endif()
 
+# This is a C test
+add_dependencies(tests_c fwupdateTest)

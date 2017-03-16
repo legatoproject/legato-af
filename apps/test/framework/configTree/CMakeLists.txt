@@ -43,3 +43,6 @@ mkapp(cfgSelfRead.adef)
 mkapp(cfgSelfWrite.adef)
 mkapp(cfgSystemRead.adef)
 mkapp(cfgSystemWrite.adef)
+
+# This is a C test
+add_dependencies(tests_c cfgSelfRead cfgSelfWrite cfgSystemRead cfgSystemWrite)

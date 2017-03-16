@@ -7,4 +7,4 @@ mkapp(javaHelloWorld.adef
       -s "${LEGATO_ROOT}/components")
 
 # This is a sample application
-add_dependencies(samples javaHelloWorld)
+add_dependencies(samples_java javaHelloWorld)

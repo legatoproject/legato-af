@@ -7,4 +7,7 @@ if(NOT USE_CLANG EQUAL 1)
     add_test(cxxTest ${EXECUTABLE_OUTPUT_PATH}/cxxTest)
 
     mkapp(cxxHello.adef --cxxflags=-DMUST_BE_DEFINED )
+
+    # This is a C test
+    add_dependencies(tests_c cxxTest cxxHello)
 endif()

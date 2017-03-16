@@ -7,52 +7,52 @@
 
 ifeq ($(MAKECMDGOALS),localhost)
   include targetDefs.localhost
-else ifeq ($(MAKECMDGOALS),tests_localhost)
+else ifeq ($(filter-out %_localhost,$(MAKECMDGOALS)),)
   include targetDefs.localhost
 
 else ifeq ($(MAKECMDGOALS),ar7)
   include targetDefs.ar7
-else ifeq ($(MAKECMDGOALS),tests_ar7)
+else ifeq ($(filter-out %_ar7,$(MAKECMDGOALS)),)
   include targetDefs.ar7
 
 else ifeq ($(MAKECMDGOALS),ar759x)
   include targetDefs.ar759x
-else ifeq ($(MAKECMDGOALS),tests_ar759x)
+else ifeq ($(filter-out %_ar759x,$(MAKECMDGOALS)),)
   include targetDefs.ar759x
 
 else ifeq ($(MAKECMDGOALS),ar758x)
   include targetDefs.ar758x
-else ifeq ($(MAKECMDGOALS),tests_ar758x)
+else ifeq ($(filter-out %_ar758x,$(MAKECMDGOALS)),)
   include targetDefs.ar758x
 
 else ifeq ($(MAKECMDGOALS),ar86)
   include targetDefs.ar86
-else ifeq ($(MAKECMDGOALS),tests_ar86)
+else ifeq ($(filter-out %_ar86,$(MAKECMDGOALS)),)
   include targetDefs.ar86
 
 else ifeq ($(MAKECMDGOALS),wp85)
   include targetDefs.wp85
-else ifeq ($(MAKECMDGOALS),tests_wp85)
+else ifeq ($(filter-out %_wp85,$(MAKECMDGOALS)),)
   include targetDefs.wp85
 
 else ifeq ($(MAKECMDGOALS),wp750x)
   include targetDefs.wp750x
-else ifeq ($(MAKECMDGOALS),tests_wp750x)
+else ifeq ($(filter-out %_wp750x,$(MAKECMDGOALS)),)
   include targetDefs.wp750x
 
 else ifeq ($(MAKECMDGOALS),wp76xx)
   include targetDefs.wp76xx
-else ifeq ($(MAKECMDGOALS),tests_wp76xx)
+else ifeq ($(filter-out %_wp76xx,$(MAKECMDGOALS)),)
   include targetDefs.wp76xx
 
 else ifeq ($(MAKECMDGOALS),virt)
   include targetDefs.virt
-else ifeq ($(MAKECMDGOALS),tests_virt)
+else ifeq ($(filter-out %_virt,$(MAKECMDGOALS)),)
   include targetDefs.virt
 
 else ifeq ($(MAKECMDGOALS),raspi)
   include targetDefs.raspi
-else ifeq ($(MAKECMDGOALS),tests_raspi)
+else ifeq ($(filter-out %_raspi,$(MAKECMDGOALS)),)
   include targetDefs.raspi
 
 else ifeq ($(MAKECMDGOALS),docs)

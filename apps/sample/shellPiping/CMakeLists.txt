@@ -9,4 +9,4 @@
 mkapp(shellPipe.adef)
 
 # This is a sample application
-add_dependencies(samples shellPipe)
+add_dependencies(samples_c shellPipe)

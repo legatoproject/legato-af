@@ -12,3 +12,6 @@ mkapp(dtmfTest.adef
     -i ${LEGATO_ROOT}/interfaces/modemServices
     --cflags=-DENABLE_CODEC=${CODEC_ENABLE_FLAG}
 )
+
+# This is a C test
+add_dependencies(tests_c dtmfTest)

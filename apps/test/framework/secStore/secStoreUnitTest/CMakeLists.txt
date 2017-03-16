@@ -30,6 +30,9 @@ function(add_secstore_test TEST_NAME)
     )
 
     add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} ${ARGN})
+
+   # This is a C test
+   add_dependencies(tests_c ${TEST_EXEC})
 endfunction()
 
 add_secstore_test(secStoreTest1a -l 8192)

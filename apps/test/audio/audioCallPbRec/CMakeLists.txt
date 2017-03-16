@@ -9,4 +9,7 @@ if( (LEGATO_COMPONENTS_AUDIO MATCHES "ar7") OR (LEGATO_COMPONENTS_AUDIO MATCHES 
         -i ${LEGATO_ROOT}/interfaces/modemServices
     )
 
+    # This is a C test
+    add_dependencies(tests_c audioCallPbRecApp)
+
 endif()

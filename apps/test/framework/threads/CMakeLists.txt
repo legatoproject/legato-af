@@ -24,3 +24,6 @@ set(APP_SOURCES
 add_legato_executable(${APP_TARGET} ${APP_SOURCES})
 
 add_test(${APP_TARGET} ${CMAKE_CURRENT_SOURCE_DIR}/limit.sh ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET})
+
+# This is a C test
+add_dependencies(tests_c ${APP_TARGET})

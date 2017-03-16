@@ -24,6 +24,9 @@ if(LEGATO_AVC_APP STREQUAL "legacy")
                 -i ${LEGATO_ROOT}/interfaces/airVantage/legacy
          )
 
+    # This is a C test
+    add_dependencies(tests_c avcCtrlApp avcDataApp avcObserveApp avcTimeSeriesApp)
+
 endif()
 
 #

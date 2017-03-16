@@ -52,3 +52,5 @@ if(NOT ${LEGATO_TARGET} STREQUAL "localhost")
     set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 0)
 endif()
 
+# This is a C test
+add_dependencies(tests_c ${APP_TARGET})

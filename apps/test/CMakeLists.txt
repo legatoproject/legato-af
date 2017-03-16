@@ -14,6 +14,14 @@ file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 file(MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
 file(MAKE_DIRECTORY ${APP_OUTPUT_PATH})
 
+# Custom targets for different language tests
+add_custom_target(tests_c
+  COMMENT "Generated C tests in ${EXECUTABLE_OUTPUT_PATH}"
+)
+
+add_custom_target(tests_java
+  COMMENT "Generated Java tests in ${EXECUTABLE_OUTPUT_PATH}"
+)
 
 # Framework
 add_subdirectory(framework)

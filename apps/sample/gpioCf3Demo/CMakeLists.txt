@@ -8,4 +8,4 @@ mkapp(gpioCf3Demo.adef
 )
 
 # This is a sample application
-add_dependencies(samples gpioCf3Demo)
+add_dependencies(samples_c gpioCf3Demo)

@@ -9,4 +9,4 @@ mkapp(printClient.adef)
 mkapp(printServer.adef)
 
 # This is a sample application
-add_dependencies(samples printClient printServer)
+add_dependencies(samples_c printClient printServer)

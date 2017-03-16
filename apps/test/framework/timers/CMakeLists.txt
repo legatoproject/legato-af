@@ -27,3 +27,5 @@ add_legato_internal_executable(${TEST_EXE} testExpiryFix.c)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
                ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
 
+# This is a C test
+add_dependencies(tests_c ${TEST_EXE})

@@ -48,3 +48,5 @@ mkexe(  ${TEST_NAME}
 
 add_test(${TEST_NAME} ${EXECUTABLE_OUTPUT_PATH}/${TEST_NAME})
 
+# This is a C test
+add_dependencies(tests_c ${TEST_NAME})

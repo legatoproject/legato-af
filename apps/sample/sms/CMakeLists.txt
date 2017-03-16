@@ -8,4 +8,4 @@ mkapp(sms.adef
 )
 
 # This is a sample application
-add_dependencies(samples sms)
+add_dependencies(samples_c sms)

@@ -301,7 +301,19 @@ FRAMEWORK_TARGETS = $(foreach target,$(TARGETS),framework_$(target))
 $(FRAMEWORK_TARGETS): tools package.properties
 	$(MAKE) -f Makefile.framework
 
-# Rule building the tests for a given target.
+# Rule building the C tests for a given target
+TESTS_C_TARGETS = $(foreach target,$(TARGETS),tests_c_$(target))
+.PHONY: TESTS_C_TARGETS
+$(TESTS_C_TARGETS):tests_c_%: % framework_% build/%/Makefile
+	$(MAKE) -C build/$(TARGET) tests_c
+
+# Rule building the Java tests for a given target
+TESTS_JAVA_TARGETS = $(foreach target,$(TARGETS),tests_java_$(target))
+.PHONY: TESTS_JAVA_TARGETS
+$(TESTS_JAVA_TARGETS):tests_java_%: % framework_% build/%/Makefile
+	$(MAKE) -C build/$(TARGET) tests_java
+
+# Rule building the tests for a given target -- build both C and Java tests
 TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
 .PHONY: $(TESTS_TARGETS)
 $(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile

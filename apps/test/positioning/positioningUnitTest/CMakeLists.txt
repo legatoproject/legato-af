@@ -38,4 +38,7 @@ if ($ENV{TARGET} MATCHES "localhost")
     )
 
     add_test(${TEST_BIN} ${EXECUTABLE_OUTPUT_PATH}/${TEST_BIN})
+
+    # This is a C test
+    add_dependencies(tests_c ${TEST_BIN})
 endif()

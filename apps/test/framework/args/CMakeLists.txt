@@ -15,3 +15,6 @@ add_test(
     NAME ${APP_TARGET}
     COMMAND ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET} param1 "param 2" param 3
 )
+
+# This is a C test
+add_dependencies(tests_c ${APP_TARGET})

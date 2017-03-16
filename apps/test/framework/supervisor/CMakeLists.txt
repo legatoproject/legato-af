@@ -11,3 +11,10 @@ mkapp(NonSandboxedFaultApp.adef)
 mkapp(NonSandboxedRestartApp.adef)
 mkapp(NonSandboxedStopApp.adef)
 mkapp(NonSandboxedForkChildApp.adef)
+
+# This is a C test
+add_dependencies(tests_c
+                 FaultApp RestartApp StopApp ForkChildApp
+                 NonSandboxedFaultApp NonSandboxedRestartApp NonSandboxedStopApp
+                 NonSandboxedForkChildApp
+                 )

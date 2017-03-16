@@ -14,3 +14,5 @@ mkapp(testAppInfo.adef
             ${LEGATO_ROOT}/interfaces/supervisor/*
             testAppInfo.adef )
 
+# This is a C test
+add_dependencies(tests_c testAppInfo)

@@ -6,4 +6,4 @@
 mkapp(helloWorld.adef)
 
 # This is a sample application
-add_dependencies(samples helloWorld)
+add_dependencies(samples_c helloWorld)

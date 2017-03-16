@@ -10,8 +10,17 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples/bin)
 set(APP_OUTPUT_PATH ${CMAKE_BINARY_DIR}/samples)
 file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 
+add_custom_target(samples_c
+    COMMENT "Generated C & C++ samples in ${EXECUTABLE_OUTPUT_PATH}"
+)
+
+add_custom_target(samples_java
+    COMMENT "Generated Java samples in ${EXECUTABLE_OUTPUT_PATH}"
+)
+
 add_custom_target(samples
-    COMMENT "Generated samples in ${EXECUTABLE_OUTPUT_PATH}"
+    DEPENDS samples_c samples_java
+    COMMENT "Generated all samples in ${EXECUTABLE_OUTPUT_PATH}"
 )
 
 # Simple client/server application

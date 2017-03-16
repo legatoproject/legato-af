@@ -30,3 +30,6 @@ mkexe(${TEST_EXEC}
 )
 
 add_test(${TEST_EXEC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC} ${IINFILE} ${MCCMNCFILE})
+
+# This is a C test
+add_dependencies(tests_c ${TEST_EXEC})
