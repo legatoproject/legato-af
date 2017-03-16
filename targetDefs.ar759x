@@ -54,3 +54,8 @@ MKSYS_FLAGS += -C "-DPDP_MAX_MULTIPDP=8"
 # Set this variable to generate a tree with stripped executables and libraries
 STRIP_STAGING_TREE ?= 1
 
+
+# SMACK attribute name and value (optional)
+# If set, SMACK attr will be set at build time
+export SMACK_ATTR_NAME=security.SMACK64
+export SMACK_ATTR_VALUE=*

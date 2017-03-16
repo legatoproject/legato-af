@@ -154,6 +154,24 @@ GenerateUbinizeCfg() {
     echo "vol_flags=autoresize" >> $ubinize_cfg_path
 }
 
+SetSmackAttr() {
+    FindTool "setfattr" SETFATTR
+    CheckRet
+
+    # If SMACK attributes are defined in the targetDefs.<target>, set them
+    if [ -n "$SMACK_ATTR_NAME" -a -n "$SMACK_ATTR_VALUE" ]; then
+        for file in `find "$STAGING_DIR"`; do
+            if [ -d $file ]; then
+                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" $file
+            elif [ -f $file -a ! -h $file ]; then
+                $SETFATTR -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" $file
+            elif [ -f $file -a -h $file ]; then
+                $SETFATTR -h -n "$SMACK_ATTR_NAME" -v "$SMACK_ATTR_VALUE" $file
+            fi
+        done
+    fi
+}
+
 CreateImgFs() {
     local img_type=${1:-yaffs2}
     local img_suffix=${2:-$img_type}
@@ -168,6 +186,8 @@ CreateImgFs() {
         echo "Unable to find toolchain"
         exit 1
     fi
+
+    SetSmackAttr
 
     local legato_img="$OUTPUT_DIR/legato.$img_suffix"
 
