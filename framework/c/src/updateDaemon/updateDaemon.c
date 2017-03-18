@@ -792,9 +792,16 @@ static void UnpackDone
 //--------------------------------------------------------------------------------------------------
 {
     CallStatusHandlers(LE_UPDATE_STATE_UNPACKING, 100);
-    // If the security unpack isn't finished, change the state to
-    // SECURITY_CHECKING, Otherwise wait for calling le_update_Install() api.
-    if (SecurityUnpackPipeline != NULL)
+
+    // If the security unpack is already finished, then notify client that download successful and
+    // wait for calling le_update_Install() api. Otherwise, wait for the security-unpack program
+    // to finish.
+    if (SecurityUnpackPipeline == NULL)
+    {
+        CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
+        InstallReady = true;
+    }
+    else
     {
         State = STATE_SECURITY_CHECKING;
     }
@@ -1561,7 +1568,13 @@ static void PipelineDone
         if (WEXITSTATUS(status) == EXIT_SUCCESS)
         {
             LE_DEBUG("security-unpack completed successfully.");
-            CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
+            // Only allowed state here is STATE_UNPACKING or STATE_SECURITY_CHECKING. If state is
+            // STATE_UNPACKING, then we return and wait for unpacking to finish (see UnpackDone()).
+            if (State == STATE_SECURITY_CHECKING)
+            {
+                CallStatusHandlers(LE_UPDATE_STATE_DOWNLOAD_SUCCESS, 100);
+                InstallReady = true;
+            }
             return;
         }
         else if (WEXITSTATUS(status) == EXIT_FAILURE)
@@ -1748,6 +1761,9 @@ le_result_t le_update_Start
     // Reset the error code.
     ErrorCode = LE_UPDATE_ERR_NONE;
 
+    //Reset the InstallReady flag
+    InstallReady = false;
+
     // Create a pipeline: clientfd -> security-unpack -> readFd
     SecurityUnpackPipeline = pipeline_Create();
     pipeline_SetInput(SecurityUnpackPipeline, clientFd);
@@ -1808,14 +1824,15 @@ le_result_t le_update_Install()
     {
         case STATE_UNPACKING:
         case STATE_SECURITY_CHECKING:
-            if (SecurityUnpackPipeline == NULL)
+            if (InstallReady)
             {
                 le_event_Report(InstallEventId, NULL, 0);
+                InstallReady = false;
                 return LE_OK;
             }
             else
             {
-                LE_ERROR("Still downloading and verifying package");
+                LE_ERROR("Not ready for install. Still downloading and verifying package");
                 result = LE_BUSY;
             }
             break;
