@@ -106,6 +106,10 @@ cm_data_connect () {
         cm data pdp "$pdp" > $LOG 2>&1
         handle_err $?
 
+        if [[ -z "$auth_type" ]]; then
+            auth_type="none"
+        fi
+
         echo -n "Setting Authentication ... "
         cm data auth "$auth_type" "$usr" "$passwd" > $LOG 2>&1
         handle_err $?

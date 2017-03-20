@@ -1134,7 +1134,7 @@ void cm_data_ProcessDataCommand
         else
         {
             printf("Auth parameters incorrect. "
-                   "e.g. cm data auth <auth type> [<username>] [<password>]\n");
+                   "e.g. cm data auth [<auth type>] [<username>] [<password>]\n");
             exit(EXIT_FAILURE);
         }
     }
