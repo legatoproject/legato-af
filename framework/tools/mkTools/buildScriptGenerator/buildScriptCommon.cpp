@@ -188,7 +188,8 @@ void GenerateBuildRules
 
     script << "rule MakeJar\n"
               "  description = Making JAR file\n"
-              "  command = cd `dirname $in` && find `dirname $in` -name '*.class' -printf '%P\\n'"
+              "  command = INDIR=`dirname $in`; find $$INDIR -name '*.class' "
+                             "-printf \"-C $$INDIR\\n%P\\n\""
                              "|xargs jar -cf $out\n"
               "\n";
 
