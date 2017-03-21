@@ -94,6 +94,7 @@ add_subdirectory(fsService/fsIntegrationTest)
 
 ## Other Services ...
 add_subdirectory(voiceCallService/voiceCallServiceIntegrationTest)
+add_subdirectory(voiceCallService/voiceCallServiceUnitTest)
 add_subdirectory(smsInboxService)
 
 # AirVantage Service
@@ -107,6 +108,7 @@ add_subdirectory(atServices/atClientTest)
 add_subdirectory(atServices/atServerIntegrationTest)
 add_subdirectory(atServices/atServerMultipleAppsTest)
 add_subdirectory(atServices/atServerUnitTest)
+add_subdirectory(atServices/atClientUnitTest)
 
 # CM tool
 add_subdirectory(cm)
