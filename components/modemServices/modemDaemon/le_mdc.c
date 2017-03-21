@@ -230,10 +230,11 @@ static void NewSessionStateHandler
         }
         else
         {
-            LE_DEBUG("profileIndex %d, old connection status %d, new state %d",
+            LE_DEBUG("profileIndex %d, old connection status %d, new state %d, pdp Type %d",
                                                             sessionStatePtr->profileIndex,
                                                             profilePtr->connectionStatus,
-                                                            sessionStatePtr->newState);
+                                                            sessionStatePtr->newState,
+                                                            sessionStatePtr->pdp);
             // Event report
             if (profilePtr->connectionStatus != sessionStatePtr->newState)
             {

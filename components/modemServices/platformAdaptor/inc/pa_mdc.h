@@ -181,6 +181,7 @@ pa_mdc_ProfileData_t;
 typedef struct {
     uint32_t profileIndex;              ///< Profile that had the state change
     le_mdc_ConState_t newState;         ///< Data session connection status.
+    le_mdc_Pdp_t pdp;                   ///< PDP type
     le_mdc_DisconnectionReason_t disc;  ///< Disconnection reason
     int32_t  discCode;                  ///< Platform specific disconnection code
 }
