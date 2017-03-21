@@ -1079,6 +1079,11 @@ static void UpdateProgressHandler
             avcServer_ReportInstallProgress(LE_AVC_INSTALL_IN_PROGRESS, percentDone, LE_AVC_ERR_NONE);
             break;
 
+        case LE_UPDATE_STATE_DOWNLOAD_SUCCESS:
+            LE_DEBUG("Download successful");
+            le_update_Install();
+            break;
+
         case LE_UPDATE_STATE_APPLYING:
             LE_DEBUG("Doing update.");
             // Notify registered control app
