@@ -187,10 +187,11 @@ static void OurSigHandler
  * stack and back-trace. It also dumps the process maps.
  * Note: Because these signals are raised from low-level, we should avoid any usage of malloc(3),
  * syslog(3) and others services like these from stdio(3).
- * Note: This code may be architecture dependant: supports arm, x86_64 and i686.
- * Note: Non-safe functions used:
+ *
+ * @note This code is architecture dependant, and supports arm, x86_64, i586 and i686.
+ * @note Some unsafe functions are used:
  *        - snprintf
- *        - backtrace (x86_64, i686)
+ *        - backtrace (not on arm)
  */
 //--------------------------------------------------------------------------------------------------
 static void ShowStackSignalHandler
@@ -204,6 +205,19 @@ static void ShowStackSignalHandler
     int fd;
     struct sigcontext* ctxPtr = (struct sigcontext *)&(((ucontext_t*)sigVoidPtr)->uc_mcontext);
     pid_t tid = syscall(SYS_gettid);
+    void* pcPtr = NULL;
+
+#if defined(__arm__)
+    pcPtr = (void*)ctxPtr->arm_pc;
+#elif defined(__i586__) || defined(__i686__)
+    pcPtr = (void*)ctxPtr->eip;
+#elif defined(__x86_64__)
+    pcPtr = (void*)ctxPtr->rip;
+#elif defined(__mips__)
+    pcPtr = (void*)ctxPtr->sc_pc;
+#else
+# warning "Architecture is not supported"
+#endif
 
     // Show process, pid and tid
     snprintf(sigString, sizeof(sigString), "PROCESS: %d ,TID %d\n", getpid(), tid);
@@ -211,17 +225,7 @@ static void ShowStackSignalHandler
 
     // Show signal, fault address and fault PC
     snprintf(sigString, sizeof(sigString), "SIGNAL: %d, ADDR %p, AT %p\n",
-             sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr,
-#ifdef __arm__
-             (void*)ctxPtr->arm_pc
-#elif defined(__i686__)
-             (void*)ctxPtr->eip
-#elif defined(__x86_64__)
-             (void*)ctxPtr->rip
-#else
-             NULL
-#endif
-             );
+             sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr, pcPtr);
     write(2, sigString, strlen(sigString));
 
     // Explain signal
@@ -260,7 +264,7 @@ static void ShowStackSignalHandler
     // Dump the back-trace, registers and stack
     snprintf(sigString, sizeof(sigString), "BACKTRACE\n");
     write(2, sigString, strlen(sigString));
-#ifdef __arm__
+#if defined(__arm__)
     {
         int addr;
         int* base = (int*)__builtin_frame_address(0);
