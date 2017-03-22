@@ -145,6 +145,24 @@ ClientRequest_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Position structure for move calculation.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+        int32_t  latitude;          ///< Latitude.
+        int32_t  longitude;         ///< Longitude.
+        int32_t  altitude;          ///< Altitude.
+        int32_t  vAccuracy;         ///< Vertical accuracy.
+        int32_t  hAccuracy;         ///< Horizontal accuracy.
+        bool     locationValid;     ///< If true, location is set.
+        bool     altitudeValid;     ///< If true, altitude is set.
+}
+PositionParam_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Safe Reference Map for service activation requests.
  */
 //--------------------------------------------------------------------------------------------------
@@ -463,6 +481,83 @@ static uint32_t ComputeCommonSmallestRate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Compute horizontal and vertical move
+ *
+ * @return LE_FAULT         Function failed.
+ * @return LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ComputeMove
+(
+  le_pos_SampleHandler_t *posSampleHandlerNodePtr,  ///< [IN]  The handler reference.
+  const PositionParam_t  *posParamPtr,              ///< [IN]  The position structure for the move
+                                                    ///        calculation.
+  bool                   *hflagPtr,                 ///< [OUT] True if the horizontal distance is
+                                                    ///        beyond the magnitude.
+  bool                   *vflagPtr                  ///< [OUT] True if the vertical distance is
+)                                                   ///        beyond the magnitude.
+{
+    if (NULL == posSampleHandlerNodePtr)
+    {
+        LE_ERROR("posSampleHandlerNodePtr is Null");
+        return LE_FAULT;
+    }
+
+    if ((posSampleHandlerNodePtr->horizontalMagnitude != 0) && !(posParamPtr->locationValid))
+    {
+        LE_ERROR("Longitude or Latitude are not relevant");
+        return LE_FAULT;
+    }
+
+    if (((posSampleHandlerNodePtr->verticalMagnitude != 0) && (!posParamPtr->altitudeValid)))
+    {
+        LE_ERROR("Altitude is not relevant");
+        return LE_FAULT;
+    }
+
+    // Compute horizontal and vertical move
+    LE_DEBUG("Last Position lat.%d, long.%d",
+                 posSampleHandlerNodePtr->lastLat, posSampleHandlerNodePtr->lastLong);
+
+    uint32_t horizontalMove = ComputeDistance(posSampleHandlerNodePtr->lastLat,
+                                              posSampleHandlerNodePtr->lastLong,
+                                              posParamPtr->latitude,
+                                              posParamPtr->longitude);
+
+    uint32_t verticalMove = abs(posParamPtr->altitude - posSampleHandlerNodePtr->lastAlt);
+
+    LE_DEBUG("horizontalMove.%d, verticalMove.%d", horizontalMove, verticalMove);
+
+    if (INT32_MAX == posParamPtr->vAccuracy)
+    {
+        *vflagPtr = false;
+    }
+    else
+    {
+        // Vertical accuracy is in meters with 1 decimal place
+        *vflagPtr = IsBeyondMagnitude(posSampleHandlerNodePtr->verticalMagnitude,
+                                   verticalMove,
+                                   posParamPtr->vAccuracy/10);
+    }
+
+    if (INT32_MAX == posParamPtr->hAccuracy)
+    {
+        *hflagPtr = false;
+    }
+    else
+    {
+        // Accuracy is in meters with 2 decimal places
+        *hflagPtr = IsBeyondMagnitude(posSampleHandlerNodePtr->horizontalMagnitude,
+                                   horizontalMove,
+                                   posParamPtr->hAccuracy/100);
+    }
+    LE_DEBUG("Vertical IsBeyondMagnitude.%d", *vflagPtr);
+    LE_DEBUG("Horizontal IsBeyondMagnitude.%d", *hflagPtr);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The main position Sample Handler.
  *
  */
@@ -505,8 +600,17 @@ static void PosSampleHandlerfunc
     le_dls_Link_t*          linkPtr;
     le_pos_Sample_t*        posSampleNodePtr=NULL;
 
+    if (NULL == positionSampleRef)
+    {
+        LE_ERROR("positionSampleRef is Null");
+        return;
+    }
+
     if (!NumOfHandlers)
     {
+        LE_DEBUG("No positioning Sample handler, exit Handler Function");
+        // Release provided Position sample reference
+        le_gnss_ReleaseSampleRef(positionSampleRef);
         return;
     }
 
@@ -548,10 +652,21 @@ static void PosSampleHandlerfunc
         LE_DEBUG("Altitude unknown [%d,%d]"
                 , altitude, vAccuracy);
     }
+
     // Positioning sample
     linkPtr = le_dls_Peek(&PosSampleHandlerList);
     if (linkPtr != NULL)
     {
+        PositionParam_t posParam;
+
+        posParam.latitude = latitude;
+        posParam.longitude = longitude;
+        posParam.altitude = altitude;
+        posParam.vAccuracy = vAccuracy;
+        posParam.hAccuracy = hAccuracy;
+        posParam.locationValid = locationValid;
+        posParam.altitudeValid = altitudeValid;
+
         do
         {
             bool hflag, vflag;
@@ -560,51 +675,15 @@ static void PosSampleHandlerfunc
                                                                             le_pos_SampleHandler_t,
                                                                             link);
 
-            if ((posSampleHandlerNodePtr->horizontalMagnitude != 0) && !locationValid)
-            {
-                LE_DEBUG("Longitude or Latitude are not relevant");
-                return;
-            }
-
-            if (((posSampleHandlerNodePtr->verticalMagnitude != 0) && (!altitudeValid)))
-            {
-                LE_DEBUG("Altitude is not relevant");
-                return;
-            }
-
-            // Compute horizontal and vertical move
-            LE_DEBUG("Last Position lat.%d, long.%d"
-                    , posSampleHandlerNodePtr->lastLat, posSampleHandlerNodePtr->lastLong);
-            uint32_t horizontalMove = ComputeDistance(posSampleHandlerNodePtr->lastLat,
-                                                      posSampleHandlerNodePtr->lastLong,
-                                                      latitude,
-                                                      longitude);
-            uint32_t verticalMove = abs(altitude-posSampleHandlerNodePtr->lastAlt);
-
-            LE_DEBUG("horizontalMove.%d, verticalMove.%d", horizontalMove, verticalMove);
-
-            if (INT32_MAX == vAccuracy)
-            {
-                vflag = false;
-            } else
-            {
-                vflag = IsBeyondMagnitude(posSampleHandlerNodePtr->verticalMagnitude,
-                                          verticalMove,
-                                          vAccuracy/10); // Accuracy in meters with 1 decimal place
-            }
-
-            if (INT32_MAX == hAccuracy)
-            {
-                hflag = false;
-            } else
-            {
-                hflag = IsBeyondMagnitude(posSampleHandlerNodePtr->horizontalMagnitude,
-                                          horizontalMove,
-                                          hAccuracy/100); // Accuracy in meters with 2 decimal places
-            }
-
-            LE_DEBUG("Vertical IsBeyondMagnitude.%d", vflag);
-            LE_DEBUG("Horizontal IsBeyondMagnitude.%d", hflag);
+            if (LE_FAULT == ComputeMove(posSampleHandlerNodePtr,
+                                        &posParam,
+                                        &hflag,
+                                        &vflag))
+             {
+                 // Release provided Position sample reference
+                 le_gnss_ReleaseSampleRef(positionSampleRef);
+                 return;
+             }
 
             // Movement is detected in the following cases:
             // - Vertical distance is beyond the magnitude
