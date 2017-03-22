@@ -97,12 +97,12 @@ void cm_cmn_ToUpper
 //--------------------------------------------------------------------------------------------------
 bool cm_cmn_CheckEnoughParams
 (
-    size_t requiredParam,   ///< [IN] Required parameters for the command
+    size_t requiredParams,  ///< [IN] Required parameters for the command
     size_t numArgs,         ///< [IN] Number of arguments passed into the command line
     const char * errorMsg   ///< [IN] Error message to output if not enough parameters
 )
 {
-    if ( (requiredParam + 1) < numArgs)
+    if ( (requiredParams + 1) < numArgs)
     {
         return true;
     }
@@ -115,3 +115,47 @@ bool cm_cmn_CheckEnoughParams
     return false;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verify if enough parameter passed into command. If not, output error message to stderr and exit.
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_cmn_CheckNumberParams
+(
+    size_t requiredParams,      ///< [IN] Required parameters for the command
+    size_t maxParams,           ///< [IN] Max number of parameters allowed for the command
+                                ///       Optional included. Use -1 to disable check.
+    size_t numArgs,             ///< [IN] Number of arguments passed into the command line
+    const char * errorMsg       ///< [IN] Optional, error message to output if not enough parameters
+)
+{
+    int numParams = numArgs;
+
+    // Remove the service & command arguments
+    numParams -= 2;
+    if (numParams < 0)
+    {
+        numParams = 0;
+    }
+
+    // Check for required parameters
+    if (numParams < requiredParams)
+    {
+        if (errorMsg != NULL)
+        {
+            fprintf(stderr, "%s\n\n", errorMsg);
+        }
+        else
+        {
+            fprintf(stderr, "Not enough parameters.\n\n");
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    // Check for maximum number of parameters allowed
+    if ( (maxParams != -1) && (numParams > maxParams))
+    {
+        fprintf(stderr, "Too many parameters.\n\n");
+        exit(EXIT_FAILURE);
+    }
+}

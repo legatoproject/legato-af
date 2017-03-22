@@ -27,12 +27,12 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Maximum Number of arguments for the CM tool RTC usage.
+ *  Number of arguments for the CM tool RTC usage.
  */
 //--------------------------------------------------------------------------------------------------
-#define  CM_MAX_ARGUMENTS_FOR_RTC_HELP   3
-#define  CM_MAX_ARGUMENTS_FOR_RTC_READ   3
-#define  CM_MAX_ARGUMENTS_FOR_RTC_SET    4
+#define  CM_NUM_PARAMETERS_FOR_RTC_HELP   0
+#define  CM_NUM_PARAMETERS_FOR_RTC_READ   0
+#define  CM_NUM_PARAMETERS_FOR_RTC_SET    1
 
 //-------------------------------------------------------------------------------------------------
 /**

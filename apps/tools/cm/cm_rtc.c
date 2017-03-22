@@ -19,6 +19,13 @@
  * Print the IPS help text to stdout.
  */
 //-------------------------------------------------------------------------------------------------
+#define READ_BUFFER_BYTES  255
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print the IPS help text to stdout.
+ */
+//-------------------------------------------------------------------------------------------------
 void cm_rtc_PrintRtcHelp
 (
     void
@@ -56,8 +63,7 @@ static le_result_t ReadAndPrintRtc
     result = le_rtc_GetUserTime(&epochTime);
     if (result == LE_OK)
     {
-        char buff[255];
-        memset(buff,0,255);
+        char buff[READ_BUFFER_BYTES] = {0};
         struct tm tm;
 
         time_t time = (epochTime/1000) + CM_DELTA_POSIX_TIME_EPOCH_GPS_TIME_EPOCH_IN_SEC;
@@ -65,9 +71,8 @@ static le_result_t ReadAndPrintRtc
 
         snprintf(buff, sizeof(buff), "%ld", (long) time);
         strptime(buff, "%s", &tm);
-        memset(buff,0,255);
+        memset(buff, 0, sizeof(buff));
         strftime(buff, sizeof(buff), "%d %b %Y %H:%M:%S", &tm);
-
 
         printf("%s\n", buff);
     }
@@ -82,19 +87,24 @@ static le_result_t ReadAndPrintRtc
 //-------------------------------------------------------------------------------------------------
 static le_result_t SetRtc
 (
-    void
+    const char* datePtr     ///< Date the RTC should be set to.
 )
 {
     struct tm tm;
     time_t t;
-    const char* datePtr = le_arg_GetArg(2);
-
     char* lastCarPtr;
+
+    if (NULL == datePtr)
+    {
+        fprintf(stderr, "Date not provided.\n");
+        return LE_BAD_PARAMETER;
+    }
+
     lastCarPtr = strptime(datePtr, "%d %b %Y %H:%M:%S", &tm);
 
     if ((NULL == lastCarPtr) || (*lastCarPtr != '\0'))
     {
-        printf("Failed to get the time.\n");
+        fprintf(stderr, "Unable to parse provided date.\n");
         return LE_FAULT;
     }
 
@@ -106,7 +116,7 @@ static le_result_t SetRtc
 
     if (t == -1)
     {
-        printf("mktime error\n");
+        fprintf(stderr, "mktime error\n");
         return LE_FAULT;
     }
 
@@ -132,54 +142,49 @@ void cm_rtc_ProcessRtcCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
-    // true if the command contains extra arguments.
-    bool extraArguments = true;
-
     if (0 == strcmp(command, "help"))
     {
-        if (numArgs < CM_MAX_ARGUMENTS_FOR_RTC_HELP)
-        {
-            extraArguments = false;
-            cm_rtc_PrintRtcHelp();
-        }
+        cm_cmn_CheckNumberParams(CM_NUM_PARAMETERS_FOR_RTC_HELP,
+                                 CM_NUM_PARAMETERS_FOR_RTC_HELP,
+                                 numArgs,
+                                 NULL);
+
+        cm_rtc_PrintRtcHelp();
     }
     else if (0 == strcmp(command, "read"))
     {
-        if (numArgs < CM_MAX_ARGUMENTS_FOR_RTC_READ)
+        cm_cmn_CheckNumberParams(CM_NUM_PARAMETERS_FOR_RTC_READ,
+                                 CM_NUM_PARAMETERS_FOR_RTC_READ,
+                                 numArgs,
+                                 NULL);
+
+        if (LE_OK != ReadAndPrintRtc())
         {
-            extraArguments = false;
-            if (LE_OK != ReadAndPrintRtc())
-            {
-                printf("Read failed.\n");
-                exit(EXIT_FAILURE);
-            }
+            printf("Read failed.\n");
+            exit(EXIT_FAILURE);
         }
     }
     else if (0 == strcmp(command, "set"))
     {
-        if (numArgs < CM_MAX_ARGUMENTS_FOR_RTC_SET)
+        cm_cmn_CheckNumberParams(CM_NUM_PARAMETERS_FOR_RTC_SET,
+                                 CM_NUM_PARAMETERS_FOR_RTC_SET,
+                                 numArgs,
+                                 "Date is missing. e.g. cm rtc set <date>");
+
+        const char* datePtr = le_arg_GetArg(2);
+
+        if (LE_OK != SetRtc(datePtr))
         {
-            extraArguments = false;
-            if (LE_OK != SetRtc())
-            {
-                printf("Set RTC failure.\n");
-                exit(EXIT_FAILURE);
-            }
+            printf("Set RTC failure.\n");
+            exit(EXIT_FAILURE);
         }
     }
     else
     {
-        printf("Unexpected string has been given to cm.\n");
+        printf("Invalid command '%s' for RTC service.\n", command);
         exit(EXIT_FAILURE);
     }
 
-    if (true == extraArguments)
-    {
-        printf("Invalid command for RTC service.\n");
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        exit(EXIT_SUCCESS);
-    }
+    exit(EXIT_SUCCESS);
 }
+

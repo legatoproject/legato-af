@@ -1,13 +1,13 @@
 ################################################################################
 #                                                                              #
 # cm is a shell script that wraps the cm binary in order to start a data       #
-# session based on cellular modem technology. It sets up the last registred    #
+# session based on cellular modem technology. It sets up the last registered   #
 # profile preferences, the ip routing table and tests the connection (just a   #
 # ping test to see if we can reach the outside world).                         #
 #                                                                              #
-# for more information cm help                                                 #
+# For more information type 'cm help'.                                         #
 #                                                                              #
-# Copyright (C) Sierra Wireless Inc.    #
+# Copyright (C) Sierra Wireless Inc.                                           #
 #                                                                              #
 ################################################################################
 
@@ -21,7 +21,7 @@ RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
 LOG=${LOG:="/tmp/cm.log"}
 
 cm() {
-    $CM $@
+    $CM "$@"
 }
 
 ip() {
@@ -155,4 +155,4 @@ if [[ "$1" == "data" ]]; then
     fi
 fi
 
-cm $@
+cm "$@"
