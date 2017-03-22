@@ -367,7 +367,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
         profilePtr->profileRef = le_ref_CreateRef(DataProfileRefMap, profilePtr);
     }
 
-        LE_DEBUG("profileRef %p created for index %d",  profilePtr->profileRef, index);
+    LE_DEBUG("profileRef %p created for index %d",  profilePtr->profileRef, index);
 
     return profilePtr->profileRef;
 }

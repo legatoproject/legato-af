@@ -16,9 +16,10 @@
 CM=${CM:="/legato/systems/current/apps/tools/read-only/bin/cm"}
 IP=${IP:="/sbin/ip"}
 IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}
-PING=${PING:="/bin/ping"}
+CURL=${CURL:-"/usr/bin/curl"}
 RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
 LOG=${LOG:="/tmp/cm.log"}
+TEST_SITE=${TEST_SITE:="http://www.akamai.com"}
 
 cm() {
     $CM "$@"
@@ -32,8 +33,8 @@ ifconfig() {
     $IFCONFIG $@
 }
 
-ping() {
-    $PING $@
+curl() {
+    $CURL $@
 }
 
 handle_err() {
@@ -117,10 +118,6 @@ cm_data_connect () {
         echo -n "Connecting ... "
         cm data connect $opt > $LOG 2>&1
         handle_err $?
-
-        echo -n "Cheking if device is up ... "
-        ifconfig | grep "$iface" > /dev/null 2>&1
-        handle_err $?
     fi
 
     info=$(cm data info)
@@ -132,6 +129,10 @@ cm_data_connect () {
     local dns2=$(cm_data_get_param "$info" "Dns2")
     local dgw=$(get_default_gw $iface)
 
+    echo -n "Cheking if device is up ... "
+    ifconfig | grep "$iface" > /dev/null 2>&1
+    handle_err $?
+
     if [[ -z "${dgw// }" ]]; then
         echo -n "Routing ... "
         ip -family $family route add default via $gw dev $iface \
@@ -142,7 +143,7 @@ cm_data_connect () {
     update_dns $dns1 $dns2
 
     echo -n "Testing connection ... "
-    ping -c4 "www.google.com" > $LOG 2>&1
+    curl --silent $TEST_SITE > $LOG 2>&1
     handle_err $?
 
     exit 0
