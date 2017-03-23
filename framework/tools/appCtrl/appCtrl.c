@@ -1775,7 +1775,7 @@ static void NoRunProcNameArgHanlder
     {
         ProcName_t* procNamePtr = le_mem_ForceAlloc(ProcNamePool);
 
-        procNamePtr->procName = token;
+        procNamePtr->procName = strdup(token);
         procNamePtr->link = LE_SLS_LINK_INIT;
 
         le_sls_Queue(&ProcNameList, &(procNamePtr->link));
