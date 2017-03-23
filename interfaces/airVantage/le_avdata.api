@@ -15,59 +15,48 @@
  * server.
  *
  * An asset field is a single piece of information that can be managed by the AirVantage server.
- * There can be multiple fields in an asset.
  *
  * A field can be:
- * - @c variable allows an app to set the value, and can be read from the AV server.
- * - @c setting allows the AV server to set the value, and can be read by an app.
- * - @c command allows the AV server to invoke a command or function in the app.
+ * - @c variable allowing an app to read/write the value, and can be read from the AV server.
+ * - @c setting allowing the AV server to read/write the value, and can be read by an app.
+ * - @c command allowing the AV server to invoke a function in the app.
  *
- * All fields have names. Variable and setting fields also have a type. The possible field types,
- * along with the default value are:
- * - string (empty string)
- * - integer (0)
- * - float (0.0)
- * - boolean (false)
- * - binary (zero-length block).
+ * A field is referred to by a path, much like a path in Unix-like OSes. So a path is separated by
+ * slashes ("/"), a parent path cannot contain a field, and a parent path cannot contain a parent
+ * path and a child path of the same name.
  *
- * Default values can be overwritten in the asset definition. Currently, string, integer, float
- * and boolean fields are supported; binary fields will be supported in the future.
+ * Variable and setting fields also have types. The field types are:
+ * - string
+ * - integer
+ * - float
+ * - boolean
  *
+ * variable and setting fileds have no default values. When they are first created with the
+ * CreateResource API, they contain "null" values. They can also be set to "null" values with the
+ * SetNull API. A field does not have a fixed data type, so any of the SetInt/Float/Bool/String can
+ * be called for a certain field to change its value and its type. However, A
+ * GetInt/Float/Bool/String API must be called on a field with the matching type. In other words,
+ * a Get API does not perform type-casting.
  *
- * @section le_avdata_instance Asset Data Instances
- *
- * An app that needs to send data to the AirVantage server must first create an asset instance
- * using le_avc_Create() with the name of the asset definition.
- * Once an asset instance is created, the app can begin accessing the instance's fields.
- *
- * Multiple instances of the same asset can be created, as well as multiple instances of different
- * assets.
- *
- * Asset definitions are specified in the @ref defFilesCdef_assets section of the app's @c cdef file.
  *
  * @section le_avdata_field Field Values and Activity
  *
- * Set functions are available to set variable field values. Get functions are
- * available to get settings fields' values.
+ * Set functions are available to set field values (including null). Get functions are
+ * available to get field values.
  *
- * An app can register a handler so that it can be called when activity occurs on a field.
- * This is optional for variable and setting fields, but is required for command fields.
- * - @c variable called when the field is read by the AV server. The
- * app can then call the appropriate set function to provide a new value for the field.
- * - @c setting called when the field has been updated by the AV server
- * with a new value. The app can use the appropriate get function to retrieve the new value.
- * - @c command called when the AV server wants to invoke a command. The
- * app should perform an appropriate action or call a function to execute this command.
+ * An app can register a handler so that it can be called when an activity occurs on a field.
+ * This is optional for variable and setting fields, but is required for command fields. Registered
+ * handlers are called only when activities from AV server occurs. Client activites do not trigger
+ * handlers.
  *
- * Registered handlers are only called when the server performs the associated activity on
- * a specific field of an asset instance. For example, a handler registered on a variable field will
- * be called if the server reads only that field of an instance; it will not be called if the
- * server reads the whole instance of an asset.
+ * A handler registered with a command field is invoked with an optional argument list sent from the
+ * AV server. The APIs GetInt/Float/Bool/StringArg and GetStringArgLength are available to extract
+ * the arguments in the handler definition. AV server does not send argument lists for handlers
+ * registered with variable and setting fields.
  *
- * Leaving it optional to register handlers for variable and setting fields allows an
- * app to decide how it wants to access variable and setting fields. It can decide to
- * only do something in response to the AV server, or it can work independently of the AV server
- * updating variables when it has a new value, and reading settings only when it needs the value.
+ * A handler registered with a command field must call the ReplyExecResult API at the end of its
+ * definition, in order to reply the command execution result to the AV server.
+ *
  *
  * @section le_avdata_timeseries Time Series
  *
@@ -131,26 +120,26 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum length of a path name (TODO: verify value)
+ * Define the maximum bytes of a path name
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE PATH_NAME_LEN = 128;
+DEFINE PATH_NAME_BYTES = 512;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum length of a string field (TODO: verify value)
+ * Define the maximum bytes of a string
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE STRING_VALUE_LEN = 255;
+DEFINE STRING_VALUE_BYTES = 256;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Resource access modes.
- *   Variable: read
- *   Setting: read, write
- *   Command: execute
+ *   Variable: read (server), read/write (client)
+ *   Setting: read/write (server), read (client)
+ *   Command: execute (server)
  */
 //--------------------------------------------------------------------------------------------------
 ENUM AccessMode
@@ -197,37 +186,6 @@ ENUM DataType
 REFERENCE ArgumentList;
 
 
-
-// TODO:
-/*
-Problems:
-1. Current assumption of user calling a Set/Get function in a "ResourceHandler" is wrong. The 
-   Set/Get funtion calls are happening in a separate event so the order of things happening is not
-   what I expected.
-
-2. Currently a HANDLER doesn't seem to support OUT params. So the the result of a command execution
-   can't be communicated back to the AVC Daemon.
-
-
-Proposed Actions:
-1. Modify ifgen so HANDLER supports OUT params.  Other than command result, the most updated "read"
-   value can also be communicated back to AVC daemon in the same event.
-
-2. Somehow make the Set/Get function happen in the same event?  Unsure how this can be done. Also
-   curious how Prush handled this.
-
-3. Instead of a generic "ResourceEvent" and "ResourceHandler", have 3 sets of events and handlers
-   for read, write, and execute, since their handlers all require different params.  Argument list
-   is only for execute, and only the read handler needs the OUT param for the updated value, for
-   example.
-
-   ... on second thought #3 might not be a good idea, since we might need 3 different types of 
-   AssetData_t.
-
-*/
-
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for resource activity
@@ -235,10 +193,9 @@ Proposed Actions:
 //--------------------------------------------------------------------------------------------------
 HANDLER ResourceHandler
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     AccessType accessType IN,
-    ArgumentList ArgumentListRef IN,
-    le_result_t result OUT
+    ArgumentList ArgumentListRef IN
 );
 
 
@@ -246,50 +203,62 @@ HANDLER ResourceHandler
 /**
  * Upon resource access on the server side, the registered handler is called.
  *
- * For "variables" (read-only), the handler does NOT require a "set" call to be made.
+ * For "settings" (read/write), the same handler is called for both read and write access.
  *
- * For "settings" (read/write), the same handler is called for both read and write.
- *
- * For read and write, the handlers are there to provide instant value update:
- *
- *  - If the av server is reading, then the handler is called BEFORE the value is read from the
- *    internal storage and sent to av server, so the handler has a chance to get the latest value
- *    from the hardware.
- *
- *  - If the av server is writing, then the handler is called AFTER the value is received from av
- *    server and written to the internal storage, so the handler is able to set the hardware with
- *    the latest value from the av server.
+ * For "commands", the handler function must call the "ReplyExecResult" function to send the command
+ * execution result back to the AVC daemon (which then sends the proper response back to the AV
+ * server).
  */
 //--------------------------------------------------------------------------------------------------
 EVENT ResourceEvent
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     ResourceHandler handler
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create a resource. Data type is determined upon the first call to a Set function.
+ * Create an asset data with the provided path. Note that asset data type and value are determined
+ * upon the first call to a Set function. When an asset data is created, it contains a null value,
+ * represented by the data type of none.
  *
  * @return:
  *      - LE_OK on success
- *      - LE_DUPLICATE if path already being called by CreateResource before.
+ *      - LE_DUPLICATE if path has already been called by CreateResource before, or path is parent
+ *        to an existing Asset Data.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t CreateResource
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     AccessMode accessMode
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value of an integer setting field
+ * Sets an asset data to contain a null value, represented by the data type of none.
+ *
+ * @return:
+ *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
+ *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
+ *      - LE_OK - access successful.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetNull
+(
+    string path[PATH_NAME_BYTES] IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the integer value of an asset data.
  *
  * @return:
  *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_UNAVAILABLE - asset data contains null value
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
  *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
  *      - LE_OK - access successful.
@@ -297,14 +266,14 @@ FUNCTION le_result_t CreateResource
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetInt
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     int32 value OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the value of an integer variable field
+ * Sets an asset data to an integer value.
  *
  * @return:
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
@@ -314,17 +283,18 @@ FUNCTION le_result_t GetInt
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetInt
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     int32 value IN
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value of a float setting field
+ * Gets the float value of an asset data.
  *
  * @return:
  *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_UNAVAILABLE - asset data contains null value
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
  *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
  *      - LE_OK - access successful.
@@ -332,14 +302,14 @@ FUNCTION le_result_t SetInt
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFloat
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     double value OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the value of a float variable field
+ * Sets an asset data to a float value.
  *
  * @return:
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
@@ -349,17 +319,18 @@ FUNCTION le_result_t GetFloat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetFloat
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     double value IN
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value of a boolean setting field
+ * Gets the bool value of an asset data.
  *
  * @return:
  *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_UNAVAILABLE - asset data contains null value
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
  *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
  *      - LE_OK - access successful.
@@ -367,14 +338,14 @@ FUNCTION le_result_t SetFloat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBool
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     bool value OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the value of a boolean variable field
+ * Sets an asset data to a bool value.
  *
  * @return:
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
@@ -384,17 +355,18 @@ FUNCTION le_result_t GetBool
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetBool
 (
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     bool value IN
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the value of a string setting field
+ * Gets the string value of an asset data.
  *
  * @return:
  *      - LE_BAD_PARAMETER - asset data being accessed is of the wrong data type
+ *      - LE_UNAVAILABLE - asset data contains null value
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
  *      - LE_NOT_PERMITTED - asset data being accessed does not have the right permission
  *      - LE_OK - access successful.
@@ -402,14 +374,14 @@ FUNCTION le_result_t SetBool
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetString
 (
-    string path[PATH_NAME_LEN] IN,
-    string value[STRING_VALUE_LEN] OUT
+    string path[PATH_NAME_BYTES] IN,
+    string value[STRING_VALUE_BYTES] OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the value of a string variable field
+ * Sets an asset data to a string value.
  *
  * @return:
  *      - LE_NOT_FOUND - if the path is invalid and does not point to an asset data
@@ -419,8 +391,8 @@ FUNCTION le_result_t GetString
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetString
 (
-    string path[PATH_NAME_LEN] IN,
-    string value[STRING_VALUE_LEN] IN
+    string path[PATH_NAME_BYTES] IN,
+    string value[STRING_VALUE_BYTES] IN
 );
 
 
@@ -436,7 +408,7 @@ FUNCTION le_result_t SetString
 FUNCTION le_result_t GetBoolArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_LEN] IN,
+    string argName[STRING_VALUE_BYTES] IN,
     bool boolArg OUT
 );
 
@@ -453,7 +425,7 @@ FUNCTION le_result_t GetBoolArg
 FUNCTION le_result_t GetFloatArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_LEN] IN,
+    string argName[STRING_VALUE_BYTES] IN,
     double floatArg OUT
 );
 
@@ -470,7 +442,7 @@ FUNCTION le_result_t GetFloatArg
 FUNCTION le_result_t GetIntArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_LEN] IN,
+    string argName[STRING_VALUE_BYTES] IN,
     int32 intArg OUT
 );
 
@@ -487,14 +459,14 @@ FUNCTION le_result_t GetIntArg
 FUNCTION le_result_t GetStringArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_LEN] IN,
-    string strArg[STRING_VALUE_LEN] OUT
+    string argName[STRING_VALUE_BYTES] IN,
+    string strArg[STRING_VALUE_BYTES] OUT
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the length of the string argument of the specified name.
+ * Get the length (excluding terminating null byte) of the string argument of the specified name.
  *
  * @return:
  *      - LE_OK on success
@@ -504,8 +476,21 @@ FUNCTION le_result_t GetStringArg
 FUNCTION le_result_t GetStringArgLength
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_LEN] IN,
+    string argName[STRING_VALUE_BYTES] IN,
     int32 strArgLen OUT
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reply command execution result to AVC Daemon, which can then respond to AV server. This function
+ * MUST be called at the end of a command execution, in order for AV server to be notified about the
+ * execution status.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ReplyExecResult
+(
+    le_result_t result IN
 );
 
 
@@ -578,7 +563,7 @@ FUNCTION DeleteRecord
 FUNCTION le_result_t RecordInt
 (
     Record recordRef IN,
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     int32 value IN,
     uint64 timestamp
 );
@@ -599,7 +584,7 @@ FUNCTION le_result_t RecordInt
 FUNCTION le_result_t RecordFloat
 (
     Record recordRef IN,
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     double value IN,
     uint64 timestamp
 );
@@ -620,7 +605,7 @@ FUNCTION le_result_t RecordFloat
 FUNCTION le_result_t RecordBool
 (
     Record recordRef IN,
-    string path[PATH_NAME_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
     bool value IN,
     uint64 timestamp
 );
@@ -641,8 +626,8 @@ FUNCTION le_result_t RecordBool
 FUNCTION le_result_t RecordString
 (
     Record recordRef IN,
-    string path[PATH_NAME_LEN] IN,
-    string value[STRING_VALUE_LEN] IN,
+    string path[PATH_NAME_BYTES] IN,
+    string value[STRING_VALUE_BYTES] IN,
     uint64 timestamp
 );
 

@@ -24,6 +24,8 @@
  */
 //-------------------------------------------------------------------------------------------------
 
+/* variables */
+
 // int
 #define NUM_PEOPLE_VAR_RES  "/home1/room1/SmartCam/numPeople"
 #define NUM_DOGS_VAR_RES    "/home1/room1/SmartCam/numDogs"
@@ -38,9 +40,23 @@
 // thermostat temp reading
 #define THERMOSTAT_TEMP_READING_VAR_RES "/home1/room1/thermostat/tempReading"
 
-// thermostat temp setting
+
+/* settings */
+
+// thermostat temp setting (float)
 #define THERMOSTAT_TEMP_SETTING_SET_RES "/home1/room1/thermostat/tempSetting"
 
+// thermostat strength setting (int)
+#define THERMOSTAT_STRENGTH_SET_RES "/home1/room1/thermostat/strengthSetting"
+
+// thermostat power setting (bool)
+#define THERMOSTAT_POWER_SET_RES "/home1/room1/thermostat/powerSetting"
+
+// thermostat LCD text setting (string)
+#define THERMOSTAT_LCDTEXT_SET_RES "/home1/room1/thermostat/lcdtextSetting"
+
+
+/* commands */
 #define FANCONTROL_CMD_RES              "/home1/room1/fan/fanControl"
 
 
@@ -84,9 +100,6 @@ static uint32_t SmartCam_GetNumPpl
     void
 )
 {
-    // TODO: Return a random number so successive read operations have different values.
-    //       Also make the room vacancy boolean depend on num ppl and dogs.
-
     // Smart cam doing its smart thing
     return 135;
 }
@@ -140,7 +153,16 @@ static le_result_t FancyFanControl
             "On [%d], Speed [%g], movement [%d], text [%s]",
             isOn, fanSpeed, fanMovement, customText);
 
-    return LE_OK;
+    // This is demonstrating the ability of the command execution result being able to be sent back
+    // to the AV server. This faulty fancy fan can be turned on but cannot be turned off.
+    if (isOn)
+    {
+        return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
+    }
 }
 
 
@@ -158,7 +180,6 @@ static void ReadNumPeopleHandler
     const char* path,
     le_avdata_AccessType_t accessType,
     le_avdata_ArgumentListRef_t argumentList,
-    le_result_t* resultPtr,
     void* contextPtr
 )
 {
@@ -166,11 +187,6 @@ static void ReadNumPeopleHandler
 
     LE_INFO("------------------- Server reads number of people in the room [%d] times ------------",
             ReadNumPeopleCounter);
-
-
-    // NOTE that calling a Set function isn't required, unlike the previous asset data
-    // implementation.
-//    le_avdata_SetInt(path, SmartCam_GetNumPpl());
 }
 
 
@@ -185,7 +201,6 @@ static void AccessTempSettingHandler
     const char* path,
     le_avdata_AccessType_t accessType,
     le_avdata_ArgumentListRef_t argumentList,
-    le_result_t* resultPtr,
     void* contextPtr
 )
 {
@@ -222,7 +237,6 @@ static void ExecFanCtrlCmd
     const char* path,
     le_avdata_AccessType_t accessType,
     le_avdata_ArgumentListRef_t argumentList,
-    le_result_t* resultPtr,
     void* contextPtr
 )
 {
@@ -230,9 +244,17 @@ static void ExecFanCtrlCmd
 
     // Determine the size of customText
     int argLength;
-    LE_ASSERT(le_avdata_GetStringArgLength(argumentList, "customText", &argLength) == LE_OK);
-    int customTextBytes = ((argLength + 1) > FANCY_FAN_LCD_TEXT_STR_BYTES) ?
+    int customTextBytes;
+
+    if (le_avdata_GetStringArgLength(argumentList, "customText", &argLength) == LE_OK)
+    {
+        customTextBytes = ((argLength + 1) > FANCY_FAN_LCD_TEXT_STR_BYTES) ?
                           FANCY_FAN_LCD_TEXT_STR_BYTES : (argLength + 1);
+    }
+    else
+    {
+        customTextBytes = FANCY_FAN_LCD_TEXT_STR_BYTES;
+    }
 
     // Command arguments
     bool isOn = false;
@@ -266,21 +288,13 @@ static void ExecFanCtrlCmd
         LE_WARN("Failed to get argument 'customText'. Use the default value of [%s]", customText);
     }
 
-
-    // Perform the actual fan control with the arguments obtained from AV server, and collect the
-    // result of the command execution.
+    // Perform the actual fan control with the arguments obtained from AV server, and reply the
+    // result of the command execution to AVC Daemon (and thus AV server).
     le_result_t cmdExeResult = FancyFanControl(isOn, fanSpeed, fanMovement, customText);
 
-    if (resultPtr == NULL)
-    {
-        LE_WARN("Unable to reply command execution result to AV server.");
-    }
-    else
-    {
-        // Return the result of command execution to AVC daemon, which can then reply appropriately
-        // to av server.
-        *resultPtr = cmdExeResult;
-    }
+    // Reply AV server with the command execution result.
+    LE_INFO("command result is: [%s]", LE_RESULT_TXT(cmdExeResult));
+    le_avdata_ReplyExecResult(cmdExeResult);
 }
 
 
@@ -295,39 +309,96 @@ static void RoomStatusReport
     le_timer_Ref_t timerRef
 )
 {
-    LE_INFO("---------------- Room Status Report ------------------------------------------------");
+    LE_INFO("---------------- Room Status Report BEGIN-------------------------------------------");
 
-    le_result_t result;
     int32_t intVal = 0;
     char strVal[50] = {0};
     bool boolVal = false;
     double doubleVal = 0;
+    le_result_t result;
 
-    result = le_avdata_GetInt(NUM_PEOPLE_VAR_RES, &intVal);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("-------------------- num people: [%d]", intVal);
+    LE_INFO("::: VARIABLES :::::::::");
+
+    le_avdata_GetInt(NUM_PEOPLE_VAR_RES, &intVal);
+    LE_INFO("-- num people: [%d]", intVal);
 
     intVal = 0;
-    result = le_avdata_GetInt(NUM_DOGS_VAR_RES, &intVal);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("-------------------- num dogs: [%d]", intVal);
+    le_avdata_GetInt(NUM_DOGS_VAR_RES, &intVal);
+    LE_INFO("-- num dogs: [%d]", intVal);
 
-    result = le_avdata_GetString(ROOM_NAME_VAR_RES, strVal, 50);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("-------------------- room name: [%s]", strVal);
+    le_avdata_GetString(ROOM_NAME_VAR_RES, strVal, 50);
+    LE_INFO("-- room name: [%s]", strVal);
 
-    result = le_avdata_GetBool(IS_VACANT_VAR_RES, &boolVal);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("-------------------- room vacancy: [%d]", boolVal);
+    le_avdata_GetBool(IS_VACANT_VAR_RES, &boolVal);
+    LE_INFO("-- room vacancy: [%d]", boolVal);
 
-    result = le_avdata_GetFloat(THERMOSTAT_TEMP_READING_VAR_RES, &doubleVal);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("-------------------- thermostat temp reading: [%f]", doubleVal);
+    le_avdata_GetFloat(THERMOSTAT_TEMP_READING_VAR_RES, &doubleVal);
+    LE_INFO("-- thermostat temp reading: [%f]", doubleVal);
+
+
+    LE_INFO("::: SETTINGS :::::::::");
 
     doubleVal = 0;
     result = le_avdata_GetFloat(THERMOSTAT_TEMP_SETTING_SET_RES, &doubleVal);
-    LE_ASSERT(result == LE_OK);
-    LE_INFO("-------------------- thermostat temp setting: [%f]", doubleVal);
+    if (LE_OK == result)
+    {
+        LE_INFO("-- thermostat temp setting: [%f]", doubleVal);
+    }
+    else if (LE_UNAVAILABLE == result)
+    {
+        LE_INFO("-- thermostat temp setting: not initialized");
+    }
+    else
+    {
+        LE_FATAL("unexpected result %s", LE_RESULT_TXT(result));
+    }
+
+    intVal = 0;
+    result = le_avdata_GetInt(THERMOSTAT_STRENGTH_SET_RES, &intVal);
+    if (LE_OK == result)
+    {
+        LE_INFO("-- thermostat strength: [%d]", intVal);
+    }
+    else if (LE_UNAVAILABLE == result)
+    {
+        LE_INFO("-- thermostat strength: not initialized");
+    }
+    else
+    {
+        LE_FATAL("unexpected result %s", LE_RESULT_TXT(result));
+    }
+
+    boolVal = false;
+    result = le_avdata_GetBool(THERMOSTAT_POWER_SET_RES, &boolVal);
+    if (LE_OK == result)
+    {
+        LE_INFO("-- thermostat power: [%d]", boolVal);
+    }
+    else if (LE_UNAVAILABLE == result)
+    {
+        LE_INFO("-- thermostat power: not initialized");
+    }
+    else
+    {
+        LE_FATAL("unexpected result %s", LE_RESULT_TXT(result));
+    }
+
+    memset(strVal, 0, sizeof(strVal));
+    result = le_avdata_GetString(THERMOSTAT_LCDTEXT_SET_RES, strVal, 50);
+    if (LE_OK == result)
+    {
+        LE_INFO("-- thermostat LCD text: [%s]", strVal);
+    }
+    else if (LE_UNAVAILABLE == result)
+    {
+        LE_INFO("-- thermostat LCD text: not initialized");
+    }
+    else
+    {
+        LE_FATAL("unexpected result %s", LE_RESULT_TXT(result));
+    }
+
+    LE_INFO("---------------- Room Status Report END---------------------------------------------");
 }
 
 
@@ -343,22 +414,11 @@ static void ValueUpdate
 {
     LE_INFO("---------------- Updating values from hardware -------------------------------------");
 
-    le_result_t result;
-
-    result = le_avdata_SetInt(NUM_PEOPLE_VAR_RES, SmartCam_GetNumPpl());
-    LE_ASSERT(result == LE_OK);
-
-    result = le_avdata_SetInt(NUM_DOGS_VAR_RES, SmartCam_GetNumDogs());
-    LE_ASSERT(result == LE_OK);
-
-    result = le_avdata_SetString(ROOM_NAME_VAR_RES, "Super Awesome Room!");
-    LE_ASSERT(result == LE_OK);
-
-    result = le_avdata_SetBool(IS_VACANT_VAR_RES, false);
-    LE_ASSERT(result == LE_OK);
-
-    result = le_avdata_SetFloat(THERMOSTAT_TEMP_READING_VAR_RES, Thermostat_GetTemp());
-    LE_ASSERT(result == LE_OK);
+    le_avdata_SetInt(NUM_PEOPLE_VAR_RES, SmartCam_GetNumPpl());
+    le_avdata_SetInt(NUM_DOGS_VAR_RES, SmartCam_GetNumDogs());
+    le_avdata_SetString(ROOM_NAME_VAR_RES, "Super Awesome Room!");
+    le_avdata_SetBool(IS_VACANT_VAR_RES, false);
+    le_avdata_SetFloat(THERMOSTAT_TEMP_READING_VAR_RES, Thermostat_GetTemp());
 }
 
 
@@ -366,52 +426,10 @@ static void ValueUpdate
 /* Functions relevant to AV server connection                       */
 //////////////////////////////////////////////////////////////////////
 
-// TODO: review its necessity
-//-------------------------------------------------------------------------------------------------
-/**
- * Fetch a string describing the type of update underway over Air Vantage.
- *
- * @return Pointer to a null-terminated string constant.
- */
-//-------------------------------------------------------------------------------------------------
-static const char* GetUpdateType
-(
-    void
-)
-{
-    le_avc_UpdateType_t type;
-    le_result_t res = le_avc_GetUpdateType(&type);
-    if (res != LE_OK)
-    {
-        LE_CRIT("Unable to get update type (%s)", LE_RESULT_TXT(res));
-        return "UNKNOWN";
-    }
-    else
-    {
-        switch (type)
-        {
-            case LE_AVC_FIRMWARE_UPDATE:
-                return "FIRMWARE";
-
-            case LE_AVC_APPLICATION_UPDATE:
-                return "APPLICATION";
-
-            case LE_AVC_FRAMEWORK_UPDATE:
-                return "FRAMEWORK";
-
-            case LE_AVC_UNKNOWN_UPDATE:
-                return "UNKNOWN";
-        }
-
-        LE_CRIT("Unexpected update type %d", type);
-        return "UNKNOWN";
-    }
-}
-
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Status handler for avcService updates. Writes update status to configTree.
+ * Status handler for avcService updates.
  */
 //-------------------------------------------------------------------------------------------------
 static void StatusHandler
@@ -480,36 +498,6 @@ static void StatusHandler
     else
     {
         LE_INFO("Air Vantage agent reported update status: %s", statusPtr);
-
-        le_result_t res;
-
-        if (updateStatus == LE_AVC_DOWNLOAD_PENDING)
-        {
-            LE_INFO("Accepting %s update.", GetUpdateType());
-            res = le_avc_AcceptDownload();
-            if (res != LE_OK)
-            {
-                LE_ERROR("Failed to accept download from Air Vantage (%s)", LE_RESULT_TXT(res));
-            }
-        }
-        else if (updateStatus == LE_AVC_INSTALL_PENDING)
-        {
-            LE_INFO("Accepting %s installation.", GetUpdateType());
-            res = le_avc_AcceptInstall();
-            if (res != LE_OK)
-            {
-                LE_ERROR("Failed to accept install from Air Vantage (%s)", LE_RESULT_TXT(res));
-            }
-        }
-       else if (updateStatus == LE_AVC_UNINSTALL_PENDING)
-        {
-            LE_INFO("Accepting %s uninstall.", GetUpdateType());
-            res = le_avc_AcceptUninstall();
-            if (res != LE_OK)
-            {
-                LE_ERROR("Failed to accept uninstall from Air Vantage (%s)", LE_RESULT_TXT(res));
-            }
-        }
     }
 }
 
@@ -553,7 +541,6 @@ COMPONENT_INIT
 
     LE_INFO("Air Vantage session started successfully.");
 
-
     /* Create resources */
     le_avdata_CreateResource(NUM_PEOPLE_VAR_RES, LE_AVDATA_ACCESS_VARIABLE);
     le_avdata_CreateResource(NUM_DOGS_VAR_RES, LE_AVDATA_ACCESS_VARIABLE);
@@ -562,9 +549,11 @@ COMPONENT_INIT
 
     le_avdata_CreateResource(THERMOSTAT_TEMP_READING_VAR_RES, LE_AVDATA_ACCESS_VARIABLE);
     le_avdata_CreateResource(THERMOSTAT_TEMP_SETTING_SET_RES, LE_AVDATA_ACCESS_SETTING);
+    le_avdata_CreateResource(THERMOSTAT_STRENGTH_SET_RES, LE_AVDATA_ACCESS_SETTING);
+    le_avdata_CreateResource(THERMOSTAT_POWER_SET_RES, LE_AVDATA_ACCESS_SETTING);
+    le_avdata_CreateResource(THERMOSTAT_LCDTEXT_SET_RES, LE_AVDATA_ACCESS_SETTING);
 
     le_avdata_CreateResource(FANCONTROL_CMD_RES, LE_AVDATA_ACCESS_COMMAND);
-
 
     /* Register handlers */
     le_avdata_AddResourceEventHandler(NUM_PEOPLE_VAR_RES, ReadNumPeopleHandler, NULL);
@@ -574,11 +563,10 @@ COMPONENT_INIT
 
     le_avdata_AddResourceEventHandler(FANCONTROL_CMD_RES, ExecFanCtrlCmd, NULL);
 
-
     /* Read values from the data sources (sensors, hardware, etc.) and update AVC daemon's
        internal record. */
     le_timer_Ref_t ValueUpdateTimer = le_timer_Create("ValueUpdateTimer");
-    le_clk_Time_t interval = {15, 0};
+    le_clk_Time_t interval = {20, 0};
     le_timer_SetInterval(ValueUpdateTimer, interval);
     le_timer_SetRepeat(ValueUpdateTimer, 0); // repeat indefinitely
     le_timer_SetHandler(ValueUpdateTimer, ValueUpdate);
@@ -594,7 +582,4 @@ COMPONENT_INIT
 
     // Initialize values
     ValueUpdate(ValueUpdateTimer);
-
-    le_result_t result = le_avdata_SetFloat(THERMOSTAT_TEMP_SETTING_SET_RES, 10.000);
-    LE_ASSERT(result == LE_OK);
 }
