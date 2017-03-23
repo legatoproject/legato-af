@@ -79,15 +79,15 @@ namespace
 
 
 // Type mapping std collections to our types to make referring to them easier.
-using FsObjectSet_t = std::set<model::FileSystemObject_t*>;
-using FsObjectList_t = std::list<model::FileSystemObject_t*>;
+typedef std::set<model::FileSystemObject_t*> FsObjectSet_t;
+typedef std::list<model::FileSystemObject_t*> FsObjectList_t;
 
-using ProcessList_t = std::list<model::Process_t*>;
+typedef std::list<model::Process_t*> ProcessList_t;
 
-using ApiServerIfInstMap_t = std::map<std::string, model::ApiServerInterfaceInstance_t*>;
-using ApiClientIfInstMap_t = std::map<std::string, model::ApiClientInterfaceInstance_t*>;
+typedef std::map<std::string, model::ApiServerInterfaceInstance_t*> ApiServerIfInstMap_t;
+typedef std::map<std::string, model::ApiClientInterfaceInstance_t*> ApiClientIfInstMap_t;
 
-using ConfigPermissionMap_t = std::map<std::string, model::Permissions_t>;
+typedef std::map<std::string, model::Permissions_t> ConfigPermissionMap_t;
 
 
 //--------------------------------------------------------------------------------------------------
