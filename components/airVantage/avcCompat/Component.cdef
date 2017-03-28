@@ -1,0 +1,24 @@
+sources:
+{
+    avcCompat.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
+}
+
+requires:
+{
+    api:
+    {
+        airVantage/legacy/le_avc.api  [types-only]
+        le_appCtrl.api
+    }
+
+    component:
+    {
+        $LEGATO_AVC_PA_DEFAULT
+        $LEGATO_AVC_PA
+    }
+}

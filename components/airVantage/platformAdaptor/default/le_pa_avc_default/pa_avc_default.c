@@ -89,6 +89,26 @@ le_result_t pa_avc_StopSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Disable the AirVantage agent.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY if the agent cannot be interrupted at the moment
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_avc_Disable
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Send the selection for the current pending update
  *
  * @return

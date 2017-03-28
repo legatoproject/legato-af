@@ -57,3 +57,11 @@ MKSYS_FLAGS += -C "-DMM_2_ALSA_PCM_DEVICE_ID=1"
 # External ADCs
 MKSYS_FLAGS += -C "-DADC_BEGIN_NUM=0"
 MKSYS_FLAGS += -C "-DADC_COUNT=4"
+
+# Apps preferences
+LEGATO_APP_AVC ?= legacy
+
+# Only include AVC compat app if we are building the new AVC
+ifeq ($(LEGATO_APP_AVC),lwm2mcore)
+  export LEGATO_SERVICE_AVC_COMPAT := "$(LEGATO_ROOT)/apps/platformServices/airVantage/avcCompat"
+endif
