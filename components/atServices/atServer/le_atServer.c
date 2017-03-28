@@ -2079,7 +2079,7 @@ le_result_t le_atServer_Close
     if (devPtr == NULL)
     {
         LE_ERROR("Bad reference");
-        return LE_FAULT;
+        return LE_BAD_PARAMETER;
     }
 
     if (devPtr->processing)
