@@ -13,6 +13,9 @@ help_usage=(
 "help"
 "download FILE [TARGET_IP]"
 "query [TARGET_IP]"
+"install [TARGET_IP]"
+"markGood [TARGET_IP]"
+"fullInstall [TARGET_IP]"
 )
 
 help_long_description=(
@@ -21,12 +24,25 @@ help_long_description=(
 ""
 "$commandName download FILE [TARGET_IP]"
 "  - Download the given CWE file."
-"    After a successful download, the modem will reset."
+"    After a successful download:"
+"          - the modem will reset on single systems,"
+"          - wait another command on dual systems"
 ""
 "$commandName query [TARGET_IP]"
 "  - Query the current firmware version. This includes the modem firmware version, the"
 "    bootloader version, and the linux kernel version."
 "    This can be used after a download and modem reset, to confirm the firmware version."
+""
+"$commandName fwupdate install [TARGET_IP]"
+"  - Install a previously downloaded firmware or go back to the old system if the running"
+"     system is not marked good (DualSys platform only)"
+""
+"$commandName fwupdate markGood [TARGET_IP]"
+"  - Mark good the current system (DualSys platform only)"
+""
+"$commandName fwupdate fullInstall FILE [TARGET_IP]"
+"  - do download, install and markGood in one time (DualSys platform only)"
+"    After a successful download, the modem will reset"
 )
 
 CheckForHelp $@
