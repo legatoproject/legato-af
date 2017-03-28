@@ -85,8 +85,8 @@ rule PreCompile
 
 rule GetMessages
   description = Extracting messages
-  command = xgettext -d "mkTools" -L C++ -k_ --flag=_:1:pass-c-format --boost --force-po \$
-                     --copyright-holder="Sierra Wireless Inc." \$
+  command = xgettext -d "mkTools" -L C++ -kLE_I18N --flag=LE_I18N:1:pass-c-format --boost \$
+                     --force-po --copyright-holder="Sierra Wireless Inc." \$
                      --package-name="mkTools" -o \$out \$in
 
 build \$builddir/mk : Link $OBJECTS
