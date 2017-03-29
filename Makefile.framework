@@ -91,7 +91,7 @@ all: liblegato daemons targetTools $(LEGATO_JAVA)
 
 .PHONY: targetTools
 targetTools: $(LIBJANSSON) liblegato
-	$(MAKE) -f Makefile.targetTools
+	$(MAKE) -f Makefile.targetTools DISABLE_SMACK=$(DISABLE_SMACK)
 
 
 .PHONY: liblegato
@@ -153,6 +153,7 @@ start: liblegato $(BIN_DIR)
 		-Wall -Werror \
 		-I$(LEGATO_ROOT)/framework/c/inc \
 		-DVERSION=\"$(VERSION)\" \
+		-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
 		-L$(LIB_DIR) -llegato
 
@@ -163,6 +164,7 @@ supervisor: liblegato $(BIN_DIR)
 		-i $(LEGATO_ROOT)/interfaces/supervisor \
 		-i $(SRC_DIR) \
 		-s $(SRC_DIR)/supervisor \
+		--cflags=-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		--cflags=-DNO_LOG_CONTROL \
 		--cflags=-DLEGATO_FRAMEWORK_NICE_LEVEL=$(LEGATO_FRAMEWORK_NICE_LEVEL) \
 		--cflags=-D$(TARGET_SANDBOX_IMPORT)

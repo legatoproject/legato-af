@@ -141,6 +141,9 @@ endif
 # Legato ReadOnly system tree
 READ_ONLY ?= 0
 
+# Disable SMACK
+export DISABLE_SMACK ?= 0
+
 STAGE_MKLEGATOIMG = stage_mklegatoimg
 ifeq ($(READ_ONLY),1)
   override STAGE_MKLEGATOIMG := stage_mklegatoimgro
@@ -317,6 +320,7 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DTEST_COVERAGE=$(TEST_COVERAGE) \
 			-DINCLUDE_ECALL=$(INCLUDE_ECALL) \
 			-DUSE_CLANG=$(USE_CLANG) \
+			-DDISABLE_SMACK=$(DISABLE_SMACK) \
 			-DPLATFORM_SIMULATION=$(PLATFORM_SIMULATION) \
 			-DTOOLCHAIN_PREFIX=$(TOOLCHAIN_PREFIX) \
 			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
@@ -364,7 +368,7 @@ endif
 .PHONY: stage_mklegatoimgro
 stage_mklegatoimgro:
 	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) -S _rw $(MKLEGATOIMG_FLAGS)
-	mklegatotreero $(TARGET)
+	mklegatotreero $(TARGET) $(DISABLE_SMACK)
 	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
 
 .PHONY: stage_mklegatoimg

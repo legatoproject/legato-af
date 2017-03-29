@@ -21,12 +21,19 @@ CheckForHelp $@
 target=$1
 test -z "$target" && target=ar759x
 
+disable_smack=$2
+test -z "$disable_smack" && disable_smack=0
+
 # Remove older read-only staging tree
 rm -rf build/$target/readOnlyStaging
 
-# Make the read-only staging tree structure
+# Handle smack
 mkdir -p build/$target/readOnlyStaging/legato/systems/current
-mkdir -p build/$target/readOnlyStaging/legato/smack
+if [ $disable_smack == 1 ]; then
+   touch build/$target/readOnlyStaging/legato/SMACK_DISABLED
+else
+   mkdir -p build/$target/readOnlyStaging/legato/smack
+fi
 
 # Add a file 'read-only' to mark the staging tree as read-only
 # This is used in supervisor and config tree to perform some specific

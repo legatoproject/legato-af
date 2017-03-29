@@ -85,6 +85,7 @@ rule Compile
   command = $TARGET_CC -MMD -MF \$out.d -c \$in -o \$out -Wall -fPIC -Werror \$flags \$
             -DLE_COMPONENT_NAME=framework \$
             -I$LEGATO_ROOT/framework/c/inc \$
+            -DDISABLE_SMACK=$DISABLE_SMACK \$
             -DLE_SVCDIR_SERVER_SOCKET_NAME="\"$LE_SVCDIR_SERVER_SOCKET_NAME\"" \$
             -DLE_SVCDIR_CLIENT_SOCKET_NAME="\"$LE_SVCDIR_CLIENT_SOCKET_NAME\"" \$
             $EMBEDDED_FLAGS

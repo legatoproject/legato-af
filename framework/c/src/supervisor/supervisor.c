@@ -873,7 +873,7 @@ COMPONENT_INIT
     // Create or remove the SMACK_DISABLED file, which is used by the init scripts to determine to
     // set SMACK labels or not.
     // Ignore the EROFS in case of Legato is Read-Only
-#ifndef LE_SMACK_DISABLE
+#if DISABLE_SMACK != 1
     // Remove SMACK_DISABLED.
     LE_FATAL_IF((unlink("/legato/SMACK_DISABLED") == -1) &&
                      ((errno != ENOENT) && (errno != EROFS)),
