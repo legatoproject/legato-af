@@ -970,9 +970,9 @@ static void DestructStream
         streamPtr->fd = LE_AUDIO_NO_FD;
     }
 
-    pa_audio_ReleasePaParameters(streamPtr);
-
     DisconnectStreamFromAllConnectors (streamPtr);
+
+    pa_audio_ReleasePaParameters(streamPtr);
 
     le_hashmap_RemoveAll(streamPtr->connectorList);
     ReleaseHashMapElement(streamPtr->connectorList);
