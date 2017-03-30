@@ -49,6 +49,7 @@
 #include "le_cfg_interface.h"
 #include "resourceLimits.h"
 #include "smack.h"
+#include "supervisor.h"
 #include "cgroups.h"
 #include "killProc.h"
 #include "interfaces.h"
@@ -2664,6 +2665,13 @@ le_result_t app_Start
     {
         LE_ERROR("Application '%s' is already running.", appRef->name);
 
+        return LE_FAULT;
+    }
+
+    if (framework_IsStopping())
+    {
+        LE_ERROR("App '%s' cannot be started because framework is shutting down.",
+                 appRef->name);
         return LE_FAULT;
     }
 

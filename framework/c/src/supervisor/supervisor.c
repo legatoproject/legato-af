@@ -206,6 +206,7 @@
 #include "frameworkDaemons.h"
 #include "cgroups.h"
 #include "smack.h"
+#include "supervisor.h"
 #include "sysPaths.h"
 #include "daemon.h"
 #include "apps.h"
@@ -756,6 +757,49 @@ void le_framework_Restart
 
         le_framework_RestartRespond(cmdRef, LE_DUPLICATE);
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reports if the Legato framework is stopping.
+ *
+ * @return
+ *     true if the framework is stopping or rebooting
+ *     false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool framework_IsStopping
+(
+    void
+)
+{
+    switch (State)
+    {
+        case STATE_STARTING:
+        case STATE_NORMAL:
+            return false;
+        default:
+            return true;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reports if the Legato framework is stopping.
+ *
+ * API implementation function.
+ *
+ * @return
+ *     true if the framework is stopping or rebooting
+ *     false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+void le_framework_IsStopping
+(
+    le_framework_ServerCmdRef_t _cmdRef
+)
+{
+    le_framework_IsStoppingRespond(_cmdRef, framework_IsStopping());
 }
 
 

@@ -1008,10 +1008,18 @@ static void AppStopHandler
         if (numBytesRead > 0)
         {
             AppContainer_t* appContainerPtr = GetActiveApp(appName);
-            LE_ASSERT(appContainerPtr != NULL);
-            app_Ref_t appRef = appContainerPtr->appRef;
+            if (appContainerPtr == NULL)
+            {
+                // App may be missing in some fault cases when shutting down the system.
+                // App has already been cleaned up, so safe to ignore shutdown notification.
+                LE_WARN("Cannot find active app '%s'", appName);
+            }
+            else
+            {
+                app_Ref_t appRef = appContainerPtr->appRef;
 
-            MarkAppAsStopped(appRef, appContainerPtr);
+                MarkAppAsStopped(appRef, appContainerPtr);
+            }
         }
         else if (numBytesRead == 0)
         {

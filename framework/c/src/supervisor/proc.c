@@ -20,6 +20,7 @@
 #include "user.h"
 #include "log.h"
 #include "smack.h"
+#include "supervisor.h"
 #include "killProc.h"
 #include "interfaces.h"
 #include "sysStatus.h"
@@ -1038,6 +1039,13 @@ le_result_t proc_Start
     {
         LE_ERROR("Process '%s' (PID: %d) cannot be started because it is already running.",
                  procRef->namePtr, procRef->pid);
+        return LE_FAULT;
+    }
+
+    if (framework_IsStopping())
+    {
+        LE_ERROR("Process '%s' cannot be started because framework is shutting down.",
+                 procRef->namePtr);
         return LE_FAULT;
     }
 
