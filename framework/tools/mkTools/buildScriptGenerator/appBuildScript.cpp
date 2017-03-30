@@ -551,25 +551,22 @@ void GenerateAppBundleBuildStatement
               "  workingDir = $builddir/" + appPtr->workingDir << "\n"
               "\n";
 
-    // Check to see if we're building an update file, or a binary app package.
-    if (!buildParams.binPack)
-    {
-        // Generate build statement for zipping up the staging area into an update pack file.
-        // This depends on the info.properties file, which is the last thing to be added to the
-        // app's staging area.
-        auto outputFile = path::Combine(outputDir, appPtr->name) + ".$target.update";
-        script << "build " << outputFile << ": PackApp " << infoPropertiesPath << "\n";
+    // Generate build statement for zipping up the staging area into an update pack file.
+    // This depends on the info.properties file, which is the last thing to be added to the
+    // app's staging area.
+    auto outputFile = path::Combine(outputDir, appPtr->name) + ".$target.update";
+    script << "build " << outputFile << ": PackApp " << infoPropertiesPath << "\n";
 
-        // Tell the build rule what the app's name and version are and where its working directory
-        // is.
-        script << "  name = " << appPtr->name << "\n"
-                  "  version = " << appPtr->version << "\n"
-                  "  workingDir = $builddir/" + appPtr->workingDir << "\n"
-                  "\n";
-    }
-    else
+    // Tell the build rule what the app's name and version are and where its working directory
+    // is.
+    script << "  name = " << appPtr->name << "\n"
+        "  version = " << appPtr->version << "\n"
+        "  workingDir = $builddir/" + appPtr->workingDir << "\n"
+        "\n";
+
+    // Are we building a binary app package as well?
+    if (buildParams.binPack)
     {
-        // We're building a binary app package.
         const std::string appPackDir = "$builddir/" + appPtr->name;
         const std::string interfacesDir = appPackDir + "/interfaces";
 
