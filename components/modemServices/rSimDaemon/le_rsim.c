@@ -1,6 +1,8 @@
 /**
  * @file le_rsim.c
  *
+ * RSIM has been moved from the modemDeamon to avoid dead locks during sim and rsim APDU exchanges
+ *
  * This file contains the data structures and the source code of the Remote SIM (RSIM) service.
  *
  * The link with the remote SIM card is based on the SIM Access Profile (SAP) protocol. The RSIM
@@ -562,8 +564,8 @@ static le_result_t SapCheckParameter
         // The parameter length is stored in the last two bytes of the parameter header
         uint8_t lengthByte1 = SAP_LENGTH_SAP_HEADER + 2 + ((parameterNumber-1) * SAP_LENGTH_PARAM);
         uint8_t lengthByte2 = SAP_LENGTH_SAP_HEADER + 3 + ((parameterNumber-1) * SAP_LENGTH_PARAM);
-        uint16_t length = (uint16_t)(  ((uint8_t)(messagePtr[lengthByte1] << MSB_SHIFT))
-                                     | messagePtr[lengthByte2]);
+        uint16_t length = (uint16_t)( ((uint16_t)(messagePtr[lengthByte1] << MSB_SHIFT))
+                                      | messagePtr[lengthByte2]);
         if (length != parameterLength)
         {
             LE_ERROR("Wrong parameter length: %d ,expected %d", length, parameterLength);
@@ -650,8 +652,8 @@ static le_result_t ProcessSapConnectResp
                     uint8_t  sizeByte1 = 16;    // MaxMsgSize MSB in the message
                     uint8_t  sizeByte2 = 17;    // MaxMsgSize LSB in the message
                     uint16_t serverMaxMsgSize = (uint16_t)
-                                                (  ((uint8_t)(messagePtr[sizeByte1] << MSB_SHIFT))
-                                                 | messagePtr[sizeByte2]);
+                                                ( ((uint16_t)(messagePtr[sizeByte1] << MSB_SHIFT))
+                                                  | messagePtr[sizeByte2]);
 
                     LE_DEBUG("Maximum message size not supported by server, %d bytes proposed",
                             serverMaxMsgSize);
@@ -871,8 +873,8 @@ static le_result_t ProcessSapTransferAtrResp
                 uint8_t atrLenByte1  = 14;  // ATR length MSB in the message
                 uint8_t atrLenByte2  = 15;  // ATR length LSB in the message
                 uint8_t atrFirstByte = 16;  // ATR buffer starts at 16th byte in the message
-                uint16_t atrLength = (uint16_t)(  ((uint8_t)(messagePtr[atrLenByte1] << MSB_SHIFT))
-                                                | messagePtr[atrLenByte2]);
+                uint16_t atrLength = (uint16_t) (((uint16_t)(messagePtr[atrLenByte1] << MSB_SHIFT))
+                                                 | messagePtr[atrLenByte2]);
 
                 // Transmit the ATR response to the modem
                 if (LE_OK != pa_rsim_TransferAtrResp(&messagePtr[atrFirstByte], atrLength))
@@ -974,9 +976,9 @@ static le_result_t ProcessSapTransferApduResp
                 uint8_t apduLenByte1  = 14; // APDU length MSB in the message
                 uint8_t apduLenByte2  = 15; // APDU length LSB in the message
                 uint8_t apduFirstByte = 16; // APDU buffer starts at 16th byte in the message
-                uint16_t apduLength = (uint16_t)( ((uint8_t)(messagePtr[apduLenByte1] << MSB_SHIFT))
-                                                 | messagePtr[apduLenByte2]);
-
+                uint16_t apduLength =
+                    (uint16_t) ( ((uint16_t)(messagePtr[apduLenByte1] << MSB_SHIFT))
+                                 | messagePtr[apduLenByte2]);
                 // Transmit the APDU response to the modem
                 if (LE_OK != pa_rsim_TransferApduResp(&messagePtr[apduFirstByte], apduLength))
                 {
@@ -1425,14 +1427,14 @@ static void ProcessSapMessage
     void* param2Ptr
 )
 {
-    le_result_t result = LE_OK;
+    le_result_t result;
     RsimMessageSending_t* rsimSendingPtr = (RsimMessageSending_t*) param1Ptr;
     uint8_t* messagePtr = rsimSendingPtr->rsimMessage.message;
     size_t messageNumElements = rsimSendingPtr->rsimMessage.messageSize;
     le_rsim_CallbackHandlerFunc_t callback = rsimSendingPtr->callbackPtr;
     uint8_t msgId = messagePtr[0];
 
-    LE_DEBUG("Process SAP message:");
+    LE_DEBUG("Process SAP message length (%d):", (int) messageNumElements);
     LE_DUMP(messagePtr, messageNumElements);
 
     // Process the message based on its identifier
@@ -1671,9 +1673,7 @@ static void SendSimAvailableInd
     // Check if RSIM should be enabled:
     //  - RSIM is supported
     //  - and the remote SIM is selected
-    if (   (true == pa_rsim_IsRsimSupported())
-        && (LE_SIM_REMOTE == le_sim_GetSelectedCard())
-       )
+    if ( (true == pa_rsim_IsRsimSupported()) && (true == pa_rsim_IsRemoteSimSelected()) )
     {
         // Indicate to the modem that a remote SIM connection is available
         NotifySimStatus(PA_RSIM_STATUS_AVAILABLE);
@@ -1864,3 +1864,4 @@ le_result_t le_rsim_SendMessage
 
     return LE_OK;
 }
+

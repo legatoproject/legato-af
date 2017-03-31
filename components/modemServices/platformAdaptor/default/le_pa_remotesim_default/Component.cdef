@@ -1,0 +1,10 @@
+sources:
+{
+    pa_default.c
+    pa_rsim_default.c
+}
+
+cflags:
+{
+    -I$CURDIR/../../inc
+}

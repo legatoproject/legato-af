@@ -1,0 +1,31 @@
+provides:
+{
+    api:
+    {
+        le_rsim.api
+    }
+}
+
+sources:
+{
+    le_rsim.c
+    le_rsimInit.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/modemServices/rSimDaemon
+    -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
+    -I$LEGATO_QMI_UTIL_SRC_FILES
+    -I$LEGATO_PROPRIETARY_QCT_DIR/inc/framework
+    -I$LEGATO_PROPRIETARY_QCT_DIR/inc/services
+}
+
+requires:
+{
+    component:
+    {
+        $LEGATO_MODEM_PA_RSIM_DEFAULT
+        $LEGATO_MODEM_PA_RSIM
+    }
+}

@@ -183,6 +183,22 @@ bool pa_rsim_IsRsimSupported
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function checks if the remote SIM card is selected.
+ *
+ * @return true         If the remote SIM is selected.
+ * @return false        It the remote SIM is not selected.
+ */
+//--------------------------------------------------------------------------------------------------
+bool pa_rsim_IsRemoteSimSelected
+(
+    void
+)
+{
+    return false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the PA Remote SIM service module.
  *
  * @return

@@ -29,6 +29,8 @@ export LEGATO_AUDIO_PA_PCM = $(PA_DIR)/audio/pcm/alsa-intf
 export LEGATO_AUDIO_PA_AMR = $(PA_DIR)/audio/amr/opencore-amr
 export LEGATO_UTIL_PA = $(LEGATO_QMI_UTIL)
 export LEGATO_MODEM_PA = $(LEGATO_QMI_MODEM_PA)
+export LEGATO_MODEM_PA_RSIM = $(LEGATO_QMI_RSIM_PA)
+
 ifeq ($(INCLUDE_ECALL),1)
   export LEGATO_MODEM_PA_ECALL = $(LEGATO_QMI_MODEM_PA_ECALL)
 endif

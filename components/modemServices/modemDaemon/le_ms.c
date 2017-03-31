@@ -19,7 +19,6 @@
 #include "le_temp_local.h"
 #include "le_antenna_local.h"
 #include "le_riPin_local.h"
-#include "le_rsim_local.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -40,6 +39,4 @@ COMPONENT_INIT
     le_antenna_Init();
     le_riPin_Init();
     le_ecall_Init();
-    le_rsim_Init();
 }
-
