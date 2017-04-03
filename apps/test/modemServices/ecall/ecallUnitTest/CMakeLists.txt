@@ -19,6 +19,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_ROOT}/framework/liblegato
     -i ${LEGATO_ROOT}/components/cfgEntries
     -i ${PA_DIR}/simu/components/le_pa
+    -i ${PA_DIR}/simu/components/le_pa_ecall
     -i ${SIMU_CONFIG_TREE}
     -s ${PA_DIR}
     ${CFLAGS}

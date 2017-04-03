@@ -6,12 +6,17 @@
 
 buildVars:
 {
-    LEGATO_UTIL_PA = ${PA_DIR}/simu/components/simuConfig
     LEGATO_AUDIO_PA = ${PA_DIR}/simu/components/le_pa_audio
+    LEGATO_UTIL_PA = ${PA_DIR}/simu/components/simuConfig
     LEGATO_MODEM_PA = ${PA_DIR}/simu/components/le_pa
+    LEGATO_MODEM_PA_RSIM = ${PA_DIR}/simu/components/le_pa_remotesim
+
+    #if ${INCLUDE_ECALL} = 1
+        LEGATO_MODEM_PA_ECALL = ${PA_DIR}/simu/components/le_pa_ecall
+    #endif
+
     LEGATO_GNSS_PA = ${PA_DIR}/simu/components/le_pa_gnss
     LEGATO_AVC_PA = ${PA_DIR}/simu/components/le_pa_avc
     LEGATO_SECSTORE_PA = ${PA_DIR}/simu/components/le_pa_secStore
     LEGATO_FWUPDATE_PA = ${PA_DIR}/simu/components/le_pa_fwupdate
-    LEGATO_QMI_RSIM_PA = ${PA_DIR}/simu/components/le_pa_remotesim
 }

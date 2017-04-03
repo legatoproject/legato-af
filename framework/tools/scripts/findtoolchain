@@ -83,8 +83,8 @@ SelectToolchainDirs() {
         ;;
     virt_x86)
         AppendYoctoBuildToolchain 'build_virt-x86' 'i586-poky-linux'
-        TOOLCHAIN_DIRS+=(/opt/poky/y17-${target}/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux)
-        TOOLCHAIN_DIRS+=(/opt/poky/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux)
+        TOOLCHAIN_DIRS+=(/opt/swi/y17-${target}/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux)
+        TOOLCHAIN_DIRS+=(/opt/swi/y17/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/i586-poky-linux)
         ;;
     virt)
         VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-x86}

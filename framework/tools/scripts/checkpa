@@ -74,7 +74,7 @@ while read comp_name; do
     fi
 
     echo "Analyzing $comp_name $comp_info"
-    $OBJDUMP -x $comp_path | grep ' pa_' | grep '.text' | awk '{print $6}' | grep -Ev 'pa_.*Simu_' | sort > $PA_DIFF_DIR/${comp_name}.actual
+    $OBJDUMP -TC $comp_path | grep ' pa_' | grep '.text' | awk '{print $7}' | grep -Ev 'Simu_' | sort > $PA_DIFF_DIR/${comp_name}.actual
 
     # Find default
     default_name=$(echo $comp_name | sed 's/.so/_default.so/')
@@ -84,7 +84,7 @@ while read comp_name; do
         exit 1
     fi
 
-    $OBJDUMP -x $default_path | grep ' pa_' | grep '.text' | awk '{print $6}' | sort > $PA_DIFF_DIR/${comp_name}.default
+    $OBJDUMP -TC $default_path | grep ' pa_' | grep '.text' | awk '{print $7}' | sort > $PA_DIFF_DIR/${comp_name}.default
 
     diff $PA_DIFF_DIR/${comp_name}.actual $PA_DIFF_DIR/${comp_name}.default | grep -E '[<>]' | grep -Ev '_Init$' | sed 's/^</ [obsolete]/' | sed 's/^>/ [default]/' | tee $PA_DIFF_DIR/${comp_name}.diff
 

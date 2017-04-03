@@ -16,7 +16,7 @@ sources:
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_ecall.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/asn1Msd.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mcc.c
-    simu/components/le_pa/pa_ecall_simu.c
+    simu/components/le_pa_ecall/pa_ecall_simu.c
     simu/components/le_pa/pa_mcc_simu.c
     simu/le_cfg_simu.c
 }
