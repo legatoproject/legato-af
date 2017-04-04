@@ -1,12 +1,44 @@
-/** @page legatoServicesAirVantage AirVantage
+/** @page legatoServicesAirVantage AirVantage Connector
 
-| Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_le_avc                  | AirVantage server communication                    |   x   |
-| @subpage c_le_avdata               | AirVantage server data                             |    x    |
+Use AirVantage Connect Platform Service for remote administration of Legato AF.
 
- <br>
+Legato 17.05 enables AirVantage Connector Version 2 (AVCv2).  See the @ref avMigration Guide to find
+out the differences between AVC 1.0 and AVC 2.0.
+
+<b>AVC 2.0 New Features:</b>
+- Asset data can be dynamically created with in the application and there is no need to define the
+  data model in the @c .cdef
+- Asset data settings now support read/write from the Air Vantage Server
+- Asset data definitions have changed to resources (paths)
+- TimeSeries is no longer coupled with asset data
+- TimeSeries enables users to aggregate multiple data points into a single push
+- TimeSeries Observe function has been replaced with a push function.
+
+| Section                     | Description                                     |
+| ----------------------------| ------------------------------------------------|
+| @subpage avRegister         | Register a target with AirVantage               |
+| @subpage avInstallUpload    | Build an App/System and deploy using AirVantage |
+| @subpage avMigration        | AVC 1.0 vs AVC 2.0 differences                  |
+| @subpage avData             | How to use AssetData with AirVantage 2.0        |
+
+The AirVantage Platform Service exposes two API's that will help with connecting to the AirVantage
+Server and set up any Asset Data with the AirVantage service.
+
+| API                         | Description                                     |
+| --------------------------- | ----------------------------------------------- |
+| @ref c_le_avc               | API to configure AirVantage connectivity        |
+| @ref c_le_avdata            | API to setup AirVantage data                    |
+
+<b>AirVantage Server Documentation</b>
+
+For AirVantage Server documentation refer to the following links:
+- [AirVantage Getting Started Guide](https://doc.airvantage.net/alms/howto/gettingstarted/)
+- [AirVantage Docs for Developing Apps](http://source.sierrawireless.com/airvantage/av/howto/cloud/application_howto/)
+- [AirVantage Application Format Reference](https://doc.airvantage.net/av/reference/application/)
+- [AirVantage Web Services API Documentation](https://doc.airvantage.net/av/reference/cloud/API/)
+
+@warning AirVantage Connector 1.0 is no longer enabled in 17.05.0 and above.
 
 Copyright (C) Sierra Wireless Inc.
 
-**/
+ **/

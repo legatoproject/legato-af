@@ -1,0 +1,101 @@
+/** @page avInstallUpload Create and Install Bundles
+
+
+Build and update system and App bundles and upload them to AirVantage to deploy on your target.
+
+@section avInstall Create App or System Bundle
+
+@subsection avInstallSys Create a System Bundle
+
+System and App updates are uploaded to AirVantage as a special @c zip file containing the app binary
+update pack and an XML manifest. @ref buildToolsmksys builds the system bundle, while
+@ref buildToolsmkapp builds the application bundle.
+To combine the xml and zip files into another @c zip for AirVantage delivery, use the
+@ref toolsHost_av-pack tool.
+
+Build a custom system called "custom" for deployment through AirVantage:
+@verbatim
+$ mksys -t wp85 custom.sdef
+$ av-pack -u custom.wp85.update -b _build_custom/wp85 -t WP8548
+@endverbatim
+
+@note The @c -t must match the type set in the application model of your target. The default WP type
+is "WP8548".
+
+@ref buildToolsmksys builds the "custom" system for the @c wp85 target and outputs an @c .update
+file and @c manifest.app (the xml manifest file needed to update your system with AirVantage).
+The files are generated under the builds working directory (e.g., @c ./_build_custom/wp85).
+
+@ref toolsHost_av-pack builds the @c .zip file that can be uploaded to AirVantage.
+
+@subsection avInstallApp Create an App Bundle
+
+Build an application for deployment through AirVantage:
+
+@verbatim
+$ mkapp -t wp85 helloWorld.adef
+$ av-pack -u helloWorld.wp85.update -b _build_helloWorld/wp85 -t abcCo.jsmith.helloWorld
+@endverbatim
+
+@ref buildToolsmkapp builds the @c helloWorld app for the @c wp85 target. The update pack file
+@c helloWorld.wp85.update and the AirVantage manifest file @c manifest.app are generated.
+
+The @c manifest.app file is generated under the builds working directory (e.g.,
+<c>./_build_helloWorld/wp85</c>).
+
+@ref toolsHost_av-pack packs these two files together and sets the apps @b type to
+<c>abcCo.jsmith.helloWorld</c>.
+
+@subsection avInstallAppType Setting an App Type
+
+The Apps type must be a globally-unique app type identifier, @b unique among @b all @b Apps in
+@b all @b companies @b anywhere on AirVantage.
+
+Best Practices in uniquely naming type identifiers:
+    - Include a unique identifier for your company name to prevent naming conflicts with other
+    companies in the world.
+    - For developers Apps, include the developer's name to prevent conflicts with other developers
+    in the same company.
+
+@note If no type is specified the type defaults to: @c appName-legato-application.
+
+The output for this sample is @c helloWorld.zip. and is located in the build root.
+
+@subsection avInstallAppSigs App Signature Checks
+
+If your target device has been configured for app signature checks or to accept only encrypted
+apps, you must use your signing/encryption tool to sign the @c .update file and then
+pack it with @c av-pack instead. Don't sign or encrypt the @c manifest.app file, or the final
+@c .zip file, as AirVantage won't be able to read them.
+
+@verbatim
+$ mkapp -t wp85 helloWorld.adef
+$ cat helloWorld.wp85.update | myAppSigner > helloWorld.wp85.signed
+$ av-pack -f helloWorld.wp85.signed abcCo.jsmith.helloWorld _build_helloWorld/wp85
+@endverbatim
+
+@section avInstallUpload Uploading an App or System Bundle
+
+@subsection avInstallUploadCreateInstJob Create App/System Installation job
+
+Create the app/system install job on the platform:
+    - In your system 'Monitor' view
+    - "More" menu
+    - App Install:
+        -  Choose "Install Application" and select the zip file created in the previous step.
+    - System Install:
+        -  Choose "Install Bundle" and select the zip file created in the previous step.
+
+@subsection avInstallUploadRcvAgent Receive App/System on AirVantage Agent
+
+This requires an @c avc control app using the LWM2M AVC API that accepts the download and
+installation. See @ref c_le_avc API for details.
+
+@subsection avInstallUploadStatus Check Success Status
+
+If the installation was successful, you should find @c helloWorld in the installed apps and
+on the targets' "Monitor" view app list in the AirVantage UI.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

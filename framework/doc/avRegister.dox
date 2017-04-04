@@ -1,0 +1,58 @@
+/** @page avRegister Register a Target on AirVantage
+
+Create an AirVantage connection to your Legato device.
+
+Detailed AirVantage documentation:
+[AirVantage Getting Started](https://doc.airvantage.net/alms/howto/gettingstarted/)
+
+@note To create an account on th AirVantage Server, request one from your Sierra Wireless sales
+contact.
+
+@note If you are a mangOH customer, your device comes with a free account and you just need to
+register on the [Europe Server](https://eu.airvantage.net/accounts/signup?type=Mangoh) or the
+[North America Server](https://na.airvantage.net/accounts/signup?type=Mangoh).
+
+After you connect to your AirVantage account, the next steps are to register your "system" in the
+AirVantage console.
+
+@section avRegister_createSys Register a System
+
+Register a new System in AirVantage Console:
+
+Click "Register"
+
+Enter:
+- the Serial Number "FSN"
+- IMEI/ESN Number (Find the Serial and IMEI/ESN numbers by typing @c cm @c info on the target)
+- the Name of the device (Optional)
+- Leave "Pre-configure system" unchecked
+
+Click "Register".  Once your device is connected to and registered the monitor icon (at the bottom
+right hand of the screen) will turn green, and you can now click on it to display the System Details.
+
+@note If you are registering a device that is not a WP85 click "Select System Type" on the top left
+hand corner of the screen and choose your device.
+
+@section avRegister_lwm2m LWM2M
+
+Legato provides LWM2M support to connect to AirVantage.
+
+See @ref c_le_avc, @ref c_le_avdata and @ref defFilesCdef_assets for details.
+
+@section avRegister_checkDeviceStatus Device Status
+
+Check device status on the AirVantage Server:
+
+- From the @c Monitor menu, choose @c Systems
+- Browse to your device (by the name you created or the IMEI).
+- Click Details.
+
+The @c Last @c Seen field should be updated with a recent date.
+To see the details of the device click the @c Monitor menu.
+
+Once the target is registered, it is then ready to have Apps and systems updated over the air.
+See @ref avInstallUpload for details on installing App and System updates over the air.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
