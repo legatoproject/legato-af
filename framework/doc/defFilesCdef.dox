@@ -2,61 +2,18 @@
 
 This topic provides details about Legato's Component Definition file.
 
-<c>Component.cdef</c> files can contain these sections:
+@c Component.cdef files can contain these sections:
 
 @section defFilesCdef_assets assets
 
-Used to describe collections of information (fields) that can be exchanged with cloud
-services like AirVantage.
-
-The assets section can hold multiple assets, each asset is given a name.
-
-An asset can be:
-
-- @c variables values that are readable by the server; writable by the client.
-- @c settings values that are writable by the server; readable by the client.
-- @c commands that are custom commands sent from the server and executable by the client.
-
-The variable and setting fields can have an associated data type and optionally a default value.
-The current data types supported are <code> bool, int, float, and string</code>.
-
-In this code sample, @c helloWorld app has one setting (the message to be logged), one variable
-(records how many times a message has been logged).  The app also exposes two commands:  one to
-log the currently configured message and one to log the default message.
-
-The @c assets definition looks like this:
-
-@code
-assets:
-{
-    message =
-    {
-        settings:
-        {
-            string greeterMessage = "Hello world."   // When requested log this message.
-        }
-
-        variables:
-        {
-            int greetCount     // How many times has a greeting been logged?
-        }
-
-        commands:
-        {
-            greetNow           // Log the message recorded in greeterMessage.
-            standardGreeting   // Use "Hello world," instead of what is set in greeterMessage.
-        }
-    }
-}
-@endcode
-
-Once you've defined your assets, it's up to the app to instantiate instances of them at
-run-time using the @ref c_le_avdata API. Also see @ref howToAVData.
+The asset section has now been removed as it is not supported with AVC 2.0.  See the
+@ref avMigration Guide to see the changes between AVC 1.0 and AVC 2.0, including the new way to
+model the asset data.
 
 @section defFilesCdef_bundles bundles
 
-Lists additional files or directories to be copied from the build host into the app
-so they’re available to the app at runtime (e.g., audio files, web pages, executable scripts
+Lists additional files or directories to be copied from the build host into the App
+so they’re available to the App at runtime (e.g., audio files, web pages, executable scripts
 or programs built using some external build system).
 
 @code

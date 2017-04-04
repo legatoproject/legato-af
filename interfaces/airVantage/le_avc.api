@@ -2,8 +2,8 @@
 /**
  * @page c_le_avc AirVantage Connector
  *
- * @ref le_avc_interface.h "API Reference" <br>
- * @ref howToAVConnect "How To Connect"
+ * @ref le_avc_interface.h "Type/Function Reference" <br>
+ * @ref legatoServicesAirVantage "Air Vantage Platform Service"
  *
  * <HR>
  *

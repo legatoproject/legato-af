@@ -3,8 +3,8 @@
 /**
  * @page c_le_avdata AirVantage Data
  *
- * @ref le_avdata_interface.h "API Reference" <br>
- * @ref howToAVData "How To Manage Data"
+ * @ref le_avdata_interface.h "Type/Function Reference" <br>
+ * @ref avData "How To Manage Data"
  *
  * <HR>
  *

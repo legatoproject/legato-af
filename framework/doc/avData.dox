@@ -1,0 +1,228 @@
+/** @page avData AirVantage Data
+
+Use the Asset Data API to manage a smart device.
+
+@section avData_Overview Overview
+
+A smart device can control many things - (e.g., temperature sensors, or electronic switches) . Data
+can be collected from the devices and categorized into variables, settings, and commands. The
+AirVantage data API lets you work with the variables, settings and commands from a smart device and
+sync them with the AirVantage Cloud Service.
+
+For more detail regarding the AssetData API, please refer to @ref c_le_avdata.
+
+@section avData_VariablesSettings Variables, Settings and Commands
+
+To control a smart device, call @c le_avdata_CreateResource API to create a resource, which is
+referred to with a unique path.  "Set" and "Get" functions are included to write and read values on
+the client (i.e. app) side, and the AirVantage server can read and write values to your app as well.
+
+For example, the device can read the thermostat hardware for the current temperature, and call the
+"le_avdata_SetFloat" API to store the temperature value to the device, which the AirVantage server
+can query for the temperature value.
+@code
+static double Thermostat_GetTemp
+(
+    void
+)
+{
+    // Reads from the thermostat hardware and returns the current temperature value
+}
+
+ le_avdata_CreateResource("/room1/thermostat/temperature", LE_AVDATA_ACCESS_VARIABLE);
+
+ le_avdata_SetFloat("/room1/thermostat/temperature", Thermostat_GetTemp());
+@endcode
+
+With each resource, a function can be optionally registered (with the
+@c le_avdata_AddResourceEventHandler API) to be called whenever the AirVantage server reads from or
+writes to the function.  This is useful to perform tasks associated with reading/writing sensor data.
+
+For example, when the AirVantage server writes to a temperature setting, a function is called to check
+the current temperature, and turn on the air conditioning if necessary.
+@code
+static void AccessTempSettingHandler
+(
+    const char* path,
+    le_avdata_AccessType_t accessType,
+    le_avdata_ArgumentListRef_t argumentList,
+    void* contextPtr
+)
+{
+    // Obtain the current temperature reading.
+    double currentTemp = Thermostat_GetTemp();
+
+    // Obtain the temperature setting from the AirVantage server.
+    double tempSetting = 0;
+    le_avdata_GetFloat(path, &tempSetting);
+
+    // Turn on the air conditioning if the current temperature differs from the desired temperature by more than 5 degrees.
+    if (fabs(currentTemp - tempSetting) > 5)
+    {
+        // Turn on the A/C
+    }
+}
+
+le_avdata_CreateResource("/room1/thermostat/temperatureControl", LE_AVDATA_ACCESS_SETTING);
+
+le_avdata_AddResourceEventHandler("/room1/thermostat/temperatureControl", AccessTempSettingHandler, NULL);
+@endcode
+
+Commands do not store values, and must be registered with functions.
+
+@code
+static le_result_t FancyFanControl
+(
+    bool isOn,                 // false is off, true is on
+    double fanSpeed            // from 0 to 1, from weakest to the strongest
+)
+{
+    // This demonstrates the ability to return command execution result to the AirVantage server.
+    if (fanSpeed > 1)
+    {
+        return LE_FAULT;
+    }
+
+    // Actuate the fan with the supplied settings.
+
+    return LE_OK;
+}
+
+static void ExecFanCtrlCmd
+(
+    const char* path,
+    le_avdata_AccessType_t accessType,
+    le_avdata_ArgumentListRef_t argumentList,
+    void* contextPtr
+)
+{
+    bool isOn = false;
+    double fanSpeed = 0;
+
+    // Obtain the arguments that the AirVantage server sends to the device.
+    // Note that "isOn" and "fanSpeed" are argument names to extract the arguments with.
+    le_avdata_GetBoolArg(argumentList, "isOn", &isOn);
+    le_avdata_GetFloatArg(argumentList, "fanSpeed", &fanSpeed);
+
+    // Perform the actual fan control with the arguments
+    le_result_t cmdExeResult = FancyFanControl(isOn, fanSpeed);
+
+    // Reply the AirVantage server with the command execution result.
+    le_avdata_ReplyExecResult(cmdExeResult);
+}
+
+le_avdata_CreateResource("/room1/fanControl", LE_AVDATA_ACCESS_COMMAND);
+
+le_avdata_AddResourceEventHandler("/room1/fanControl", ExecFanCtrlCmd, NULL);
+@endcode
+
+@section avData_DataModel Asset Data Models
+
+AirVantage 2.0 removed the need to create Asset Data Models in the @c .cdef.  You now have the
+option to use the [AirVantage Web Services API](https://doc.airvantage.net//av/reference/cloud/API/)
+to control your data, and you do not need to create an Asset Data Model.
+
+If you wish to use the AirVantage Web Portal GUI to control the asset data then you must manually
+create the model and upload it to the AirVantage Server before being able to control your data.
+
+[AirVantage Application Format Reference](https://doc.airvantage.net/av/reference/application/)
+will guide you through creating an Application Model to upload to AirVantage.
+
+Example Application Model
+@code
+<?xml version="1.0" encoding="UTF-8"?>
+<app:application xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0" name="assetData" type="assetData-legato-application" revision="1.00">
+    <application-manager use="LWM2M_SW"/>
+    <capabilities>
+        <data>
+            <encoding type="LWM2M">
+                <asset default-label="home1" id="home1">
+                    <node path="room1" default-label="room1">
+
+                        <node path="SmartCam" default-label="SmartCam">
+                            <variable path="numPeople" type="int" default-label="numPeople" />
+                            <variable path="numDogs" type="int" default-label="numDogs" />
+                        </node>
+
+                        <variable path="roomName" type="string" default-label="roomName" />
+                        <variable path="isVacant" type="boolean" default-label="isVacant" />
+
+                        <node path="thermostat" default-label="thermostat">
+                            <variable path="tempReading" type="double" default-label="tempReading"  />
+                            <setting path="tempSetting" type="double" default-label="tempSetting"/>
+                            <setting path="strengthSetting" type="int" default-label="strengthSetting"/>
+                            <setting path="powerSetting" type="boolean" default-label="powerSetting"/>
+                            <setting path="lcdtextSetting" type="string" default-label="lcdtextSetting"/>
+                        </node>
+
+                        <node path="fan" default-label="fan">
+                            <command path="fanControl" default-label="fanControl">
+                                <parameter id="customText" default-label="customText" type="string" />
+                                <parameter id="isOn" default-label="isOn" type="boolean" />
+                                <parameter id="fanMovement" default-label="fanMovement" type="int" />
+                                <parameter id="fanSpeed" default-label="fanSpeed" type="double" />
+                            </command>
+                        </node>
+
+                    </node>
+                </asset>
+            </encoding>
+        </data>
+    </capabilities>
+</app:application>
+@endcode
+
+@note For further details on creating an Asset Data model see the sample application located in the
+{LEGATO_ROOT}/apps/sample/assetData
+
+@section avData_TimeSeries  TimeSieries
+
+A series of data points with time stamps can be collected and sent to the AirVantage server with the
+Time Series API.  This is useful for collecting historical data and analyzing trend.
+
+For example, the room temperature every hour for the past 24 hours.
+
+@code
+static void PushCallbackHandler
+(
+    le_avdata_PushStatus_t status,
+    void* contextPtr
+)
+{
+    if (status == LE_AVDATA_PUSH_SUCCESS)
+    {
+        // data pushed successfully
+    }
+}
+
+static void SendData()
+{
+    struct timeval tv;
+    uint64_t utcMilliSec;
+    le_result_t result;
+
+    le_avdata_RecordRef_t recRef = le_avdata_CreateRecord();
+
+    gettimeofday(&tv, NULL);
+    utcMilliSec = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000; // get current time
+    result = le_avdata_RecordFloat(recRef, "speed", 0.08, utcMilliSec);
+
+    if (result != LE_OK)
+    {
+         le_avdata_PushRecord(recRef, PushCallbackHandler, NULL);
+    }
+
+    le_avdata_DeleteRecord(recRef);
+}
+
+le_timer_Ref_t timer = le_timer_Create("CollectRoomTemperatureData");
+le_clk_Time_t interval = {3600, 0}; // every hour
+le_timer_SetInterval(timer, interval);
+le_timer_SetRepeat(timer, 0); // repeat indefinitely
+le_timer_SetHandler(timer, ValueUpdate);
+le_timer_Start(timer);
+@endcode
+
+
+
+**/

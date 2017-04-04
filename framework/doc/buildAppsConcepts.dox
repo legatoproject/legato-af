@@ -1,16 +1,17 @@
 /** @page buildAppsConcepts Concepts
 
-These topics contain general concepts about Legato and details to learn how to build Legato apps:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage basicConcepts   | high-level summaries about Legato's approach        |
-| @subpage basicBuild          | build Legato     |
-| @subpage basicTarget   |   start working with target    |
-| @subpage basicApps           | essentials to create apps from scratch         |
-| @subpage ccodingStdsMain | C Language standards to follow                |
-| @subpage howToMain                     | frequently needed task details                        |
-| @subpage defFiles                             | reusable external interfaces and internal content |
-| @subpage apiFiles                             | language-independent interface conversion info  |
-| @subpage sampleApps                     | sample apps for commonly-needed functions |
+General concepts about Legato AF and details to get started using the framework and developing apps:
+
+| Section                  | Description                                                           |
+| ------------------------ | --------------------------------------------------------------------- |
+| @subpage basicConcepts   | Introduction to the Concepts that make up Legato AF                   |
+| @subpage basicBuild      | Get Source Code, Install Tools, and Build Legato AF                   |
+| @subpage basicTarget     | Configure a SWI Target Device for development                         |
+| @subpage basicApps       | Basic Concepts to get you started developing your own Apps            |
+| @subpage defFiles        | Use Definition Files to build systems, Apps, components and drivers   |
+| @subpage apiFiles        | Work with the API files to develop Apps                               |
+| @subpage howToMain       | How To and Troubleshooting articles for common features               |
+| @subpage ccodingStdsMain | C Language Coding Standards                                           |
+| @subpage sampleApps      | Run Sample Applications                                               |
 
 **/
