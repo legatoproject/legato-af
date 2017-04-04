@@ -487,43 +487,44 @@ static int SetConstellation
     }
 
     char constellationStr[CONSTELLATIONS_NAME_LEN] = "[";
+
     if (constellationSum & CONSTELLATION_GPS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GPS;
         constellationSum -= CONSTELLATION_GPS;
-        strncat(constellationStr, "GPS ", CONSTELLATIONS_NAME_LEN);
+        strncat(constellationStr, "GPS ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
     if (constellationSum & CONSTELLATION_GLONASS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GLONASS;
         constellationSum -= CONSTELLATION_GLONASS;
-        strncat(constellationStr, "GLONASS ", CONSTELLATIONS_NAME_LEN);
+        strncat(constellationStr, "GLONASS ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
     if (constellationSum & CONSTELLATION_BEIDOU)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_BEIDOU;
         constellationSum -= CONSTELLATION_BEIDOU;
-        strncat(constellationStr, "BEIDOU ", CONSTELLATIONS_NAME_LEN);
+        strncat(constellationStr, "BEIDOU ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
     if (constellationSum & CONSTELLATION_GALILEO)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_GALILEO;
         constellationSum -= CONSTELLATION_GALILEO;
-        strncat(constellationStr, "GALILEO ", CONSTELLATIONS_NAME_LEN);
+        strncat(constellationStr, "GALILEO ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
     if (constellationSum & CONSTELLATION_SBAS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_SBAS;
         constellationSum -= CONSTELLATION_SBAS;
-        strncat(constellationStr, "SBAS ", CONSTELLATIONS_NAME_LEN);
+        strncat(constellationStr, "SBAS ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
     if (constellationSum & CONSTELLATION_QZSS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_QZSS;
         constellationSum -= CONSTELLATION_QZSS;
-        strncat(constellationStr, "QZSS ", CONSTELLATIONS_NAME_LEN);
+        strncat(constellationStr, "QZSS ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
-    strncat(constellationStr, "]", CONSTELLATIONS_NAME_LEN);
+    strncat(constellationStr, "]", sizeof(constellationStr)-strlen(constellationStr)-1);
 
     LE_INFO("Setting constellation %s",constellationStr);
 
