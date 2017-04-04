@@ -1,5 +1,12 @@
 sandboxed: false
-start: manual
+
+bundles:
+{
+    file:
+    {
+        [rx] $LEGATO_SYSROOT/usr/bin/gdbserver        /bin/gdbserver
+    }
+}
 
 executables:
 {
