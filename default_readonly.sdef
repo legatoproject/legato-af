@@ -20,7 +20,6 @@ apps:
     $LEGATO_ROOT/apps/platformServices/gpioService
     $LEGATO_ROOT/apps/platformServices/atService
     $LEGATO_ROOT/apps/platformServices/spiService
-    $LEGATO_ROOT/apps/platformServices/devMode
 
     // Command-line tools.
     $LEGATO_ROOT/apps/tools/tools

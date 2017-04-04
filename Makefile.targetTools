@@ -25,6 +25,9 @@ BUILD_PRODUCTS = 	config		\
 					update \
 					sbtrace \
 					scripts
+ifeq ($(findstring $(TARGET), localhost ar7 ar86),)
+    BUILD_PRODUCTS += devMode
+endif
 
 .PHONY: all $(BUILD_PRODUCTS)
 all: $(BUILD_PRODUCTS)
@@ -44,17 +47,21 @@ export LEGATO_ROOT ?= $(CURDIR)
 export LEGATO_TARGET := $(TARGET)
 
 BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
+BUILD_APP_DIR := $(LEGATO_ROOT)/build/$(TARGET)/apps
 BIN_DIR := $(BUILD_DIR)/bin
+APP_DIR := $(LEGATO_ROOT)/build/$(TARGET)/tools
 LIB_DIR := $(BUILD_DIR)/lib
 
-LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
-LOCAL_MKEXE_FLAGS += -w $(BUILD_DIR)/tools/$@ -l $(LIB_DIR) -t $(TARGET)
+LOCAL_MKTOOLS_FLAGS = -t $(TARGET)
 
 # Do not be verbose by default.
 VERBOSE ?= 0
 ifeq ($(VERBOSE),1)
-  LOCAL_MKEXE_FLAGS += -v
+  LOCAL_MKTOOLS_FLAGS += -v
 endif
+
+LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS) -l $(LIB_DIR) -w $(BUILD_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
+LOCAL_MKAPP_FLAGS = $(MKAPP_FLAGS) -o $(APP_DIR) -w $(BUILD_APP_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
 
 # Do not use clang by default.
 USE_CLANG ?= 0
@@ -64,6 +71,7 @@ export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
 JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
 TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools
+APP_TOOLS_SRC_DIR = $(LEGATO_ROOT)/apps/tools
 FRAMEWORK_SRC_DIR = $(LEGATO_ROOT)/framework/c/src
 LEGATO_INTERFACES_DIR = $(LEGATO_ROOT)/interfaces
 
@@ -136,3 +144,8 @@ sbtrace:
 
 scripts:
 	cp -u -P --preserve=all $(wildcard targetFiles/shared/bin/*) $(BIN_DIR)
+
+devMode:
+	mkapp $(APP_TOOLS_SRC_DIR)/$@.adef \
+			-i $(FRAMEWORK_SRC_DIR) \
+			$(LOCAL_MKAPP_FLAGS)

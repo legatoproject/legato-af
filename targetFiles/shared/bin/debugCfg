@@ -2,12 +2,12 @@
 
 # Configure a sandboxed app with a debug tool.
 
-gdbserverPath="/usr/bin/gdbserver"
+gdbserverPath="/legato/systems/current/apps/devMode/read-only/bin/gdbserver"
 stracePath="/usr/bin/strace"
 externalToolName="`basename $0`"
 debugToolName=
 debugToolPath=
-appName="$1"
+appName="$1"; shift
 sandboxPath="/legato/systems/current/appsWriteable/$appName"
 reset=false
 
@@ -45,17 +45,22 @@ then
     debugToolName="`basename $stracePath`"
     debugToolPath="$stracePath"
 else
-    # If this tool is run directly, simply exits and prints nothing.
-    exit 1
+    # If this tool is run directly, use first parameter as tool path
+    debugToolName=`basename $1`
+    debugToolPath=$(cd `dirname $1` && echo $PWD/$debugToolName)
+    shift
 fi
+
+debugToolApp=$(getfattr --only-values -n 'security.SMACK64' $debugToolPath 2> /dev/null \
+    |sed 's/^app\.//;t;d')
 
 
 # Figure out what the user wants to do.
 case $# in
-1)
+0)
     ;;
-2)
-    if [ "$2" != "--reset" ]
+1)
+    if [ "$1" != "--reset" ]
     then
         PrintUsage
         exit 1
@@ -80,6 +85,7 @@ then
 fi
 
 
+
 # Modify the sandbox
 if $reset
 then
@@ -97,6 +103,11 @@ then
     # Remove the mount point.
     rm "${sandboxPath}/bin/$debugToolName"
 
+    # Remove smack rule
+    if [ -d /legato/smack -a -n "$debugToolApp" ]
+    then
+        echo "app.$appName app.$debugToolApp -" > /legato/smack/load2
+    fi
 
     # Unmount /proc for gdbserver.
     if [ "$externalToolName" == "gdbCfg" ]
@@ -122,6 +133,11 @@ else
     # Mount the debug tool into the sandbox.
     mount -o bind "$debugToolPath" "${sandboxPath}/bin/$debugToolName"
 
+    # Allow access to debug tool
+    if [ -d /legato/smack -a -n "$debugToolApp" ]
+    then
+        echo "app.$appName app.$debugToolApp rx" > /legato/smack/load2
+    fi
 
     # Bind-mounting in /proc for gdbserver.
     if [ "$externalToolName" == "gdbCfg" ]

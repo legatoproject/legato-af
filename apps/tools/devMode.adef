@@ -1,5 +1,13 @@
 sandboxed: false
 
+bundles:
+{
+    file:
+    {
+        [rx] $LEGATO_SYSROOT/usr/bin/gdbserver        /bin/gdbserver
+    }
+}
+
 executables:
 {
     devMode = ( $LEGATO_ROOT/components/devMode/devMode )
