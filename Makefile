@@ -371,7 +371,7 @@ endif
 stage_mklegatoimgro:
 	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) -S _rw $(MKLEGATOIMG_FLAGS)
 	mklegatotreero $(TARGET) $(DISABLE_SMACK)
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
+	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) -a $(MKLEGATOIMG_FLAGS)
 
 .PHONY: stage_mklegatoimg
 stage_mklegatoimg:

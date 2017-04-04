@@ -19,6 +19,8 @@ help_long_description=(
 " - -d [STAGING_DIR]: staging directory for that platform"
 " - -o [OUTPUT_DIR]: output directory where the image will be stored"
 " - -S [SUFFIX]: suffix to add to images generated in case of several images"
+" - -a: set SMACK attributes if defined in targetDefs files"
+" - -s: strip libraries and binaries"
 ""
 "For ar7/ar86/wp85/wp750x/wp76xx targets:"
 ""
@@ -36,7 +38,7 @@ CheckRet() {
     fi
 }
 
-while getopts ":t:o:d:v:S:s" arg
+while getopts ":t:o:d:v:S:sa" arg
 do
     case $arg in
     t)
@@ -56,6 +58,9 @@ do
         ;;
     s)
         STRIP_STAGING_TREE=true
+        ;;
+    a)
+        SET_SMACK_ATTR=true
         ;;
     ?)
         echo "$0: invalid option -$OPTARG"
@@ -196,6 +201,10 @@ GetRootHash() {
 }
 
 SetSmackAttr() {
+    if [ "$SET_SMACK_ATTR" != "true" ]; then
+        return
+    fi
+
     FindTool "setfattr" SETFATTR
     CheckRet
 
