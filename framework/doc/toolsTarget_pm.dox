@@ -6,9 +6,10 @@ Usage:
 <b>@verbatim
 pmtool bootOn gpio  <gpioNum> <triggerOption>
 pmtool bootOn timer <timeOutVal>
+pmtool bootOn adc <adcNum> <pollingInterval> <bootAboveValue> <bootBelowValue>
 pmtool shutdown
-pmtool bootReason timer
 pmtool bootReason gpio <gpioNum>
+pmtool bootReason adc <adcNum>
 pmtool query
 @endverbatim
 </b>
@@ -23,6 +24,15 @@ pmtool query
 > timeOutVal specifies the time interval
 > seconds to trigger device boot.
 
+@verbatim pmtool bootOn adc <adcNum> <pollingInterval> <bootAboveValue> <bootBelowValue>@endverbatim
+> Configure the specified adc as a boot source. The bootBelowValue and
+> bootAboveValue parameters are integer value in milliVolts. If bootAboveValue
+> is less than bootBelowValue, the device will boot if an ADC reading falls
+> between bootAboveValue and bootBelowValue. If bootAboveValue is greater than
+> bootBelowValue, the system will boot if an ADC reading is either above
+> bootAboveValue or below bootBelowValue. The pollingInterval parameter
+> specifies the time in milliseconds between ADC samples.
+
 @verbatim pmtool shutdown@endverbatim
 > Initiates target device shutdown.
 
@@ -31,6 +41,9 @@ pmtool query
 
 @verbatim pmtool bootReason timer@endverbatim
 > Checks if the timer expiry triggers' target device boot.
+
+@verbatim pmtool bootReason adc <adcNum>@endverbatim
+> Checks if the specified adc triggered device boot.
 
 @verbatim pmtool query@endverbatim
 > Displays the current ultra-low power manager firmware version.
