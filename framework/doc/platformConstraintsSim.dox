@@ -19,6 +19,20 @@ For AR755x, AR8652, and WP8548, these are the p1, p2, p3 parameters:
 
 @warning le_sim_SendCommand() API is not supported on AR758x and AR759x platforms.
 
+@section platformConstraintsSim_selectCard Select Card
+
+le_sim_SelectCard() and le_sim_GetSelectedCard() select and get the currently selected SIM card.
+The @ref le_sim_Id_t parameters supported by these APIs depend on the platform.
+
+For AR759x and AR758x, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_REMOTE types are supported.
+
+For AR755x, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_EMBEDDED types are supported.
+
+For other products, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_EXTERNAL_SLOT_2 types are supported.
+
+@note For the support of LE_SIM_EMBEDDED on AR755x platform, please refer to your platform
+documentation for further details.
+
 @section platformConstraintsSim_swap Hot-swap
 
 Your platform might need a reboot to detect a SIM card insertion or removal.
@@ -36,6 +50,7 @@ As indicated in the mangOH&trade;
 @subsection platformConstraintsSim_swapOtherPlatforms Other platforms
 
 Refer to your platform documentation.
+
 
 @section References
 
