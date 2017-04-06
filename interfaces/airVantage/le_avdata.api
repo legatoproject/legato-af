@@ -120,18 +120,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum bytes of a path name
+ * Define the maximum characters and bytes of a path name
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE PATH_NAME_BYTES = 512;
+DEFINE PATH_NAME_LEN = 511;
+DEFINE PATH_NAME_BYTES = (PATH_NAME_LEN + 1);
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Define the maximum bytes of a string
+ * Define the maximum characters and bytes of a string
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE STRING_VALUE_BYTES = 256;
+DEFINE STRING_VALUE_LEN = 255;
+DEFINE STRING_VALUE_BYTES = (STRING_VALUE_LEN + 1);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -193,7 +195,7 @@ REFERENCE ArgumentList;
 //--------------------------------------------------------------------------------------------------
 HANDLER ResourceHandler
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     AccessType accessType IN,
     ArgumentList ArgumentListRef IN
 );
@@ -212,7 +214,7 @@ HANDLER ResourceHandler
 //--------------------------------------------------------------------------------------------------
 EVENT ResourceEvent
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     ResourceHandler handler
 );
 
@@ -226,12 +228,13 @@ EVENT ResourceEvent
  * @return:
  *      - LE_OK on success
  *      - LE_DUPLICATE if path has already been called by CreateResource before, or path is parent
- *        to an existing Asset Data.
+ *        or child to an existing Asset Data path.
+ *      - LE_FAULT on any other error.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t CreateResource
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     AccessMode accessMode
 );
 
@@ -248,7 +251,7 @@ FUNCTION le_result_t CreateResource
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetNull
 (
-    string path[PATH_NAME_BYTES] IN
+    string path[PATH_NAME_LEN] IN
 );
 
 
@@ -266,7 +269,7 @@ FUNCTION le_result_t SetNull
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetInt
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     int32 value OUT
 );
 
@@ -283,7 +286,7 @@ FUNCTION le_result_t GetInt
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetInt
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     int32 value IN
 );
 
@@ -302,7 +305,7 @@ FUNCTION le_result_t SetInt
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFloat
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     double value OUT
 );
 
@@ -319,7 +322,7 @@ FUNCTION le_result_t GetFloat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetFloat
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     double value IN
 );
 
@@ -338,7 +341,7 @@ FUNCTION le_result_t SetFloat
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBool
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     bool value OUT
 );
 
@@ -355,7 +358,7 @@ FUNCTION le_result_t GetBool
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetBool
 (
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     bool value IN
 );
 
@@ -374,8 +377,8 @@ FUNCTION le_result_t SetBool
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetString
 (
-    string path[PATH_NAME_BYTES] IN,
-    string value[STRING_VALUE_BYTES] OUT
+    string path[PATH_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] OUT
 );
 
 
@@ -391,8 +394,8 @@ FUNCTION le_result_t GetString
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetString
 (
-    string path[PATH_NAME_BYTES] IN,
-    string value[STRING_VALUE_BYTES] IN
+    string path[PATH_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] IN
 );
 
 
@@ -408,7 +411,7 @@ FUNCTION le_result_t SetString
 FUNCTION le_result_t GetBoolArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_BYTES] IN,
+    string argName[STRING_VALUE_LEN] IN,
     bool boolArg OUT
 );
 
@@ -425,7 +428,7 @@ FUNCTION le_result_t GetBoolArg
 FUNCTION le_result_t GetFloatArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_BYTES] IN,
+    string argName[STRING_VALUE_LEN] IN,
     double floatArg OUT
 );
 
@@ -442,7 +445,7 @@ FUNCTION le_result_t GetFloatArg
 FUNCTION le_result_t GetIntArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_BYTES] IN,
+    string argName[STRING_VALUE_LEN] IN,
     int32 intArg OUT
 );
 
@@ -459,8 +462,8 @@ FUNCTION le_result_t GetIntArg
 FUNCTION le_result_t GetStringArg
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_BYTES] IN,
-    string strArg[STRING_VALUE_BYTES] OUT
+    string argName[STRING_VALUE_LEN] IN,
+    string strArg[STRING_VALUE_LEN] OUT
 );
 
 
@@ -476,7 +479,7 @@ FUNCTION le_result_t GetStringArg
 FUNCTION le_result_t GetStringArgLength
 (
     ArgumentList argumentListRef IN,
-    string argName[STRING_VALUE_BYTES] IN,
+    string argName[STRING_VALUE_LEN] IN,
     int32 strArgLen OUT
 );
 
@@ -563,7 +566,7 @@ FUNCTION DeleteRecord
 FUNCTION le_result_t RecordInt
 (
     Record recordRef IN,
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     int32 value IN,
     uint64 timestamp
 );
@@ -584,7 +587,7 @@ FUNCTION le_result_t RecordInt
 FUNCTION le_result_t RecordFloat
 (
     Record recordRef IN,
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     double value IN,
     uint64 timestamp
 );
@@ -605,7 +608,7 @@ FUNCTION le_result_t RecordFloat
 FUNCTION le_result_t RecordBool
 (
     Record recordRef IN,
-    string path[PATH_NAME_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
     bool value IN,
     uint64 timestamp
 );
@@ -626,8 +629,8 @@ FUNCTION le_result_t RecordBool
 FUNCTION le_result_t RecordString
 (
     Record recordRef IN,
-    string path[PATH_NAME_BYTES] IN,
-    string value[STRING_VALUE_BYTES] IN,
+    string path[PATH_NAME_LEN] IN,
+    string value[STRING_VALUE_LEN] IN,
     uint64 timestamp
 );
 
