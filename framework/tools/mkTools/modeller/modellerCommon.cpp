@@ -214,7 +214,8 @@ void EnsureClientInterfacesSatisfied
                                                    " (in the \"bindings:\" section"
                                                    " of the .adef)."),
                                            ifInstancePtr->ifPtr->internalName,
-                                           componentInstancePtr->componentPtr->name)
+                                           componentInstancePtr->componentPtr->name,
+                                           exePtr->name)
                             );
                         }
                     }
