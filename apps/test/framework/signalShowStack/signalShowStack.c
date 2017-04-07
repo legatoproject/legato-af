@@ -51,7 +51,7 @@ int ill
     // Values are for stack investigation
     int x = 2;
     int i[] = {0xFFFFFFFF, 0xFFFFFFFE, 0xFFFFFFFD};
-    asm( ".word 0xFFFFFFFF" );
+    asm( ".word %a0" : : "X" (-1) );
     return i[x];
 }
 
