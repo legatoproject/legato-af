@@ -270,7 +270,6 @@ static void CheckAdcBootSource
     void
 )
 {
-    exit(EXIT_SUCCESS);
     printf("Boot source adc%u? ", Params.bootReasonAdc.num);
     if (le_bootReason_WasAdc(Params.bootReasonAdc.num))
     {
