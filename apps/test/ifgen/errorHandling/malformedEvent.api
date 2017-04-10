@@ -1,0 +1,7 @@
+/**
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+EVENT TestEvent
+(
+);

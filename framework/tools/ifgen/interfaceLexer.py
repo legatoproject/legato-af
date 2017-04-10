@@ -1,4 +1,4 @@
-# $ANTLR 3.5.2 interface.g 2017-04-04 16:17:41
+# $ANTLR 3.5.2 interface.g 2017-04-11 10:25:53
 
 import sys
 from antlr3 import *
@@ -87,7 +87,7 @@ class interfaceLexer(Lexer):
 
 
 
-
+             
     def getErrorHeader(self, e):
         """
         What is the error header, normally line/character position information?
@@ -116,7 +116,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:27:7: ( '(' )
             # interface.g:27:9: '('
-            pass
+            pass 
             self.match(40)
 
 
@@ -138,7 +138,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:28:7: ( ')' )
             # interface.g:28:9: ')'
-            pass
+            pass 
             self.match(41)
 
 
@@ -160,7 +160,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:29:7: ( '*' )
             # interface.g:29:9: '*'
-            pass
+            pass 
             self.match(42)
 
 
@@ -182,7 +182,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:30:7: ( '+' )
             # interface.g:30:9: '+'
-            pass
+            pass 
             self.match(43)
 
 
@@ -204,7 +204,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:31:7: ( ',' )
             # interface.g:31:9: ','
-            pass
+            pass 
             self.match(44)
 
 
@@ -226,7 +226,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:32:7: ( '-' )
             # interface.g:32:9: '-'
-            pass
+            pass 
             self.match(45)
 
 
@@ -248,7 +248,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:33:7: ( '/' )
             # interface.g:33:9: '/'
-            pass
+            pass 
             self.match(47)
 
 
@@ -270,7 +270,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:34:7: ( '=' )
             # interface.g:34:9: '='
-            pass
+            pass 
             self.match(61)
 
 
@@ -292,7 +292,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:35:7: ( '[' )
             # interface.g:35:9: '['
-            pass
+            pass 
             self.match(91)
 
 
@@ -314,7 +314,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:36:7: ( ']' )
             # interface.g:36:9: ']'
-            pass
+            pass 
             self.match(93)
 
 
@@ -336,7 +336,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:37:7: ( '{' )
             # interface.g:37:9: '{'
-            pass
+            pass 
             self.match(123)
 
 
@@ -358,7 +358,7 @@ class interfaceLexer(Lexer):
 
             # interface.g:38:7: ( '}' )
             # interface.g:38:9: '}'
-            pass
+            pass 
             self.match(125)
 
 
@@ -375,9 +375,9 @@ class interfaceLexer(Lexer):
     # $ANTLR start "ALPHA"
     def mALPHA(self, ):
         try:
-            # interface.g:153:16: ( 'a' .. 'z' | 'A' .. 'Z' )
+            # interface.g:155:16: ( 'a' .. 'z' | 'A' .. 'Z' )
             # interface.g:
-            pass
+            pass 
             if (65 <= self.input.LA(1) <= 90) or (97 <= self.input.LA(1) <= 122):
                 self.input.consume()
             else:
@@ -400,9 +400,9 @@ class interfaceLexer(Lexer):
     # $ANTLR start "NUM"
     def mNUM(self, ):
         try:
-            # interface.g:154:14: ( '0' .. '9' )
+            # interface.g:156:14: ( '0' .. '9' )
             # interface.g:
-            pass
+            pass 
             if (48 <= self.input.LA(1) <= 57):
                 self.input.consume()
             else:
@@ -425,9 +425,9 @@ class interfaceLexer(Lexer):
     # $ANTLR start "HEXNUM"
     def mHEXNUM(self, ):
         try:
-            # interface.g:155:17: ( NUM | 'a' .. 'f' | 'A' .. 'F' )
+            # interface.g:157:17: ( NUM | 'a' .. 'f' | 'A' .. 'F' )
             # interface.g:
-            pass
+            pass 
             if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 70) or (97 <= self.input.LA(1) <= 102):
                 self.input.consume()
             else:
@@ -450,9 +450,9 @@ class interfaceLexer(Lexer):
     # $ANTLR start "ALPHANUM"
     def mALPHANUM(self, ):
         try:
-            # interface.g:156:19: ( ALPHA | NUM )
+            # interface.g:158:19: ( ALPHA | NUM )
             # interface.g:
-            pass
+            pass 
             if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 90) or (97 <= self.input.LA(1) <= 122):
                 self.input.consume()
             else:
@@ -478,9 +478,9 @@ class interfaceLexer(Lexer):
             _type = SEMICOLON
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:162:11: ( ';' )
-            # interface.g:162:13: ';'
-            pass
+            # interface.g:164:11: ( ';' )
+            # interface.g:164:13: ';'
+            pass 
             self.match(59)
 
 
@@ -500,9 +500,9 @@ class interfaceLexer(Lexer):
             _type = IN
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:165:4: ( 'IN' )
-            # interface.g:165:6: 'IN'
-            pass
+            # interface.g:167:4: ( 'IN' )
+            # interface.g:167:6: 'IN'
+            pass 
             self.match("IN")
 
 
@@ -523,9 +523,9 @@ class interfaceLexer(Lexer):
             _type = OUT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:166:5: ( 'OUT' )
-            # interface.g:166:7: 'OUT'
-            pass
+            # interface.g:168:5: ( 'OUT' )
+            # interface.g:168:7: 'OUT'
+            pass 
             self.match("OUT")
 
 
@@ -546,9 +546,9 @@ class interfaceLexer(Lexer):
             _type = FUNCTION
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:167:10: ( 'FUNCTION' )
-            # interface.g:167:12: 'FUNCTION'
-            pass
+            # interface.g:169:10: ( 'FUNCTION' )
+            # interface.g:169:12: 'FUNCTION'
+            pass 
             self.match("FUNCTION")
 
 
@@ -569,9 +569,9 @@ class interfaceLexer(Lexer):
             _type = HANDLER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:168:9: ( 'HANDLER' )
-            # interface.g:168:11: 'HANDLER'
-            pass
+            # interface.g:170:9: ( 'HANDLER' )
+            # interface.g:170:11: 'HANDLER'
+            pass 
             self.match("HANDLER")
 
 
@@ -592,9 +592,9 @@ class interfaceLexer(Lexer):
             _type = EVENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:169:7: ( 'EVENT' )
-            # interface.g:169:9: 'EVENT'
-            pass
+            # interface.g:171:7: ( 'EVENT' )
+            # interface.g:171:9: 'EVENT'
+            pass 
             self.match("EVENT")
 
 
@@ -615,9 +615,9 @@ class interfaceLexer(Lexer):
             _type = REFERENCE
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:170:11: ( 'REFERENCE' )
-            # interface.g:170:13: 'REFERENCE'
-            pass
+            # interface.g:172:11: ( 'REFERENCE' )
+            # interface.g:172:13: 'REFERENCE'
+            pass 
             self.match("REFERENCE")
 
 
@@ -638,9 +638,9 @@ class interfaceLexer(Lexer):
             _type = DEFINE
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:171:8: ( 'DEFINE' )
-            # interface.g:171:10: 'DEFINE'
-            pass
+            # interface.g:173:8: ( 'DEFINE' )
+            # interface.g:173:10: 'DEFINE'
+            pass 
             self.match("DEFINE")
 
 
@@ -661,9 +661,9 @@ class interfaceLexer(Lexer):
             _type = ENUM
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:172:6: ( 'ENUM' )
-            # interface.g:172:8: 'ENUM'
-            pass
+            # interface.g:174:6: ( 'ENUM' )
+            # interface.g:174:8: 'ENUM'
+            pass 
             self.match("ENUM")
 
 
@@ -684,9 +684,9 @@ class interfaceLexer(Lexer):
             _type = BITMASK
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:173:9: ( 'BITMASK' )
-            # interface.g:173:11: 'BITMASK'
-            pass
+            # interface.g:175:9: ( 'BITMASK' )
+            # interface.g:175:11: 'BITMASK'
+            pass 
             self.match("BITMASK")
 
 
@@ -707,9 +707,9 @@ class interfaceLexer(Lexer):
             _type = USETYPES
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:174:10: ( 'USETYPES' )
-            # interface.g:174:12: 'USETYPES'
-            pass
+            # interface.g:176:10: ( 'USETYPES' )
+            # interface.g:176:12: 'USETYPES'
+            pass 
             self.match("USETYPES")
 
 
@@ -730,13 +730,13 @@ class interfaceLexer(Lexer):
             _type = IDENTIFIER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:178:12: ( ALPHA ( ALPHANUM | '_' )* )
-            # interface.g:178:14: ALPHA ( ALPHANUM | '_' )*
-            pass
+            # interface.g:180:12: ( ALPHA ( ALPHANUM | '_' )* )
+            # interface.g:180:14: ALPHA ( ALPHANUM | '_' )*
+            pass 
             self.mALPHA()
 
 
-            # interface.g:178:20: ( ALPHANUM | '_' )*
+            # interface.g:180:20: ( ALPHANUM | '_' )*
             while True: #loop1
                 alt1 = 2
                 LA1_0 = self.input.LA(1)
@@ -747,7 +747,7 @@ class interfaceLexer(Lexer):
 
                 if alt1 == 1:
                     # interface.g:
-                    pass
+                    pass 
                     if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 90) or self.input.LA(1) == 95 or (97 <= self.input.LA(1) <= 122):
                         self.input.consume()
                     else:
@@ -779,9 +779,9 @@ class interfaceLexer(Lexer):
             _type = SCOPED_IDENTIFIER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:181:19: ( IDENTIFIER '.' IDENTIFIER )
-            # interface.g:181:21: IDENTIFIER '.' IDENTIFIER
-            pass
+            # interface.g:183:19: ( IDENTIFIER '.' IDENTIFIER )
+            # interface.g:183:21: IDENTIFIER '.' IDENTIFIER
+            pass 
             self.mIDENTIFIER()
 
 
@@ -809,10 +809,10 @@ class interfaceLexer(Lexer):
 
             number = None
 
-            # interface.g:184:12: (number= ( '0' | '1' .. '9' ( NUM )* ) )
-            # interface.g:184:14: number= ( '0' | '1' .. '9' ( NUM )* )
-            pass
-            # interface.g:184:21: ( '0' | '1' .. '9' ( NUM )* )
+            # interface.g:186:12: (number= ( '0' | '1' .. '9' ( NUM )* ) )
+            # interface.g:186:14: number= ( '0' | '1' .. '9' ( NUM )* )
+            pass 
+            # interface.g:186:21: ( '0' | '1' .. '9' ( NUM )* )
             alt3 = 2
             LA3_0 = self.input.LA(1)
 
@@ -827,21 +827,21 @@ class interfaceLexer(Lexer):
 
 
             if alt3 == 1:
-                # interface.g:184:23: '0'
-                pass
+                # interface.g:186:23: '0'
+                pass 
                 number = self.input.LA(1)
 
                 self.match(48)
 
 
             elif alt3 == 2:
-                # interface.g:184:29: '1' .. '9' ( NUM )*
-                pass
+                # interface.g:186:29: '1' .. '9' ( NUM )*
+                pass 
                 number = self.input.LA(1)
 
                 self.matchRange(49, 57)
 
-                # interface.g:184:38: ( NUM )*
+                # interface.g:186:38: ( NUM )*
                 while True: #loop2
                     alt2 = 2
                     LA2_0 = self.input.LA(1)
@@ -852,7 +852,7 @@ class interfaceLexer(Lexer):
 
                     if alt2 == 1:
                         # interface.g:
-                        pass
+                        pass 
                         if (48 <= self.input.LA(1) <= 57):
                             self.input.consume()
                         else:
@@ -887,9 +887,9 @@ class interfaceLexer(Lexer):
             _type = HEX_NUMBER
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:184:12: ( '0' ( 'x' | 'X' ) ( HEXNUM )+ )
-            # interface.g:184:14: '0' ( 'x' | 'X' ) ( HEXNUM )+
-            pass
+            # interface.g:186:12: ( '0' ( 'x' | 'X' ) ( HEXNUM )+ )
+            # interface.g:186:14: '0' ( 'x' | 'X' ) ( HEXNUM )+
+            pass 
             self.match(48)
 
             if self.input.LA(1) == 88 or self.input.LA(1) == 120:
@@ -901,7 +901,7 @@ class interfaceLexer(Lexer):
 
 
 
-            # interface.g:184:31: ( HEXNUM )+
+            # interface.g:186:31: ( HEXNUM )+
             cnt4 = 0
             while True: #loop4
                 alt4 = 2
@@ -913,7 +913,7 @@ class interfaceLexer(Lexer):
 
                 if alt4 == 1:
                     # interface.g:
-                    pass
+                    pass 
                     if (48 <= self.input.LA(1) <= 57) or (65 <= self.input.LA(1) <= 70) or (97 <= self.input.LA(1) <= 102):
                         self.input.consume()
                     else:
@@ -951,7 +951,7 @@ class interfaceLexer(Lexer):
             _type = QUOTED_STRING
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:187:15: ( '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"' | '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\'' )
+            # interface.g:189:15: ( '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"' | '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\'' )
             alt7 = 2
             LA7_0 = self.input.LA(1)
 
@@ -966,11 +966,11 @@ class interfaceLexer(Lexer):
 
 
             if alt7 == 1:
-                # interface.g:187:17: '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"'
-                pass
+                # interface.g:189:17: '\"' (~ ( '\\\"' | '\\\\' ) | '\\\\' . )* '\"'
+                pass 
                 self.match(34)
 
-                # interface.g:187:21: (~ ( '\\\"' | '\\\\' ) | '\\\\' . )*
+                # interface.g:189:21: (~ ( '\\\"' | '\\\\' ) | '\\\\' . )*
                 while True: #loop5
                     alt5 = 3
                     LA5_0 = self.input.LA(1)
@@ -982,8 +982,8 @@ class interfaceLexer(Lexer):
 
 
                     if alt5 == 1:
-                        # interface.g:187:23: ~ ( '\\\"' | '\\\\' )
-                        pass
+                        # interface.g:189:23: ~ ( '\\\"' | '\\\\' )
+                        pass 
                         if (0 <= self.input.LA(1) <= 33) or (35 <= self.input.LA(1) <= 91) or (93 <= self.input.LA(1) <= 65535):
                             self.input.consume()
                         else:
@@ -995,8 +995,8 @@ class interfaceLexer(Lexer):
 
 
                     elif alt5 == 2:
-                        # interface.g:187:40: '\\\\' .
-                        pass
+                        # interface.g:189:40: '\\\\' .
+                        pass 
                         self.match(92)
 
                         self.matchAny()
@@ -1010,11 +1010,11 @@ class interfaceLexer(Lexer):
 
 
             elif alt7 == 2:
-                # interface.g:188:7: '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\''
-                pass
+                # interface.g:190:7: '\\'' (~ ( '\\'' | '\\\\' ) | '\\\\' . )* '\\''
+                pass 
                 self.match(39)
 
-                # interface.g:188:12: (~ ( '\\'' | '\\\\' ) | '\\\\' . )*
+                # interface.g:190:12: (~ ( '\\'' | '\\\\' ) | '\\\\' . )*
                 while True: #loop6
                     alt6 = 3
                     LA6_0 = self.input.LA(1)
@@ -1026,8 +1026,8 @@ class interfaceLexer(Lexer):
 
 
                     if alt6 == 1:
-                        # interface.g:188:14: ~ ( '\\'' | '\\\\' )
-                        pass
+                        # interface.g:190:14: ~ ( '\\'' | '\\\\' )
+                        pass 
                         if (0 <= self.input.LA(1) <= 38) or (40 <= self.input.LA(1) <= 91) or (93 <= self.input.LA(1) <= 65535):
                             self.input.consume()
                         else:
@@ -1039,8 +1039,8 @@ class interfaceLexer(Lexer):
 
 
                     elif alt6 == 2:
-                        # interface.g:188:31: '\\\\' .
-                        pass
+                        # interface.g:190:31: '\\\\' .
+                        pass 
                         self.match(92)
 
                         self.matchAny()
@@ -1068,9 +1068,9 @@ class interfaceLexer(Lexer):
             _type = DOC_PRE_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:192:17: ( '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/' )
-            # interface.g:192:19: '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/'
-            pass
+            # interface.g:194:17: ( '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/' )
+            # interface.g:194:19: '/**' ~ '*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ '*/'
+            pass 
             self.match("/**")
 
 
@@ -1083,7 +1083,7 @@ class interfaceLexer(Lexer):
 
 
 
-            # interface.g:192:30: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
+            # interface.g:194:30: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
             cnt9 = 0
             while True: #loop9
                 alt9 = 3
@@ -1101,8 +1101,8 @@ class interfaceLexer(Lexer):
 
 
                 if alt9 == 1:
-                    # interface.g:192:31: ~ '*'
-                    pass
+                    # interface.g:194:31: ~ '*'
+                    pass 
                     if (0 <= self.input.LA(1) <= 41) or (43 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1114,9 +1114,9 @@ class interfaceLexer(Lexer):
 
 
                 elif alt9 == 2:
-                    # interface.g:192:38: ( '*' )+ ~ ( '/' | '*' )
-                    pass
-                    # interface.g:192:38: ( '*' )+
+                    # interface.g:194:38: ( '*' )+ ~ ( '/' | '*' )
+                    pass 
+                    # interface.g:194:38: ( '*' )+
                     cnt8 = 0
                     while True: #loop8
                         alt8 = 2
@@ -1127,8 +1127,8 @@ class interfaceLexer(Lexer):
 
 
                         if alt8 == 1:
-                            # interface.g:192:38: '*'
-                            pass
+                            # interface.g:194:38: '*'
+                            pass 
                             self.match(42)
 
 
@@ -1182,13 +1182,13 @@ class interfaceLexer(Lexer):
             _type = DOC_POST_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:195:18: ( '///<' (~ '\\n' )* )
-            # interface.g:195:20: '///<' (~ '\\n' )*
-            pass
+            # interface.g:197:18: ( '///<' (~ '\\n' )* )
+            # interface.g:197:20: '///<' (~ '\\n' )*
+            pass 
             self.match("///<")
 
 
-            # interface.g:195:27: (~ '\\n' )*
+            # interface.g:197:27: (~ '\\n' )*
             while True: #loop10
                 alt10 = 2
                 LA10_0 = self.input.LA(1)
@@ -1199,7 +1199,7 @@ class interfaceLexer(Lexer):
 
                 if alt10 == 1:
                     # interface.g:
-                    pass
+                    pass 
                     if (0 <= self.input.LA(1) <= 9) or (11 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1231,10 +1231,10 @@ class interfaceLexer(Lexer):
             _type = WS
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:198:4: ( ( ' ' | '\\t' | '\\n' )+ )
-            # interface.g:198:6: ( ' ' | '\\t' | '\\n' )+
-            pass
-            # interface.g:198:6: ( ' ' | '\\t' | '\\n' )+
+            # interface.g:200:4: ( ( ' ' | '\\t' | '\\n' )+ )
+            # interface.g:200:6: ( ' ' | '\\t' | '\\n' )+
+            pass 
+            # interface.g:200:6: ( ' ' | '\\t' | '\\n' )+
             cnt11 = 0
             while True: #loop11
                 alt11 = 2
@@ -1246,7 +1246,7 @@ class interfaceLexer(Lexer):
 
                 if alt11 == 1:
                     # interface.g:
-                    pass
+                    pass 
                     if (9 <= self.input.LA(1) <= 10) or self.input.LA(1) == 32:
                         self.input.consume()
                     else:
@@ -1268,7 +1268,7 @@ class interfaceLexer(Lexer):
 
 
             #action start
-            self.skip()
+            self.skip() 
             #action end
 
 
@@ -1289,20 +1289,20 @@ class interfaceLexer(Lexer):
             _type = C_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:201:11: ( '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/' )
-            # interface.g:201:13: '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/'
-            pass
+            # interface.g:203:11: ( '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/' )
+            # interface.g:203:13: '/*' (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+ ( '*' )+ '/'
+            pass 
             self.match("/*")
 
 
-            # interface.g:201:18: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
+            # interface.g:203:18: (~ '*' | ( '*' )+ ~ ( '/' | '*' ) )+
             cnt13 = 0
             while True: #loop13
                 alt13 = 3
                 alt13 = self.dfa13.predict(self.input)
                 if alt13 == 1:
-                    # interface.g:201:19: ~ '*'
-                    pass
+                    # interface.g:203:19: ~ '*'
+                    pass 
                     if (0 <= self.input.LA(1) <= 41) or (43 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1314,9 +1314,9 @@ class interfaceLexer(Lexer):
 
 
                 elif alt13 == 2:
-                    # interface.g:201:26: ( '*' )+ ~ ( '/' | '*' )
-                    pass
-                    # interface.g:201:26: ( '*' )+
+                    # interface.g:203:26: ( '*' )+ ~ ( '/' | '*' )
+                    pass 
+                    # interface.g:203:26: ( '*' )+
                     cnt12 = 0
                     while True: #loop12
                         alt12 = 2
@@ -1327,8 +1327,8 @@ class interfaceLexer(Lexer):
 
 
                         if alt12 == 1:
-                            # interface.g:201:26: '*'
-                            pass
+                            # interface.g:203:26: '*'
+                            pass 
                             self.match(42)
 
 
@@ -1362,7 +1362,7 @@ class interfaceLexer(Lexer):
                 cnt13 += 1
 
 
-            # interface.g:201:47: ( '*' )+
+            # interface.g:203:47: ( '*' )+
             cnt14 = 0
             while True: #loop14
                 alt14 = 2
@@ -1373,8 +1373,8 @@ class interfaceLexer(Lexer):
 
 
                 if alt14 == 1:
-                    # interface.g:201:47: '*'
-                    pass
+                    # interface.g:203:47: '*'
+                    pass 
                     self.match(42)
 
 
@@ -1391,7 +1391,7 @@ class interfaceLexer(Lexer):
             self.match(47)
 
             #action start
-            self.skip()
+            self.skip() 
             #action end
 
 
@@ -1412,13 +1412,13 @@ class interfaceLexer(Lexer):
             _type = CPP_COMMENT
             _channel = DEFAULT_CHANNEL
 
-            # interface.g:204:13: ( '//' (~ '\\n' )* )
-            # interface.g:204:15: '//' (~ '\\n' )*
-            pass
+            # interface.g:206:13: ( '//' (~ '\\n' )* )
+            # interface.g:206:15: '//' (~ '\\n' )*
+            pass 
             self.match("//")
 
 
-            # interface.g:204:20: (~ '\\n' )*
+            # interface.g:206:20: (~ '\\n' )*
             while True: #loop15
                 alt15 = 2
                 LA15_0 = self.input.LA(1)
@@ -1429,7 +1429,7 @@ class interfaceLexer(Lexer):
 
                 if alt15 == 1:
                     # interface.g:
-                    pass
+                    pass 
                     if (0 <= self.input.LA(1) <= 9) or (11 <= self.input.LA(1) <= 65535):
                         self.input.consume()
                     else:
@@ -1445,7 +1445,7 @@ class interfaceLexer(Lexer):
 
 
             #action start
-            self.skip()
+            self.skip() 
             #action end
 
 
@@ -1466,231 +1466,231 @@ class interfaceLexer(Lexer):
         alt16 = self.dfa16.predict(self.input)
         if alt16 == 1:
             # interface.g:1:10: T__29
-            pass
+            pass 
             self.mT__29()
 
 
 
         elif alt16 == 2:
             # interface.g:1:16: T__30
-            pass
+            pass 
             self.mT__30()
 
 
 
         elif alt16 == 3:
             # interface.g:1:22: T__31
-            pass
+            pass 
             self.mT__31()
 
 
 
         elif alt16 == 4:
             # interface.g:1:28: T__32
-            pass
+            pass 
             self.mT__32()
 
 
 
         elif alt16 == 5:
             # interface.g:1:34: T__33
-            pass
+            pass 
             self.mT__33()
 
 
 
         elif alt16 == 6:
             # interface.g:1:40: T__34
-            pass
+            pass 
             self.mT__34()
 
 
 
         elif alt16 == 7:
             # interface.g:1:46: T__35
-            pass
+            pass 
             self.mT__35()
 
 
 
         elif alt16 == 8:
             # interface.g:1:52: T__36
-            pass
+            pass 
             self.mT__36()
 
 
 
         elif alt16 == 9:
             # interface.g:1:58: T__37
-            pass
+            pass 
             self.mT__37()
 
 
 
         elif alt16 == 10:
             # interface.g:1:64: T__38
-            pass
+            pass 
             self.mT__38()
 
 
 
         elif alt16 == 11:
             # interface.g:1:70: T__39
-            pass
+            pass 
             self.mT__39()
 
 
 
         elif alt16 == 12:
             # interface.g:1:76: T__40
-            pass
+            pass 
             self.mT__40()
 
 
 
         elif alt16 == 13:
             # interface.g:1:82: SEMICOLON
-            pass
+            pass 
             self.mSEMICOLON()
 
 
 
         elif alt16 == 14:
             # interface.g:1:92: IN
-            pass
+            pass 
             self.mIN()
 
 
 
         elif alt16 == 15:
             # interface.g:1:95: OUT
-            pass
+            pass 
             self.mOUT()
 
 
 
         elif alt16 == 16:
             # interface.g:1:99: FUNCTION
-            pass
+            pass 
             self.mFUNCTION()
 
 
 
         elif alt16 == 17:
             # interface.g:1:108: HANDLER
-            pass
+            pass 
             self.mHANDLER()
 
 
 
         elif alt16 == 18:
             # interface.g:1:116: EVENT
-            pass
+            pass 
             self.mEVENT()
 
 
 
         elif alt16 == 19:
             # interface.g:1:122: REFERENCE
-            pass
+            pass 
             self.mREFERENCE()
 
 
 
         elif alt16 == 20:
             # interface.g:1:132: DEFINE
-            pass
+            pass 
             self.mDEFINE()
 
 
 
         elif alt16 == 21:
             # interface.g:1:139: ENUM
-            pass
+            pass 
             self.mENUM()
 
 
 
         elif alt16 == 22:
             # interface.g:1:144: BITMASK
-            pass
+            pass 
             self.mBITMASK()
 
 
 
         elif alt16 == 23:
             # interface.g:1:152: USETYPES
-            pass
+            pass 
             self.mUSETYPES()
 
 
 
         elif alt16 == 24:
             # interface.g:1:161: IDENTIFIER
-            pass
+            pass 
             self.mIDENTIFIER()
 
 
 
         elif alt16 == 25:
             # interface.g:1:172: SCOPED_IDENTIFIER
-            pass
+            pass 
             self.mSCOPED_IDENTIFIER()
 
 
 
         elif alt16 == 26:
             # interface.g:1:190: DEC_NUMBER
-            pass
+            pass 
             self.mDEC_NUMBER()
 
 
 
         elif alt16 == 27:
             # interface.g:1:201: HEX_NUMBER
-            pass
+            pass 
             self.mHEX_NUMBER()
 
 
 
         elif alt16 == 28:
             # interface.g:1:212: QUOTED_STRING
-            pass
+            pass 
             self.mQUOTED_STRING()
 
 
 
         elif alt16 == 29:
             # interface.g:1:226: DOC_PRE_COMMENT
-            pass
+            pass 
             self.mDOC_PRE_COMMENT()
 
 
 
         elif alt16 == 30:
             # interface.g:1:242: DOC_POST_COMMENT
-            pass
+            pass 
             self.mDOC_POST_COMMENT()
 
 
 
         elif alt16 == 31:
             # interface.g:1:259: WS
-            pass
+            pass 
             self.mWS()
 
 
 
         elif alt16 == 32:
             # interface.g:1:262: C_COMMENT
-            pass
+            pass 
             self.mC_COMMENT()
 
 
 
         elif alt16 == 33:
             # interface.g:1:272: CPP_COMMENT
-            pass
+            pass 
             self.mCPP_COMMENT()
 
 
@@ -1751,7 +1751,7 @@ class interfaceLexer(Lexer):
 
             _s = s
 
-            if s == 0:
+            if s == 0: 
                 LA13_1 = input.LA(1)
 
                 s = -1
@@ -1766,7 +1766,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 1:
+            elif s == 1: 
                 LA13_0 = input.LA(1)
 
                 s = -1
@@ -2021,7 +2021,7 @@ class interfaceLexer(Lexer):
 
             _s = s
 
-            if s == 0:
+            if s == 0: 
                 LA16_45 = input.LA(1)
 
                 s = -1
@@ -2036,7 +2036,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 1:
+            elif s == 1: 
                 LA16_59 = input.LA(1)
 
                 s = -1
@@ -2048,7 +2048,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 2:
+            elif s == 2: 
                 LA16_83 = input.LA(1)
 
                 s = -1
@@ -2063,7 +2063,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 3:
+            elif s == 3: 
                 LA16_73 = input.LA(1)
 
                 s = -1
@@ -2075,7 +2075,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 4:
+            elif s == 4: 
                 LA16_28 = input.LA(1)
 
                 s = -1
@@ -2087,7 +2087,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 5:
+            elif s == 5: 
                 LA16_71 = input.LA(1)
 
                 s = -1
@@ -2099,7 +2099,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 6:
+            elif s == 6: 
                 LA16_84 = input.LA(1)
 
                 s = -1
@@ -2111,7 +2111,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 7:
+            elif s == 7: 
                 LA16_72 = input.LA(1)
 
                 s = -1
@@ -2126,7 +2126,7 @@ class interfaceLexer(Lexer):
 
                 if s >= 0:
                     return s
-            elif s == 8:
+            elif s == 8: 
                 LA16_61 = input.LA(1)
 
                 s = -1
@@ -2143,7 +2143,7 @@ class interfaceLexer(Lexer):
             self_.error(nvae)
             raise nvae
 
-
+ 
 
 
 

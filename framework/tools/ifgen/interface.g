@@ -71,6 +71,8 @@ options {
 
 @parser::members
 {
+    INVALID_NUMBER = 0xcdcdcdcd
+
     def getTokenErrorDisplay(self, t):
         """
         Display a token for an error message.  Since doc comments can be multi-line, only display
@@ -224,10 +226,32 @@ integer returns [value]
     | HEX_NUMBER       { $value = int($HEX_NUMBER.text, 16) }
     ;
 
+defineValue returns [value]
+    : IDENTIFIER        { $value = int(self.iface.findDefinition($IDENTIFIER.text).value) }
+    | SCOPED_IDENTIFIER { $value = int(self.iface.findDefinition($SCOPED_IDENTIFIER.text).value) }
+    ;
+catch [KeyError, e]
+{
+    self.emitErrorMessage(self.getErrorHeaderForToken($defineValue.start) +
+                          " No definition for {}".format($defineValue.text))
+    self.compileErrors += 1
+}
+catch [TypeError, e]
+{
+    self.emitErrorMessage(self.getErrorHeaderForToken($defineValue.start) +
+                          " {} is not an integer definition".format($defineValue.text))
+    self.compileErrors += 1
+}
+
+/** Either a number or a DEFINE */
+simpleNumber returns [value]
+    : number            { $value = $number.value }
+    | defineValue       { $value = $defineValue.value }
+    ;
+
 simpleExpression returns [value]
-    : integer          { $value = $integer.value }
-    | IDENTIFIER       { $value = self.iface.findDefinition($IDENTIFIER.text).value }
-    | SCOPED_IDENTIFIER { $value = self.iface.findDefinition($SCOPED_IDENTIFIER.text).value }
+    : integer               { $value = $integer.value }
+    | defineValue           { $value = $defineValue.value }
     | '(' sumExpression ')' { $value = $sumExpression.value }
     ;
 
@@ -248,13 +272,6 @@ sumExpression returns [value]
 valueExpression returns [value]
     : sumExpression    { $value = $sumExpression.value }
     | QUOTED_STRING    { $value = UnquoteString($QUOTED_STRING.text) }
-    ;
-
-/** Either a number or a DEFINE */
-simpleNumber returns [value]
-    : number            { $value = $number.value }
-    | IDENTIFIER        { $value = self.iface.findDefinition($IDENTIFIER.text).value }
-    | SCOPED_IDENTIFIER { $value = self.iface.findDefinition($SCOPED_IDENTIFIER.text).value }
     ;
 
 // Array expressions used to allow expressions of the form [minSize..maxSize] in some cases,

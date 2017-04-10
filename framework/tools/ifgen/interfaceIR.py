@@ -23,6 +23,9 @@ class NamedValue(object):
         self.value = value
         self.comments = []
 
+    def __repr__(self):
+        return "NamedValue({},{})".format(repr(self.name), self.value)
+
 #---------------------------------------------------------------------------------------------------
 # Types
 #---------------------------------------------------------------------------------------------------
@@ -36,6 +39,9 @@ class Type(object):
     def __str__(self):
         return "Type<%d> %s" % (self.size, self.name)
 
+    def __repr__(self):
+        return "Type({},{})".format(repr(self.name), self.size)
+
 class BasicType(Type):
     """Basic type represents a built-in type"""
     def __init__(self, name, size):
@@ -43,6 +49,9 @@ class BasicType(Type):
 
     def __str__(self):
         return "BasicType<%d> %s" % (self.size, self.name)
+
+    def __repr__(self):
+        return "BasicType({},{})".format(repr(self.name), self.size)
 
 class EnumType(Type):
     def __init__(self, name, elements=[]):
@@ -75,6 +84,9 @@ class EnumType(Type):
 
     def __str__(self):
         return "Enum<%d> %s (%d elements)" % (self.size, self.name, len(self.elements))
+
+    def __repr__(self):
+        return "EnumType({},{})".format(repr(self.name), repr(self.elements))
 
 
 class BitmaskType(Type):
@@ -114,12 +126,18 @@ class BitmaskType(Type):
     def __str__(self):
         return "BitMask<%d> %s (%d elements)" % (self.size, self.name, len(self.elements))
 
+    def __repr__(self):
+        return "EnumType({},{})".format(repr(self.name), repr(self.elements))
+
 class ReferenceType(Type):
     def __init__(self, name):
         super(ReferenceType, self).__init__(name, 4)
 
     def __str__(self):
         return "Reference %s" % (self.name)
+
+    def __repr__(self):
+        return "ReferenceType({})".format(self.name)
 
 class HandlerReferenceType(ReferenceType):
     """
@@ -181,10 +199,16 @@ class Parameter(object):
         self.comments = []
 
     def __str__(self):
-        if self.direction == DIR_IN:
-            return "%s %s IN" % (self.apiType.name, self.name)
-        else:
-            return "%s %s OUT" % (self.apiType.name, self.name)
+        result = "%s %s " % (self.apiType.name, self.name)
+        if self.direction & DIR_IN:
+            result += "IN"
+        if self.direction & DIR_OUT:
+            result += "OUT"
+
+        return result
+
+    def __repr__(self):
+        return "<Parameter {}>".format(str(self))
 
 class ArrayParameter(Parameter):
     def __init__(self, apiType, name, maxCount, direction=DIR_IN):
@@ -193,11 +217,14 @@ class ArrayParameter(Parameter):
 
     def __str__(self):
         result = "%s %s[%d] " % (self.apiType.name, self.name, self.maxCount)
-        if self.direction == DIR_IN:
+        if self.direction & DIR_IN:
             result += "IN"
-        else:
+        if self.direction & DIR_OUT:
             result += "OUT"
         return result
+
+    def __repr__(self):
+        return "<ArrayParameter {}>".format(str(self))
 
 class StringParameter(Parameter):
     def __init__(self, name, maxCount, direction=DIR_IN):
@@ -206,11 +233,14 @@ class StringParameter(Parameter):
 
     def __str__(self):
         result = "%s %s[%d] " % (self.apiType.name, self.name, self.maxCount)
-        if self.direction == DIR_IN:
+        if self.direction & DIR_IN:
             result += "IN"
-        else:
+        if self.direction & DIR_OUT:
             result += "OUT"
         return result
+
+    def __repr__(self):
+        return "<StringParameter {}>".format(str(self))
 
 def MakeParameter(typeObj, name, arraySize, direction=DIR_IN):
     """Helper to make a parameter object"""
@@ -242,6 +272,9 @@ class Definition(object):
     def __str__(self):
         return "%s = %s" % (self.name, repr(self.value))
 
+    def __repr__(self):
+        return "Definition({},{})".format(repr(self.name), repr(self.value))
+
 class Function(object):
     def __init__(self, returnType, name, parameters):
         self.returnType = returnType
@@ -266,6 +299,11 @@ class Function(object):
                 % (self.returnType.name, self.name,
                    ", ".join([str(param) for param in self.parameters]))
 
+    def __repr__(self):
+        return "<Function {} {}({})>".format(self.returnType.name if self.returnType else "None",
+                                             self.name,
+                                             ",".join([repr(param) for param in self.parameters]))
+
 class Event(object):
     def __init__(self, name, parameters):
         self.name = name
@@ -281,6 +319,11 @@ class Event(object):
         return "EVENT %s(%s)" \
             % (self.name,
                ", ".join([str(param) for param in self.parameters]))
+
+    def __repr__(self):
+        return "<Event {}({})>".format(self.name,
+                                       ",".join([repr(param) for param in self.parameters]))
+
 
 class EventFunction(Function):
     """
@@ -327,29 +370,6 @@ class Interface(object):
         self.events = collections.OrderedDict()
         self.comments = []
         self.text = None
-
-    def __str__(self):
-        resultStr  = "=== Interface ===\n"
-        resultStr += "Imports:\n"
-        for importKey, importValue in self.imports.iteritems():
-            resultStr += "    %s\n" % (importKey,)
-        resultStr += "\n";
-        resultStr += "Definitions:\n"
-        for defnKey, defnValue in self.definitions.iteritems():
-            resultStr += "    %s\n" % (str(defnValue))
-        resultStr += "\n";
-        resultStr += "Types:\n"
-        for typeKey, typeValue in self.types.iteritems():
-            resultStr += "    %s\n" % (str(typeValue))
-        resultStr += "\n";
-        resultStr += "Functions:\n"
-        for functionKey, functionValue in self.functions.iteritems():
-            resultStr += "    %s\n" % (str(functionValue))
-        resultStr += "\n";
-        resultStr += "Events:\n"
-        for eventKey, eventValue in self.events.iteritems():
-            resultStr += "    %s\n" % (str(eventValue))
-        return resultStr
 
     def isTypeNameUsed(self, name):
         return ((name in Interface._basicTypes) or
@@ -463,3 +483,35 @@ class Interface(object):
             self.addEvent(declObj)
         else:
             raise Exception("Unknown declaration object type")
+
+    def __str__(self):
+        resultStr  = "=== Interface ===\n"
+        resultStr += "Imports:\n"
+        for importKey, importValue in self.imports.iteritems():
+            resultStr += "    %s\n" % (importKey,)
+        resultStr += "\n";
+        resultStr += "Definitions:\n"
+        for defnKey, defnValue in self.definitions.iteritems():
+            resultStr += "    %s\n" % (str(defnValue))
+        resultStr += "\n";
+        resultStr += "Types:\n"
+        for typeKey, typeValue in self.types.iteritems():
+            resultStr += "    %s\n" % (str(typeValue))
+        resultStr += "\n";
+        resultStr += "Functions:\n"
+        for functionKey, functionValue in self.functions.iteritems():
+            resultStr += "    %s\n" % (str(functionValue))
+        resultStr += "\n";
+        resultStr += "Events:\n"
+        for eventKey, eventValue in self.events.iteritems():
+            resultStr += "    %s\n" % (str(eventValue))
+        return resultStr
+
+    def __repr__(self):
+        return "<Interface Imports:[{}] Definitions:[{}] Types:[{}] Functions:[{}] Events:[{}]>"\
+            .format(
+                ','.join([repr(apiImport) for apiImport in self.imports.itervalues()]),
+                ','.join([repr(definition) for definition in self.definitions.itervalues()]),
+                ','.join([repr(apiType) for apiType in self.types.itervalues()]),
+                ','.join([repr(function) for function in self.functions.itervalues()]),
+                ','.join([repr(event) for event in self.events.itervalues()]))

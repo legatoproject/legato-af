@@ -1,0 +1,5 @@
+FUNCTION le_result_t Read
+(
+    uint8 pHandle IN,
+    uint8 pData[ mre_mangoh_defs.SPI_MAX_DATA_LEN ] IN
+);
