@@ -1,0 +1,92 @@
+/** @page basicTargetModem Configure Cell Modems
+
+To connect your Target to a Cell Network you must have an active sim card inserted into the target.
+
+All commands to configure the target are done with the @ref toolsTarget_cm tool.
+
+@section targetModemConf Configure Cell Connection
+
+Run @c cm @c info to display the info about the sim including the FSN (serial number) and IMEI.
+
+@verbatim
+# cm info
+Device:     WP8548
+IMEI:       123456789101112
+FSN:        123456789
+Firmware:   SWI9X15Y_07.11.18.00 r33561 CARMD-EV-FRMWR1 2016/11/18 10:03:20
+Bootloader: SWI9X15Y_07.11.18.00 r33561 CARMD-EV-FRMWR1 2016/11/18 10:03:20
+priIdPn:    XXXXXXX
+priIdRev:   0X.XX
+skuId:      XXXXXXX
+@endverbatim
+
+Next, run @c cm @c radio to display info about the mobile network that the SIM is registered on.
+
+@verbatim
+# cm radio
+Power:      ON
+Current Network Operator: <your network operator>
+Status:     UMTS network (LE_MRC_RAT_UMTS)
+Signal:     Strong signal strength (4)
+@endverbatim
+
+You will need to manually set the APN for your SIM card.  Contact your Mobile carrier to find the
+APN settings that you will need.
+
+Run @c cm @c data to display the current connection data and APN settings (APN should be blank).
+
+@verbatim
+# cm data
+Index:      1
+APN:
+PDP Type:   IPV4
+Connected:  no
+Auth type:  CHAP
+User name:
+@endverbatim
+
+To update the APN run:
+
+@verbatim
+# cm data apn <your apn>
+# cm data                           # displays the settings for verification
+@endverbatim
+
+@note If your Mobile Carrier supports different APN's for 3G and LTE make sure your settings
+correspond to the correct network.  For example, the WP8548 module only supports 3G and the APN for
+the 3G network needs to be used.
+
+@section targetModemConnect Connect to a Mobile Network
+
+Run @c cm @c data @c connect &
+
+@note It may take a few minutes to connect; '&' will run the process in the background.
+
+Once the device is connected the target will display:
+@verbatim Connected through interface 'rmnet0' @endverbatim
+
+@section targetModemDisconnect Disconnect to a Mobile Network
+
+To disconnect, terminate the @c cm @c data @c connect background process by sending it a @c SIGTERM
+or @c SIGINT signal.  This can be done using @c kill (SIGTERM) or by bringing the process back to the
+foreground and hitting @c CTRL-C (SIGINT).
+
+@verbatim
+# kill %1
+#
+[1]+ Terminated           cm data connect
+#
+@endverbatim
+
+OR
+
+@verbatim
+# fg
+cm data connect
+^C
+#
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

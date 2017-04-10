@@ -4,28 +4,39 @@
 <br>
 <br>
 <br>
+
 <center>@image html legatoLogo.png
 
 <a title="@LEGATO_VERSION@" class="doc-version" href="#">@LEGATO_VERSION_DOC@</a>
-<br>
-<br>
-
-Get help or report an issue:
-
-<a href="http://forum.legato.io/">Legato Forum</a>
 
 <br>
 <br>
 
-Open Sans typeface Apache License, version 2.0
+Join the community:
 
-<a href="http://www.apache.org/licenses/LICENSE-2.0.html">License</a>
+[Legato Forum](http://forum.legato.io/)
+
+<br>
+<br>
+
+Licensing Info:
+
+@ref aboutLicenses
+
+<br>
+<br>
+
+The Legato Application Framework started out as an initiative by Sierra Wireless Inc. to provide an
+open, secure and easy to use Application Framework to grow the "Internet of Everything".  Legato
+Application Framework is designed to provide a smooth and connected open source platform that allows
+developers to easily work with the various wireless technologies and enable new ideas on IoT devices.
 
 <br>
 <br>
 <br>
 <br>
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.</center>
+
+Copyright (C) Sierra Wireless Inc. </center>
 
 **/
 

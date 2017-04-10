@@ -1,9 +1,20 @@
 /** @page aboutLicenses Licenses
 
-This section provides access to Legato licenses:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| <a href="LEGATO Software Licence Agreement 15 January 2016.pdf">Legato</a>   | Legato license                        |
-| <a href="Legato_16_07_OpenSourceLicenses.pdf">OSL</a>    | Open Source Licenses used by Legato      |
+The  Legato Application Framework is licensed under @ref aboutLicensesMPLv2
+"Mozilla Public License Version 2.0 (MPLv2)".  There are exceptions that are handled on a
+case-by-case basis and are documented in the source code.
+
+Current list of exceptions:
+
+| Package                   | License                 |
+| ------------------------- | ----------------------- |
+| CUnit                     | @ref licenseOSLGPLv2    |
+| Hashmap Implementation    | @ref licenseOSApache20  |
+| Jansson                   | @ref licenseOSMIT       |
+| md5                       | @ref licenseOSRSA       |
+| String Hashing Algorithm  | @ref licenseOSPHel      |
+| Open Sans typeface        | @ref licenseOSApache20  |
+
+Copyright (C) Sierra Wireless Inc.
 
 **/

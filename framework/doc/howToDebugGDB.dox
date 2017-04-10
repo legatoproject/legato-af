@@ -1,30 +1,29 @@
-/** @page howToDebugGDB GDB
+/** @page howToDebugGDB Debug using GDB
 
-This topic provides details on using the open-source @c GDB tool on a host PC to debug a sandboxed
-app on a target device. This type of remote debugging is useful where resources are limited like
-embedded apps.
-The sample code in this topic has an app named @c hw with one executable @c hw_exe and a few
-processes created in the same executable (@c hw_proc1, @c hw_proc2, etc.).
+This topic provides details on using the open-source @c GDB tool on a dev machine to debug sandboxed
+apps. This type of remote debugging is useful where resources are limited like in embedded apps.
 
-These are the high-level steps to use GDB with a sandboxed app.
+The sample code uses an app named @c hw with one executable @c hw_exe and processes created in
+the same executable (@c hw_proc1, @c hw_proc2, etc.).
+
+High-level steps to use GDB with a sandboxed app:
 
 On the target device:
-- Run the sandboxed app @ref howToDebugGDB_withoutProcess "without the process" that's being
-debugged.
-- @ref howToDebugGDB_makeGDBAvail "Make" @c gdbserver available in the sanboxed app.
-- Run the sandboxed app with @c gdbserver @ref howToDebugGDB_withProcess "with the process"
-being debugged.
+- Make sure the @ref basicTargetDevMode_installDev "devMode app" @c is installed and running
+- Run the sandboxed app @ref howToDebugGDB_withoutProcess "without the process" you want to debug.
+- @ref howToDebugGDB_makeGDBAvail "Start" @c gdbserver in the sanboxed app.
+- @ref howToDebugGDB_withProcess "Start the process" in the sandboxed app with @c gdbserver.
 - @ref howToDebugGDB_removeGDB "Remove" @c gdb from the sandboxed app after you're finished
 debugging.
 
-On the host PC:
-- @ref howToDebugGDB_launchGDBhost "Launch" @c gdbserver on the host PC.
-- @ref howToDebugGDB_remoteConnect "Remote connect" to the target and run regular @c gdb commands.
+On your dev machine:
+- @ref howToDebugGDB_launchGDBhost "Launch" @c gdb from the apps make directory.
+- @ref howToDebugGDB_remoteConnect "Remote connect" to the target and run @c gdb commands.
 
 See @ref basicTargetConfigIP if you need to setup your host/target communications.
 
 @section howToDebugGDB_sampleCode Sample Code
-The following simple app sample code is used in this topic's examples.
+The following simple app sample code is used in examples.
 
 @subsection howToDebugGDB_sampleCode_adef hw.adef
 @code
@@ -50,6 +49,7 @@ processes:
 See @ref basicAppsCreate for more info.
 
 @subsection howToDebugGDB_sampleCode_cdef .cdef
+
 @c hw/Component.cdef
 @code
 sources:
@@ -62,10 +62,13 @@ cflags:
     -g
 }
 @endcode
+
 See @ref defFilesCdef_cFlags for more info on @c cflags.
 
 @subsection howToDebugGDB_sampleCode_helloC hello.c
+
 @c hw/hello.c
+
 @code
 #include "legato.h"
 
@@ -77,72 +80,108 @@ COMPONENT_INIT
 
 See @ref basicAppsCreate for more info.
 
-@section howToDebugGDB_withoutProcess Run without Process
+@section howToDebugGDB_onTarget Running GDB on your Target Device
 
-To use GDB, you start the sandboxed app excluding the process being debugged.
+@subsection howToDebugGDB_withoutProcess Running the App without a Process
+
+To use GDB, start the sandboxed app excluding the process being debugged:
 
 On the target, run the app excluding the process being debugged, @c hw_proc3:
-@code
-app start hw --norun=hw_proc3
-@endcode
+@verbatim
+# app start hw --norun=hw_proc3
+@endverbatim
 
-@section howToDebugGDB_makeGDBAvail Make GDB Available
+@subsection howToDebugGDB_makeGDBAvail Start GDB on an App
 
-On the target, make @c gdbserver available in the sandboxed @c /bin directory:
-@code
-gdbCfg hw
-@endcode
+On your dev machine, set up port forwarding from local host to the target.  This bypasses the
+firewall on the target and allows GDB server to connect.
 
-@section howToDebugGDB_withProcess Run with Process
+@verbatim
+$ ssh -L 2000:localhost:2000 root@192.168.2.2
+@endverbatim
 
-On the target, start @c gdbserver with arguments specified after @c -- (two dashes):
-@code
-app runProc hw --exe=/bin/gdbserver -- localhost:2000 /bin/hw_exe
-@endcode
+@warning Do not end this session to the Target or the port forwarding will end. GDB won't be
+able to connect to the Target.
 
-It will return this: <br>
-<code>Process /bin/hw_exe created; pid = 9783</code> <br>
-<code>Listening on port 2000</code>
+On the target, start @c gdbserver in the sandboxed @c /bin directory by running:
+@verbatim
+# gdbCfg <app name>
+@endverbatim
 
-@section howToDebugGDB_launchGDBhost Launch GDB on Host
-You need to complete these steps on the host PC:
-- @ref howToDebugGDB_launchGDBhost "Launch" @c gdb on the host PC.
+For Example:
+@verbatim
+# gdbCfg hw
+@endverbatim
+
+@subsection howToDebugGDB_withProcess Start the Process with GDB enabled
+
+On the target, start @c gdbserver by starting the app with the arguments specified after @c --
+(two dashes):
+
+@verbatim
+# app runProc <app name> --exe=/bin/gdbserver --localhost:2000 /bin/<app bin dir>
+@endverbatim
+
+For Example:
+@verbatim
+# app runProc hw --exe=/bin/gdbserver -- localhost:2000 /bin/hw_exe
+@endverbatim
+
+If started successfully, the following will be returned: <br>
+@verbatim
+Process /bin/hw_exe created; pid = 9783
+Listening on port 2000
+@endverbatim
+
+@section howToDebugGDB_launchGDBhost Launch GDB on your Dev Machine
+
+To start GDB on your Dev Machine:
+- @ref howToDebugGDB_launchGDBhost "Launch" @c gdb on the Dev Machine.
 - @ref howToDebugGDB_remoteConnect "Remote connect" to the target and run regular @c gdb commands.
 
+@subsection howTODebugGDB_lanchGDBhost Launch gdb from Dev Machine
+
 You need to run the commands from the directory where the @c hw app was made.
+The path @c _build_hw/wp85/app/hw/staging/read-only/bin/hw_exe is relative to the app directory;
+this build directory is generated when an app is made and the gdb commands must be run here.
 
 In this example, we're running the @c gdb tool (@c arm-poky-linux-gnueabi-gdb) located in our
 target's toolchain path
 (@c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi for wp85).
-Use the @c findtoolchain command on the host PC to determine your toolchain path.
-The path
-@c _build_hw/wp85/app/hw/staging/read-only/bin/hw_exe is relative to the app directory; this build
-directory is generated when an app is made.
+Use the @c findtoolchain command on your dev machine to determine the toolchain path.
 
-@code
-~/LegatoApps/hw$ /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gdb _build_hw/wp85/app/hw/staging/read-only/bin/hw_exe
-@endcode
+Launch GDB from the toolchain using the following command (substitute your program and path for hw):
 
-@section howToDebugGDB_remoteConnect Remote Connect
+@verbatim
+$ ~/LegatoApps/hw$ /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi/arm-poky-linux-gnueabi-gdb _build_hw/wp85/app/hw/staging/read-only/bin/hw_exe
+@endverbatim
+
+@subsection howToDebugGDB_remoteConnect Remote Connect
 
 After GDB is launched, use the @c target @c remote command to connect to the target:
-@code
-(gdb) target remote 192.168.2.2:2000
-@endcode
+@verbatim
+$ (gdb) target remote localhost:2000
+@endverbatim
 
-<code>Remote debugging from host 192.168.2.3</code> will display on the target.
+@note If you get an error about connecting make sure you have a @ref howToDebugGDB_makeGDBAvail
+"ssh -L (port forwarding) session" open between the dev machine and target.
 
-@note You can now run any of the standard @c gdb debugging commands on @c hw_exe.
+The target will display:
+@verbatim
+Remote debugging using localhost:2000
+@endverbatim
+
+You can now run any of the standard @c gdb debugging commands on @c hw_exe.
 
 @section howToDebugGDB_removeGDB Remove GDB from Sandbox
 
-Once you've finished debugging, remove @c gdbserver from the sandbox @c /bin directory:
-@code
-gdbCfg hw --reset
-@endcode
+Once you've finished debugging, remove @c gdbserver from the sandbox @c /bin directory on the target:
+@verbatim
+# gdbCfg hw --reset
+@endverbatim
 
 Refer to the many available open source resources if you need help using @c gdb.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+Copyright (C) Sierra Wireless Inc.
 
 **/

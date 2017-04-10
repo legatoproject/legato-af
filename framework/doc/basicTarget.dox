@@ -1,14 +1,159 @@
-/** @page basicTarget Configure Target
+/** @page basicTarget Configure SWI WP Series Target
 
-These topics describe how to start working with a Legato host PC and a target device:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage basicTargetHostCom  |  tips to communicate with target |
-| @subpage basicTargetConfigIP  | configure target IP address  |
-| @subpage basicTargetIPv6 |  configure target for IPv6    |
-| @subpage basicTargetSW | install software on target   |
-| @subpage basicTargetRecover   | restore target with Linux Android SDK   |
+To connect to your device you must use either a USB or Serial cable and connect the device directly
+to your Dev Machine.  All other interfaces are turned off by default for security reasons.
 
-Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
+@section targetConnectUSB Connect using USB
+
+Install a ssh client on your dev machine:
+
+@verbatim
+$ sudo apt-get install openssh-client
+@endverbatim
+
+The default IP for WP series devices over USB is 192.168.2.2.
+
+@verbatim
+$ ssh root@192.168.2.2
+@endverbatim
+
+@note Currently there is an outstanding issue in Ubuntu 15.10+ with the ECMUsb driver. This bug may
+cause Ubuntu Connection Manager to crash. The workaround is to uninstall modemManager on your dev
+machine. <c>  $ sudo apt-get remove modemmanager</c>
+
+@section targetConnectUART Connect using UART
+
+To connect using the UART port connect a Serial to USB cable to your target and install a serial
+communications program like Minicom.
+
+Install minicom on your dev machine:
+
+@verbatim
+$ sudo apt-get install minicom
+@endverbatim
+
+Connect using Minicom to the USB Port that your device is plugged into:
+
+@verbatim
+$ minicom -D /dev/ttyUSB0
+@endverbatim
+
+Press enter, and you should be prompted to log in.
+
+@note If ttyUSB0 does not work, try a different port such as ttyUSB1 or ttyUSB2. The port number
+will need to correspond to the USB port on your dev machine which your USB-to-serial cable is
+connected.
+
+If the device can not be opened. You may need to add your user to the dialout group.
+
+@verbatim
+$ sudo usermod -a -G dialout $USER
+$ newgrp dialout # Updates the current shell
+@endverbatim
+
+@section targetLogin Setup Login Authentication
+
+In Legato 16.10.0+ a menu will prompt you upon first connection to choose your method of Login
+Authentication.
+
+@verbatim
+It is strongly recommended to setup credentials for remote login.
+  Please select one of the following options:
+    1) Setup ssh keys and disable passwords-based authentication via ssh (the most secure)
+    2) Setup password (better than nothing)
+    3) Do nothing
+@endverbatim
+
+@subsection targetSSHKeys Setup SSH Keys
+
+<b>This is the method we strongly recommend!</b>
+
+1) On the target, choose @c 1 to setup ssh keys.
+
+2) On the dev Machine, run @ref toolsHost_configtargetssh (ensure you run
+bin/legs first to configure the Legato shell).
+
+@ref toolsHost_configtargetssh is a tool that will set your ssh-keys and copy those keys to your
+target device.
+
+@verbatim
+$ configtargetssh 192.168.2.2   # The target device IP
+@endverbatim
+
+The ssh key pair is only authorized on the dev machine & target that you ran @c configtargetssh on.
+If you need to use the target device on another PC, or set up a new target on the current PC you
+will have to run @c configtargetssh for the new device(s).
+
+@note You can manually setup ssh keys using @c ssh-keygen, and copy the public key to the target's
+ssh directory for any dev machine.
+
+3) After @c configtargetssh finishes, choose @c 1 (Done), and answer the "are you sure"
+questions. The configure local console menu will then display:
+
+@verbatim
+1) Disable console access (the most secure)
+2) Disable password-based authentication for root user account
+       but leave the console for debug messages (less secure)
+       WARNING: This will disable password-based authentication for
+       root user account completely (even over ssh).
+3) Enable password-based authentication for root user account
+@endverbatim
+
+4) Choose @c 1 if local access through the serial console isn't needed, it's recommended to
+completely disable console access.  Choose @c 2 if you are only connecting from the dev machine that
+@c configtargetssh was just run.  Choose @c 3 if you are still need to connect to the target from
+other dev machines that you have not set up ssh keys with. It is recommended to set a @b strong
+password if this option is chosen.
+
+@warning Please test your ssh keys and/or passwords in a separate terminal before logging off from
+all terminals to ensure you don't lose access to your target device.
+
+@subsection targetSetupPass Setup Password
+
+If you choose to just set up a root password, the system will prompt you through the process, and
+then ask you if you would like to disable your console access.
+
+@verbatim
+Changing password for root
+Enter the new password (minimum of 5 characters)
+Please use a combination of upper and lower case letters and numbers.
+New password:
+Re-enter new password:
+passwd: password changed.
+
+Configure local console login.
+  Disable console access [Y/n]?
+
+
+You are about to disable console access for all users.
+Are you sure [y/N]?
+@endverbatim
+
+@subsection targetDoNothing Do Nothing
+
+If you choose the option to "Do Nothing", you will be presented the option to choose if you would
+like to go through this menu the next time you connect to the target.
+
+@note If you choose this option you always have the option of setting up ssh keys using
+@c configtargetssh, or setting a root password manually using @c passwd.
+
+@section targetRecover Recover a Target
+
+To recover a Sierra Wireless Target Device (e.g., mangOH or WP8545) you must use the proprietary
+Sierra Wireless flash tool.  Instructions and the tool can be found on
+[the Source.](http://source.sierrawireless.com/resources/airprime/software/swiflash/)
+
+@section targetOptionalConfig Optional Configuration
+
+To configure other network interfaces, install software or enable/disable Developer Mode:
+
+| Section                            | Description                                       |
+| ---------------------------------- | --------------------------------------------------|
+| @subpage basicTargetConfigETH      | Configure Ethernet interfaces                     |
+| @subpage basicTargetConfigUSB      | Configure USB interfaces                          |
+| @subpage basicTargetModem          | Configure a Cell Modem                            |
+| @subpage basicTargetDevMode        | Manage Developer Mode                             |
+
+Copyright (C) Sierra Wireless Inc.
 
 **/

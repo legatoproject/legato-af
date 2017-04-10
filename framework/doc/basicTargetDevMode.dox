@@ -1,0 +1,77 @@
+/** @page basicTargetDevMode Developer Mode
+
+Developer Mode is provided as a pre-built core app (but not installed by default).
+Developer Mode (@c devMode) was created to provide helpful features to Developers.
+
+@c devMode provides the following features:
+  - bundles @ref howToDebugGDB "gdbserver" executable for use on the target device, allowing
+    step-by-step debugging of Legato apps.
+  - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
+  - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
+  - holds a wake lock, so the target won't go to sleep when disconnected from USB.
+
+@section howToDevMode_installDev Installing Developer Mode
+
+@c devMode is a core app that is built during the @c make @c <target> process but it is not included by default in the @c system.sdef.
+
+To install @c devMode:
+
+@verbatim
+$ make wp85
+$ app install $LEGATO_ROOT/build/wp85/tools/devMode.wp85.update 192.168.2.2
+@endverbatim
+
+@section devMode_enableDev Enabling Developer Mode
+
+To start @c devMode on your target (if it's disabled):
+
+Start the app:
+
+@verbatim app start devMode @endverbatim
+
+Modify the config on the target to enable starting devMode upon reboot:
+
+@verbatim config set /apps/devMode/startManual false bool @endverbatim
+
+To configure enabling/disabling @c devMode (even after a system rebuild) add a start: auto (enabled) or
+start: manual (disabled) to the @c devMode adef.
+
+Example devMode adef:
+
+@verbatim
+sandboxed: false
+start: auto                 <-- change to manual to disable
+
+executables:
+{
+    devMode = ( $LEGATO_ROOT/components/devMode/devMode )
+}
+
+processes:
+{
+    run:
+    {
+@endverbatim
+
+@section DevMode_disableDev Disabling Developer Mode
+
+To temporarily stop devMode:
+
+@verbatim app stop devMode @endverbatim
+
+@section devMode_removeDev Removing Developer Mode
+
+To remove devMode from your target:
+
+@verbatim app remove devMode @endverbatim
+
+It is advisable to remove the devMode app before deploying targets in production. This can
+be done by removing devMode from the system sdef file and rebuilding the system for the
+target device.
+
+@note The tcf-agent creates extra network traffic between the host and the target. Stopping or
+removing devMode will decrease the traffic.
+
+Copyright (C) Sierra Wireless Inc.
+
+ **/
