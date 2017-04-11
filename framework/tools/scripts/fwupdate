@@ -33,14 +33,14 @@ help_long_description=(
 "    bootloader version, and the linux kernel version."
 "    This can be used after a download and modem reset, to confirm the firmware version."
 ""
-"$commandName fwupdate install [TARGET_IP]"
+"$commandName install [TARGET_IP]"
 "  - Install a previously downloaded firmware or go back to the old system if the running"
 "     system is not marked good (DualSys platform only)"
 ""
-"$commandName fwupdate markGood [TARGET_IP]"
+"$commandName markGood [TARGET_IP]"
 "  - Mark good the current system (DualSys platform only)"
 ""
-"$commandName fwupdate fullInstall FILE [TARGET_IP]"
+"$commandName fullInstall FILE [TARGET_IP]"
 "  - do download, install and markGood in one time (DualSys platform only)"
 "    After a successful download, the modem will reset"
 )
@@ -49,14 +49,14 @@ CheckForHelp $@
 
 COMMAND=$1
 
-if [ "$COMMAND" = "query" ]
+if [ "$COMMAND" = "query" ] || [ "$COMMAND" = "install" ] || [ "$COMMAND" = "markGood" ]
 then
     SetTargetIP $2
-    SshToTarget "$BIN_PATH/fwupdate query"
+    SshToTarget "$BIN_PATH/fwupdate $COMMAND"
     exit $?
 fi
 
-if [ "$COMMAND" = "download" ]
+if [ "$COMMAND" = "download" ] || [ "$COMMAND" = "fullInstall" ]
 then
     FILE=$2
     if ! [ -f "$FILE" ]
@@ -66,7 +66,7 @@ then
 
     SetTargetIP $3
 
-    cat "$FILE" | SshToTarget "$BIN_PATH/fwupdate download -"
+    cat "$FILE" | SshToTarget "$BIN_PATH/fwupdate $COMMAND -"
     exit $?
 fi
 

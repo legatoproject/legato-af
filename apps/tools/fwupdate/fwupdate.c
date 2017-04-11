@@ -193,7 +193,7 @@ static le_result_t DownloadFirmware
     LE_PRINT_VALUE("%d", fd);
     if ( le_fwupdate_Download(fd) == LE_OK )
     {
-        printf("Download successful; please wait for modem to reset\n");
+        printf("Download successful\n");
     }
     else
     {
