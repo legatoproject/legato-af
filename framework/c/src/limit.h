@@ -106,7 +106,7 @@
  * Maximum string length and byte storage size of argument lists.
  */
 //--------------------------------------------------------------------------------------------------
-#define LIMIT_MAX_ARGS_STR_LEN                  127
+#define LIMIT_MAX_ARGS_STR_LEN                  511
 #define LIMIT_MAX_ARGS_STR_BYTES                (LIMIT_MAX_ARGS_STR_LEN + 1)
 
 
