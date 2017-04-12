@@ -54,9 +54,9 @@
  * Check whether the application core is the current owner of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK           The function succeeded.
- *      - LE_FAULT        The function failed.
- *      - LE_UNSUPPORTED  The platform does not support this operation.
+ *      - LE_OK              The function succeeded.
+ *      - LE_FAULT           The function failed.
+ *      - LE_BAD_PARAMETER   Bad input parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AmIOwnerOfRingSignal

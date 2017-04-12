@@ -32,15 +32,16 @@ le_result_t pa_riPin_Init
  * Check whether the application core is the current owner of the Ring Indicator signal.
  *
  * @return
- *      - LE_OK           The function succeeded.
- *      - LE_FAULT        The function failed.
- *      - LE_UNSUPPORTED  The platform does not support this operation.
+ *      - LE_OK              The function succeeded.
+ *      - LE_FAULT           The function failed.
+ *      - LE_BAD_PARAMETER   Bad input parameter.
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_riPin_AmIOwnerOfRingSignal
 (
-    bool* amIOwnerPtr ///< true when application core is the owner of the Ring Indicator signal,
-                      ///  false when modem core is the owner of the Ring Indicator signal.
+    bool* amIOwnerPtr ///< [OUT] true when application core is the owner of the Ring Indicator
+                      ///        signal,
+                      ///        false when modem core is the owner of the Ring Indicator signal.
 );
 
 //--------------------------------------------------------------------------------------------------

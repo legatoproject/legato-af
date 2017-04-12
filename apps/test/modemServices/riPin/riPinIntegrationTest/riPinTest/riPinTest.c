@@ -58,7 +58,7 @@ COMPONENT_INIT
         res = le_riPin_AmIOwnerOfRingSignal(&amIOwner);
         if (res == LE_OK)
         {
-            if (amIOwner)
+            if (true == amIOwner)
             {
                 LE_INFO("Legato is the owner of the Ring Indicator signal");
             }
@@ -68,7 +68,6 @@ COMPONENT_INIT
             }
         }
 
-        LE_WARN_IF(res == LE_UNSUPPORTED, "The platform does not support this operation");
         LE_ERROR_IF(res == LE_FAULT, "Failed to know the owner of the Ring Indicator signal");
 
         if (strncmp(testCase, "take", strlen("take")) == 0)
