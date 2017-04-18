@@ -155,7 +155,8 @@ class HandlerReferenceType(ReferenceType):
 
 class HandlerType(Type):
     def __init__(self, name, parameters):
-        super(HandlerType, self).__init__(name, 0)
+        # Handlers are the size of a reference
+        super(HandlerType, self).__init__(name, 4)
         self.parameters = parameters
 
         if any([isinstance(parameter.apiType, HandlerType) for parameter in self.parameters]):
@@ -198,6 +199,9 @@ class Parameter(object):
         self.direction = direction
         self.comments = []
 
+    def GetMaxSize(self):
+        return self.apiType.size
+
     def __str__(self):
         result = "%s %s " % (self.apiType.name, self.name)
         if self.direction & DIR_IN:
@@ -215,6 +219,9 @@ class ArrayParameter(Parameter):
         super(ArrayParameter, self).__init__(apiType, name, direction)
         self.maxCount = maxCount
 
+    def GetMaxSize(self):
+        return UINT32_TYPE.size + self.apiType.size * self.maxCount
+
     def __str__(self):
         result = "%s %s[%d] " % (self.apiType.name, self.name, self.maxCount)
         if self.direction & DIR_IN:
@@ -230,6 +237,10 @@ class StringParameter(Parameter):
     def __init__(self, name, maxCount, direction=DIR_IN):
         super(StringParameter, self).__init__(STRING_TYPE, name, direction)
         self.maxCount = maxCount
+
+    def GetMaxSize(self):
+        # Size of a string element is always 1.
+        return UINT32_TYPE.size + self.maxCount
 
     def __str__(self):
         result = "%s %s[%d] " % (self.apiType.name, self.name, self.maxCount)
@@ -483,6 +494,21 @@ class Interface(object):
             self.addEvent(declObj)
         else:
             raise Exception("Unknown declaration object type")
+
+    def getMessageSize(self):
+        """
+        Get size of largest possible message to a function or handler.
+
+        A message is 4-bytes for message ID, optional 4
+        bytes for required output parameters, and a variable number of bytes to pack
+        the return value (if the function has one), and all input and output parameters.
+        """
+        return 8 + max([1] +
+                       [sum([function.returnType.size if function.returnType else 0] +
+                            [parameter.GetMaxSize() for parameter in function.parameters])
+                        for function in self.functions.values()] +
+                       [sum([parameter.GetMaxSize() for parameter in handler.parameters])
+                        for handler in self.types if isinstance(handler, HandlerType)])
 
     def __str__(self):
         resultStr  = "=== Interface ===\n"

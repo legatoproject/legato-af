@@ -311,6 +311,7 @@ def Main():
                             serviceName=args.serviceName,
                             apiName=args.namePrefix,
                             idString=hashValue,
+                            messageSize=interface.getMessageSize(),
                             # At this point we just need names of imports, not the full parse
                             imports=interface.imports.keys(),
                             types=interface.types.values(),

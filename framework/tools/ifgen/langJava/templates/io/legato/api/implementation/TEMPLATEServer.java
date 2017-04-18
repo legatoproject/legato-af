@@ -36,13 +36,7 @@ public class {{apiName}}Server implements AutoCloseable
 {
     private static final String protocolIdStr = "{{idString}}";
     private static final String serviceInstanceName = "{{apiName}}";
-    {%- if apiName in [ "le_secStore", "secStoreGlobal", "secStoreAdmin" ] %}
-    private static final int maxMsgSize = 8504;
-    {%- elif apiName == "le_cfg" %}
-    private static final int maxMsgSize = 1604;
-    {%- else %}
-    private static final int maxMsgSize = 1104;
-    {%- endif %}
+    private static final int maxMsgSize = {{messageSize}};
 
     private Service service;
     private ServerSession currentSession;

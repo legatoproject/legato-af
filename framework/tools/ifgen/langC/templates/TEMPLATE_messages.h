@@ -33,18 +33,7 @@
 #endif
 
 
-// todo: This will need to depend on the particular protocol, but the exact size is not easy to
-//       calculate right now, so in the meantime, pick a reasonably large size.  Once interface
-//       type support has been added, this will be replaced by a more appropriate size.
-{#- Message size hack carried over from original C ifgen.  Will be fixed soon as this was one of
- # the motivating factors for refactoring ifgen #}
-{%- if apiName in [ "le_secStore", "secStoreGlobal", "secStoreAdmin" ] %}
-#define _MAX_MSG_SIZE 8500
-{%- elif apiName == "le_cfg" %}
-#define _MAX_MSG_SIZE 1600
-{%- else %}
-#define _MAX_MSG_SIZE 1100
-{%- endif %}
+#define _MAX_MSG_SIZE {{messageSize}}
 
 // Define the message type for communicating between client and server
 typedef struct
