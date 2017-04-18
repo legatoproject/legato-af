@@ -1,0 +1,5 @@
+externalBuild:
+{
+    "cd ${LEGATO_ROOT}/3rdParty/Lwm2mCore/tinydtls && autoreconf -i"
+    "ac_cv_func_malloc_0_nonnull=yes ${LEGATO_ROOT}/3rdParty/Lwm2mCore/tinydtls/configure --host=$${TARGET_TOOLCHAIN_PREFIX#-}"
+}
