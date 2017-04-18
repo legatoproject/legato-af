@@ -1853,7 +1853,7 @@ le_result_t le_gnss_GetSatellitesInfo
 
     if (satUsedPtr)
     {
-        if (positionSamplePtr->satInfoValid)
+        if (positionSamplePtr->satsUsedCountValid)
         {
             for(i=0; i<*satUsedNumElementsPtr; i++)
             {

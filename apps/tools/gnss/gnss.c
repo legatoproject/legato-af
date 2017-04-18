@@ -1536,10 +1536,6 @@ static int GetSatelliteInfo
 
     if((result == LE_OK)||(result == LE_OUT_OF_RANGE))
     {
-        if (result == LE_OUT_OF_RANGE)
-        {
-            printf("Satellite information invalid\n");
-        }
         // Satellite Vehicle information
         for(i=0; i<satIdNumElements; i++)
         {
