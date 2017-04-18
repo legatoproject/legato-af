@@ -14,75 +14,6 @@
 
 
 //--------------------------------------------------------------------------------------------------
-// Generic Pack/Unpack Functions
-//--------------------------------------------------------------------------------------------------
-
-// todo: These functions could be moved to a separate library, to reduce overall code size and RAM
-//       usage because they are common to each client and server.  However, they would then likely
-//       need to be more generic, and provide better parameter checking and return results.  With
-//       the way they are now, they can be customized to the specific needs of the generated code,
-//       so for now, they will be kept with the generated code.  This may need revisiting later.
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* PackData(void* msgBufPtr, const void* dataPtr, size_t dataSize)
-{
-    // todo: should check for buffer overflow, but not sure what to do if it happens
-    //       i.e. is it a fatal error, or just return a result
-    LE_FATAL_IF(NULL==dataPtr, "Pointer is NULL");
-
-    memcpy( msgBufPtr, dataPtr, dataSize );
-    return ( msgBufPtr + dataSize );
-}
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackData(void* msgBufPtr, void* dataPtr, size_t dataSize)
-{
-    memcpy( dataPtr, msgBufPtr, dataSize );
-    return ( msgBufPtr + dataSize );
-}
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* PackString(void* msgBufPtr, const char* dataStr)
-{
-    // todo: should check for buffer overflow, but not sure what to do if it happens
-    //       i.e. is it a fatal error, or just return a result
-
-    // Get the sizes
-    uint32_t strSize = strlen(dataStr);
-    const uint32_t sizeOfStrSize = sizeof(strSize);
-
-    // Always pack the string size first, and then the string itself
-    memcpy( msgBufPtr, &strSize, sizeOfStrSize );
-    msgBufPtr += sizeOfStrSize;
-    memcpy( msgBufPtr, dataStr, strSize );
-
-    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
-    return ( msgBufPtr + strSize );
-}
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackString(void* msgBufPtr, char* dataStr, size_t dataSize)
-{
-    // todo: should check for buffer overflow, but not sure what to do if it happens
-    //       i.e. is it a fatal error, or just return a result
-
-    uint32_t strSize;
-    const uint32_t sizeOfStrSize = sizeof(strSize);
-
-    // Get the string size first, and then the actual string
-    memcpy( &strSize, msgBufPtr, sizeOfStrSize );
-    msgBufPtr += sizeOfStrSize;
-
-    // Copy the string, and make sure it is null-terminated
-    memcpy( dataStr, msgBufPtr, strSize );
-    dataStr[strSize] = 0;
-
-    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
-    return ( msgBufPtr + strSize );
-}
-
-
-//--------------------------------------------------------------------------------------------------
 // Generic Client Types, Variables and Functions
 //--------------------------------------------------------------------------------------------------
 
@@ -534,12 +465,17 @@ static void _Handle_{{apiName}}_{{function.name}}
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
+    size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // The clientContextPtr always exists and is always first. It is a safe reference to the client
     // data object, but we already get the pointer to the client data object through the _dataPtr
     // parameter, so we don't need to do anything with clientContextPtr, other than unpacking it.
     void* _clientContextPtr;
-    _msgBufPtr = UnpackData( _msgBufPtr, &_clientContextPtr, sizeof(void*) );
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+                                  &_clientContextPtr ))
+    {
+        goto error_unpack;
+    }
 
     // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
     // and check for NULL has already been done when this function is queued.
@@ -576,6 +512,14 @@ static void _Handle_{{apiName}}_{{function.name}}
 
     // Release the message, now that we are finished with it.
     le_msg_ReleaseMsg(_msgRef);
+
+    return;
+
+error_unpack:
+    // Handle any unpack errors by dying -- server should not be sending invalid data; if it is
+    // something is seriously wrong.
+    __attribute__((unused));
+    LE_FATAL("Error unpacking message");
 }
 {%- endfor %}
 
@@ -602,6 +546,7 @@ static void _Handle_{{apiName}}_{{function.name}}
 
     // Will not be used if no data is sent/received from server.
     __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
     {%- if function.returnType %}
 
     {{function.returnType|FormatType}} _result;
@@ -634,6 +579,16 @@ static void _Handle_{{apiName}}_{{function.name}}
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     _msgPtr->id = _MSGID_{{apiName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
+
+    // Pack a list of outputs requested by the client.
+    {%- if function.parameters|select("OutParameter") %}
+    uint32_t _requiredOutputs = 0;
+    {%- for output in function.parameters if output is OutParameter %}
+    _requiredOutputs |= ((!!({{output|FormatParameterName}})) << {{loop.index0}});
+    {%- endfor %}
+    LE_ASSERT(le_pack_PackUint32(&_msgBufPtr, &_msgBufSize, _requiredOutputs));
+    {%- endif %}
 
     // Pack the input parameters
     {%- if function is RemoveHandlerFunction %}
@@ -649,8 +604,8 @@ static void _Handle_{{apiName}}_{{function.name}}
     _UNLOCK
     handlerRef = ({{function.parameters[0].apiType|FormatType}})clientDataPtr->handlerRef;
     le_mem_Release(clientDataPtr);
-    _msgBufPtr = PackData( _msgBufPtr, &{{function.parameters[0]|FormatParameterName}},
-                           {#- #} sizeof({{function.parameters[0].apiType|FormatType}}) );
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize,
+                                     {{function.parameters[0]|FormatParameterName}} ));
     {%- else %}
     {{- pack.PackInputs(function.parameters) }}
     {%- endif %}
@@ -665,10 +620,14 @@ static void _Handle_{{apiName}}_{{function.name}}
     // Process the result and/or output parameters, if there are any.
     _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);
     _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
     {%- if function.returnType %}
 
     // Unpack the result first
-    _msgBufPtr = UnpackData( _msgBufPtr, &_result, sizeof(_result) );
+    if (!{{function.returnType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize, &_result ))
+    {
+        goto error_unpack;
+    }
     {%- endif %}
     {%- if function is AddHandlerFunction %}
 
@@ -689,7 +648,14 @@ static void _Handle_{{apiName}}_{{function.name}}
 
 
     return _result;
+    {%- else %}
+
+    return;
     {%- endif %}
+
+error_unpack:
+    __attribute__((unused));
+    LE_FATAL("Unexpected response from server.");
 }
 {%- endfor %}
 
@@ -703,11 +669,16 @@ static void ClientIndicationRecvHandler
     // Get the message payload
     _Message_t* msgPtr = le_msg_GetPayloadPtr(msgRef);
     uint8_t* _msgBufPtr = msgPtr->buffer;
+    size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Have to partially unpack the received message in order to know which thread
     // the queued function should actually go to.
     void* clientContextPtr;
-    _msgBufPtr = UnpackData( _msgBufPtr, &clientContextPtr, sizeof(void*) );
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &clientContextPtr ))
+    {
+        LE_FATAL("Failed to unpack message from server.");
+        return;
+    }
 
     // The clientContextPtr is a safe reference for the client data object.  If the client data
     // pointer is NULL, this means the handler was removed before the event was reported to the
@@ -739,6 +710,6 @@ static void ClientIndicationRecvHandler
         {%- endfor %}
 
         default:
-            LE_ERROR("Unknowm msg id = %i for client thread = %p", msgPtr->id, callersThreadRef);
+            LE_FATAL("Unknowm msg id = %i for client thread = %p", msgPtr->id, callersThreadRef);
     }
 }

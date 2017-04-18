@@ -111,6 +111,9 @@ add_subdirectory(avcService)
 # IfGen Tool
 add_subdirectory(ifgen/test2)
 
+# IfGen created IPC
+add_subdirectory(ipc)
+
 # AT Services
 add_subdirectory(atServices/atClientTest)
 add_subdirectory(atServices/atServerIntegrationTest)

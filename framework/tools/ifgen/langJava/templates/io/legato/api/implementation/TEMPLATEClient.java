@@ -123,6 +123,17 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         MessageBuffer buffer = message.getBuffer();
 
         buffer.writeInt(MessageID_{{function.name}});
+        {%- if function.parameters|select("OutParameter") %}
+
+        int _requiredOutputs = 0;
+        {%- for output in function.parameters if output is OutParameter %}
+        if (_{{output.name}} != null)
+        {
+            _requiredOutputs |= (1 << {{loop.index0}});
+        }
+        {%- endfor %}
+        buffer.writeInt(_requiredOutputs);
+        {%- endif %}
         {%- if function is AddHandlerFunction %}
         {%- for parameter in function.parameters %}
         {%- if parameter.apiType is HandlerType %}
@@ -154,7 +165,7 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {%- for parameter in function.parameters %}
         {%- if parameter is InParameter %}
         {{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
-        {%- elif parameter is StringParameter %}
+        {%- elif parameter is StringParameter or parameter is ArrayParameter %}
         buffer.writeLongRef({{parameter.maxCount}});
         {%- endif %}
         {%- endfor %}
@@ -174,9 +185,12 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
             {#- #} result = {{pack.UnpackValue(function.returnType, "result", function.name)}};
         {%- endif -%}
         {%- for parameter in function.parameters if parameter is OutParameter %}
-        _{{parameter.name}}.setValue({{pack.UnpackValue(parameter.apiType,
-                                                        parameter.name,
-                                                        function.name)}});
+        if (_{{parameter.name}} != null)
+        {
+            _{{parameter.name}}.setValue({{pack.UnpackValue(parameter.apiType,
+                                                            parameter.name,
+                                                            function.name)}});
+        }
         {%- endfor %}
         {%- if function.returnType %}
 

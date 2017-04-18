@@ -229,6 +229,11 @@ void Testle_pos_GetInfo()
     LE_INFO("Check le_pos_GetDirection direction.%u, directionAccuracy.%u"
             , direction, directionAccuracy);
 
+    // Test NULL pointer (regression test for LE-4708)
+    res=le_pos_GetDirection(&direction, NULL);
+    LE_INFO("le_pos_GetDirection %s"
+            , (res==LE_OK)?"OK":(res==LE_OUT_OF_RANGE)?"parameter(s) out of range":"ERROR");
+    LE_ASSERT((res ==LE_OK)||(res == LE_OUT_OF_RANGE));
 }
 
 //--------------------------------------------------------------------------------------------------

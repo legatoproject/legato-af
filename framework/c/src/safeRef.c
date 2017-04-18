@@ -37,7 +37,7 @@ static const char ModuleName[] = "ref";
 //--------------------------------------------------------------------------------------------------
 typedef struct le_ref_Map
 {
-    ssize_t             nextRefNum;     ///< The next Safe Reference value to be assigned.
+    uint32_t             nextRefNum;     ///< The next Safe Reference value to be assigned.
 
     le_hashmap_Ref_t    referenceMap;    ///< HashMap of Mapping objects.
 

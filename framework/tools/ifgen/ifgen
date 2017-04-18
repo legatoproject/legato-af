@@ -188,9 +188,7 @@ def ImportLangPkg(lang):
 def CalcHash(interface):
     """Calculate the hash, based on the hash text for the currently processd file, as well
        as the imported files."""
-    importInterfaces = GetImports(interface)
-
-    hashText = ''.join([interface.text for interface in importInterfaces]) + interface.text
+    hashText = repr(interface)
 
     h = hashlib.md5()
     h.update( hashText )
@@ -248,11 +246,6 @@ def Main():
         print "\n".join([interface.path for interface in importInterfaces])
         sys.exit(0)
 
-    # Handle the --dump argument here.  No need to generate any code
-    if args.dump:
-        print interface
-        sys.exit(0)
-
     # Calculate the hashValue, as it is always needed
     hashValue, hashText = CalcHash(interface)
 
@@ -263,6 +256,11 @@ def Main():
             print hashText
         else:
             print hashValue
+        sys.exit(0)
+
+    # Handle the --dump argument here.  No need to generate any code
+    if args.dump:
+        print interface
         sys.exit(0)
 
     # Set up the jinja2 environment

@@ -12,74 +12,6 @@
 #include "{{apiName}}_messages.h"
 #include "{{apiName}}_server.h"
 
-//--------------------------------------------------------------------------------------------------
-// Generic Pack/Unpack Functions
-//--------------------------------------------------------------------------------------------------
-
-// todo: These functions could be moved to a separate library, to reduce overall code size and RAM
-//       usage because they are common to each client and server.  However, they would then likely
-//       need to be more generic, and provide better parameter checking and return results.  With
-//       the way they are now, they can be customized to the specific needs of the generated code,
-//       so for now, they will be kept with the generated code.  This may need revisiting later.
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* PackData(void* msgBufPtr, const void* dataPtr, size_t dataSize)
-{
-    // todo: should check for buffer overflow, but not sure what to do if it happens
-    //       i.e. is it a fatal error, or just return a result
-    LE_FATAL_IF(NULL==dataPtr, "Pointer is NULL");
-
-    memcpy( msgBufPtr, dataPtr, dataSize );
-    return ( msgBufPtr + dataSize );
-}
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackData(void* msgBufPtr, void* dataPtr, size_t dataSize)
-{
-    memcpy( dataPtr, msgBufPtr, dataSize );
-    return ( msgBufPtr + dataSize );
-}
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* PackString(void* msgBufPtr, const char* dataStr)
-{
-    // todo: should check for buffer overflow, but not sure what to do if it happens
-    //       i.e. is it a fatal error, or just return a result
-
-    // Get the sizes
-    uint32_t strSize = strlen(dataStr);
-    const uint32_t sizeOfStrSize = sizeof(strSize);
-
-    // Always pack the string size first, and then the string itself
-    memcpy( msgBufPtr, &strSize, sizeOfStrSize );
-    msgBufPtr += sizeOfStrSize;
-    memcpy( msgBufPtr, dataStr, strSize );
-
-    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
-    return ( msgBufPtr + strSize );
-}
-
-// Unused attribute is needed because this function may not always get used
-__attribute__((unused)) static void* UnpackString(void* msgBufPtr, char* dataStr, size_t dataSize)
-{
-    // todo: should check for buffer overflow, but not sure what to do if it happens
-    //       i.e. is it a fatal error, or just return a result
-
-    uint32_t strSize;
-    const uint32_t sizeOfStrSize = sizeof(strSize);
-
-    // Get the string size first, and then the actual string
-    memcpy( &strSize, msgBufPtr, sizeOfStrSize );
-    msgBufPtr += sizeOfStrSize;
-
-    // Copy the string, and make sure it is null-terminated
-    memcpy( dataStr, msgBufPtr, strSize );
-    dataStr[strSize] = 0;
-
-    // Return pointer to next free byte; msgBufPtr was adjusted above for string size value.
-    return ( msgBufPtr + strSize );
-}
-
 
 //--------------------------------------------------------------------------------------------------
 // Generic Server Types, Variables and Functions
@@ -108,7 +40,22 @@ typedef struct
     RemoveHandlerFunc_t   removeHandlerFunc;    ///< Function to remove the registered handler
 }
 _ServerData_t;
+{%- if args.async %}
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Server command object.
+ *
+ * This object is used to store additional information about a command
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {{apiName}}_ServerCmd
+{
+    le_msg_MessageRef_t msgRef;           ///< Reference to the message
+    le_dls_Link_t cmdLink;                ///< Link to server cmd objects
+    uint32_t requiredOutputs;           ///< Outputs which must be sent (if any)
+} {{apiName}}_ServerCmd_t;
+{%- endif %}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -126,7 +73,15 @@ static le_mem_PoolRef_t _ServerDataPool;
  */
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t _HandlerRefMap;
+{%- if args.async %}
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for server command objects
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t _ServerCmdPool;
+{%- endif %}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -233,12 +188,6 @@ static void CleanupClientData
 
             // Delete the associated safeRef
             le_ref_DeleteRef( _HandlerRefMap, (void*)le_ref_GetSafeRef(iterRef) );
-
-            // Since the reference map was modified, the iterator is no longer valid and
-            // so has to be re-initalized.  This means that some values may get revisited,
-            // but eventually this will iterate over the whole reference map.
-            // todo: Is there an easier way?
-            iterRef = le_ref_GetIterator(_HandlerRefMap);
         }
 
         // Get the next value in the reference mpa
@@ -343,6 +292,11 @@ void {{apiName}}_AdvertiseService
 
     // Create the server data pool
     _ServerDataPool = le_mem_CreatePool("{{apiName}}_ServerData", sizeof(_ServerData_t));
+    {%- if args.async %}
+
+    // Create the server command pool
+    _ServerCmdPool = le_mem_CreatePool("{{apiName}}_ServerCmd", sizeof({{apiName}}_ServerCmd_t));
+    {%- endif %}
 
     // Create safe reference map for handler references.
     // The size of the map should be based on the number of handlers defined for the server.
@@ -394,15 +348,17 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
 
     // Will not be used if no data is sent back to client
     __attribute__((unused)) uint8_t* _msgBufPtr;
+    __attribute__((unused)) size_t _msgBufSize;
 
     // Create a new message object and get the message buffer
     _msgRef = le_msg_CreateMsg(serverDataPtr->clientSessionRef);
     _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     _msgPtr->id = _MSGID_{{apiName}}_{{function.name}};
     _msgBufPtr = _msgPtr->buffer;
+    _msgBufSize = _MAX_MSG_SIZE;
 
     // Always pack the client context pointer first
-    _msgBufPtr = PackData( _msgBufPtr, &(serverDataPtr->contextPtr), sizeof(void*) );
+    LE_ASSERT(le_pack_PackReference( &_msgBufPtr, &_msgBufSize, serverDataPtr->contextPtr ))
 
     // Pack the input parameters
     {{ pack.PackInputs(handler.apiType.parameters) }}
@@ -444,9 +400,10 @@ void {{apiName}}_{{function.name}}Respond
     LE_ASSERT(_cmdRef != NULL);
 
     // Get the message related data
-    le_msg_MessageRef_t _msgRef = (le_msg_MessageRef_t)_cmdRef;
+    le_msg_MessageRef_t _msgRef = _cmdRef->msgRef;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     __attribute__((unused)) uint8_t* _msgBufPtr = _msgPtr->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Ensure the passed in msgRef is for the correct message
     LE_ASSERT(_msgPtr->id == _MSGID_{{apiName}}_{{function.name}});
@@ -456,16 +413,35 @@ void {{apiName}}_{{function.name}}Respond
     {%- if function.returnType %}
 
     // Pack the result first
-    _msgBufPtr = PackData( _msgBufPtr, &_result, sizeof(_result) );
+    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, &_msgBufSize,
+                                                    _result ));
     {%- endif %}
 
+    // Null-out any parameters which are not required so pack knows not to pack them.
+    {%- for parameter in function.parameters if parameter is OutParameter %}
+    {% if parameter is ArrayParameter %}
+    size_t* {{parameter.name}}NumElementsPtr = &{{parameter.name}}NumElements;
+    LE_ASSERT({{parameter|FormatParameterName}});
+    {%- elif parameter is not StringParameter %}
+    {{parameter.apiType|FormatType}}* {{parameter|FormatParameterName}} = &{{parameter.name}};
+    {%- else %}
+    LE_ASSERT({{parameter|FormatParameterName}});
+    {%- endif %}
+    if (!(_cmdRef->requiredOutputs & (1 << {{loop.index0}})))
+    {
+        {{parameter|FormatParameterName}} = NULL;
+    }
+    {%- endfor %}
+
     // Pack any "out" parameters
-    {#- Passed by value so treating these as local outputs #}
-    {{- pack.PackOutputs(function.parameters, localOutputs=True) }}
+    {{- pack.PackOutputs(function.parameters) }}
 
     // Return the response
     LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
     le_msg_Respond(_msgRef);
+
+    // Release the command
+    le_mem_Release(_cmdRef);
 }
 
 static void Handle_{{apiName}}_{{function.name}}
@@ -473,21 +449,46 @@ static void Handle_{{apiName}}_{{function.name}}
     le_msg_MessageRef_t _msgRef
 )
 {
+    // Create a server command object
+    {{apiName}}_ServerCmd_t* _serverCmdPtr = le_mem_ForceAlloc(_ServerCmdPool);
+    _serverCmdPtr->cmdLink = LE_DLS_LINK_INIT;
+    _serverCmdPtr->msgRef = _msgRef;
+
     // Get the message buffer pointer
     __attribute__((unused)) uint8_t* _msgBufPtr =
         ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
+
+    // Unpack which outputs are needed.
+    _serverCmdPtr->requiredOutputs = 0;
+    {%- if function.parameters|select("OutParameter") %}
+    if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_serverCmdPtr->requiredOutputs))
+    {
+        goto error_unpack;
+    }
+    {%- endif %}
 
     // Unpack the input parameters from the message
     {{- pack.UnpackInputs(function.parameters) }}
 
     // Call the function
-    {{apiName}}_{{function.name}} ( ({{apiName}}_ServerCmdRef_t)_msgRef
+    {{apiName}}_{{function.name}} ( _serverCmdPtr
         {%- for parameter in function|CAPIParameters if parameter is InParameter %},
         {#- #} {% if parameter.apiType is HandlerType %}AsyncResponse_{{apiName}}_{{function.name}}
+        {%- elif parameter is SizeParameter -%}
+        {{parameter.name}}
         {%- else -%}
         {{parameter|FormatParameterName(forceInput=True)}}
         {%- endif %}
         {%- endfor %} );
+
+    return;
+
+error_unpack:
+    __attribute__((unused));
+    le_mem_Release(_serverCmdPtr);
+
+    LE_KILL_CLIENT("Error unpacking inputs");
 }
 {%- else %}
 static void Handle_{{apiName}}_{{function.name}}
@@ -497,10 +498,21 @@ static void Handle_{{apiName}}_{{function.name}}
 )
 {
     // Get the message buffer pointer
-    uint8_t* _msgBufPtr = ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) uint8_t* _msgBufPtr =
+        ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    __attribute__((unused)) size_t _msgBufSize = _MAX_MSG_SIZE;
 
     // Needed if we are returning a result or output values
     uint8_t* _msgBufStartPtr = _msgBufPtr;
+
+    // Unpack which outputs are needed
+    {%- if function.parameters|select("OutParameter") %}
+    uint32_t _requiredOutputs = 0;
+    if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_requiredOutputs))
+    {
+        goto error_unpack;
+    }
+    {%- endif %}
 
     // Unpack the input parameters from the message
     {%- if function is RemoveHandlerFunction %}
@@ -508,20 +520,24 @@ static void Handle_{{apiName}}_{{function.name}}
      # so do separate handling
      #}
     {{function.parameters[0].apiType|FormatType}} {{function.parameters[0]|FormatParameterName}};
-    _msgBufPtr = UnpackData( _msgBufPtr, &{{function.parameters[0]|FormatParameterName}},
-                             {#- #} sizeof({{function.parameters[0].apiType|FormatType}}) );
+    if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
+                                  &{{function.parameters[0]|FormatParameterName}} ))
+    {
+        goto error_unpack;
+    }
     // The passed in handlerRef is a safe reference for the server data object.  Need to get the
     // real handlerRef from the server data object and then delete both the safe reference and
     // the object since they are no longer needed.
     _LOCK
-    _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap, handlerRef);
+    _ServerData_t* serverDataPtr = le_ref_Lookup(_HandlerRefMap,
+                                                 {{function.parameters[0]|FormatParameterName}});
     if ( serverDataPtr == NULL )
     {
         _UNLOCK
         LE_KILL_CLIENT("Invalid reference");
         return;
     }
-    le_ref_DeleteRef(_HandlerRefMap, handlerRef);
+    le_ref_DeleteRef(_HandlerRefMap, {{function.parameters[0]|FormatParameterName}});
     _UNLOCK
     handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
     le_mem_Release(serverDataPtr);
@@ -541,19 +557,24 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- endfor %}
 
     // Define storage for output parameters
-    {%- for parameter in function.parameters if parameter is not InParameter %}
+    {%- for parameter in function.parameters if parameter is OutParameter %}
     {%- if parameter is StringParameter %}
-    char {{parameter|FormatParameterName}}[{{parameter.name}}NumElements];
-        {#- #} {{parameter|FormatParameterName}}[0]=0;
+    char {{parameter.name}}Buffer[{{parameter.maxCount + 1}}];
+    char *{{parameter|FormatParameterName}} = {{parameter.name}}Buffer;
+    {{parameter|FormatParameterName}}[0] = 0;
     {%- elif parameter is ArrayParameter %}
-    {{parameter.apiType|FormatType}} {{parameter|FormatParameterName}}
-        {#- #}[{{parameter.name}}NumElements];
+    {{parameter.apiType|FormatType}} {{parameter.name}}Buffer
+        {#- #}[{{parameter.maxCount}}];
+    {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = {{parameter.name}}Buffer;
+    size_t *{{parameter.name}}NumElementsPtr = &{{parameter.name}}NumElements;
     {%- else %}
-    {#- for parameters other than arrays or strings using the formatted parameter name is not
-     # not correct as the parameter will be a pointer but real storage is needed here.  Just use
-     # raw name instead #}
-    {{parameter.apiType|FormatType}} {{parameter.name}};
+    {{parameter.apiType|FormatType}} {{parameter.name}}Buffer;
+    {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = &{{parameter.name}}Buffer;
     {%- endif %}
+    if (!(_requiredOutputs & (1u << {{loop.index0}})))
+    {
+        {{parameter|FormatParameterName}} = NULL;
+    }
     {%- endfor %}
 
     // Call the function
@@ -563,12 +584,14 @@ static void Handle_{{apiName}}_{{function.name}}
     {{apiName}}_{{function.name}} ( {% for parameter in function|CAPIParameters -%}
         {%- if parameter.apiType is HandlerType -%}
         AsyncResponse_{{apiName}}_{{function.name}}
-        {%- elif parameter is not OutParameter
-                or parameter is StringParameter
-                or parameter is ArrayParameter -%}
-        {{parameter|FormatParameterName}}
-        {%- else -%}
+        {%- elif parameter is SizeParameter %}
+        {%- if parameter is not OutParameter %}
+        {{parameter.name}}
+        {%- else %}
         &{{parameter.name}}
+        {%- endif %}
+        {%- else %}
+        {{parameter|FormatParameterName}}
         {%- endif %}{% if not loop.last %}, {% endif %}
         {%- endfor %} );
     {%- if function is AddHandlerFunction %}
@@ -588,20 +611,27 @@ static void Handle_{{apiName}}_{{function.name}}
 
     // Re-use the message buffer for the response
     _msgBufPtr = _msgBufStartPtr;
+    _msgBufSize = _MAX_MSG_SIZE;
     {%- if function.returnType %}
 
     // Pack the result first
-    _msgBufPtr = PackData( _msgBufPtr, &_result, sizeof(_result) );
+    LE_ASSERT({{function.returnType|PackFunction}}( &_msgBufPtr, &_msgBufSize, _result ));
     {%- endif %}
 
     // Pack any "out" parameters
-    {{- pack.PackOutputs(function.parameters, localOutputs=True) }}
+    {{- pack.PackOutputs(function.parameters) }}
 
     // Return the response
     LE_DEBUG("Sending response to client session %p : %ti bytes sent",
              le_msg_GetSession(_msgRef),
              _msgBufPtr-_msgBufStartPtr);
     le_msg_Respond(_msgRef);
+
+    return;
+
+error_unpack:
+    __attribute__((unused));
+    LE_KILL_CLIENT("Error unpacking message");
 }
 {%- endif %}
 {%- endfor %}

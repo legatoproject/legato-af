@@ -43,8 +43,11 @@ public class SafeRef<RefType>
 
     /**
      *  We need to keep track of the next ID we will be handing out.
+     *
+     *  Even though we hand out longs, reference is in range of integer, so use an integer
+     *  internally.
      */
-    private long nextRef;
+    private int nextRef;
 
     // ---------------------------------------------------------------------------------------------
     /**

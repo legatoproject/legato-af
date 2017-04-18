@@ -1,0 +1,21 @@
+javaPackage:
+{
+    io.legato.test
+}
+
+provides:
+{
+    api:
+    {
+        ipcTest.api
+    }
+}
+
+requires: {
+    component: {
+        // Java components need to require:
+        // - either *embeddedOracleJvm* component (if JVM is on the host, ready to be bundled)
+        // - or *onTargetOracleJvm* (if JVM is already installed on the device)
+        onTargetOracleJvm
+    }
+}

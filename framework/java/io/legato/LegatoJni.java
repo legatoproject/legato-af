@@ -37,9 +37,6 @@ class LegatoJni
     public static native void ScheduleComponentInit(Component component);
     public static native void RunLoop();
 
-    // Useful helpers.
-    public static native int NativePointerSize();
-
     // Logging functions.
     public static native LogHandler.LogHandle RegComponent(String componentName);
     public static native void ConnectToLogControl();

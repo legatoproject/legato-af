@@ -23,11 +23,6 @@ package io.legato;
 public class MessageBuffer implements AutoCloseable
 {
     /**
-     *  Used to know how many bytes native pointers require for storage.
-     */
-    static final int ptrSize = LegatoJni.NativePointerSize();
-
-    /**
      *  The message object that owns this buffer.
      */
     private Message hostMessage;
@@ -310,8 +305,8 @@ public class MessageBuffer implements AutoCloseable
     //----------------------------------------------------------------------------------------------
     public long readLongRef()
     {
-        long result = LegatoJni.GetMessageLongRef(hostMessage.getRef(), location);
-        location += ptrSize;
+        long result = (long)LegatoJni.GetMessageInt(hostMessage.getRef(), location);
+        location += 4;
 
         return result;
     }
@@ -325,7 +320,15 @@ public class MessageBuffer implements AutoCloseable
     //----------------------------------------------------------------------------------------------
     public void writeLongRef(long longRef)
     {
-        LegatoJni.SetMessageLongRef(hostMessage.getRef(), location, longRef);
-        location += ptrSize;
+        if (longRef > Integer.MAX_VALUE ||
+            longRef < Integer.MIN_VALUE ||
+            (((longRef & 0x01) == 0) &&
+             longRef != 0))
+        {
+            throw new IllegalArgumentException("Illegal reference");
+        }
+
+        LegatoJni.SetMessageInt(hostMessage.getRef(), location, (int)longRef);
+        location += 4;
     }
 }

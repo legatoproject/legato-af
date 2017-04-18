@@ -22,10 +22,12 @@ Filters = { 'FormatHeaderComment': codeGenHelpers.FormatHeaderComment,
             'FormatParameter':     codeGenHelpers.FormatParameter,
             'GetParameterCount':   codeGenHelpers.GetParameterCount,
             'GetParameterCountPtr': codeGenHelpers.GetParameterCountPtr,
+            'PackFunction':        codeGenHelpers.GetPackFunction,
+            'UnpackFunction':      codeGenHelpers.GetUnpackFunction,
             'CAPIParameters':      codeGenHelpers.IterCAPIParameters }
 
-# No custom tests for C templates
-Tests = { }
+
+Tests = { 'SizeParameter':         codeGenHelpers.IsSizeParameter }
 
 Globals = {  }
 

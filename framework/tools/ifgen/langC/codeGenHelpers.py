@@ -147,6 +147,58 @@ def GetParameterCountPtr(param):
         else:
             return "%sNumElementsPtr" % (param.name,)
 
+_PackFunctionMapping = {
+    interfaceIR.UINT8_TYPE:  "le_pack_%sUint8",
+    interfaceIR.UINT16_TYPE: "le_pack_%sUint16",
+    interfaceIR.UINT32_TYPE: "le_pack_%sUint32",
+    interfaceIR.UINT64_TYPE: "le_pack_%sUint64",
+    interfaceIR.INT8_TYPE:   "le_pack_%sInt8",
+    interfaceIR.INT16_TYPE:  "le_pack_%sInt16",
+    interfaceIR.INT32_TYPE:  "le_pack_%sInt32",
+    interfaceIR.INT64_TYPE:  "le_pack_%sInt64",
+    interfaceIR.BOOL_TYPE:   "le_pack_%sBool",
+    interfaceIR.CHAR_TYPE:   "le_pack_%sChar",
+    interfaceIR.DOUBLE_TYPE: "le_pack_%sDouble",
+    interfaceIR.SIZE_TYPE:   "le_pack_%sSize",
+    interfaceIR.STRING_TYPE: "le_pack_%sString",
+    interfaceIR.RESULT_TYPE: "le_pack_%sResult",
+    interfaceIR.ONOFF_TYPE:  "le_pack_%sOnOff",
+}
+
+def GetPackFunction(apiType):
+    if isinstance(apiType, interfaceIR.ReferenceType):
+        return "le_pack_PackReference"
+    elif isinstance(apiType, interfaceIR.BitmaskType) or \
+         isinstance(apiType, interfaceIR.EnumType):
+        if (apiType.size == 4):
+            return "le_pack_PackUint32"
+        elif (apiType.size == 8):
+            return "le_pack_PackUint64"
+        else:
+            raise KeyError(apiType.name)
+    else:
+        return _PackFunctionMapping[apiType] % ("Pack", )
+
+def GetUnpackFunction(apiType):
+    if isinstance(apiType, interfaceIR.ReferenceType):
+        return "le_pack_UnpackReference"
+    elif isinstance(apiType, interfaceIR.BitmaskType) or \
+         isinstance(apiType, interfaceIR.EnumType):
+        if (apiType.size == 4):
+            return "le_pack_UnpackUint32"
+        elif (apiType.size == 8):
+            return "le_pack_UnpackUint64"
+        else:
+            raise KeyError(apiType.name)
+    else:
+        return _PackFunctionMapping[apiType] % ("Unpack", )
+
+#---------------------------------------------------------------------------------------------------
+# Test functions
+#---------------------------------------------------------------------------------------------------
+def IsSizeParameter(parameter):
+    return isinstance(parameter, SizeParameter)
+
 #---------------------------------------------------------------------------------------------------
 # Global functions
 #---------------------------------------------------------------------------------------------------

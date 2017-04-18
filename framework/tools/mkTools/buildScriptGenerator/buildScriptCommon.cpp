@@ -508,7 +508,7 @@ static void GenerateJavaBuildStatement
     GetIncludedApis(script, apiFilePtr);
 
     script << "\n"
-              "  ifgenFlags = --lang Java " << apiFlag << " --name-prefix "
+              "  ifgenFlags = --lang Java --gen-interface " << apiFlag << " --name-prefix "
            << internalName << " $ifgenFlags\n"
               "  outputDir = " << path::Combine(workDir,
                                                 path::Combine(componentPtr->workingDir, "src"))

@@ -88,19 +88,29 @@ public class {{apiName}}Server implements AutoCloseable
 
     private void handle{{function.name}}(MessageBuffer buffer)
     {
-        {%- for parameter in function.parameters %}
-        {%- if parameter is InParameter %}
+        {%- if function.parameters|select("OutParameter") %}
+        int _requiredOutputs = buffer.readInt();
+        {%- endif %}
+
+        // Unpack inputs
+        {%- for parameter in function.parameters if parameter is InParameter %}
         {%- if parameter.apiType is HandlerType %}
         long {{parameter.name}}Context = buffer.readLongRef();
         {%- endif %}
         {{parameter.apiType|FormatType}} _{{parameter.name}} =
             {#- #} {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)|indent(8)}};
-        {%- else %}
-        Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} =
-          {#- #} new Ref<{{parameter.apiType|FormatBoxedType}}>({{parameter.apiType|DefaultValue}});
-        {%- endif %}
         {%- endfor %}
 
+        // Create space for outputs
+        {%- for parameter in function.parameters if parameter is OutParameter %}
+        Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} = null;
+        if ((_requiredOutputs & (1 << {{loop.index0}})) != 0)
+        {
+            _{{parameter.name}} =
+                new Ref<{{parameter.apiType|FormatBoxedType}}>({{parameter.apiType|DefaultValue}});
+        }
+
+        {%- endfor %}
         {% if function.returnType %}{{function.returnType|FormatType}} result = {% endif -%}
         serverImpl.{{function.name}}(
             {%- for parameter in function.parameters -%}
@@ -113,9 +123,10 @@ public class {{apiName}}Server implements AutoCloseable
         {{pack.PackValue(function.returnType, "result")}}
         {%- endif %}
         {%- for parameter in function.parameters if parameter is OutParameter %}
-        {%- if loop.first %}
-{% endif %}
-        {{pack.PackParameter(parameter, "_"+parameter.name+".getValue()")}}
+        if (_{{parameter.name}} != null)
+        {
+            {{pack.PackParameter(parameter, "_"+parameter.name+".getValue()")}}
+        }
         {%- endfor %}
     }
     {%- endfor %}

@@ -27,6 +27,7 @@
  * @subpage c_logging <br>
  * @subpage c_messaging <br>
  * @subpage c_mutex <br>
+ * @subpage c_pack <br>
  * @subpage c_path <br>
  * @subpage c_pathIter <br>
  * @subpage c_print <br>
@@ -203,6 +204,7 @@ extern "C" {
 #include "le_timer.h"
 #include "le_messaging.h"
 #include "le_test.h"
+#include "le_pack.h"
 #include "le_path.h"
 #include "le_pathIter.h"
 #include "le_hex.h"

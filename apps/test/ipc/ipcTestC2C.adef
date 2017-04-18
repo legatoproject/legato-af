@@ -1,0 +1,22 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+executables:
+{
+    server = ( CServer )
+    client = ( CClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( server )
+    }
+}
+
+bindings:
+{
+    client.CClient.ipcTest -> server.CServer.ipcTest
+}
