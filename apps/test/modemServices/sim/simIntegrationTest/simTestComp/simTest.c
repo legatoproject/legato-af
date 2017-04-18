@@ -152,7 +152,7 @@ static void PrintApdu
 
     while (i < rspLen)
     {
-        sprintf(string+strlen(string),"0x%x ", rsp[i] );
+        sprintf(string+strlen(string),"0x%02X ", rsp[i] );
         i++;
     }
 
@@ -518,7 +518,7 @@ void simTest_SimAccess
     uint8_t selectApdu[]={   0x00, 0xA4, 0x00, 0x0C, 0x02, 0x6F, 0x07 };
 
     size_t rspImsiLen = SIM_RSP_LEN;
-    uint8_t rspImsi[rspImsiLen];
+    uint8_t rspImsi[SIM_RSP_LEN];
 
     // Select the EF(IMSI)
     LE_ASSERT( le_sim_SendApdu(simId,
@@ -548,7 +548,7 @@ void simTest_SimAccess
     //======================================================================================
 
     size_t rspImsiLen2 = SIM_RSP_LEN;
-    uint8_t rspImsi2[rspImsiLen2];
+    uint8_t rspImsi2[SIM_RSP_LEN];
     uint8_t swi1, swi2;
     char dfGsmPath[]="3F007FFF";
 
@@ -595,7 +595,7 @@ void simTest_SimAccess
 
     LE_ASSERT(res == LE_OK);
 
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rspImsi2, rspImsiLen2);
 
     // Check both IMSI results
@@ -629,7 +629,7 @@ void simTest_SimAccess
                              NULL,
                              &rspLen);
 
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     LE_ASSERT(res == LE_OK);
 
     rspLen = SIM_RSP_LEN;
@@ -651,7 +651,7 @@ void simTest_SimAccess
 
     LE_ASSERT(res == LE_OK);
 
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rsp, rspLen);
 
     LE_ASSERT(rspLen == sizeof(dataAdn));
@@ -686,7 +686,7 @@ void simTest_SimAccess
 
 
     LE_ASSERT(res == LE_OK);
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rspLi, rspLenLi);
 
 
@@ -709,7 +709,7 @@ void simTest_SimAccess
                              &rspLen);
 
     LE_ASSERT(res == LE_OK);
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     rspLen = SIM_RSP_LEN;
 
     // Read again...
@@ -728,7 +728,7 @@ void simTest_SimAccess
                              &rspLen);
 
     LE_ASSERT(res == LE_OK);
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rsp, rspLen);
     rspLen = 0;
 
@@ -751,7 +751,7 @@ void simTest_SimAccess
                              &rspLen);
 
     LE_ASSERT(res == LE_OK);
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
 
     rspLen = SIM_RSP_LEN;
 
@@ -771,7 +771,7 @@ void simTest_SimAccess
                              &rspLen);
 
     LE_ASSERT(res == LE_OK);
-    LE_INFO("swi1=%d, swi2=%d", swi1, swi2);
+    LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rsp, rspLen);
 
     // Check it is correctly erased

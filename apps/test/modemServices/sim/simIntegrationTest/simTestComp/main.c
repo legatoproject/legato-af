@@ -71,17 +71,19 @@ static void PrintUsage
 )
 {
     int idx;
-    const char * usagePtr[] = {
-            "Usage of the 'simTest' application is:",
-            "SIM allocation test: simTest create <ext/emb> <pin>",
-            "SIM state test: simTest state <ext/emb> <pin>",
-            "SIM authentification test: simTest auth <ext/emb> <pin> <puk>",
-            "No SIM test: simTest nosim <ext/emb>",
-            "SIM select: simTest select",
-            "SIM lock test: simTest lock <emb/ext1/ext2/rem> <pin>",
-            "SIM GetICCID test: simTest iccid <emb/ext1/ext2/rem>",
-            "SIM send apdu test: simTest access <emb/ext1/ext2/rem>",
-            "",
+    const char * usagePtr[] =
+    {
+     "Usage of the 'simTest' application is:",
+     "SIM allocation test: app runProc simTest --exe=bin/simTest -- create <ext/emb> <pin>",
+     "SIM state test: app runProc simTest --exe=bin/simTest -- state <ext/emb> <pin>",
+     "SIM authentification test: app runProc simTest"
+     " --exe=bin/simTest -- auth <ext/emb> <pin> <puk>",
+     "No SIM test: app runProc simTest --exe=bin/simTest -- nosim <ext/emb>",
+     "SIM select: app runProc simTest --exe=bin/simTest -- select",
+     "SIM lock test: app runProc simTest --exe=bin/simTest -- lock <emb/ext1/ext2/rem> <pin>",
+     "SIM GetICCID test: app runProc simTest --exe=bin/simTest -- iccid <emb/ext1/ext2/rem>",
+     "SIM send apdu test: app runProc simTest --exe=bin/simTest -- access <emb/ext1/ext2/rem>",
+     "",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)

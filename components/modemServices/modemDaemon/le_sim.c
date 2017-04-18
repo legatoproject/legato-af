@@ -1779,11 +1779,10 @@ le_result_t le_sim_SendApdu
         return LE_NOT_FOUND;
     }
 
-    // Get the logical channel to send APDu command.
-    if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
+    // Get the logical channel to send APDU command.
+    if (LE_OK != pa_sim_OpenLogicalChannel(&channel))
     {
-        LE_ERROR("Cannot open Logical Channel!");
-        return LE_FAULT;
+        LE_WARN("Can't open logical channel");
     }
 
     res = pa_sim_SendApdu(channel,
@@ -1793,10 +1792,9 @@ le_result_t le_sim_SendApdu
         responseApduNumElementsPtr);
 
     // Close the logical channel.
-    if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
+    if (LE_OK != pa_sim_CloseLogicalChannel(channel))
     {
-        LE_ERROR("Cannot open Logical Channel!");
-        return LE_FAULT;
+        LE_WARN("Can't close logical channel");
     }
 
     return res;
