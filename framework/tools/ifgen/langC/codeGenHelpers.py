@@ -124,28 +124,24 @@ def GetParameterCount(param):
         if isinstance(param, interfaceIR.StringParameter):
             return "strlen(%s)" % (param.name,)
         elif isinstance(param, interfaceIR.ArrayParameter):
-            return "%sNumElements" % (param.name,)
+            return "%sSize" % (param.name,)
     else:
         if isinstance(param, interfaceIR.StringParameter):
-            return "%sNumElements" % (param.name,)
+            return "(%sSize-1)" % (param.name,)
         elif isinstance(param, interfaceIR.ArrayParameter):
-            # TODO: Replace with (*...) once finished checking generated API
-            return "*%sNumElementsPtr" % (param.name,)
+            return "(*%sSizePtr)" % (param.name,)
 
 def GetParameterCountPtr(param):
     """
     Get address of the count of elements in a array or string passed as a parameter.
     """
+    if not isinstance(param, interfaceIR.ArrayParameter):
+        return None
+
     if param.direction == interfaceIR.DIR_IN:
-        if isinstance(param, interfaceIR.StringParameter):
-            return None
-        elif isinstance(param, interfaceIR.ArrayParameter):
-            return "&%sNumElements" % (param.name,)
+        return "&%sSize" % (param.name,)
     else:
-        if isinstance(param, interfaceIR.StringParameter):
-            return "&%sNumElements" % (param.name,)
-        else:
-            return "%sNumElementsPtr" % (param.name,)
+        return "%sSizePtr" % (param.name,)
 
 _PackFunctionMapping = {
     interfaceIR.UINT8_TYPE:  "le_pack_%sUint8",
@@ -209,7 +205,7 @@ class SizeParameter(interfaceIR.Parameter):
     """
     def __init__(self, relatedParameter, direction):
         super(SizeParameter, self).__init__(interfaceIR.SIZE_TYPE,
-                                            relatedParameter.name + 'NumElements',
+                                            relatedParameter.name + 'Size',
                                             direction)
         self.relatedParameter = relatedParameter
 

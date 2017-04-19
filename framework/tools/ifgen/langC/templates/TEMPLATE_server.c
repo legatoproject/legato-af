@@ -429,7 +429,7 @@ void {{apiName}}_{{function.name}}Respond
     // Null-out any parameters which are not required so pack knows not to pack them.
     {%- for parameter in function.parameters if parameter is OutParameter %}
     {% if parameter is ArrayParameter %}
-    size_t* {{parameter.name}}NumElementsPtr = &{{parameter.name}}NumElements;
+    size_t* {{parameter.name}}SizePtr = &{{parameter.name}}Size;
     LE_ASSERT({{parameter|FormatParameterName}});
     {%- elif parameter is not StringParameter %}
     {{parameter.apiType|FormatType}}* {{parameter|FormatParameterName}} = &{{parameter.name}};
@@ -575,7 +575,7 @@ static void Handle_{{apiName}}_{{function.name}}
     {{parameter.apiType|FormatType}} {{parameter.name}}Buffer
         {#- #}[{{parameter.maxCount}}];
     {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = {{parameter.name}}Buffer;
-    size_t *{{parameter.name}}NumElementsPtr = &{{parameter.name}}NumElements;
+    size_t *{{parameter.name}}SizePtr = &{{parameter.name}}Size;
     {%- else %}
     {{parameter.apiType|FormatType}} {{parameter.name}}Buffer;
     {{parameter.apiType|FormatType}} *{{parameter|FormatParameterName}} = &{{parameter.name}}Buffer;
@@ -583,6 +583,9 @@ static void Handle_{{apiName}}_{{function.name}}
     if (!(_requiredOutputs & (1u << {{loop.index0}})))
     {
         {{parameter|FormatParameterName}} = NULL;
+        {%- if parameter is StringParameter %}
+        {{parameter.name}}Size = 0;
+        {%- endif %}
     }
     {%- endfor %}
 

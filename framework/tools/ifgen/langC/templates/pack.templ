@@ -52,18 +52,21 @@
            or parameter is StringParameter
            or parameter is ArrayParameter %}
     {%- if parameter is not InParameter %}
-    size_t {{parameter.name}}NumElements;
+    size_t {{parameter.name}}Size;
     if (!le_pack_UnpackSize( &_msgBufPtr, &_msgBufSize,
-                               &{{parameter.name}}NumElements ))
+                               &{{parameter.name}}Size ))
     {
         goto error_unpack;
     }
-    if ( {{parameter.name}}NumElements > {{parameter.maxCount}} )
+    if ( {{parameter.name}}Size > {{parameter.maxCount}} )
     {
-        LE_DEBUG("Adjusting {{parameter.name}}NumElements from %zu to {{parameter.maxCount}}",
-                 {#- #} {{parameter.name}}NumElements);
-        {{parameter.name}}NumElements = {{parameter.maxCount}};
+        LE_DEBUG("Adjusting {{parameter.name}}Size from %zu to {{parameter.maxCount}}",
+                 {#- #} {{parameter.name}}Size);
+        {{parameter.name}}Size = {{parameter.maxCount}};
     }
+    {%- if parameter is StringParameter %}
+    {{parameter.name}}Size++;
+    {%- endif %}
     {%- elif parameter is StringParameter %}
     char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}];
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
@@ -72,11 +75,11 @@
         goto error_unpack;
     }
     {%- elif parameter is ArrayParameter %}
-    size_t {{parameter.name}}NumElements;
+    size_t {{parameter.name}}Size;
     {{parameter.apiType|FormatType}} {{parameter|FormatParameterName}}[{{parameter.maxCount}}];
     bool {{parameter.name}}Result;
     LE_PACK_UNPACKARRAY( &_msgBufPtr, &_msgBufSize,
-                         {{parameter|FormatParameterName}}, &{{parameter.name}}NumElements,
+                         {{parameter|FormatParameterName}}, &{{parameter.name}}Size,
                          {{parameter.maxCount}},
                          {{parameter.apiType|UnpackFunction}},
                          &{{parameter.name}}Result );

@@ -188,7 +188,10 @@ def ImportLangPkg(lang):
 def CalcHash(interface):
     """Calculate the hash, based on the hash text for the currently processd file, as well
        as the imported files."""
-    hashText = repr(interface)
+
+    # Add a interface version on to hash text to ensure when pack/unpack method changes all
+    # interfaces are considered changed.
+    hashText = "v2," + repr(interface)
 
     h = hashlib.md5()
     h.update( hashText )
