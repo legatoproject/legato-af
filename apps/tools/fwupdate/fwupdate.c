@@ -297,8 +297,9 @@ static le_result_t InstallFirmware
  * Mark good the current firmware
  *
  * @return
- *      - LE_OK if the download was successful
- *      - LE_FAULT if there was an issue during the download process
+ *      - LE_OK            On success
+ *      - LE_UNAVAILABLE   The flash access is not granted for SW update
+ *      - LE_FAULT         On failure
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t MarkGoodFirmware

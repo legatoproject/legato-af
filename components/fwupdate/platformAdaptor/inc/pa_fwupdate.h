@@ -82,6 +82,7 @@ typedef enum pa_fwupdate_UpdateStatus
  *      - LE_BAD_PARAMETER   If an input parameter is not valid
  *      - LE_TIMEOUT         After 900 seconds without data received
  *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_UNAVAILABLE     The flash access is not granted for SW update
  *      - LE_CLOSED          File descriptor has been closed before all data have been received
  *      - LE_FAULT           On failure
  */
@@ -188,6 +189,7 @@ LE_SHARED le_result_t pa_fwupdate_GetBootloaderVersion
  * @return
  *      - LE_OK             on success
  *      - LE_UNSUPPORTED    the feature is not supported
+ *      - LE_UNAVAILABLE    the flash access is not granted for SW update
  *      - LE_FAULT          on failure
  */
 //--------------------------------------------------------------------------------------------------

@@ -25,6 +25,7 @@
  *      - LE_BAD_PARAMETER   If an input parameter is not valid
  *      - LE_TIMEOUT         After 900 seconds without data received
  *      - LE_NOT_POSSIBLE    The systems are not synced
+ *      - LE_UNAVAILABLE     The flash access is not granted for SW update
  *      - LE_CLOSED          File descriptor has been closed before all data have been received
  *      - LE_FAULT           On failure
  *
@@ -300,6 +301,7 @@ le_result_t le_fwupdate_DualSysSwap
  * @return
  *      - LE_OK            On success
  *      - LE_UNSUPPORTED   The feature is not supported
+ *      - LE_UNAVAILABLE   The flash access is not granted for SW update
  *      - LE_FAULT         On failure
  *
  */

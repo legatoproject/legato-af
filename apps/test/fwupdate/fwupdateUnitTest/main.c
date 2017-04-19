@@ -88,6 +88,16 @@ static void Testle_fwupdate_Download
     // Check required values
     LE_ASSERT (result == LE_TIMEOUT);
 
+    // Systems are not synchronized: API needs to return LE_UNAVAILABLE
+    // Set returned error code for PA function: LE_UNAVAILABLE
+    pa_fwupdateSimu_SetReturnCode (LE_UNAVAILABLE);
+    // Set the synchronization state to false
+    pa_fwupdateSimu_SetSyncState (true);
+    // Call the function to be tested
+    result = le_fwupdate_Download (fd);
+    // Check required values
+    LE_ASSERT (result == LE_UNAVAILABLE);
+
     // The file descriptor has been closed during download: API needs to return LE_CLOSED
     // Set returned error code for PA function: LE_CLOSED
     pa_fwupdateSimu_SetReturnCode (LE_CLOSED);
@@ -388,6 +398,16 @@ static void Testle_fwupdate_DualSysSync
     result = le_fwupdate_DualSysSync();
     // Check required values
     LE_ASSERT (result == LE_FAULT);
+    pa_fwupdateSimu_GetSwUpdateState (&state);
+    LE_ASSERT (state == PA_FWUPDATE_STATE_NORMAL);
+
+    // Simulate error: API needs to return LE_UNAVAILABLE
+    // Set returned error code for PA function: LE_UNAVAILABLE
+    pa_fwupdateSimu_SetReturnCode (LE_UNAVAILABLE);
+    // Call the function to be tested
+    result = le_fwupdate_DualSysSync();
+    // Check required values
+    LE_ASSERT (result == LE_UNAVAILABLE);
     pa_fwupdateSimu_GetSwUpdateState (&state);
     LE_ASSERT (state == PA_FWUPDATE_STATE_NORMAL);
 
