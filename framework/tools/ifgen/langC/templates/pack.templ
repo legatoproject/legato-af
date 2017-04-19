@@ -1,4 +1,8 @@
-{#- Packing/unpacking macros -#}
+{#-
+ # Helper macros for generating packing/unpacking code.
+ #
+ # Copyright (C) Sierra Wireless Inc.
+-#}
 {%- macro PackInputs(parameterList) %}
     {%- for parameter in parameterList
         if parameter is InParameter

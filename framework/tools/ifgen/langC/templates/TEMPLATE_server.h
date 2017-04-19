@@ -1,3 +1,8 @@
+{#-
+ #  Jinja2 template for generating server header. for Legato APIs.
+ #
+ #  Copyright (C) Sierra Wireless Inc.
+ #}
 {% extends "TEMPLATE_header.h" %}
 {%- block InterfaceHeader %}
 {%- if args.async %}

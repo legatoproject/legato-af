@@ -1,4 +1,8 @@
-{#- Pack/unpack functions for Java #}
+{#-
+ # Helper macros for generating packing/unpacking code.
+ #
+ # Copyright (C) Sierra Wireless Inc.
+-#}
 {%- set _getterMap = { "byte": "buffer.readByte()",
                       "short": "buffer.readShort()",
                       "int": "buffer.readInt()",

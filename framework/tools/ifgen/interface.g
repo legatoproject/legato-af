@@ -2,6 +2,10 @@
  * API file ANTLR grammar
  *
  * Copyright (C) Sierra Wireless Inc.
+ *
+ *
+ * Note: After modifying this file, run antlr3 interface.g to regenerate interfaceLexer.py and
+ *       interfaceParser.py.  These files are checked-in to avoid adding a dependency on antlr3.
  */
 
 grammar interface;
