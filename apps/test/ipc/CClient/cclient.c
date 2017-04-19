@@ -38,14 +38,17 @@ static void TestEchoSmallEnum(void)
     CU_ASSERT(inValue == outValue);
 }
 
-/* static void TestEchoLargeEnum(void) */
-/* { */
-/*     const ipcTest_LargeEnum_t inValue = IPCTEST_LE_LARGE_VALUE1; */
-/*     ipcTest_LargeEnum_t outValue = IPCTEST_LE_VALUE1; */
+#if 0
+// Not currently supported by Java
+static void TestEchoLargeEnum(void)
+{
+    const ipcTest_LargeEnum_t inValue = IPCTEST_LE_LARGE_VALUE1;
+    ipcTest_LargeEnum_t outValue = IPCTEST_LE_VALUE1;
 
-/*     ipcTest_EchoLargeEnum(inValue, &outValue); */
-/*     CU_ASSERT(inValue == outValue); */
-/* } */
+    ipcTest_EchoLargeEnum(inValue, &outValue);
+    CU_ASSERT(inValue == outValue);
+}
+#endif
 
 static void TestEchoSmallBitMask(void)
 {
@@ -56,14 +59,17 @@ static void TestEchoSmallBitMask(void)
     CU_ASSERT(inValue == outValue);
 }
 
-/* static void TestEchoLargeBitMask(void) */
-/* { */
-/*     const ipcTest_LargeBitMask_t inValue = IPCTEST_LBM_VALUE64 | IPCTEST_LBM_VALUE9; */
-/*     ipcTest_LargeBitMask_t outValue = 0; */
+#if 0
+// Not currently supported by Java
+static void TestEchoLargeBitMask(void)
+{
+    const ipcTest_LargeBitMask_t inValue = IPCTEST_LBM_VALUE64 | IPCTEST_LBM_VALUE9;
+    ipcTest_LargeBitMask_t outValue = 0;
 
-/*     ipcTest_EchoLargeBitMask(inValue, &outValue); */
-/*     CU_ASSERT(inValue == outValue); */
-/* } */
+    ipcTest_EchoLargeBitMask(inValue, &outValue);
+    CU_ASSERT(inValue == outValue);
+}
+#endif
 
 static void TestEchoReference(void)
 {
@@ -121,45 +127,54 @@ static void TestEchoStringNull(void)
     CU_PASS("No crash");
 }
 
-/* static void TestEchoSmallArray(void) */
-/* { */
-/*     int64_t inArray = 42; */
-/*     int64_t outArray[32]; */
-/*     size_t outArraySize = 32; */
+#if 0
+// Not supported by Java
+static void TestEchoSmallArray(void)
+{
+    int64_t inArray = 42;
+    int64_t outArray[32];
+    size_t outArraySize = 32;
 
-/*     ipcTest_EchoArray(&inArray, 1, outArray, &outArraySize); */
-/*     CU_ASSERT(outArraySize == 1); */
-/*     CU_ASSERT(inArray == outArray[0]); */
-/* } */
+    ipcTest_EchoArray(&inArray, 1, outArray, &outArraySize);
+    CU_ASSERT(outArraySize == 1);
+    CU_ASSERT(inArray == outArray[0]);
+}
+#endif
 
-/* static void TestEchoMaxArray(void) */
-/* { */
-/*     int64_t inArray[32]; */
-/*     int64_t outArray[32]; */
-/*     size_t outArraySize = 32; */
-/*     int i; */
+#if 0
+// Not supported by Java
+static void TestEchoMaxArray(void)
+{
+    int64_t inArray[32];
+    int64_t outArray[32];
+    size_t outArraySize = 32;
+    int i;
 
-/*     for (i = 0; i < 32; ++i) */
-/*     { */
-/*         inArray[i] = 0x8000000000000000ull >> i; */
-/*     } */
+    for (i = 0; i < 32; ++i)
+    {
+        inArray[i] = 0x8000000000000000ull >> i;
+    }
 
-/*     ipcTest_EchoArray(inArray, 32, outArray, &outArraySize); */
-/*     CU_ASSERT(outArraySize == 32); */
+    ipcTest_EchoArray(inArray, 32, outArray, &outArraySize);
+    CU_ASSERT(outArraySize == 32);
 
-/*     for (i = 0; i < 32; ++i) */
-/*     { */
-/*         CU_ASSERT(inArray[i] == outArray[i]); */
-/*     } */
-/* } */
+    for (i = 0; i < 32; ++i)
+    {
+        CU_ASSERT(inArray[i] == outArray[i]);
+    }
+}
+#endif
 
-/* static void TestEchoArrayNull(void) */
-/* { */
-/*     int64_t inArray = 42; */
+#if 0
+// Not supported by Java
+static void TestEchoArrayNull(void)
+{
+    int64_t inArray = 42;
 
-/*     ipcTest_EchoArray(&inArray, 1, NULL, 0); */
-/*     CU_PASS("No crash"); */
-/* } */
+    ipcTest_EchoArray(&inArray, 1, NULL, 0);
+    CU_PASS("No crash");
+}
+#endif
 
 static void* run_test(void* context)
 {
@@ -167,7 +182,9 @@ static void* run_test(void* context)
 
     // Initialize the CUnit test registry and register the test suite
     if (CUE_SUCCESS != CU_initialize_registry())
+    {
         exit(CU_get_error());
+    }
 
     CU_TestInfo tests[] =
         {
@@ -213,6 +230,8 @@ static void* run_test(void* context)
     }
 
     le_event_RunLoop();
+
+    return NULL;
 }
 
 COMPONENT_INIT

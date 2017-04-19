@@ -33,17 +33,20 @@ void ipcTest_EchoSmallEnum
     }
 }
 
-/* void ipcTest_EchoLargeEnum */
-/* ( */
-/*     ipcTest_LargeEnum_t InValue, */
-/*     ipcTest_LargeEnum_t* OutValuePtr */
-/* ) */
-/* { */
-/*     if (OutValuePtr) */
-/*     { */
-/*         *OutValuePtr = InValue; */
-/*     } */
-/* } */
+#if 0
+// Not currently supported on Java
+void ipcTest_EchoLargeEnum
+(
+    ipcTest_LargeEnum_t InValue,
+    ipcTest_LargeEnum_t* OutValuePtr
+)
+{
+    if (OutValuePtr)
+    {
+        *OutValuePtr = InValue;
+    }
+}
+#endif
 
 void ipcTest_EchoSmallBitMask
 (
@@ -57,17 +60,20 @@ void ipcTest_EchoSmallBitMask
     }
 }
 
-/* void ipcTest_EchoLargeBitMask */
-/* ( */
-/*     ipcTest_LargeBitMask_t InValue, */
-/*     ipcTest_LargeBitMask_t* OutValuePtr */
-/* ) */
-/* { */
-/*     if (OutValuePtr) */
-/*     { */
-/*         *OutValuePtr = InValue; */
-/*     } */
-/* } */
+#if 0
+// Not currently supported on Java
+void ipcTest_EchoLargeBitMask
+(
+    ipcTest_LargeBitMask_t InValue,
+    ipcTest_LargeBitMask_t* OutValuePtr
+)
+{
+    if (OutValuePtr)
+    {
+        *OutValuePtr = InValue;
+    }
+}
+#endif
 
 void ipcTest_EchoReference
 (
@@ -95,27 +101,30 @@ void ipcTest_EchoString
     }
 }
 
-/* void ipcTest_EchoArray */
-/* ( */
-/*     const int64_t* InArrayPtr, */
-/*     size_t InArraySize, */
-/*     int64_t* OutArrayPtr, */
-/*     size_t* OutArraySizePtr */
-/* ) */
-/* { */
-/*     if (OutArrayPtr) */
-/*     { */
-/*         if (InArraySize <= *OutArraySizePtr) */
-/*         { */
-/*             memcpy(OutArrayPtr, InArrayPtr, InArraySize*sizeof(int64_t)); */
-/*             *OutArraySizePtr = InArraySize; */
-/*         } */
-/*         else */
-/*         { */
-/*             memcpy(OutArrayPtr, InArrayPtr, (*OutArraySizePtr)*sizeof(int64_t)); */
-/*         } */
-/*     } */
-/* } */
+#if 0
+// Not currently supported on Java.
+void ipcTest_EchoArray
+(
+    const int64_t* InArrayPtr,
+    size_t InArraySize,
+    int64_t* OutArrayPtr,
+    size_t* OutArraySizePtr
+)
+{
+    if (OutArrayPtr)
+    {
+        if (InArraySize <= *OutArraySizePtr)
+        {
+            memcpy(OutArrayPtr, InArrayPtr, InArraySize*sizeof(int64_t));
+            *OutArraySizePtr = InArraySize;
+        }
+        else
+        {
+            memcpy(OutArrayPtr, InArrayPtr, (*OutArraySizePtr)*sizeof(int64_t));
+        }
+    }
+}
+#endif
 
 COMPONENT_INIT
 {
