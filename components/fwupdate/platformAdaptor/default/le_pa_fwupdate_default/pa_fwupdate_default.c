@@ -143,7 +143,7 @@ le_result_t pa_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Program a swap between active and update systems
+ * Installs the firmware package.
  *
  * @return
  *      - LE_OK             on success
@@ -151,9 +151,9 @@ le_result_t pa_fwupdate_GetBootloaderVersion
  *      - LE_FAULT          on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_DualSysSwap
+le_result_t pa_fwupdate_Install
 (
-    bool isSyncReq      ///< [IN] Indicate if a synchronization is requested after the swap
+    bool isMarkGoodReq      ///< [IN] Indicate if a mark good operation is requested after install
 )
 {
     LE_ERROR("Unsupported function called");
@@ -162,7 +162,7 @@ le_result_t pa_fwupdate_DualSysSwap
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Program a synchronization between active and update systems
+ * Mark the system as good.
  *
  * @return
  *      - LE_OK             on success
@@ -171,7 +171,7 @@ le_result_t pa_fwupdate_DualSysSwap
  *      - LE_FAULT          on failure
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_DualSysSync
+le_result_t pa_fwupdate_MarkGood
 (
     void
 )
@@ -182,7 +182,7 @@ le_result_t pa_fwupdate_DualSysSync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function which indicates if Active and Update systems are synchronized
+ * Retrieves the state of the system.
  *
  * @return
  *      - LE_OK            on success
@@ -190,9 +190,9 @@ le_result_t pa_fwupdate_DualSysSync
  *      - LE_FAULT         else
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_fwupdate_DualSysGetSyncState
+le_result_t pa_fwupdate_GetSystemState
 (
-    bool *isSyncPtr ///< [OUT] Indicates if both systems are synchronized
+    bool *isSystemGoodPtr ///< [OUT] Indicates if the system is marked good
 )
 {
     LE_ERROR("Unsupported function called");
@@ -245,7 +245,7 @@ le_result_t pa_fwupdate_DualSysCheckSync
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fwupdate_DualSysSwapAndSync
+le_result_t le_fwupdate_InstallAndMarkGood
 (
     void
 )

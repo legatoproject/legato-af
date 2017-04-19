@@ -289,7 +289,7 @@ static le_result_t InstallFirmware
     }
 
     printf("Install the firmware, the system will reboot ...\n");
-    return le_fwupdate_DualSysSwap();
+    return le_fwupdate_Install();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -307,18 +307,18 @@ static le_result_t MarkGoodFirmware
     void
 )
 {
-    bool isSync;
+    bool isSystemGood;
     le_result_t result;
 
     TryConnect(le_fwupdate_ConnectService, "fwupdateService");
 
-    result = le_fwupdate_DualSysSyncState(&isSync);
-    if ((result == LE_OK) && isSync)
+    result = le_fwupdate_IsSystemMarkedGood(&isSystemGood);
+    if ((result == LE_OK) && isSystemGood)
     {
         return LE_OK;
     }
 
-    return le_fwupdate_DualSysSync();
+    return le_fwupdate_MarkGood();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -345,7 +345,7 @@ static le_result_t FullInstallFirmware
         return result;
     }
 
-    return le_fwupdate_DualSysSwapAndSync();
+    return le_fwupdate_InstallAndMarkGood();
 }
 
 //--------------------------------------------------------------------------------------------------

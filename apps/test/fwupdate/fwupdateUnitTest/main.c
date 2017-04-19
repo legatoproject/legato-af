@@ -238,26 +238,26 @@ static void Testle_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This test gets the le_fwupdate_DualSysSyncState API
+ * This test gets the le_fwupdate_IsSystemMarkedGood API
  *
  * API Tested:
- *  le_fwupdate_DualSysSyncState().
+ *  le_fwupdate_IsSystemMarkedGood().
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_fwupdate_DualSysSyncState
+static void Testle_fwupdate_IsSystemMarkedGood
 (
     void
 )
 {
     le_result_t result;
-    bool isSync = false;
+    bool isSystemGood = false;
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSyncState ========");
+    LE_INFO ("======== Test: le_fwupdate_IsSystemMarkedGood ========");
     // Simulate unsupported API: API needs to return LE_UNSUPPORTED
     // Set returned error code for PA function: LE_UNSUPPORTED
     pa_fwupdateSimu_SetReturnCode (LE_UNSUPPORTED);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSyncState (&isSync);
+    result = le_fwupdate_IsSystemMarkedGood (&isSystemGood);
     // Check required values
     LE_ASSERT (result == LE_UNSUPPORTED);
 
@@ -267,10 +267,10 @@ static void Testle_fwupdate_DualSysSyncState
     // Set the synchronization state to false
     pa_fwupdateSimu_SetSyncState (false);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSyncState (&isSync);
+    result = le_fwupdate_IsSystemMarkedGood (&isSystemGood);
     // Check required values
     LE_ASSERT (result == LE_OK);
-    LE_ASSERT (isSync == false);
+    LE_ASSERT (isSystemGood == false);
 
     // Simulate synchronized systems: API needs to return LE_OK
     // Set returned error code for PA function: LE_OK
@@ -278,23 +278,23 @@ static void Testle_fwupdate_DualSysSyncState
     // Set the synchronization state to true
     pa_fwupdateSimu_SetSyncState (true);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSyncState (&isSync);
+    result = le_fwupdate_IsSystemMarkedGood (&isSystemGood);
     // Check required values
     LE_ASSERT (result == LE_OK);
-    LE_ASSERT (isSync == true);
+    LE_ASSERT (isSystemGood == true);
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSyncState PASSED ========");
+    LE_INFO ("======== Test: le_fwupdate_IsSystemMarkedGood PASSED ========");
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This test gets the le_fwupdate_DualSysSwap API
+ * This test gets the le_fwupdate_Install API
  *
  * API Tested:
- *  le_fwupdate_DualSysSwap().
+ *  le_fwupdate_Install().
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_fwupdate_DualSysSwap
+static void Testle_fwupdate_Install
 (
     void
 )
@@ -303,13 +303,13 @@ static void Testle_fwupdate_DualSysSwap
     bool isResetRequested = false;
     bool isNvupApplyRequested = false;
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSwap ========");
+    LE_INFO ("======== Test: le_fwupdate_Install ========");
 
     // Simulate unsupported API: API needs to return LE_UNSUPPORTED
     // Set returned error code for PA function: LE_UNSUPPORTED
     pa_fwupdateSimu_SetReturnCode (LE_UNSUPPORTED);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwap ();
+    result = le_fwupdate_Install ();
     // Check required values
     pa_fwupdateSimu_GetResetState(&isResetRequested);
     pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
@@ -321,7 +321,7 @@ static void Testle_fwupdate_DualSysSwap
     // Set returned error code for PA function: LE_FAULT
     pa_fwupdateSimu_SetReturnCode (LE_FAULT);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwap ();
+    result = le_fwupdate_Install ();
     // Check required values
     pa_fwupdateSimu_GetResetState(&isResetRequested);
     pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
@@ -333,7 +333,7 @@ static void Testle_fwupdate_DualSysSwap
     // Set returned error code for PA function: LE_BUSY
     pa_fwupdateSimu_SetReturnCode (LE_BUSY);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwap ();
+    result = le_fwupdate_Install ();
     // Check required values
     pa_fwupdateSimu_GetResetState(&isResetRequested);
     pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
@@ -349,7 +349,7 @@ static void Testle_fwupdate_DualSysSwap
     // Set returned error code for PA function: LE_OK
     pa_fwupdateSimu_SetReturnCode (LE_OK);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwap ();
+    result = le_fwupdate_Install ();
     // Check required values
     pa_fwupdateSimu_GetResetState(&isResetRequested);
     pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
@@ -361,33 +361,33 @@ static void Testle_fwupdate_DualSysSwap
     // Reset the nvup apply flag
     pa_fwupdateSimu_SetNvupApplyState();
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSwap PASSED ========");
+    LE_INFO ("======== Test: le_fwupdate_Install PASSED ========");
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This test gets the le_fwupdate_DualSysSync API
+ * This test gets the le_fwupdate_MarkGood API
  *
  * API Tested:
  *  le_fwupdate_Sync().
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_fwupdate_DualSysSync
+static void Testle_fwupdate_MarkGood
 (
     void
 )
 {
     le_result_t result;
-    bool isSync = false;
+    bool isSystemGood = false;
     pa_fwupdate_state_t state = PA_FWUPDATE_STATE_INVALID;
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSync ========");
+    LE_INFO ("======== Test: le_fwupdate_MarkGood ========");
 
     // Simulate unsupported API: API needs to return LE_UNSUPPORTED
     // Set returned error code for PA function: LE_UNSUPPORTED
     pa_fwupdateSimu_SetReturnCode (LE_UNSUPPORTED);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSync();
+    result = le_fwupdate_MarkGood();
     // Check required values
     LE_ASSERT (result == LE_UNSUPPORTED);
 
@@ -395,7 +395,7 @@ static void Testle_fwupdate_DualSysSync
     // Set returned error code for PA function: LE_FAULT
     pa_fwupdateSimu_SetReturnCode (LE_FAULT);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSync();
+    result = le_fwupdate_MarkGood();
     // Check required values
     LE_ASSERT (result == LE_FAULT);
     pa_fwupdateSimu_GetSwUpdateState (&state);
@@ -405,7 +405,7 @@ static void Testle_fwupdate_DualSysSync
     // Set returned error code for PA function: LE_UNAVAILABLE
     pa_fwupdateSimu_SetReturnCode (LE_UNAVAILABLE);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSync();
+    result = le_fwupdate_MarkGood();
     // Check required values
     LE_ASSERT (result == LE_UNAVAILABLE);
     pa_fwupdateSimu_GetSwUpdateState (&state);
@@ -417,12 +417,12 @@ static void Testle_fwupdate_DualSysSync
     // Set the synchronization state to false
     pa_fwupdateSimu_SetSyncState (false);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSync();
+    result = le_fwupdate_MarkGood();
     // Check required values
     LE_ASSERT (result == LE_OK);
-    result = pa_fwupdate_DualSysGetSyncState (&isSync);
+    result = pa_fwupdate_GetSystemState (&isSystemGood);
     LE_ASSERT (result == LE_OK);
-    LE_ASSERT (isSync == true);
+    LE_ASSERT (isSystemGood == true);
     pa_fwupdateSimu_GetSwUpdateState (&state);
     LE_ASSERT (state == PA_FWUPDATE_STATE_SYNC);
     // reset values
@@ -434,13 +434,13 @@ static void Testle_fwupdate_DualSysSync
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This test gets the le_fwupdate_DualSysSwapAndSync API
+ * This test gets the le_fwupdate_InstallAndMarkGood API
  *
  * API Tested:
- *  le_fwupdate_DualSysSwapAndSync().
+ *  le_fwupdate_InstallAndMarkGood().
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_fwupdate_DualSysSwapAndSync
+static void Testle_fwupdate_InstallAndMarkGood
 (
     void
 )
@@ -448,16 +448,16 @@ static void Testle_fwupdate_DualSysSwapAndSync
     le_result_t result;
     bool isResetRequested = false;
     bool isNvupApplyRequested = false;
-    bool isSync = false;
+    bool isSystemGood = false;
     pa_fwupdate_state_t state = PA_FWUPDATE_STATE_INVALID;
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSwapAndSync ========");
+    LE_INFO ("======== Test: le_fwupdate_InstallAndMarkGood ========");
 
     // Simulate unsupported API: API needs to return LE_UNSUPPORTED
     // Set returned error code for PA function: LE_UNSUPPORTED
     pa_fwupdateSimu_SetReturnCode (LE_UNSUPPORTED);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwapAndSync();
+    result = le_fwupdate_InstallAndMarkGood();
     // Check required values
     LE_ASSERT (result == LE_UNSUPPORTED);
 
@@ -465,16 +465,16 @@ static void Testle_fwupdate_DualSysSwapAndSync
     // Set returned error code for PA function: LE_FAULT
     pa_fwupdateSimu_SetReturnCode (LE_FAULT);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwapAndSync ();
+    result = le_fwupdate_InstallAndMarkGood ();
     // Check required values
     pa_fwupdateSimu_GetResetState(&isResetRequested);
     pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_FAULT);
     LE_ASSERT (isResetRequested == false);
     LE_ASSERT (isNvupApplyRequested == false);
-    result = pa_fwupdate_DualSysGetSyncState (&isSync);
+    result = pa_fwupdate_GetSystemState (&isSystemGood);
     LE_ASSERT (result == LE_FAULT);
-    LE_ASSERT (isSync == false);
+    LE_ASSERT (isSystemGood == false);
     pa_fwupdateSimu_GetSwUpdateState (&state);
     LE_ASSERT (state == PA_FWUPDATE_STATE_NORMAL);
 
@@ -482,16 +482,16 @@ static void Testle_fwupdate_DualSysSwapAndSync
     // Set returned error code for PA function: LE_OK
     pa_fwupdateSimu_SetReturnCode (LE_OK);
     // Call the function to be tested
-    result = le_fwupdate_DualSysSwapAndSync ();
+    result = le_fwupdate_InstallAndMarkGood ();
     // Check required values
     pa_fwupdateSimu_GetResetState(&isResetRequested);
     pa_fwupdateSimu_GetNvupApplyState(&isNvupApplyRequested);
     LE_ASSERT (result == LE_OK);
     LE_ASSERT (isResetRequested == true);
     LE_ASSERT (isNvupApplyRequested == true);
-    result = pa_fwupdate_DualSysGetSyncState (&isSync);
+    result = pa_fwupdate_GetSystemState (&isSystemGood);
     LE_ASSERT (result == LE_OK);
-    LE_ASSERT (isSync == true);
+    LE_ASSERT (isSystemGood == true);
     pa_fwupdateSimu_GetSwUpdateState (&state);
     LE_ASSERT (state == PA_FWUPDATE_STATE_SYNC);
     // Reset the reset flag
@@ -499,7 +499,7 @@ static void Testle_fwupdate_DualSysSwapAndSync
     // Reset the nvup apply flag
     pa_fwupdateSimu_SetNvupApplyState();
 
-    LE_INFO ("======== Test: le_fwupdate_DualSysSwapAndSync PASSED ========");
+    LE_INFO ("======== Test: le_fwupdate_InstallAndMarkGood PASSED ========");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -623,20 +623,20 @@ COMPONENT_INIT
     LE_INFO ("======== Start UnitTest for public functions ========");
     /* Public APIs to be tested:
      * le_fwupdate_Download
-     * le_fwupdate_DualSysSyncState
-     * le_fwupdate_DualSysSwap
-     * le_fwupdate_DualSysSync
-     * le_fwupdate_DualSysSwapAndSync
+     * le_fwupdate_IsSystemMarkedGood
+     * le_fwupdate_Install
+     * le_fwupdate_MarkGood
+     * le_fwupdate_InstallAndMarkGood
      *
      * Not linked to dual system:
      * le_fwupdate_GetFirmwareVersion
      * le_fwupdate_GetBootloaderVersion
      */
     Testle_fwupdate_Download();
-    Testle_fwupdate_DualSysSyncState();
-    Testle_fwupdate_DualSysSwap();
-    Testle_fwupdate_DualSysSync();
-    Testle_fwupdate_DualSysSwapAndSync();
+    Testle_fwupdate_IsSystemMarkedGood();
+    Testle_fwupdate_Install();
+    Testle_fwupdate_MarkGood();
+    Testle_fwupdate_InstallAndMarkGood();
     Testle_fwupdate_GetFirmwareVersion();
     Testle_fwupdate_GetBootloaderVersion();
     Testle_fwupdate_InitDownload();

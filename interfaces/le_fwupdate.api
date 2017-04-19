@@ -226,55 +226,48 @@ FUNCTION le_result_t GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function which indicates if Active and Update systems are synchronized
+ * Get the status of the system.
  *
- * @note This API is only available on platforms which support dual system.
- *
- * @deprecated This API will be removed and should not be used for further development.
+ * Dual System: Indicates if Active and Update systems are synchronized
+ * Single System: This api is not supported on single system.
  *
  * @return
  *      - LE_OK            On success
  *      - LE_UNSUPPORTED   The feature is not supported
- *      - LE_FAULT         On failure
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t DualSysSyncState
+FUNCTION le_result_t IsSystemMarkedGood
 (
-    bool isSync OUT ///< true if both systems are synchronized, false otherwise
+    bool isSystemGood OUT ///< true if the system is marked good, false otherwise
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a full system reset with a systems swap.
+ * Request to install the package. Calling this API will result in a system reset.
  *
- * After the reset, the UPDATE and ACTIVE systems will be swapped.
+ * Dual System: After reset, the UPDATE and ACTIVE systems will be swapped.
+ * Single System: After reset, the image in the FOTA partition will be installed on the device.
  *
- * @note When this API is correctly treated, a device reboot is initiated without returning any
- * value.
+ * @note On success, a device reboot is initiated without returning any value.
  *
- * @note This API is only available on platforms which support dual system.
- *
- * @deprecated This API will be removed and should not be used for further development.
  *
  * @return
- *      - LE_BUSY          Download is ongoing, swap is not allowed
+ *      - LE_BUSY          Download is ongoing, install is not allowed
  *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_FAULT         On failure
  *
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t DualSysSwap
+FUNCTION le_result_t Install
 (
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a systems SYNC.
+ * Mark the current system as good.
  *
- * The UPDATE system will be synchronised with the ACTIVE one.
- * @note This API is only available on platforms which support dual system.
- *
- * @deprecated This API will be removed and should not be used for further development.
+ * Dual System: Requests a system Sync. The UPDATE system will be synchronised with the ACTIVE one.
+ * Single System: This api is not supported on single system.
  *
  * @return
  *      - LE_OK            On success
@@ -284,28 +277,28 @@ FUNCTION le_result_t DualSysSwap
  *
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t DualSysSync
+FUNCTION le_result_t MarkGood
 (
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a full system reset with a systems SWAP and systems SYNC.
+ * Request to install the package and marks the system as good. Calling this API will result in a
+ * system reset.
  *
- * After the reset, the UPDATE and ACTIVE systems will be swapped and synchronized.
- * @note When this API is correctly treated, a device reboot is initiated without returning any
- * value.
- * @note This API is only available on platforms which support dual system.
+ * Dual System: Request a full system reset with a systems SWAP and systems SYNC. After the reset,
+ * the UPDATE and ACTIVE systems will be swapped and synchronized.
+ * Single System: Installs the package from the FOTA partition.
  *
- * @deprecated This API will be removed and should not be used for further development.
+ *
+ * @note On success, a device reboot is initiated without returning any value.
  *
  * @return
- *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_FAULT         On failure
  *
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t DualSysSwapAndSync
+FUNCTION le_result_t InstallAndMarkGood
 (
 );
 

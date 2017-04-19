@@ -67,7 +67,7 @@ static le_result_t CheckSystemState
 )
 {
     le_result_t result;
-    bool isSync;
+    bool isSystemGood;
 
     result = le_fwupdate_GetResumePosition(resumePositionPtr);
     if ((result == LE_OK) && (*resumePositionPtr != 0))
@@ -83,18 +83,18 @@ static le_result_t CheckSystemState
             *resumePositionPtr = 0;
         }
 
-        result = le_fwupdate_DualSysSyncState(&isSync);
+        result = le_fwupdate_IsSystemMarkedGood(&isSystemGood);
         if (result != LE_OK)
         {
-            LE_ERROR("Sync State check failed. Error %s", LE_RESULT_TXT(result));
+            LE_ERROR("System state check failed. Error %s", LE_RESULT_TXT(result));
             return LE_FAULT;
         }
-        if (false == isSync)
+        if (false == isSystemGood)
         {
-            result = le_fwupdate_DualSysSync();
+            result = le_fwupdate_MarkGood();
             if (result != LE_OK)
             {
-                LE_ERROR("SYNC operation failed. Error %s", LE_RESULT_TXT(result));
+                LE_ERROR("Mark good operation failed. Error %s", LE_RESULT_TXT(result));
                 return LE_FAULT;
             }
         }
@@ -182,10 +182,10 @@ static void SocketEventHandler
                 LE_INFO("Download result=%s", LE_RESULT_TXT(result));
                 if (result == LE_OK)
                 {
-                    le_fwupdate_DualSysSwapAndSync();
+                    le_fwupdate_InstallAndMarkGood();
                     // if this function returns so there is an error => do a SYNC
                     LE_ERROR("Swap And Sync failed -> Sync");
-                    result = le_fwupdate_DualSysSync();
+                    result = le_fwupdate_MarkGood();
                     if (result != LE_OK)
                     {
                         LE_ERROR("SYNC failed");

@@ -236,67 +236,64 @@ le_result_t le_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function which indicates if Active and Update systems are synchronized
+ * Get the status of the system.
  *
- * @deprecated This API will be removed and should not be used for further development.
+ * Dual System: Indicates if Active and Update systems are synchronized
+ * Single System: This api is not supported on single system.
  *
  * @return
  *      - LE_OK            On success
  *      - LE_UNSUPPORTED   The feature is not supported
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fwupdate_DualSysSyncState
+le_result_t le_fwupdate_IsSystemMarkedGood
 (
-    bool *isSync ///< [OUT] true if both systems are synchronized, false otherwise
+    bool *isSystemGood ///< [OUT] true if the system is marked good, false otherwise
 )
 {
-    /* Get the dual system synchronization state from PA */
-    le_result_t result = pa_fwupdate_DualSysGetSyncState( isSync );
+    /* Get the system synchronization state from PA */
+    le_result_t result = pa_fwupdate_GetSystemState( isSystemGood );
 
-    LE_DEBUG ("result %d, isSync %d", result, *isSync);
+    LE_DEBUG ("result %d, isSystemGood %d", result, *isSystemGood);
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a full system reset with a systems swap.
+ * Request to install the package. Calling this API will result in a system reset.
  *
- * After the reset, the UPDATE and ACTIVE systems will be swapped.
+ * Dual System: After reset, the UPDATE and ACTIVE systems will be swapped.
+ * Single System: After reset, the image in the FOTA partition will be installed on the device.
  *
- * @note On success, a device reboot is initiated without returning any value.
+ * @note On success, a device reboot will be initiated.
  *
- * @note This API is only functional on platforms which support dual system.
- *
- * @deprecated This API will be removed and should not be used for further development.
  *
  * @return
- *      - LE_BUSY          Download is ongoing, swap is not allowed
+ *      - LE_BUSY          Download is ongoing, install is not allowed
  *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_FAULT         On failure
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fwupdate_DualSysSwap
+le_result_t le_fwupdate_Install
 (
     void
 )
 {
     le_result_t result;
-    /* request the swap */
-    result = pa_fwupdate_DualSysSwap(false);
-    /* the previous function returns only if there has been an error */
-    LE_ERROR(" !!! Error %s", LE_RESULT_TXT(result));
+
+    /* request system install */
+    result = pa_fwupdate_Install(false);
+
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a systems SYNC.
+ * Mark the current system as good.
  *
- * The UPDATE system will be synchronised with the ACTIVE one.
- * @note This API is only functional on platforms which support dual system.
- *
- * @deprecated This API will be removed and should not be used for further development.
+ * Dual System: Requests a system Sync. The UPDATE system will be synchronised with the ACTIVE one.
+ * Single System: This api is not supported on single system.
  *
  * @return
  *      - LE_OK            On success
@@ -306,39 +303,41 @@ le_result_t le_fwupdate_DualSysSwap
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fwupdate_DualSysSync
+le_result_t le_fwupdate_MarkGood
 (
     void
 )
 {
-    le_result_t result = pa_fwupdate_DualSysSync();
+    le_result_t result = pa_fwupdate_MarkGood();
     LE_DEBUG ("result %d", result);
     return result;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a full system reset with a systems SWAP and systems SYNC.
+ * Request to install the package and marks the system as good. Calling this API will result in a
+ * system reset.
  *
- * After the reset, the UPDATE and ACTIVE systems will be swapped and synchronized.
+ * Dual System: Request a full system reset with a systems SWAP and systems SYNC. After the reset,
+ * the UPDATE and ACTIVE systems will be swapped and synchronized.
+ * Single System: Installs the package from the FOTA partition.
+ *
  *
  * @note On success, a device reboot is initiated without returning any value.
- *
- * @deprecated This API will be removed and should not be used for further development.
  *
  * @return
  *      - LE_FAULT         On failure
  *
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_fwupdate_DualSysSwapAndSync
+le_result_t le_fwupdate_InstallAndMarkGood
 (
     void
 )
 {
     le_result_t result;
     /* request the swap and sync */
-    result = pa_fwupdate_DualSysSwap(true);
+    result = pa_fwupdate_Install(true);
     /* the previous function returns only if there has been an error */
     LE_ERROR(" !!! Error %s", LE_RESULT_TXT(result));
     return result;

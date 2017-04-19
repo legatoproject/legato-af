@@ -54,11 +54,11 @@ static void PrintUsage
     int idx;
     const char * usagePtr[] = {
             "Usage of the 'fwupdateTest' application is:",
-            "fwupdateTest -- sync_state: get the sub system synchronization state",
+            "fwupdateTest -- is_good: get the sub system synchronization state",
             "fwupdateTest -- file <path>: read a CWE file from path",
-            "fwupdateTest -- do_swap: make a swap and reboot the device",
-            "fwupdateTest -- do_sync: synchronize the sub systems",
-            "fwupdateTest -- do_swapsync: make a Swap & Sync operation",
+            "fwupdateTest -- do_install: make a swap and reboot the device",
+            "fwupdateTest -- do_markgood: synchronize the sub systems",
+            "fwupdateTest -- do_install_markgood: make a Swap & Sync operation",
             "fwupdateTest -- do_initdwnld: make an init download operation",
             "",
     };
@@ -101,24 +101,24 @@ COMPONENT_INIT
         PrintUsage();
         exit(0);
     }
-    else if (0 == strcmp(testString, "sync_state"))
+    else if (0 == strcmp(testString, "is_good"))
     {
-        bool isSync;
-        result = le_fwupdate_DualSysSyncState (&isSync);
-        snprintf (string, sizeof(string), "fwupdateTest: sync_state -> result %d isSync %d", result,
-                  isSync);
+        bool isSystemGood;
+        result = le_fwupdate_IsSystemMarkedGood (&isSystemGood);
+        snprintf (string, sizeof(string), "fwupdateTest: sync_state -> result %d isSystemGood %d",
+                  result, isSystemGood);
         Print (string);
         exit(0);
     }
-    else if (0 == strcmp(testString, "do_sync"))
+    else if (0 == strcmp(testString, "do_markgood"))
     {
-        bool isSync;
-        result = le_fwupdate_DualSysSync ();
-        snprintf (string, sizeof(string),  "fwupdateTest: Sync -> result %d", result);
+        bool isSystemGood;
+        result = le_fwupdate_MarkGood ();
+        snprintf (string, sizeof(string),  "fwupdateTest: MarkGood -> result %d", result);
         Print (string);
-        result = le_fwupdate_DualSysSyncState (&isSync);
-        snprintf (string, sizeof(string), "fwupdateTest: sync_state -> result %d isSync %d", result,
-                  isSync);
+        result = le_fwupdate_IsSystemMarkedGood (&isSystemGood);
+        snprintf (string, sizeof(string), "fwupdateTest: system_state -> result %d isSystemGood %d",
+                  result, isSystemGood);
         Print (string);
         exit(0);
     }
@@ -140,17 +140,17 @@ COMPONENT_INIT
         }
         exit(0);
     }
-    else if (0 == strcmp(testString, "do_swapsync"))
+    else if (0 == strcmp(testString, "do_install_markgood"))
     {
-        result = le_fwupdate_DualSysSwapAndSync();
-        snprintf (string, sizeof(string), "le_fwupdate_DualSysSwapAndSync %d", result);
+        result = le_fwupdate_InstallAndMarkGood();
+        snprintf (string, sizeof(string), "le_fwupdate_InstallAndMarkGood %d", result);
         Print (string);
         exit(0);
     }
-    else if (0 == strcmp(testString, "do_swap"))
+    else if (0 == strcmp(testString, "do_install"))
     {
-        result = le_fwupdate_DualSysSwap();
-        snprintf (string, sizeof(string), "le_fwupdate_DualSysSwap %d", result);
+        result = le_fwupdate_Install();
+        snprintf (string, sizeof(string), "le_fwupdate_Install %d", result);
         Print (string);
         exit(0);
     }

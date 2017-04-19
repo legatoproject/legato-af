@@ -184,7 +184,7 @@ LE_SHARED le_result_t pa_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Program a synchronization between active and update systems
+ * Mark the current system as good.
  *
  * @return
  *      - LE_OK             on success
@@ -193,31 +193,35 @@ LE_SHARED le_result_t pa_fwupdate_GetBootloaderVersion
  *      - LE_FAULT          on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_fwupdate_DualSysSync
+LE_SHARED le_result_t pa_fwupdate_MarkGood
 (
     void
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Request a full system reset with a systems swap and optionally a sync
+ * Install the downloaded package.
  *
  * @note On success, a device reboot is initiated without returning any value.
  *
  * @return
- *      - LE_BUSY           download is ongoing, swap is not allowed
+ *      - LE_BUSY           download is ongoing
  *      - LE_UNSUPPORTED    the feature is not supported
  *      - LE_FAULT          on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_fwupdate_DualSysSwap
+LE_SHARED le_result_t pa_fwupdate_Install
 (
-    bool isSyncReq      ///< [IN] Indicate if a synchronization is requested after the swap
+    bool isMarkGoodReq      ///< [IN] Indicate if a mark good operation is requested after install
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Function which indicates if Active and Update systems are synchronized
+ * Function which indicates if the system is marked good.
+ *
+ * @note This operation is not supported on single system. On dual system this function indicates if
+ *       the Active and Update systems are synchronized.
+ *
  *
  * @return
  *      - LE_OK            on success
@@ -226,9 +230,9 @@ LE_SHARED le_result_t pa_fwupdate_DualSysSwap
  *      - LE_FAULT         on failure
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_fwupdate_DualSysGetSyncState
+LE_SHARED le_result_t pa_fwupdate_GetSystemState
 (
-    bool *isSyncPtr ///< [OUT] Indicates if both systems are synchronized
+    bool *isSystemGoodPtr ///< [OUT] Indicates if the system is marked good
 );
 
 //--------------------------------------------------------------------------------------------------
