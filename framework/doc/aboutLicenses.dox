@@ -10,6 +10,7 @@ Current list of exceptions:
 | ------------------------- | ----------------------- |
 | CUnit                     | @ref licenseOSLGPLv2    |
 | Hashmap Implementation    | @ref licenseOSApache20  |
+| ifgen - ANTLR Tool        | @ref licenseOSBSD       |
 | Jansson                   | @ref licenseOSMIT       |
 | md5                       | @ref licenseOSRSA       |
 | String Hashing Algorithm  | @ref licenseOSPHel      |
