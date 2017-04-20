@@ -399,7 +399,7 @@ static inline bool le_pack_PackString
     }
 
     // Check entire string was copied, less than max possible string size.
-    if (!((bytesCopied <= maxStringCount) && ('\0' == stringPtr[bytesCopied])))
+    if (!(stringPtr && (bytesCopied <= maxStringCount) && ('\0' == stringPtr[bytesCopied])))
     {
         return false;
     }
@@ -851,7 +851,10 @@ static inline bool le_pack_UnpackString
     }
 
     // First get string size
-    le_pack_UnpackUint32(bufferPtr, sizePtr, &stringSize);
+    if (!le_pack_UnpackUint32(bufferPtr, sizePtr, &stringSize))
+    {
+        return false;
+    }
 
     if (stringSize > maxStringCount)
     {

@@ -97,7 +97,7 @@ void ipcTest_EchoString
     if (OutString)
     {
         strncpy(OutString, InString, OutStringSize);
-        OutString[OutStringSize] = '\0';
+        OutString[OutStringSize-1] = '\0';
     }
 }
 
