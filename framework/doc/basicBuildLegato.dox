@@ -6,15 +6,20 @@ Legato AF and install a build on your Target Device using the command line.
 @section buildPackages Install Linux Packages
 
 @verbatim
-$ sudo apt-get install bison build-essential chrpath cifs-utils cmake coreutils curl
-                       desktop-file-utils diffstat docbook-utils doxygen fakeroot flex g++ gawk gcc
-                       git-core gitk graphviz help2man libgmp3-dev libmpfr-dev libreadline6-dev
-                       libsdl-dev libtool libxml2-dev libxml-libxml-perl make m4 ninja-build
-                       python-pip python-jinja2 python-pysqlite2 quilt samba scons sed subversion
-                       texi2html texinfo unzip wget libcurl4-gnutls-dev zlib1g-dev
+$ sudo apt-get install build-essential \
+                       python python-jinja2 cmake \
+                       git subversion libsdl-dev \
+                       diffstat texinfo gawk chrpath wget cpio \
+                       vim zsh bash ninja-build screen sshpass \
+                       bc python-git unzip libxml2-utils gcovr \
+                       libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
+                       bsdiff libssl-dev autoconf automake
 @endverbatim
 
-Optional packages: vim (or any text editor), zsh (command interpreter for shell scripting)
+Optional packages: vim (or any text editor),
+                   zsh (command interpreter for shell scripting),
+                   openjdk-8-jdk (for Java support)
+                   doxygen graphviz (for doc generation)
 
 @section buildToolchain Install a Toolchain
 

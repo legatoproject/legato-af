@@ -5,10 +5,10 @@ Welcome to Legato!
 
 #### Dependencies
 
-  - Ubuntu 12.04 or newer
+  - A [maintained](https://wiki.ubuntu.com/Releases) Long Term Support (LTS) version of Ubuntu
   - Install required packages:
 
-```
+```bash
 $ sudo apt-get install build-essential \
                        python python-jinja2 cmake \
                        git subversion libsdl-dev \
@@ -16,10 +16,13 @@ $ sudo apt-get install build-essential \
                        vim zsh bash ninja-build screen sshpass \
                        bc python-git unzip libxml2-utils gcovr \
                        libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
-                       bsdiff libssl-dev
+                       bsdiff libssl-dev autoconf automake
 ```
 
-Optional packages: ```vim zsh```
+Optional packages: ```vim``` (or any text editor),
+                   ```zsh``` (command interpreter for shell scripting),
+                   ```openjdk-8-jdk``` (for Java support),
+                   ```doxygen graphviz``` (for doc generation)
 
   - Cross-build toolchain(s)<br/>
     For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/resources/legato/downloads/
