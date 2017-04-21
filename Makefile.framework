@@ -217,11 +217,13 @@ $(LIBJANSSON): $(LIB_DIR)
 	export TARGET_CC && \
 		mkdir -p $(BUILD_DIR)/libjansson
 		cd $(BUILD_DIR)/libjansson && \
-		cmake $(LEGATO_ROOT)/3rdParty/jansson-2.6 \
+		cmake $(LEGATO_ROOT)/3rdParty/jansson \
 			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
 			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
+			-DBUILD_SHARED_LIBS=ON \
 			-DUSE_CLANG=$(USE_CLANG)
 	make -C $(BUILD_DIR)/libjansson
+	cp $(BUILD_DIR)/libjansson/lib/libjansson.so $(LIBJANSSON)
 
 # Rules for creating directories.
 $(BUILD_DIR) $(LIB_DIR) $(BIN_DIR):
