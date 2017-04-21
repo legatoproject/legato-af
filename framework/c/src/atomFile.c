@@ -636,7 +636,7 @@ static int Create
     }
 
     int fd = -1;
-    int tempfd;
+    int tempfd = -1;
     bool copy;
 
     if ((accessMode == LE_FLOCK_READ) && (fileExistResult == LE_OK))
@@ -1258,7 +1258,7 @@ static FILE* CreateStream
         return NULL;
     }
 
-    FILE* file;
+    FILE* file = NULL;
     int fd = -1;
     bool copy;
 

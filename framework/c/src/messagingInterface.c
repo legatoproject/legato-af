@@ -1339,6 +1339,9 @@ void le_msg_AdvertiseService
             case 2:
                 streamNameStr = "stderr";
                 break;
+            default:
+                streamNameStr = "<unknown>";
+                break;
         }
         LE_WARN("Service Directory connection mapped to %s.", streamNameStr);
     }

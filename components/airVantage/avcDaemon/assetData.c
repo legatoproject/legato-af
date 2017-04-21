@@ -4766,7 +4766,7 @@ static le_result_t WriteFieldTLV
 )
 {
     le_result_t result = LE_OK;
-    size_t numBytesWritten;
+    size_t numBytesWritten = 0;
     int strLength;
 
     // Provide enough space for max field size, which is 256 bytes for a string, plus max header

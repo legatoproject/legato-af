@@ -124,7 +124,6 @@ static HandlerObj_t* FindHandlerObj
     return NULL;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Our signal handler.  This signal handler gets called whenever any unmasked signals are received.
@@ -180,6 +179,19 @@ static void OurSigHandler
 }
 
 
+// Check return from write and just exit if size is less than expected size.  Write failures
+// and slow writes should not happen here, and if they do it's better to truncate the output
+// than delay restarting.
+#define CHECK_WRITE(fd, buffer, sz)                                     \
+    do {                                                                \
+        size_t expected_size = (sz);                                    \
+        if (write((fd), (buffer), expected_size) != expected_size)      \
+        {                                                               \
+            raise(sigNum);                                              \
+            return;                                                     \
+        }                                                               \
+    } while (0)
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Our show stack signal handler. This signal handler is called only when SEGV, ILL, BUS, FPE, ABRT
@@ -221,12 +233,12 @@ static void ShowStackSignalHandler
 
     // Show process, pid and tid
     snprintf(sigString, sizeof(sigString), "PROCESS: %d ,TID %d\n", getpid(), tid);
-    write(2, sigString, strlen(sigString));
+    CHECK_WRITE(2, sigString, strlen(sigString));
 
     // Show signal, fault address and fault PC
     snprintf(sigString, sizeof(sigString), "SIGNAL: %d, ADDR %p, AT %p\n",
              sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr, pcPtr);
-    write(2, sigString, strlen(sigString));
+    CHECK_WRITE(2, sigString, strlen(sigString));
 
     // Explain signal
     switch( sigNum )
@@ -259,11 +271,11 @@ static void ShowStackSignalHandler
                              sigNum);
                     break;
     }
-    write(2, sigString, strlen(sigString));
+    CHECK_WRITE(2, sigString, strlen(sigString));
 
     // Dump the back-trace, registers and stack
     snprintf(sigString, sizeof(sigString), "BACKTRACE\n");
-    write(2, sigString, strlen(sigString));
+    CHECK_WRITE(2, sigString, strlen(sigString));
 #if defined(__arm__)
     {
         int addr;
@@ -279,7 +291,7 @@ static void ShowStackSignalHandler
             //                   FP[2] -> ...
             snprintf(sigString, sizeof(sigString), "%s at %08x\n",
                      (addr == ctxPtr->arm_pc ? "PC" : "LR"), addr);
-            write(2, sigString, strlen(sigString));
+            CHECK_WRITE(2, sigString, strlen(sigString));
             if (addr == ctxPtr->arm_pc)
             {
                 addr = ctxPtr->arm_lr;
@@ -297,20 +309,20 @@ static void ShowStackSignalHandler
                  "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
                  ctxPtr->arm_r0, ctxPtr->arm_r1, ctxPtr->arm_r2,
                  ctxPtr->arm_r3, ctxPtr->arm_r4, ctxPtr->arm_r5);
-        write(2, sigString, strlen(sigString));
+        CHECK_WRITE(2, sigString, strlen(sigString));
         snprintf(sigString, sizeof(sigString),
                  "r6  %08lx r7  %08lx r8  %08lx r9  %08lx r10 %08lx cpsr %08lx\n",
                  ctxPtr->arm_r6, ctxPtr->arm_r7, ctxPtr->arm_r8,
                  ctxPtr->arm_r9, ctxPtr->arm_r10, ctxPtr->arm_cpsr);
-        write(2, sigString, strlen(sigString));
+        CHECK_WRITE(2, sigString, strlen(sigString));
         snprintf(sigString, sizeof(sigString),
                  "fp  %08lx ip  %08lx sp  %08lx lr  %08lx pc  %08lx\n",
                  ctxPtr->arm_fp, ctxPtr->arm_ip, ctxPtr->arm_sp,
                  ctxPtr->arm_lr, ctxPtr->arm_pc);
-        write(2, sigString, strlen(sigString));
+        CHECK_WRITE(2, sigString, strlen(sigString));
         snprintf(sigString, sizeof(sigString),
                  "STACK %08lx, FRAME %08lx\n", ctxPtr->arm_sp, ctxPtr->arm_fp);
-        write(2, sigString, strlen(sigString));
+        CHECK_WRITE(2, sigString, strlen(sigString));
         for (addr = 0, frame = (int*)ctxPtr->arm_sp; addr < 256; addr += 8, frame += 8)
         {
             snprintf(sigString, sizeof(sigString),
@@ -318,7 +330,7 @@ static void ShowStackSignalHandler
                      (int)frame,
                      frame[0], frame[1], frame[2], frame[3],
                      frame[4], frame[5], frame[6], frame[7]);
-            write(2, sigString, strlen(sigString));
+            CHECK_WRITE(2, sigString, strlen(sigString));
         }
     }
 #else
@@ -332,19 +344,19 @@ static void ShowStackSignalHandler
         {
             snprintf(sigString, sizeof(sigString),
                      "#%d : %p\n", n-2, (void*)retSp[n]);
-            write(2, sigString, strlen(sigString));
+            CHECK_WRITE(2, sigString, strlen(sigString));
         }
     }
 #endif
 
     // Dump the process map. Useful for usage with objdump(1) and gdb(1)
     snprintf(sigString, sizeof(sigString), "PROCESS MAP\n");
-    write(2, sigString, strlen(sigString));
+    CHECK_WRITE(2, sigString, strlen(sigString));
     snprintf(sigString, sizeof(sigString), "/proc/%d/maps", getpid());
     fd = open(sigString, O_RDONLY);
     if (-1 != fd)
     {
-        int rc, len;
+        int rc = 0, len;
         // We cannot use stdio(3) services. Print line by line
         do
         {
@@ -357,7 +369,7 @@ static void ShowStackSignalHandler
                 }
                 if ('\n' == sigString[len])
                 {
-                    write(2, sigString, len + 1);
+                    CHECK_WRITE(2, sigString, len + 1);
                     break;
                 }
             }

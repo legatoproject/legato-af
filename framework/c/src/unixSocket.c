@@ -28,7 +28,8 @@ static int ExtractFileDescriptor
 )
 //--------------------------------------------------------------------------------------------------
 {
-    int fd = *((int*)CMSG_DATA(cmsgHeaderPtr));
+    int fd;
+    memcpy(&fd, CMSG_DATA(cmsgHeaderPtr), sizeof(int));
 
     LE_DEBUG("Received fd (%d).", fd);
 
@@ -38,8 +39,10 @@ static int ExtractFileDescriptor
     int* extraFdPtr = ((int*)CMSG_DATA(cmsgHeaderPtr)) + 1;
     while (extraBytes >= sizeof(int))
     {
+        int extraFd;
         LE_WARN("Discarding extra received file descriptor.");
-        fd_Close(*extraFdPtr);
+        memcpy(&extraFd, extraFdPtr, sizeof(int));
+        fd_Close(extraFd);
         extraBytes -= sizeof(int);
         extraFdPtr += 1;
     }
@@ -98,12 +101,12 @@ static void ExtractAncillaryData
             if (fdPtr == NULL)
             {
                 LE_WARN("Discarding received file descriptor.");
-                fd_Close(*((int*)CMSG_DATA(cmsgHeaderPtr)));
+                fd_Close(fd);
             }
             else if (*fdPtr != -1)
             {
                 LE_WARN("Discarding an extra list of file descriptors.");
-                fd_Close(*((int*)CMSG_DATA(cmsgHeaderPtr)));
+                fd_Close(fd);
             }
             else
             {

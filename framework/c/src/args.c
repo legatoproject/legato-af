@@ -309,15 +309,19 @@ static bool IsArgNumber
 )
 {
     char *endptr;
+    // Need to store value to quiet GCC on Ubuntu 12.04
+    __attribute__((unused)) long double value;
 
-    strtold(Argv[i], &endptr);
+    errno = 0;
+    value = strtold(Argv[i], &endptr);
 
-    if (*endptr != '\0')
-    {
-        return false;
-    }
-
-    return true;
+    // This is a number if and only if:
+    //   - A conversion is performed
+    //   - Which consumes the entire string
+    //   - And the result is not out of range of a long double.
+    return  ((endptr != Argv[i])
+             && (*endptr == '\0')
+             && (errno != ERANGE));
 }
 
 

@@ -1377,7 +1377,11 @@ static void FilePathArgHandler
 {
     // Convert the given path from a potentially relative path, to an absolute, canonical one
     // and store it in the FilePath static variable.
-    realpath(filePath, FilePath);
+    if (!realpath(filePath, FilePath))
+    {
+        fprintf(stderr, "Cannot find path '%s': %s", filePath, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 }
 
 

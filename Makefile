@@ -446,6 +446,11 @@ ifeq ($(VERBOSE),1)
   MKSYS_FLAGS += -v
 endif
 
+ifneq ($(DEBUG),yes)
+  # Optimize release builds
+  MKSYS_FLAGS += --cflags=-O2
+endif
+
 # Define the default sdef file to use
 SDEF_TO_USE ?= default.sdef
 

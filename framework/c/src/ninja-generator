@@ -43,6 +43,11 @@ then
     NINJA_LDFLAGS="--coverage"
 fi
 
+# Enable optimization flags
+if [ "$DEBUG" != "yes" ]; then
+    NINJA_CFLAGS="$NINJA_CFLAGS -O2"
+fi
+
 BUILD_DIR=$LEGATO_ROOT/build/$LEGATO_TARGET/framework
 
 NINJA_SCRIPT=$BUILD_DIR/build.ninja

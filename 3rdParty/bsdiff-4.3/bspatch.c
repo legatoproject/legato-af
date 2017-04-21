@@ -98,7 +98,7 @@ int main(int argc,char * argv[])
         off_t patchHdrOffset;
         pa_patch_Desc_t desc = NULL;
         size_t readSize;
-        le_result_t res;
+        le_result_t res = LE_FAULT;
 
         f = NULL;
 	cpf = NULL;
