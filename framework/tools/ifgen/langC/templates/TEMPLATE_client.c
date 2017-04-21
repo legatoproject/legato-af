@@ -527,7 +527,6 @@ static void _Handle_{{apiName}}_{{function.name}}
 error_unpack:
     // Handle any unpack errors by dying -- server should not be sending invalid data; if it is
     // something is seriously wrong.
-    __attribute__((unused));
     LE_FATAL("Error unpacking message");
 }
 {%- endfor %}
@@ -591,7 +590,7 @@ error_unpack:
     _msgBufSize = _MAX_MSG_SIZE;
 
     // Pack a list of outputs requested by the client.
-    {%- if function.parameters|select("OutParameter") %}
+    {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
     {%- for output in function.parameters if output is OutParameter %}
     _requiredOutputs |= ((!!({{output|FormatParameterName}})) << {{loop.index0}});
@@ -661,10 +660,11 @@ error_unpack:
 
     return;
     {%- endif %}
+    {%- if function.returnType or any(function.parameters, "OutParameter") %}
 
 error_unpack:
-    __attribute__((unused));
     LE_FATAL("Unexpected response from server.");
+    {%- endif %}
 }
 {%- endfor %}
 

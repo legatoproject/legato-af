@@ -8,6 +8,8 @@
 #
 
 import interfaceIR
+import itertools
+from jinja2 import contextfunction
 
 
 #---------------------------------------------------------------------------------------------------
@@ -64,3 +66,9 @@ def IsAddHandlerFunction(functionObj):
 def IsRemoveHandlerFunction(functionObj):
     return (isinstance(functionObj, interfaceIR.EventFunction)
             and functionObj.name.startswith("Remove"))
+
+### Other helper tests
+@contextfunction
+def any_filter(context, iterable, filterFunc):
+    return any(itertools.imap(lambda item: context.environment.call_test(filterFunc, item),
+                              iterable))

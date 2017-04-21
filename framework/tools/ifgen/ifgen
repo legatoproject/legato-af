@@ -274,7 +274,8 @@ def Main():
 
     # Add global tests & filters
     TemplateEnvironment.tests.update(
-        { 'BasicType':      ifgenJinjaExtensions.IsBasicType,
+        {
+          'BasicType':     ifgenJinjaExtensions.IsBasicType,
           'EnumType':      ifgenJinjaExtensions.IsEnumType,
           'BitMaskType':   ifgenJinjaExtensions.IsBitMaskType,
           'HandlerType':   ifgenJinjaExtensions.IsHandlerType,
@@ -288,6 +289,8 @@ def Main():
           'StringParameter': ifgenJinjaExtensions.IsStringParameter,
           'AddHandlerFunction': ifgenJinjaExtensions.IsAddHandlerFunction,
           'RemoveHandlerFunction': ifgenJinjaExtensions.IsRemoveHandlerFunction })
+
+    TemplateEnvironment.globals.update({ 'any': ifgenJinjaExtensions.any_filter })
 
     # Add any language-specific tests & filters
     TemplateEnvironment.filters.update(langPkg.Filters)

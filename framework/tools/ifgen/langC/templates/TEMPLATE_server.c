@@ -470,7 +470,7 @@ static void Handle_{{apiName}}_{{function.name}}
 
     // Unpack which outputs are needed.
     _serverCmdPtr->requiredOutputs = 0;
-    {%- if function.parameters|select("OutParameter") %}
+    {%- if any(function.parameters, "OutParameter") %}
     if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_serverCmdPtr->requiredOutputs))
     {
         goto error_unpack;
@@ -492,12 +492,13 @@ static void Handle_{{apiName}}_{{function.name}}
         {%- endfor %} );
 
     return;
+    {%- if function.parameters %}
 
 error_unpack:
-    __attribute__((unused));
     le_mem_Release(_serverCmdPtr);
 
     LE_KILL_CLIENT("Error unpacking inputs");
+    {%- endif %}
 }
 {%- else %}
 static void Handle_{{apiName}}_{{function.name}}
@@ -515,7 +516,7 @@ static void Handle_{{apiName}}_{{function.name}}
     uint8_t* _msgBufStartPtr = _msgBufPtr;
 
     // Unpack which outputs are needed
-    {%- if function.parameters|select("OutParameter") %}
+    {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
     if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_requiredOutputs))
     {
@@ -640,10 +641,11 @@ static void Handle_{{apiName}}_{{function.name}}
     le_msg_Respond(_msgRef);
 
     return;
+    {%- if function.parameters %}
 
 error_unpack:
-    __attribute__((unused));
     LE_KILL_CLIENT("Error unpacking message");
+    {%- endif %}
 }
 {%- endif %}
 {%- endfor %}
