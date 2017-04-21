@@ -8,7 +8,6 @@ These overview topics are available:
 @subpage basicInterfaces <br>
 @subpage basicConfig <br>
 @subpage basicEvents <br>
-@subpage basicJava <br>
 @subpage basicPwrMgmt <br>
 @subpage basicIPC <br>
 @subpage basicInternationalization <br>

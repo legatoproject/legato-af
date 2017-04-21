@@ -11,7 +11,6 @@ These topics contain general concepts about Legato and details to learn how to b
 | @subpage howToMain                     | frequently needed task details                        |
 | @subpage defFiles                             | reusable external interfaces and internal content |
 | @subpage apiFiles                             | language-independent interface conversion info  |
-| @subpage javaBuild                     | install and build Java support |
 | @subpage sampleApps                     | sample apps for commonly-needed functions |
 
 **/

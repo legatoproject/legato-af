@@ -33,6 +33,12 @@ The ability to @ref buildToolsmkapp "distribute binary only applications" withou
 supported.  @c mkapp will build a binary only app bundle that can then be included in an
 @ref defFilesSdef without the source code.
 
+@section rn16_10_3_removeJava Experimental Java Support
+
+Thank you for the feedback given about the @b experimental Java Support in the Legato AF.  We are
+working on officially supporting Java within the framework, but until further work can be done we
+have removed Java Support from legato.io.
+
 @section rn16_10_3_KnownIssues Known Issues
 
 @subsection rn16_10_3_Constraints Constraints and Limitations
