@@ -72,7 +72,7 @@ static le_result_t CheckSystemState
     result = le_fwupdate_GetResumePosition(resumePositionPtr);
     if ((result == LE_OK) && (*resumePositionPtr != 0))
     {
-        LE_INFO("resume download at position 0x%x", *resumePositionPtr);
+        LE_INFO("resume download at position %d", *resumePositionPtr);
     }
     else
     {// no resume context found => do a normal download

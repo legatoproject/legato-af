@@ -248,13 +248,13 @@ le_result_t le_fwupdate_GetBootloaderVersion
 //--------------------------------------------------------------------------------------------------
 le_result_t le_fwupdate_IsSystemMarkedGood
 (
-    bool *isSystemGood ///< [OUT] true if the system is marked good, false otherwise
+    bool *isSystemGoodPtr ///< [OUT] true if the system is marked good, false otherwise
 )
 {
     /* Get the system synchronization state from PA */
-    le_result_t result = pa_fwupdate_GetSystemState( isSystemGood );
+    le_result_t result = pa_fwupdate_GetSystemState( isSystemGoodPtr );
 
-    LE_DEBUG ("result %d, isSystemGood %d", result, *isSystemGood);
+    LE_DEBUG ("result %d, isSystemGood %d", result, *isSystemGoodPtr);
     return result;
 }
 

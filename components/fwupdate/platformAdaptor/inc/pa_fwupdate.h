@@ -279,39 +279,6 @@ LE_SHARED le_result_t pa_fwupdate_SetState
 
 //--------------------------------------------------------------------------------------------------
 /**
- * request to the modem to delete NVUP files
- *
- * @return
- *      - LE_OK             on success
- *      - LE_UNSUPPORTED    the feature is not supported
- *      - LE_FAULT          on failure
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_fwupdate_NvupDelete
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write a NVUP file in UD system
- *
- * @return
- *      - LE_OK             on success
- *      - LE_UNSUPPORTED    the feature is not supported
- *      - LE_FAULT          on failure
- *      - others            Depending of the underlying operations
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_fwupdate_NvupWrite
-(
-    size_t length,                      ///< [IN] data length
-    uint8_t* dataPtr,                   ///< [IN] input data
-    bool isEnd                          ///< [IN] flag to indicate the end of the file
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
  * request the modem to apply the NVUP files in UD system
  *
  * @return
