@@ -252,7 +252,7 @@ typedef void (*pa_mrc_RatChangeHdlrFunc_t)
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_mrc_ServiceChangeHdlrFunc_t)
 (
-    le_mrc_ServiceState_t* servicePtr
+    le_mrc_NetRegState_t* servicePtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -307,32 +307,6 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_SetRatChangeHandler
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void pa_mrc_RemoveRatChangeHandler
-(
-    le_event_HandlerRef_t handlerRef
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to register a handler for Circuit Switched change handling.
- *
- * @return A handler reference, which is only needed for later removal of the handler.
- *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_event_HandlerRef_t pa_mrc_SetCSChangeHandler
-(
-    pa_mrc_ServiceChangeHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to unregister the handler for Circuit Switched change
- * handling.
- *
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_mrc_RemoveCSChangeHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -952,24 +926,9 @@ LE_SHARED le_result_t pa_mrc_GetTdScdmaBandCapabilities
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mrc_GetPacketSwitchedState
 (
-    le_mrc_ServiceState_t* statePtr
-        ///< [OUT] The current Packet switched state.
+    le_mrc_NetRegState_t* statePtr  ///< [OUT] The current Packet switched state.
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Get the Circuit Switched state.
- *
- * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
- *
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_mrc_GetCircuitSwitchedState
-(
-    le_mrc_ServiceState_t* statePtr
-        ///< [OUT] The current Circuit switched state.
-);
+
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

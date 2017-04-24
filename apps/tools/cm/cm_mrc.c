@@ -260,26 +260,7 @@ static le_result_t GetServicesState
 )
 {
     le_result_t res;
-    le_mrc_ServiceState_t serviceState;
-
-    res = le_mrc_GetCircuitSwitchedState(&serviceState);
-    if (res != LE_OK)
-    {
-        return res;
-    }
-
-    switch(serviceState)
-    {
-        case LE_MRC_ATTACHED:
-            cm_cmn_FormatPrint("CS", "Circuit Switched Attached (LE_MRC_ATTACHED)");
-            break;
-        case LE_MRC_DETACHED:
-            cm_cmn_FormatPrint("CS", "Circuit Switched Detached (LE_MRC_DETACHED)");
-            break;
-        default:
-            cm_cmn_FormatPrint("CS", "Circuit Switched Unknown (LE_MRC_ATTACHED)");
-            break;
-    }
+    le_mrc_NetRegState_t serviceState;
 
     res = le_mrc_GetPacketSwitchedState(&serviceState);
     if (res != LE_OK)
@@ -287,16 +268,20 @@ static le_result_t GetServicesState
         return res;
     }
 
-    switch(serviceState)
+    switch (serviceState)
     {
-        case LE_MRC_ATTACHED:
-            cm_cmn_FormatPrint("PS", "Packet Switched Attached (LE_MRC_ATTACHED)");
+        case LE_MRC_REG_NONE:
+            cm_cmn_FormatPrint("PS", "Packet Switched Not registered (LE_MRC_REG_NONE)");
             break;
-        case LE_MRC_DETACHED:
-            cm_cmn_FormatPrint("PS", "Packet Switched Detached (LE_MRC_DETACHED)");
+        case LE_MRC_REG_HOME:
+            cm_cmn_FormatPrint("PS", "Packet Switched Registered, home network (LE_MRC_REG_HOME)");
+            break;
+        case LE_MRC_REG_ROAMING:
+            cm_cmn_FormatPrint("PS", "Packet Switched Registered to a"\
+                " roaming network (LE_MRC_REG_ROAMING)");
             break;
         default:
-            cm_cmn_FormatPrint("PS", "Packet Switched Unknown (LE_MRC_ATTACHED)");
+            cm_cmn_FormatPrint("PS", "Packet Switched Unknown state (LE_MRC_REG_UNKNOWN)");
             break;
     }
 

@@ -377,27 +377,10 @@ static void Testle_mrc_GetPSState
     void
 )
 {
-    le_mrc_ServiceState_t  psState = LE_MRC_DETACHED;
+    le_mrc_NetRegState_t  psState = LE_MRC_REG_UNKNOWN;
 
     LE_ASSERT_OK(le_mrc_GetPacketSwitchedState(&psState));
-    LE_ASSERT(psState == LE_MRC_ATTACHED);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: Circuit Switched state
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetCSState
-(
-    void
-)
-{
-    le_mrc_ServiceState_t  csState = LE_MRC_DETACHED;
-
-    LE_ASSERT_OK(le_mrc_GetCircuitSwitchedState(&csState));
-    LE_ASSERT(csState == LE_MRC_ATTACHED);
+    LE_ASSERT(psState == LE_MRC_REG_HOME);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -408,26 +391,11 @@ static void Testle_mrc_GetCSState
 //--------------------------------------------------------------------------------------------------
 static void TestPSHandler
 (
-    le_mrc_ServiceState_t psState,
+    le_mrc_NetRegState_t psState,
     void*        contextPtr
 )
 {
     LE_INFO("New PS state: %d", psState);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler function for CS change Notifications.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void TestCSHandler
-(
-    le_mrc_ServiceState_t csState,
-    void*        contextPtr
-)
-{
-    LE_INFO("New CS state: %d", csState);
 }
 
 
@@ -447,24 +415,6 @@ static void Testle_mrc_PSHdlr
     testHdlrRef = le_mrc_AddPacketSwitchedChangeHandler(TestPSHandler, NULL);
     LE_ASSERT(testHdlrRef);
     le_mrc_RemovePacketSwitchedChangeHandler(testHdlrRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: CS change handling.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_CSHdlr
-(
-    void
-)
-{
-    le_mrc_CircuitSwitchedChangeHandlerRef_t testHdlrRef;
-
-    testHdlrRef = le_mrc_AddCircuitSwitchedChangeHandler(TestCSHandler, NULL);
-    LE_ASSERT(testHdlrRef);
-    le_mrc_RemoveCircuitSwitchedChangeHandler(testHdlrRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -514,15 +464,10 @@ COMPONENT_INIT
     LE_INFO("======== MRC Get TAC Test ========");
     Testle_mrc_GetTac();
 
-    LE_INFO("======== GetCSstate Test ========");
-    Testle_mrc_GetCSState();
-    LE_INFO("======== GetCSstate Test PASSED ========");
     LE_INFO("======== GetPSState Test ========");
     Testle_mrc_GetPSState();
     LE_INFO("======== GetPSState Test PASSED ========");
-    LE_INFO("======== CSHdlr Test ========");
-    Testle_mrc_CSHdlr();
-    LE_INFO("======== CSHdlr Test PASSED ========");
+
     LE_INFO("======== PSHdlr Test ========");
     Testle_mrc_PSHdlr();
     LE_INFO("======== PSHdlr Test PASSED ========");

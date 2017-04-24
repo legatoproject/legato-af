@@ -20,6 +20,12 @@
 #include "legato.h"
 #include <interfaces.h>
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Value for sleep
+ */
+//--------------------------------------------------------------------------------------------------
+#define SLEEP_5S  5
 
 /*
  * Flag set to 1 to perform the Radio Power test On AR7 platform
@@ -96,51 +102,25 @@ static void TestRatHandler
 //--------------------------------------------------------------------------------------------------
 static void TestPSHandler
 (
-    le_mrc_ServiceState_t psState,
+    le_mrc_NetRegState_t psState,
     void*        contextPtr
 )
 {
     LE_INFO("New PS state: %d", psState);
-
-    if (psState == LE_MRC_DETACHED)
+    switch(psState)
     {
-        LE_INFO("Check PSHandler passed, PS is LE_MRC_DETACHED.");
-    }
-    else if (psState == LE_MRC_ATTACHED)
-    {
-        LE_INFO("Check PSHandler passed, PS is LE_MRC_ATTACHED.");
-    }
-    else
-    {
-        LE_ERROR("Check PSHandler failed, bad PS state %d", psState);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler function for CS change notifications.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void TestCSHandler
-(
-    le_mrc_ServiceState_t csState,
-    void*        contextPtr
-)
-{
-    LE_INFO("New CS state: %d", csState);
-
-    if (csState == LE_MRC_DETACHED)
-    {
-        LE_INFO("Check CSHandler passed, CS is LE_MRC_DETACHED.");
-    }
-    else if (csState == LE_MRC_ATTACHED)
-    {
-        LE_INFO("Check CSHandler passed, CS is LE_MRC_ATTACHED.");
-    }
-    else
-    {
-        LE_ERROR("Check CSHandler failed, bad CS state %d", csState);
+        case LE_MRC_REG_HOME:
+            LE_INFO("New PS state LE_MRC_REG_HOME");
+            break;
+        case LE_MRC_REG_ROAMING:
+            LE_INFO("New PS state LE_MRC_REG_ROAMING");
+            break;
+        case LE_MRC_REG_NONE:
+            LE_INFO("New PS state LE_MRC_REG_NONE");
+            break;
+        default:
+            LE_ERROR("New PS state unknown PS state %d", psState);
+            break;
     }
 }
 
@@ -252,10 +232,9 @@ static void Testle_mrc_GetRat()
 
     res = le_mrc_GetRadioAccessTechInUse(&rat);
     LE_ASSERT(res == LE_OK);
-    if (res == LE_OK)
-    {
-        LE_ASSERT((rat>=LE_MRC_RAT_UNKNOWN) && (rat<=LE_MRC_RAT_LTE));
-    }
+
+    LE_ASSERT((rat>=LE_MRC_RAT_UNKNOWN) && (rat<=LE_MRC_RAT_LTE));
+
     LE_INFO("le_mrc_GetRadioAccessTechInUse return rat 0x%02X",rat);
 }
 //! [RAT in Use]
@@ -272,55 +251,28 @@ static void Testle_mrc_GetPSState
     void
 )
 {
-    le_mrc_ServiceState_t  psState;
+    le_mrc_NetRegState_t  psState;
 
     LE_ASSERT_OK(le_mrc_GetPacketSwitchedState(&psState));
     switch(psState)
     {
-        case LE_MRC_ATTACHED:
-            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_ATTACHED");
+        case LE_MRC_REG_HOME:
+            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_REG_HOME");
             break;
-        case LE_MRC_DETACHED:
-            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_DETACHED");
+        case LE_MRC_REG_ROAMING:
+            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_REG_ROAMING");
+            break;
+        case LE_MRC_REG_NONE:
+            LE_INFO("le_mrc_GetPacketSwitchedState returns LE_MRC_REG_NONE");
             break;
         default:
-            LE_ERROR("le_mrc_GetPacketSwitchedState returns an unknown PS state");
+            LE_ERROR("le_mrc_GetPacketSwitchedState returns an unknown PS state %d", psState);
             break;
     }
 
 }
 //! [Service State]
 
-//! [Service State]
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: Circuit Switched state
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetCSState
-(
-    void
-)
-{
-    le_mrc_ServiceState_t  csState;
-
-    LE_ASSERT_OK(le_mrc_GetCircuitSwitchedState(&csState));
-    switch(csState)
-    {
-        case LE_MRC_ATTACHED:
-            LE_INFO("le_mrc_GetCircuitSwitchedState returns LE_MRC_ATTACHED");
-            break;
-        case LE_MRC_DETACHED:
-            LE_INFO("le_mrc_GetCircuitSwitchedState returns LE_MRC_DETACHED");
-            break;
-        default:
-            LE_ERROR("le_mrc_GetCircuitSwitchedState returns an unknown CS state");
-            break;
-    }
-
-}
-//! [Service State]
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -348,23 +300,6 @@ static void Testle_mrc_RatHdlr()
 
     testHdlrRef = le_mrc_AddRatChangeHandler(TestRatHandler, NULL);
     LE_ASSERT(testHdlrRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: CS change handling.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void Testle_mrc_CSHdlr
-(
-    void
-)
-{
-    le_mrc_CircuitSwitchedChangeHandlerRef_t testCSHdlrRef;
-
-    testCSHdlrRef = le_mrc_AddCircuitSwitchedChangeHandler(TestCSHandler, NULL);
-    LE_ASSERT(testCSHdlrRef);
 }
 
 
@@ -647,6 +582,29 @@ static void Testle_mrc_RegisterModeAsync()
 //! [RAT Preferences]
 //--------------------------------------------------------------------------------------------------
 /**
+ * Display bitmask RAT
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintRat
+(
+    le_mrc_RatBitMask_t bitMask
+)
+{
+    if(LE_MRC_BITMASK_RAT_ALL != bitMask)
+    {
+        LE_INFO("Rat preferences %02X=> CDMA.%c GSM.%c LTE.%c UMTS.%c", bitMask,
+            ((bitMask & LE_MRC_BITMASK_RAT_CDMA) ? 'Y' : 'N'),
+            ((bitMask & LE_MRC_BITMASK_RAT_GSM) ? 'Y' : 'N'),
+            ((bitMask & LE_MRC_BITMASK_RAT_LTE) ? 'Y' : 'N'),
+            ((bitMask & LE_MRC_BITMASK_RAT_UMTS) ? 'Y' : 'N'));
+    }
+    else
+    {
+        LE_INFO("Rat preferences => LE_MRC_BITMASK_RAT_ALL");
+    }
+}
+//--------------------------------------------------------------------------------------------------
+/**
  * Test: rat preferences mode. Module must supported GSM and LTEs
  *
  * le_mrc_GetRatPreferences() API test
@@ -655,115 +613,55 @@ static void Testle_mrc_RegisterModeAsync()
 //--------------------------------------------------------------------------------------------------
 static void Testle_mrc_RatPreferences()
 {
-    le_result_t res;
     le_mrc_RatBitMask_t bitMask = 0;
     le_mrc_RatBitMask_t bitMaskOrigin = 0;
 
-#define  PRINT_RAT(x)   LE_INFO("Rat preferences %02X=> CDMA.%c GSM.%c LTE.%c UMTS.%c", x,\
-                ( (x & LE_MRC_BITMASK_RAT_CDMA) ? 'Y' : 'N'),\
-                ( (x & LE_MRC_BITMASK_RAT_GSM) ? 'Y' : 'N'),\
-                ( (x & LE_MRC_BITMASK_RAT_LTE) ? 'Y' : 'N'),\
-                ( (x & LE_MRC_BITMASK_RAT_UMTS) ? 'Y' : 'N') );
-
     // Get the current rat preference.
-    res = le_mrc_GetRatPreferences(&bitMaskOrigin);
-    LE_ASSERT(res == LE_OK);
-    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
-    {
-        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
-    }
-    else
-    {
-        PRINT_RAT(bitMaskOrigin);
-    }
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMaskOrigin));
+    PrintRat(bitMaskOrigin);
 
-    res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_GetRatPreferences(&bitMask);
-    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_LTE));
+    sleep(1);
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
+    PrintRat(bitMask);
+    if((LE_MRC_BITMASK_RAT_LTE != bitMask))
     {
-        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
-    }
-    else
-    {
-        PRINT_RAT(bitMaskOrigin);
-    }
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_LTE);
-
-    res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_GetRatPreferences(&bitMask);
-    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
-    {
-        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
-    }
-    else
-    {
-        PRINT_RAT(bitMaskOrigin);
-    }
-    LE_ASSERT(res == LE_OK);
-    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_GSM);
-
-    if (bitMaskOrigin & LE_MRC_BITMASK_RAT_UMTS)
-    {
-        res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_UMTS);
-        LE_ASSERT(res == LE_OK);
-        res = le_mrc_GetRatPreferences(&bitMask);
-        if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
+        if ((LE_MRC_BITMASK_RAT_LTE | LE_MRC_BITMASK_RAT_GSM) == bitMask)
         {
-            LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
+            LE_WARN("LTE only not supported");
         }
         else
         {
-            PRINT_RAT(bitMaskOrigin);
+            le_mrc_SetRatPreferences(bitMaskOrigin);
+            LE_ASSERT(LE_MRC_BITMASK_RAT_LTE == bitMask);
         }
-        LE_ASSERT(res == LE_OK);
-        LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_UMTS);
     }
 
-    res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_ALL);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_GetRatPreferences(&bitMask);
-    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
-    {
-        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
-    }
-    else
-    {
-        PRINT_RAT(bitMaskOrigin);
-    }
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_GSM));
+    sleep(1);
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
+    PrintRat(bitMask);
+    LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_GSM);
+
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_ALL));
+    sleep(1);
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
+    PrintRat(bitMask);
+    LE_ASSERT(LE_MRC_BITMASK_RAT_ALL == bitMask);
 
     if (bitMaskOrigin & LE_MRC_BITMASK_RAT_CDMA)
     {
-        res = le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_CDMA);
-        LE_ASSERT(res == LE_OK);
-        res = le_mrc_GetRatPreferences(&bitMask);
-        if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
-        {
-            LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
-        }
-        else
-        {
-            PRINT_RAT(bitMaskOrigin);
-        }
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT_OK(le_mrc_SetRatPreferences(LE_MRC_BITMASK_RAT_CDMA));
+        sleep(1);
+        LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
+        PrintRat(bitMask);
         LE_ASSERT(bitMask == LE_MRC_BITMASK_RAT_CDMA);
     }
 
-    res = le_mrc_SetRatPreferences(bitMaskOrigin);
-    LE_ASSERT(res == LE_OK);
-    res = le_mrc_GetRatPreferences(&bitMask);
-    if (LE_MRC_BITMASK_RAT_ALL == bitMaskOrigin)
-    {
-        LE_INFO("Rat preferences %02X=> LE_MRC_BITMASK_RAT_ALL", bitMaskOrigin);
-    }
-    else
-    {
-        PRINT_RAT(bitMaskOrigin);
-    }
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(bitMaskOrigin));
+    sleep(1);
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMask));
+    PrintRat(bitMask);
     LE_ASSERT(bitMask == bitMaskOrigin);
 }
 //! [RAT Preferences]
@@ -855,6 +753,9 @@ static void Testle_mrc_PerformCellularNetworkScan()
     }
 
     le_mrc_DeleteCellularNetworkScan(scanInfoListRef);
+
+    res = le_mrc_SetRatPreferences(bitMaskOrigin);
+    LE_ASSERT(LE_OK == res);
 }
 
 
@@ -937,7 +838,11 @@ static void Testle_mrc_PerformCellularNetworkScanAsync()
 {
     le_result_t res;
     le_clk_Time_t time = {0,0};
+    le_mrc_RatBitMask_t bitMaskOrigin = 0;
     time.sec = 120000;
+
+    res = le_mrc_GetRatPreferences(&bitMaskOrigin);
+    LE_ASSERT(LE_OK == res);
 
     // Init the semaphore for asynchronous callback
     ThreadSemaphore = le_sem_Create("HandlerSem",0);
@@ -951,6 +856,8 @@ static void Testle_mrc_PerformCellularNetworkScanAsync()
     le_thread_Cancel(RegistrationThreadRef);
 
     le_sem_Delete(ThreadSemaphore);
+
+    le_mrc_SetRatPreferences(bitMaskOrigin);
 
     sleep(5);
 }
@@ -1087,17 +994,11 @@ static void Testle_mrc_GetStateAndQual()
 
     res = le_mrc_GetNetRegState(&state);
     LE_ASSERT(res == LE_OK);
-    if (res == LE_OK)
-    {
-        LE_ASSERT((state>=LE_MRC_REG_NONE) && (state<=LE_MRC_REG_UNKNOWN));
-    }
+    LE_ASSERT((state>=LE_MRC_REG_NONE) && (state<=LE_MRC_REG_UNKNOWN));
 
     res = le_mrc_GetSignalQual(&quality);
     LE_ASSERT(res == LE_OK);
-    if (res == LE_OK)
-    {
-        LE_ASSERT((quality>=0) && (quality<=5));
-    }
+    LE_ASSERT((quality>=0) && (quality<=5));
 }
 
 
@@ -1645,10 +1546,6 @@ COMPONENT_INIT
 {
     LE_INFO("======== Start MRC Modem Services implementation Test========");
 
-    LE_INFO("======== CSHdlr Test ========");
-    Testle_mrc_CSHdlr();
-    LE_INFO("======== CSHdlr Test PASSED ========");
-
     LE_INFO("======== PSHdlr Test ========");
     Testle_mrc_PSHdlr();
     LE_INFO("======== PSHdlr Test PASSED ========");
@@ -1674,10 +1571,6 @@ COMPONENT_INIT
     LE_INFO("======== GetRat Test ========");
     Testle_mrc_GetRat();
     LE_INFO("======== GetRat Test PASSED ========");
-
-    LE_INFO("======== GetCSstate Test ========");
-    Testle_mrc_GetCSState();
-    LE_INFO("======== GetCSstate Test PASSED ========");
 
     LE_INFO("======== GetPSState Test ========");
     Testle_mrc_GetPSState();
@@ -1711,18 +1604,6 @@ COMPONENT_INIT
     Testle_mrc_GetCurrentNetworkName();
     LE_INFO("======== GetCurrentNetworkName Test PASSED ========");
 
-    LE_INFO("======== RegisterMode Test ========");
-    Testle_mrc_RegisterMode();
-    LE_INFO("======== RegisterMode Test PASSED ========");
-
-    LE_INFO("======== RegisterModeAsync Test ========");
-    Testle_mrc_RegisterModeAsync();
-    LE_INFO("======== RegisterModeAsync Test PASSED ========");
-
-    LE_INFO("======== RatPreferences Test ========");
-    Testle_mrc_RatPreferences();
-    LE_INFO("======== RatPreferences Test PASSED ========");
-
     LE_INFO("======== PerformCellularNetworkScan Test ========");
     Testle_mrc_PerformCellularNetworkScan();
     LE_INFO("======== PerformCellularNetworkScan Test PASSED ========");
@@ -1746,6 +1627,20 @@ COMPONENT_INIT
     LE_INFO("======== Signal Strength Handler Test ========");
     Testle_mrc_SsHdlr();
     LE_INFO("======== Signal Strength Handler Test PASSED ========");
+
+    sleep(SLEEP_5S);
+
+    LE_INFO("======== RatPreferences Test ========");
+    Testle_mrc_RatPreferences();
+    LE_INFO("======== RatPreferences Test PASSED ========");
+
+    LE_INFO("======== RegisterMode Test ========");
+    Testle_mrc_RegisterMode();
+    LE_INFO("======== RegisterMode Test PASSED ========");
+
+    LE_INFO("======== RegisterModeAsync Test ========");
+    Testle_mrc_RegisterModeAsync();
+    LE_INFO("======== RegisterModeAsync Test PASSED ========");
 
     LE_INFO("======== Test MRC Modem Services implementation Test SUCCESS ========");
 
