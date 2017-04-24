@@ -495,51 +495,18 @@ le_result_t pa_sim_ConfirmSimToolkitCommand
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_SendCommand
 (
-    le_sim_Command_t command,
-        ///< [IN]
-        ///< The SIM command.
-
-    const char* fileIdentifier,
-        ///< [IN]
-        ///< File identifier
-
-    uint8_t p1,
-        ///< [IN]
-        ///< Parameter P1 passed to the SIM
-
-    uint8_t p2,
-        ///< [IN]
-        ///< Parameter P2 passed to the SIM
-
-    uint8_t p3,
-        ///< [IN]
-        ///< Parameter P3 passed to the SIM
-
-    const uint8_t* dataPtr,
-        ///< [IN]
-        ///< data command.
-
-    size_t dataNumElements,
-        ///< [IN]
-
-    const char* path,
-        ///< [IN]
-        ///< path of the elementary file
-
-    uint8_t* sw1Ptr,
-        ///< [OUT]
-        ///< SW1 received from the SIM
-
-    uint8_t* sw2Ptr,
-        ///< [OUT]
-        ///< SW2 received from the SIM
-
-    uint8_t* responsePtr,
-        ///< [OUT]
-        ///< SIM response.
-
-    size_t* responseNumElementsPtr
-        ///< [INOUT]
+    le_sim_Command_t command,               ///< [IN] The SIM command
+    const char*      fileIdentifierPtr,     ///< [IN] File identifier
+    uint8_t          p1,                    ///< [IN] Parameter P1 passed to the SIM
+    uint8_t          p2,                    ///< [IN] Parameter P2 passed to the SIM
+    uint8_t          p3,                    ///< [IN] Parameter P3 passed to the SIM
+    const uint8_t*   dataPtr,               ///< [IN] Data command
+    size_t           dataNumElements,       ///< [IN] Size of data command
+    const char*      pathPtr,               ///< [IN] Path of the elementary file
+    uint8_t*         sw1Ptr,                ///< [OUT] SW1 received from the SIM
+    uint8_t*         sw2Ptr,                ///< [OUT] SW2 received from the SIM
+    uint8_t*         responsePtr,           ///< [OUT] SIM response
+    size_t*          responseNumElementsPtr ///< [IN/OUT] Size of response
 )
 {
     LE_ERROR("Unsupported function called");
