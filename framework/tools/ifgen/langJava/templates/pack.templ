@@ -30,7 +30,7 @@ buffer.writeLongRef({{value}});
     {%- elif apiType is ReferenceType -%}
 buffer.writeLongRef({{value}}.getRef());
     {%- elif apiType is HandlerType -%}
-long ref{{value}} = handlerMap.newRef(new HandlerMapper({{value}}, true));
+long ref{{value}} = (({{value}} == null)?0:handlerMap.newRef(new HandlerMapper({{value}}, true)));
 buffer.writeLongRef(ref{{value}});
     {%- elif apiType.name ==  'le_result_t' or apiType.name == 'le_onoff_t' -%}
 {{_setterMap[apiType|FormatType]}}({{value}}.getValue());

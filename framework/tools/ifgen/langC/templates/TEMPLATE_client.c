@@ -639,12 +639,20 @@ error_unpack:
     {%- endif %}
     {%- if function is AddHandlerFunction %}
 
-    // Put the handler reference result into the client data object, and
-    // then return a safe reference to the client data object as the reference;
-    // this safe reference is contained in the contextPtr, which was assigned
-    // when the client data object was created.
-    _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    _result = contextPtr;
+    if (_result)
+    {
+        // Put the handler reference result into the client data object, and
+        // then return a safe reference to the client data object as the reference;
+        // this safe reference is contained in the contextPtr, which was assigned
+        // when the client data object was created.
+        _clientDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
+        _result = contextPtr;
+    }
+    else
+    {
+        // Add failed, release the client data.
+        le_mem_Release(_clientDataPtr);
+    }
     {%- endif %}
 
     // Unpack any "out" parameters

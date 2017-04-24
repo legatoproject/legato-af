@@ -192,6 +192,14 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {{function.returnType|FormatType}}
             {#- #} result = {{pack.UnpackValue(function.returnType, "result", function.name)}};
         {%- endif -%}
+        {%- if function is AddHandlerFunction %}
+
+        // If add fails, remove the function from the map
+        if (result == 0)
+        {
+            handlerMap.remove(newRef);
+        }
+        {%- endif %}
         {%- for parameter in function.parameters if parameter is OutParameter %}
         if (_{{parameter.name}} != null)
         {

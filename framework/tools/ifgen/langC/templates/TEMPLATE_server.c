@@ -609,17 +609,25 @@ static void Handle_{{apiName}}_{{function.name}}
         {%- endfor %} );
     {%- if function is AddHandlerFunction %}
 
-    // Put the handler reference result and a pointer to the associated remove function
-    // into the server data object.  This function pointer is needed in case the client
-    // is closed and the handlers need to be removed.
-    serverDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
-    serverDataPtr->removeHandlerFunc =
-        (RemoveHandlerFunc_t){{apiName}}_{{function.name|replace("Add", "Remove", 1)}};
+    if (_result)
+    {
+        // Put the handler reference result and a pointer to the associated remove function
+        // into the server data object.  This function pointer is needed in case the client
+        // is closed and the handlers need to be removed.
+        serverDataPtr->handlerRef = (le_event_HandlerRef_t)_result;
+        serverDataPtr->removeHandlerFunc =
+            (RemoveHandlerFunc_t){{apiName}}_{{function.name|replace("Add", "Remove", 1)}};
 
-    // Return a safe reference to the server data object as the reference.
-    _LOCK
-    _result = le_ref_CreateRef(_HandlerRefMap, serverDataPtr);
-    _UNLOCK
+        // Return a safe reference to the server data object as the reference.
+        _LOCK
+        _result = le_ref_CreateRef(_HandlerRefMap, serverDataPtr);
+        _UNLOCK
+    }
+    else
+    {
+        // Adding handler failed; release serverDataPtr and return NULL back to the client.
+        le_mem_Release(serverDataPtr);
+    }
     {%- endif %}
 
     // Re-use the message buffer for the response

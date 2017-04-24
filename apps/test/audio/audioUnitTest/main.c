@@ -805,6 +805,39 @@ void Testle_audio_CaptureSamples
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test play to invalid destination.
+ *
+ * Should return an error.
+ *
+ * API tested:
+ * - le_audio_AddMediaHandler
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void Testle_audio_PlayInvalid
+(
+    void
+)
+{
+    le_audio_StreamRef_t playbackStreamRef = NULL;
+
+    // open the player stream
+    playbackStreamRef = le_audio_OpenUsbTx();
+    LE_ASSERT(playbackStreamRef != NULL);
+
+    // Try to attach a media handler
+    MediaHandlerRef = le_audio_AddMediaHandler(playbackStreamRef,
+                                               MyMediaHandler, playbackStreamRef);
+    LE_ASSERT(MediaHandlerRef == NULL);
+
+    // close the player stream
+    le_audio_Close(playbackStreamRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test the file capture functionality.
  * Audio samples (fake data) are sent in the pipe by the pa_pcm_simu.
  * When all the data are sent, the recorded file is checked.
@@ -1187,6 +1220,9 @@ COMPONENT_INIT
 
     LE_INFO("======== Test play file ========");
     Testle_audio_PlayFile();
+
+    LE_INFO("======== Test play to invalid destination ========");
+    Testle_audio_PlayInvalid();
 
     LE_INFO("======== Test capture samples ========");
     Testle_audio_CaptureSamples();
