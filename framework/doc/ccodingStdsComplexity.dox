@@ -159,6 +159,40 @@ modified by the function it is being passed to.
 Pointer type return values must be declared @c const if the object being returned must not be
 modified by the caller.
 
+@section codingComplexErrorHandling Error Handling
+
+Error handling for runtime errors, such as unexpected data received over a network, or timeouts
+while trying to contact a server, should either be handled within a function, or
+indicated to the caller by returning an error code.  Generally @c le_result_t is used for this
+purpose.
+
+It can also be useful to insert checks which should never fail.  Even though these checks should
+never fail, they are useful for: detecting bugs early; and limiting the damage of uncaught bugs.
+Examples of such checks include:
+
+  1. Checking parameters are within range accepted by an API function.
+  2. Checking a pointer is not NULL before dereferencing it if the pointer should *never*
+     be NULL at that point in the code.
+  3. Checking the return value of a function, if the function can never fail as called.  E.g.
+     strtol() if the string has already been validated to be a small integer.
+
+Since the developer does not know why such checks have failed, such checks should exit the
+process by invoking the @c LE_FATAL or @c LE_ASSERT family of macros.  This aims to minimize
+any data corruption by restarting the process with a clean memory space.
+Using the @c LE_FATAL family of functions is preferred over @c LE_ASSERT as @c LE_FATAL allows
+logging additional information about the error.
+
+Since invoking @c LE_FATAL or @c LE_ASSERT will cause the process to exit, these must not be used
+for checks which are only unlikely to fail.  Checks which are unlikely to fail are runtime errors
+and should be handled as indicated above.  Similarly a developer should consider an alternate
+recovery method if restarting the process is unlikely to clear the problem, such as reading
+corrupted data from persistant storage.
+
+@note For security reasons, malformed messages from network services are always considered runtime
+errors, even if the service is locally developed or otherwise trusted.  All network input should
+be validated.  If it fails validation it should raise a runtime error and any invalid data
+discarded.
+
 @section codingComplexMultithreading Multithreading
 
 Sometimes multithreading can be a powerful tool, allowing functionally related code to be grouped
