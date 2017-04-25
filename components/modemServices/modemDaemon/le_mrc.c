@@ -3171,7 +3171,8 @@ uint32_t le_mrc_GetNeighborCellId
 /**
  * This function must be called to get the Location Area Code of a cell.
  *
- * @return The Location Area Code of a cell. 0xFFFF value is returned if the value is not available.
+ * @return The Location Area Code of a cell. UINT16_MAX value is returned if the value is not
+ * available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -3245,11 +3246,11 @@ le_mrc_Rat_t le_mrc_GetNeighborCellRat
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the Ec/Io; the received energy per chip divided by the power
- * density in the band measured in dBm on the primary CPICH channel of serving cell.
+ * density in the band measured in dBm on the primary CPICH channel of serving cell (negative value)
  *
  * @return
  *  - The Ec/Io of a cell given in dB with 1 decimal place. (only applicable for UMTS network).
- *  - 0xFFFFFFFF when the value is not available.
+ *  - INT32_MAX when the value is not available.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -3490,11 +3491,14 @@ le_result_t le_mrc_GetUmtsSignalMetrics
     le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
     int32_t*            ssPtr,      ///< [OUT] Signal strength in dBm
     uint32_t*           blerPtr,    ///< [OUT] Block error rate
-    int32_t*            ecioPtr,    ///< [OUT] Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t*            ecioPtr,    ///< [OUT] Ec/Io value in dB with 1 decimal place (-15 = -1.5
+                                    ///<       dB) (Negative value)
     int32_t*            rscpPtr,    ///< [OUT] Measured RSCP in dBm (only applicable for TD-SCDMA
-                                    ///<       network)
+                                    ///<       network, negative value, value INT32_MAX means that
+                                    ///<       the value is not available)
     int32_t*            sinrPtr     ///< [OUT] Measured SINR in dB (only applicable for TD-SCDMA
-                                    ///<       network)
+                                    ///<       network, value INT32_MAX means that the value is
+                                    ///<       not available)
 )
 {
     pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
@@ -3590,10 +3594,14 @@ le_result_t le_mrc_GetCdmaSignalMetrics
     le_mrc_MetricsRef_t MetricsRef, ///< [IN] The signal metrics reference.
     int32_t*            ssPtr,      ///< [OUT] Signal strength in dBm
     uint32_t*           erPtr,      ///< [OUT] Frame/Packet error rate
-    int32_t*            ecioPtr,    ///< [OUT] ECIO value in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t*            ecioPtr,    ///< [OUT] Ec/Io value in dB with 1 decimal place (-15 = -1.5
+                                    ///<       dB) (Negative value)
     int32_t*            sinrPtr,    ///< [OUT] SINR level in dB with 1 decimal place, (only
-                                    ///<       applicable for 1xEV-DO)
-    int32_t*            ioPtr       ///< [OUT] Received IO in dBm (only applicable for 1xEV-DO)
+                                    ///<       applicable for 1xEV-DO, value INT32_MAX means that
+                                    ///<       the value is not available)
+    int32_t*            ioPtr       ///< [OUT] Received IO in dBm (only applicable for 1xEV-DO,
+                                    ///<       value INT32_MAX means that the value is not
+                                    ///<       available)
 )
 {
     pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
@@ -3724,7 +3732,7 @@ void le_mrc_RemoveSignalStrengthChangeHandler
 /**
  * This function must be called to get the serving cell Identifier.
  *
- * @return The Cell Identifier. 0xFFFFFFFF value is returned if the value is not available.
+ * @return The Cell Identifier. UINT32_MAX value is returned if the value is not available.
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t le_mrc_GetServingCellId
@@ -3741,7 +3749,7 @@ uint32_t le_mrc_GetServingCellId
     else
     {
         LE_ERROR("Cannot retrieve the serving cell Identifier!");
-        return 0xFFFFFFFF;
+        return UINT32_MAX;
     }
 }
 
@@ -3750,7 +3758,7 @@ uint32_t le_mrc_GetServingCellId
 /**
  * This function must be called to get the Tracking Area Code of the serving cell.
  *
- * @return The Tracking Area Code. 0xFFFF value is returned if the value is not available.
+ * @return The Tracking Area Code. UINT16_MAX value is returned if the value is not available.
  */
 //--------------------------------------------------------------------------------------------------
 uint16_t le_mrc_GetServingCellLteTracAreaCode
@@ -3767,7 +3775,7 @@ uint16_t le_mrc_GetServingCellLteTracAreaCode
     else
     {
         LE_ERROR("Cannot retrieve the serving cell Tracking area code!");
-        return 0xFFFF;
+        return UINT16_MAX;
     }
 }
 
@@ -3776,7 +3784,7 @@ uint16_t le_mrc_GetServingCellLteTracAreaCode
 /**
  * This function must be called to get the Location Area Code of the serving cell.
  *
- * @return The Location Area Code. 0xFFFFFFFF value is returned if the value is not available.
+ * @return The Location Area Code. UINT32_MAX value is returned if the value is not available.
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t le_mrc_GetServingCellLocAreaCode
@@ -3793,7 +3801,7 @@ uint32_t le_mrc_GetServingCellLocAreaCode
     else
     {
         LE_ERROR("Cannot retrieve the serving cell Identifier!");
-        return 0xFFFFFFFF;
+        return UINT32_MAX;
     }
 }
 

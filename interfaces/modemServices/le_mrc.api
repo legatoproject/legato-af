@@ -289,8 +289,8 @@
  * - le_mrc_GetNeighborCellId() gets the identifier of the cell specified with the
  *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT).
  * - le_mrc_GetNeighborCellLocAreaCode() gets the location area code of the cell specified with the
- *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT). 0xFFFF value is returned
- *   if the value is not available.
+ *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT). UINT16_MAX value is
+ *   returned if the value is not available.
  * - le_mrc_GetNeighborCellRxLevel() gets the signal strength (in dBm) of the cell specified with
  *   the le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT).
  * - le_mrc_GetNeighborCellRat() gets the Radio Access Technology of the cell specified with
@@ -1570,7 +1570,8 @@ FUNCTION uint32 GetNeighborCellId
 /**
  * This function must be called to get the Location Area Code of a cell.
  *
- * @return The Location Area Code of a cell. 0xFFFF value is returned if the value is not available.
+ * @return The Location Area Code of a cell. UINT16_MAX value is returned if the value is not
+ * available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -1620,11 +1621,11 @@ FUNCTION Rat GetNeighborCellRat
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the Ec/Io; the received energy per chip divided by the power
- * density in the band measured in dBm on the primary CPICH channel of serving cell.
+ * density in the band measured in dBm on the primary CPICH channel of serving cell (negative value)
  *
  * @return
  *  - The Ec/Io of a cell given in dB with 1 decimal place. (only applicable for UMTS network).
- *  - 0xFFFFFFFF when the value isn't available.
+ *  - INT32_MAX when the value isn't available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -1770,9 +1771,12 @@ FUNCTION le_result_t GetUmtsSignalMetrics
     Metrics  MetricsRef IN,  ///< Signal metrics reference.
     int32    ss         OUT, ///< Signal strength in dBm
     uint32   bler       OUT, ///< Block error rate
-    int32    ecio       OUT, ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
-    int32    rscp       OUT, ///< Measured RSCP in dBm (only applicable for TD-SCDMA network)
-    int32    sinr       OUT  ///< Measured SINR in dB (only applicable for TD-SCDMA network)
+    int32    ecio       OUT, ///< Ec/Io value in dB with 1 decimal place (-15 = -1.5 dB) (Negative
+                             ///< value)
+    int32    rscp       OUT, ///< Measured RSCP in dBm (only applicable for TD-SCDMA network,
+                             ///< negative value, value INT32_MAX means that RSCP is not available)
+    int32    sinr       OUT  ///< Measured SINR in dB (only applicable for TD-SCDMA network, value
+                             ///< INT32_MAX means that the SINR is not available)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1782,7 +1786,7 @@ FUNCTION le_result_t GetUmtsSignalMetrics
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
- *      - sinrPtr and ioPtr return 0xFFFFFFFF when the value isn't available.
+ *      - sinrPtr and ioPtr return INT32_MAX when the value isn't available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -1797,7 +1801,7 @@ FUNCTION le_result_t GetLteSignalMetrics
     uint32   bler       OUT, ///< Block error rate
     int32    rsrq       OUT, ///< RSRQ value in dB as measured by L1 with 1 decimal place
     int32    rsrp       OUT, ///< Current RSRP in dBm as measured by L1 with 1 decimal place
-    int32    snr        OUT  ///< SNR level in dB with 1 decimal place (15 = 1.5 dB)
+    int32    sinr       OUT  ///< SNR level in dB with 1 decimal place (15 = 1.5 dB)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1807,7 +1811,7 @@ FUNCTION le_result_t GetLteSignalMetrics
  * @return
  *      - LE_OK on success
  *      - LE_FAULT on failure
- *      - rscpPtr and sinrPtr return 0xFFFFFFFF when the value isn't available.
+ *      - rscpPtr and sinrPtr return INT32_MAX when the value isn't available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
@@ -1820,16 +1824,19 @@ FUNCTION le_result_t GetCdmaSignalMetrics
     Metrics MetricsRef IN,  ///< Signal metrics reference.
     int32   ss         OUT, ///< Signal strength in dBm
     uint32  er         OUT, ///< Frame/Packet error rate
-    int32   ecio       OUT, ///< ECIO value in dB with 1 decimal place (15 = 1.5 dB)
-    int32   sinr       OUT, ///< SINR level in dB with 1 decimal place, (only applicable for 1xEV-DO).
-    int32   io         OUT  ///< Received IO in dBm (only applicable for 1xEV-DO)
+    int32   ecio       OUT, ///< ECIO value in dB with 1 decimal place (-15 = -1.5 dB) (Negative
+                            ///< value)
+    int32   sinr       OUT, ///< SINR level in dB with 1 decimal place, (only applicable for
+                            ///< 1xEV-DO, value INT32_MAX means that the value is not available)
+    int32   io         OUT  ///< Received IO in dBm (only applicable for 1xEV-DO, value INT32_MAX
+                            ///< means that the value is not available)
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the serving Cell Identifier.
  *
- * @return The Cell Identifier. 0xFFFFFFFF value is returned if the value is not available.
+ * @return The Cell Identifier. UINT32_MAX value is returned if the value is not available.
  *
  * @note <b>multi-app safe</b>
  */
@@ -1842,7 +1849,7 @@ FUNCTION uint32 GetServingCellId
 /**
  * This function must be called to get the Location Area Code of the serving cell.
  *
- * @return The Location Area Code. 0xFFFFFFFF value is returned if the value is not available.
+ * @return The Location Area Code. UINT32_MAX value is returned if the value is not available.
  *
  * @note <b>multi-app safe</b>
  */
@@ -1855,7 +1862,7 @@ FUNCTION uint32 GetServingCellLocAreaCode
 /**
  * This function must be called to get the Tracking Area Code of the serving cell (LTE only).
  *
- * @return The Tracking Area Code. 0xFFFF value is returned if the value is not available.
+ * @return The Tracking Area Code. UINT16_MAX value is returned if the value is not available.
  *
  * @note <b>multi-app safe</b>
  */
