@@ -39,7 +39,14 @@ case "$1" in
         # Check if legato is read-only
         if [ -f systems/current/read-only ]; then
 
-            if [ ! -w /etc/ld.so.cache ]; then
+            # On some platforms, the '[ -w ... ]' returns true even it is located to read-only
+            # file system. Protect against by performing the action in read-write and if failed
+            # replay the action in read-only.
+            LDCONFIG=""
+            if [ -w /etc/ld.so.cache ]; then
+                ldconfig -i /legato/systems/current/lib && LDCONFIG="RW"
+            fi
+            if [ "RW" != "$LDCONFIG" ]; then
                 # Update ld.so cache
                 if [ -f /tmp/ld.so.cache ]; then
                     umount /etc/ld.so.cache 2>/dev/null
@@ -48,8 +55,6 @@ case "$1" in
                 ldconfig -i /legato/systems/current/lib -C /tmp/ld.so.cache &&
                 chmod 644 /tmp/ld.so.cache &&
                 mount -o bind /tmp/ld.so.cache /etc/ld.so.cache
-            else
-                ldconfig -i /legato/systems/current/lib
             fi
 
             # Start the legato
