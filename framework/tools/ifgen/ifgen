@@ -290,7 +290,7 @@ def Main():
           'AddHandlerFunction': ifgenJinjaExtensions.IsAddHandlerFunction,
           'RemoveHandlerFunction': ifgenJinjaExtensions.IsRemoveHandlerFunction })
 
-    TemplateEnvironment.globals.update({ 'any': ifgenJinjaExtensions.any_filter })
+    TemplateEnvironment.globals.update({ 'any': ifgenJinjaExtensions.AnyFilter })
 
     # Add any language-specific tests & filters
     TemplateEnvironment.filters.update(langPkg.Filters)

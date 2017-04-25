@@ -135,6 +135,11 @@
 #define _GNU_SOURCE
 #endif
 
+#if defined(__cplusplus) && !defined(__STDC_LIMIT_MACROS)
+// stdint.h from before C++11 only defines MAX and MIN macros if __STDC_LIMIT_MACROS is defined
+#define __STDC_LIMIT_MACROS
+#endif
+
 #include <stddef.h>
 #include <unistd.h>
 #include <time.h>

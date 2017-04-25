@@ -97,7 +97,7 @@ public class {{apiName}}Server implements AutoCloseable
 
     private void handle{{function.name}}(MessageBuffer buffer)
     {
-        {%- if function.parameters|select("OutParameter") %}
+        {%- if any(function.parameters, "OutParameter") %}
         int _requiredOutputs = buffer.readInt();
         {%- endif %}
 

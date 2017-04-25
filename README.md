@@ -10,7 +10,7 @@ Welcome to Legato!
 
 ```bash
 $ sudo apt-get install build-essential \
-                       python python-jinja2 cmake \
+                       python python-jinja2 python-pkg-resources cmake \
                        git subversion libsdl-dev \
                        diffstat texinfo gawk chrpath wget cpio \
                        vim zsh bash ninja-build screen sshpass \

@@ -132,7 +132,7 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         MessageBuffer buffer = message.getBuffer();
 
         buffer.writeInt(MessageID_{{function.name}});
-        {%- if function.parameters|select("OutParameter") %}
+        {%- if any(function.parameters, "OutParameter") %}
 
         int _requiredOutputs = 0;
         {%- for output in function.parameters if output is OutParameter %}
@@ -179,7 +179,7 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {%- endif %}
         {%- endfor %}
         {%- set hasOuts = (function.returnType or
-                           function.parameters|select("OutParameter")|list|length > 0) %}
+                           function.parameters|any("OutParameter")) %}
 
         {% if hasOuts -%}
         Message response = {% endif -%}
