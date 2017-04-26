@@ -21,6 +21,7 @@
  * @subpage c_eventLoop <br>
  * @subpage c_fdMonitor <br>
  * @subpage c_flock <br>
+ * @subpage c_fs <br>
  * @subpage c_hashmap <br>
  * @subpage c_hex <br>
  * @subpage c_json <br>
@@ -219,6 +220,7 @@ extern "C" {
 #include "le_tty.h"
 #include "le_atomFile.h"
 #include "le_crc.h"
+#include "le_fs.h"
 
 #ifdef __cplusplus
 }

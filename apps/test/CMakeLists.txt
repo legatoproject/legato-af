@@ -97,9 +97,6 @@ add_subdirectory(cellNetService/cellNetUnitTest)
 add_subdirectory(dataConnectionService/dataConnectionServiceTest)
 add_subdirectory(dataConnectionService/dataConnectionUnitTest)
 
-## Filesystem Service
-add_subdirectory(fsService/fsIntegrationTest)
-
 ## Other Services ...
 add_subdirectory(voiceCallService/voiceCallServiceIntegrationTest)
 add_subdirectory(voiceCallService/voiceCallServiceUnitTest)

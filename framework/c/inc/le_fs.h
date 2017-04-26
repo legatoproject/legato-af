@@ -1,8 +1,7 @@
-//--------------------------------------------------------------------------------------------------
 /**
  * @page c_fs File System service
  *
- * @ref le_fs_interface.h "API Reference"
+ * @ref le_fs.h
  *
  * <HR>
  *
@@ -20,55 +19,14 @@
  * - delete a file with le_fs_Delete()
  * - move a file with le_fs_Move()
  *
- * The files and directories tree used by the fsDaemon may be set by the user with the config
- * tree variable fsService:/fsPrefixPath.
- * If it is not set, the path /data/le_fs is used if writeable. Else, it uses /tmp/data/le_fs.
- *
- * @section le_fs_binding IPC interfaces binding
- *
- * All the functions of this API are provided by the @b fsService application service.
- *
- * Here's a code sample binding to File System service:
- * @verbatim
-   bindings:
-   {
-      clientExe.clientComponent.le_fs -> fsService.le_fs
-   }
-   @endverbatim
  *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
  */
-//--------------------------------------------------------------------------------------------------
 
-//--------------------------------------------------------------------------------------------------
-/**
- * @file le_fs_interface.h
- *
- * Legato @ref c_fs API.
- *
- * <HR>
- *
- * Copyright (C) Sierra Wireless Inc.
- */
-//--------------------------------------------------------------------------------------------------
-
-//--------------------------------------------------------------------------------------------------
-/**
- * File access modes used when opening a file.
- */
-//--------------------------------------------------------------------------------------------------
-BITMASK AccessMode
-{
-    RDONLY,   ///< Read only
-    WRONLY,   ///< Write only
-    RDWR,     ///< Read/Write
-    CREAT,    ///< Create a new file
-    TRUNC,    ///< Truncate
-    APPEND,   ///< Append
-    SYNC      ///< Synchronized
-};
+#ifndef LE_FS_H_INCLUDE_GUARD
+#define LE_FS_H_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -77,40 +35,54 @@ BITMASK AccessMode
  * @note This maximal value should be coherent with @ref le_fs_AccessMode_t
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE ACCESS_MODE_MAX = 0x7F;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Offset position used when seeking in a file.
- */
-//--------------------------------------------------------------------------------------------------
-ENUM Position
-{
-    SEEK_SET,   ///< From the current position
-    SEEK_CUR,   ///< From the beginning of the file
-    SEEK_END    ///< From the end of the file
-};
+#define LE_FS_ACCESS_MODE_MAX 127
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of characters permitted for a file path.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE PATH_MAX_LEN = 128;
+#define LE_FS_PATH_MAX_LEN    PATH_MAX
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum number of bytes to read/write in one API call.
+ * File access modes used when opening a file.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE DATA_MAX_SIZE = 8192;
+typedef enum
+{
+    LE_FS_RDONLY = 0x1,        ///< Read only
+    LE_FS_WRONLY = 0x2,        ///< Write only
+    LE_FS_RDWR   = 0x4,        ///< Read/Write
+    LE_FS_CREAT  = 0x8,        ///< Create a new file
+    LE_FS_TRUNC  = 0x10,       ///< Truncate
+    LE_FS_APPEND = 0x20,       ///< Append
+    LE_FS_SYNC   = 0x40        ///< Synchronized
+}
+le_fs_AccessMode_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Offset position used when seeking in a file.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    LE_FS_SEEK_SET = 0, ///< From the current position
+    LE_FS_SEEK_CUR = 1, ///< From the beginning of the file
+    LE_FS_SEEK_END = 2  ///< From the end of the file
+}
+le_fs_Position_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Reference of a file
  */
 //--------------------------------------------------------------------------------------------------
-REFERENCE File;
+typedef struct le_fs_File* le_fs_FileRef_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -126,11 +98,11 @@ REFERENCE File;
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Open
+le_result_t le_fs_Open
 (
-    string filePath[PATH_MAX_LEN] IN, ///< File path
-    AccessMode accessMode         IN, ///< Access mode for the file
-    File fileRef                  OUT ///< File reference (if successful)
+    const char* filePath,          ///< [IN] File path
+    le_fs_AccessMode_t accessMode, ///< [IN] Access mode for the file
+    le_fs_FileRef_t* fileRefPtr    ///< [OUT] File reference (if successful)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -142,9 +114,9 @@ FUNCTION le_result_t Open
  *  - LE_FAULT      The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Close
+le_result_t le_fs_Close
 (
-    File fileRef       IN  ///< File reference
+    le_fs_FileRef_t fileRef ///< [IN] File reference
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -158,10 +130,11 @@ FUNCTION le_result_t Close
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Read
+le_result_t le_fs_Read
 (
-    File fileRef                IN, ///< File reference
-    uint8 buf[DATA_MAX_SIZE]    OUT ///< Buffer to store the data read in the file
+    le_fs_FileRef_t fileRef, ///< [IN] File reference
+    uint8_t* bufPtr,         ///< [OUT] Buffer to store the data read in the file
+    size_t* bufSizePtr       ///< [INOUT] Size to read and size really read on file
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -176,10 +149,11 @@ FUNCTION le_result_t Read
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Write
+le_result_t le_fs_Write
 (
-    File fileRef                IN, ///< File reference
-    uint8 buf[DATA_MAX_SIZE]    IN  ///< Buffer to write in the file
+    le_fs_FileRef_t fileRef, ///< [IN] File reference
+    const uint8_t* bufPtr,   ///< [IN] Buffer to write in the file
+    size_t bufSize           ///< [IN] Size of the buffer to write
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -192,12 +166,12 @@ FUNCTION le_result_t Write
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Seek
+le_result_t le_fs_Seek
 (
-    File fileRef          IN,  ///< File reference
-    int32 offset          IN,  ///< Offset to apply
-    Position position     IN,  ///< Offset is relative to this position
-    int32 currentOffset   OUT  ///< Offset from the beginning after the seek operation
+    le_fs_FileRef_t fileRef,   ///< [IN] File reference
+    int32_t offset,            ///< [IN] Offset to apply
+    le_fs_Position_t position, ///< [IN] Offset is relative to this position
+    int32_t* currentOffsetPtr  ///< [OUT] Offset from the beginning after the seek operation
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -212,10 +186,10 @@ FUNCTION le_result_t Seek
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t GetSize
+le_result_t le_fs_GetSize
 (
-    string filePath[PATH_MAX_LEN]   IN, ///< File path
-    size size                       OUT ///< File size (if successful)
+    const char* filePath, ///< [IN] File path
+    size_t* sizePtr       ///< [OUT] File size (if successful)
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -233,9 +207,9 @@ FUNCTION le_result_t GetSize
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Delete
+le_result_t le_fs_Delete
 (
-    string filePath[PATH_MAX_LEN]   IN  ///< File path
+    const char* filePath ///< [IN] File path
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -250,8 +224,10 @@ FUNCTION le_result_t Delete
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t Move
+le_result_t le_fs_Move
 (
-    string srcPath[PATH_MAX_LEN]    IN, ///< Path to file to rename
-    string destPath[PATH_MAX_LEN]   IN  ///< New path to file
+    const char* srcPath, ///< [IN] Path to file to rename
+    const char* destPath ///< [IN] New path to file
 );
+
+#endif // LE_FS_H_INCLUDE_GUARD

@@ -11,7 +11,6 @@ apps:
     $LEGATO_ROOT/apps/platformServices/audioService
     $LEGATO_ROOT/apps/platformServices/cellNetService
     $LEGATO_ROOT/apps/platformServices/dataConnectionService
-    $LEGATO_ROOT/apps/platformServices/fsService
     $LEGATO_ROOT/apps/platformServices/fwupdateService
     $LEGATO_ROOT/apps/platformServices/modemService
     $LEGATO_ROOT/apps/platformServices/positioningService

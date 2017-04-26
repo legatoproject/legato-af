@@ -1,5 +1,5 @@
 /**
- * @file le_fs.c
+ * @file fs.c
  *
  * This file contains the data structures and the source code of the File System (FS) service.
  *
@@ -9,7 +9,6 @@
  */
 
 #include "legato.h"
-#include "interfaces.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -17,13 +16,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define FS_PREFIX_DATA_PATH      "/data/le_fs/"
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Default prefix path variable for looking in the config tree
- */
-//--------------------------------------------------------------------------------------------------
-#define FS_PREFIX_PATH_CFG       "/fsPrefixPath"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -98,6 +90,7 @@ static char* BuildPathName
  *  - LE_OK             The function succeeded.
  *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
  *  - LE_NOT_POSSIBLE   A directory in the tree belongs to a Read-Only space and cannot be created
+ *  - LE_NOT_PERMITTED  A directory in the tree belongs has not access right and cannot be created
  *  - LE_FAULT          The function fails while creating or accessing to a directory.
  */
 //--------------------------------------------------------------------------------------------------
@@ -120,7 +113,18 @@ static le_result_t MkDirTree
         strncat(strncpy(dirPath, FsPrefixPtr, PATH_MAX), filePathPtr, slashPtr - filePathPtr);
         if ((-1 == mkdir(dirPath, S_IRWXU)) && (EEXIST != errno))
         {
-            return (EROFS == errno) ? LE_NOT_POSSIBLE : LE_FAULT;
+            if (EROFS == errno)
+            {
+                return LE_NOT_POSSIBLE;
+            }
+            else if ((EPERM == errno) || (EACCES == errno))
+            {
+                return LE_NOT_PERMITTED;
+            }
+            else
+            {
+                return LE_FAULT;
+            }
         }
     }
     return LE_OK;
@@ -332,14 +336,6 @@ le_result_t le_fs_Read
         return LE_BAD_PARAMETER;
     }
 
-    // Check buffer size
-    if (*bufNumElementsPtr > LE_FS_DATA_MAX_SIZE)
-    {
-        LE_ERROR("Requested length to read is too big, %zu > %d bytes",
-                 *bufNumElementsPtr, LE_FS_DATA_MAX_SIZE);
-        return LE_BAD_PARAMETER;
-    }
-
     // Check the number of bytes to read
     if (0 == *bufNumElementsPtr)
     {
@@ -393,14 +389,6 @@ le_result_t le_fs_Write
     if (NULL == bufPtr)
     {
         LE_ERROR("NULL buffer pointer!");
-        return LE_BAD_PARAMETER;
-    }
-
-    // Check buffer size
-    if (bufNumElements > LE_FS_DATA_MAX_SIZE)
-    {
-        LE_ERROR("Requested length to write is too big, %zu > %d bytes",
-                 bufNumElements, LE_FS_DATA_MAX_SIZE);
         return LE_BAD_PARAMETER;
     }
 
@@ -691,10 +679,12 @@ le_result_t le_fs_Move
  * Initialize this component
  */
 //--------------------------------------------------------------------------------------------------
-COMPONENT_INIT
+void fs_Init
+(
+    void
+)
 {
     le_result_t res;
-    static char fsPrefixPath[PATH_MAX];
     char* fsPrefixArray[] =
     {
         FS_PREFIX_DATA_PATH,
@@ -702,42 +692,6 @@ COMPONENT_INIT
         NULL,
     };
     char** tempFsPrefixPtr = fsPrefixArray;
-    le_cfg_IteratorRef_t fsPrefixCfg = le_cfg_CreateReadTxn("fsService:");
-
-    // Get the fsPrefixPath from config DB
-    if (le_cfg_NodeExists(fsPrefixCfg, FS_PREFIX_PATH_CFG))
-    {
-        int len;
-
-        memset(fsPrefixPath, 0, sizeof(fsPrefixPath));
-        if (LE_OK != le_cfg_GetString(fsPrefixCfg,
-                                      FS_PREFIX_PATH_CFG,
-                                      fsPrefixPath,
-                                      sizeof(fsPrefixPath), ""))
-        {
-            LE_CRIT("No FS prefix path registered '/fsPrefixPath'");
-            goto end;
-        }
-        len = strlen(fsPrefixPath);
-        if ((!len) || ('/' != fsPrefixPath[0]))
-        {
-            LE_CRIT("FS prefix path should start by /");
-            goto end;
-        }
-        if (('/' != fsPrefixPath[len - 1]))
-        {
-            strncat(fsPrefixPath, "/", sizeof(fsPrefixPath) - len - 1);
-        }
-        FsPrefixPtr = "";
-        if (LE_OK != MkDirTree(fsPrefixPath))
-        {
-            FsPrefixPtr = NULL;
-            LE_CRIT("Unable to create directory '%s'", fsPrefixPath);
-            goto end;
-        }
-        FsPrefixPtr = fsPrefixPath;
-        goto end;
-    }
 
     do
     {
@@ -752,7 +706,7 @@ COMPONENT_INIT
                     FsPrefixPtr = *tempFsPrefixPtr;
                     break;
                 }
-                else if (LE_NOT_POSSIBLE == res)
+                else if ((LE_NOT_POSSIBLE == res) || (LE_NOT_PERMITTED == res))
                 {
                     FsPrefixPtr = NULL;
                     tempFsPrefixPtr++;
@@ -781,14 +735,12 @@ COMPONENT_INIT
 end:
     if (NULL == FsPrefixPtr)
     {
-        LE_CRIT("fsService is unusable because no valid prefix path");
+        LE_CRIT("le_fs module is unusable because no valid prefix path");
     }
     else
     {
-        LE_INFO("Daemon started: FS prefix path \"%s\"", FsPrefixPtr);
+        LE_DEBUG("FS prefix path \"%s\"", FsPrefixPtr);
     }
-
-    le_cfg_CancelTxn(fsPrefixCfg);
 
     FsFileRefPool = le_mem_CreatePool("FsFileRefPool", sizeof(File_t));
     le_mem_ExpandPool (FsFileRefPool, FS_MAX_FILE_REF);

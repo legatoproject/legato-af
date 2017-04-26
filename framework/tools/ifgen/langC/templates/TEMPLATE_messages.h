@@ -38,7 +38,7 @@
 //       type support has been added, this will be replaced by a more appropriate size.
 {#- Message size hack carried over from original C ifgen.  Will be fixed soon as this was one of
  # the motivating factors for refactoring ifgen #}
-{%- if apiName in [ "le_secStore", "secStoreGlobal", "secStoreAdmin", "le_fs" ] %}
+{%- if apiName in [ "le_secStore", "secStoreGlobal", "secStoreAdmin" ] %}
 #define _MAX_MSG_SIZE 8500
 {%- elif apiName == "le_cfg" %}
 #define _MAX_MSG_SIZE 1600

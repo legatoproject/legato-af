@@ -1,17 +1,11 @@
-/**
- * @file fsTest.c
- *
- * This module implements the File System service tests.
- *
- * <HR>
- *
- * Copyright (C) Sierra Wireless Inc.
- *
- */
+ /**
+  * This module is for unit testing the le_fs module in the legato
+  * runtime library (liblegato.so).
+  *
+  * Copyright (C) Sierra Wireless Inc.
+  */
 
 #include "legato.h"
-#include "interfaces.h"
-
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -50,42 +44,42 @@
 // -------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    LE_DEBUG("Starting FS test");
+    printf("Starting FS test\n");
 
     le_fs_FileRef_t fileRef = NULL;
 
     // Create and open a new file
     const char filePath[PATH_LENGTH] = "/foo/bar/test.txt";
-    LE_DEBUG("Open file '%s'", filePath);
+    printf("Open file '%s'\n", filePath);
     LE_ASSERT_OK(le_fs_Open(filePath, LE_FS_CREAT | LE_FS_RDWR | LE_FS_TRUNC, &fileRef));
-    LE_DEBUG("File handler: %p", fileRef);
+    printf("File handler: %p\n", fileRef);
     LE_ASSERT(0 <= fileRef);
 
     // Write in file
     const uint8_t dataToWrite[SHORT_DATA_LENGTH] = "Hello world!";
-    LE_DEBUG("Writing '%s' in file", dataToWrite);
+    printf("Writing '%s' in file\n", dataToWrite);
     LE_ASSERT_OK(le_fs_Write(fileRef, dataToWrite, strlen((char*)dataToWrite)));
 
     // Get file size
     size_t fileSize = 0;
     LE_ASSERT_OK(le_fs_GetSize(filePath, &fileSize));
-    LE_DEBUG("File size of '%s': %zu", filePath, fileSize);
+    printf("File size of '%s': %zu\n", filePath, fileSize);
     LE_ASSERT(strlen((char*)dataToWrite) == fileSize);
 
     // Seek negative offset from the beginning
     int32_t offset = -5;
     int32_t currentOffset = 0;
-    LE_DEBUG("Seek offset %d from the beginning", (int)offset);
+    printf("Seek offset %d from the beginning\n", (int)offset);
     LE_ASSERT(LE_FAULT == le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset));
 
     // Seek from the beginning
     offset = 5;
     currentOffset = 0;
     int32_t currentPosition = 0;
-    LE_DEBUG("Seek offset %d from the beginning", (int)offset);
+    printf("Seek offset %d from the beginning\n", (int)offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset));
     currentPosition += offset;
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(currentPosition == currentOffset);
 
     // Read 3 bytes from the current position
@@ -95,16 +89,16 @@ COMPONENT_INIT
     size_t expectedReadLength = readLength;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
     currentPosition += readLength;
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readData);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
     LE_ASSERT(0 == strncmp(" wo", (char*)readData, readLength))
 
     // Seek from the current position
     offset = 2;
-    LE_DEBUG("Seek offset %d from the current position", offset);
+    printf("Seek offset %d from the current position\n", offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_CUR, &currentOffset));
     currentPosition += offset;
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(currentPosition == currentOffset);
 
     // Read 3 bytes from the current position: EOF should be reached after 2 bytes
@@ -112,7 +106,7 @@ COMPONENT_INIT
     readLength = 3;
     expectedReadLength = 2;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readData);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
     LE_ASSERT(0 == strncmp("d!", (char*)readData, readLength))
 
@@ -121,15 +115,15 @@ COMPONENT_INIT
     readLength = 3;
     expectedReadLength = 0;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readData);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
 
     // Seek from the end
     offset = -5;
-    LE_DEBUG("Seek offset %d from the end", offset);
+    printf("Seek offset %d from the end\n", offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_END, &currentOffset));
     currentPosition = strlen((char*)dataToWrite) - 5;
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(currentPosition == currentOffset);
 
     // Read 3 bytes from the current position
@@ -137,102 +131,102 @@ COMPONENT_INIT
     readLength = 3;
     expectedReadLength = readLength;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readData);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(expectedReadLength == readLength);
     LE_ASSERT(0 == strncmp("orl", (char*)readData, readLength))
 
     // Set current position to the beginning of the file
     offset = 0;
-    LE_DEBUG("Seek offset %d from the beginning", offset);
+    printf("Seek offset %d from the beginning\n", offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset));
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(offset == currentOffset);
 
     // Read 150 bytes from the current position
     memset(readData, '\0', sizeof(readData));
     readLength = SHORT_DATA_LENGTH;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readData);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT(strlen((char*)dataToWrite) == readLength);
     LE_ASSERT(0 == strncmp((char*)dataToWrite, (char*)readData, readLength))
 
     // Error cases with useless actions
-    LE_DEBUG("Test error cases with useless actions");
+    printf("Test error cases with useless actions\n");
     readLength = 0;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
     LE_ASSERT_OK(le_fs_Write(fileRef, dataToWrite, 0));
 
     // Close the opened file
-    LE_DEBUG("Closing file handler: %p", fileRef);
+    printf("Closing file handler: %p\n", fileRef);
     LE_ASSERT_OK(le_fs_Close(fileRef));
     fileRef = NULL;
 
     // Move the file
     const char newFilePath[PATH_LENGTH] = "/foo/bar/test2.txt";
-    LE_DEBUG("Moving file from '%s' to '%s'", filePath, newFilePath);
+    printf("Moving file from '%s' to '%s'\n", filePath, newFilePath);
     LE_ASSERT_OK(le_fs_Move(filePath, newFilePath));
     // Check that old file cannot be opened
     LE_ASSERT(LE_OK != le_fs_Open(filePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
 
     // Open the file
-    LE_DEBUG("Open file '%s'", newFilePath);
+    printf("Open file '%s'\n", newFilePath);
     LE_ASSERT_OK(le_fs_Open(newFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
-    LE_DEBUG("File handler: %p", fileRef);
+    printf("File handler: %p\n", fileRef);
     LE_ASSERT(0 <= fileRef);
 
     // Append text to the file
-    LE_DEBUG("Writing '%s' in file", dataToWrite);
+    printf("Writing '%s' in file\n", dataToWrite);
     LE_ASSERT_OK(le_fs_Write(fileRef, dataToWrite, strlen((char*)dataToWrite)));
 
     // Set current position to the beginning of the file
     offset = 0;
-    LE_DEBUG("Seek offset %d from the beginning", offset);
+    printf("Seek offset %d from the beginning\n", offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset));
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(offset == currentOffset);
 
     // Read 150 bytes from the current position
     memset(readData, '\0', sizeof(readData));
     readLength = SHORT_DATA_LENGTH;
     LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readData);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
     LE_ASSERT((2 * strlen((char*)dataToWrite)) == readLength);
     LE_ASSERT(0 == strncmp("Hello world!Hello world!", (char*)readData, readLength))
 
     // Close the opened file
-    LE_DEBUG("Closing file handler: %p", fileRef);
+    printf("Closing file handler: %p\n", fileRef);
     LE_ASSERT_OK(le_fs_Close(fileRef));
     fileRef = NULL;
 
     // Get file size
     fileSize = 0;
     LE_ASSERT_OK(le_fs_GetSize(newFilePath, &fileSize));
-    LE_DEBUG("File size of '%s': %zu", newFilePath, fileSize);
+    printf("File size of '%s': %zu\n", newFilePath, fileSize);
     LE_ASSERT((2 * strlen((char*)dataToWrite)) == fileSize);
 
     // Create and open a new file
     const char deleteFilePath[PATH_LENGTH] = "/foo/bar/delete.txt";
-    LE_DEBUG("Open file '%s'", deleteFilePath);
+    printf("Open file '%s'\n", deleteFilePath);
     LE_ASSERT_OK(le_fs_Open(deleteFilePath, LE_FS_CREAT | LE_FS_RDWR, &fileRef));
-    LE_DEBUG("File handler: %p", fileRef);
+    printf("File handler: %p\n", fileRef);
     LE_ASSERT(0 <= fileRef);
 
     // Close the new file
-    LE_DEBUG("Closing file handler: %p", fileRef);
+    printf("Closing file handler: %p\n", fileRef);
     LE_ASSERT_OK(le_fs_Close(fileRef));
     fileRef = NULL;
 
     // Delete the new file
-    LE_DEBUG("Deleting file '%s'",deleteFilePath);
+    printf("Deleting file '%s'\n",deleteFilePath);
     LE_ASSERT_OK(le_fs_Delete(deleteFilePath));
     // Check that deleted file cannot be opened
     LE_ASSERT(LE_OK != le_fs_Open(deleteFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
 
     // Create and open a new file
     const char loremFilePath[PATH_LENGTH] = "/bar/foo/lorem_ipsum.txt";
-    LE_DEBUG("Open file '%s'", loremFilePath);
+    printf("Open file '%s'\n", loremFilePath);
     LE_ASSERT_OK(le_fs_Open(loremFilePath, LE_FS_CREAT | LE_FS_RDWR | LE_FS_TRUNC, &fileRef));
-    LE_DEBUG("File handler: %p", fileRef);
+    printf("File handler: %p\n", fileRef);
     LE_ASSERT(0 <= fileRef);
 
     // Write in file
@@ -290,14 +284,14 @@ nulla semper ex, sit amet condimentum lorem nisl sed est. Morbi quis ultricies l
 efficitur volutpat ligula. Integer sit amet iaculis enim. Proin lobortis urna luctus semper \
 feugiat. Cras suscipit quam sit amet urna tristique, nec rhoncus odio tincidunt. Proin vulputate \
 facilisis erat, a imperdiet risus eleifend nec.";
-    LE_DEBUG("Writing Lorem ipsum in file");
+    printf("Writing Lorem ipsum in file\n");
     LE_ASSERT_OK(le_fs_Write(fileRef, loremIpsum, strlen((char*)loremIpsum)));
 
     // Set current position to the beginning of the file
     offset = 0;
-    LE_DEBUG("Seek offset %d from the beginning", offset);
+    printf("Seek offset %d from the beginning\n", offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset));
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(offset == currentOffset);
 
     // Read 5000 bytes from the current position
@@ -305,30 +299,30 @@ facilisis erat, a imperdiet risus eleifend nec.";
     memset(readLoremIpsum, '\0', LONG_DATA_LENGTH);
     readLength = LONG_DATA_LENGTH;
     LE_ASSERT_OK(le_fs_Read(fileRef, readLoremIpsum, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readLoremIpsum);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readLoremIpsum);
     LE_ASSERT(strlen((char*)loremIpsum) == readLength);
 
     // Set current position to the beginning of the file
     offset = 0;
-    LE_DEBUG("Seek offset %d from the beginning", offset);
+    printf("Seek offset %d from the beginning\n", offset);
     LE_ASSERT_OK(le_fs_Seek(fileRef, offset, LE_FS_SEEK_SET, &currentOffset));
-    LE_DEBUG("New position in file: %d", currentOffset);
+    printf("New position in file: %d\n", currentOffset);
     LE_ASSERT(offset == currentOffset);
 
     // Read 150 bytes from the current position
     memset(readLoremIpsum, '\0', LONG_DATA_LENGTH);
     readLength = SHORT_DATA_LENGTH;
     LE_ASSERT_OK(le_fs_Read(fileRef, readLoremIpsum, &readLength));
-    LE_DEBUG("Read %d bytes: '%s'", (int)readLength, readLoremIpsum);
+    printf("Read %d bytes: '%s'\n", (int)readLength, readLoremIpsum);
     LE_ASSERT(SHORT_DATA_LENGTH == readLength);
 
     // Close the opened file
-    LE_DEBUG("Closing file handler: %p", fileRef);
+    printf("Closing file handler: %p\n", fileRef);
     LE_ASSERT_OK(le_fs_Close(fileRef));
     fileRef = (le_fs_FileRef_t)-1;
 
     // Error cases with wrong file handler
-    LE_DEBUG("Test error cases with file handler %p", fileRef);
+    printf("Test error cases with file handler %p\n", fileRef);
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Close(fileRef));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Read(fileRef, readLoremIpsum, &readLength));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Write(fileRef, loremIpsum, strlen((char*)loremIpsum)));
@@ -336,13 +330,13 @@ facilisis erat, a imperdiet risus eleifend nec.";
 
     // Error cases with wrong file paths
     const char wrongFilePath[PATH_LENGTH] = "foo/bar/";
-    LE_DEBUG("Test error cases with file path '%s'", wrongFilePath);
+    printf("Test error cases with file path '%s'\n", wrongFilePath);
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Open(wrongFilePath, LE_FS_RDWR, &fileRef));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_GetSize(wrongFilePath, &fileSize));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Delete(wrongFilePath));
     LE_ASSERT(LE_BAD_PARAMETER == le_fs_Move(loremFilePath, loremFilePath));
 
-    LE_DEBUG("Successful FS test");
+    printf("Successful FS test\n");
     exit(EXIT_SUCCESS);
 }
 
