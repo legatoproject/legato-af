@@ -291,12 +291,6 @@ le_temp_SensorRef_t le_temp_Request
 
     LE_DEBUG("call marker.");
 
-    if (sensorPtr == NULL)
-    {
-        LE_KILL_CLIENT("sensorPtr is NULL !");
-        return NULL;
-    }
-
     if(strlen(sensorPtr) > (LE_TEMP_SENSOR_NAME_MAX_BYTES-1))
     {
         LE_KILL_CLIENT("strlen(sensorPtr) > %d", (LE_TEMP_SENSOR_NAME_MAX_BYTES-1));
@@ -443,12 +437,6 @@ le_result_t le_temp_SetThreshold
         return LE_FAULT;
     }
 
-    if (thresholdPtr == NULL)
-    {
-        LE_KILL_CLIENT("thresholdPtr is NULL !");
-        return LE_FAULT;
-    }
-
     if(strlen(thresholdPtr) > (LE_TEMP_THRESHOLD_NAME_MAX_BYTES-1))
     {
         LE_KILL_CLIENT("strlen(thresholdPtr) > %d", (LE_TEMP_THRESHOLD_NAME_MAX_BYTES-1));
@@ -493,12 +481,6 @@ le_result_t le_temp_GetThreshold
     if (sensorCtxPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", sensorRef);
-        return LE_FAULT;
-    }
-
-    if (thresholdPtr == NULL)
-    {
-        LE_KILL_CLIENT("thresholdPtr is NULL !");
         return LE_FAULT;
     }
 

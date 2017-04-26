@@ -663,8 +663,6 @@ static void Testle_ecall_ConfigSettings
     LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
     LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
 
-    LE_ASSERT(LE_BAD_PARAMETER == le_ecall_SetVIN(NULL));
-
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVE12345678AH87KH90"));
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37"));
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRiVE12345678"));

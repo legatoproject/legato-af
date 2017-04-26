@@ -305,7 +305,7 @@ le_pm_WakeupSourceRef_t le_pm_NewWakeupSource(uint32_t opts, const char *tag)
     Client_t *cl;
     char name[LEGATO_WS_NAME_LEN];
 
-    if (!tag || *tag == '\0' || strlen(tag) > LE_PM_TAG_LEN) {
+    if (*tag == '\0' || strlen(tag) > LE_PM_TAG_LEN) {
         LE_KILL_CLIENT("Error: Tag value is invalid or NULL.");
         return NULL;
     }

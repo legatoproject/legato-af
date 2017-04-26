@@ -2289,18 +2289,6 @@ le_appProc_RefRef_t le_appProc_Create
         return NULL;
     }
 
-    if (procName == NULL)
-    {
-        LE_KILL_CLIENT("Invalid process name.");
-        return NULL;
-    }
-
-    if (execPath == NULL)
-    {
-        LE_KILL_CLIENT("Exec path cannot be NULL.");
-        return NULL;
-    }
-
     // Ifgen does not allow NULL pointers to strings.  Translate empty strings to NULLs.
     const char* procNamePtr;
     if (strcmp(procName, "") == 0)

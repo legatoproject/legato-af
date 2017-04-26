@@ -2425,12 +2425,6 @@ le_result_t le_atServer_SendIntermediateResponse
         return LE_FAULT;
     }
 
-    if (intermediateRspPtr == NULL)
-    {
-        LE_ERROR("No intermediate response string");
-        return LE_FAULT;
-    }
-
     RspString_t* rspStringPtr = le_mem_ForceAlloc(RspStringPool);
     strncpy(rspStringPtr->resp, intermediateRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES);
 
@@ -2486,15 +2480,7 @@ le_result_t le_atServer_SendFinalResponse
 
     if (customStringAvailable)
     {
-        if (finalRspPtr)
-        {
-            strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES );
-        }
-        else
-        {
-            LE_ERROR("customStringAvailable set but finalRspPtr NULL !");
-            return LE_FAULT;
-        }
+        strncpy( devPtr->finalRsp.resp, finalRspPtr, LE_ATDEFS_RESPONSE_MAX_BYTES );
     }
 
 

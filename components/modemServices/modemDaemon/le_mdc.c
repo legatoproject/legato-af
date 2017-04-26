@@ -771,12 +771,6 @@ le_result_t le_mdc_GetProfileFromApn
     le_mdc_ProfileRef_t* profileRefPtr  ///< [OUT] profile reference
 )
 {
-    if (apnPtr == NULL)
-    {
-        LE_CRIT("apnPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
-
     size_t apnLen = strlen(apnPtr);
     if ( apnLen > LE_MDC_APN_NAME_MAX_LEN )
     {
@@ -1774,11 +1768,6 @@ le_result_t le_mdc_SetAPN
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
         return LE_BAD_PARAMETER;
     }
-    if (apnPtr == NULL)
-    {
-        LE_CRIT("apnStr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
 
     size_t apnLen = strlen(apnPtr);
     if ( apnLen > LE_MDC_APN_NAME_MAX_LEN )
@@ -1948,16 +1937,6 @@ le_result_t le_mdc_SetAuthentication
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
-        return LE_FAULT;
-    }
-    if (userName == NULL)
-    {
-        LE_CRIT("userName is NULL !");
-        return LE_FAULT;
-    }
-    if (password == NULL)
-    {
-        LE_CRIT("password is NULL !");
         return LE_FAULT;
     }
     if ( strlen(userName) > LE_MDC_USER_NAME_MAX_LEN )

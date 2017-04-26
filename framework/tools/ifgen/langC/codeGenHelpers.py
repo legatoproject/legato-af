@@ -241,3 +241,9 @@ def IterCAPIParameters(function):
     # Handlers have an extra context pointer added on at the end.
     if isinstance(function, interfaceIR.HandlerType):
         yield interfaceIR.Parameter(_CONTEXT_TYPE, 'contextPtr')
+
+def IterNonNullParameters(function):
+    for index, parameter in enumerate(IterCAPIParameters(function), start=1):
+        if (parameter.direction & interfaceIR.DIR_IN) == interfaceIR.DIR_IN and \
+           isinstance(parameter, interfaceIR.StringParameter):
+            yield index

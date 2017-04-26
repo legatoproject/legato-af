@@ -3221,11 +3221,6 @@ le_result_t le_audio_PlayDtmf
         return LE_BUSY;
     }
 
-    if (dtmfPtr == NULL)
-    {
-        LE_KILL_CLIENT("dtmfPtr is NULL !");
-        return LE_FAULT;
-    }
     if(strlen(dtmfPtr) > LE_AUDIO_DTMF_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(dtmfPtr) > %d", LE_AUDIO_DTMF_MAX_LEN);

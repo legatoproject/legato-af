@@ -3036,12 +3036,6 @@ le_result_t le_ecall_SetPsapNumber
 {
     le_result_t res;
 
-    if (psapPtr == NULL)
-    {
-        LE_KILL_CLIENT("psapPtr is NULL !");
-        return LE_FAULT;
-    }
-
     if(strlen(psapPtr) > LE_MDMDEFS_PHONE_NUM_MAX_LEN)
     {
         LE_KILL_CLIENT( "strlen(psapPtr) > %d", LE_MDMDEFS_PHONE_NUM_MAX_LEN);
@@ -4192,12 +4186,6 @@ le_result_t le_ecall_SetVIN
 )
 {
     le_cfg_IteratorRef_t iterator;
-
-    if (!vin)
-    {
-        LE_KILL_CLIENT("vin is NULL !");
-        return LE_BAD_PARAMETER;
-    }
 
     if (strlen(vin) != LE_ECALL_VIN_MAX_LEN)
     {

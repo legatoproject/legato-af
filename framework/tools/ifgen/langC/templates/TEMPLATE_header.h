@@ -94,7 +94,10 @@ typedef void (*{{handler|FormatType}})
     {%-else%}
     void
     {%-endfor%}
-);
+)
+{%- if function|NonNullParameters|list %}
+__attribute__(( nonnull({{function|NonNullParameters|join(',')}}) ))
+{%- endif %};
 {%- endblock %}{%- endfor %}
 
 #endif // {{apiName|upper}}_INTERFACE_H_INCLUDE_GUARD

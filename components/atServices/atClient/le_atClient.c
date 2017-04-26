@@ -1612,23 +1612,15 @@ le_result_t le_atClient_SetText
         return LE_BAD_PARAMETER;
     }
 
-    if (textPtr)
+    if(strlen(textPtr)>LE_ATDEFS_TEXT_MAX_LEN)
     {
-        if(strlen(textPtr)>LE_ATDEFS_TEXT_MAX_LEN)
-        {
-            LE_ERROR("Text is too long! (%zd>%d)",strlen(textPtr),LE_ATDEFS_TEXT_MAX_LEN);
-            return LE_FAULT;
-        }
-
-        memcpy(cmdPtr->text, textPtr, strlen(textPtr));
-        cmdPtr->textSize = strlen(textPtr);
-        return LE_OK;
-    }
-    else
-    {
-        LE_DEBUG("No data to set");
+        LE_ERROR("Text is too long! (%zd>%d)",strlen(textPtr),LE_ATDEFS_TEXT_MAX_LEN);
         return LE_FAULT;
     }
+
+    memcpy(cmdPtr->text, textPtr, strlen(textPtr));
+    cmdPtr->textSize = strlen(textPtr);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1916,12 +1908,6 @@ le_result_t le_atClient_SetCommandAndSend
 )
 {
     le_result_t res = LE_FAULT;
-
-    if (commandPtr == NULL)
-    {
-        LE_KILL_CLIENT("commandPtr is NULL !");
-        return res;
-    }
 
     *cmdRefPtr = le_atClient_Create();
     LE_DEBUG("New command ref (%p) created",*cmdRefPtr);

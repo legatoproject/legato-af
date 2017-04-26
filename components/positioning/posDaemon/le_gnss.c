@@ -3126,12 +3126,6 @@ le_result_t le_gnss_SetSuplServerUrl
     const char*  suplServerUrlPtr      ///< [IN] SUPL server URL.
 )
 {
-    if (suplServerUrlPtr == NULL)
-    {
-        LE_KILL_CLIENT("suplServerUrlPtr is NULL !");
-        return LE_FAULT;
-    }
-
     return pa_gnss_SetSuplServerUrl(suplServerUrlPtr);
 }
 
@@ -3157,12 +3151,6 @@ le_result_t le_gnss_InjectSuplCertificate
     const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
 )
 {
-    if (suplCertificatePtr == NULL)
-    {
-        LE_KILL_CLIENT("suplCertificatePtr is NULL !");
-        return LE_FAULT;
-    }
-
     return pa_gnss_InjectSuplCertificate( suplCertificateId
                                         , suplCertificateLen
                                         , suplCertificatePtr);

@@ -563,17 +563,17 @@ error_unpack:
     // Range check values, if appropriate
     {%- for parameter in function.parameters if parameter is InParameter %}
     {%- if parameter is StringParameter %}
-    if ( NULL == {{parameter|FormatParameterName}} )
-    {
-        LE_FATAL("{{parameter|FormatParameterName}} is NULL");
-    }
     if ( {{parameter|GetParameterCount}} > {{parameter.maxCount}} )
     {
         LE_FATAL("{{parameter|GetParameterCount}} > {{parameter.maxCount}}");
     }
     {%- elif parameter is ArrayParameter %}
-    {#- TODO: Add NULL pointer check, etc. for arrays.  Currently this is not done to match old
-        code #}
+    if ( (NULL == {{parameter|FormatParameterName}}) &&
+         (0 != {{parameter|GetParameterCount}}) )
+    {
+        LE_FATAL("If {{parameter|FormatParameterName}} is NULL "
+                 "{{parameter|GetParameterCount}} must be zero");
+    }
     if ( {{parameter|GetParameterCount}} > {{parameter.maxCount}} )
     {
         LE_FATAL("{{parameter|GetParameterCount}} > {{parameter.maxCount}}");

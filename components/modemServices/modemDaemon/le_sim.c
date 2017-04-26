@@ -857,12 +857,6 @@ le_result_t le_sim_EnterPIN
     }
     simPtr = &SimList[simId];
 
-    if (pinPtr == NULL)
-    {
-        LE_KILL_CLIENT("pinPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
-
     if (strlen(pinPtr) > LE_SIM_PIN_MAX_LEN )
     {
         LE_KILL_CLIENT("strlen(pin) > %d", LE_SIM_PIN_MAX_LEN);
@@ -926,18 +920,6 @@ le_result_t le_sim_ChangePIN
         return LE_BAD_PARAMETER;
     }
     simPtr = &SimList[simId];
-
-    if (oldpinPtr == NULL)
-    {
-        LE_KILL_CLIENT("oldpinPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
-
-    if (newpinPtr == NULL)
-    {
-        LE_KILL_CLIENT("newpinPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
 
     if(strlen(oldpinPtr) > LE_SIM_PIN_MAX_LEN)
     {
@@ -1083,12 +1065,6 @@ le_result_t le_sim_Unlock
     }
     simPtr = &SimList[simId];
 
-    if (pinPtr == NULL)
-    {
-        LE_KILL_CLIENT("pinPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
-
     if(strlen(pinPtr) > LE_SIM_PIN_MAX_LEN)
     {
         LE_KILL_CLIENT("strlen(pinPtr) > %d", LE_SIM_PIN_MAX_LEN);
@@ -1150,12 +1126,6 @@ le_result_t le_sim_Lock
         return LE_BAD_PARAMETER;
     }
     simPtr = &SimList[simId];
-
-    if (pinPtr == NULL)
-    {
-        LE_KILL_CLIENT("pinPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
 
     if(strlen(pinPtr) > LE_SIM_PIN_MAX_LEN)
     {
@@ -1224,17 +1194,6 @@ le_result_t le_sim_Unblock
         return LE_BAD_PARAMETER;
     }
     simPtr = &SimList[simId];
-
-    if (pukPtr == NULL)
-    {
-        LE_KILL_CLIENT("pukPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
-    if (newpinPtr == NULL)
-    {
-        LE_KILL_CLIENT("newpinPtr is NULL !");
-        return LE_BAD_PARAMETER;
-    }
 
     if(strlen(pukPtr) != LE_SIM_PUK_MAX_LEN)
     {

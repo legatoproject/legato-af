@@ -179,17 +179,6 @@ le_result_t le_fs_Open
     char path[PATH_MAX];
 
     // Check if the pointers are set
-    if (NULL == filePathPtr)
-    {
-        LE_ERROR("NULL file path pointer!");
-        return LE_BAD_PARAMETER;
-    }
-    if (NULL == fileRefPtr)
-    {
-        LE_ERROR("NULL file handler pointer!");
-        return LE_BAD_PARAMETER;
-    }
-
     *fileRefPtr = (le_fs_FileRef_t)NULL;
 
     // Check if the file path starts with '/'
@@ -506,11 +495,6 @@ le_result_t le_fs_GetSize
     char path[PATH_MAX];
 
     // Check if the pointers are set
-    if (NULL == filePathPtr)
-    {
-        LE_ERROR("NULL file path pointer!");
-        return LE_BAD_PARAMETER;
-    }
     if (NULL == sizePtr)
     {
         LE_ERROR("NULL size pointer!");
@@ -563,12 +547,6 @@ le_result_t le_fs_Delete
     char path[PATH_MAX];
 
     // Check if the pointer is set
-    if (NULL == filePathPtr)
-    {
-        LE_ERROR("NULL file path pointer!");
-        return LE_BAD_PARAMETER;
-    }
-
     // Check if the file path starts with '/'
     if ('/' != *filePathPtr)
     {
@@ -617,18 +595,6 @@ le_result_t le_fs_Move
     int rc;
     char srcPath[PATH_MAX];
     char destPath[PATH_MAX];
-
-    // Check if the pointers are set
-    if (NULL == srcPathPtr)
-    {
-        LE_ERROR("NULL source path pointer!");
-        return LE_BAD_PARAMETER;
-    }
-    if (NULL == destPathPtr)
-    {
-        LE_ERROR("NULL destination path pointer!");
-        return LE_BAD_PARAMETER;
-    }
 
     // Check if the file paths start with '/'
     if ('/' != *srcPathPtr)

@@ -973,12 +973,6 @@ le_mcc_CallRef_t le_mcc_Create
         ///< call.
 )
 {
-    if (phoneNumPtr == NULL)
-    {
-        LE_KILL_CLIENT("phoneNumPtr is NULL !");
-        return NULL;
-    }
-
     if(strlen(phoneNumPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
         LE_KILL_CLIENT("strlen(phoneNumPtr) > %d", (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1));

@@ -195,9 +195,7 @@ void Testle_Temp_TestBadParameters
     simuSensorRef = le_temp_Request(PA_SIMU_TEMP_SENSOR);
     LE_ASSERT(le_temp_GetSensorName(simuSensorRef, NULL, sizeof(sensorName)) == LE_FAULT);
     LE_ASSERT(le_temp_GetTemperature(simuSensorRef, NULL) == LE_FAULT);
-    LE_ASSERT(le_temp_SetThreshold(simuSensorRef, NULL, temp) == LE_FAULT);
     LE_ASSERT(le_temp_GetThreshold(simuSensorRef, SIMU_THRESHOLD_CRITICAL, NULL) == LE_FAULT);
-    LE_ASSERT(le_temp_GetThreshold(simuSensorRef, NULL, &temp) == LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------

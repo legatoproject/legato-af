@@ -305,7 +305,7 @@ static void TreatCommandError
         le_atServer_SendFinalResponse(modemCmdDescPtr->atServerCmdRef,
                                       LE_ATSERVER_ERROR,
                                       false,
-                                      NULL);
+                                      "");
     }
 
     // Release the command has it occurs an error
@@ -485,7 +485,7 @@ static void AtCmdHandler
         le_atServer_SendFinalResponse(commandRef,
                                       LE_ATSERVER_ERROR,
                                       false,
-                                      NULL);
+                                      "");
         return;
     }
 

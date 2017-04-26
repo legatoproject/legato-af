@@ -24,7 +24,8 @@ Filters = { 'FormatHeaderComment': codeGenHelpers.FormatHeaderComment,
             'GetParameterCountPtr': codeGenHelpers.GetParameterCountPtr,
             'PackFunction':        codeGenHelpers.GetPackFunction,
             'UnpackFunction':      codeGenHelpers.GetUnpackFunction,
-            'CAPIParameters':      codeGenHelpers.IterCAPIParameters }
+            'CAPIParameters':      codeGenHelpers.IterCAPIParameters,
+            'NonNullParameters':   codeGenHelpers.IterNonNullParameters}
 
 
 Tests = { 'SizeParameter':         codeGenHelpers.IsSizeParameter }

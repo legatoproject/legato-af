@@ -2005,11 +2005,6 @@ le_result_t le_sms_SetDestination
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return LE_NOT_FOUND;
     }
-    if (destPtr == NULL)
-    {
-        LE_KILL_CLIENT("destPtr is NULL !");
-        return LE_FAULT;
-    }
 
     if(strlen(destPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
@@ -2339,18 +2334,6 @@ le_sms_MsgRef_t le_sms_SendText
     le_result_t res = LE_FAULT;
     le_sms_MsgRef_t messageRef = NULL;
 
-    if (destStr == NULL)
-    {
-        LE_KILL_CLIENT("destStr is NULL !");
-        return NULL;
-    }
-
-    if (textStr == NULL)
-    {
-        LE_KILL_CLIENT("textStr is NULL !");
-        return NULL;
-    }
-
     messageRef = le_sms_Create();
     LE_DEBUG("New message ref (%p) created",messageRef);
 
@@ -2471,12 +2454,6 @@ le_result_t le_sms_SetText
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return LE_NOT_FOUND;
-    }
-
-    if (textPtr == NULL)
-    {
-        LE_KILL_CLIENT("textPtr is NULL !");
-        return LE_FAULT;
     }
 
     if(msgPtr->readonly)
@@ -3619,11 +3596,6 @@ le_result_t le_sms_SetSmsCenterAddress
 )
 {
     le_result_t res = LE_FAULT;
-
-    if (telPtr == NULL)
-    {
-        return res;
-    }
 
     if(strlen(telPtr) > (LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1))
     {
