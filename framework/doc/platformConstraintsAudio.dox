@@ -1,6 +1,6 @@
 /** @page platformConstraintsAudio Audio
 
-@ref c_audio "Audio" functions are constrained by the following platform limitations for AR755x, AR8652, and WP8548.
+@ref c_audio "Audio" functions are constrained by the following platform limitations for AR755x, AR758x, AR759x, AR8652, and WP8548.
 
 <b>Possible audio connections:</b>
 
@@ -13,13 +13,16 @@
 | MdmVoice Rx                  |  X   |   X    |   X    |   X    |             |    X     |
 | Player                       |  X   |   X    |   X    |   X    |      X      |          |
 
-
 Player = file playback and samples insertion<br>
 Recorder = file recording and samples extraction
 
-@note Only 1 point to 1 point connection is possible except for Player and Recorder.
+@note The Mic input and Spkr output are not available on AR759x platform.<br>
+      Please refer to the Product Technical Specification document of your platform for further
+      details.<br><br>
+
+@note Only 1 point to 1 point connection is possible except for Player and Recorder.<br>
       Player and Recorder can be added to any active 1 point to 1 point connections, or tied
-      to 1 single stream.
+      to 1 single stream.<br>
 
 <HR>
 
