@@ -58,14 +58,22 @@
     {
         goto error_unpack;
     }
-    if ( {{parameter.name}}Size > {{parameter.maxCount}} )
+    if ( ({{parameter.name}}Size > {{parameter.maxCount}}){% if parameter is StringParameter %} &&
+         ({{parameter.name}}Size < UINT32_MAX){% endif %} )
     {
         LE_DEBUG("Adjusting {{parameter.name}}Size from %zu to {{parameter.maxCount}}",
                  {#- #} {{parameter.name}}Size);
         {{parameter.name}}Size = {{parameter.maxCount}};
     }
     {%- if parameter is StringParameter %}
-    {{parameter.name}}Size++;
+    if ({{parameter.name}}Size >= UINT32_MAX)
+    {
+        {{parameter.name}}Size = 0;
+    }
+    else
+    {
+        {{parameter.name}}Size++;
+    }
     {%- endif %}
     {%- elif parameter is StringParameter %}
     char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}];
