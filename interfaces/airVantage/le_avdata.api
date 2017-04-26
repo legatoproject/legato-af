@@ -67,8 +67,6 @@
  * @c avms session, and push the collected history data using le_avdata_PushRecord(). The callback
  * used when calling le_avdata_PushRecord() will indicate whether the push has been successful or not.
  *
- * @note: The push callback is not supported in the current release.
- *
  * This code sample shows how to collect data and send to the server (assuming session is opened)
  *
  * @code
@@ -79,7 +77,7 @@
  *     void* contextPtr
  * )
  * {
- *     if (status == LE_AVDATA_SENT_SUCCESS)
+ *     if (status == LE_AVDATA_PUSH_SUCCESS)
  *     {
  *         // data pushed successfully
  *     }
@@ -191,6 +189,18 @@ ENUM DataType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Status of the data push (TODO: Provide additional status to troubleshoot delivery problems)
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PushStatus
+{
+    PUSH_SUCCESS,
+    PUSH_FAILED
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Argument list reference, for command only.
  */
 //--------------------------------------------------------------------------------------------------
@@ -207,6 +217,17 @@ HANDLER ResourceHandler
     string path[PATH_NAME_LEN] IN,
     AccessType accessType IN,
     ArgumentList ArgumentListRef IN
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for pushing data result.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CallbackResult
+(
+    PushStatus status IN
 );
 
 
@@ -508,33 +529,29 @@ FUNCTION ReplyExecResult
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Push asset data to the server.
+ *
+ * @return:
+ *      - LE_OK on success.
+ *      - LE_NOT_FOUND if path doesn't exist.
+ *      - LE_BUSY if push is queued and will pushed later
+ *      - LE_NOT_POSSIBLE if push queue is full, try again later
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Push
+(
+    string path[PATH_NAME_LEN] IN,
+    CallbackResult handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * A record reference
  */
 //--------------------------------------------------------------------------------------------------
 REFERENCE Record;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Status of the data push (TODO: Provide additional status to troubleshoot delivery problems)
- */
-//--------------------------------------------------------------------------------------------------
-ENUM PushStatus
-{
-    SENT_SUCCESS,
-    SENT_FAILED
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handler for pushing data result.
- */
-//--------------------------------------------------------------------------------------------------
-HANDLER CallbackResult
-(
-    PushStatus status IN
-);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -650,6 +667,8 @@ FUNCTION le_result_t RecordString
  *
 * @return:
  *      - LE_OK on success.
+ *      - LE_NOT_POSSIBLE if push queue is full, try again later
+ *      - LE_UNAVAILABLE if no data connection is available
  *      - LE_FAULT on any other error
  *
  * * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
