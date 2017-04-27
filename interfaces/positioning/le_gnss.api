@@ -134,6 +134,16 @@
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeConstellation
  *
+ * @subsection le_gnss_SetGetMinElevation GNSS minimum elevation selection
+ *
+ * The le_gnss_SetMinElevation() function sets the GNSS minimum elevation.
+ * Satellites with elevation lower than the minimum elevation will be ignored.
+ *
+ * The le_gnss_GetMinElevation() function gets the GNSS minimum elevation.
+ *
+ * A sample code can be seen in the following page:
+ * - @subpage c_gnssSampleCodeMinElevation
+ *
  * @subsection le_gnss_NmeaSentences NMEA sentences selection
  *
  * The le_gnss_SetNmeaSentences() function selects the enabled NMEA sentences in the
@@ -335,6 +345,12 @@
  */
 
 /**
+ * @page c_gnssSampleCodeMinElevation Sample code for GNSS minimum elevation
+ *
+ * @snippet "apps/test/positioning/gnssTest/gnssTest/gnssTest.c" GnssControl
+ */
+
+/**
  * @page c_gnssSampleCodeNmeaSentences Sample code for GNSS NMEA sentences selection
  *
  * @snippet "apps/test/positioning/gnssTest/gnssTest/gnssTest.c" GnssControl
@@ -414,6 +430,15 @@ DEFINE SV_INFO_MAX_LEN = 80;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE NMEA_SENTENCES_MAX = 0x7FFF;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define the maximal degree for the minimal elevation
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MIN_ELEVATION_MAX_DEGREE = 90;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1379,4 +1404,38 @@ FUNCTION le_result_t GetNmeaSentences
 //--------------------------------------------------------------------------------------------------
 FUNCTION State GetState
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the GNSS minimum elevation.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_OUT_OF_RANGE if the minimum elevation is above range
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetMinElevation
+(
+    uint8 minElevation        IN  ///< Minimum elevation in degrees [range 0..90].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the GNSS minimum elevation.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *
+ * @note If the caller is passing an null pointer to this function, it is a fatal error
+ *       and the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMinElevation
+(
+   uint8  minElevationPtr     OUT  ///< Minimum elevation in degrees [range 0..90].
 );

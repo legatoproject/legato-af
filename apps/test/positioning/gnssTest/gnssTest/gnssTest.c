@@ -36,6 +36,8 @@ static void TestLeGnssDevice
 {
     uint32_t ttffValue;
     uint32_t acqRate;
+    uint8_t  minElevation;
+
     le_gnss_ConstellationBitMask_t constellationMask;
     le_gnss_NmeaBitMask_t nmeaMask = 0;
 
@@ -62,6 +64,13 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
 
+    // test le_gnss_Get/SetMinElevation when GNSS device is disabled and the engine is not started.
+    minElevation = 40;
+    LE_ASSERT((le_gnss_SetMinElevation(minElevation)) == LE_OK);
+    LE_ASSERT((le_gnss_GetMinElevation(&minElevation)) == LE_OK);
+    LE_INFO("GNSS min elevation obtained: %d",minElevation);
+    LE_ASSERT(minElevation == 40);
+
     // Enable GNSS device (READY state)
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
@@ -85,6 +94,13 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
 
+    // test le_gnss_Get/SetMinElevation when GNSS device is enabled and the engine is not started.
+    minElevation = 0;
+    LE_ASSERT((le_gnss_SetMinElevation(minElevation)) == LE_OK);
+    LE_ASSERT((le_gnss_GetMinElevation(&minElevation)) == LE_OK);
+    LE_INFO("GNSS min elevation obtained: %d",minElevation);
+    LE_ASSERT(minElevation == 0);
+
     // Start GNSS device (ACTIVE state)
     LE_ASSERT((le_gnss_Start()) == LE_OK);
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_ACTIVE);
@@ -97,6 +113,17 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
+
+    // test le_gnss_Get/SetMinElevation when le_gnss_ENABLE ON and le_gnss_Start ON
+    minElevation = LE_GNSS_MIN_ELEVATION_MAX_DEGREE;
+    LE_ASSERT((le_gnss_SetMinElevation(minElevation)) == LE_OK);
+    LE_ASSERT((le_gnss_GetMinElevation(&minElevation)) == LE_OK);
+    LE_INFO("GNSS min elevation obtained: %d",minElevation);
+    LE_ASSERT(minElevation == LE_GNSS_MIN_ELEVATION_MAX_DEGREE);
+
+    // test le_gnss_SetMinElevation wrong value (when le_gnss_ENABLE ON and le_gnss_Start ON)
+    minElevation = LE_GNSS_MIN_ELEVATION_MAX_DEGREE+1;
+    LE_ASSERT((le_gnss_SetMinElevation(minElevation)) == LE_OUT_OF_RANGE);
 
     // Stop GNSS device (READY state)
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
@@ -459,6 +486,7 @@ static void TestLeGnssPositionHandler
     le_thread_Ref_t positionThreadRef;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
     uint64_t epochTime;
+    uint8_t  minElevation;
 
     LE_INFO("Start Test Testle_gnss_PositionHandlerTest");
 
@@ -466,6 +494,12 @@ static void TestLeGnssPositionHandler
     LE_ASSERT((le_gnss_GetEpochTime(positionSampleRef, &epochTime)) == LE_OK);
     // Display epoch time
     LE_INFO("epoch time: %ld:", (long int) epochTime);
+
+    // NMEA frame GPGSA is checked that no SV with elevation below 10
+    // degrees are given.
+    minElevation = 10;
+    LE_ASSERT((le_gnss_SetMinElevation(minElevation)) == LE_OK);
+    LE_INFO("Set minElevation %d",minElevation);
 
     LE_INFO("Start GNSS");
     LE_ASSERT((le_gnss_Start()) == LE_OK);

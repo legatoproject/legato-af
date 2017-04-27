@@ -3324,3 +3324,56 @@ le_gnss_State_t le_gnss_GetState
 {
     return GnssState;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the GNSS minimum elevation.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_OUT_OF_RANGE if the minimum elevation is above range
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetMinElevation
+(
+    uint8_t  minElevation      ///< [IN] Minimum elevation in degrees [range 0..90].
+)
+{
+    if (minElevation > LE_GNSS_MIN_ELEVATION_MAX_DEGREE)
+    {
+        LE_ERROR("minimum elevation %d is above maximal range %d", minElevation,
+                                                                  LE_GNSS_MIN_ELEVATION_MAX_DEGREE);
+        return LE_OUT_OF_RANGE;
+    }
+
+    return pa_gnss_SetMinElevation(minElevation);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the GNSS minimum elevation.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *
+ * @note If the caller is passing an null pointer to this function, it is a fatal error
+ *       and the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetMinElevation
+(
+   uint8_t*  minElevationPtr     ///< [OUT] Minimum elevation in degrees [range 0..90].
+)
+{
+    if (NULL == minElevationPtr)
+    {
+        LE_KILL_CLIENT("minElevationPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_gnss_GetMinElevation(minElevationPtr);
+}

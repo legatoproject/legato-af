@@ -35,6 +35,14 @@
 //-------------------------------------------------------------------------------------------------
 #define CONSTELLATIONS_NAME_LEN     256
 
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Base 10
+ */
+//-------------------------------------------------------------------------------------------------
+#define BASE10 10
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Different type of constellation.
@@ -88,6 +96,7 @@ void PrintGnssHelp
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
+         "\t\t\tgnss set minElevation <minElevation in degrees>\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n\n"
          "\t\tDESCRIPTION:\n"
          "\t\t\tgnss help\n"
@@ -115,6 +124,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- acqRate       --> Acquisition Rate (unit milliseconds)\n"
          "\t\t\t\t\t- agpsMode      --> Agps Mode\n"
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
+         "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
@@ -159,6 +169,8 @@ void PrintGnssHelp
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
          "\t\t\t\t- Used to set the enabled NMEA sentences. \n"
          "\t\t\t\t  Bit mask should be set with hexadecimal values, e.g. 7FFF\n\n"
+         "\t\t\tgnss set minElevation <minElevation in degrees>\n"
+         "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n"
          "\t\t\t\t- Used to monitor all gnss information(position, speed, satellites used etc).\n"
          "\t\t\t\t  Here, WatchPeriod is optional. Default time(600s) will be used if not\n"
@@ -170,8 +182,6 @@ void PrintGnssHelp
          "\tdetails.\n"
          );
 }
-
-
 
 
 //-------------------------------------------------------------------------------------------------
@@ -211,8 +221,7 @@ static int Enable
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -254,8 +263,7 @@ static int Disable
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -296,8 +304,7 @@ static int Start
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -338,8 +345,7 @@ static int Stop
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -402,8 +408,7 @@ static int Restart
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -422,10 +427,9 @@ static int SetAcquisitionRate
 )
 {
     char *end;
-    errno = 0;
-    uint32_t acqRate = strtoul(acqRateStr, &end, 10);
+    uint32_t acqRate = strtoul(acqRateStr, &end, BASE10);
 
-    if (end[0] != '\0' || errno != 0)
+    if ('\0' != end[0])
     {
         printf("Bad acquisition rate: %s\n", acqRateStr);
         return EXIT_FAILURE;
@@ -455,10 +459,55 @@ static int SetAcquisitionRate
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function sets the GNSS minimum elevation.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetMinElevation
+(
+    const char* minElevationPtr           ///< [IN] Minimum elevation in degrees [range 0..90].
+)
+{
+    char *end;
+    uint32_t minElevation = strtoul(minElevationPtr, &end, BASE10);
+
+    if ('\0' != end[0])
+    {
+        printf("Bad minimum elevation: %s\n", minElevationPtr);
+        return EXIT_FAILURE;
+    }
+
+    le_result_t result = le_gnss_SetMinElevation(minElevation);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_FAULT:
+            printf("Failed to set the minimum elevation\n");
+            break;
+        case LE_UNSUPPORTED:
+            printf("Setting the minimum elevation is not supported\n");
+            break;
+        case LE_OUT_OF_RANGE:
+            printf("The minimum elevation is above range\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -559,8 +608,7 @@ static int SetConstellation
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -619,8 +667,7 @@ static int SetAgpsMode
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -671,8 +718,7 @@ static int SetNmeaSentences
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -709,8 +755,7 @@ static int GetTtff
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -751,8 +796,7 @@ static int GetAgpsMode
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -795,8 +839,7 @@ static int GetConstellation
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -833,10 +876,45 @@ static int GetAcquisitionRate
             break;
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the GNSS minimum elevation.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetMinElevation
+(
+    void
+)
+{
+    uint8_t  minElevation;
+    le_result_t result = le_gnss_GetMinElevation(&minElevation);
+
+    switch (result)
+    {
+        case LE_OK:
+            printf("Minimum elevation: %d\n", minElevation);
+            break;
+        case LE_FAULT:
+            printf("Failed to get the minimum elevation. See logs for details\n");
+            break;
+        case LE_UNSUPPORTED:
+            printf("Request not supported\n");
+            break;
+        default:
+            printf("Invalid status\n");
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -935,8 +1013,7 @@ static int GetNmeaSentences
             break;
     }
 
-    int status = (LE_OK == result) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -970,8 +1047,7 @@ static int GetPosState
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1019,8 +1095,7 @@ static int Get2Dlocation
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1063,8 +1138,7 @@ static int GetAltitude
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1106,8 +1180,7 @@ static int GetGpsTime
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1157,8 +1230,7 @@ static int GetTime
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1194,8 +1266,7 @@ static int GetTimeAccuracy
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1242,8 +1313,7 @@ static int GetDate
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1285,8 +1355,7 @@ static int GetHorizontalSpeed
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1328,8 +1397,7 @@ static int GetVerticalSpeed
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1372,8 +1440,7 @@ static int GetDirection
         printf("Failed! See log for details\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1420,8 +1487,7 @@ static int GetDop
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1495,8 +1561,7 @@ static int GetSatelliteInfo
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1536,8 +1601,7 @@ static int GetSatelliteStatus
         printf("Failed! See log for details!\n");
     }
 
-    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
-    return status;
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 
@@ -1864,6 +1928,10 @@ static void GetGnssParams
     {
         exit(GetNmeaSentences());
     }
+    else if (0 == strcmp(params, "minElevation"))
+    {
+        exit(GetMinElevation());
+    }
     else if ((strcmp(params, "posState") == 0)  ||
              (strcmp(params, "loc2d") == 0)     ||
              (strcmp(params, "alt") == 0)       ||
@@ -1929,6 +1997,10 @@ static int SetGnssParams
     else if (strcmp(argNamePtr, "nmeaSentences") == 0)
     {
         status = SetNmeaSentences(argValPtr);
+    }
+    else if (0 == strcmp(argNamePtr, "minElevation"))
+    {
+        status = SetMinElevation(argValPtr);
     }
     else
     {

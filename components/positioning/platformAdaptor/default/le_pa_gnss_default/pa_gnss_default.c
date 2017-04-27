@@ -513,3 +513,42 @@ le_result_t pa_gnss_GetNmeaSentences
     LE_ERROR("Unsupported function called");
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets the GNSS minimum elevation.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_SetMinElevation
+(
+    uint8_t  minElevation      ///< [IN] Minimum elevation in degrees [range 0..90].
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the GNSS minimum elevation.
+ *
+ * @return
+*  - LE_OK on success
+*  - LE_BAD_PARAMETER if minElevationPtr is NULL
+*  - LE_FAULT on failure
+*  - LE_UNSUPPORTED request not supported
+*/
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_GetMinElevation
+(
+   uint8_t*  minElevationPtr     ///< [OUT] Minimum elevation in degrees [range 0..90].
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}

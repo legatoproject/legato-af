@@ -612,4 +612,35 @@ LE_SHARED le_result_t pa_gnss_GetNmeaSentences
     le_gnss_NmeaBitMask_t* nmeaMaskPtr ///< [OUT] Bit mask for enabled NMEA sentences.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the GNSS minimum elevation.
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_SetMinElevation
+(
+    uint8_t  minElevation      ///< [IN] Minimum elevation.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *   Get the GNSS minimum elevation.
+ *
+* @return
+*  - LE_OK on success
+*  - LE_BAD_PARAMETER if minElevationPtr is NULL
+*  - LE_FAULT on failure
+*  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetMinElevation
+(
+   uint8_t*  minElevationPtr     ///< [OUT] Minimum elevation.
+);
+
 #endif // LEGATO_PA_GNSS_INCLUDE_GUARD
