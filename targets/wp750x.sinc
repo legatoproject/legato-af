@@ -32,6 +32,7 @@ buildVars:
     // needed for time series.
     LEGATO_FEATURE_TIMESERIES = -DLEGATO_FEATURE_TIMESERIES
     LDFLAG_LEGATO_TIMESERIES = '-lz -ltinycbor'
+    LEGATO_SERVICE_AVC_COMPAT_START = 0
 }
 
 cflags:

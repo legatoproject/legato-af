@@ -1,0 +1,26 @@
+sandboxed: false
+
+#if ${LEGATO_SERVICE_AVC_COMPAT_START} = 0
+    start: manual
+#endif
+
+executables:
+{
+    avcControl = ( $LEGATO_ROOT/components/airVantage/avcControl )
+}
+
+processes:
+{
+    run:
+    {
+        (avcControl)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    avcControl.avcControl.le_avc -> avcService.le_avc
+    avcControl.avcControl.le_sms -> modemService.le_sms
+}

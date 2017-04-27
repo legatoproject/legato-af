@@ -1,0 +1,13 @@
+sources:
+{
+    avcControl.c
+}
+
+requires:
+{
+    api:
+    {
+        airVantage/le_avc.api
+        modemServices/le_sms.api
+    }
+}

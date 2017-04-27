@@ -102,13 +102,6 @@ static le_timer_Ref_t RetryTimerRef = NULL;
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Name of the AVC application running in legato.
- */
-// ------------------------------------------------------------------------------------------------
-#define AVC_APP_NAME "avcService"
-
-// -------------------------------------------------------------------------------------------------
-/**
  *  Length of legato application prefix (le_)
  */
 // ------------------------------------------------------------------------------------------------
@@ -136,6 +129,7 @@ void RetryDisable
         LE_INFO("Modem-based AVC disabled.");
         le_timer_Stop(RetryTimerRef);
         le_appCtrl_Start(AVC_APP_NAME);
+        le_appCtrl_Start(AVC_CONTROL_APP_NAME);
         ImportConfig();
     }
 }

@@ -1,7 +1,8 @@
-
 sandboxed: false
 
-// start: manual
+#if ${LEGATO_SERVICE_AVC_COMPAT_START} = 0
+    start: manual
+#endif
 
 executables:
 {
