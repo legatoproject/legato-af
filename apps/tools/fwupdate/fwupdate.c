@@ -45,6 +45,7 @@ SYNOPSIS:\n\
     fwupdate download FILE\n\
     fwupdate query\n\
     fwupdate install\n\
+    fwupdate checkStatus\n\
     fwupdate markGood\n\
     fwupdate fullInstall FILE\n\
 \n\
@@ -52,26 +53,30 @@ DESCRIPTION:\n\
     fwupdate help\n\
       - Print this help message and exit\n\
 \n\
-    fwupdate download FILE\n\
-      - Download the given CWE file; if '-' is given as the FILE, then use stdin.\n\
-        After a successful download:\n\
-               - the modem will reset on single systems,\n\
-               - wait another command on dual systems\n\
-\n\
     fwupdate query\n\
       - Query the current firmware version. This includes the modem firmware version, the\n\
         bootloader version, and the linux kernel version.\n\
         This can be used after a download and modem reset, to confirm the firmware version.\n\
 \n\
+    fwupdate download FILE\n\
+      - Download the given CWE file; if '-' is given as the FILE, then use stdin.\n\
+        Waits for another command after a successful download.\n\
+\n\
+    fwupdate checkStatus\n\
+      - Check the status of the downloaded package (DualSys platform only)\n\
+\n\
     fwupdate install\n\
-      - Install a previously downloaded firmware or go back to the old system if the running\n\
-        system is not marked good (DualSys platform only)\n\
+      - Install the downloaded firmware.\n\
+        Single System: Trigger reset to initiate install.\n\
+        Dual System: Swap and reset to run the downloaded firmware or go back to the old system\n\
+        if the running system is not marked good.\n\
+\n\
 \n\
     fwupdate markGood\n\
       - Mark good the current system (DualSys platform only)\n\
 \n\
     fwupdate fullInstall FILE\n\
-      - do download, install and markGood in one time (DualSys platform only)\n\
+      - do download, install and markGood in one time\n\
         After a successful download, the modem will reset\n\
 ";
 
@@ -259,14 +264,34 @@ static le_result_t QueryVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Process the download firmware command
+ * Process the install firmware command
  *
  * @return
- *      - LE_OK if the download was successful
- *      - LE_FAULT if there was an issue during the download process
+ *      - LE_OK if the install was successful
+ *      - LE_FAULT if there was an issue during the install process
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t InstallFirmware
+(
+    void
+)
+{
+    TryConnect(le_fwupdate_ConnectService, "fwupdateService");
+
+    printf("Install the firmware, the system will reboot ...\n");
+    return le_fwupdate_Install();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check the status of the downloaded package
+ *
+ * @return
+ *      - LE_OK if status check was successful
+ *      - LE_FAULT if status check failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckStatus
 (
     void
 )
@@ -288,8 +313,8 @@ static le_result_t InstallFirmware
         return LE_FAULT;
     }
 
-    printf("Install the firmware, the system will reboot ...\n");
-    return le_fwupdate_Install();
+    printf("Update status: OK.\n");
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -387,6 +412,16 @@ COMPONENT_INIT
         else if ( 0 == strcmp(command, "query") )
         {
             if (QueryVersion() == LE_OK)
+            {
+                exit(EXIT_SUCCESS);
+            }
+
+            exit(EXIT_FAILURE);
+        }
+
+        else if ( 0 == strcmp(command, "checkStatus") )
+        {
+            if ( CheckStatus() == LE_OK )
             {
                 exit(EXIT_SUCCESS);
             }
