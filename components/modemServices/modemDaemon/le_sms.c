@@ -119,8 +119,9 @@ typedef struct le_sms_Msg
     bool              timeoutExpires;                      ///< Timeout expired to send SMS.
     struct timespec   timeSendingLimit;                    ///< Time limit to send the SMS.
     uint32_t          timeoutValue;                        ///< Timeout value to send the SMS.
-    void *            callBack;
-    void *            ctx;
+    void*             callBackPtr;                         ///< Callback response.
+    void*             ctxPtr;                              ///< Context.
+    le_msg_SessionRef_t sessionRef;                        ///< Client session reference.
 }le_sms_Msg_t;
 
 
@@ -160,9 +161,6 @@ typedef struct
 {
     CmdType_t           command;        ///< The command.
     le_sms_MsgRef_t     msgRef;         ///< The message reference.
-    le_sms_Msg_t*       msgPtr;         ///< The Message object.
-    void                *callBackPtr;   ///< The Callback Response.
-    void                *Context;       ///< Context.
 } CmdRequest_t;
 
 
@@ -1257,23 +1255,29 @@ static le_result_t CheckAndEncodeMessage
 //--------------------------------------------------------------------------------------------------
 static void SendSmsSendingStateEvent
 (
-    le_sms_MsgRef_t messageRef,
-    le_sms_Status_t status,
-    void * callBack,
-    void * ctx
+    le_sms_MsgRef_t messageRef
 )
 {
-    le_sms_CallbackResultFunc_t Myfunction = callBack;
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, messageRef);
+    if (NULL == msgPtr)
+    {
+        LE_ERROR("Message Null");
+        return;
+    }
+
+    le_sms_CallbackResultFunc_t Myfunction = msgPtr->callBackPtr;
 
     // Check if a callback function is available.
     if (Myfunction)
     {
-        LE_DEBUG("Sending CallBack (%p) Message (%p), Status %d", callBack, messageRef, status);
-        Myfunction (messageRef, status, ctx);
+        LE_DEBUG("Sending CallBack (%p) Message (%p), Status %d",
+                 Myfunction, messageRef, msgPtr->pdu.status);
+        Myfunction(messageRef, msgPtr->pdu.status, msgPtr->ctxPtr);
     }
     else
     {
-        LE_WARN("No CallBackFunction Found fot message %p, status %d!!", messageRef, status);
+        LE_WARN("No CallBackFunction Found fot message %p, status %d!!",
+                messageRef, msgPtr->pdu.status);
     }
 }
 
@@ -1313,7 +1317,7 @@ static void AsynSmsTimerHandler
         msgPtr->timerRef = NULL;
         msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
         le_sem_Post(SmsSem);
-        SendSmsSendingStateEvent(msgRef, msgPtr->pdu.status, msgPtr->callBack, msgPtr->ctx);
+        SendSmsSendingStateEvent(msgRef);
     }
     else
     {
@@ -1353,6 +1357,9 @@ static le_result_t SendAsyncSMS
         CmdRequest_t msgCommand;
         char timerName[20];
 
+        // Save the client session "msgSession" associated with the request reference "reqRef"
+        msgPtr->sessionRef = le_sms_GetClientSessionRef();
+
         snprintf(timerName, sizeof(timerName), "SMS%p",msgRef);
         le_timer_Ref_t timerRef = le_timer_Create(timerName);
 
@@ -1360,13 +1367,13 @@ static le_result_t SendAsyncSMS
         {
             result =  le_timer_SetHandler(timerRef, AsynSmsTimerHandler);
             LE_ERROR_IF(result != LE_OK, "error here");
-            if (result == LE_OK )
+            if (LE_OK == result)
             {
                 result = le_timer_SetContextPtr(timerRef, msgRef);
                 LE_ERROR_IF(result != LE_OK, "error here");
             }
 
-            if (result == LE_OK )
+            if (LE_OK == result)
             {
                 le_clk_Time_t interval;
                 interval.usec = 0;
@@ -1376,7 +1383,7 @@ static le_result_t SendAsyncSMS
                 LE_ERROR_IF((result != LE_OK), "Failed to set timeout!");
             }
 
-            if (result == LE_OK )
+            if (LE_OK == result)
             {
                 if (clock_gettime(CLOCK_REALTIME, &msgPtr->timeSendingLimit) == -1)
                 {
@@ -1388,7 +1395,7 @@ static le_result_t SendAsyncSMS
                 LE_ERROR_IF(result != LE_OK, "Failed to start Timer");
             }
 
-            if (result == LE_OK)
+            if (LE_OK == result)
             {
                 LE_DEBUG("Try to POOL PDU Msg %p, pdu.%p, pduLen.%u with protocol %d",
                                 msgRef, msgPtr->pdu.data, msgPtr->pdu.dataLen, msgPtr->protocol);
@@ -1399,18 +1406,14 @@ static le_result_t SendAsyncSMS
                 // Sending Message
                 msgCommand.command = LE_SMS_CMD_TYPE_SEND;
                 msgCommand.msgRef = msgRef;
-                msgCommand.callBackPtr = callBack;
-                msgCommand.Context = context;
-                msgCommand.msgPtr = msgPtr;
-
-                msgPtr->callBack = callBack;
-                msgPtr->ctx = context;
+                msgPtr->callBackPtr = callBack;
+                msgPtr->ctxPtr = context;
 
                 LE_INFO("Send Send command for message (%p)", msgRef);
                 le_event_Report(SmsCommandEventId, &msgCommand, sizeof(msgCommand));
             }
 
-            if (result != LE_OK)
+            if (LE_OK != result)
             {
                 result = LE_FAULT;
             }
@@ -1439,9 +1442,14 @@ static void ProcessSmsSendingCommandHandler
 {
     uint32_t command = ((CmdRequest_t*) msgCommand)->command;
     le_sms_MsgRef_t messageRef = ((CmdRequest_t*) msgCommand)->msgRef;
-    void * cb = ((CmdRequest_t*) msgCommand)->callBackPtr;
-    void * Ctx = ((CmdRequest_t*) msgCommand)->Context;
-    le_sms_Msg_t* msgPtr = ((CmdRequest_t*) msgCommand)->msgPtr;
+
+    le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, messageRef);
+
+    if (NULL == msgPtr)
+    {
+        LE_DEBUG("No more message reference (%p) valid", messageRef);
+        return;
+    }
 
     switch (command)
     {
@@ -1465,7 +1473,7 @@ static void ProcessSmsSendingCommandHandler
                         LE_ERROR("Cannot get current time");
                         msgPtr->pdu.status = LE_SMS_SENDING_FAILED;
                         le_sem_Post(SmsSem);
-                        SendSmsSendingStateEvent(messageRef, msgPtr->pdu.status, cb, Ctx);
+                        SendSmsSendingStateEvent(messageRef);
                         return;
                     }
                     remainingTime = msgPtr->timeSendingLimit.tv_sec - currentTime.tv_sec;
@@ -1481,11 +1489,11 @@ static void ProcessSmsSendingCommandHandler
                     res = pa_sms_SendPduMsg(msgPtr->protocol,
                                     msgPtr->pdu.dataLen, msgPtr->pdu.data,
                                     remainingTime, &msgPtr->pdu.errorCode);
-                    if ( res == LE_OK)
+                    if (LE_OK == res)
                     {
                         msgPtr->pdu.status = LE_SMS_SENT;
                     }
-                    else if (res == LE_TIMEOUT)
+                    else if (LE_TIMEOUT == res)
                     {
                         msgPtr->pdu.status = LE_SMS_SENDING_TIMEOUT;
                     }
@@ -1495,14 +1503,12 @@ static void ProcessSmsSendingCommandHandler
                     }
                 }
                 le_sem_Post(SmsSem);
-
-                SendSmsSendingStateEvent(messageRef, msgPtr->pdu.status, cb, Ctx);
+                SendSmsSendingStateEvent(messageRef);
             }
             else
             {
                 LE_DEBUG("Message (%p) already Expired", messageRef);
             }
-
         }
         break;
 
@@ -1538,6 +1544,47 @@ static void* SmsSenderThread
     return NULL;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function to the close session service
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void*               contextPtr
+)
+{
+    // Clean session context
+    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(MsgRefMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        le_sms_Msg_t * msgPtr = (le_sms_Msg_t *) le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (msgPtr->sessionRef == sessionRef)
+        {
+            le_sms_MsgRef_t msgRef = (le_sms_MsgRef_t) le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Release message reference 0x%p, sessionRef 0x%p", msgRef, sessionRef);
+            // Deactivate callback set by dead application.
+            msgPtr->callBackPtr = NULL;
+            // Release message reference found.
+            le_sms_Delete(msgRef);
+        }
+        // Get the next value in the reference map
+        result = le_ref_NextNode(iterRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -1581,6 +1628,11 @@ le_result_t le_sms_Init
 
     // Create an event Id for SMS storage indication
     StorageStatusEventId = le_event_CreateId("StorageStatusEventId", sizeof(le_sms_Storage_t*));
+
+    // Add a handler to the close session service
+    le_msg_AddServiceCloseHandler(le_sms_GetServiceRef(),
+                                  CloseSessionEventHandler,
+                                  NULL);
 
     // Register a handler function for SMS storage status indication
     if (pa_sms_AddStorageStatusHandler(StorageIndicationHandler) == NULL)
@@ -1648,6 +1700,8 @@ le_sms_MsgRef_t le_sms_Create
     msgPtr->timerRef = NULL;
     msgPtr->timeSendingLimit.tv_sec = 0;
     msgPtr->timeoutValue = PA_SMS_SENDING_TIMEOUT;
+    msgPtr->callBackPtr = NULL;
+    msgPtr->ctxPtr = NULL;
 
     // Create and return a Safe Reference for this Message object.
     return le_ref_CreateRef(MsgRefMap, msgPtr);
@@ -1746,7 +1800,7 @@ void le_sms_Delete
     // Invalidate the Safe Reference.
     LE_DEBUG("le_sms_Delete obj[%p], ref[%p], Delete %c, cpt users = %d", msgPtr, msgRef,
         (msgPtr->delAsked ? 'Y' : 'N'), msgPtr->smsUserCount);
-    if ( (msgPtr->delAsked) && (msgPtr->smsUserCount == 1 ) )
+    if ((msgPtr->delAsked) && (1 == msgPtr->smsUserCount))
     {
         le_sms_DeleteFromStorage(msgRef);
     }
@@ -1754,7 +1808,7 @@ void le_sms_Delete
 
     le_ref_DeleteRef(MsgRefMap, msgRef);
 
-    if (msgPtr->smsUserCount == 0)
+    if (0 == msgPtr->smsUserCount)
     {
         if(msgPtr->timerRef)
         {
@@ -1762,6 +1816,7 @@ void le_sms_Delete
             le_timer_Delete(msgPtr->timerRef);
             msgPtr->timerRef = NULL;
         }
+        msgPtr->callBackPtr = NULL;
         // release the message object
         le_mem_Release(msgPtr);
     }

@@ -15,6 +15,7 @@ sources:
     smsPduTest.c
     cdmaPduTest.c
     smsApiUnitTest.c
+    smsStub.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_sms.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mrc.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_sim.c
@@ -23,4 +24,9 @@ sources:
     ${PA_DIR}/simu/components/le_pa/pa_mrc_simu.c
     ${PA_DIR}/simu/components/le_pa/pa_sim_simu.c
     ${PA_DIR}/simu/components/le_pa/pa_sms_simu.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
 }
