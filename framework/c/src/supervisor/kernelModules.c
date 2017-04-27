@@ -78,7 +78,6 @@ typedef struct
     uint32_t        cookie;                     // KModuleObj_t identifier
     char            *name;                      // Module name
     char            path[LIMIT_MAX_PATH_BYTES]; // Path to module's .ko file
-    struct dirent   *entry;                     // Module inode pointer
     int             argc;                       // insmod/rmmod argc
     char            *argv[KMODULE_MAX_ARGC];    // insmod/rmmod argv
 }
@@ -262,7 +261,6 @@ static void ModuleInsert(struct dirent *entry)
                                 NULL));
     m->cookie = KMODULE_OBJECT_COOKIE;
     m->name = le_path_GetBasenamePtr(m->path, "/");
-    m->entry = entry;
 
     /* Now build a parameter list that will be sent to execv */
     m->argv[0] = NULL;      /* First: reserved for execv command */
@@ -289,40 +287,45 @@ static void ModuleInsert(struct dirent *entry)
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Traverse module directory and insmod all modules.
+ * Predicate function to check if the given directory entry is named like a kernel module. Note that
+ * no check is done to ensure that the given directory entry is a regular file nor is there a check
+ * to ensure that the file is actually a Linux kernel module.
+ *
+ * @return
+ *     non-zero if the directory entry is a kernel module or 0 otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+static int IsKernelModule
+(
+    const struct dirent* entry  ///< Directory entry to check
+)
+{
+    return (le_path_FindTrailing(entry->d_name, KERNEL_MODULE_FILE_EXTENSION) != NULL);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Traverse module directory and insmod all modules in alphabetical order.
  */
 //--------------------------------------------------------------------------------------------------
 void kernelModules_Insert(void)
 {
-    DIR *moduleDir;
-    struct dirent *entry;
-
-    /* Open system module directory */
-    moduleDir = opendir(SYSTEM_MODULE_PATH);
-    if (!moduleDir)
-    {
-        LE_WARN("Cannot open " SYSTEM_MODULE_PATH " (%m). Module support disabled.");
-        return;
-    }
+    struct dirent **entryList;
+    int i;
 
     LE_DEBUG("Inserting kernel module files (*" KERNEL_MODULE_FILE_EXTENSION
         ") from " SYSTEM_MODULE_PATH "...");
 
-    /* Iterate through directory, assume single-threaded environment. */
-    while (NULL != (entry = readdir(moduleDir)))
+    int scanRes = scandir(SYSTEM_MODULE_PATH, &entryList, IsKernelModule, alphasort);
+    LE_FATAL_IF(scanRes < 0, "Error reading modules directory: %m");
+    for (i = 0; i < scanRes; i++)
     {
-        if (!le_path_FindTrailing(entry->d_name, KERNEL_MODULE_FILE_EXTENSION))
-        {
-            LE_DEBUG("Skip non-module file '%s'.", entry->d_name);
-            continue;
-        }
-
-        /* Found a module file, insmod it. */
-        LE_DEBUG("Inserting kernel module '%s'.", entry->d_name);
-        ModuleInsert(entry);
+        LE_DEBUG("Inserting kernel module '%s'.", entryList[i]->d_name);
+        ModuleInsert(entryList[i]);
+        free(entryList[i]);
     }
-    LE_FATAL_IF(0 != closedir(moduleDir), "Error closing '%s'. (%m)",
-                SYSTEM_MODULE_PATH);
+    free(entryList);
 }
 
 
