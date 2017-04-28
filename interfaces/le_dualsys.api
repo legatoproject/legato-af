@@ -6,18 +6,19 @@
  *
  * <HR>
  *
- * Dual systems are systems composed with 2 set of partitions: one is said "active", so currently
- * in use, and the other said "dual", so not used but ready-to-use.
+ * Dual systems are systems composed with two set of partitions: one is said "ACTIVE", so currently
+ * in use, and the other said "UPDATE", so not used but ready-to-use.
  *
- * On dual systems, when fwupdate updates the firmware or a component, its works on the dual set,
- * and after, commands a "swap" which performs a switch from "active" to "dual" and after the
- * next reboot, the "new active" is used for normal work.  The "old dual" is so ready for update
- * or for a roll-back if the active fails to start properly.
+ * On dual systems, when Legato updates an image through the le_fwupdate API, it works on the
+ * UPDATE system.
+ * And then an "install" command performs a switch from UPDATE to ACTIVE after a reboot:
+ * The new ACTIVE system is used. The UPDATE partition becomes ready for a new update or for
+ * roll-back if the new ACTIVE fails to start properly.
  *
- * In each set, 3 sub-systems are defined:
- *     - The "modem" group: using the partitions sbl, tz, rpm and modem,
- *     - The "lk" group: using the partition aboot
- *     - The "linux" group using the partition boot, system, lefwkro and customer0 (or 1).
+ * In each set, three sub-systems are defined:
+ *     - The "modem" group for all binaries and filesystem related to modem core,
+ *     - The "lk" group for the LK bootloader,
+ *     - The "linux" group the kernel, rootfs and legato partitions.
  *
  * @section le_dualsys_binding IPC interfaces binding
  *
@@ -44,6 +45,23 @@
  * Note that the synchronization is automatically done by calling the function
  * le_fwupdate_InitDownload() when the synchronization check is enabled.
  *
+ * @section le_dualsys_system Defining a System
+ *
+ * It is possible to define a system by calling le_dualsys_SetSystem().  This function takes
+ * three values, one for the modem sub-system, one for the lk sub-system and one for the linux
+ * sub-system.  The values are one of 0 for system 1 or 1 for system 2.  When set, the system will
+ * be usable after the next reset.
+ * If no error is encountered, this function will perform a reset.
+ *
+ * It is possible the get the last defined system by calling the le_dualsys_GetSystem().  This
+ * function returns the values for the three sub-systems.  This system is updated accordingly
+ * the last system set by le_dualsys_SetSystem().
+ *
+ * It is possible to get the current active system by calling le_dualsys_GetCurrentSystem().
+ * This function returns the values for the three sub-systems.  If le_dualsys_SetSystem() is
+ * called before le_dualsys_GetCurrentSystem(), the returned values may differ as they represent
+ * the current system in use.
+
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -80,4 +98,49 @@
 FUNCTION le_result_t DisableSyncBeforeUpdate
 (
     bool isDisabled  IN  ///< State of sync check : true (disable) or false (enable)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * System
+ * Define on which system 1 or 2 belong the partition group (0 = system 1, 1 = system 2)
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK System
+{
+    MODEM_GROUP, ///< System 1 or 2 for MODEM sub-system
+    LK_GROUP,    ///< System 1 or 2 for LK sub-system
+    LINUX_GROUP  ///< System 1 or 2 for LINUX sub-system
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define a new "system" by setting the three sub-systems.  This system will become the current
+ * system in use after the reset performed by this service, if no error are reported.
+ *
+ * @note On success, a device reboot is initiated without returning any value.
+ *
+ * @return
+ *      - LE_FAULT           On failure
+ *      - LE_UNSUPPORTED     The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSystem
+(
+    System systemMask  IN   ///< Sub-system bitmask for "modem/lk/linux" partitions
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current "system" in use.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_FAULT         On failure
+ *      - LE_UNSUPPORTED   The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCurrentSystem
+(
+    System systemMask  OUT  ///< Sub-system bitmask for "modem/lk/linux" partitions
 );

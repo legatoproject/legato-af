@@ -339,6 +339,47 @@ le_result_t pa_fwupdate_DisableSyncBeforeUpdate
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Define a new "system" by setting the 3 sub-systems.  This system will become the current system
+ * in use after the reset performed by this service, if no error are reported.
+ *
+ * @return
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_FAULT           On failure
+ *      - LE_UNSUPPORTED     The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_SetSystem
+(
+    pa_fwupdate_System_t systemArray[PA_FWUPDATE_SUBSYSID_MAX]
+                         ///< [IN] System array for "modem/lk/linux" partition groups
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current "system" in use.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_FAULT         On failure
+ *      - LE_UNSUPPORTED   The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_GetSystem
+(
+    pa_fwupdate_System_t systemArray[PA_FWUPDATE_SUBSYSID_MAX]
+                         ///< [OUT] System array for "modem/lk/linux" partition groups
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init this component
  */
 //--------------------------------------------------------------------------------------------------

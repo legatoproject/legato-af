@@ -68,7 +68,44 @@ typedef enum pa_fwupdate_UpdateStatus
     PA_FWUPDATE_UPDATE_STATUS_DWL_FAILED,      ///< Last downloading failed
     PA_FWUPDATE_UPDATE_STATUS_DWL_TIMEOUT,     ///< Last downloading stopped due to timeout
     PA_FWUPDATE_UPDATE_STATUS_UNKNOWN          ///< Unknown status. It has to be the last one.
-} pa_fwupdate_UpdateStatus_t;
+}
+pa_fwupdate_UpdateStatus_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sub system ID: 3 sub system are defined:
+ *     - MODEM = sbl, tz, rpm, modem
+ *     - LK    = aboot
+ *     - LINUX = boot, system, lefwkro, customer0
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum pa_fwupdate_SubSysId
+{
+    PA_FWUPDATE_SUBSYSID_NONE = -1,   ///< Sub System ID is not defined or does not exist
+    PA_FWUPDATE_SUBSYSID_MODEM = 0,
+    PA_FWUPDATE_SUBSYSID_LK,
+    PA_FWUPDATE_SUBSYSID_LINUX,
+    PA_FWUPDATE_SUBSYSID_MAX,
+}
+pa_fwupdate_SubSysId_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sub system ID: 3 sub system are defined:
+ *     - MODEM = sbl, tz, rpm, modem
+ *     - LK    = aboot
+ *     - LINUX = boot, system, lefwkro, customer0
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum pa_fwupdate_System
+{
+    PA_FWUPDATE_SYSTEM_NONE = 0,
+    PA_FWUPDATE_SYSTEM_1 = 1,
+    PA_FWUPDATE_SYSTEM_2 = 2,
+}
+pa_fwupdate_System_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -327,6 +364,44 @@ LE_SHARED le_result_t pa_fwupdate_InitDownload
 LE_SHARED le_result_t pa_fwupdate_DisableSyncBeforeUpdate
 (
     bool isDisabled  ///< [IN] State of sync check : true (disable) or false (enable)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define a new "system" by setting the 3 groups.  This system will become the current system in
+ * in use after the reset performed by this service, if no error are reported.
+ *
+ * @note On success, a device reboot is initiated without returning any value.
+ *
+ * @return
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_FAULT           On failure
+ *      - LE_UNSUPPORTED     The feature is not supported
+ *
+ * @note
+ *      The process exits, if an invalid file descriptor (e.g. negative) is given.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_SetSystem
+(
+    pa_fwupdate_System_t systemArray[PA_FWUPDATE_SUBSYSID_MAX]
+                         ///< [IN] System array for "modem/lk/linux" partition groups
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current "system" in use.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_FAULT         On failure
+ *      - LE_UNSUPPORTED   The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetSystem
+(
+    pa_fwupdate_System_t systemArray[PA_FWUPDATE_SUBSYSID_MAX]
+                         ///< [OUT] System array for "modem/lk/linux" partition groups
 );
 
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD

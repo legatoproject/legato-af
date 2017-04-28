@@ -40,3 +40,72 @@ le_result_t le_dualsys_DisableSyncBeforeUpdate
 {
     return pa_fwupdate_DisableSyncBeforeUpdate(isDisabled);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Define a new "system" by setting the three sub-systems.  This system will become the current
+ * system in use after the reset performed by this service, if no error are reported.
+ *
+ * @note On success, a device reboot is initiated without returning any value.
+ *
+ * @return
+ *      - LE_FAULT           On failure
+ *      - LE_UNSUPPORTED     The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dualsys_SetSystem
+(
+    le_dualsys_System_t systemMask  ///< [IN] Sub-system bitmask for "modem/lk/linux" partitions
+)
+{
+    pa_fwupdate_System_t systemId[PA_FWUPDATE_SUBSYSID_MAX];
+
+    LE_DEBUG("systemMask = 0x%x", systemMask);
+    systemId[PA_FWUPDATE_SUBSYSID_MODEM] = (systemMask & LE_DUALSYS_MODEM_GROUP)
+                                               ? PA_FWUPDATE_SYSTEM_2
+                                               : PA_FWUPDATE_SYSTEM_1;
+    systemId[PA_FWUPDATE_SUBSYSID_LK] = (systemMask & LE_DUALSYS_LK_GROUP)
+                                            ? PA_FWUPDATE_SYSTEM_2
+                                             : PA_FWUPDATE_SYSTEM_1;
+    systemId[PA_FWUPDATE_SUBSYSID_LINUX] = (systemMask & LE_DUALSYS_LINUX_GROUP)
+                                               ? PA_FWUPDATE_SYSTEM_2
+                                               : PA_FWUPDATE_SYSTEM_1;
+    LE_DEBUG("Setting system %d,%d,%d", systemId[PA_FWUPDATE_SUBSYSID_MODEM],
+             systemId[PA_FWUPDATE_SUBSYSID_LK], systemId[PA_FWUPDATE_SUBSYSID_LINUX]);
+    return pa_fwupdate_SetSystem(systemId);
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current "system" in use.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_FAULT         On failure
+ *      - LE_UNSUPPORTED   The feature is not supported
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dualsys_GetCurrentSystem
+(
+    le_dualsys_System_t* systemMask  ///< [OUT] Sub-system bitmask for "modem/lk/linux" partitions
+)
+{
+    pa_fwupdate_System_t systemId[PA_FWUPDATE_SUBSYSID_MAX];
+    le_result_t res;
+
+    res = pa_fwupdate_GetSystem(systemId);
+    if( LE_OK == res)
+    {
+       *systemMask = (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_MODEM])
+                         ? LE_DUALSYS_MODEM_GROUP : 0;
+       *systemMask |= (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_LK])
+                          ? LE_DUALSYS_LK_GROUP : 0;
+       *systemMask |= (PA_FWUPDATE_SYSTEM_2 == systemId[PA_FWUPDATE_SUBSYSID_LINUX])
+                          ? LE_DUALSYS_LINUX_GROUP : 0;
+    LE_DEBUG("systemMask = 0x%x", *systemMask);
+    }
+    return res;
+}

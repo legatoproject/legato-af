@@ -19,6 +19,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Valid value for the system: 1 or 2
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+#define SYSTEM_1 1
+#define SYSTEM_2 2
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print function.
  *
  */
@@ -62,6 +71,8 @@ static void PrintUsage
             "fwupdateTest -- do_initdwnld: make an init download operation",
             "fwupdateTest -- do_disablesync: disable the sync before update",
             "fwupdateTest -- do_enablesync: enable the sync before update",
+            "fwupdateTest -- do_getsystem: get the current sub system as: <modem>,<lk>,<linux>",
+            "fwupdateTest -- do_setsystem <modem>,<lk>,<linux>: define the new sub system",
             "",
     };
 
@@ -69,6 +80,20 @@ static void PrintUsage
     {
         Print((char*) usagePtr[idx]);
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test if the given system ID is valid. In the test, we accept 1 or 2 as valid values.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsSubSystemValid
+(
+    int ssid
+)
+{
+    return ((SYSTEM_1 == ssid) || (SYSTEM_2 == ssid));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -175,6 +200,68 @@ COMPONENT_INIT
         result = le_dualsys_DisableSyncBeforeUpdate(false);
         snprintf (string, sizeof(string), "le_fwupdate_DisableSyncBeforeUpdate(false) %d", result);
         Print (string);
+        exit(0);
+    }
+    else if (0 == strcmp(testString, "do_getsystem"))
+    {
+        le_dualsys_System_t currentSystem;
+        result = le_dualsys_GetCurrentSystem(&currentSystem);
+        snprintf (string, sizeof(string), "le_dualsys_GetSystem %d", result);
+        Print (string);
+        if (LE_OK == result)
+        {
+            snprintf (string, sizeof(string), "modem %d lk %d linux %d",
+                      (currentSystem & LE_DUALSYS_MODEM_GROUP) ? SYSTEM_2
+                                                               : SYSTEM_1,
+                      (currentSystem & LE_DUALSYS_LK_GROUP) ? SYSTEM_2
+                                                            : SYSTEM_1,
+                      (currentSystem & LE_DUALSYS_LINUX_GROUP) ? SYSTEM_2
+                                                               : SYSTEM_1);
+            Print (string);
+        }
+        exit(0);
+    }
+    else if (0 == strcmp(testString, "do_setsystem"))
+    {
+        int modemGroup, lkGroup, linuxGroup;
+        le_dualsys_System_t newSystem;
+        if (3 != sscanf(secondString, "%d,%d,%d", &modemGroup, &lkGroup, &linuxGroup))
+        {
+            Print ("Invalid ssid given");
+            exit(EXIT_FAILURE);
+        }
+        if (!IsSubSystemValid( modemGroup ))
+        {
+            snprintf (string, sizeof(string), "Sub-system modem is not valid: %d", modemGroup);
+            Print (string);
+            exit(EXIT_FAILURE);
+        }
+        if (!IsSubSystemValid( lkGroup ))
+        {
+            snprintf (string, sizeof(string), "Sub-system lk is not valid: %d", lkGroup);
+            Print (string);
+            exit(EXIT_FAILURE);
+        }
+        if (!IsSubSystemValid( linuxGroup ))
+        {
+            snprintf (string, sizeof(string), "Sub-system linux is not valid: %d", linuxGroup);
+            Print (string);
+            exit(EXIT_FAILURE);
+        }
+        newSystem = (SYSTEM_2 == modemGroup) * LE_DUALSYS_MODEM_GROUP;
+        newSystem |= (SYSTEM_2 == lkGroup) * LE_DUALSYS_LK_GROUP;
+        newSystem |= (SYSTEM_2 == linuxGroup) * LE_DUALSYS_LINUX_GROUP;
+        snprintf (string, sizeof(string), "newSystem 0x%x", newSystem);
+        Print (string);
+        result = le_dualsys_SetSystem(newSystem);
+        snprintf (string, sizeof(string), "le_dualsys_SetSystem %d", result);
+        Print (string);
+        if (LE_OK == result)
+        {
+            snprintf (string, sizeof(string), "modem %d lk %d linux %d",
+                      modemGroup, lkGroup, linuxGroup);
+            Print (string);
+        }
         exit(0);
     }
     else
