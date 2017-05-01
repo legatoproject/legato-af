@@ -184,8 +184,8 @@ static void OurSigHandler
 // than delay restarting.
 #define CHECK_WRITE(fd, buffer, sz)                                     \
     do {                                                                \
-        size_t expected_size = (sz);                                    \
-        if (write((fd), (buffer), expected_size) != expected_size)      \
+        size_t expectedSize = (sz);                                     \
+        if (write((fd), (buffer), expectedSize) != expectedSize)        \
         {                                                               \
             raise(sigNum);                                              \
             return;                                                     \
@@ -369,7 +369,16 @@ static void ShowStackSignalHandler
                 }
                 if ('\n' == sigString[len])
                 {
-                    CHECK_WRITE(2, sigString, len + 1);
+                    size_t expectedSize = len + 1;
+                    if (expectedSize != write(2, sigString, expectedSize))
+                    {
+                        // Unexpected failure to write?  Close file and reraise exception
+                        // immediately.
+                        close(fd);
+                        raise(sigNum);
+                        return;
+                    }
+
                     break;
                 }
             }
