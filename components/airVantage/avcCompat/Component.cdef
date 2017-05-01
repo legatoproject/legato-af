@@ -12,8 +12,9 @@ requires:
 {
     api:
     {
-        airVantage/legacy/le_avc.api  [types-only]
+        airVantage/le_avc.api
         le_appCtrl.api
+        le_cfg.api
     }
 
     component:

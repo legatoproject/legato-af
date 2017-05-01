@@ -40,6 +40,82 @@ static le_timer_Ref_t RetryTimerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Path to the lwm2m configurations in the Config Tree.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_AVC_CONFIG_PATH "system:/apps/avcService/config"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Max number of bytes of a retry timer name.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TIMER_NAME_BYTES 10
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Import AVMS config from the modem to Legato.
+ */
+//--------------------------------------------------------------------------------------------------
+static void ImportConfig
+(
+    void
+)
+{
+    // Don't import config from the modem if it was done before. Also if we can't read the dirty
+    // bit, assume it's false and proceed with import.
+    if (le_cfg_QuickGetBool(CFG_AVC_CONFIG_PATH "/imported", false))
+    {
+        LE_INFO("NOT importing AVMS config from modem to Legato since it was done before.");
+    }
+    else
+    {
+        LE_INFO("Importing AVMS config from modem to Legato.");
+
+        le_result_t getConfigRes;
+
+        /* Get the PDP profile */
+        char apnName[LE_AVC_APN_NAME_MAX_LEN_BYTES] = {0};
+        char userName[LE_AVC_USERNAME_MAX_LEN_BYTES] = {0};
+        char userPassword[LE_AVC_PASSWORD_MAX_LEN_BYTES] = {0};
+
+        getConfigRes = pa_avc_GetApnConfig(apnName, LE_AVC_APN_NAME_MAX_LEN_BYTES,
+                                           userName, LE_AVC_USERNAME_MAX_LEN_BYTES,
+                                           userPassword, LE_AVC_PASSWORD_MAX_LEN_BYTES);
+
+        if (getConfigRes == LE_OK)
+        {
+            le_avc_SetApnConfig(apnName, userName, userPassword);
+        }
+        else
+        {
+            LE_WARN("Failed to get APN config from the modem.");
+        }
+
+        /* Get the polling timer */
+        uint32_t pollingTimer = 0;
+
+        getConfigRes = pa_avc_GetPollingTimer(&pollingTimer);
+
+        if (getConfigRes == LE_OK)
+        {
+            le_avc_SetPollingTimer(pollingTimer);
+        }
+        else
+        {
+            LE_WARN("Failed to get the polling timer from the modem.");
+        }
+
+        // Set the "imported" dirty bit, so that config isn't imported next time.
+        le_cfg_QuickSetBool(CFG_AVC_CONFIG_PATH "/imported", true);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Expiry handler function that will retry disabling the modem-based AVC.
  */
 //--------------------------------------------------------------------------------------------------
@@ -56,6 +132,7 @@ static void RetryDisable
         LE_INFO("Modem-based AVC disabled.");
         le_timer_Stop(RetryTimerRef);
         le_appCtrl_Start(AVC_APP_NAME);
+        ImportConfig();
     }
 }
 
@@ -99,6 +176,7 @@ COMPONENT_INIT
     if (pa_avc_Disable() == LE_OK)
     {
         LE_INFO("Modem-based AVC disabled.");
+        ImportConfig();
     }
     else
     {
