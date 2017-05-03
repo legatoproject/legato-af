@@ -178,8 +178,7 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         buffer.writeLongRef({{parameter.maxCount}});
         {%- endif %}
         {%- endfor %}
-        {%- set hasOuts = (function.returnType or
-                           function.parameters|any("OutParameter")) %}
+        {%- set hasOuts = (function.returnType or any(function.parameters, "OutParameter")) %}
 
         {% if hasOuts -%}
         Message response = {% endif -%}
