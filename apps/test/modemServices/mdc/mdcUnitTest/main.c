@@ -178,8 +178,9 @@ static void TestMdc_Configuration( void )
     /* Test default APNs */
     char homeMcc[] = "000";
     char homeMnc[] = "00";
-    pa_simSimu_ReportSimState(LE_SIM_READY);
+    pa_simSimu_ReportSIMState(LE_SIM_READY);
     pa_simSimu_SetHomeNetworkMccMnc(homeMcc, homeMnc);
+    pa_simSimu_SetCardIdentification("");
     LE_ASSERT(LE_FAULT == le_mdc_SetDefaultAPN(ProfileRef[2]));
 
     /* Set default APN based on MCC and MNC */

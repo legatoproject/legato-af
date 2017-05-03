@@ -59,8 +59,8 @@ static void SetSimCardInfo
     void
 )
 {
-    pa_simSimu_SetPin(Pin);
-    pa_simSimu_SetPuk(Puk);
+    pa_simSimu_SetPIN(Pin);
+    pa_simSimu_SetPUK(Puk);
     pa_simSimu_SetIMSI(Imsi);
     pa_simSimu_SetCardIdentification(Iccid);
     pa_simSimu_SetSubscriberPhoneNumber(PhoneNum);
@@ -355,7 +355,7 @@ static void TestSim_AddHandlers
 
     pa_simSimu_SetSelectCard(CurrentSimId);
     le_sim_SelectCard(CurrentSimId);
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // The tasks have subscribe to state event handler:
     // wait the handlers' calls
@@ -401,7 +401,7 @@ static void TestSim_PinPuk
 
     // Insert SIM (busy state)
     CurrentSimState = LE_SIM_BUSY;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Note that in LE_SIM_BUSY state, no handlers are called
 
@@ -415,7 +415,7 @@ static void TestSim_PinPuk
 
     // SIM is inserted
     CurrentSimState = LE_SIM_INSERTED;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -479,7 +479,7 @@ static void TestSim_PinPuk
 
     // Return into INSERTED state: check PIN
     CurrentSimState = LE_SIM_INSERTED;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -523,7 +523,7 @@ static void TestSim_LockUnlockChange
 {
     // Go into ABSENT state
     CurrentSimState = LE_SIM_ABSENT;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -541,7 +541,7 @@ static void TestSim_LockUnlockChange
 
     // Go in READY state
     CurrentSimState = LE_SIM_READY;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -590,7 +590,7 @@ static void TestSim_SimCardInformation
 
     // Start in ABSENT state
     CurrentSimState = LE_SIM_ABSENT;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -607,7 +607,7 @@ static void TestSim_SimCardInformation
 
     // SIM is now ready
     CurrentSimState = LE_SIM_READY;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -657,7 +657,7 @@ static void TestSim_HomeNetwork
 
     // Start in ABSENT state
     CurrentSimState = LE_SIM_ABSENT;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -672,7 +672,7 @@ static void TestSim_HomeNetwork
 
     // SIM is now ready
     CurrentSimState = LE_SIM_READY;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Wait the handlers' calls
     SynchTest();
@@ -730,7 +730,7 @@ static void TestSim_Stk
     StkEvent = LE_SIM_REFRESH;
 
     // Invoke Stk event
-    pa_simSimu_ReportStkEvent(StkEvent);
+    pa_simSimu_ReportSTKEvent(StkEvent);
 
     // Wait for the call of the handlers
     SynchTest();
@@ -743,9 +743,9 @@ static void TestSim_Stk
     }
 
     // Test le_sim_AcceptSimToolkitCommand and le_sim_RejectSimToolkitCommand
-    pa_simSimu_SetExpectedStkConfirmationCommand(true);
+    pa_simSimu_SetExpectedSTKConfirmationCommand(true);
     LE_ASSERT( le_sim_AcceptSimToolkitCommand(CurrentSimId) == LE_OK );
-    pa_simSimu_SetExpectedStkConfirmationCommand(false);
+    pa_simSimu_SetExpectedSTKConfirmationCommand(false);
     LE_ASSERT( le_sim_RejectSimToolkitCommand(CurrentSimId) == LE_OK );
 
     // Check that all handlers have been called as expected
@@ -773,7 +773,7 @@ static void TestSim_LocalSwap
     int doItAgain = 2;
 
     // Swap functions may generate an automatically accepted Refresh command
-    pa_simSimu_SetExpectedStkConfirmationCommand(true);
+    pa_simSimu_SetExpectedSTKConfirmationCommand(true);
 
     while (doItAgain)
     {
@@ -792,7 +792,7 @@ static void TestSim_LocalSwap
         // There's a semaphore in the le_sim to wait for the refresh => report refresh event
         StkEvent = LE_SIM_REFRESH;
         // Invoke Stk event
-        pa_simSimu_ReportStkEvent(StkEvent);
+        pa_simSimu_ReportSTKEvent(StkEvent);
 
         // Wait for the call of the handlers
         SynchTest();
@@ -845,10 +845,10 @@ static void TestSim_RemoveHandlers
 
     // Go into ABSENT state
     CurrentSimState = LE_SIM_ABSENT;
-    pa_simSimu_ReportSimState(CurrentSimState);
+    pa_simSimu_ReportSIMState(CurrentSimState);
 
     // Invoke Stk event, and check that no handler is called
-    pa_simSimu_ReportStkEvent(StkEvent);
+    pa_simSimu_ReportSTKEvent(StkEvent);
 
     // Wait for the semaphore timeout to check that handlers are not called
     LE_ASSERT( le_sem_WaitWithTimeOut(ThreadSemaphore, TimeToWait) == LE_TIMEOUT );
@@ -871,7 +871,7 @@ static void TestSim_SimAccess
     void
 )
 {
-    pa_simSimu_SetSimAccessTest(true);
+    pa_simSimu_SetSIMAccessTest(true);
 
     uint8_t apdu[]={ 0x00, 0xA4, 0x00, 0x0C, 0x02, 0x6F, 0x07 };
     uint8_t simResponse[10];
@@ -950,7 +950,7 @@ static void TestSim_SimAccess
         }
     }
 
-    pa_simSimu_SetSimAccessTest(false);
+    pa_simSimu_SetSIMAccessTest(false);
 }
 
 //--------------------------------------------------------------------------------------------------

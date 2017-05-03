@@ -17,7 +17,9 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
     -i ${LEGATO_ROOT}/framework/c/src
     -i ${PA_DIR}/simu/components/le_pa
+    -i ${PA_DIR}/simu/components/simuConfig
     -s ${PA_DIR}
+    --cflags="-DWITHOUT_SIMUCONFIG"
     ${CFLAGS}
     ${LFLAGS}
 )

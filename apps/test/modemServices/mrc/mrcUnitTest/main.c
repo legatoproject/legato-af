@@ -435,7 +435,7 @@ COMPONENT_INIT
     le_sim_Init();
 
     // Configure PA SIM simu
-    pa_simSimu_SetPin(PIN_CODE);
+    pa_simSimu_SetPIN(PIN_CODE);
     pa_simSimu_SetIMSI(IMSI);
     pa_simSimu_SetCardIdentification(ICCID);
     pa_simSimu_SetHomeNetworkMccMnc(MCC, MNC);

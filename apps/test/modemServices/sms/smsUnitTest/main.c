@@ -76,7 +76,7 @@ COMPONENT_INIT
     // Init pa simu
     pa_simSimu_Init();
 
-    pa_simSimu_SetPin("0000");
+    pa_simSimu_SetPIN("0000");
     pa_sms_SetSmsc("+33123456789");
 
     // Init the sms PA Simu

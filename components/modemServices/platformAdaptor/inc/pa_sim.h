@@ -204,7 +204,7 @@ LE_SHARED le_result_t pa_sim_SelectCard
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function get the card on which operations are operated.
+ * This function gets the card on which operations are operated.
  *
  * @return LE_FAULT         The function failed.
  * @return LE_TIMEOUT       No response was received.
@@ -218,7 +218,7 @@ LE_SHARED le_result_t pa_sim_GetSelectedCard
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function get the card identification (ICCID).
+ * This function gets the card identification (ICCID).
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_FAULT         The function failed.
@@ -233,7 +233,7 @@ LE_SHARED le_result_t pa_sim_GetCardIdentification
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function get the International Mobile Subscriber Identity (IMSI).
+ * This function gets the International Mobile Subscriber Identity (IMSI).
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_FAULT         The function failed.
@@ -248,7 +248,7 @@ LE_SHARED le_result_t pa_sim_GetIMSI
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function get the SIM Status.
+ * This function gets the SIM Status.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_FAULT         The function failed.
@@ -305,7 +305,7 @@ LE_SHARED le_result_t pa_sim_EnterPIN
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function set the new PIN code.
+ * This function sets the new PIN code.
  *
  *  - use to set pin code by providing the PUK
  *
@@ -326,7 +326,7 @@ LE_SHARED le_result_t pa_sim_EnterPUK
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function get the remaining attempts of a pin code.
+ * This function gets the remaining attempts of a pin code.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_FAULT         The function failed.
@@ -342,7 +342,7 @@ LE_SHARED le_result_t pa_sim_GetPINRemainingAttempts
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function get the remaining attempts of a puk code.
+ * This function gets the remaining attempts of a puk code.
  *
  * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_FAULT         The function failed.
