@@ -66,7 +66,7 @@
 #include "smack.h"
 #include "cgroups.h"
 #include "file.h"
-
+#include "installer.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -92,6 +92,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_START_MANUAL               "startManual"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The name of the node in the config tree that states whether the application is sandboxed or not
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_SANDBOXED                  "sandboxed"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1305,6 +1313,66 @@ le_result_t apps_SigChildHandler
 
     // Handle any faults that the child process state change my have caused.
     return HandleAppFault(appContainerPtr, pid, status);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verify that all devices in our sandboxed applications match with the device outside the sandbox.
+ * Remove devices and allow supervisor to recreate them.
+ */
+//--------------------------------------------------------------------------------------------------
+void apps_VerifyAppWriteableDeviceFiles
+(
+    void
+)
+{
+    // Read the list of applications from the config tree.
+    le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(CFG_NODE_APPS_LIST);
+
+    if (le_cfg_GoToFirstChild(appCfg) != LE_OK)
+    {
+        LE_WARN("No applications installed.");
+
+        le_cfg_CancelTxn(appCfg);
+
+        return;
+    }
+
+    do
+    {
+        // Get the app name.
+        char appName[LIMIT_MAX_APP_NAME_BYTES];
+
+        if (le_cfg_GetNodeName(appCfg, "", appName, sizeof(appName)) == LE_OVERFLOW)
+        {
+            LE_ERROR("AppName buffer was too small, name truncated to '%s'.  "
+                     "Max app name in bytes, %d.  Application not launched.",
+                     appName, LIMIT_MAX_APP_NAME_BYTES);
+        }
+        else
+        {
+            // Only check if application is sandboxed since included devices are created as new
+            // device nodes
+            if (le_cfg_GetBool(appCfg, CFG_NODE_SANDBOXED, true))
+            {
+                // Get the app hash
+                char versionBuffer[LIMIT_MAX_APP_HASH_LEN] = "";
+
+                if (le_appInfo_GetHash(appName, versionBuffer, sizeof(versionBuffer)) != LE_OK)
+                {
+                    LE_ERROR("Unable to retrieve application '%s' hash", appName);
+                }
+                else
+                {
+                    installer_UpdateAppWriteableFiles("current", versionBuffer, appName);
+                }
+            }
+        }
+    }
+    while (le_cfg_GoToNextSibling(appCfg) == LE_OK);
+
+    le_cfg_CancelTxn(appCfg);
 }
 
 

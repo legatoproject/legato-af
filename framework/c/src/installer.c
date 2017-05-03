@@ -15,6 +15,7 @@
 #include "file.h"
 #include "smack.h"
 #include "dir.h"
+#include "user.h"
 
 
 
@@ -51,6 +52,7 @@ static void GetDirSmackLabel
 
     LE_ASSERT(snprintf(dirLabel, labelSize, "%s%s", appLabel, appendMode) < labelSize);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -407,7 +409,7 @@ le_result_t installer_UpdateAppWriteableFiles
                 break;
 
             default:
-
+            {
                 LE_CRIT("Unexpected file type %d in app '%s' <%s>.",
                         entPtr->fts_info,
                         appNamePtr,
@@ -415,6 +417,7 @@ le_result_t installer_UpdateAppWriteableFiles
                 LE_CRIT("Offending path: '%s'.", entPtr->fts_path);
                 result = LE_FAULT;
                 break;
+            }
         }
     }
 
@@ -502,8 +505,20 @@ le_result_t installer_UpdateAppWriteableFiles
                 break;
             }
 
-            default:
+            case FTS_DEFAULT:
+                if (S_ISCHR(entPtr->fts_statp->st_mode) || S_ISBLK(entPtr->fts_statp->st_mode))
+                {
+                    if (unlink(entPtr->fts_path) != 0)
+                    {
+                        LE_ERROR("Failed to delete file '%s'. (%m)", entPtr->fts_path);
+                        return LE_FAULT;
+                    }
+                }
 
+                break;
+
+            default:
+            {
                 LE_CRIT("Unexpected file type %d in app '%s' <%s> in current system.",
                         entPtr->fts_info,
                         appNamePtr,
@@ -511,6 +526,103 @@ le_result_t installer_UpdateAppWriteableFiles
                 LE_CRIT("Offending path: '%s'.", entPtr->fts_path);
                 result = LE_FAULT;
                 break;
+            }
+        }
+    }
+
+    fts_close(ftsPtr);
+
+    return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove devices from a given app's writeable files. This is to ensure that device node numbers
+ * always match their respective devices outside the sandbox.
+ *
+ * @return LE_OK if successful.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t installer_RemoveAppWriteableDeviceFiles
+(
+    const char* systemNamePtr,  ///< System dir to write files into ("current" or "unpack").
+    const char* appMd5Ptr,
+    const char* appNamePtr
+)
+{
+    le_result_t result = LE_OK;
+
+    // Delete files from system that are not in the app's install dir's writeable files.
+    char appWriteableDirPath[PATH_MAX];
+    int baseDirPathLen = snprintf(appWriteableDirPath,
+                                 sizeof(appWriteableDirPath),
+                                 "/legato/systems/%s/appsWriteable/%s",
+                                 systemNamePtr,
+                                 appNamePtr);
+    LE_ASSERT(baseDirPathLen < sizeof(appWriteableDirPath));
+    char* pathArrayPtr[] = { appWriteableDirPath, NULL };
+    FTS*  ftsPtr = fts_open(pathArrayPtr, FTS_PHYSICAL, NULL);
+
+    if (ftsPtr == NULL)
+    {
+        LE_CRIT("Failed to open '%s' for traversal (%m).", appWriteableDirPath);
+        return LE_FAULT;
+    }
+
+    FTSENT* entPtr;
+    while ((entPtr = fts_read(ftsPtr)) != NULL)
+    {
+        // Compute the equivalent path in the app install directory.
+        char appInstallPath[PATH_MAX];
+        int n = snprintf(appInstallPath,
+                         sizeof(appInstallPath),
+                         "/legato/apps/%s/writeable/%s",
+                         appMd5Ptr,
+                         entPtr->fts_path + baseDirPathLen);
+        if (n >= sizeof(appInstallPath))
+        {
+            LE_FATAL("Path to writeable file in app '%s' <%s> in app install dir is too long.",
+                     appNamePtr,
+                     appMd5Ptr);
+            result = LE_FAULT;
+            continue;
+
+        }
+
+        // Act differently depending on whether we are looking at a file or a directory.
+        switch (entPtr->fts_info)
+        {
+            case FTS_DP: // Directory visited in post-order.
+            case FTS_D: // Directory visited in pre-order.
+            case FTS_NS: // appsWriteable dir doesn't even exist for this app.
+            case FTS_SL:
+            case FTS_F:
+                break;
+
+            // remove device
+            case FTS_DEFAULT:
+                if (S_ISCHR(entPtr->fts_statp->st_mode) || S_ISBLK(entPtr->fts_statp->st_mode))
+                {
+                    if (unlink(entPtr->fts_path) != 0)
+                    {
+                        LE_ERROR("Failed to delete file '%s'. (%m)", entPtr->fts_path);
+                        return LE_FAULT;
+                    }
+                }
+
+                break;
+
+            default:
+            {
+                LE_CRIT("Unexpected file type %d in app '%s' <%s> in current system.",
+                        entPtr->fts_info,
+                        appNamePtr,
+                        appMd5Ptr);
+                LE_CRIT("Offending path: '%s'.", entPtr->fts_path);
+                result = LE_FAULT;
+                break;
+            }
         }
     }
 

@@ -88,4 +88,15 @@ le_result_t apps_SigChildHandler
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Verify that all devices in our sandboxed applications match with the device outside the sandbox.
+ * Remove devices and allow supervisor to recreate them.
+ */
+//--------------------------------------------------------------------------------------------------
+void apps_VerifyAppWriteableDeviceFiles
+(
+    void
+);
+
 #endif  // LEGATO_SRC_APPS_INCLUDE_GUARD

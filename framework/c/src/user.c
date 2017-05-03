@@ -1740,3 +1740,31 @@ le_result_t user_GetAppUid
 
     return user_GetUid(userName, uidPtr);
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's an application's group ID.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the application does not exist.
+ *      LE_OVERFLOW if the application name is too long.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetAppGid
+(
+    const char* appName,        ///< [IN] Name of the application to get the gid for.
+    gid_t* gidPtr               ///< [OUT] GID of the application.
+)
+{
+    char userName[LIMIT_MAX_APP_NAME_BYTES];
+
+    if (user_AppNameToUserName(appName, userName, sizeof(userName)) == LE_OVERFLOW)
+    {
+        return LE_OVERFLOW;
+    }
+
+    return user_GetGid(userName, gidPtr);
+}

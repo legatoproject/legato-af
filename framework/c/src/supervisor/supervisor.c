@@ -409,6 +409,7 @@ static void StartFramework
 
     // Initialize the apps sub system.
     apps_Init();
+    apps_VerifyAppWriteableDeviceFiles();
 
     State = STATE_NORMAL;
 

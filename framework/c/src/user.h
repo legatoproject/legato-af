@@ -262,4 +262,22 @@ le_result_t user_GetAppUid
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get's an application's group ID.
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_NOT_FOUND if the application does not exist.
+ *      LE_OVERFLOW if the application name is too long.
+ *      LE_FAULT if there was some other error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t user_GetAppGid
+(
+    const char* appName,        ///< [IN] Name of the application to get the gid for.
+    gid_t* gidPtr               ///< [OUT] GID of the application.
+);
+
+
 #endif  // LEGATO_SRC_USER_INCLUDE_GUARD

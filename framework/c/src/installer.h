@@ -62,4 +62,20 @@ le_result_t installer_UpdateAppWriteableFiles
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove devices from a given app's writeable files. This is to ensure that device node numbers
+ * always match their respective devices outside the sandbox.
+ *
+ * @return LE_OK if successful.
+ **/
+//--------------------------------------------------------------------------------------------------
+le_result_t installer_RemoveAppWriteableDeviceFiles
+(
+    const char* systemNamePtr,  ///< System dir to write files into ("current" or "unpack").
+    const char* appMd5Ptr,
+    const char* appNamePtr
+);
+
+
 #endif // LEGATO_INSTALLER_H_INCLUDE_GUARD
