@@ -1,6 +1,6 @@
 /** @page platformConstraints Platform Constraints
 
-The AR755x, AR8652, WP750x, and WP8548 platforms have the following limitations:
+The AR755x, AR758x, AR759x, AR8652, WP750x, and WP8548 platforms have the following limitations:
 
 | Constraint                                | AR755x | AR758x | AR759x | AR8652 | WP750x | WP8548 |
 | ----------------------------------------- | :----: | :----: | :----: | :----: | :-----:| :-----:|
@@ -13,6 +13,7 @@ The AR755x, AR8652, WP750x, and WP8548 platforms have the following limitations:
 | @subpage platformConstraintsTemperature   | X      | X      | X      | X      |        | X      |
 | @subpage platformConstraintsATCommand     | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsReadOnly      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsFwUpdate      | X      | X      | X      | X      | X      | X      |
 
 
 Copyright (C) Sierra Wireless Inc.
