@@ -797,6 +797,50 @@ Dependency loops are not allowed: component C can't depend on another component 
 (either directly or indirectly) depends on component C. The build tools detect dependency
 loops and report any error.
 
+
+@subsection defFilesCdef_requiresJavaPackage javaPackage
+
+You create a @c javaPackage: section in the @ .cdef listing Java packages to build. It should look
+something like this:
+
+@code
+javaPackage:
+{
+    io.legato.samples
+}
+@endcode
+
+
+The build tools will look for Java to code under @c COMPONENT_DIR/src/io/legato/samples/ *.java
+
+It won't recurse automatically into subdirectories; if you want subdirectories, they also must
+added to the JavaPackage section.
+
+@code
+javaPackage:
+{
+    io.legato.samples
+    io.legato.samples.foo
+    io.legato.samples.bar
+}
+@endcode
+
+The first Java package listed is assumed to be the @e main component package as it contains a class
+with the same name of the component, and it implements the interface (@c io.legato.Component).
+
+A hello world Java app folder structure should look something like this:
+
+@code
++-- javaHelloComponent
+|   +-- Component.cdef
+|   +-- src
+|       +-- io
+|           +-- legato
+|               +-- samples
+|                   +-- javaHelloComponent.java
++-- jHello.adef
+@endcode
+
 @section defFilesCdef_sources sources
 
 Contains a list of source code files.
