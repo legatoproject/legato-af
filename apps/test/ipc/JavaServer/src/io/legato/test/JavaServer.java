@@ -104,6 +104,12 @@ public class JavaServer implements ipcTest, Component
     }
 
     @Override
+    public void ExitServer()
+    {
+        System.exit(-1);
+    }
+
+    @Override
     public void componentInit()
     {
     }

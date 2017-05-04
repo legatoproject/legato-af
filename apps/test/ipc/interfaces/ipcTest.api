@@ -120,3 +120,5 @@ FUNCTION EchoString(string InString[256] IN,
 
 // FUNCTION EchoArray(int64 InArray[32] IN,
 //                    int64 OutArray[32] OUT);
+
+FUNCTION ExitServer();

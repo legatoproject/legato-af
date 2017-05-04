@@ -63,6 +63,8 @@ typedef struct
 {
     le_msg_SessionRef_t sessionRef;     ///< Client Session Reference
     int                 clientCount;    ///< Number of clients sharing this thread
+    {{apiName}}_DisconnectHandler_t disconnectHandler; ///< Disconnect handler for this thread
+    void*               contextPtr;     ///< Context for disconnect handler
 }
 _ClientThreadData_t;
 
@@ -216,6 +218,7 @@ static le_result_t InitClientForThread
     // Store the client sessionRef in thread-local storage, since each thread requires
     // its own sessionRef.
     _ClientThreadData_t* clientThreadPtr = le_mem_ForceAlloc(_ClientThreadDataPool);
+    memset(clientThreadPtr, 0, sizeof(_ClientThreadData_t));
     clientThreadPtr->sessionRef = sessionRef;
     if (pthread_setspecific(_ThreadDataKey, clientThreadPtr) != 0)
     {
@@ -398,6 +401,74 @@ le_result_t {{apiName}}_TryConnectService
 {
     // Connect to the service; return with an error if not connected.
     return DoConnectService(false);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Session close handler.
+//
+// Dispatches session close notifications to the registered client handler function (if any)
+//--------------------------------------------------------------------------------------------------
+static void SessionCloseHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void *contextPtr
+)
+{
+    _ClientThreadData_t* clientThreadPtr = contextPtr;
+
+    le_msg_DeleteSession( clientThreadPtr->sessionRef );
+
+    // Need to delete the thread specific data, since it is no longer valid.  If a new
+    // client session is started, new thread specific data will be allocated.
+    le_mem_Release(clientThreadPtr);
+    if (pthread_setspecific(_ThreadDataKey, NULL) != 0)
+    {
+        LE_FATAL("pthread_setspecific() failed!");
+    }
+
+    LE_DEBUG("======= '%s' service spontaneously disconnected ========", SERVICE_INSTANCE_NAME);
+
+    if (clientThreadPtr->disconnectHandler)
+    {
+        clientThreadPtr->disconnectHandler(clientThreadPtr->contextPtr);
+    }
+
+    LE_FATAL("Component for {{apiName}} disconnected\n");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set handler called when server disconnection is detected.
+ *
+ * When a server connection is lost, call this handler then exit with LE_FATAL.  If a program wants
+ * to continue without exiting, it should call longjmp() from inside the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+void {{apiName}}_SetServerDisconnectHandler
+(
+    {{apiName}}_DisconnectHandler_t disconnectHandler,
+    void *contextPtr
+)
+{
+    _ClientThreadData_t* clientThreadPtr = GetClientThreadDataPtr();
+
+    if (NULL == clientThreadPtr)
+    {
+        LE_CRIT("Trying to set disconnect handler for non-existent client session for '%s' service",
+                SERVICE_INSTANCE_NAME);
+    }
+    else
+    {
+        clientThreadPtr->disconnectHandler = disconnectHandler;
+        clientThreadPtr->contextPtr = contextPtr;
+
+        if (disconnectHandler)
+        {
+            le_msg_SetSessionCloseHandler(clientThreadPtr->sessionRef,
+                                          SessionCloseHandler,
+                                          clientThreadPtr);
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -622,8 +693,12 @@ error_unpack:
     LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
              _msgBufPtr-_msgPtr->buffer);
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
-    // It is a serious error if we don't get a valid response from the server
-    LE_FATAL_IF(_responseMsgRef == NULL, "Valid response was not received from server");
+    // It is a serious error if we don't get a valid response from the server.  Call disconnect
+    // handler (if one is defined) to allow cleanup
+    if (_responseMsgRef == NULL)
+    {
+        SessionCloseHandler(GetCurrentSessionRef(), GetClientThreadDataPtr());
+    }
 
     // Process the result and/or output parameters, if there are any.
     _msgPtr = le_msg_GetPayloadPtr(_responseMsgRef);

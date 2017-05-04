@@ -5,6 +5,7 @@
 #include "legato.h"
 #include "interfaces.h"
 
+#include <setjmp.h>
 #include <string.h>
 
 #include <CUnit/Console.h>
@@ -176,6 +177,31 @@ static void TestEchoArrayNull(void)
 }
 #endif
 
+// Server exit handler.
+static jmp_buf ServerExitJump;
+
+static void TestServerExitHandler(void *contextPtr)
+{
+    longjmp(ServerExitJump, 1);
+}
+
+static void TestServerExit(void)
+{
+    if (0 == setjmp(ServerExitJump))
+    {
+        ipcTest_SetServerDisconnectHandler(TestServerExitHandler, NULL);
+
+        ipcTest_ExitServer();
+    }
+    else
+    {
+        CU_PASS("No client crash");
+
+        // Reconnect to server so future tests can run
+        ipcTest_ConnectService();
+    }
+}
+
 static void* run_test(void* context)
 {
     ipcTest_ConnectService();
@@ -203,6 +229,7 @@ static void* run_test(void* context)
 //              { "EchoArray", TestEchoSmallArray },
 //              { "EchoArray with max size array", TestEchoMaxArray },
 //              { "EchoArray with NULL output", TestEchoArrayNull },
+              { "Server exit", TestServerExit},
               CU_TEST_INFO_NULL
         };
 

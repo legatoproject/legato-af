@@ -126,6 +126,14 @@ void ipcTest_EchoArray
 }
 #endif
 
+void ipcTest_ExitServer
+(
+    void
+)
+{
+    abort();
+}
+
 COMPONENT_INIT
 {
 }

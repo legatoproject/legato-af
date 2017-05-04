@@ -21,6 +21,13 @@
 {% if functions or handlers -%}
 //--------------------------------------------------------------------------------------------------
 /**
+ * Type for handler called when a server disconnects.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*{{apiName}}_DisconnectHandler_t)(void *);
+
+//--------------------------------------------------------------------------------------------------
+/**
  *
  * Connect the current client thread to the service providing this API. Block until the service is
  * available.
@@ -60,6 +67,20 @@ void {{apiName}}_ConnectService
 le_result_t {{apiName}}_TryConnectService
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set handler called when server disconnection is detected.
+ *
+ * When a server connection is lost, call this handler then exit with LE_FATAL.  If a program wants
+ * to continue without exiting, it should call longjmp() from inside the handler.
+ */
+//--------------------------------------------------------------------------------------------------
+void {{apiName}}_SetServerDisconnectHandler
+(
+    {{apiName}}_DisconnectHandler_t disconnectHandler,
+    void *contextPtr
 );
 
 //--------------------------------------------------------------------------------------------------
