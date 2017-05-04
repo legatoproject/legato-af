@@ -362,7 +362,7 @@ le_result_t le_info_GetMin
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_NOT_FOUND     The information is not available.
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
@@ -389,7 +389,7 @@ le_result_t le_info_GetPrlVersion
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_NOT_FOUND     The information is not available.
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------

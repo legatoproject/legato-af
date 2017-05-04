@@ -457,7 +457,7 @@ FUNCTION le_result_t GetMdn
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_NOT_FOUND     The information is not available.
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
@@ -473,7 +473,7 @@ FUNCTION le_result_t GetPrlVersion
  *
  * @return
  *      - LE_OK            The function succeeded.
- *      - LE_NOT_FOUND     The information is not availble.
+ *      - LE_NOT_FOUND     The information is not available.
  *      - LE_FAULT         The function failed to get the value.
  */
 //--------------------------------------------------------------------------------------------------
