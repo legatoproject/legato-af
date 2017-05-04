@@ -2923,7 +2923,7 @@ le_result_t le_ecall_End
     }
 
     if ( (eCallPtr->startType == PA_ECALL_START_MANUAL) &&
-        (eCallPtr->sessionState > ECALL_SESSION_REQUEST) )
+        (eCallPtr->sessionState >= ECALL_SESSION_CONNECTED) )
     {
         LE_ERROR("Ecall transaction cannot be terminated, Ecall in progress");
         return LE_FAULT;
