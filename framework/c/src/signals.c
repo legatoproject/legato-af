@@ -273,6 +273,87 @@ static void ShowStackSignalHandler
     }
     CHECK_WRITE(2, sigString, strlen(sigString));
 
+    // Dump the legato version
+    snprintf(sigString, sizeof(sigString), "LEGATO VERSION\n");
+    CHECK_WRITE(2, sigString, strlen(sigString));
+    fd = open("/legato/systems/current/version", O_RDONLY);
+    if (-1 != fd)
+    {
+        int rc;
+        // We cannot use stdio(3) services. Print line by line
+        rc = read( fd, sigString, sizeof(sigString) );
+        close(fd);
+        CHECK_WRITE(2, sigString, rc);
+        CHECK_WRITE(2, "\n", 1);
+    }
+
+    // Dump some process command line
+    snprintf(sigString, sizeof(sigString), "PROCESS COMMAND LINE\n");
+    CHECK_WRITE(2, sigString, strlen(sigString));
+    snprintf(sigString, sizeof(sigString), "/proc/%d/cmdline", getpid());
+    fd = open(sigString, O_RDONLY);
+    if (-1 != fd)
+    {
+        int rc, len;
+        // We cannot use stdio(3) services. Print line by line
+        do
+        {
+            rc = read( fd, sigString, sizeof(sigString) );
+            // In /proc/<pid>/cmdline, replace '\0' by ' ' in the string
+            for (len = 0; len < rc; len++)
+            {
+                if ('\0' == sigString[len])
+                {
+                    sigString[len] = ' ';
+                }
+            }
+            if (0 < rc)
+            {
+                CHECK_WRITE(2, sigString, rc);
+            }
+        }
+        while( 0 < rc );
+        close(fd);
+        CHECK_WRITE(2, "\n", 1);
+    }
+
+    // Dump the process map. Useful for usage with objdump(1) and gdb(1)
+    snprintf(sigString, sizeof(sigString), "PROCESS MAP\n");
+    CHECK_WRITE(2, sigString, strlen(sigString));
+    snprintf(sigString, sizeof(sigString), "/proc/%d/maps", getpid());
+    fd = open(sigString, O_RDONLY);
+    if (-1 != fd)
+    {
+        int rc = 0, len;
+        // We cannot use stdio(3) services. Print line by line
+        do
+        {
+            for (len = 0; len < sizeof(sigString); len++)
+            {
+                rc = read( fd, sigString + len, 1 );
+                if (0 >= rc)
+                {
+                     break;
+                }
+                if ('\n' == sigString[len])
+                {
+                    size_t expectedSize = len + 1;
+                    if (expectedSize != write(2, sigString, expectedSize))
+                    {
+                        // Unexpected failure to write?  Close file and reraise exception
+                        // immediately.
+                        close(fd);
+                        raise(sigNum);
+                        return;
+                    }
+                    break;
+                }
+            }
+        }
+        while( 0 < rc );
+        close(fd);
+    }
+
     // Dump the back-trace, registers and stack
     snprintf(sigString, sizeof(sigString), "BACKTRACE\n");
     CHECK_WRITE(2, sigString, strlen(sigString));
@@ -292,18 +373,29 @@ static void ShowStackSignalHandler
             snprintf(sigString, sizeof(sigString), "%s at %08x\n",
                      (addr == ctxPtr->arm_pc ? "PC" : "LR"), addr);
             CHECK_WRITE(2, sigString, strlen(sigString));
-            if (addr == ctxPtr->arm_pc)
-            {
-                addr = ctxPtr->arm_lr;
-                frame = (int*)*(frame-1);
-                continue;
-            }
-            if (!(frame = (int *)*(frame-1)) || (frame > (base + 1024*1024)) || (frame < base))
+            if ((frame > (base + 1024*1024)) || (frame < base))
             {
                 // Exit if FP[n] == 0, or if FP[n] is less than FP[0] or if FP[0] is outside 1MB
                 break;
             }
-            addr = *frame;
+
+            if (addr == ctxPtr->arm_pc)
+            {
+                addr = ctxPtr->arm_lr;
+                frame = (int*)*(frame-1);
+            }
+            else
+            {
+                int* new_frame = (int *)*(frame-1);
+                if (new_frame >= frame)
+                {
+                    // Exit if FP[n] is less than FP[n-1]
+                    break;
+                }
+
+                frame = new_frame;
+                addr = *frame;
+            }
         }
         snprintf(sigString, sizeof(sigString),
                  "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
@@ -348,44 +440,8 @@ static void ShowStackSignalHandler
         }
     }
 #endif
-
-    // Dump the process map. Useful for usage with objdump(1) and gdb(1)
-    snprintf(sigString, sizeof(sigString), "PROCESS MAP\n");
+    snprintf(sigString, sizeof(sigString), "DONE\n");
     CHECK_WRITE(2, sigString, strlen(sigString));
-    snprintf(sigString, sizeof(sigString), "/proc/%d/maps", getpid());
-    fd = open(sigString, O_RDONLY);
-    if (-1 != fd)
-    {
-        int rc = 0, len;
-        // We cannot use stdio(3) services. Print line by line
-        do
-        {
-            for (len = 0; len < sizeof(sigString); len++)
-            {
-                rc = read( fd, sigString + len, 1 );
-                if (0 >= rc)
-                {
-                     break;
-                }
-                if ('\n' == sigString[len])
-                {
-                    size_t expectedSize = len + 1;
-                    if (expectedSize != write(2, sigString, expectedSize))
-                    {
-                        // Unexpected failure to write?  Close file and reraise exception
-                        // immediately.
-                        close(fd);
-                        raise(sigNum);
-                        return;
-                    }
-
-                    break;
-                }
-            }
-        }
-        while( 0 < rc );
-        close(fd);
-    }
 
     // Check if a gdbserver(1) port is set (not zero). If yes, try to launch a
     // gdbserver(1) attached to ourself.

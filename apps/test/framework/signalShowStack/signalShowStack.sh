@@ -15,7 +15,7 @@ ulimit -c 0
 # Sure to enable the signal show info handler
 unset SIGNAL_SHOW_INFO
 
-for sig in ILL $BUS $FPE SEGV ABRT
+for sig in ILL $BUS $FPE SEGV CRUSH ABRT
 do
     ok=0
     $1 $sig
@@ -25,7 +25,7 @@ do
        134) test "$sig" == "ABRT" && ok=1 ;;
        135) test "$sig" == "BUS" && ok=1 ;;
        136) test "$sig" == "FPE" && ok=1 ;;
-       139) test "$sig" == "SEGV" && ok=1 ;;
+       139) test "$sig" == "SEGV" -o "$sig" == "CRUSH" && ok=1 ;;
     esac
     if [ 1 -ne $ok ]
     then

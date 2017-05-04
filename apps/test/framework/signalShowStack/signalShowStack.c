@@ -41,6 +41,28 @@ void run_segv
 }
 
 /*
+ * SEGV case 2: crush the stack frame
+ */
+void crush
+(
+    void
+)
+{
+    int p = 1;
+    int *pp = &p;
+    memset(pp-16, 0xDE, 128);
+}
+
+void run_crush
+(
+    void
+)
+{
+    fprintf(stderr, "DO CRUSH\n");
+    crush();
+}
+
+/*
  * ILL case: try to execute an illegal instruction
  */
 int ill
@@ -150,6 +172,10 @@ COMPONENT_INIT
         {
             run_segv();
         }
+        else if (0 == strcmp("CRUSH", argPtr))
+        {
+            run_crush();
+        }
         else if (0 == strcmp("ILL", argPtr))
         {
             run_ill();
@@ -174,6 +200,6 @@ COMPONENT_INIT
         }
         LE_ASSERT(0);
     }
-    fprintf(stderr, "Need argument to raise signal: SEGV ILL FPE BUS ABRT\n");
+    fprintf(stderr, "Need argument to raise signal: SEGV CRUSH ILL FPE BUS ABRT\n");
     exit(EXIT_FAILURE);
 }
