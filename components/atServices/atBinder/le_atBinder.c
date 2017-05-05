@@ -36,10 +36,13 @@ COMPONENT_INIT
 
     LE_INFO("atBinder starts");
 
-    if (unlink(AT_BINDER_SOCK_PATH) < 0)
+    if (0 == access(AT_BINDER_SOCK_PATH, F_OK))
     {
-        LE_ERROR("unlink socket failed: %m");
-        goto exit;
+        if (unlink(AT_BINDER_SOCK_PATH) < 0)
+        {
+            LE_ERROR("unlink socket failed: %m");
+            goto exit;
+        }
     }
 
     // Create the socket
