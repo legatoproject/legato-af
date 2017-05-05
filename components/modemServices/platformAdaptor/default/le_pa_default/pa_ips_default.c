@@ -130,3 +130,52 @@ le_result_t pa_GetVoltageThresholds
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform power source.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Null pointer provided as a parameter.
+ *      - LE_FAULT          The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ips_GetPowerSource
+(
+    le_ips_PowerSource_t* powerSourcePtr    ///< [OUT] The power source.
+)
+{
+    if (!powerSourcePtr)
+    {
+        LE_ERROR("powerSourcePtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform battery level in percent.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Null pointer provided as a parameter.
+ *      - LE_FAULT          The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_ips_GetBatteryLevel
+(
+    uint8_t* batteryLevelPtr    ///< [OUT] The battery level in percent.
+)
+{
+    if (!batteryLevelPtr)
+    {
+        LE_ERROR("batteryLevelPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}

@@ -69,7 +69,6 @@ static void VoltageChangeHandler
 /**
  * Get the Platform voltage input in [mV].
  *
-
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the value.
@@ -249,4 +248,54 @@ void le_ips_Init
 
     // Register a handler function for new input voltage Threshold Event
     pa_ips_AddVoltageEventHandler(VoltageChangeHandler);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform power source.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ips_GetPowerSource
+(
+    le_ips_PowerSource_t* powerSourcePtr    ///< [OUT] The power source.
+)
+{
+    if (NULL == powerSourcePtr)
+    {
+        LE_KILL_CLIENT("powerSourcePtr is NULL!");
+        return LE_FAULT;
+    }
+
+    return pa_ips_GetPowerSource(powerSourcePtr);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform battery level in percent:
+ *  - 0: battery is exhausted or platform does not have a battery connected
+ *  - 1 to 100: percentage of battery capacity remaining
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ips_GetBatteryLevel
+(
+    uint8_t* batteryLevelPtr    ///< [OUT] The battery level in percent.
+)
+{
+    if (NULL == batteryLevelPtr)
+    {
+        LE_KILL_CLIENT("batteryLevelPtr is NULL!");
+        return LE_FAULT;
+    }
+
+    return pa_ips_GetBatteryLevel(batteryLevelPtr);
 }

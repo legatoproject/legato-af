@@ -25,7 +25,8 @@ void cm_ips_PrintIpsHelp
 {
     printf("IPS usage\n"
            "==========\n\n"
-           "To read and print the voltage from the input power supply:\n"
+           "To read and print information about the power supply "
+           "(voltage, power source, battery level):\n"
            "\tcm ips\n"
            "\tcm ips read\n\n"
            "To read and print the input voltage thresholds:\n"
@@ -49,7 +50,7 @@ static le_result_t cm_ips_ReadAndPrintVoltage
     result = le_ips_GetInputVoltage(&value);
     if (result == LE_OK)
     {
-        printf("%u\n", value);
+        printf("Voltage: %u mV\n", value);
     }
 
     return result;
@@ -57,10 +58,59 @@ static le_result_t cm_ips_ReadAndPrintVoltage
 
 //-------------------------------------------------------------------------------------------------
 /**
+ * Read the power source and the battery level.
+ */
+//-------------------------------------------------------------------------------------------------
+static le_result_t cm_ips_ReadAndPrintPowerSourceAndBatteryLevel
+(
+    void
+)
+{
+    le_result_t result = LE_FAULT;
+    le_ips_PowerSource_t powerSource;
+
+    result = le_ips_GetPowerSource(&powerSource);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
+    switch (powerSource)
+    {
+        case LE_IPS_POWER_SOURCE_EXTERNAL:
+            printf("Powered by an external source\n");
+            break;
+
+        case LE_IPS_POWER_SOURCE_BATTERY:
+        {
+            uint8_t batteryLevel;
+
+            printf("Powered by a battery\n");
+
+            result = le_ips_GetBatteryLevel(&batteryLevel);
+            if (LE_OK != result)
+            {
+                return result;
+            }
+
+            printf("\tBattery level: %d%%\n", batteryLevel);
+        }
+        break;
+
+        default:
+            printf("Unknown power source\n");
+            break;
+    }
+
+    return LE_OK;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
  * Read the input voltage thresholds.
  */
 //-------------------------------------------------------------------------------------------------
-static le_result_t cm_ips_ReadAndPrintInpuVoltageThresholds
+static le_result_t cm_ips_ReadAndPrintInputVoltageThresholds
 (
     void
 )
@@ -102,13 +152,18 @@ void cm_ips_ProcessIpsCommand
     {
         if (LE_OK != cm_ips_ReadAndPrintVoltage())
         {
-            printf("Read failed.\n");
+            printf("Voltage read failed.\n");
+            exit(EXIT_FAILURE);
+        }
+        if (LE_OK != cm_ips_ReadAndPrintPowerSourceAndBatteryLevel())
+        {
+            printf("Power source and battery level read failed.\n");
             exit(EXIT_FAILURE);
         }
     }
     else if (strcmp(command, "thresholds") == 0)
     {
-        if (LE_OK != cm_ips_ReadAndPrintInpuVoltageThresholds())
+        if (LE_OK != cm_ips_ReadAndPrintInputVoltageThresholds())
         {
             printf("Read Input Voltage thresholds failed.\n");
             exit(EXIT_FAILURE);

@@ -87,18 +87,57 @@ static void PrintUsage()
 //--------------------------------------------------------------------------------------------------
 static void Testle_ips_GetInputVoltage
 (
+    void
 )
 {
     uint32_t voltage = 0;
 
     LE_INFO("======== Testle_ips_GetInputVoltage Test ========");
-    LE_ASSERT(le_ips_GetInputVoltage(&voltage) == LE_OK);
+    LE_ASSERT_OK(le_ips_GetInputVoltage(&voltage));
     LE_ASSERT(voltage != 0);
-    LE_INFO("le_ips_GetInputVoltage return %d mV => %d,%03d V",
-        voltage, voltage/1000, voltage%1000);
-    printf("le_mon_GetInputVoltage return %d mV => %d,%03d V\n",
+    LE_INFO("le_ips_GetInputVoltage returns %d mV => %d,%03d V",
+             voltage, voltage/1000, voltage%1000);
+    printf("le_ips_GetInputVoltage returns %d mV => %d,%03d V\n",
             voltage, voltage/1000, voltage%1000);
     LE_INFO("======== Testle_ips_GetInputVoltage Test PASSED ========");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: le_ips_GetPowerSource()
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_ips_GetPowerSource
+(
+    void
+)
+{
+    le_ips_PowerSource_t powerSource;
+
+    LE_INFO("======== Testle_ips_GetPowerSource Test ========");
+    LE_ASSERT_OK(le_ips_GetPowerSource(&powerSource));
+    LE_ASSERT(LE_IPS_POWER_SOURCE_EXTERNAL == powerSource);
+    LE_INFO("======== Testle_ips_GetPowerSource Test PASSED ========");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: le_ips_GetBatteryLevel()
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_ips_GetBatteryLevel
+(
+    void
+)
+{
+    uint8_t batteryLevel;
+
+    LE_INFO("======== Testle_ips_GetBatteryLevel Test ========");
+    LE_ASSERT_OK(le_ips_GetBatteryLevel(&batteryLevel));
+    LE_ASSERT(0 == batteryLevel);
+    LE_INFO("======== Testle_ips_GetBatteryLevel Test PASSED ========");
 }
 
 
@@ -436,6 +475,8 @@ COMPONENT_INIT
         if(strcmp(testNumberStr, "ALL") == 0)
         {
             Testle_ips_GetInputVoltage();
+            Testle_ips_GetPowerSource();
+            Testle_ips_GetBatteryLevel();
             Testle_ips_GetVoltageThresholds();
             Testle_ips_SetGetVoltageThresholds();
             Testle_ips_ThresholdEventHandler();

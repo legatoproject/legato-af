@@ -6,8 +6,8 @@
  *
  * <HR>
  *
- * The IPS API is used to get monitoring information related to the platform voltage input and set
- *  warning and critical thresholds.
+ * The IPS API is used to get monitoring information related to the platform power supply and set
+ * warning and critical thresholds.
  *
  * @section le_ips_binding IPC interfaces binding
  *
@@ -21,43 +21,49 @@
    }
    @endverbatim
  *
- * @section Input Power Supply Monitoring
+ * @section le_ips_powerMonitoring Input power supply monitoring
  *
- * This functionality allows to retrieve the Platform input voltage in [mV], so that the
- *  application can use the information to diagnose why the modem isn't fully functioning.
+ * This functionality allows to retrieve data related to the platform power supply, so that
+ * the application can use the information to diagnose why the modem isn't fully functioning.
  *
- * le_ips_GetInputVoltage() API allows the application to retrieve the Platform voltage input.
+ * The application can retrieve the following power supply information:
+ * - le_ips_GetInputVoltage() API gives the Platform voltage input.
+ * - le_ips_GetPowerSource() API gives the power source used by the Platform:
+ *     - @ref LE_IPS_POWER_SOURCE_EXTERNAL for an external power source
+ *     - @ref LE_IPS_POWER_SOURCE_BATTERY for a battery.
+ * - le_ips_GetBatteryLevel() API gives the Platform battery level.
  *
- * @section Platform Input voltage Thresholds
+ * @section le_ips_voltageThresholds Platform input voltage thresholds
  *
- * @warning When a Critical event occurs, some platform may automatically switch off.
+ * @warning When a critical event occurs, some platform may automatically switch off.
  *
- * @warning On some platforms, the thresholds parameters are persistent and a Platform reboot is
- *  required for thresholds change takes effect.
+ * @warning On some platforms, the thresholds parameters are persistent and a platform reboot is
+ * required for thresholds change takes effect.
  *
- * Four Thresholds are set to decide the state:
- *  the critical, warning, the normal and the high critical Platform input voltage thresholds.
+ * Four thresholds are set to decide the state: the @e critical, @e warning, @e normal and
+ * <em>high critical</em> platform input voltage thresholds.
  *
- * if the Platform input voltage decreases below the:
- *  - "High Critical Threshold - 1 " but still higher than "Warning Threshold",
+ * if the platform input voltage decreases below the:
+ *  - "High critical threshold - 1 " but still higher than "Warning threshold",
  * @c LE_IPS_VOLTAGE_NORMAL event occurs.
- *  - "Warning Threshold" but still higher than "Critical Threshold",
+ *  - "Warning threshold" but still higher than "Critical threshold",
  * @c LE_IPS_VOLTAGE_WARNING event occurs.
- *  - "Critical Threshold", a @c LE_IPS_VOLTAGE_CRITICAL event occurs.
+ *  - "Critical threshold", a @c LE_IPS_VOLTAGE_CRITICAL event occurs.
  *
- * if the Platform input voltage goes up and it reaches the :
+ * if the platform input voltage goes up and it reaches the:
  *  - "Normal threshold", a @c LE_IPS_VOLTAGE_NORMAL event occurs.
  *  - "High critical thresholds", a @c LE_IPS_HI_VOLTAGE_CRITICAL event occurs.
  *
  * @note The threshold values range is platform dependent.
  *
- * - le_ips_SetVoltageThresholds() API allows the application to set Platform input voltage
+ * - le_ips_SetVoltageThresholds() API allows the application to set platform input voltage
  *  thresholds.
- * - le_ips_GetVoltageThresholds() API allows the application to get Platform input voltage
+ * - le_ips_GetVoltageThresholds() API allows the application to get platform input voltage
  * thresholds.
- * - le_ips_AddThresholdEventHandler() API adds a handler to notify when the Platform input voltage
+ * - le_ips_AddThresholdEventHandler() API adds a handler to notify when the platform input voltage
  *  threshold is reached.
- * - le_ips_RemoveThresholdEventHandler() API removes the Platform input voltage handler.
+ * - le_ips_RemoveThresholdEventHandler() API removes the platform input voltage handler.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -86,6 +92,18 @@ ENUM ThresholdStatus
     VOLTAGE_NORMAL,      ///< Normal input voltage threshold is reached.
     VOLTAGE_WARNING,     ///< Warning input voltage threshold is reached.
     VOLTAGE_CRITICAL     ///< Critical input voltage threshold is reached.
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Platform power source type.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PowerSource
+{
+    POWER_SOURCE_EXTERNAL,  ///< Platform is powered by an external source.
+    POWER_SOURCE_BATTERY    ///< Platform is powered by a battery.
 };
 
 
@@ -167,4 +185,36 @@ FUNCTION le_result_t GetVoltageThresholds
    uint16   warningVolt    OUT, ///< [OUT] The warning input voltage threshold in [mV].
    uint16   normalVolt     OUT, ///< [OUT] The normal input voltage threshold in [mV].
    uint16   hiCriticalVolt OUT  ///< [IN] The high critical input voltage threshold in [mV].
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform power source.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPowerSource
+(
+    PowerSource powerSource     OUT ///< [OUT] The power source.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform battery level in percent:
+ *  - 0: battery is exhausted or platform does not have a battery connected
+ *  - 1 to 100: percentage of battery capacity remaining
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBatteryLevel
+(
+    uint8    batteryLevel    OUT ///< [OUT] The battery level in percent.
 );

@@ -66,6 +66,15 @@ cm info all @endverbatim
 @verbatim cm info bootloader @endverbatim
 > Print the bootloader version.
 
+@section toolsTarget_cm_ips IPS
+
+@verbatim cm ips
+cm ips read @endverbatim
+> Print information about the power supply (voltage, power source, battery level).
+
+@verbatim cm ips thresholds @endverbatim
+> Print the input voltage thresholds.
+
 @section toolsTarget_cm_radio Radio
 
 @verbatim cm radio

@@ -123,6 +123,36 @@ LE_SHARED le_result_t pa_GetVoltageThresholds
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the Platform power source.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Null pointer provided as a parameter.
+ *      - LE_FAULT          The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ips_GetPowerSource
+(
+    le_ips_PowerSource_t* powerSourcePtr    ///< [OUT] The power source.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Platform battery level in percent.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Null pointer provided as a parameter.
+ *      - LE_FAULT          The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_ips_GetBatteryLevel
+(
+    uint8_t* batteryLevelPtr    ///< [OUT] The battery level in percent.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the PA Input Power Supply module.
  *
  * @return
