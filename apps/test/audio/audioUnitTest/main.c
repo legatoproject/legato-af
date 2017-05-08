@@ -16,6 +16,11 @@
 
 #define BUFFER_LEN  5000
 
+// defined to check the MAX limit for duration & pause in PlayDtmf.
+// Actual MAX limit is 5000 ms for duration & pause in PlayDtmf.
+#define OUT_OF_RANGE_DTMFDURATION 6000
+#define OUT_OF_RANGE_DTMFPAUSE 6000
+
 static le_sem_Ref_t    ThreadSemaphore;
 static le_thread_Ref_t TestThreadRef;
 static int Pipefd[2];
@@ -305,6 +310,23 @@ static void* TestThread
         break;
         case TEST_PLAY_DTMF:
             TestCase = TEST_PLAY_DTMF_IN_PROGRESS;
+            uint32_t restoreDtmfDuration;
+            uint32_t restoreDtmfPause;
+            restoreDtmfDuration = DtmfDuration;
+            restoreDtmfPause = DtmfPause;
+            //set value greater than max limit for duration which has to return LE_FAULT
+            DtmfDuration = OUT_OF_RANGE_DTMFDURATION;
+            LE_INFO("=== Test play dtmf invalid duration(%i)===", DtmfDuration);
+            LE_ASSERT(le_audio_PlayDtmf(myStreamRef, DtmfList,
+                                        DtmfDuration, DtmfPause) == LE_FAULT);
+            DtmfDuration = restoreDtmfDuration;
+            //set value greater than max limit for pause which has to return LE_FAULT
+            DtmfPause = OUT_OF_RANGE_DTMFPAUSE;
+            LE_INFO("=== Test play dtmf invalid pause(%i)===", DtmfPause);
+            LE_ASSERT(le_audio_PlayDtmf(myStreamRef, DtmfList,
+                                        DtmfDuration, DtmfPause) == LE_FAULT);
+            DtmfPause = restoreDtmfPause;
+            LE_INFO("=== Test play dtmf valid duration(%i), pause(%i)===", DtmfDuration, DtmfPause);
             LE_ASSERT(le_audio_PlayDtmf(myStreamRef, DtmfList, DtmfDuration, DtmfPause) == LE_OK);
         break;
         default:

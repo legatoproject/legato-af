@@ -52,6 +52,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum value for duration and pause (ms).
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_DURATION_VALUE              5000
+#define MAX_PAUSE_VALUE                 5000
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Macro to verify if an interface is an output interface.
  */
 //--------------------------------------------------------------------------------------------------
@@ -3273,6 +3281,8 @@ le_result_t le_audio_GetSamplePcmSamplingResolution
  *
  * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
  *       error, the function will not return.
+ * @note If the DTMF duration or pause is more than 5000ms, it is a fatal
+ *       error, the function will not return.
  * @note The process exits, if an invalid audio stream reference is given.
  */
 //--------------------------------------------------------------------------------------------------
@@ -3290,6 +3300,12 @@ le_result_t le_audio_PlayDtmf
     {
         LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
         return LE_BAD_PARAMETER;
+    }
+
+    if ((duration > MAX_DURATION_VALUE) || (pause > MAX_PAUSE_VALUE))
+    {
+        LE_KILL_CLIENT("duration or pause causes buffer overflow");
+        return LE_FAULT;
     }
 
     if ( le_media_IsStreamBusy(streamPtr) )

@@ -1393,6 +1393,8 @@ FUNCTION le_result_t GetSamplePcmSamplingResolution
  *
  * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
  *       error, the function will not return.
+ * @note If the DTMF duration or pause is more than 5000ms, it is a fatal
+ *       error, the function will not return.
  * @note The process exits, if an invalid audio stream reference is given.
  */
 //--------------------------------------------------------------------------------------------------
