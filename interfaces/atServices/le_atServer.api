@@ -466,7 +466,7 @@ FUNCTION le_result_t SendIntermediateResponse
 FUNCTION le_result_t SendFinalResponse
 (
     Cmd      commandRef                             IN, ///< AT command reference
-    FinalRsp final                                  IN, ///< Final response to be sent
+    FinalRsp finalResponse                          IN, ///< Final response to be sent
     bool     customStringAvailable                  IN, ///< Custom final response has to be sent
                                                         ///< instead of the default one.
     string   finalRsp[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< custom final response string
