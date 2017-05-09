@@ -37,7 +37,8 @@ model::System_t* GetSystem
 model::App_t* GetApp
 (
     const std::string& adefPath,    ///< Path to the application's .adef file.
-    const mk::BuildParams_t& buildParams
+    const mk::BuildParams_t& buildParams,
+    bool isPreBuilt = false         ///< Is this a pre-built app?
 );
 
 

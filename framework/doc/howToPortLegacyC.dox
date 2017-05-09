@@ -204,13 +204,26 @@ $ mkdir _build
 $ $CC -o _build/legacyProgram main.o le_info_client.o -L$LEGATO_ROOT/build/$TARGET/framework/lib -llegato -lpthread -lr
 @endcode
 
-@c 8. Specify which instance of the @c le_info service your app should use by creating
+@c 8. Create a @c extern: @c requires: section for the @c le_info interface in the <c> .adef </c>
+file:
+
+@code
+extern:
+{
+    requires:
+    {
+        le_info = $LEGATO_ROOT/interfaces/modemServices/le_info.api
+    }
+}
+@endcode
+
+@c 9. Specify which instance of the @c le_info service your app should use by creating
 a binding in the <c> .adef </c> file:
 
 @code
 bindings:
 {
-    *.le_info -> modemService.le_info
+    \*.le_info -> modemService.le_info
 }
 @endcode
 

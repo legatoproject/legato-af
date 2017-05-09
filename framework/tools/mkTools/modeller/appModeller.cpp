@@ -17,6 +17,40 @@ namespace modeller
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print a warning message to stderr for a given app.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void PrintWarning
+(
+    const model::App_t* appPtr,
+    const std::string& warning
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::cerr << "** WARNING: application " << appPtr->name << ": " << warning
+              << std::endl;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print a note to stderr for a given app.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void PrintNote
+(
+    const model::App_t* appPtr,
+    const std::string& note
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::cerr << "** NOTE: application " << appPtr->name << ": " << note
+              << std::endl;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the items from a given "bundles:" section to a given App_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -904,8 +938,33 @@ static void AddBindings
 
             if (i == appPtr->preBuiltClientInterfaces.end())
             {
-                auto str = "No such client-side pre-built interface '" + bindingPtr->clientIfName + "'.";
-                tokens[1]->ThrowException(str);
+                if (appPtr->isPreBuilt)
+                {
+                    auto str = "INTERNAL ERROR: No such client-side"
+                               " pre-built interface '" + bindingPtr->clientIfName + "'.";
+                    tokens[1]->ThrowException(str);
+                }
+                else
+                {
+                    PrintWarning(appPtr,
+                                 "Binding for unreferenced client-side interface"
+                                 " '" + bindingPtr->clientIfName + "'."
+                                 "  Bindings for unreferenced interfaces"
+                                 " are deprecated.");
+                    PrintNote(appPtr, "If this is used by a legacy app, it should be"
+                                      " included in the extern: requires: section");
+
+
+                    // Add the interface instance object to the app's list of pre-built client-side
+                    // interfaces.
+                    auto ifPtr = new model::ApiClientInterface_t(NULL,
+                                                                 NULL, // component is unknown
+                                                                 bindingPtr->clientIfName);
+                    auto ifInstancePtr = new model::ApiClientInterfaceInstance_t(NULL, ifPtr);
+
+                    i = appPtr->preBuiltClientInterfaces.insert(
+                        make_pair(bindingPtr->clientIfName, ifInstancePtr)).first;
+                }
             }
 
             auto interfacePtr = i->second;
@@ -1359,22 +1418,6 @@ void PrintSummary
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Print a warning message to stderr for a given app.
- **/
-//--------------------------------------------------------------------------------------------------
-static void PrintWarning
-(
-    const model::App_t* appPtr,
-    const std::string& warning
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::cerr << "** Warning: application '" << appPtr->name << "': " << warning << std::endl;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Checks all of an application's limits and prints warnings or errors to stderr if there are
  * conflicts between them.
  *
@@ -1488,7 +1531,8 @@ static void EnsurePathIsSet
 model::App_t* GetApp
 (
     const std::string& adefPath,    ///< Path to the application's .adef file.
-    const mk::BuildParams_t& buildParams
+    const mk::BuildParams_t& buildParams,
+    bool isPreBuilt
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1507,6 +1551,9 @@ model::App_t* GetApp
         std::cout << "Modelling application: '" << appPtr->name << "'" << std::endl
                   << "  defined in: '" << adefFilePtr->path << "'" << std::endl;
     }
+
+    // Mark if app is pre-built or not.  Affects some diagnostic messages.
+    appPtr->isPreBuilt = isPreBuilt;
 
     // Lists of things that need to be modelled near the end.
     std::list<const parseTree::CompoundItem_t*> processesSections;
