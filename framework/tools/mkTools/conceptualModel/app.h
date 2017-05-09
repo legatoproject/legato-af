@@ -38,6 +38,9 @@ struct App_t
     enum {AUTO, MANUAL} startTrigger;    ///< Start automatically or only when asked?
 
     bool isPreloaded;   ///< true = exclude app update from system update (app pre-loaded on target)
+    bool isPreBuilt;    ///< true = app is a pre-built app.  Affects how some error messages are
+                        ///< displayed
+
     std::string preloadedMd5; ///< MD5 hash of preloaded app (empty if not specified).
 
     std::set<Component_t*> components;  ///< Set of components used in this app.
