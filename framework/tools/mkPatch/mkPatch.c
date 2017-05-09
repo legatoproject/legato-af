@@ -6,6 +6,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+#define _LARGEFILE64_SOURCE
 #include "legato.h"
 #include <endian.h>
 
@@ -264,7 +265,7 @@ static char CurrentWorkDir[PATH_MAX];
 static le_result_t ReadEcHeader
 (
     int   fd,                      ///< [IN] File descriptor to the flash device
-    off_t physEraseBlock,          ///< [IN] Physcal erase block (PEB) to read
+    off64_t physEraseOffset,       ///< [IN] Physcal erase block (PEB) to read
     struct ubi_ec_hdr *ecHeaderPtr ///< [IN] Buffer to store read data
 )
 {
@@ -272,9 +273,9 @@ static le_result_t ReadEcHeader
     int i;
     int len;
 
-    if( 0 > lseek( fd, (physEraseBlock * FlashPEBSize), SEEK_SET ) )
+    if( 0 > lseek64( fd, physEraseOffset, SEEK_SET ) )
     {
-        fprintf(stderr, "lseek() fails: %m\n");
+        fprintf(stderr, "%s: lseek64() fails: %m\n", (__func__));
         return LE_FAULT;
     }
     len = read( fd, (uint8_t*)ecHeaderPtr, UBI_EC_HDR_SIZE );
@@ -303,21 +304,21 @@ static le_result_t ReadEcHeader
     }
     if (UBI_EC_HDR_SIZE == i)
     {
-        fprintf(stderr, "Block %lx is erased\n", physEraseBlock );
+        fprintf(stderr, "Block %lx is erased\n", physEraseOffset );
         return LE_FORMAT_ERROR;
     }
 
     if (be32toh(ecHeaderPtr->magic) != (uint32_t)UBI_EC_HDR_MAGIC)
     {
         fprintf(stderr, "Bad magic at %lx: Expected %x, received %x\n",
-                  physEraseBlock, UBI_EC_HDR_MAGIC, be32toh(ecHeaderPtr->magic));
+                  physEraseOffset, UBI_EC_HDR_MAGIC, be32toh(ecHeaderPtr->magic));
         return LE_FAULT;
     }
 
     if (UBI_VERSION != ecHeaderPtr->version)
     {
         fprintf(stderr, "Bad version at %lx: Expected %d, received %d\n",
-                  physEraseBlock, UBI_VERSION, ecHeaderPtr->version);
+                  physEraseOffset, UBI_VERSION, ecHeaderPtr->version);
         return LE_FAULT;
     }
 
@@ -325,7 +326,7 @@ static le_result_t ReadEcHeader
     if (be32toh(ecHeaderPtr->hdr_crc) != crc)
     {
         fprintf(stderr, "Bad CRC at %lx: Calculated %x, received %x\n",
-                  physEraseBlock, crc, be32toh(ecHeaderPtr->hdr_crc));
+                  physEraseOffset, crc, be32toh(ecHeaderPtr->hdr_crc));
         return LE_FAULT;
     }
 
@@ -333,7 +334,7 @@ static le_result_t ReadEcHeader
     {
         fprintf(stderr,
                 "PEB %lx : MAGIC %c%c%c%c, VID %x DATA %x CRC %x\n",
-                physEraseBlock,
+                physEraseOffset,
                 ((char *)&(ecHeaderPtr->magic))[0],
                 ((char *)&(ecHeaderPtr->magic))[1],
                 ((char *)&(ecHeaderPtr->magic))[2],
@@ -359,18 +360,18 @@ static le_result_t ReadEcHeader
 static le_result_t ReadVidHeader
 (
     int fd,          ///< [IN] File descriptor to the flash device
-    off_t physEraseBlock,          ///< [IN] Physcal erase block (PEB) to read
+    off64_t physEraseOffset,          ///< [IN] Physcal erase block (PEB) to read
     struct ubi_vid_hdr *vidHeaderPtr,  ///< [IN] Pointer to the VID header
-    off_t vidOffset                ///< [IN] Offset of VID header in physical block
+    off64_t vidOffset                ///< [IN] Offset of VID header in physical block
 )
 {
     uint32_t crc;
     int i;
     int len;
 
-    if( 0 > lseek( fd, physEraseBlock + vidOffset, SEEK_SET ) )
+    if( 0 > lseek64( fd, physEraseOffset + vidOffset, SEEK_SET ) )
     {
-        fprintf(stderr, "lseek() fails: %m\n");
+        fprintf(stderr, "%s: lseek64() fails: %m\n", (__func__));
         return LE_FAULT;
     }
     len = read( fd, (uint8_t*)vidHeaderPtr, UBI_VID_HDR_SIZE );
@@ -395,21 +396,21 @@ static le_result_t ReadVidHeader
     }
     if (UBI_VID_HDR_SIZE == i)
     {
-        fprintf(stderr, "Block %lx is erased\n", physEraseBlock );
+        fprintf(stderr, "Block %lx is erased\n", physEraseOffset );
         return LE_FORMAT_ERROR;
     }
 
     if (be32toh(vidHeaderPtr->magic) != (uint32_t)UBI_VID_HDR_MAGIC)
     {
         fprintf(stderr, "Bad magic at %lx: Expected %x, received %x\n",
-            physEraseBlock, UBI_VID_HDR_MAGIC, be32toh(vidHeaderPtr->magic));
+            physEraseOffset, UBI_VID_HDR_MAGIC, be32toh(vidHeaderPtr->magic));
         return LE_FAULT;
     }
 
     if (UBI_VERSION != vidHeaderPtr->version)
     {
         fprintf(stderr, "Bad version at %lx: Expected %d, received %d\n",
-            physEraseBlock, UBI_VERSION, vidHeaderPtr->version);
+            physEraseOffset, UBI_VERSION, vidHeaderPtr->version);
         return LE_FAULT;
     }
 
@@ -418,7 +419,7 @@ static le_result_t ReadVidHeader
     if (be32toh(vidHeaderPtr->hdr_crc) != crc)
     {
         fprintf(stderr, "Bad CRC at %lx: Calculated %x, received %x\n",
-            physEraseBlock, crc, be32toh(vidHeaderPtr->hdr_crc));
+            physEraseOffset, crc, be32toh(vidHeaderPtr->hdr_crc));
         return LE_FAULT;
     }
 
@@ -429,7 +430,7 @@ static le_result_t ReadVidHeader
             fprintf(stderr,
                     "PEB : %lx, MAGIC %c%c%c%c, VER %hhd, VT %hhd CP %hhd CT %hhd VID "
                     "%x LNUM %x DSZ %x EBS %x DPD %x DCRC %x CRC %x\n",
-                    physEraseBlock,
+                    physEraseOffset,
                     ((char *)&(vidHeaderPtr->magic))[0],
                     ((char *)&(vidHeaderPtr->magic))[1],
                     ((char *)&(vidHeaderPtr->magic))[2],
@@ -463,18 +464,18 @@ static le_result_t ReadVidHeader
 static le_result_t ReadVtbl
 (
     int fd,          ///< [IN] File descriptor to the flash device
-    off_t physEraseBlock,          ///< [IN] Physcal erase block (PEB) to read
+    off64_t physEraseOffset,          ///< [IN] Physcal erase block (PEB) to read
     struct ubi_vtbl_record *vtblPtr,  ///< [IN] Pointer to the VTBL
-    off_t vtblOffset               ///< [IN] Offset of VTBL in physical block
+    off64_t vtblOffset               ///< [IN] Offset of VTBL in physical block
 )
 {
     uint32_t crc;
     int i;
     int len;
 
-    if( 0 > lseek( fd, physEraseBlock + vtblOffset, SEEK_SET ) )
+    if( 0 > lseek64( fd, physEraseOffset + vtblOffset, SEEK_SET ) )
     {
-        fprintf(stderr, "lseek() fails: %m\n");
+        fprintf(stderr, "%s: lseek64() fails: %m\n", (__func__));
         return LE_FAULT;
     }
     len = read( fd, (uint8_t*)vtblPtr, UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE );
@@ -546,7 +547,7 @@ le_result_t ScanUbi
     uint32_t peb;
     struct ubi_ec_hdr ecHeader;
     struct ubi_vid_hdr vidHeader;
-    off_t pebOffset;
+    off64_t pebOffset;
     le_result_t res;
     int i, j;
 
@@ -687,11 +688,11 @@ static le_result_t ExtractUbiData
         size = ((imageSize > (FlashPEBSize - (2 * FlashPageSize)))
                   ? (FlashPEBSize - (2 * FlashPageSize))
                   : imageSize);
-        if ( 0 > lseek( fd,
+        if ( 0 > lseek64( fd,
                         (VtblMap[ubiVolId].lebToPeb[blk] * FlashPEBSize) + (2 * FlashPageSize),
                         SEEK_SET ) )
         {
-            fprintf(stderr, "lseek() fails: %m\n");
+            fprintf(stderr, "%s: lseek64() fails: %m\n", (__func__));
             goto clean_exit;
         }
         readLen = 0;
@@ -1327,7 +1328,7 @@ int main
             PatchMetaHeader.segmentSize = htobe32(chunkLen);
             memcpy( PatchMetaHeader.diffType, "BSDIFF40", 8 );
 
-            lseek( fdp, 0, SEEK_SET );
+            lseek64( fdp, 0, SEEK_SET );
             write( fdp, &PatchMetaHeader, sizeof(PatchMetaHeader) );
 
             printf( "PATCH METAHEADER: segsize %x numpat %x ubiVolId %u "
@@ -1354,10 +1355,10 @@ int main
                 fprintf(stderr, "failed to open patch header file %s: %m\n", tmpName );
                 exit(5);
             }
-            lseek( fdw, MISC_OPTS_OFFSET, SEEK_SET );
+            lseek64( fdw, MISC_OPTS_OFFSET, SEEK_SET );
             read( fdw, Chunk, 1 );
             Chunk[0] |= MISC_OPTS_DELTAPATCH;
-            lseek( fdw, MISC_OPTS_OFFSET, SEEK_SET );
+            lseek64( fdw, MISC_OPTS_OFFSET, SEEK_SET );
             write( fdw, Chunk, 1 );
             close(fdw);
             ubiIdx++;
