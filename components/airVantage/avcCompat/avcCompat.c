@@ -7,8 +7,7 @@
  * 'lwm2mCore'-based AVC on a product that also supports the modem-based AVC.
  *
  * Failure to disable the modem-based AVC indicates that it is still busy completing an operation.
- * In the case of failure, we will stop the avcService and only start it when the retry mechanism
- * is able to successfully disable the modem-based AVC.
+ * Only start avcService when we can successfully disable the modem-based AVC.
  *
  * <hr>
  *
@@ -17,169 +16,89 @@
  */
 
 #include "legato.h"
-#include "pa_avc.h"
-
-static le_timer_Ref_t RetryTimerRef = NULL;
-
-
-// -------------------------------------------------------------------------------------------------
-/**
- *  Name of the AVC application running in legato.
- */
-// ------------------------------------------------------------------------------------------------
-#define AVC_APP_NAME "avcService"
+#include "lwm2m.h"
+#include "assetData.h"
+#include "avcObject.h"
+#include "avcShared.h"
 
 
 // -------------------------------------------------------------------------------------------------
 /**
- *  Timer to retry disabling the modem-based AVC every 30 seconds.
+ *  AVC Service config tree path
  */
 // ------------------------------------------------------------------------------------------------
-#define DISABLE_RETRY_TIMER 30 // seconds
+#define AVC_SERVICE_CFG "/apps/avcService"
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Path to the lwm2m configurations in the Config Tree.
+ * Current internal state.
+ *
+ * Used mainly to ensure that API functions don't do anything if in the wrong state.
+ *
+ * TODO: May need to revisit some of the state transitions here.
  */
 //--------------------------------------------------------------------------------------------------
-#define CFG_AVC_CONFIG_PATH "system:/apps/avcService/config"
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Max number of bytes of a retry timer name.
- */
-//--------------------------------------------------------------------------------------------------
-#define TIMER_NAME_BYTES 10
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Import AVMS config from the modem to Legato.
- */
-//--------------------------------------------------------------------------------------------------
-static void ImportConfig
-(
-    void
-)
+typedef enum
 {
-    // Don't import config from the modem if it was done before. Also if we can't read the dirty
-    // bit, assume it's false and proceed with import.
-    if (le_cfg_QuickGetBool(CFG_AVC_CONFIG_PATH "/imported", false))
-    {
-        LE_INFO("NOT importing AVMS config from modem to Legato since it was done before.");
-    }
-    else
-    {
-        LE_INFO("Importing AVMS config from modem to Legato.");
-
-        le_result_t getConfigRes;
-
-        /* Get the PDP profile */
-        char apnName[LE_AVC_APN_NAME_MAX_LEN_BYTES] = {0};
-        char userName[LE_AVC_USERNAME_MAX_LEN_BYTES] = {0};
-        char userPassword[LE_AVC_PASSWORD_MAX_LEN_BYTES] = {0};
-
-        getConfigRes = pa_avc_GetApnConfig(apnName, LE_AVC_APN_NAME_MAX_LEN_BYTES,
-                                           userName, LE_AVC_USERNAME_MAX_LEN_BYTES,
-                                           userPassword, LE_AVC_PASSWORD_MAX_LEN_BYTES);
-
-        if (getConfigRes == LE_OK)
-        {
-            le_avc_SetApnConfig(apnName, userName, userPassword);
-        }
-        else
-        {
-            LE_WARN("Failed to get APN config from the modem.");
-        }
-
-        /* Get the polling timer */
-        uint32_t pollingTimer = 0;
-
-        getConfigRes = pa_avc_GetPollingTimer(&pollingTimer);
-
-        if (getConfigRes == LE_OK)
-        {
-            le_avc_SetPollingTimer(pollingTimer);
-        }
-        else
-        {
-            LE_WARN("Failed to get the polling timer from the modem.");
-        }
-
-        /* Get the retry timers */
-        uint16_t timerValue[LE_AVC_NUM_RETRY_TIMERS];
-        size_t numTimers = 0;
-
-        getConfigRes = pa_avc_GetRetryTimers(timerValue, &numTimers);
-
-        LE_ASSERT(numTimers <= LE_AVC_NUM_RETRY_TIMERS);
-
-        if (getConfigRes == LE_OK)
-        {
-            le_avc_SetRetryTimers(timerValue, numTimers);
-        }
-        else
-        {
-            LE_WARN("Failed to get the retry timers from the modem.");
-        }
-
-        // Set the "imported" dirty bit, so that config isn't imported next time.
-        le_cfg_QuickSetBool(CFG_AVC_CONFIG_PATH "/imported", true);
-    }
+    AVC_IDLE,                    ///< No updates pending or in progress
+    AVC_DOWNLOAD_PENDING,        ///< Received pending download; no response sent yet
+    AVC_DOWNLOAD_IN_PROGRESS,    ///< Accepted download, and in progress
+    AVC_INSTALL_PENDING,         ///< Received pending install; no response sent yet
+    AVC_INSTALL_IN_PROGRESS,     ///< Accepted install, and in progress
+    AVC_UNINSTALL_PENDING,         ///< Received pending uninstall; no response sent yet
+    AVC_UNINSTALL_IN_PROGRESS      ///< Accepted uninstall, and in progress
 }
+AvcState_t;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Expiry handler function that will retry disabling the modem-based AVC.
+ * The current state of any update.
+ *
+ * Although this variable is accessed both in API functions and in UpdateHandler(), access locks
+ * are not needed.  This is because this is running as a daemon, and so everything runs in the
+ * main thread.
  */
 //--------------------------------------------------------------------------------------------------
-static void RetryDisable
+static AvcState_t CurrentState = AVC_IDLE;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to receive update status notifications from PA
+ */
+//--------------------------------------------------------------------------------------------------
+static void UpdateHandler
 (
-    le_timer_Ref_t timerRef
+    le_avc_Status_t updateStatus,
+    le_avc_UpdateType_t updateType,
+    int32_t totalNumBytes,
+    int32_t dloadProgress,
+    le_avc_ErrorCode_t errorCode
 )
 {
-    LE_INFO("Retry disabling modem-based AVC.");
+    LE_INFO("Received update status: %d", updateStatus);
 
-    // If successful, we can stop retrying
-    if (pa_avc_Disable() == LE_OK)
+    // Keep track of the state of any pending downloads or installs.
+    switch ( updateStatus )
     {
-        LE_INFO("Modem-based AVC disabled.");
-        le_timer_Stop(RetryTimerRef);
-        le_appCtrl_Start(AVC_APP_NAME);
-        ImportConfig();
+        case LE_AVC_SESSION_STARTED:
+            if (CurrentState == AVC_IDLE)
+            {
+                pa_avc_StartModemActivityTimer();
+            }
+
+            assetData_SessionStatus(ASSET_DATA_SESSION_AVAILABLE);
+            break;
+
+        case LE_AVC_SESSION_STOPPED:
+            assetData_SessionStatus(ASSET_DATA_SESSION_UNAVAILABLE);
+            break;
+
+        default:
+            break;
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Initialize and start retry timer.
- */
-//--------------------------------------------------------------------------------------------------
-static void StartRetryTimer
-(
-    void
-)
-{
-    le_result_t res = LE_NOT_POSSIBLE;
-    le_clk_Time_t interval = { DISABLE_RETRY_TIMER, 0 };
-
-    RetryTimerRef = le_timer_Create("RetryDisableTimer");
-
-    res = le_timer_SetInterval(RetryTimerRef, interval);
-    LE_FATAL_IF(res != LE_OK, "Unable to set timer interval.");
-
-    res = le_timer_SetRepeat(RetryTimerRef, 0);
-    LE_FATAL_IF(res != LE_OK, "Unable to set repeat for timer.");
-
-    res = le_timer_SetHandler(RetryTimerRef, RetryDisable);
-    LE_FATAL_IF(res != LE_OK, "Unable to set timer handler.");
-
-    res = le_timer_Start(RetryTimerRef);
-    LE_FATAL_IF(res != LE_OK, "Unable to start timer.");
 }
 
 
@@ -197,8 +116,24 @@ COMPONENT_INIT
     }
     else
     {
-        StartRetryTimer();
+        LE_INFO("Modem-based has not been AVC disabled. Allow modem to complete the update.");
+
+        // TODO: Not needed once LE-6719 is merged.
         le_appCtrl_Stop(AVC_APP_NAME);
+
+        // Initialize the sub-components
+        assetData_Init();
+        lwm2m_Init();
+        avcObject_Init();
+
+        // Read the user defined timeout from config tree @ /apps/avcService/modemActivityTimeout
+        le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(AVC_SERVICE_CFG);
+        int timeout = le_cfg_GetInt(iterRef, "modemActivityTimeout", 20);
+        le_cfg_CancelTxn(iterRef);
+
+        pa_avc_SetModemActivityTimeout(timeout);
+
+        pa_avc_SetAVMSMessageHandler(UpdateHandler);
     }
 }
 

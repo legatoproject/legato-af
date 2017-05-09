@@ -18,5 +18,6 @@ processes:
 bindings:
 {
     avcCompat.avcCompat.le_appCtrl -> <root>.le_appCtrl
+    avcCompat.avcCompat.le_appInfo -> <root>.le_appInfo
     avcCompat.avcCompat.le_avc -> avcService.le_avc
 }
