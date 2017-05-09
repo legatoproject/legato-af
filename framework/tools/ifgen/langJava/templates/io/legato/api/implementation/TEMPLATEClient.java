@@ -17,6 +17,7 @@ import java.io.FileDescriptor;
 import java.lang.AutoCloseable;
 import io.legato.Ref;
 import io.legato.Result;
+import io.legato.OnOff;
 import io.legato.SafeRef;
 import io.legato.Message;
 import io.legato.MessageEvent;

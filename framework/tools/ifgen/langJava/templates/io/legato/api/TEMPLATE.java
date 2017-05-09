@@ -18,6 +18,7 @@ package io.legato.api;
 
 import io.legato.Ref;
 import io.legato.Result;
+import io.legato.OnOff;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.FileDescriptor;
