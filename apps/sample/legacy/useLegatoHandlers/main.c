@@ -25,12 +25,20 @@ static void SmsRxHandler
             printf("%s\n", textBuffer);
             break;
 
+        case LE_SMS_FORMAT_UCS2:
+            printf("Received unicode SMS from %s.\n", textBuffer);
+            break;
+
         case LE_SMS_FORMAT_BINARY:
             printf("Received SMS in binary format from %s.\n", textBuffer);
             break;
 
         case LE_SMS_FORMAT_UNKNOWN:
             printf("Received SMS in unknown format from %s.\n", textBuffer);
+            break;
+
+        default:
+            LE_FATAL("Received SMS in unhandled format from %s.\n", textBuffer);
             break;
     }
 
@@ -71,5 +79,8 @@ int main(int argc, char** argv)
             LE_FATAL("poll() failed with errno %m.");
         }
     }
+
+    // We can never actually get here due to while (true) loop above with no breaks, but SONAR.
+    return 0;
 }
 

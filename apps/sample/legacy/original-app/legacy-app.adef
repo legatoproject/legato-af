@@ -1,10 +1,13 @@
+// Disable the sandbox security to make things a little easier.
+sandboxed: false
+
 // Put the cross-compiled legacy program in the app's bin directory.
 // [x] = make it executable.
 bundles:
 {
     file:
     {
-        [x] _build/$TARGET/legacy /bin/
+        [x] $LEGATO_BUILD/samples/bin/legacy-app-bin /bin/legacy
     }
 }
 
@@ -16,9 +19,3 @@ processes:
         ( legacy )
     }
 }
-
-bindings:
-{
-    *.le_sms -> modemService.le_sms
-}
-

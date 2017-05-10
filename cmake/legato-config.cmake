@@ -239,6 +239,28 @@ function(generate_header API_FILE)
     add_dependencies( api_headers ${API_NAME}_if)
 endfunction()
 
+# Function to generate the required files for a client
+function(generate_client API_FILE)
+
+    get_filename_component(API_NAME ${API_FILE} NAME_WE)
+
+    set(API_PATH    "${API_FILE}")
+    set(HEADER_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_interface.h")
+    set(CLIENT_PATH "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_client.c")
+    set(LOCAL_PATH  "${CMAKE_CURRENT_BINARY_DIR}/${API_NAME}_messages.h")
+
+    add_custom_command( OUTPUT ${HEADER_PATH} ${CLIENT_PATH} ${LOCAL_PATH}
+                        COMMAND ${LEGATO_TOOL_IFGEN} --gen-client --gen-interface --gen-local
+                        ${API_PATH}
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/audio
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
+                        ${ARGN}
+                        COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
+                        DEPENDS ${API_FILE}
+                        )
+endfunction()
+
 # Function to generate the interface header from an API file that resides outside the framework
 # source tree to make it  available for documentation.
 # API_FILE is with full path

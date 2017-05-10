@@ -32,6 +32,9 @@ add_subdirectory(javaHelloWorld)
 # Simple client application + server application
 add_subdirectory(helloIpc)
 
+# Legacy porting example
+add_subdirectory(legacy)
+
 # Application using Modem Services
 add_subdirectory(modemDemo)
 

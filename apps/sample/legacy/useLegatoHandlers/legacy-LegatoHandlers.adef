@@ -4,7 +4,7 @@ bundles:
 {
     file:
     {
-        [x] _build/$TARGET/legacy /bin/
+        [x] ${LEGATO_BUILD}/samples/bin/legacy-LegatoHandlers-bin /bin/legacy
     }
 }
 
@@ -19,6 +19,5 @@ processes:
 
 bindings:
 {
-    *.le_info -> modemService.le_info
+    *.le_sms -> modemService.le_sms
 }
-
