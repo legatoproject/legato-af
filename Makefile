@@ -321,7 +321,13 @@ endif
 stage_mklegatoimgro:
 	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) -S _rw $(MKLEGATOIMG_FLAGS)
 	mklegatotreero $(TARGET) $(DISABLE_SMACK)
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) -a $(MKLEGATOIMG_FLAGS)
+	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) -S _ro \
+	            -a $(MKLEGATOIMG_FLAGS)
+	# Link default legato images to R/W images
+	(cd build/$(TARGET); \
+	    for f in legato*_rw.*; do \
+	        ln -sf $$f `echo $$f | sed 's/_rw//'`; \
+	    done)
 
 .PHONY: stage_mklegatoimg
 stage_mklegatoimg:
