@@ -104,10 +104,6 @@
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
     {{parameter.apiType|FormatType}} {{parameter.name}};
     {{parameter.name}} = le_msg_GetFd(_msgRef);
-    if ({{parameter.name}} < 0)
-    {
-        goto error_unpack;
-    }
     {%- else %}
     {{parameter.apiType|FormatType}} {{parameter.name}};
     if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize,
@@ -178,10 +174,6 @@
     if ({{parameter|FormatParameterName}})
     {
         *{{parameter|FormatParameterName}} = le_msg_GetFd(_msgRef);
-        if (*{{parameter|FormatParameterName}} < 0)
-        {
-            goto error_unpack;
-        }
     }
     {%- else %}
     if ({{parameter|FormatParameterName}} &&

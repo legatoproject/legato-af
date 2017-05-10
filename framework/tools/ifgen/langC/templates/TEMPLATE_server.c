@@ -495,6 +495,7 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- if function.parameters %}
 
 error_unpack:
+    __attribute__((unused));
     le_mem_Release(_serverCmdPtr);
 
     LE_KILL_CLIENT("Error unpacking inputs");
@@ -652,6 +653,7 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- if function.parameters %}
 
 error_unpack:
+    __attribute__((unused));
     LE_KILL_CLIENT("Error unpacking message");
     {%- endif %}
 }

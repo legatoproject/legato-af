@@ -671,6 +671,7 @@ error_unpack:
     {%- if function.returnType or any(function.parameters, "OutParameter") %}
 
 error_unpack:
+    __attribute__((unused));
     LE_FATAL("Unexpected response from server.");
     {%- endif %}
 }
