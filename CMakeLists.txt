@@ -43,12 +43,12 @@ set(LEGATO_UARTMODE_PA $ENV{LEGATO_UARTMODE_PA})
 set(LEGATO_MODEM_PA_RSIM $ENV{LEGATO_MODEM_PA_RSIM})
 
 # Default Target configuration
-set(LEGATO_COMPONENTS_MODEM "AT" CACHE STRING "Legato Modem Platform-Adapter to build")
-set(LEGATO_COMPONENTS_GNSS "AT" CACHE STRING "Legato Gnss Platform-Adapter to build")
-set(LEGATO_COMPONENTS_AUDIO "STUB" CACHE STRING "Legato Audio Platform-Adapter to build")
-set(LEGATO_COMPONENTS_AVC "AT" CACHE STRING "Legato AirVantage Controller Platform-Adapter to build")
-set(LEGATO_COMPONENTS_SECSTORE "AT" CACHE STRING "Legato Secure Storage Controller Platform-Adapter to build")
-set(LEGATO_COMPONENTS_FWUPDATE "AT" CACHE STRING "Legato FwUpdate Platform-Adapter to build")
+set(LEGATO_COMPONENTS_MODEM "default" CACHE STRING "Legato Modem Platform-Adapter to build")
+set(LEGATO_COMPONENTS_GNSS "default" CACHE STRING "Legato Gnss Platform-Adapter to build")
+set(LEGATO_COMPONENTS_AUDIO "default" CACHE STRING "Legato Audio Platform-Adapter to build")
+set(LEGATO_COMPONENTS_AVC "default" CACHE STRING "Legato AirVantage Controller Platform-Adapter to build")
+set(LEGATO_COMPONENTS_SECSTORE "default" CACHE STRING "Legato Secure Storage Controller Platform-Adapter to build")
+set(LEGATO_COMPONENTS_FWUPDATE "default" CACHE STRING "Legato FwUpdate Platform-Adapter to build")
 
 if(INCLUDE_ECALL EQUAL 1)
     add_definitions(-DINCLUDE_ECALL)
@@ -122,6 +122,9 @@ elseif(LEGATO_TARGET MATCHES "wp76xx")
     #set(LEGATO_COMPONENTS_SECSTORE "QMI")
     #set(LEGATO_COMPONENTS_FWUPDATE "QMI")
 
+# Target: em75xx
+elseif(LEGATO_TARGET MATCHES "em75xx")
+
 # Target: virt
 elseif(LEGATO_TARGET MATCHES "virt")
     set(LEGATO_COMPONENTS_MODEM "simu")
@@ -135,7 +138,6 @@ elseif(LEGATO_TARGET MATCHES "virt")
 elseif(LEGATO_TARGET MATCHES "raspi")
     set(LEGATO_COMPONENTS_MODEM "AT")
     set(LEGATO_COMPONENTS_GNSS "AT")
-    set(LEGATO_COMPONENTS_AUDIO "STUB")
     set(LEGATO_COMPONENTS_AVC "AT")
     set(LEGATO_COMPONENTS_SECSTORE "AT")
     set(LEGATO_COMPONENTS_FWUPDATE "AT")

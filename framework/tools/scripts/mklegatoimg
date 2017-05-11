@@ -22,7 +22,7 @@ help_long_description=(
 " - -a: set SMACK attributes if defined in targetDefs files"
 " - -s: strip libraries and binaries"
 ""
-"For ar7/ar86/wp85/wp750x/wp76xx targets:"
+"For ar7/ar86/wp85/wp750x/wp76xx/em75xx targets:"
 ""
 "   This creates a partition that you can use with fwupdate or airvantage"
 "   to update the legato within your target."
@@ -494,6 +494,45 @@ CreateImg_mdm9x40() {
     GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
+CreateImg_mdm9x50() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-squashfs}
+
+    local img_indexes=(0)
+    local page_size[0]=4096
+    local pid[0]='9X50'
+    local oob_size[0]=224
+    local peb_size[0]=256KiB
+    COMPAT_BYTE=00000001
+    PLATFORM='9X50'
+    SUPPORT_COMPRESSION=false
+    case $TARGET in
+        em75xx)
+            ;;
+        *)
+            echo "Unknown product '$TARGET'"
+            exit 1
+            ;;
+    esac
+
+    local img_suffix=$img_type
+    for i in "${img_indexes[@]}"; do
+        if [[ "$img_type" == "ubi" ]]; then
+            if [ ${#page_size[@]} -gt 1 ]; then
+                img_suffix="${ubi_img_type}.$(( ${page_size[$i]} / 1024 ))k.${img_type}"
+            else
+                img_suffix="${ubi_img_type}.${img_type}"
+            fi
+        fi
+
+        CreateImgFs $img_type $img_suffix $ubi_img_type ${page_size[$i]} ${oob_size[$i]} ${peb_size[$i]}
+        GenerateCwe $LEGATO_IMG $img_suffix ${pid[$i]}
+
+        # Last image is the default
+        export IMG_SUFFIX=$img_suffix
+    done
+}
+
 DefaultImg() {
     local img_suffix=${1:-yaffs2}
 
@@ -529,6 +568,10 @@ case $TARGET in
     ar759x)
         CreateImg_mdm9x40 ubi squashfs
         DefaultImg "squashfs.ubi"
+        ;;
+    em75xx)
+        CreateImg_mdm9x50 ubi squashfs
+        DefaultImg $IMG_SUFFIX
         ;;
     raspi)
         CreateImgFs squashfs
