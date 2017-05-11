@@ -101,6 +101,20 @@
  * le_avc_GetPollingTimer() reads the polling timer and le_avc_SetPollingTimer() writes the polling
  * timer.
  *
+ * @section c_le_avc_GetRetryTimers Retry Timers
+ * @warning This API should not be used for new applications and will be removed in the future
+ *
+ * If an error occurs during a connection to the Device Services server (WWAN DATA establishment
+ * failed, http error code received), the embedded module will initiate a new connection according
+ * to the values defined in the retry timers. The timers are tried in sequence until a connection is
+ * established, or all enabled retry timers are exhausted. After all the enabled timers are
+ * exhausted, a connection will be initiated only on a command from user (le_avc_startSession() )
+ * or at the expiry of the polling timer. The retry timer values are persistent. Writing 0
+ * to one of the retry timers will disable it. Retry timer values range from 0 to 20160 minutes.
+ * The api le_avc_GetRetryTimers() reads the polling timers in an array and the api
+ * le_avc_SetRetryTimers() writes the polling timers. When writing to the retry timers, values of
+ * all the 8 timers have to be defined.
+ *
  * @section le_avcService_configdb Service Configuration Tree
  * @copydoc le_avcService_configdbPage_Hide
  *
@@ -591,6 +605,23 @@ FUNCTION le_result_t GetPollingTimer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function to read the retry timers.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to read the timers.
+ *
+ * @deprecated This API should not be used for new applications and will be removed in the future
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRetryTimers
+(
+    uint16 timerValue[NUM_RETRY_TIMERS]   OUT ///< Array of the retry timers.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Function to read APN configuration.
  *
  * @return
@@ -636,4 +667,21 @@ FUNCTION le_result_t SetApnConfig
 FUNCTION le_result_t SetPollingTimer
 (
     uint32  pollingTimer IN    ///< Polling timer (0 to 525600 minutes).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the retry timers.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if not able to write the timers.
+ *
+ * @deprecated This API should not be used for new applications and will be removed in the future
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetRetryTimers
+(
+    uint16 timerValue[NUM_RETRY_TIMERS]   IN  ///< Array of 8 retry timers.
 );

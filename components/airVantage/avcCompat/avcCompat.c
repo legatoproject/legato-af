@@ -108,6 +108,23 @@ static void ImportConfig
             LE_WARN("Failed to get the polling timer from the modem.");
         }
 
+        /* Get the retry timers */
+        uint16_t timerValue[LE_AVC_NUM_RETRY_TIMERS];
+        size_t numTimers = 0;
+
+        getConfigRes = pa_avc_GetRetryTimers(timerValue, &numTimers);
+
+        LE_ASSERT(numTimers <= LE_AVC_NUM_RETRY_TIMERS);
+
+        if (getConfigRes == LE_OK)
+        {
+            le_avc_SetRetryTimers(timerValue, numTimers);
+        }
+        else
+        {
+            LE_WARN("Failed to get the retry timers from the modem.");
+        }
+
         // Set the "imported" dirty bit, so that config isn't imported next time.
         le_cfg_QuickSetBool(CFG_AVC_CONFIG_PATH "/imported", true);
     }
