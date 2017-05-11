@@ -4,10 +4,11 @@
 // Copyright (C) Sierra Wireless Inc.
 //--------------------------------------------------------------------------------------------------
 
+#include "$LEGATO_ROOT/apps/platformServices/defaultAirVantage.sinc"
+
 apps:
 {
     // Platform services.
-    $LEGATO_SERVICE_AVC_APP
     $LEGATO_ROOT/apps/platformServices/audioService
     $LEGATO_ROOT/apps/platformServices/cellNetService
     $LEGATO_ROOT/apps/platformServices/dataConnectionService
