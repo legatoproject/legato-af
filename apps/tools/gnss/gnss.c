@@ -129,6 +129,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
+         "\t\t\t\t\t- altOnWgs84    --> Altitude with respect to the WGS-84 ellipsoid\n"
          "\t\t\t\t\t- loc3d         --> 3D location (latitude, longitude, altitude,\n"
          "\t\t\t\t\t                    horizontal accuracy, vertical accuracy)\n"
          "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
@@ -1122,16 +1123,50 @@ static int GetAltitude
 
     if(result == LE_OK)
     {
-         printf("Altitude  : %.3fm\n"
-                "vAccuracy : %.1fm\n",
-                (float)altitude/1e3,
-                (float)vAccuracy/10.0);
+        printf("Altitude  : %.3fm\n"
+               "vAccuracy : %.1fm\n",
+               (float)altitude/1e3,
+               (float)vAccuracy/10.0);
     }
     else if (result == LE_OUT_OF_RANGE)
     {
-         printf("Altitude invalid [%d, %d]\n",
-                 altitude,
-                 vAccuracy);
+        printf("Altitude invalid [%d, %d]\n",
+               altitude,
+               vAccuracy);
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the altitude with respect to the WGS-84 ellipsoid of last updated location.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetAltitudeOnWgs84
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    int32_t altitudeOnWgs84;
+
+    le_result_t result = le_gnss_GetAltitudeOnWgs84(positionSampleRef, &altitudeOnWgs84);
+
+    if (LE_OK == result)
+    {
+        printf("AltitudeOnWgs84  : %.3fm\n", (float)altitudeOnWgs84/1e3);
+    }
+    else if (LE_OUT_OF_RANGE == result)
+    {
+        printf("AltitudeOnWgs84 invalid [%d]\n", altitudeOnWgs84);
     }
     else
     {
@@ -1616,18 +1651,19 @@ static int GetPosInfo
 )
 {
     int status = EXIT_SUCCESS;
-    status = (GetTtff() == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetPosState(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (Get2Dlocation(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetAltitude(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetGpsTime(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetTime(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetTimeAccuracy(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetDate(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetDop(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetHorizontalSpeed(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetVerticalSpeed(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
-    status = (GetDirection(positionSampleRef) == EXIT_FAILURE) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetTtff()) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetPosState(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == Get2Dlocation(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetAltitude(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetAltitudeOnWgs84(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetGpsTime(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetTime(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetTimeAccuracy(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetDate(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetDop(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetHorizontalSpeed(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetVerticalSpeed(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetDirection(positionSampleRef)) ? EXIT_FAILURE : status;
     return status;
 }
 
@@ -1737,6 +1773,10 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "alt") == 0)
         {
             status = GetAltitude(positionSampleRef);
+        }
+        else if (0 == strcmp(ParamsName, "altOnWgs84"))
+        {
+            status = GetAltitudeOnWgs84(positionSampleRef);
         }
         else if (strcmp(ParamsName, "loc3d") == 0)
         {
@@ -1928,23 +1968,24 @@ static void GetGnssParams
     {
         exit(GetMinElevation());
     }
-    else if ((strcmp(params, "posState") == 0)  ||
-             (strcmp(params, "loc2d") == 0)     ||
-             (strcmp(params, "alt") == 0)       ||
-             (strcmp(params, "loc3d") == 0)     ||
-             (strcmp(params, "gpsTime") == 0)   ||
-             (strcmp(params, "time") == 0)      ||
-             (strcmp(params, "timeAcc") == 0)   ||
-             (strcmp(params, "date") == 0)      ||
-             (strcmp(params, "hSpeed") == 0)    ||
-             (strcmp(params, "vSpeed") == 0)    ||
-             (strcmp(params, "motion") == 0)    ||
-             (strcmp(params, "direction") == 0) ||
-             (strcmp(params, "satInfo") == 0)   ||
-             (strcmp(params, "satStat") == 0)   ||
-             (strcmp(params, "dop") == 0)       ||
-             (strcmp(params, "posInfo") == 0)
-            )
+
+   else if ((0 == strcmp(params, "posState"))   ||
+            (0 == strcmp(params, "loc2d"))      ||
+            (0 == strcmp(params, "alt"))        ||
+            (0 == strcmp(params, "altOnWgs84")) ||
+            (0 == strcmp(params, "loc3d"))      ||
+            (0 == strcmp(params, "gpsTime"))    ||
+            (0 == strcmp(params, "time"))       ||
+            (0 == strcmp(params, "timeAcc"))    ||
+            (0 == strcmp(params, "date"))       ||
+            (0 == strcmp(params, "hSpeed"))     ||
+            (0 == strcmp(params, "vSpeed"))     ||
+            (0 == strcmp(params, "motion"))     ||
+            (0 == strcmp(params, "direction"))  ||
+            (0 == strcmp(params, "satInfo"))    ||
+            (0 == strcmp(params, "satStat"))    ||
+            (0 == strcmp(params, "dop"))        ||
+            (0 == strcmp(params, "posInfo")))
     {
         // Copy the param
         strcpy(ParamsName, params);

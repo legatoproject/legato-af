@@ -2121,8 +2121,8 @@ le_result_t le_gnss_GetDop
  * @note For a 2D position fix, the altitude with respect to the WGS-84 ellipsoid will be indicated
  *       as invalid and set to INT32_MAX.
  *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
+ * @note If the caller is passing an invalid Position reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetAltitudeOnWgs84
@@ -2135,27 +2135,32 @@ le_result_t le_gnss_GetAltitudeOnWgs84
         ///<       and mean sea level [resolution 1e-3].
 )
 {
-    le_result_t result = LE_OK;
+    le_result_t result;
     le_gnss_PositionSample_t * positionSamplePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    if (positionSamplePtr == NULL)
+    if (NULL == positionSamplePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (altitudeOnWgs84Ptr)
+    // Check input pointer
+    if (NULL == altitudeOnWgs84Ptr)
     {
-        if (positionSamplePtr->altitudeOnWgs84Valid)
-        {
-            *altitudeOnWgs84Ptr = positionSamplePtr->altitudeOnWgs84;
-        }
-        else
-        {
-            *altitudeOnWgs84Ptr = INT32_MAX;
-            result = LE_OUT_OF_RANGE;
-        }
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    if (positionSamplePtr->altitudeOnWgs84Valid)
+    {
+        *altitudeOnWgs84Ptr = positionSamplePtr->altitudeOnWgs84;
+        result = LE_OK;
+    }
+    else
+    {
+        *altitudeOnWgs84Ptr = INT32_MAX;
+        result = LE_OUT_OF_RANGE;
     }
     return result;
 }
