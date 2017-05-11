@@ -228,10 +228,11 @@ void GenerateBuildRules
     // Generate rules for running external tools
     script << "rule BuildExternal\n"
               "  description = Running external build step\n"
-              "  command = CC=" << cCompilerPath << " $\n"
+              "  command = cd $builddir/$workingdir; $\n"
+              "            env CC=" << cCompilerPath << " $\n"
               "            CXX=" << cxxCompilerPath << " $\n"
               "            CFLAGS=\"$cFlags\" CXXFLAGS=\"$cxxFlags\" LDFLAGS=\"$ldFlags\""
-              "            cd $builddir/$workingdir; $externalCommand\n";
+              "            sh -c \"$externalCommand\"\n";
 
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"
