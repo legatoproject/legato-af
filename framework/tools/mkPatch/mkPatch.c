@@ -222,14 +222,14 @@ static uint8_t PatchedChunk[2 * SEGMENT_SIZE];
  * Flash device page size
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t FlashPageSize = (uint32_t)-1;
+static int32_t FlashPageSize = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Flash device Physical Erase Block size
  */
 //--------------------------------------------------------------------------------------------------
-static uint32_t FlashPEBSize = (uint32_t)-1;
+static int32_t FlashPEBSize = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -544,7 +544,7 @@ le_result_t ScanUbi
     int *nbVolumePtr    ///< [OUT] Number of UBI volume found
 )
 {
-    uint32_t peb;
+    int32_t peb;
     struct ubi_ec_hdr ecHeader;
     struct ubi_vid_hdr vidHeader;
     off64_t pebOffset;
@@ -1355,10 +1355,20 @@ int main
                 fprintf(stderr, "failed to open patch header file %s: %m\n", tmpName );
                 exit(5);
             }
-            lseek64( fdw, MISC_OPTS_OFFSET, SEEK_SET );
+            if (0 > lseek64( fdw, MISC_OPTS_OFFSET, SEEK_SET ))
+            {
+                fprintf(stderr, "%s %d; lseek64() fails: %m\n", __func__, __LINE__);
+                close(fdw);
+                exit(6);
+            }
             read( fdw, Chunk, 1 );
             Chunk[0] |= MISC_OPTS_DELTAPATCH;
-            lseek64( fdw, MISC_OPTS_OFFSET, SEEK_SET );
+            if (0 > lseek64( fdw, MISC_OPTS_OFFSET, SEEK_SET ))
+            {
+                fprintf(stderr, "%s %d; lseek64() fails: %m\n", __func__, __LINE__);
+                close(fdw);
+                exit(7);
+            }
             write( fdw, Chunk, 1 );
             close(fdw);
             ubiIdx++;
