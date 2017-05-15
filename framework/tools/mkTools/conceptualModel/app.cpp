@@ -30,6 +30,7 @@ App_t::App_t
     isSandboxed(true),
     startTrigger(AUTO),
     isPreloaded(false),
+    isPreBuilt(false),
     cpuShare(1024),
     maxFileSystemBytes(128 * 1024),   // 128 KB
     maxMemoryBytes(40000 * 1024), // 40 MB
