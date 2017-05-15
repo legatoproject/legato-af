@@ -14,7 +14,6 @@ buildVars:
     LEGATO_QMI_GNSS_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_gnss
     LEGATO_QMI_AVC_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_avc
     LEGATO_QMI_SECSTORE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_secStore
-    //export LEGATO_QMI_FWUPDATE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_fwupdate
     LEGATO_QMI_UARTMODE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_uartMode
     LEGATO_QMI_UTIL_SRC_FILES = ${PA_DIR}/qmi/src/components/swiQmi
 
