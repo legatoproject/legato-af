@@ -6,9 +6,10 @@
  *
  * You can call the utility by issuing the command:
  * @verbatim
-   $ app runProc eCallDemo --exe=trig -- <number of passengers>
+   $  app runProc eCallDemo trig -- <number of passengers>
    @endverbatim
  *
+ * @note: On R/O platforms, this application should not be sandboxed
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -38,7 +39,7 @@ static void PrintUsage()
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
             "Usage of the 'trig' tool is:",
-            "   trig <number of passengers>",
+            " app runProc eCallDemo trig -- <number of passengers>",
     };
 
     for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)

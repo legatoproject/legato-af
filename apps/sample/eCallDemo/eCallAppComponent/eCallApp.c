@@ -26,7 +26,7 @@
 #define CFG_NODE_PSAP               "psap"
 #define CFG_NODE_H_MIN_ACCURACY     "hMinAccuracy"
 #define CFG_NODE_DIR_MIN_ACCURACY   "dirMinAccuracy"
-#define CFG_ECALL_APP_PATH          "/settings"
+#define CFG_ECALL_APP_PATH          "eCallDemo:/settings"
 
 
 //--------------------------------------------------------------------------------------------------

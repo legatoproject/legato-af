@@ -1,4 +1,4 @@
-sandboxed: true
+sandboxed: true  // On Yocto R/O platforms this application should not be sandboxed.
 
 executables:
 {
@@ -15,7 +15,8 @@ processes:
 
     run:
     {
-        (eCallDemo)
+        ( eCallDemo )
+        ( trig )
     }
 
     priority: rt32  // The maximum priority is given to the eCallDemo app.
