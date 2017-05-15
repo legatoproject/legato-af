@@ -14,7 +14,10 @@
 static le_gnss_PositionHandlerRef_t PositionHandlerRef = NULL;
 
 //Wait up to 60 seconds for a 3D fix
-#define GNSS_WAIT_MAX_FOR_3DFIX  60
+#define WAIT_MAX_FOR_3DFIX  60
+
+// Unknown constallation bitmask
+#define UNKNOWN_CONSTELLATION  0x80
 
 char ShortSuplCertificate[50]={0};
 
@@ -730,7 +733,7 @@ static void LoopToGet3Dfix
     int32_t  cnt=0;
     le_result_t result = LE_BUSY;
 
-    while ((result == LE_BUSY) && (cnt < GNSS_WAIT_MAX_FOR_3DFIX))
+    while ((result == LE_BUSY) && (cnt < WAIT_MAX_FOR_3DFIX))
     {
         // Get TTFF
         result = le_gnss_GetTtff(ttffPtr);
@@ -814,91 +817,77 @@ static void TestLeGnssConstellations
 
     LE_INFO("Start Test TestLeGnssConstellationsTest");
 
-    // test1: error test
+    // error test
     constellationMask = 0;
-    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
+    LE_ASSERT((LE_UNSUPPORTED == le_gnss_SetConstellation(constellationMask)));
     constellationMask = LE_GNSS_CONSTELLATION_SBAS;
-    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
-    constellationMask |= LE_GNSS_CONSTELLATION_QZSS;
-    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
+    LE_ASSERT((LE_UNSUPPORTED == le_gnss_SetConstellation(constellationMask)));
 
-    // test2 : Gps selection (LE_GNSS_CONSTELLATION_SBAS and LE_GNSS_CONSTELLATION_QZSS are present
-    // in the constellationMask)
-    constellationMask |= LE_GNSS_CONSTELLATION_GPS;
-    LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
-    LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    LE_ASSERT(constellationMask == LE_GNSS_CONSTELLATION_GPS)
-    sleep(2);
-
-    // test3: Gps+Glonass selection
+    // Gps+Glonass selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS;
-    LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
-    LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS))
-    sleep(2);
+    LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
+    LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
+    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS) == constellationMask);
 
-    // test4: error test (GPS constellation is not set)
-    //        and Beidou is unknown for mdm9x15
+    // GPS constellation is not set and Beidou is unknown for mdm9x15
     constellationMask = LE_GNSS_CONSTELLATION_BEIDOU;
-    LE_ASSERT((le_gnss_SetConstellation(constellationMask)) == LE_UNSUPPORTED);
+    LE_ASSERT((LE_UNSUPPORTED == le_gnss_SetConstellation(constellationMask)));
 
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    // test constellationMask has not changed after error
-    LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS));
-    sleep(2);
+    // test constellationMask has not changed after previous error
+    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS) == constellationMask);
 
     // next tests have same results as test4 for mdm9x15
 #if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
-    // test5: Gps+Glonass+Beidou selection
+
+    // Gps selection (LE_GNSS_CONSTELLATION_SBAS and LE_GNSS_CONSTELLATION_QZSS are present
+    // in the constellationMask)
+    constellationMask = LE_GNSS_CONSTELLATION_GPS |
+                        LE_GNSS_CONSTELLATION_SBAS |
+                        LE_GNSS_CONSTELLATION_QZSS;
+
+    LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
+    LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
+    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_QZSS) == constellationMask);
+
+
+    // Gps+Glonass+Beidou selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
                         LE_GNSS_CONSTELLATION_GLONASS |
                         LE_GNSS_CONSTELLATION_BEIDOU;
 
-    LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
-    LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS |
-                                    LE_GNSS_CONSTELLATION_BEIDOU))
-    sleep(2);
+    LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
+    LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
+    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS |
+               LE_GNSS_CONSTELLATION_GLONASS |
+               LE_GNSS_CONSTELLATION_BEIDOU) == constellationMask);
 
-    // test6: Gps+Beidou selection
-    constellationMask = LE_GNSS_CONSTELLATION_GPS |
-                        LE_GNSS_CONSTELLATION_BEIDOU;
-    LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
-    LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_BEIDOU))
-    sleep(2);
-
-    // test6: Gps+Glonass+Beidou+Galileo selection
-    constellationMask = LE_GNSS_CONSTELLATION_GPS |
-                        LE_GNSS_CONSTELLATION_GLONASS |
-                        LE_GNSS_CONSTELLATION_BEIDOU |
-                        LE_GNSS_CONSTELLATION_GALILEO;
-
-    LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
-    LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS |
-                                    LE_GNSS_CONSTELLATION_BEIDOU |
-                                    LE_GNSS_CONSTELLATION_GALILEO))
-    sleep(2);
-
-    // test7: Gps+Glonass+Beidou+Galileo+unknown selection
+    // Gps+Glonass+Beidou+Galileo+Qzss selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
                         LE_GNSS_CONSTELLATION_GLONASS |
                         LE_GNSS_CONSTELLATION_BEIDOU |
                         LE_GNSS_CONSTELLATION_GALILEO |
-                        LE_GNSS_CONSTELLATION_GALILEO | 5;
+                        LE_GNSS_CONSTELLATION_QZSS;
 
-    LE_ASSERT(le_gnss_SetConstellation(constellationMask) == LE_OK);
-    LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
-    LE_ASSERT(constellationMask == (LE_GNSS_CONSTELLATION_GPS |
-                                    LE_GNSS_CONSTELLATION_GLONASS |
-                                    LE_GNSS_CONSTELLATION_BEIDOU |
-                                    LE_GNSS_CONSTELLATION_GALILEO))
+    LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
+    LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
+    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS |
+               LE_GNSS_CONSTELLATION_GLONASS |
+               LE_GNSS_CONSTELLATION_BEIDOU |
+               LE_GNSS_CONSTELLATION_GALILEO |
+               LE_GNSS_CONSTELLATION_QZSS) == constellationMask);
+
+    // add unknown constellation
+    constellationMask |= UNKNOWN_CONSTELLATION;
+
+    // test constellationMask has not changed after previous error
+    LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
+    LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
+    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS |
+               LE_GNSS_CONSTELLATION_GLONASS |
+               LE_GNSS_CONSTELLATION_BEIDOU |
+               LE_GNSS_CONSTELLATION_GALILEO |
+               LE_GNSS_CONSTELLATION_QZSS) == constellationMask);
 #endif
 }
 

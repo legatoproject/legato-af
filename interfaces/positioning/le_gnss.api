@@ -124,8 +124,8 @@
  * @warning Your platform may require a reboot to take into account this change. Please refer to
  * your platform documentation for further details.
  *
- * Combinations of constellation for GPS , GLONASS, BDS and GALILEO satellites are currently
- * supported. Are not supported the constellations for SBAS and QZSS satellites.
+ * Combinations of constellation for GPS, GLONASS, BDS, GALILEO and QZSS satellites are currently
+ * supported. Constellation for SBAS satellites is not supported.
  *
  * All supported GNSS constellations are enabled by default.
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
