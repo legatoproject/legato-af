@@ -53,7 +53,7 @@
 #define CONSTELLATION_GLONASS       0x2
 #define CONSTELLATION_BEIDOU        0x4
 #define CONSTELLATION_GALILEO       0x8
-#define CONSTELLATION_SBAS          0x10
+#define CONSTELLATION_UNUSED        0x10  // not supported : this constellation cannot be set.
 #define CONSTELLATION_QZSS          0x20
 // @}
 
@@ -157,10 +157,10 @@ void PrintGnssHelp
          "\t\t\t\t\t- 2 ---> GLONASS\n"
          "\t\t\t\t\t- 4 ---> BEIDOU\n"
          "\t\t\t\t\t- 8 ---> GALILEO\n"
-         "\t\t\t\t\t- 16 --> SBAS\n"
+         "\t\t\t\t\t- 16 --> Unused\n"
          "\t\t\t\t\t- 32 --> QZSS\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
-         "\t\t\t\t3 for GPS+GLONASS, 63 for GPS+GLONASS+BEIDOU+GALILEO+SBAS+QZSS\n\n"
+         "\t\t\t\t3 for GPS+GLONASS, 47 for GPS+GLONASS+BEIDOU+GALILEO+QZSS\n\n"
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
          "\t\t\t\t\t- alone -----> Standalone agps mode\n"
@@ -564,12 +564,6 @@ static int SetConstellation
         constellationSum -= CONSTELLATION_GALILEO;
         strncat(constellationStr, "GALILEO ", sizeof(constellationStr)-strlen(constellationStr)-1);
     }
-    if (constellationSum & CONSTELLATION_SBAS)
-    {
-        constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_SBAS;
-        constellationSum -= CONSTELLATION_SBAS;
-        strncat(constellationStr, "SBAS ", sizeof(constellationStr)-strlen(constellationStr)-1);
-    }
     if (constellationSum & CONSTELLATION_QZSS)
     {
         constellationMask |= (uint32_t)LE_GNSS_CONSTELLATION_QZSS;
@@ -832,8 +826,6 @@ static int GetConstellation
                                                               printf("BEIDOU not activated\n");
         (constellationMask & LE_GNSS_CONSTELLATION_GALILEO) ? printf("GALILEO activated\n") :
                                                               printf("GALILEO not activated\n");
-        (constellationMask & LE_GNSS_CONSTELLATION_SBAS)    ? printf("SBAS activated\n") :
-                                                              printf("SBAS not activated\n");
         (constellationMask & LE_GNSS_CONSTELLATION_QZSS)    ? printf("QZSS activated\n") :
                                                               printf("QZSS not activated\n");
     }
