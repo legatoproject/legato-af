@@ -1379,6 +1379,26 @@ static void FilePathArgHandler
     // and store it in the FilePath static variable.
     if (!realpath(filePath, FilePath))
     {
+        // Since the file does not exist, compose an absolute path based
+        // on the absolute directory resolved through realpath concatenated
+        // with the filename initially provided.
+
+        // Copy string to obtain dir
+        char filePathTmp[PATH_MAX];
+
+        LE_ASSERT(LE_OK == le_utf8_Copy(filePathTmp, filePath, sizeof(filePathTmp), NULL));
+        if (NULL != realpath(dirname(filePathTmp), FilePath))
+        {
+            // Copy string to obtain basename
+            LE_ASSERT(LE_OK == le_utf8_Copy(filePathTmp, filePath, sizeof(filePathTmp), NULL));
+
+            size_t length = strlen(FilePath);
+            LE_ASSERT(FilePath[length] == '\0');
+            snprintf(&FilePath[length], sizeof(FilePath)-length, "/%s", basename(filePathTmp));
+
+            return;
+        }
+
         fprintf(stderr, "Cannot find path '%s': %s", filePath, strerror(errno));
         exit(EXIT_FAILURE);
     }

@@ -184,6 +184,7 @@
 #include <sched.h>
 #include <semaphore.h>
 #include <math.h>
+#include <libgen.h>
 
 
 #ifdef __cplusplus

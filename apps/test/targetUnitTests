@@ -45,7 +45,7 @@ function RunTest()
 # Run tests.
 #RunTest framework/supervisor/supervisorTest.sh
 #RunTest framework/watchdog/watchdogTest.sh
-#RunTest framework/configTree/configTargetTests.sh
+RunTest framework/configTree/configTargetTests.sh
 RunTest framework/smackAPI/smackApiTest.sh ## OK
 #RunTest framework/smack/smackTest.sh ## Error assert of fileServer
 #RunTest framework/sandboxLimits/limitsTest.sh ## Error
