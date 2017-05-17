@@ -232,7 +232,7 @@ void GenerateBuildRules
               "            env CC=" << cCompilerPath << " $\n"
               "            CXX=" << cxxCompilerPath << " $\n"
               "            CFLAGS=\"$cFlags\" CXXFLAGS=\"$cxxFlags\" LDFLAGS=\"$ldFlags\""
-              "            sh -c \"$externalCommand\"\n";
+              "            sh -c \'$externalCommand\'\n";
 
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"

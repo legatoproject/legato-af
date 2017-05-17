@@ -46,6 +46,6 @@ bindings:
 
 interfaceSearch:
 {
-    interfaces/modemServices
-    interfaces/positioning
+    $LEGATO_ROOT/interfaces/modemServices
+    $LEGATO_ROOT/interfaces/positioning
 }
