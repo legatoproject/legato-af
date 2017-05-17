@@ -151,7 +151,7 @@ class HandlerReferenceType(ReferenceType):
         self.event = eventObj
 
     def __str__(self):
-        return "Handler %s" % (self.name, )
+        return "HandlerRef %s" % (self.name, )
 
 class HandlerType(Type):
     def __init__(self, name, parameters):
@@ -508,7 +508,7 @@ class Interface(object):
                             [parameter.GetMaxSize() for parameter in function.parameters])
                         for function in self.functions.values()] +
                        [sum([parameter.GetMaxSize() for parameter in handler.parameters])
-                        for handler in self.types if isinstance(handler, HandlerType)])
+                        for handler in self.types.values() if isinstance(handler, HandlerType)])
 
     def __str__(self):
         resultStr  = "=== Interface ===\n"
