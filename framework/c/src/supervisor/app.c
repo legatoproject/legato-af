@@ -687,6 +687,10 @@ static le_result_t SetDevicePermissions
     // Set the SMACK rule to allow the app to access the device.
     smack_SetRule(appSmackLabelPtr, permPtr, devLabel);
 
+    // Set the DAC permissions to be permissive.
+    LE_EMERG_IF(chmod(devPathPtr, S_IROTH | S_IWOTH) == -1,
+                "Could not set permissions for file '%s'.  %m.", devPathPtr);
+
     return LE_OK;
 }
 
@@ -1302,22 +1306,10 @@ static bool DoesLinkExist
     else
     {
         // Destination file already exists.  See if it has changed.
-        if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
+        if (srcStat.st_ino == destStat.st_ino)
         {
-            // Special devices need to have same device number but different inode numbers
-            if ((srcStat.st_rdev == destStat.st_rdev) &&
-                (srcStat.st_ino != destStat.st_ino))
-            {
-                return true;
-            }
-        }
-        else
-        {
-            if (srcStat.st_ino == destStat.st_ino)
-            {
-                // Link already exists.
-                return true;
-            }
+            // Link already exists.
+            return true;
         }
 
         // Attempt to delete the original link.
@@ -1386,7 +1378,6 @@ static le_result_t CreateDirLink
     // See if the destination already exists.
     if (DoesLinkExist(appRef, srcStat, destPath))
     {
-        LE_INFO("Skipping directory link '%s' to '%s': Already exists", srcPtr, destPath);
         return LE_OK;
     }
 
@@ -1476,55 +1467,11 @@ static le_result_t CreateFileLink
     // See if the destination already exists.
     if (DoesLinkExist(appRef, srcStat, destPath))
     {
-        LE_INFO("Skipping file link '%s' to '%s': Already exists", srcPtr, destPath);
         return LE_OK;
     }
 
-    if (!appRef->sandboxed)
-    {
-        // Create a symlink at the specified path.
-        if (symlink(srcPtr, destPath) != 0)
-        {
-            LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
-            return LE_FAULT;
-        }
-    }
-    // For devices, create a new device node for the app
-    else if (S_ISCHR(srcStat.st_mode) || S_ISBLK(srcStat.st_mode))
-    {
-        char devLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        le_result_t result = devSmack_GetLabel(srcStat.st_rdev, devLabel, sizeof(devLabel));
-
-        LE_FATAL_IF(result == LE_OVERFLOW, "Smack label '%s...' too long.", devLabel);
-
-        if (result != LE_OK)
-        {
-            LE_ERROR("Failed to get smack label for device '%s'", srcPtr);
-            return LE_FAULT;
-        }
-
-        if (mknod(destPath,
-                  (srcStat.st_mode & (S_IFCHR | S_IFBLK)) | S_IRUSR | S_IWUSR,
-                  srcStat.st_rdev) == -1)
-        {
-            LE_ERROR("Could not create device '%s'.  %m", destPath);
-            return LE_FAULT;
-        }
-
-        if (smack_SetLabel(destPath, devLabel) != LE_OK)
-        {
-            LE_ERROR("Failed to set smack label for device '%s'", destPath);
-            return LE_FAULT;
-        }
-
-        // Gift the device to the app.
-        if (chown(destPath, appRef->uid, appRef->gid) == -1)
-        {
-            LE_ERROR("Could not assign device '%s' to app.  %m", destPath);
-            return LE_FAULT;
-        }
-    }
-    else
+    // Create the link.
+    if (appRef->sandboxed)
     {
         // Create an empty file at the specified path.
         int fd;
@@ -1542,6 +1489,15 @@ static le_result_t CreateFileLink
         if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
         {
             LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
+            return LE_FAULT;
+        }
+    }
+    else
+    {
+        // Create a symlink at the specified path.
+        if (symlink(srcPtr, destPath) != 0)
+        {
+            LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
             return LE_FAULT;
         }
     }
