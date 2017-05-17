@@ -1508,6 +1508,9 @@ static int InstallGolden
     // the system's libraries can be found easily.
     RequestLdSoConfig();
 
+    // Flush to disk before marking golden install as complete.
+    sync();
+
     // Remember what we just installed so we don't do it again.
     // DO THIS LAST.
     MarkGoldenInstallComplete();

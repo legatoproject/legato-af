@@ -20,6 +20,8 @@ Optional packages: vim (or any text editor),
                    zsh (command interpreter for shell scripting),
                    openjdk-8-jdk (for Java support)
                    doxygen graphviz (for doc generation)
+                   [TLA toolbox](http://lamport.azurewebsites.net/tla/toolbox.html)
+                       (Formal specification & verification).
 
 @section buildToolchain Install a Toolchain
 
