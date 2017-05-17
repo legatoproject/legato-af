@@ -106,6 +106,15 @@
  * }
  * @endcode
  *
+ * @section le_avdata_session User app session management
+ *
+ * An app can request to open avms session and register a handler to get notified of avms session
+ * events. le_avdata_RequestSession() and le_avdata_ReleaseSession() can be used to
+ * open an avms session and close an avms session respectively. If the session was initiated by an
+ * user app, avms session will be closed when all apps release their session reference.
+ * le_avdata_AddSessionStateHandler() and le_avdata_RemoveSessionStateHandler() can be used to add
+ * and remove notification handlers.
+ *
  * @section le_avdata_fatal Fatal Behavior
  *
  * An invalid asset name or field name is treated as a fatal error (i.e. non-recoverable)
@@ -651,4 +660,73 @@ FUNCTION le_result_t PushRecord
 (
     Record recordRef,
     CallbackResult handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference returned by RequestSession function and used by ReleaseSession function
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE RequestSessionObj;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AVMS session state
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SessionState
+{
+    SESSION_STARTED,        ///< AVMS session started
+    SESSION_STOPPED         ///< AVMS session stopped
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for AV session changes
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER SessionStateHandler
+(
+    SessionState sessionState IN            ///< Session started or stopped?
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on AV session state changes
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT SessionState
+(
+    SessionStateHandler handler
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the avcServer to open a session.
+ *
+ * @return
+ *      - SessionRef if session request succeeded
+ *      - NULL if session request failed
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION RequestSessionObj RequestSession
+(
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the avcServer to close a session.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ReleaseSession
+(
+    RequestSessionObj requestRef IN  ///< Reference to a previously opened AV session.
 );
