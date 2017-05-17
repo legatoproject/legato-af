@@ -434,6 +434,43 @@ static void SimToolkitHandler
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * This function tests the SIM validity
+ *
+ * @return LE_OK            On success.
+ * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
+ * @return LE_FAULT         The function failed to get the number of remaining PIN insertion tries.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckSimValidity
+(
+    le_sim_Id_t simId   ///< [IN] The SIM identifier.
+)
+{
+    Sim_t*    simPtr;
+    if (simId >= LE_SIM_ID_MAX)
+    {
+        LE_ERROR("Invalid simId (%d) provided!", simId);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (LE_OK != SelectSIMCard(simId))
+    {
+        return LE_NOT_FOUND;
+    }
+
+    simPtr = &SimList[simId];
+
+    if (!simPtr->isPresent)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
 
@@ -946,6 +983,7 @@ le_result_t le_sim_ChangePIN
  * This function must be called to get the number of remaining PIN insertion tries.
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
  * @return LE_FAULT         The function failed to get the number of remaining PIN insertion tries.
  * @return A positive value The function succeeded. The number of remaining PIN insertion tries.
  *
@@ -957,32 +995,62 @@ int32_t le_sim_GetRemainingPINTries
 )
 {
     uint32_t  attempts=0;
-    Sim_t*    simPtr;
+    le_result_t res = CheckSimValidity(simId);
 
-    if (simId >= LE_SIM_ID_MAX)
+    if (LE_OK != res)
     {
-        LE_ERROR("Invalid simId (%d) provided!", simId);
-        return LE_BAD_PARAMETER;
-    }
-    simPtr = &SimList[simId];
-
-    if (SelectSIMCard(simId) != LE_OK)
-    {
-        return LE_NOT_FOUND;
+        return res;
     }
 
-    if (!simPtr->isPresent)
+    if (LE_OK != pa_sim_GetPINRemainingAttempts(PA_SIM_PIN, &attempts))
     {
-        return LE_NOT_FOUND;
-    }
-
-    if(pa_sim_GetPINRemainingAttempts(PA_SIM_PIN, &attempts) != LE_OK)
-    {
-        LE_ERROR("Failed to get reamining attempts for sim identifier.%d", simId);
+        LE_ERROR("Failed to get remaining PIN attempts for sim identifier.%d", simId);
         return LE_FAULT;
     }
 
     return attempts;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the number of remaining PUK insertion tries.
+ *
+ * @return LE_OK            On success.
+ * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
+ * @return LE_FAULT         The function failed to get the number of remaining PUK insertion tries.
+ *
+ * @note If the caller is passing an null pointer to this function, it is a fatal error
+ *       and the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetRemainingPUKTries
+(
+    le_sim_Id_t simId,                 ///< [IN] The SIM identifier.
+    uint32_t*   remainingPukTriesPtr   ///< [OUT] The number of remaining PUK insertion tries.
+)
+{
+    le_result_t res;
+
+    if (NULL == remainingPukTriesPtr)
+    {
+        LE_KILL_CLIENT("remainingPukTriesPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    res = CheckSimValidity(simId);
+    if (LE_OK != res)
+    {
+        return res;
+    }
+
+    if (LE_OK != pa_sim_GetPUKRemainingAttempts(PA_SIM_PUK, remainingPukTriesPtr))
+    {
+        LE_ERROR("Failed to get remaining PUK attempts for sim identifier.%d", simId);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1127,6 +1195,7 @@ le_result_t le_sim_Lock
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     The PIN code is not long enough (min 4 digits).
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
  * @return LE_OUT_OF_RANGE  The PUK code length is not correct (8 digits).
  * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            The function succeeded.
@@ -1134,6 +1203,8 @@ le_result_t le_sim_Lock
  * @note If new PIN or puk code are too long (max 8 digits), it is a fatal error, the
  *       function will not return.
  *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_Unblock
@@ -1336,7 +1407,8 @@ le_result_t le_sim_GetSubscriberPhoneNumber
                     // Get identification information
                     if(pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)) != LE_OK)
                     {
-                        LE_ERROR("Failed to get the Phone Number of sim identifier.%d", simPtr->simId);
+                        LE_ERROR("Failed to get the Phone Number of sim identifier.%d",
+                                 simPtr->simId);
                         simPtr->phoneNumber[0] = '\0';
                     }
                     else

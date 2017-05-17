@@ -215,7 +215,7 @@ void simTest_Lock
 )
 {
     le_sim_States_t state;
-    bool doLock;
+    bool doLock = false;
     uint8_t loop = 0;
     le_result_t     res;
 
@@ -224,11 +224,11 @@ void simTest_Lock
     DisplaySimState(state, simId);
     LE_ASSERT((state == LE_SIM_READY)||(state == LE_SIM_INSERTED));
 
-    if(state == LE_SIM_READY)
+    if (LE_SIM_READY == state)
     {
         doLock = true;
     }
-    else if (state == LE_SIM_INSERTED)
+    else if (LE_SIM_INSERTED == state)
     {
         // Enter PIN code
         res = le_sim_EnterPIN(simId, pinPtr);
@@ -292,14 +292,16 @@ void simTest_Authentication
 {
     le_result_t     res;
     bool            ready = false;
-    int32_t         initTries = 0;
+    int32_t         remainingPinTries = 0;
     int32_t         tries = 0;
+    uint32_t        remainingPukTries = 0;
+    uint32_t        pukTries = 0;
     char            string[100];
 
     memset(string, 0, 100);
 
     // Get the remaining PIN entries
-    initTries = le_sim_GetRemainingPINTries(simId);
+    remainingPinTries = le_sim_GetRemainingPINTries(simId);
 
     // Enter PIN code
     res = le_sim_EnterPIN(simId, FAIL_PIN_TEST);
@@ -307,7 +309,7 @@ void simTest_Authentication
 
     // Get the remaining PIN entries
     tries = le_sim_GetRemainingPINTries(simId);
-    LE_ASSERT((initTries-tries) == 1);
+    LE_ASSERT((remainingPinTries-tries) == 1);
 
     // Check that the SIM is not ready
     ready = le_sim_IsReady(simId);
@@ -331,25 +333,37 @@ void simTest_Authentication
 
     // block the SIM:
     // while remaining PIN entries not null, enter a wrong PIN code
-    while((initTries = le_sim_GetRemainingPINTries(simId)) > 0)
+    while((remainingPinTries = le_sim_GetRemainingPINTries(simId)) > 0)
     {
         // Enter PIN code
         res = le_sim_EnterPIN(simId, FAIL_PIN_TEST);
     }
 
-    if(initTries < 0)
+    if(remainingPinTries < 0)
     {
-        sprintf(string, "\nle_sim_GetRemainingPINTries error, res.%d (should be >=0)\n", initTries);
+        sprintf(string, "\nle_sim_GetRemainingPINTries error, res.%d (should be >=0)\n",
+                remainingPinTries);
         Print(string);
     }
+
+    // Get the remaining PUK entries
+    LE_ASSERT_OK(le_sim_GetRemainingPUKTries(simId, &remainingPukTries));
 
     // Unblock the SIM using a wrong PUK code (error expected)
     res = le_sim_Unblock(simId, FAIL_PUK_TEST, NEW_PIN_TEST);
     LE_ASSERT(res == LE_FAULT);
 
+    // Get the remaining PUK entries
+    LE_ASSERT_OK(le_sim_GetRemainingPUKTries(simId, &pukTries));
+    LE_ASSERT(1 == (remainingPukTries-pukTries));
+
     // Unblock the SIM using the correct PUK code
     res = le_sim_Unblock(simId, pukPtr, NEW_PIN_TEST);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(LE_OK == res);
+
+    // Get the remaining PUK entries
+    LE_ASSERT_OK(le_sim_GetRemainingPUKTries(simId, &pukTries));
+    LE_ASSERT((0 == remainingPukTries-pukTries));
 
     Print("End simTest_Authentication");
 }
@@ -366,13 +380,18 @@ void simTest_SimAbsent
     le_sim_Id_t simId
 )
 {
-    int32_t         initTries = 0;
+    int32_t         remainingPinTries = 0;
+    uint32_t        remainingPukTries = 0;
     le_result_t     res;
     bool            ready = false;
 
     // Get the remaining PIN entries (error expected as no SIM)
-    initTries = le_sim_GetRemainingPINTries(simId);
-    LE_ASSERT((initTries == LE_NOT_FOUND) || (initTries == LE_FAULT));
+    remainingPinTries = le_sim_GetRemainingPINTries(simId);
+    LE_ASSERT((remainingPinTries == LE_NOT_FOUND) || (remainingPinTries == LE_FAULT));
+
+    // Get the remaining PUK entries (error expected as no SIM)
+    res = le_sim_GetRemainingPUKTries(simId, &remainingPukTries);
+    LE_ASSERT((res == LE_NOT_FOUND) || (res == LE_FAULT));
 
     // Enter PIN code (error expected as no SIM)
     res = le_sim_EnterPIN(simId, PIN_TEMP);

@@ -11,7 +11,8 @@
 #include "pa_sim_simu.h"
 #include "args.h"
 
-#define NB_CLIENT 2
+#define NB_CLIENT        2
+#define INITIAL_PIN_TRY  3
 
 // Task context
 typedef struct
@@ -248,11 +249,13 @@ static void LocalSwap
     // The core test is alling this funcrtion rwice to test both functions
     if (firstCall)
     {
-        LE_ASSERT(le_sim_LocalSwapToCommercialSubscription(CurrentSimId, LE_SIM_OBERTHUR) == LE_OK);
+        LE_ASSERT(LE_OK == le_sim_LocalSwapToCommercialSubscription(CurrentSimId,
+                                                                    LE_SIM_OBERTHUR));
     }
     else
     {
-        LE_ASSERT(le_sim_LocalSwapToEmergencyCallSubscription(CurrentSimId, LE_SIM_MORPHO) == LE_OK);
+        LE_ASSERT(LE_OK == le_sim_LocalSwapToEmergencyCallSubscription(CurrentSimId,
+                                                                       LE_SIM_MORPHO));
     }
 
     // we have no semaphore here as these functions are blocking (waiting for a SIM refresh done by
@@ -379,6 +382,7 @@ static void TestSim_AddHandlers
  * - le_sim_EnterPIN
  * - le_sim_Unblock
  * - le_sim_GetRemainingPINTries
+ * - le_sim_GetRemainingPUKTries
  *
  * Exit if failed
  *
@@ -389,6 +393,9 @@ static void TestSim_PinPuk
     void
 )
 {
+    uint32_t remainingPukTries = 0;
+    uint32_t triesPuk = 0;
+
     // Check the states
     CheckSimStates();
 
@@ -398,6 +405,7 @@ static void TestSim_PinPuk
     LE_ASSERT(le_sim_EnterPIN(CurrentSimId, BadPin) == LE_NOT_FOUND);
     LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, BadPin) == LE_NOT_FOUND);
     LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == LE_NOT_FOUND);
+    LE_ASSERT(LE_NOT_FOUND == le_sim_GetRemainingPUKTries(CurrentSimId, &remainingPukTries));
 
     // Insert SIM (busy state)
     CurrentSimState = LE_SIM_BUSY;
@@ -412,6 +420,7 @@ static void TestSim_PinPuk
     LE_ASSERT(le_sim_EnterPIN(CurrentSimId, BadPin) == LE_FAULT);
     LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, BadPin) == LE_FAULT);
     LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == LE_FAULT);
+    LE_ASSERT(LE_FAULT == le_sim_GetRemainingPUKTries(CurrentSimId, &remainingPukTries));
 
     // SIM is inserted
     CurrentSimState = LE_SIM_INSERTED;
@@ -469,10 +478,18 @@ static void TestSim_PinPuk
     // The next operation unblocks the pin: we change the global variable here to be ready when the
     // handlers will be called
     CurrentSimState = LE_SIM_READY;
+
+    // Get the remaining PUK entries
+    LE_ASSERT_OK(le_sim_GetRemainingPUKTries(CurrentSimId, &remainingPukTries));
+
     // Unblock the SIM (OK expected)
     LE_ASSERT(le_sim_Unblock(CurrentSimId, Puk, Pin) == LE_OK);
     // Get the remaining PIN tries
-    LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == 3);
+    LE_ASSERT(le_sim_GetRemainingPINTries(CurrentSimId) == INITIAL_PIN_TRY);
+
+    // Get the remaining PUK entries
+    LE_ASSERT_OK(le_sim_GetRemainingPUKTries(CurrentSimId, &triesPuk));
+    LE_ASSERT(0 == remainingPukTries-triesPuk);
 
     // Wait the handlers' calls (SIM is supposed to be in READY state now)
     SynchTest();

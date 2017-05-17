@@ -97,6 +97,11 @@
  *
  * Using this API selects the requested SIM.
  *
+ * le_sim_GetRemainingPUKTries() returns the number of remaining PUK entry attempts
+ * before the SIM will become blocked.
+ *
+ * Using this API selects the requested SIM.
+ *
  * le_sim_ChangePIN() must be called to change the PIN code.
  *
  * Using this API selects the requested SIM.
@@ -232,10 +237,11 @@
  * @section le_sim_access SIM access
  *
  * The application can send an APDU (Application Protocol Data Unit) to the SIM using
- * le_sim_SendApdu() API. The user must encode the APDU as specified by in recommendation 3GPP 11.11,
- * 3GPP 51.011, 3GPP 31.102, 3GPP 31.103 or ETSI TS 102 221.
+ * le_sim_SendApdu() API. The user must encode the APDU as specified by in recommendation 3GPP
+ * 11.11, 3GPP 51.011, 3GPP 31.102, 3GPP 31.103 or ETSI TS 102 221.
  * @note Between two successive call to le_sim_SendApdu() API, there is no locking
- * protection. In this situation, some command types and parameters can modify SIM files incorrectly.
+ * protection. In this situation, some command types and parameters can modify SIM files
+ * incorrectly.
  *
  * Using le_sim_SendCommand(), the application has easier but more limited access to the
  * SIM database. The command is transmitted to the SIM, which gives information through swi1 and
@@ -701,16 +707,35 @@ FUNCTION le_result_t ChangePIN
  * Get the number of remaining PIN insertion tries.
  *
  * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
  * @return LE_FAULT         The function failed to get the number of remaining PIN insertion tries.
  * @return A positive value The function succeeded. The number of remaining PIN insertion tries.
  *
- * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
- *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION int32 GetRemainingPINTries
 (
     Id      simId IN           ///< The SIM identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of remaining PUK insertion tries.
+ *
+ * @return LE_OK            On success.
+ * @return LE_NOT_FOUND     The function failed to select the SIM card for this operation.
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
+ * @return LE_FAULT         The function failed to get the number of remaining PUK insertion tries.
+ *
+ * @note If the caller is passing an null pointer to this function, it is a fatal error
+ *       and the function will not return.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRemainingPUKTries
+(
+    Id      simId                 IN,     ///< The SIM identifier.
+    uint32  remainingPukTriesPtr  OUT     ///< The number of remaining PUK insertion tries.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -763,6 +788,7 @@ FUNCTION le_result_t Lock
  *
  * @return LE_NOT_FOUND     Function failed to select the SIM card for this operation.
  * @return LE_UNDERFLOW     PIN code is not long enough (min 4 digits).
+ * @return LE_BAD_PARAMETER Invalid SIM identifier.
  * @return LE_OUT_OF_RANGE  PUK code length is not correct (8 digits).
  * @return LE_FAULT         The function failed to unlock the SIM card.
  * @return LE_OK            Function succeeded.

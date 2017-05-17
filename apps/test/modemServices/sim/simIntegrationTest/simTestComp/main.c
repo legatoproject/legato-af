@@ -127,7 +127,7 @@ static le_sim_Id_t GetSimId
 COMPONENT_INIT
 {
     const char*     testString = "";
-    le_sim_Id_t     cardId;
+    le_sim_Id_t     cardId=0;
 
     LE_INFO("Start simTest app.");
 

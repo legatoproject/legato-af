@@ -52,13 +52,19 @@ void cm_sim_PrintSimHelp
             "\tcm sim storepin <pin>\n\n"
             "To select SIM:\n"
             "\tcm sim select <EMBEDDED | EXTERNAL_SLOT_1 | EXTERNAL_SLOT_2 | REMOTE>\n\n"
-            "Enter PIN: Enters the PIN code that is required before any Mobile equipment functionality can be used.\n"
+            "Enter PIN: Enters the PIN code that is required before any Mobile equipment "
+            "functionality can be used.\n"
             "Change PIN: Change the PIN code of the SIM card.\n"
-            "Lock: Enable security of the SIM card, it will request for a PIN code upon insertion.\n"
-            "Unlock: Disable security of the SIM card, it won't request a PIN code upon insertion (unsafe).\n"
-            "Unblock: Unblocks the SIM card. The SIM card is blocked after X unsuccessful attempts to enter the PIN.\n\n"
-            "Whether security is enabled or not, the SIM card has a PIN code that must be entered for every operations.\n"
-            "Only ways to change this PIN code are through 'changepin' and 'unblock' operations.\n\n"
+            "Lock: Enable security of the SIM card, it will request for a PIN code upon insertion."
+            "\n"
+            "Unlock: Disable security of the SIM card, it won't request a PIN code upon insertion "
+            "(unsafe).\n"
+            "Unblock: Unblocks the SIM card. The SIM card is blocked after X unsuccessful attempts "
+            "to enter the PIN.\n\n"
+            "Whether security is enabled or not, the SIM card has a PIN code that must be entered "
+            "for every operations.\n"
+            "Only ways to change this PIN code are through 'changepin' and 'unblock' operations."
+            "\n\n"
             );
 }
 
@@ -513,21 +519,24 @@ int cm_sim_UnlockSim
 //-------------------------------------------------------------------------------------------------
 int cm_sim_UnblockSim
 (
-    const char * puk,       ///< [IN] PUK code
-    const char * newpin     ///< [IN] New PIN code
+    const char * pukPtr,       ///< [IN] PUK code
+    const char * newPinPtr     ///< [IN] New PIN code
 )
 {
     le_result_t     res = LE_OK;
 
-    res = le_sim_Unblock(SimId, puk, newpin);
-
+    res = le_sim_Unblock(SimId, pukPtr, newPinPtr);
     switch (res)
     {
+        uint32_t remainingPukTries=0;
         case LE_OK:
             printf("Success.\n");
             return EXIT_SUCCESS;
         case LE_NOT_FOUND:
             printf("Failed to select the SIM card for this operation.\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Invalid SIM Identifier.\n");
             break;
         case LE_OVERFLOW:
             printf("The PIN code is too long (max 8 digits).\n");
@@ -540,6 +549,16 @@ int cm_sim_UnblockSim
             break;
         default:
             printf("Error: %s\n", LE_RESULT_TXT(res));
+            res = le_sim_GetRemainingPUKTries(SimId, &remainingPukTries);
+
+            if (LE_OK == res)
+            {
+                printf("Remaining PUK tries: %d\n", remainingPukTries);
+            }
+            else
+            {
+                printf("Failed to get the remaining PUK tries: error = %d\n", res);
+            }
             break;
     }
 
@@ -659,7 +678,9 @@ void cm_sim_ProcessSimCommand
     }
     else if (strcmp(command, "unblock") == 0)
     {
-        if (cm_cmn_CheckEnoughParams(2, numArgs, "PUK/PIN code missing. e.g. cm sim unblock <puk> <newpin>"))
+        if (cm_cmn_CheckEnoughParams(2,
+                                     numArgs,
+                                     "PUK/PIN code missing. e.g. cm sim unblock <puk> <newpin>"))
         {
             exit(cm_sim_UnblockSim(le_arg_GetArg(2), le_arg_GetArg(3)));
         }
