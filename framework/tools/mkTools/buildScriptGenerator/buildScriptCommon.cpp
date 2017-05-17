@@ -135,6 +135,7 @@ void GenerateBuildRules
 {
     std::string cCompilerPath = GetCCompilerPath(target);
     std::string cxxCompilerPath = GetCxxCompilerPath(target);
+    std::string crossToolPath = GetToolChainPath(target);
     std::string sysrootOption;
 
     std::string envValue = envVars::Get("LEGATO_SYSROOT");
@@ -231,8 +232,14 @@ void GenerateBuildRules
               "  command = cd $builddir/$workingdir; $\n"
               "            env CC=" << cCompilerPath << " $\n"
               "            CXX=" << cxxCompilerPath << " $\n"
-              "            CFLAGS=\"$cFlags\" CXXFLAGS=\"$cxxFlags\" LDFLAGS=\"$ldFlags\""
-              "            sh -c \'$externalCommand\'\n";
+              "            CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
+              "            CXXFLAGS=\"" << sysrootOption << " $cxxFlags\" $\n"
+              "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n";
+    if (!crossToolPath.empty())
+    {
+        script << "            PATH=\"" << crossToolPath << ":$$PATH\" $\n";
+    }
+    script << "            sh -c \'$externalCommand\'\n";
 
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"

@@ -25,6 +25,20 @@ bool IsCompilerClang
 );
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get any extra path components needed for the toolchain for a given target.
+ *
+ * @return The path to the toolchain.
+ *
+ * @throw  mk::Exception_t if target is not recognized.
+ */
+//--------------------------------------------------------------------------------------------------
+std::string GetToolChainPath
+(
+    const std::string& target   ///< Name of the target platform (e.g., "localhost" or "ar7").
+);
+
 //----------------------------------------------------------------------------------------------
 /**
  * Get the command-line path to use to invoke the (cross) C compiler for a given target.
