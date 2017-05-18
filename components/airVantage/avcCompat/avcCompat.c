@@ -95,6 +95,9 @@ static void UpdateHandler
 
         case LE_AVC_SESSION_STOPPED:
             assetData_SessionStatus(ASSET_DATA_SESSION_UNAVAILABLE);
+
+            // force a session if the modem closes it
+            pa_avc_StartSession();
             break;
 
         default:
