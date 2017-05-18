@@ -872,47 +872,6 @@ static le_result_t GetAvailGid
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the first available user ID and group ID.
- *
- * @note Does not lock the passwd or group file.
- *
- * @return
- *      LE_OK if successful.
- *      LE_NOT_FOUND if there are no more available IDs either for the user or the group.
- *      LE_FAULT if there was an error.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t GetAvailIDs
-(
-    uid_t* uidPtr,          ///< [OUT] Pointer to location to store first available uid.
-    gid_t* gidPtr           ///< [OUT] Pointer to location to store first available gid.
-)
-{
-    uid_t uid;
-
-    le_result_t result = GetAvailUid(&uid);
-
-    if (result != LE_OK)
-    {
-        return result;
-    }
-
-    gid_t gid;
-
-    result = GetAvailGid(&gid);
-
-    if (result == LE_OK)
-    {
-        *uidPtr = uid;
-        *gidPtr = gid;
-    }
-
-    return result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Creates a group with the specified name and group ID.
  *
  * @note Does not lock the passwd or group files.
@@ -969,8 +928,7 @@ static le_result_t CreateGroup
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Creates a user and group with the same name.  The created group will be the primary group of the
- * created user.
+ * Creates a user, and sets its primary group.
  *
  * @note Does not lock the passwd or group files.
  *
@@ -979,13 +937,12 @@ static le_result_t CreateGroup
  *      LE_FAULT if there was an error.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t CreateUserAndGroup
+static le_result_t CreateUser
 (
     const char* namePtr,    ///< [IN] Pointer to the name of user and group to create.
     uid_t uid,              ///< [IN] The uid for the user.
     gid_t gid,              ///< [IN] The gid for the group.
-    FILE* passwdFilePtr,    ///< [IN] Pointer to the passwd file.
-    FILE* groupFilePtr      ///< [IN] Pointer to the group file.
+    FILE* passwdFilePtr     ///< [IN] Pointer to the passwd file.
 )
 {
     // Generate home directory path.
@@ -1017,16 +974,6 @@ static le_result_t CreateUserAndGroup
         LE_FATAL("Could not write to passwd file.  %m.");
     }
 
-    if (CreateGroup(namePtr, gid, groupFilePtr) != LE_OK)
-    {
-        // Revert passwd file.
-        if (RestoreBackup(passwdFilePtr, BACKUP_PASSWORD_FILE) != LE_OK)
-        {
-            LE_FATAL("Could not restore the passwd file.");
-        }
-        return LE_FAULT;
-    }
-
     // Flush all passwd file stream to the file system.
     if (FlushFile(passwdFilePtr) != LE_OK)
     {
@@ -1048,16 +995,15 @@ static le_result_t CreateUserAndGroup
 }
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates a user account with the specified name.  A group with the same name as the username will
  * also be created and the group will be set as the user's primary group.  If the user and group are
  * successfully created the user ID and group ID are stored at the location pointed to by uidPtr and
- * gidPtr respectively.  If the user account alread exists then LE_DUPLICATE will be returned and
- * the user account's user ID and group ID are stored at the location pointed to by uidPtr and
- * gidPtr respectively.  If there is an error then LE_FAULT will be returned and the values at
- * uidPtr and gidPtr are undefined.
+ * gidPtr respectively.  If the user/group accounts already exist then LE_DUPLICATE will be
+ * returned and the user account's user ID and group ID are stored at the location pointed to by
+ * uidPtr and gidPtr respectively.  If there is an error then LE_FAULT will be returned and the
+ * values at uidPtr and gidPtr are undefined.
  *
  * @return
  *      LE_OK if successful.
@@ -1074,6 +1020,9 @@ le_result_t user_Create
                                 ///        user.  This can be NULL if the gid is not needed.
 )
 {
+    // Consider this a duplicate if either group or user do not exist
+    bool isDuplicate = true;
+
     // Lock the passwd file for reading and writing.
     FILE* passwdFilePtr = le_flock_OpenStream(PASSWORD_FILE, LE_FLOCK_READ_AND_APPEND, NULL);
     if (passwdFilePtr == NULL)
@@ -1091,49 +1040,82 @@ le_result_t user_Create
         return LE_FAULT;
     }
 
-    // Check if the user already exists.
-    le_result_t result = CheckIfUserOrGroupExist(usernamePtr);
-    if (result == LE_FAULT)
-    {
-        goto cleanup;
-    }
-
-    if (result == LE_DUPLICATE)
-    {
-        if (GetIDs(usernamePtr, uidPtr, gidPtr) != LE_OK)
-        {
-            result = LE_FAULT;
-        }
-
-        goto cleanup;
-    }
-
-    // Get the first available uid and gid.
+    // Create group first, as we need the gid to create a user.
+    // First check if the group exists.
     uid_t uid;
     gid_t gid;
-    result = GetAvailIDs(&uid, &gid);
-    if (result != LE_OK)
+    le_result_t result = GetGid(usernamePtr, &gid);
+    switch (result)
     {
-        goto cleanup;
+        case LE_OK:
+            // Group already exists
+            break;
+        case LE_NOT_FOUND:
+            // Group does not exist, create it.
+            result = GetAvailGid(&gid);
+            if (result != LE_OK)
+            {
+                goto cleanup;
+            }
+
+            result = CreateGroup(usernamePtr, gid, groupFilePtr);
+            if (LE_OK != result)
+            {
+                goto cleanup;
+            }
+
+            isDuplicate = false;
+
+            break;
+        default:
+            LE_CRIT("Error %d checking if group '%s' exists", result, usernamePtr);
+            goto cleanup;
     }
 
-    // Create the user and the group.
-    result = CreateUserAndGroup(usernamePtr, uid, gid, passwdFilePtr, groupFilePtr);
-
-    if (result == LE_OK)
+    // Now check if the user already exists
+    result = GetUid(usernamePtr, &uid);
+    switch (result)
     {
-        LE_INFO("Created user '%s' with uid %d and gid %d.", usernamePtr, uid, gid);
+        case LE_OK:
+            // User already exists;
+            break;
+        case LE_NOT_FOUND:
+            // User does not exist, create it.
+            result = GetAvailUid(&uid);
+            if (LE_OK != result)
+            {
+                goto cleanup;
+            }
 
-        if (uidPtr != NULL)
-        {
-            *uidPtr = uid;
-        }
+            result = CreateUser(usernamePtr, uid, gid, passwdFilePtr);
+            if (LE_OK != result)
+            {
+                goto cleanup;
+            }
 
-        if (gidPtr != NULL)
-        {
-            *gidPtr = gid;
-        }
+            isDuplicate = false;
+
+            break;
+
+        default:
+            // Error checking if user exists
+            LE_CRIT("Error %d checking if user '%s' exists", result, usernamePtr);
+            goto cleanup;
     }
+
+    LE_INFO("Created user '%s' with uid %d and gid %d.", usernamePtr, uid, gid);
+
+    if (uidPtr != NULL)
+    {
+        *uidPtr = uid;
+    }
+
+    if (gidPtr != NULL)
+    {
+        *gidPtr = gid;
+    }
+
+    result = (isDuplicate?LE_DUPLICATE:LE_OK);
 
 cleanup:
     le_flock_CloseStream(passwdFilePtr);
