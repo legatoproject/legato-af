@@ -110,6 +110,17 @@ options {
         if source_name is not None:
             return "{}:{}:{}: error:".format(source_name, token.line, token.charPositionInLine)
         return "{}:{}: error:".format(token.line, token.charPositionInLine)
+
+    def getWarningHeaderForToken(self, token):
+        """
+        What is the warning header for a token, normally line/character position information?
+        """
+
+        source_name = self.getSourceName()
+        if source_name is not None:
+            return "{}:{}:{}: warning:".format(source_name, token.line, token.charPositionInLine)
+        return "{}:{}: warning:".format(token.line, token.charPositionInLine)
+
 }
 
 @footer
@@ -371,10 +382,17 @@ referenceDecl returns [ref]
 formalParameter returns [parameter]
     : typeIdentifier IDENTIFIER arrayExpression? direction? docPostComments
         {
-            $parameter = interfaceIR.MakeParameter($typeIdentifier.typeObj,
-                                                    $IDENTIFIER.text,
-                                                    $arrayExpression.size,
-                                                    $direction.direction)
+            if $typeIdentifier.typeObj == interfaceIR.OLD_HANDLER_TYPE:
+                self.emitErrorMessage(self.getWarningHeaderForToken($IDENTIFIER) +
+                                      " Parameters with type 'handler' are deprecated. "
+                                      " Use the name of the handler instead: e.g. {} handler"
+                                      .format($IDENTIFIER.text))
+
+            $parameter = interfaceIR.MakeParameter(self.iface,
+                                                   $typeIdentifier.typeObj,
+                                                   $IDENTIFIER.text,
+                                                   $arrayExpression.size,
+                                                   $direction.direction)
             $parameter.comments = $docPostComments.comments
         }
     ;

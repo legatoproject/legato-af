@@ -107,12 +107,12 @@ HANDLER BugTestHandler
  *     testing
  * a specific bug, as well as event comment strings.
  *
- * Got rid of old-style handlers, so use a new-style handler here.
+ * Uses old-style handler, for backwards compatibility testing
  */
 EVENT BugTest
 (
     string newPathPtr[512] IN,
-    BugTestHandler BugTestHandler
+    handler BugTestHandler
 );
 
 

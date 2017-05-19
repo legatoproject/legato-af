@@ -30,7 +30,10 @@ string
 
 file
 
-handler
+handler (deprecated; use the name of the handler instead)
+
+le_result_t
+le_onoff_t
 @endverbatim
 
 The @c uint and @c int types are basic data integer types.
@@ -41,8 +44,7 @@ The @c string type is a data type used to store text.
 
 The @c file type is used to pass an open file descriptor as a parameter between a client and server.
 
-A @ref apiFilesSyntax_handler "handler" is a callback function used when @ref apiFilesSyntax_event "events" occur.
-
+The @ref le_result_t and @ref le_onoff_t types from legato.h can also be used in API files.
 
 @second User-defined types:
 
@@ -50,12 +52,9 @@ A @ref apiFilesSyntax_handler "handler" is a callback function used when @ref ap
  - ENUM
  - BITMAP
  - REFERENCE
+ - HANDLER
 
 Type definitions can also be shared between API files with USETYPES.
-
-Also, all C types defined in the @c legato.h file are available. The most commonly used of these is
-the @ref le_result_t type. Support for directly using these C types is a temporary measure and will
-be removed in a future release.
 
 
 @subsection apiFilesSyntax_typesDefine DEFINE

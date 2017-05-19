@@ -167,6 +167,17 @@ class HandlerType(Type):
             % (self.name,
                ", ".join([str(param) for param in self.parameters]))
 
+class OldHandlerType(Type):
+    """
+    Magic type for old-style handlers.  When used as a parameter, will be converted to a handler
+    with type equal to the name of the parameter.  Error when used in other contexts.
+    """
+    def __init__(self):
+        super(OldHandlerType, self).__init__("handler", 4)
+
+    def __str__(self):
+        return "OldHandler"
+
 #---------------------------------------------------------------------------------------------------
 # Basic types
 #---------------------------------------------------------------------------------------------------
@@ -188,6 +199,8 @@ RESULT_TYPE = BasicType('le_result_t', 4)
 ONOFF_TYPE  = BasicType('le_onoff_t', 4)
 # Indicates an error occurred parsing a type -- e.g. reference to type that doesn't exist
 ERROR_TYPE  = BasicType('**ERROR**', 0)
+# Magic old-handler type
+OLD_HANDLER_TYPE = OldHandlerType()
 
 #---------------------------------------------------------------------------------------------------
 # Formal parameters
@@ -253,10 +266,16 @@ class StringParameter(Parameter):
     def __repr__(self):
         return "<StringParameter {}>".format(str(self))
 
-def MakeParameter(typeObj, name, arraySize, direction=DIR_IN):
+def MakeParameter(interface, typeObj, name, arraySize, direction=DIR_IN):
     """Helper to make a parameter object"""
     if direction == None:
         direction = DIR_IN
+
+    if typeObj == OLD_HANDLER_TYPE:
+        # Convert old handler parameters to parameter type here.
+        typeObj = interface.findType(name)
+        name = "handler"
+
     if isinstance(typeObj, BasicType) and typeObj.name == "string":
         # Strings are special
         if arraySize == None:
@@ -291,6 +310,9 @@ class Function(object):
         self.returnType = returnType
         self.name = name
         self.parameters = parameters
+
+        if returnType == OLD_HANDLER_TYPE or isinstance(returnType, HandlerType):
+            raise Exception ('Functions cannot return handlers')
 
         # All functions can have exactly one parameter.
         handlers = [ (index, handler) for (index, handler) in enumerate(parameters)
@@ -400,8 +422,11 @@ class Interface(object):
 
     def findType(self, typeName):
         """Look up a type"""
-        # Always consider basic types first
-        if typeName in Interface._basicTypes:
+        if typeName == "handler":
+            # Magic handler type
+            return OLD_HANDLER_TYPE
+        elif typeName in Interface._basicTypes:
+            # Always consider basic types first
             return Interface._basicTypes[typeName]
         else:
             return self._findLocalType(typeName)

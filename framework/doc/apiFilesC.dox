@@ -35,7 +35,7 @@ to actual C definitions (based on the @ref apiFilesC_sampleAPI).
 FUNCTION int32 UseCallback
 (
     uint32 someParm IN,
-    handler TestAHandler
+    TestAHandler handler
 );
 @endcode
 
@@ -64,7 +64,7 @@ to actual C definitions (based on the @ref apiFilesC_sampleAPI).
 EVENT TestA
 (
     uint32 data,
-    handler TestAHandler
+    TestAHandler myHandler
 );
 @endcode
 
@@ -76,7 +76,7 @@ typedef struct TestAHandler* TestAHandlerRef_t;
 TestAHandlerRef_t AddTestAHandler
 (
     uint32_t data,
-    TestAHandlerFunc_t handlerPtr,
+    TestAHandlerFunc_t myHandlerPtr,
     void* contextPtr
 );
 
