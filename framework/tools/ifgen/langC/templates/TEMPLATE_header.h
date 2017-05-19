@@ -38,7 +38,11 @@
 //--------------------------------------------------------------------------------------------------
 {{define.comment|FormatHeaderComment}}
 //--------------------------------------------------------------------------------------------------
+{%- if define.value is string %}
+#define {{apiName|upper}}_{{define.name}} "{{define.value}}"
+{%- else %}
 #define {{apiName|upper}}_{{define.name}} {{define.value}}
+{%- endif %}
 {%- endfor %}
 {%- for type in types if type is not HandlerType %}
 
