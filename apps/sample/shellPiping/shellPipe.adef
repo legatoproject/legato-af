@@ -18,10 +18,12 @@ requires:
     file:
     {
         // Adding sh (shell), ls, grep and echo utilities into the sandbox.
-        /bin/sh     /usr/local/bin/
-        /bin/ls     /usr/local/bin/
-        /bin/grep   /usr/local/bin/
-        /bin/echo   /usr/local/bin/
+        /bin/sh                 /usr/local/bin/
+        /bin/ls                 /usr/local/bin/
+        /bin/grep               /usr/local/bin/
+        /bin/echo               /usr/local/bin/
+        /lib/libtinfo.so.5      /lib/
+        /lib/libtinfo.so.5.9    /lib/
     }
 }
 
