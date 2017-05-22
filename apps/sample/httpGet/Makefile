@@ -1,4 +1,14 @@
-TARGETS := ar7 ar86 wp85 localhost
+TARGETS = \
+	ar7 \
+	ar758x \
+	ar759x \
+	ar86 \
+	wp750x \
+	wp76xx \
+	wp85 \
+	raspi \
+	virt \
+	localhost
 
 .PHONY: all $(TARGETS)
 all: $(TARGETS)
