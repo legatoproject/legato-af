@@ -1,0 +1,21 @@
+requires:
+{
+    api:
+    {
+        atServices/le_atClient.api         [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/atServices/atClient/le_atClient.c
+    ${LEGATO_ROOT}/components/atServices/Common/le_dev.c
+    atClient_stub.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/atServices/Common
+    -Dle_msg_AddServiceOpenHandler=AddServiceOpenHandler
+    -Dle_msg_AddServiceCloseHandler=AddServiceCloseHandler
+}

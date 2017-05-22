@@ -5,7 +5,7 @@
  *
  */
 #include "legato.h"
-
+#include "interfaces.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -21,5 +21,5 @@ COMPONENT_INIT
     LE_INFO("======== START UnitTest of AT CLIENT API ========");
 
     LE_INFO("======== UnitTest of AT CLIENT API FINISHED ========");
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
