@@ -3,7 +3,7 @@
 | Service                            | Description                                        | multi-app safe             |
 | ---------------------------------- | -------------------------------------------------- | :------------------------: |
 | @subpage c_le_instStat             | App install/uninstall notification                 | @image html green_dot.png  |
-| @subpage c_le_fwupdate             | Firmware image updates                             |                            |
+| @subpage c_fwupdate                | Firmware image updates                             |                            |
 | @subpage c_update                  | Apply app and firmware updates                     | @image html green_dot.png  |
 | @subpage c_updateCtrl              | Control app and firmware updates                   | @image html green_dot.png  |
 

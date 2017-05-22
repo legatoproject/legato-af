@@ -1,19 +1,31 @@
 /** @page platformConstraints Platform Constraints
 
-The AR755x, AR758x, AR759x, AR8652, WP750x, and WP8548 platforms have the following limitations:
 
-| Constraint                                | AR755x | AR758x | AR759x | AR8652 | WP750x | WP8548 |
-| ----------------------------------------- | :----: | :----: | :----: | :----: | :-----:| :-----:|
-| @subpage platformConstraintsAdc           | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsAudio         | X      | X      | X      | X      |        | X      |
-| @subpage platformConstraintsGnss          | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsSecStorage    | X      | X      | X      | X      |        | X      |
-| @subpage platformConstraintsSim           | X      | X      | X      | X      |        | X      |
-| @subpage platformConstraintsStk           | X      | X      | X      | X      |        | X      |
-| @subpage platformConstraintsTemperature   | X      | X      | X      | X      |        | X      |
-| @subpage platformConstraintsATCommand     | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsReadOnly      | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsFwUpdate      | X      | X      | X      | X      | X      | X      |
+@section  AtPlatforms AT-command based platforms
+
+The AT-command based platforms (e.g. Raspberry Pi) only support a limited set of functions, please
+refer to @subpage platformConstraintsAtCmd section.
+
+
+@section  SwiPlatforms Sierra Wireless platforms
+
+- <b>'X'</b> means the platform is impacted by limitations on the feature, i.e. by using the API,
+the User must consider the constraints described in the corresponding page.
+- <b>'NA'</b> means the feature is not applicable to the platform
+
+| Features                                                               | AR755x | AR758x | AR759x | AR8652 | WPx5xx | WP76xx |
+| ---------------------------------------------------------------------- | :----: | :----: | :----: | :----: | :-----:| :-----:|
+| @subpage platformConstraintsAdc (@ref c_adc "le_adc")                  | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsAudio (@ref c_audio "le_audio")            | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsGnss (@ref c_gnss "le_gnss")               | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsSecStorage (@ref c_secStore "le_secStore") | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsSim (@ref c_sim "le_sim")                  | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsStk (@ref le_sim_stk "le_sim for STK")     | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsTemperature (@ref c_temp "le_temp")        | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsReadOnly                                   | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsDualSys (@ref c_fwupdate "le_fwupdate")    | NA     | X      | X      | NA     | NA     | NA     |
+
+
 
 
 Copyright (C) Sierra Wireless Inc.

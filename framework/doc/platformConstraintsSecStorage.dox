@@ -1,8 +1,7 @@
 /** @page platformConstraintsSecStorage Secure Storage
 
-The AR755x, AR8652, and WP8548 platforms maximum space available for secure storage is 256 KB.
-
-See @ref c_secStore API
+The total space and the available free space in secure storage can be retrived with
+secStoreAdmin_GetTotalSpace() function of @ref c_secStoreAdmin "Secure Storage Admin API".
 
 Copyright (C) Sierra Wireless Inc.
 

@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_fwupdate Modem Firmware Update
+ * @page c_fwupdate Modem Firmware Update
  *
  * @ref le_fwupdate_interface.h "API Reference"
  *
@@ -28,7 +28,7 @@
  *
  * @warning All of these APIs are not available for all platforms. Please refer to the
  * Product Technical specification document of your platform for further details.
- * Please refer to @subpage platformConstraintsFwUpdate for details.
+ * Please refer to @subpage platformConstraintsDualSys for details on Dual System.
  *
  * @section le_fwupdate_image Update Firmware Image
  *
@@ -76,7 +76,7 @@
 /**
  * @file le_fwupdate_interface.h
  *
- * Legato @ref c_le_fwupdate include file.
+ * Legato @ref c_fwupdate include file.
  *
  * Copyright (C) Sierra Wireless Inc.
  */

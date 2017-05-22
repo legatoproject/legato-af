@@ -2,7 +2,7 @@
 
 See @ref c_temp API
 
-The AR755x, AR8652, and WP8548 platforms support two main sensors.
+Two main sensors are supported.
 
 The dedicated string to request a sensor with le_temp_Request() function are \b "POWER_CONTROLLER"
 and \b "POWER_AMPLIFIER".

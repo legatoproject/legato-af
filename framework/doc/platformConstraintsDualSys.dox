@@ -1,13 +1,9 @@
-/** @page platformConstraintsFwUpdate Firmware Update
+/** @page platformConstraintsDualSys Dual System mechanism
 
-@section FwupdatePlatformsConstraints Platforms constraints
-
-The Dual System is only available on AR758x and AR759x platforms.
 
 @note Please refer to the Product Technical specification document of your platform for further
 details.
 
-@section DualSystem Dual System mechanism
 The <b>dual system</b> consists in managing 2 copies of most code areas, for reliability and
 stability purposes.
 One copy is a backup in case the other one is corrupted or not running properly.

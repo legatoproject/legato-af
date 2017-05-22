@@ -73,7 +73,7 @@ $GPGGA,,,,,,0,,,,,,,,*66
 
 The le_gnss_SetNmeaSentences() and le_gnss_GetNmeaSentences() functions configure the enabled NMEA
 sentences in the NMEA flow. Please note that the Qualcomm-based firmware release
-<c>SWI9X15A_07.10.15.00</c> is subject to some limitations:
+<c>SWI9X15A_07.10.15.00</c> (AR755x, AR8652) is subject to some limitations:
 - Not all NMEA sentences supported by the AT!GPSNMEASENTENCE can be (de)activated through
 the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not available.
 - The Galileo NMEA sentences always appear as not enabled when retrieving their status, even if

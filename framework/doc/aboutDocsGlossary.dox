@@ -7,7 +7,7 @@ Common Legato Terms:
 | @ref defFilesAdef "adef"                              | Application definition file - defines the external interfaces and internal content of apps including bindings, bundles, components and system settings |
 | .api files                                            | Interface definition language (IDL) file for defining function-call-oriented APIs that are used over IPC by programs written in different programming languages than the language used to implement the API. (e.g., the functions defined in the API are implemented in C while a program that calls the API is written in Java) |
 | @ref howToAV "AirVantage"                             | Sierra Wireless' IoT cloud that allows management of a fleet of remote machines|
-| @ref platformConstraintsATCommand "AT"                | Instruction set to send commands to a modem - AT Commands |
+| @ref platformConstraintsAtCmd "AT"                    | Instruction set to send commands to a modem through AT Commands |
 | Build Environment                                     | Collection of tools and environment variables to build and deploy applications on the Legato AF |
 | @ref defFilesCdef "cdef"                              | Component definition file - defines the external interfaces and internal content of software components |
 | @ref basicComponents "Component"                      | Collection of functionally-related source code and other files that are grouped into a single, reusable unit for sharing between projects |

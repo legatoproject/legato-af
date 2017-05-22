@@ -1,6 +1,16 @@
 /** @page platformConstraintsAudio Audio
 
-@ref c_audio "Audio" functions are constrained by the following platform limitations for AR755x, AR758x, AR759x, AR8652, and WP8548.
+@ref c_audio "le_audio" functions are constrained by the following platform limitations.
+
+<b>DTMF, playback and recording:</b>
+- DTMF decoding works only on MdmVoice Rx stream. DTMF's reception handler must be installed before
+  call initiation.
+
+- File Playback/Recording: WAVE, AMR Narrowband and AMR Wideband formats are supported.
+
+- Only one Recording/sample extraction can be activated simultaneously.
+
+<HR>
 
 <b>Possible audio connections:</b>
 
@@ -45,12 +55,7 @@ IIR = Infinite Impulse Response filter <br>
 FIR = Finite Impulse Response filter <br>
 AGC = Automatic Gain Control
 
-<b>The following diagram shows where the functions are applied in a voice call audio path:</b>
-
-@image html AR755x_Ext_AudioBlockDiagram_Legato.jpg
-
-
-<b>Gains value's for AR7x series (also applicable for AR8652):</b>
+<b>Gains value's:</b>
 
 <b>Mic:</b>
  - range: 0x0000 – 0xFFFF;
@@ -82,19 +87,13 @@ AGC = Automatic Gain Control
 
 <HR>
 
-<b>Other audio features and constraints:</b>
-- DTMF decoding works only on MdmVoice Rx stream. DTMF's reception handler must be installed before
-  call initiation.
+<b>The following diagram shows where the functions are applied in a voice call audio path
+   (applicable for AR755x, AR8652, WP8548):</b>
 
-- File Playback/Recording: WAVE, AMR Narrowband and AMR Wideband formats are supported.
-
-- Samples insertion/extraction: PCM samples using configuration of channel number, sampling rate and
-  sampling resolution.
-
-- Several file playbacks can be activated simultaneously but not several file recordings. Playback
-  and recording can’t be performed simultaneously. This also applies to samples insertion/extraction.
+@image html AR755x_Ext_AudioBlockDiagram_Legato.jpg
 
 <HR>
+
 
 Copyright (C) Sierra Wireless Inc.
 
