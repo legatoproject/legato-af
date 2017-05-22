@@ -3,10 +3,6 @@ requires:
     api:
     {
         le_voicecall.api              [types-only]
-        le_audio.api                  [types-only]
-        modemServices/le_mcc.api      [types-only]
-        modemServices/le_mdmDefs.api  [types-only]
-        le_pm.api                     [types-only]
     }
 }
 

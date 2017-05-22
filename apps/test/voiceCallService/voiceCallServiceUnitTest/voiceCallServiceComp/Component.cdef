@@ -1,0 +1,22 @@
+requires:
+{
+    api:
+    {
+        le_voicecall.api              [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/voiceCallService/voiceCallServiceServer.c
+    voiceCall_stub.c
+    mcc_stub.c
+    audio_stub.c
+}
+
+cflags:
+{
+    -Dle_msg_SetServiceRecvHandler=MySetServiceRecvHandler
+    -Dle_msg_AddServiceOpenHandler=MyAddServiceOpenHandler
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+}

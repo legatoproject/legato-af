@@ -5,6 +5,7 @@
  */
 
 #include "legato.h"
+#include "interfaces.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -21,5 +22,5 @@ COMPONENT_INIT
     LE_INFO("======== START UnitTest of VOICE CALL API ========");
 
     LE_INFO("======== UnitTest of VOICE CALL API FINISHED ========");
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
