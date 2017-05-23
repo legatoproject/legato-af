@@ -3,80 +3,194 @@
 SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
 TEST_COVERAGE=${TEST_COVERAGE:-1}
+WITH_COLORS=${WITH_COLORS:-true}
+
+if [[ "$WITH_COLORS" == "true" ]]; then
+    COLOR_INFO="\033[1;36m"
+    COLOR_ERROR="\033[1;31m"
+    COLOR_WARN="\033[1;93m"
+    COLOR_RESET="\033[0m"
+    COLOR_PASS="\033[1;32m"
+fi
+
+function message {
+    local color=$1
+    shift
+    echo $ECHO_ARGS -e $color $* $COLOR_RESET
+}
+
+function DoTestCleanup()
+{
+    StopDaemons
+    StopVirtualTarget
+}
+
+function Abort()
+{
+    message $COLOR_WARN "Aborting ..."
+    DoTestCleanup
+    exit 1
+}
+
+trap 'Abort' INT
+
+function CheckRet()
+{
+    RETVAL=$?
+    if [ $RETVAL -ne 0 ]; then
+        message $COLOR_ERROR "Exit Code $RETVAL"
+        DoTestCleanup
+        exit $RETVAL
+    fi
+}
+
+function CheckSshHost {
+    local ssh_host=$1
+    local ssh_port=$2
+
+    host_ENTRY="$ssh_host"
+    if [[ "$ssh_port" != "22" ]]; then
+        host_ENTRY="[$ssh_host]:$ssh_port"
+    fi
+
+    known_ENTRY=$(ssh-keygen -F $host_ENTRY | grep -v '#')
+
+    ssh_ENTRY=$(ssh-keyscan -p $ssh_port -t rsa $ssh_host 2>/dev/null)
+    if [ -z "$ssh_ENTRY" ]; then
+        echo "Unable to find RSA host key for $host_ENTRY"
+        return 1
+    fi
+
+    ssh_KEY=$(echo $ssh_ENTRY | awk '{print $3}')
+
+    # Rebuild entry because port is not specified in some versions of ssh-keyscan
+    ssh_ENTRY="$host_ENTRY ssh-rsa $ssh_KEY"
+
+    if [ -z "$known_ENTRY" ]; then
+        message $COLOR_WARN "Host '$ssh_host' ($ssh_port) is not known, adding new key"
+        if ! [ -e "$HOME/.ssh/known_hosts" ]; then
+            mkdir -p "$HOME/.ssh"
+            touch "$HOME/.ssh/known_hosts"
+        fi
+        echo "$ssh_ENTRY" >> "$HOME/.ssh/known_hosts"
+        ssh-keygen -H
+    else
+        # Host is known
+        known_LINE=$(echo $known_ENTRY | sed -e 's/\([0-9]*\):.*/\1/g')
+        known_KEY=$(echo $known_ENTRY | awk '{print $3}' | head -1)
+
+        message $COLOR_WARN "Host '$ssh_host' ($ssh_port) is known"
+
+        if ! [[ "$known_KEY" == "$ssh_KEY" ]]; then
+            message $COLOR_WARN "Replacing key for '$ssh_host' ($ssh_port)"
+
+            # Remove existing entry
+            ssh-keygen -R $host_ENTRY
+
+            # Add new key
+            echo "$ssh_ENTRY" >> "$HOME/.ssh/known_hosts"
+            ssh-keygen -H
+        fi
+    fi
+}
+
+function CheckSsh {
+    local ssh_host=$1
+    local ssh_port=${2:-22}
+
+    ssh_host=$(echo $ssh_host | tr '[:upper:]' '[:lower:]')
+    local ssh_ip=$(getent hosts $ssh_host | head -1 | awk '{print $1}')
+
+    CheckSshHost $ssh_host $ssh_port
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    if [ -z "$ssh_ip" ] || [[ "$ssh_host" == "$ssh_ip" ]]; then
+        return 0
+    fi
+
+    CheckSshHost $ssh_ip $ssh_port
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+}
 
 function StartServiceDirectory()
 {
-    echo -n "Starting Service Directory..."
+    message $COLOR_INFO "Starting Service Directory..."
     serviceDirectory &
     SERVICE_DIRECTORY_PID=$!
     sleep 0.5
-    echo " DONE."
+    message $COLOR_PASS "DONE"
 }
 
 function StopServiceDirectory()
 {
-    echo -n "Stopping Service Directory..."
+    ECHO_ARGS='-n' message $COLOR_INFO "Stopping Service Directory..."
     kill $SERVICE_DIRECTORY_PID > /dev/null 2>&1
-    echo " DONE."
+    message $COLOR_PASS "DONE"
 }
 
 function CheckServiceDirectory()
 {
     if ! kill -0 $SERVICE_DIRECTORY_PID > /dev/null 2>&1
     then
-        echo "Service Directory is no longer running!"
+        message $COLOR_WARN "Service Directory is no longer running!"
+        DoTestCleanup
         exit 1
     fi
 }
 
 function StartLogControlDaemon()
 {
-    echo -n "Starting Log Control Daemon..."
+    message $COLOR_INFO "Starting Log Control Daemon..."
     logCtrlDaemon &
     LOG_CTRL_DAEMON_PID=$!
     sleep 0.5
-    echo " DONE."
+    message $COLOR_PASS "DONE"
 }
 
 function StopLogControlDaemon()
 {
-    echo -n "Stopping Log Control Daemon..."
+    ECHO_ARGS='-n' message $COLOR_INFO "Stopping Log Control Daemon..."
     kill $LOG_CTRL_DAEMON_PID > /dev/null 2>&1
     sleep 0.5
-    echo " DONE."
+    message $COLOR_PASS "DONE"
 }
 
 function CheckLogControlDaemon()
 {
     if ! kill -0 $LOG_CTRL_DAEMON_PID > /dev/null 2>&1
     then
-        echo "Log Control Daemon is no longer running!"
-        StopServiceDirectory
+        message $COLOR_WARN "Log Control Daemon is no longer running!"
+        DoTestCleanup
         exit 1
     fi
 }
 
 function StartConfigTree()
 {
-    echo -n "Starting Configuration Tree..."
+    message $COLOR_INFO "Starting Configuration Tree..."
     configTree &
     CONFIG_TREE_PID=$!
     sleep 0.5
-    echo " DONE."
+    message $COLOR_PASS " DONE."
 }
 
 function StopConfigTree()
 {
-    echo -n "Stopping Configuration Tree..."
+    ECHO_ARGS='-n' message $COLOR_INFO "Stopping Configuration Tree..."
     kill $CONFIG_TREE_PID > /dev/null 2>&1
-    echo " DONE."
+    message $COLOR_PASS " DONE."
 }
 
 function CheckConfigTree()
 {
     if ! kill -0 $CONFIG_TREE_PID > /dev/null 2>&1
     then
-        echo "Config Tree is no longer running!"
+        message $COLOR_WARN "Config Tree is no longer running!"
+        DoTestCleanup
         exit 1
     fi
 }
@@ -90,6 +204,10 @@ function StartDaemons()
 
 function StopDaemons()
 {
+    if [[ "$TARGET_TYPE" != "localhost" ]]; then
+        return
+    fi
+
     StopLogControlDaemon
     StopServiceDirectory
     StopConfigTree
@@ -102,13 +220,75 @@ function CheckDaemons()
     CheckConfigTree
 }
 
-function CheckRet()
+# Wait for SSH to be available
+function WaitSsh()
 {
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        StopDaemons
-        exit $RETVAL
+    for (( i=0; i<10; i++ )); do
+        echo "Trying $DEST_IP:22 ..."
+        KEY=$(ssh-keyscan -p 22 -t rsa $DEST_IP)
+        if [ -n "$KEY" ]; then
+            return 0
+        fi
+
+        sleep 15
+    done
+
+    return 1
+}
+
+
+function StartVirtualTarget()
+{
+    VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-arm}
+    VIRT_DOCKER_IMG=${VIRT_DOCKER_IMG:-"quay.io/legato/virt-$VIRT_TARGET_ARCH"}
+
+    if ! which docker >/dev/null; then
+        message $COLOR_ERROR "Unable to find 'docker', unable to executed virtual tests."
+        echo "See https://docs.docker.com/engine/installation/ for installation instructions."
+        exit 1
+    fi
+
+    if [ -z "$VIRT_SKIP_PULL" ]; then
+        message $COLOR_INFO "Downloading virtual target image ..."
+        docker pull $VIRT_DOCKER_IMG
+        CheckRet
+    fi
+
+    VIRT_CNT_NAME="virt-$(date +%Y%d%m-%H%M%S)"
+
+    message $COLOR_INFO "Starting virtual target ..."
+
+    docker run \
+                --detach \
+                --name=$VIRT_CNT_NAME \
+                $VIRT_DOCKER_IMG
+    CheckRet
+
+    # Wait up to 1 minute for the image to have an IP
+    for (( i=0; i<4; i++ )); do
+        DEST_IP=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $VIRT_CNT_NAME)
+        if [ -n "$DEST_IP" ]; then
+            break
+        fi
+
+        sleep 15
+    done
+
+    echo "Virtual target[$VIRT_TARGET_ARCH]: IP[$DEST_IP] Countainer[$VIRT_CNT_NAME]"
+
+    WaitSsh
+    CheckRet
+
+    CheckSsh $DEST_IP
+    CheckRet
+
+    export DEST_IP VIRT_TARGET_ARCH
+}
+
+function StopVirtualTarget()
+{
+    if [ -n "$VIRT_CNT_NAME" ]; then
+        docker kill $VIRT_CNT_NAME
     fi
 }
 
@@ -134,21 +314,16 @@ function TargetIdentify()
         fi
     fi
 
-    echo "Testing Legato on $DEST_IP (type = $TARGET_TYPE)"
+    message $COLOR_INFO "Testing Legato on $DEST_IP (type = $TARGET_TYPE)"
 }
 
 function TargetUpdateLegato()
 {
-    echo "Updating Legato"
+    message $COLOR_INFO "Updating Legato"
 
     # if startup scripts are updated target will need to reboot.
     instsys build/$TARGET_TYPE/system.$TARGET_TYPE.update $DEST_IP
-    RETVAL=$?
-    if [ $RETVAL -ne 0 ]; then
-        echo -e $COLOR_ERROR "Exit Code $RETVAL" $COLOR_RESET
-        StopDaemons
-        exit $RETVAL
-    fi
+    CheckRet
 
     # Wait for target to bring up the new system.
     sleep 60
@@ -221,25 +396,25 @@ function HostUnitTest()
 
 function Build()
 {
-    TARGET=$1
+    local target=$1
 
-    BUILDDIR="$BUILDDIR_BASE/$TARGET"
+    local builddir="$BUILDDIR_BASE/$target"
 
-    echo "Building $TARGET with coverage report set to $TEST_COVERAGE"
+    message "Building $target with code coverage report set to $TEST_COVERAGE"
 
     # Check Toolchain path
     # NOTE: Even if the toolchain path is not set, the Makefile should be able to recover.
-    if [[ $TARGET != "localhost" ]]; then
-        TOOLCHAIN_ENV="${TARGET^^}_TOOLCHAIN_DIR"
-        if [ -z "${!TOOLCHAIN_ENV}" ]; then
-            echo "$TOOLCHAIN_ENV not set"
+    if [[ "$target" != "localhost" ]]; then
+        local toolchain_env="${target^^}_TOOLCHAIN_DIR"
+        if [ -z "${!toolchain_env}" ]; then
+            message $COLOR_WARN "$toolchain_env not set!"
         else
-            echo "$TOOLCHAIN_ENV=${!TOOLCHAIN_ENV}"
+            echo "$toolchain_env=${!toolchain_env}"
         fi
     fi
 
     # Build
-    make tests_$TARGET TEST_COVERAGE=$TEST_COVERAGE
+    make tests_$target TEST_COVERAGE=$TEST_COVERAGE
     CheckRet
 
     source $SOURCEDIR/bin/configlegatoenv
@@ -272,72 +447,106 @@ function BuildClang()
 
 function Job_HostUnitTest()
 {
+    local clean=${1:-true}
+
     if [ -n "$SKIP_HOST_TESTING" ]; then
         echo "Skipping host unit tests."
         return
     fi
 
-    CleanBuild
-    Build "localhost"
+    export TARGET_TYPE=localhost
+
+    if $clean; then
+        CleanBuild
+        Build $TARGET_TYPE
+    fi
     HostUnitTest
-    GenerateReport "localhost"
+    GenerateReport $TARGET_TYPE
 }
 
 function Job_TargetUnitTest()
 {
+    local clean=${1:-true}
+
     if [ -n "$SKIP_TARGET_TESTING" ]; then
         echo "Skipping on-target unit tests."
         return
     fi
 
     TargetIdentify
-    CleanBuild
-    Build $TARGET_TYPE
+    if $clean; then
+        CleanBuild
+        Build $TARGET_TYPE
+    fi
+    TargetUnitTest
+    GenerateReport $TARGET_TYPE
+}
+
+function Job_VirtualTargetUnitTest()
+{
+    local clean=${1:-true}
+
+    if [ -n "$SKIP_TARGET_TESTING" ]; then
+        echo "Skipping on-target unit tests."
+        return
+    fi
+
+    export TARGET_TYPE=virt
+    export VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-arm}
+
+    if $clean; then
+        CleanBuild
+        Build $TARGET_TYPE
+    fi
+    StartVirtualTarget
     TargetUnitTest
     GenerateReport $TARGET_TYPE
 }
 
 function Manual_DeveloperPrePushTrial()
 {
-    echo "Cleaning ..."
+    message $COLOR_INFO "Cleaning ..."
     CleanBuild
 
-    echo "Building ..."
+    message $COLOR_INFO "Building ..."
     Build "localhost"
 
-    echo "Building for virtual target..."
+    message $COLOR_INFO "Building for virtual target ..."
     Build "virt"
 
-    echo "Testing ..."
-    HostUnitTest
+    message $COLOR_INFO "Testing host UTs ..."
+    Job_HostUnitTest false
 
-    echo "Tests complete."
+    message $COLOR_INFO "Testing virtual target UTs ..."
+    Job_VirtualTargetUnitTest false
+
+    message $COLOR_PASS "Tests complete"
 }
 
 function GenerateReport()
 {
-    TARGET=$1
+    local target=$1
 
-    BUILDDIR="$BUILDDIR_BASE/$TARGET"
+    local builddir="$BUILDDIR_BASE/$target"
 
     if [[ "$TEST_COVERAGE" == "1" ]]; then
-        echo "Generate report for $TARGET"
+        message $COLOR_INFO "Generating report for $target ..."
 
         # Build
         gcovr --xml \
-            -r . -o $BUILDDIR/coverage.xml \
+            -r . -o $builddir/coverage.xml \
             --exclude=".*(test|build|codegen)\b.*"
         CheckRet
 
-        mkdir -p $BUILDDIR/coverage/html/
+        mkdir -p $builddir/coverage/html/
         gcovr --html --html-details \
-            -r . -o $BUILDDIR/coverage/html/index.html \
+            -r . -o $builddir/coverage/html/index.html \
             --exclude=".*(test|build|codegen)\b.*"
         CheckRet
     fi
 }
 
-echo -e "== Task: '$1' ==\n"
+message $COLOR_INFO "== Task: '$1' ==\n"
 
 if [ -e "$SOURCEDIR/bin/configlegatoenv" ]; then
     source $SOURCEDIR/bin/configlegatoenv
@@ -345,18 +554,22 @@ fi
 
 case "$1" in
 host-ut)
-    Job_HostUnitTest
+    Job_HostUnitTest true
     ;;
 run-host-ut)
-    HostUnitTest
-    GenerateReport "localhost"
+    Job_HostUnitTest false
     ;;
 target-ut)
-    Job_TargetUnitTest
+    Job_TargetUnitTest true
     ;;
 run-target-ut)
-    TargetUnitTest
-    GenerateReport $TARGET_TYPE
+    Job_TargetUnitTest false
+    ;;
+virt-target-ut)
+    Job_VirtualTargetUnitTest true
+    ;;
+run-virt-target-ut)
+    Job_VirtualTargetUnitTest false
     ;;
 dev-trial)
     Manual_DeveloperPrePushTrial
