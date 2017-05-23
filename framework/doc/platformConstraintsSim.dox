@@ -31,6 +31,9 @@ For other products, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_EXTERNAL_SLOT_2 types
 @note For the support of LE_SIM_EMBEDDED on AR755x platform, please refer to your platform
 documentation for further details.
 
+@note Switching between local and remote SIM card requires a reset to take effect, please refer to
+your platform documentation for further details.
+
 @section platformConstraintsSim_swap Hot-swap
 
 Your platform might need a reboot to detect a SIM card insertion or removal.
