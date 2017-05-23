@@ -243,8 +243,7 @@ typedef struct
     le_mcc_TerminationReason_t termination;                             ///< Call termination reason
     int32_t                 specificTerm;                               ///< specific call
                                                                         ///< termination reason
-    bool                    ackOrT5OrT7Received;                        ///< LL-ACK, HL-ACK,
-                                                                        ///< T5 timeout or
+    bool                    ackOrT7Received;                            ///< LL-ACK, HL-ACK,
                                                                         ///< T7 timeout received
 }
 ECall_t;
@@ -1576,15 +1575,15 @@ static void ProcessECallState
             ECallObj.redial.startTentativeTime = le_clk_GetRelativeTime();
             ECallObj.termination = LE_MCC_TERM_UNDEFINED;
             ECallObj.specificTerm = 0;
-            ECallObj.ackOrT5OrT7Received = false;
+            ECallObj.ackOrT7Received = false;
             break;
         }
 
         case LE_ECALL_STATE_DISCONNECTED: /* Emergency call is disconnected */
         {
-            LE_DEBUG("Termination reason: %d, ackOrT5OrT7Received: %d, terminationReceived: %d",
+            LE_DEBUG("Termination reason: %d, ackOrT7Received: %d, terminationReceived: %d",
                      ECallObj.termination,
-                     ECallObj.ackOrT5OrT7Received,
+                     ECallObj.ackOrT7Received,
                      eCallEventDataPtr->terminationReceived);
 
             // Update eCall session state
@@ -1594,12 +1593,11 @@ static void ProcessECallState
                 {
                     // Check redial condition (cf N16062:2014 7.9)
                     if (   (true == eCallEventDataPtr->terminationReceived)
-                        && (ECallObj.ackOrT5OrT7Received)
+                        && (ECallObj.ackOrT7Received)
                         && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
                        )
                     {
                         // After the IVS has received an LL-ACK or AL-ACK
-                        // or T5 – IVS wait for SEND MSD period
                         // or T7 – IVS MSD maximum transmission time ends,
                         // the IVS shall recognize a normal hang-up from the network.
                         // The IVS shall not attempt an automatic redial following
@@ -1707,7 +1705,7 @@ static void ProcessECallState
         case LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE: /* eCall session completed */
         {
             // To check redial condition (cf N16062:2014 7.9)
-            ECallObj.ackOrT5OrT7Received = true;
+            ECallObj.ackOrT7Received = true;
 
             if (PA_ECALL_ERA_GLONASS == SystemStandard)
             {
@@ -1761,6 +1759,7 @@ static void ProcessECallState
         case LE_ECALL_STATE_FAILED: /* Unsuccessful eCall session */
         case LE_ECALL_STATE_TIMEOUT_T2: /* Timeout for T2 */
         case LE_ECALL_STATE_TIMEOUT_T3: /* Timeout for T3 */
+        case LE_ECALL_STATE_TIMEOUT_T5: /* Timeout for T5 */
         case LE_ECALL_STATE_TIMEOUT_T9: /* Timeout for T9 */
         case LE_ECALL_STATE_TIMEOUT_T10: /* Timeout for T10 */
         {
@@ -1771,7 +1770,7 @@ static void ProcessECallState
         case LE_ECALL_STATE_LLACK_RECEIVED: /* LL-ACK received */
         {
             // To check redial condition (cf N16062:2014 7.9)
-            ECallObj.ackOrT5OrT7Received = true;
+            ECallObj.ackOrT7Received = true;
 
             // After LL-ACK reception, MSD is considered as received
             // and eCall successful. No need to redial if the connection
@@ -1784,17 +1783,10 @@ static void ProcessECallState
         }
         break;
 
-        case LE_ECALL_STATE_TIMEOUT_T5: /* Timeout for T5 */
-        {
-            // To check redial condition (cf N16062:2014 7.9)
-            ECallObj.ackOrT5OrT7Received = true;
-        }
-        break;
-
         case LE_ECALL_STATE_TIMEOUT_T7: /* Timeout for T7 */
         {
             // To check redial condition (cf N16062:2014 7.9)
-            ECallObj.ackOrT5OrT7Received = true;
+            ECallObj.ackOrT7Received = true;
 
             // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
             // After T7 timeout, IVS should redial in pull
@@ -2053,7 +2045,7 @@ le_result_t le_ecall_Init
     ECallObj.redial.intervalTimer = le_timer_Create("Interval");
     ECallObj.redial.intervalBetweenAttempts = 30; // 30 seconds
     ECallObj.redial.dialDurationTimer = le_timer_Create("dialDurationTimer");
-    ECallObj.ackOrT5OrT7Received = false;
+    ECallObj.ackOrT7Received = false;
 
     ECallObj.eraGlonass.manualDialAttempts = 10;
     ECallObj.eraGlonass.autoDialAttempts = 10;
