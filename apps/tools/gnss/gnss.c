@@ -134,6 +134,7 @@ void PrintGnssHelp
          "\t\t\t\t\t                    horizontal accuracy, vertical accuracy)\n"
          "\t\t\t\t\t- gpsTime       --> Get last updated gps time\n"
          "\t\t\t\t\t- time          --> Time of the last updated location\n"
+         "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
          "\t\t\t\t\t- timeAcc       --> Time accuracy in milliseconds\n"
          "\t\t\t\t\t- date          --> Date of the last updated location\n"
          "\t\t\t\t\t- hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal\n"
@@ -1268,6 +1269,40 @@ static int GetTime
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets Epoch time of last updated location.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetEpochTime
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint64_t epochTime;          ///< Epoch time in milliseconds since Jan. 1, 1970
+
+    le_result_t result = le_gnss_GetEpochTime( positionSampleRef, &epochTime);
+
+    if (LE_OK == result)
+    {
+        printf("Epoch Time %llu ms\n", (unsigned long long int) epochTime);
+    }
+    else if (LE_OUT_OF_RANGE == result)
+    {
+        printf("Time invalid %llu ms\n", (unsigned long long int) epochTime);
+    }
+    else
+    {
+        printf("Failed! See log for details\n");
+    }
+
+    int status = (result == LE_OK) ? EXIT_SUCCESS: EXIT_FAILURE;
+    return status;
+}
 
 
 //-------------------------------------------------------------------------------------------------
@@ -1664,6 +1699,7 @@ static int GetPosInfo
     status = (EXIT_FAILURE == GetAltitudeOnWgs84(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetGpsTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetTime(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetEpochTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetTimeAccuracy(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDate(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDop(positionSampleRef)) ? EXIT_FAILURE : status;
@@ -1797,6 +1833,10 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "time") == 0)
         {
             status = GetTime(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "epochTime") == 0)
+        {
+            status = GetEpochTime(positionSampleRef);
         }
         else if (strcmp(ParamsName, "timeAcc") == 0)
         {
@@ -1982,6 +2022,7 @@ static void GetGnssParams
             (0 == strcmp(params, "loc3d"))      ||
             (0 == strcmp(params, "gpsTime"))    ||
             (0 == strcmp(params, "time"))       ||
+            (0 == strcmp(params, "epochTime"))  ||
             (0 == strcmp(params, "timeAcc"))    ||
             (0 == strcmp(params, "date"))       ||
             (0 == strcmp(params, "hSpeed"))     ||

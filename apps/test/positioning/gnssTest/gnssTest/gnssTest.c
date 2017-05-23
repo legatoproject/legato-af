@@ -236,7 +236,7 @@ static void PositionHandlerFunction
             , year, month, day);
 
     // Display epoch time
-    LE_INFO("epoch time: %ld:", (long int) epochTime);
+    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
 
     // Get GPS time
     result = le_gnss_GetGpsTime(positionSampleRef
@@ -501,7 +501,7 @@ static void TestLeGnssPositionHandler
     // Get Epoch time, samples already present
     LE_ASSERT((le_gnss_GetEpochTime(positionSampleRef, &epochTime)) == LE_OK);
     // Display epoch time
-    LE_INFO("epoch time: %ld:", (long int) epochTime);
+    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
 
     // NMEA frame GPGSA is checked that no SV with elevation below 10
     // degrees are given.
@@ -534,7 +534,7 @@ static void TestLeGnssPositionHandler
     LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
 
     // Display epoch time
-    LE_INFO("epoch time: %ld:", (long int) epochTime);
+    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
@@ -612,6 +612,8 @@ static void TestLeGnssRestart
 )
 {
     uint32_t ttff = 0;
+    uint64_t epochTime;
+    le_gnss_SampleRef_t positionSampleRef;
     le_result_t result = LE_FAULT;
 
     LE_INFO("Start Test le_pos_RestartTest");
@@ -676,6 +678,14 @@ static void TestLeGnssRestart
     LE_INFO("Ask for a Cold restart in 3 seconds...");
     sleep(3);
     LE_ASSERT(le_gnss_ForceColdRestart() == LE_OK);
+
+    sleep(1);
+    // Get Epoch time : it should be 0 after a COLD restart
+    positionSampleRef = le_gnss_GetLastSampleRef();
+    LE_ASSERT((LE_OUT_OF_RANGE == le_gnss_GetEpochTime(positionSampleRef, &epochTime)));
+    // Display epoch time
+    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
+
     // Wait for a 3D fix
     LE_INFO("Wait 60 seconds for a 3D fix");
     sleep(60);
@@ -699,6 +709,14 @@ static void TestLeGnssRestart
     result = le_gnss_GetTtff(&ttff);
     LE_ASSERT(result == LE_BUSY);
     LE_INFO("TTFF is checked as not available immediatly after a FACTORY start");
+
+    sleep(1);
+    // Get Epoch time : it should be 0 after a FACTORY restart
+    positionSampleRef = le_gnss_GetLastSampleRef();
+    LE_ASSERT((LE_OUT_OF_RANGE == le_gnss_GetEpochTime(positionSampleRef, &epochTime)));
+    // Display epoch time
+    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
+
     // Wait for a 3D fix
     LE_INFO("Wait 60 seconds for a 3D fix");
     sleep(60);

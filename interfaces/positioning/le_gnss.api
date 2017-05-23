@@ -986,8 +986,9 @@ FUNCTION le_result_t GetGpsTime
  *  Get the position sample's epoch time.
  *
  * @return
- *  - LE_FAULT         Function failed to acquire the epoch time (epoch time set to 0).
+ *  - LE_FAULT         Function failed to acquire the epoch time.
  *  - LE_OK            Function succeeded.
+ *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  *
  * @note The epoch time is the number of seconds elapsed since January 1, 1970
  *       (midnight UTC/GMT), not counting leaps seconds.

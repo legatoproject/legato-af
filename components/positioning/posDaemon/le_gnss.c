@@ -1329,8 +1329,9 @@ le_result_t le_gnss_GetGpsTime
  *  Get the position sample's epoch time.
  *
  * @return
- *  - LE_FAULT         Function failed to acquire the epoch time (epoch time set to 0).
  *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed to acquire the epoch time.
+ *  - LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  *
  * @note The epoch time is the number of seconds elapsed since January 1, 1970
  *       (midnight UTC/GMT), not counting leaps seconds.
@@ -1352,30 +1353,32 @@ le_result_t le_gnss_GetEpochTime
     le_gnss_PositionSample_t* positionSamplePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    if ( NULL == positionSamplePtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
     // Check input pointers
-    if (millisecondsPtr == NULL)
+    if (NULL == millisecondsPtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
 
-    // Get the epoch time
-    if (0 != positionSamplePtr->epochTime)
+    // Get the position sample's time
+    if (positionSamplePtr->timeValid)
     {
+        // Get the epoch time
         result = LE_OK;
         *millisecondsPtr = positionSamplePtr->epochTime;
     }
     else
     {
-        result = LE_FAULT;
+        result = LE_OUT_OF_RANGE;
         *millisecondsPtr = 0;
     }
+
     return result;
 }
 
