@@ -227,6 +227,7 @@
  * - le_gnss_GetVerticalSpeed()
  * - le_gnss_GetDirection()
  * - le_gnss_GetSatellitesInfo()
+ * - le_gnss_GetSbasConstellationCategory()
  * - le_gnss_GetSatellitesStatus()
  * - le_gnss_GetDop()
  * - le_gnss_GetAltitudeOnWgs84()
@@ -465,6 +466,25 @@ ENUM FixState
     STATE_FIX_2D,              ///< 2-Dimensional position fix.
     STATE_FIX_3D,              ///< 3-Dimensional position fix.
     STATE_FIX_ESTIMATED        ///< Estimated (i.e. forward predicted) position fix.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  SBAS constellation category
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SbasConstellationCategory
+{
+    SBAS_EGNOS,         ///< Satellite Vehicle of Satellite-based augmentation system
+                        ///< (SBAS) EGNOS constellation.
+    SBAS_WAAS,          ///< Satellite Vehicle of Satellite-based augmentation system
+                        ///< (SBAS) WAAS constellation.
+    SBAS_GAGAN,         ///< Satellite Vehicle of Satellite-based augmentation system
+                        ///< (SBAS) GAGAN constellation.
+    SBAS_MSAS,          ///< Satellite Vehicle of Satellite-based augmentation system
+                        ///< (SBAS) MSAS constellation.
+    SBAS_UNKNOWN        ///< Satellite Vehicle of Satellite-based augmentation system
+                        ///< (SBAS) unknown constellation.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1138,6 +1158,19 @@ FUNCTION le_result_t GetSatellitesInfo
                                                     ///< If Elevation angle is currently unknown,
                                                     ///< the value is set to UINT8_MAX.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SBAS constellation category
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SbasConstellationCategory GetSbasConstellationCategory
+(
+    uint16      satId IN         ///< Satellites in View ID number, referring
+                                 ///< to NMEA standard.
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**

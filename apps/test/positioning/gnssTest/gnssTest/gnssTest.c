@@ -442,6 +442,11 @@ static void PositionHandlerFunction
                     , satSnrPtr[i]
                     , satAzimPtr[i]
                     , satElevPtr[i]);
+
+            if (LE_GNSS_SV_CONSTELLATION_SBAS == satConstPtr[i])
+            {
+                LE_INFO("SBAS category : %d", le_gnss_GetSbasConstellationCategory(satIdPtr[i]));
+            }
         }
     }
 

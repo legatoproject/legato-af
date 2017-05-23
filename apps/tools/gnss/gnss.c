@@ -1584,6 +1584,12 @@ static int GetSatelliteInfo
                         , satSnrPtr[i]
                         , satAzimPtr[i]
                         , satElevPtr[i]);
+
+                if (LE_GNSS_SV_CONSTELLATION_SBAS == satConstPtr[i])
+                {
+                    printf("SBAS category : %d\n",
+                           le_gnss_GetSbasConstellationCategory(satIdPtr[i]));
+                }
             }
         }
     }

@@ -712,6 +712,20 @@ le_result_t le_gnss_GetSatellitesInfo
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SBAS constellation category
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
+(
+    uint16_t  satId      ///< [IN] Satellites in View ID number, referring to NMEA standard.
+)
+{
+    // TODO: implement this function
+    return LE_GNSS_SBAS_UNKNOWN;
+};
 
 //--------------------------------------------------------------------------------------------------
 /**

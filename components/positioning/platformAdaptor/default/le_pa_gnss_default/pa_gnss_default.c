@@ -498,11 +498,11 @@ le_result_t pa_gnss_SetNmeaSentences
 /**
  * Get the enabled NMEA sentences bit mask
  *
-* @return
-*  - LE_OK on success
-*  - LE_FAULT on failure
-*  - LE_BUSY service is busy
-*  - LE_TIMEOUT a time-out occurred
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_BUSY service is busy
+ *  - LE_TIMEOUT a time-out occurred
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_gnss_GetNmeaSentences

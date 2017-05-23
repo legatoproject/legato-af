@@ -32,6 +32,33 @@
 #define LE_GNSS_NMEA_NODE_PATH                  "/dev/nmea"
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * SV ID definitions corresponding to SBAS constellation categories
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+// EGNOS SBAS category
+#define SBAS_EGNOS_SV_ID_33   33
+#define SBAS_EGNOS_SV_ID_37   37
+#define SBAS_EGNOS_SV_ID_39   39
+#define SBAS_EGNOS_SV_ID_44   44
+
+// WAAS SBAS category
+#define SBAS_WAAS_SV_ID_35    35
+#define SBAS_WAAS_SV_ID_46    46
+#define SBAS_WAAS_SV_ID_47    47
+#define SBAS_WAAS_SV_ID_48    48
+#define SBAS_WAAS_SV_ID_51    51
+
+// GAGAN SBAS category
+#define SBAS_GAGAN_SV_ID_40   40
+#define SBAS_GAGAN_SV_ID_41   41
+
+// MSAS SBAS category
+#define SBAS_MSAS_SV_ID_42    42
+#define SBAS_MSAS_SV_ID_50    50
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -1928,6 +1955,51 @@ le_result_t le_gnss_GetSatellitesInfo
     }
 
     return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SBAS constellation category according to Satellites in View ID number.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
+(
+    uint16_t  satId      ///< [IN] Satellites in View ID number, referring to NMEA standard.
+)
+{
+    le_gnss_SbasConstellationCategory_t sbasCategory;
+    switch (satId)
+    {
+        case SBAS_EGNOS_SV_ID_33:
+        case SBAS_EGNOS_SV_ID_37:
+        case SBAS_EGNOS_SV_ID_39:
+        case SBAS_EGNOS_SV_ID_44:
+            sbasCategory = LE_GNSS_SBAS_EGNOS;
+            break;
+        case SBAS_WAAS_SV_ID_35:
+        case SBAS_WAAS_SV_ID_46:
+        case SBAS_WAAS_SV_ID_47:
+        case SBAS_WAAS_SV_ID_48:
+        case SBAS_WAAS_SV_ID_51:
+            sbasCategory = LE_GNSS_SBAS_WAAS;
+            break;
+        case SBAS_GAGAN_SV_ID_40:
+        case SBAS_GAGAN_SV_ID_41:
+            sbasCategory = LE_GNSS_SBAS_GAGAN;
+            break;
+        case SBAS_MSAS_SV_ID_42:
+        case SBAS_MSAS_SV_ID_50:
+            sbasCategory = LE_GNSS_SBAS_MSAS;
+            break;
+        default:
+            sbasCategory = LE_GNSS_SBAS_UNKNOWN;
+            LE_WARN("SBAS unknown category, satId %d", satId);
+            break;
+    }
+    LE_DEBUG("satellite id , SBAS category (%d, %d)", satId, sbasCategory);
+
+    return sbasCategory;
 }
 
 

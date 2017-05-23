@@ -483,6 +483,11 @@ le_result_t le_gnss_GetSatellitesInfo
         ///< [INOUT]
 );
 
+le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
+(
+    uint16_t  satId      ///< [IN] Satellites in View ID number, referring to NMEA standard.
+);
+
 le_result_t le_gnss_GetSatellitesStatus
 (
     le_gnss_SampleRef_t positionSampleRef,
