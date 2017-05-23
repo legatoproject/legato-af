@@ -193,8 +193,8 @@
  *
  * le_mrc_GetSignalQual() retrieves the received signal strength details.
  *
- * You must call le_mrc_MeasureSignalMetrics() to measure the signal metrics of the serving cell (aka
- * the 'serving' cell). It returns a reference of le_mrc_MetricsRef_t type.
+ * You must call le_mrc_MeasureSignalMetrics() to measure the signal metrics of the serving cell
+ * (aka the 'serving' cell). It returns a reference of le_mrc_MetricsRef_t type.
  *
  * When the signal metrics are no longer needed, you must call le_mrc_DeleteSignalMetrics() to free
  * all allocated ressources associated with the Metrics object.
@@ -218,7 +218,8 @@
  * parameters are updated each time the function is called, the previous thresholds are replaced by
  * the new ones if the function is called with the same RAT.
  *
- * @warning The threshold values must be in the allowed platform range.
+ * @warning The threshold values must be in the allowed platform range and the RAT must be valid,
+ *          else, it's a fatal error, le_mrc_AddSignalStrengthChangeHandler API won't return.
  *
  * The event is notified when we cross the range limits in both direction.
  *

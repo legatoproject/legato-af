@@ -3636,7 +3636,9 @@ le_result_t le_mrc_GetCdmaSignalMetrics
  *
  * @return A handler reference, which is only needed for later removal of the handler.
  *
- * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ * @note  If the caller is passing a null handler function, thresholds values out of range or an
+ *        invalid RAT into this function, it's a fatal error, the function won't return. No need
+ *        then to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
@@ -3650,19 +3652,24 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
     void*                                    contextPtr           ///< [IN] The handler's context
 )
 {
-    le_event_HandlerRef_t        handlerRef;
+    le_event_HandlerRef_t handlerRef;
 
-    if (handlerFuncPtr == NULL)
+    if (NULL == handlerFuncPtr)
     {
         LE_KILL_CLIENT("Handler function is NULL !");
         return NULL;
     }
 
-    if((!lowerRangeThreshold) || (!upperRangeThreshold) ||
-       (lowerRangeThreshold >= upperRangeThreshold)     ||
-       (rat< LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA))
+    if ((rat < LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA))
     {
-        LE_KILL_CLIENT("Bad input parameters !");
+        LE_KILL_CLIENT("Bad RAT parameter : %d", rat);
+        return NULL;
+    }
+
+    if (lowerRangeThreshold >= upperRangeThreshold)
+    {
+        LE_KILL_CLIENT("lowerRangeThreshold %d >= upperRangeThreshold %d !",
+                       lowerRangeThreshold, upperRangeThreshold);
         return NULL;
     }
 
@@ -3703,8 +3710,6 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
                                                     FirstLayerCdmaSsChangeHandler,
                                                     (le_event_HandlerFunc_t)handlerFuncPtr);
             break;
-
-        case LE_MRC_RAT_UNKNOWN:
         default:
             return NULL;
     }

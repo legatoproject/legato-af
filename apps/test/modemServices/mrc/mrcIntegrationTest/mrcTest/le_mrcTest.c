@@ -1250,7 +1250,7 @@ static void Testle_mrc_SsHdlr()
     LE_ASSERT(testHdlrRef);
 
     testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_UMTS,
-                                                        -80,
+                                                        -200,
                                                         -70,
                                                         TestUmtsSsHandler,
                                                         NULL);
@@ -1258,17 +1258,20 @@ static void Testle_mrc_SsHdlr()
 
     testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_LTE,
                                                         -80,
-                                                        -70,
+                                                        0,
                                                         TestLteSsHandler,
                                                         NULL);
     LE_ASSERT(testHdlrRef);
 
     testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_CDMA,
                                                         -80,
-                                                        -70,
+                                                        10,
                                                         TestCdmaSsHandler,
                                                         NULL);
     LE_ASSERT(testHdlrRef);
+
+    sleep(SLEEP_5S);
+    le_mrc_RemoveSignalStrengthChangeHandler(testHdlrRef);
 }
 
 
@@ -1627,8 +1630,6 @@ COMPONENT_INIT
     LE_INFO("======== Signal Strength Handler Test ========");
     Testle_mrc_SsHdlr();
     LE_INFO("======== Signal Strength Handler Test PASSED ========");
-
-    sleep(SLEEP_5S);
 
     LE_INFO("======== RatPreferences Test ========");
     Testle_mrc_RatPreferences();
