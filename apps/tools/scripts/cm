@@ -1,3 +1,5 @@
+#!/bin/sh
+
 ################################################################################
 #                                                                              #
 # cm is a shell script that wraps the cm binary in order to start a data       #
@@ -10,8 +12,6 @@
 # Copyright (C) Sierra Wireless Inc.                                           #
 #                                                                              #
 ################################################################################
-
-#!/bin/sh
 
 CM=${CM:="/legato/systems/current/apps/tools/read-only/bin/cm"}
 IP=${IP:="/sbin/ip"}
@@ -43,7 +43,7 @@ handle_err() {
 
     sed -i "1s/^/$(date) - /" $log
 
-    if [[ $err -ne 0 ]]; then
+    if [ $err -ne 0 ]; then
         echo "failed"
         cat $log
         exit 1
@@ -59,9 +59,9 @@ get_default_gw() {
 
 update_dns() {
     for i in $@; do
-        if [[ "$1" != "N/A" ]]; then
+        if [ "$1" != "N/A" ]; then
             grep $1 $RESOLV_CONF > /dev/null 2>&1
-            if [[ $? -ne 0 ]]; then
+            if [ $? -ne 0 ]; then
                 echo -n "Updating /etc/resolv.conf ... "
                 echo "nameserver $1" >> $RESOLV_CONF
                 echo "ok"
@@ -75,7 +75,7 @@ cm_data_get_param() {
     local info=$1
     local param=$2
 
-    echo "$info" | grep "^$param" | cut -d':' -f2 | sed -e s'/^[ \t]*//'
+    echo "$info" | sed "s/^$param:[ \t]*//;t;d"
 }
 
 cm_data_connect () {
@@ -89,15 +89,20 @@ cm_data_connect () {
     local usr=$(cm_data_get_param "$info" "User name")
     local passwd=$(cm_data_get_param "$info" "Password")
 
-    if [[ "$opt" == "-1" ]]; then
+    if [ "$opt" = "-1" ]; then
         echo -n "Disconnecting ... "
         cm data connect $opt > $LOG 2>&1
         handle_err $?
         exit 0
     fi
 
-    if [[ "$status" == "no" ]]; then
+    if [ "$status" = "no" ]; then
         echo "Setting up profile $index"
+
+        if [ -z "$apn" ]; then
+            echo -n "No APN selected, cannot proceed."
+            exit 1
+        fi
 
         echo -n "Setting access point name ... "
         cm data apn "$apn" > $LOG 2>&1
@@ -107,7 +112,7 @@ cm_data_connect () {
         cm data pdp "$pdp" > $LOG 2>&1
         handle_err $?
 
-        if [[ -z "$auth_type" ]]; then
+        if [ -z "$auth_type" ]; then
             auth_type="none"
         fi
 
@@ -123,17 +128,43 @@ cm_data_connect () {
     info=$(cm data info)
 
     local iface=$(cm_data_get_param "$info" "Interface")
+
+    if [ -z "$iface" ]; then
+        echo "No interface, cannot proceed."
+        exit 1
+    fi
+
     local family=$(cm_data_get_param "$info" "Family")
+
+    if [ -z "$family" ]; then
+        echo "No family, cannot proceed."
+        exit 1
+    fi
+
     local gw=$(cm_data_get_param "$info" "Gateway")
+
+    if [ -z "$gw" ]; then
+        echo "No gateway."
+    fi
+
     local dns1=$(cm_data_get_param "$info" "Dns1")
     local dns2=$(cm_data_get_param "$info" "Dns2")
+
+    if [ -z "$dns1" ]; then
+        echo "No dns1."
+    fi
+
+    if [ -z "$dns2" ]; then
+        echo "No dns2."
+    fi
+
     local dgw=$(get_default_gw $iface)
 
-    echo -n "Cheking if device is up ... "
+    echo -n "Checking if device is up ... "
     ifconfig | grep "$iface" > /dev/null 2>&1
     handle_err $?
 
-    if [[ -z "${dgw// }" ]]; then
+    if [ -z "${dgw// }" ]; then
         echo -n "Routing ... "
         ip -family $family route add default via $gw dev $iface \
             > $LOG 2>&1
@@ -149,8 +180,8 @@ cm_data_connect () {
     exit 0
 }
 
-if [[ "$1" == "data" ]]; then
-    if [[ "$2" == "connect" ]] && [[ $# -le 3 ]]; then
+if [ "$1" = "data" ]; then
+    if [ "$2" = "connect" ] && [ $# -le 3 ]; then
         shift 2
         cm_data_connect $@
     fi
