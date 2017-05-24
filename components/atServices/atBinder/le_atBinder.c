@@ -16,7 +16,6 @@
 #include <sys/un.h>
 #include <sys/socket.h>
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Socket path
@@ -24,73 +23,166 @@
 //--------------------------------------------------------------------------------------------------
 #define AT_BINDER_SOCK_PATH "/tmp/atBinder"
 
-//------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of clients
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_CLIENTS         1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close a fd and log a warning message if an error occurs
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseWarn
+(
+    int fd
+)
+{
+    if (-1 == close(fd))
+    {
+        LE_WARN("failed to close fd %d: %m", fd);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Monitor the client's fd
+ */
+//--------------------------------------------------------------------------------------------------
+static void MonitorClient
+(
+    int clientFd,
+    short events
+)
+{
+    le_result_t result;
+    le_atServer_DeviceRef_t atServerRef;
+
+    if (POLLRDHUP & events)
+    {
+        LE_INFO("fd %d: connection reset by peer", clientFd);
+    }
+    else
+    {
+        LE_WARN("events %.8x not handled", events);
+    }
+
+    atServerRef = (le_atServer_DeviceRef_t)le_fdMonitor_GetContextPtr();
+    if (atServerRef)
+    {
+        result = le_atServer_Close(atServerRef);
+        if (LE_OK != result)
+        {
+            LE_ERROR("failed to close atServer device");
+        }
+    }
+    else
+    {
+        LE_ERROR("failed to get atServer device reference");
+    }
+
+    le_fdMonitor_Delete(le_fdMonitor_GetMonitor());
+
+    CloseWarn(clientFd);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Monitor the socket's fd
+ */
+//--------------------------------------------------------------------------------------------------
+static void MonitorSocket
+(
+    int sockFd,
+    short events
+)
+{
+    int clientFd = -1;
+    le_fdMonitor_Ref_t fdMonitorRef;
+    le_atServer_DeviceRef_t atServerRef;
+
+    if (POLLIN & events)
+    {
+        clientFd = accept(sockFd, NULL, NULL);
+        if (-1 == clientFd)
+        {
+            LE_ERROR("accepting socket failed: %m");
+            goto exit_close_socket;
+        }
+        atServerRef = le_atServer_Open(dup(clientFd));
+        if (!atServerRef)
+        {
+            LE_ERROR("Cannot open the device!");
+            goto exit_close_client;
+        }
+        fdMonitorRef = le_fdMonitor_Create("atBinder-client", clientFd, MonitorClient, POLLRDHUP);
+        le_fdMonitor_SetContextPtr(fdMonitorRef, atServerRef);
+        LE_INFO("atBinder is ready");
+        return;
+    }
+    else
+    {
+        LE_WARN("events %.8x not handled", events);
+    }
+
+exit_close_client:
+    CloseWarn(clientFd);
+exit_close_socket:
+    le_fdMonitor_Delete(le_fdMonitor_GetMonitor());
+    CloseWarn(sockFd);
+    exit(EXIT_FAILURE);
+}
+
+//--------------------------------------------------------------------------------------------------
 /**
  * Initialize the atBinder application.
  *
  */
-//------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    int sockFd;
     struct sockaddr_un myAddress;
 
     LE_INFO("atBinder starts");
 
-    if (0 == access(AT_BINDER_SOCK_PATH, F_OK))
+    if ( (-1 == unlink(AT_BINDER_SOCK_PATH)) && (ENOENT != errno) )
     {
-        if (unlink(AT_BINDER_SOCK_PATH) < 0)
-        {
-            LE_ERROR("unlink socket failed: %m");
-            goto exit;
-        }
+        LE_ERROR("unlink socket failed: %m");
+        exit(EXIT_FAILURE);
     }
 
     // Create the socket
-    int sockFd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sockFd < 0)
+    sockFd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (-1 == sockFd)
     {
         LE_ERROR("creating socket failed: %m");
-        goto exit;
+        exit(EXIT_FAILURE);
     }
 
     memset(&myAddress, 0, sizeof(myAddress));
     myAddress.sun_family = AF_UNIX;
     strncpy(myAddress.sun_path, AT_BINDER_SOCK_PATH, sizeof(myAddress.sun_path) - 1);
 
-    if (bind(sockFd, (struct sockaddr *) &myAddress, sizeof(myAddress)) < 0)
+    if (-1 == bind(sockFd, (struct sockaddr *) &myAddress, sizeof(myAddress)))
     {
         LE_ERROR("binding socket failed: %m");
-        goto exit_close_fd;
+        goto exit_close_socket;
     }
 
     // Listen on the socket
-    if (listen(sockFd, 1) < 0)
+    if (-1 == listen(sockFd, MAX_CLIENTS))
     {
         LE_ERROR("listening socket failed: %m");
-        goto exit_close_fd;
+        goto exit_close_socket;
     }
 
-    // Socket's file descriptor used for AT commands monitoring
-    int atSockFd = accept(sockFd, NULL, NULL);
-    if (atSockFd < 0)
-    {
-        LE_ERROR("accepting socket failed: %m");
-        goto exit_close_fd;
-    }
+    le_fdMonitor_Create("atBinder-socket", sockFd, MonitorSocket, POLLIN);
+    return;
 
-    if (NULL == le_atServer_Open(dup(atSockFd)))
-    {
-        LE_ERROR("Cannot open the device!");
-        goto exit_close_fd;
-    }
-    else
-    {
-        LE_INFO("atBinder is ready");
-        return;
-    }
-
-exit_close_fd:
-    close(sockFd);
-exit:
+exit_close_socket:
+    CloseWarn(sockFd);
     exit(EXIT_FAILURE);
 }
