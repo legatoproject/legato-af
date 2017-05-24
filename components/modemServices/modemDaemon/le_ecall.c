@@ -1595,6 +1595,7 @@ static void ProcessECallState
                     if (   (true == eCallEventDataPtr->terminationReceived)
                         && (ECallObj.ackOrT7Received)
                         && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
+                        && (PA_ECALL_PAN_EUROPEAN == SystemStandard)
                        )
                     {
                         // After the IVS has received an LL-ACK or AL-ACK
@@ -1662,6 +1663,7 @@ static void ProcessECallState
                 case ECALL_SESSION_STOPPED:
                     // Session stopped: no redial
                     // No need to update eCall session state, already stopped
+                    endOfRedialPeriod = true;
                     break;
 
                 case ECALL_SESSION_INIT:
@@ -1790,6 +1792,18 @@ static void ProcessECallState
 
             // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
             // After T7 timeout, IVS should redial in pull
+            // mode if the connection is lost.
+            if (PA_ECALL_ERA_GLONASS == SystemStandard)
+            {
+                ECallObj.eraGlonass.pullModeSwitch = true;
+            }
+            break;
+        }
+
+        case LE_ECALL_STATE_TIMEOUT_T6: /* Timeout for T6 */
+        {
+            // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2:
+            // After T6 timeout, IVS should redial in pull
             // mode if the connection is lost.
             if (PA_ECALL_ERA_GLONASS == SystemStandard)
             {
