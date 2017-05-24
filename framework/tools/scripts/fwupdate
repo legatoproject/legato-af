@@ -11,12 +11,12 @@ help_short_desc="download or query modem firmware"
 
 help_usage=(
 "help"
-"download FILE [TARGET_IP]"
+"downloadOnly FILE [TARGET_IP]"
 "query [TARGET_IP]"
 "install [TARGET_IP]"
 "checkStatus [TARGET_IP]"
 "markGood [TARGET_IP]"
-"fullInstall FILE [TARGET_IP]"
+"download FILE [TARGET_IP]"
 )
 
 help_long_description=(
@@ -28,7 +28,7 @@ help_long_description=(
 "    bootloader version, and the linux kernel version."
 "    This can be used after a download and modem reset, to confirm the firmware version."
 ""
-"$commandName download FILE [TARGET_IP]"
+"$commandName downloadOnly FILE [TARGET_IP]"
 "  - Download the given CWE file."
 "    Waits for another command after a successful download."
 ""
@@ -44,7 +44,7 @@ help_long_description=(
 "$commandName markGood [TARGET_IP]"
 "  - Mark good the current system (DualSys platform only)."
 ""
-"$commandName fullInstall FILE [TARGET_IP]"
+"$commandName download FILE [TARGET_IP]"
 "  - do download, install and markGood in one time."
 "    After a successful download, the modem will reset."
 )
@@ -60,7 +60,7 @@ then
     exit $?
 fi
 
-if [ "$COMMAND" = "download" ] || [ "$COMMAND" = "fullInstall" ]
+if [ "$COMMAND" = "downloadOnly" ] || [ "$COMMAND" = "download" ]
 then
     FILE=$2
     if ! [ -f "$FILE" ]

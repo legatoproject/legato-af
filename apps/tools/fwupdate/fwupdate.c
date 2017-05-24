@@ -42,12 +42,12 @@ NAME:\n\
 \n\
 SYNOPSIS:\n\
     fwupdate help\n\
-    fwupdate download FILE\n\
+    fwupdate downloadOnly FILE\n\
     fwupdate query\n\
     fwupdate install\n\
     fwupdate checkStatus\n\
     fwupdate markGood\n\
-    fwupdate fullInstall FILE\n\
+    fwupdate download FILE\n\
 \n\
 DESCRIPTION:\n\
     fwupdate help\n\
@@ -58,7 +58,7 @@ DESCRIPTION:\n\
         bootloader version, and the linux kernel version.\n\
         This can be used after a download and modem reset, to confirm the firmware version.\n\
 \n\
-    fwupdate download FILE\n\
+    fwupdate downloadOnly FILE\n\
       - Download the given CWE file; if '-' is given as the FILE, then use stdin.\n\
         Waits for another command after a successful download.\n\
 \n\
@@ -75,7 +75,7 @@ DESCRIPTION:\n\
     fwupdate markGood\n\
       - Mark good the current system (DualSys platform only)\n\
 \n\
-    fwupdate fullInstall FILE\n\
+    fwupdate download FILE\n\
       - do download, install and markGood in one time\n\
         After a successful download, the modem will reset\n\
 ";
@@ -391,7 +391,7 @@ COMPONENT_INIT
             exit(EXIT_SUCCESS);
         }
 
-        else if ( 0 == strcmp(command, "download") )
+        else if ( 0 == strcmp(command, "downloadOnly") )
         {
             // Get the filename of the firmware image; could be '-' if stdin
             if (le_arg_NumArgs() > 1)
@@ -449,7 +449,7 @@ COMPONENT_INIT
             exit(EXIT_FAILURE);
         }
 
-        else if ( 0 == strcmp(command, "fullInstall") )
+        else if ( 0 == strcmp(command, "download") )
         {
             // Get the filename of the firmware image; could be '-' if stdin
             if (le_arg_NumArgs() > 1)
