@@ -759,12 +759,8 @@
  * the message is released.  The fd can only be extracted from the message once.  Subsequent
  * calls to le_msg_GetFd() will return -1.
  *
- * As a denial-of-service prevention measure, receiving of file descriptors is disabled by
- * default on servers.  To enable receiving of file descriptors, the server must call
- * le_msg_EnableFdReception() on their service.
- *
- * @warning DO NOT SEND DIRECTORY FILE DESCRIPTORS.  That can be exploited to break out of chroot()
- * jails.
+ * @warning DO NOT SEND DIRECTORY FILE DESCRIPTORS.  They can be exploited and used to break out of
+ * chroot() jails.
  *
  * @section c_messagingFutureEnhancements Future Enhancements
  *
