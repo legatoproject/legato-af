@@ -156,9 +156,10 @@ options {
             parser.compileErrors > 0):
             return None
 
-        iface.text= ''.join([ token.text
-                              for token in tokens.getTokens()
-                              if token.type not in frozenset([ C_COMMENT,
+        if tokens.getTokens():
+            iface.text= ''.join([ token.text
+                                for token in tokens.getTokens()
+                                if token.type not in frozenset([ C_COMMENT,
                                                                CPP_COMMENT,
                                                                DOC_PRE_COMMENT,
                                                                DOC_POST_COMMENT ]) ])

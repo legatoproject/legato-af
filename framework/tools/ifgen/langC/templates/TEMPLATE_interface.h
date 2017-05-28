@@ -18,7 +18,6 @@
 {% endfor %}
 {%- endblock %}
 {% block GenericFunctions -%}
-{% if functions or handlers -%}
 //--------------------------------------------------------------------------------------------------
 /**
  * Type for handler called when a server disconnects.
@@ -99,5 +98,4 @@ void {{apiName}}_DisconnectService
 (
     void
 );
-{%- endif %}
 {%- endblock %}

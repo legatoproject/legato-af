@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        empty = empty.api
+    }
+}
+
+sources:
+{
+    empty.c
+}

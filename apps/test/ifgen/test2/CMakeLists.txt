@@ -101,4 +101,10 @@ mkexe(${TEST_SERVER} ${TEST_SERVER})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SCRIPT}.in
                ${EXECUTABLE_OUTPUT_PATH}/${TEST_SCRIPT})
 
+#
+# Build client using empty.api
+#
+
+set(TEST_CLIENT testEmptyApi_client)
+mkexe(${TEST_CLIENT} ${TEST_CLIENT})
 

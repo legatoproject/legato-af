@@ -1,4 +1,4 @@
-# $ANTLR 3.5.2 interface.g 2017-05-19 10:42:33
+# $ANTLR 3.5.2 interface.g 2017-05-29 08:21:05
 
 import sys
 from antlr3 import *
@@ -190,14 +190,14 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "direction"
-    # interface.g:226:1: direction returns [direction] : ( IN | OUT );
+    # interface.g:227:1: direction returns [direction] : ( IN | OUT );
     def direction(self, ):
         direction = None
 
 
         try:
             try:
-                # interface.g:227:5: ( IN | OUT )
+                # interface.g:228:5: ( IN | OUT )
                 alt1 = 2
                 LA1_0 = self.input.LA(1)
 
@@ -212,7 +212,7 @@ class interfaceParser(Parser):
 
 
                 if alt1 == 1:
-                    # interface.g:227:7: IN
+                    # interface.g:228:7: IN
                     pass 
                     self.match(self.input, IN, self.FOLLOW_IN_in_direction512)
 
@@ -223,7 +223,7 @@ class interfaceParser(Parser):
 
 
                 elif alt1 == 2:
-                    # interface.g:228:7: OUT
+                    # interface.g:229:7: OUT
                     pass 
                     self.match(self.input, OUT, self.FOLLOW_OUT_in_direction526)
 
@@ -247,7 +247,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "number"
-    # interface.g:232:1: number returns [value] : ( DEC_NUMBER | HEX_NUMBER );
+    # interface.g:233:1: number returns [value] : ( DEC_NUMBER | HEX_NUMBER );
     def number(self, ):
         value = None
 
@@ -257,7 +257,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:233:5: ( DEC_NUMBER | HEX_NUMBER )
+                # interface.g:234:5: ( DEC_NUMBER | HEX_NUMBER )
                 alt2 = 2
                 LA2_0 = self.input.LA(1)
 
@@ -272,7 +272,7 @@ class interfaceParser(Parser):
 
 
                 if alt2 == 1:
-                    # interface.g:233:7: DEC_NUMBER
+                    # interface.g:234:7: DEC_NUMBER
                     pass 
                     DEC_NUMBER1 = self.match(self.input, DEC_NUMBER, self.FOLLOW_DEC_NUMBER_in_number554)
 
@@ -283,7 +283,7 @@ class interfaceParser(Parser):
 
 
                 elif alt2 == 2:
-                    # interface.g:234:7: HEX_NUMBER
+                    # interface.g:235:7: HEX_NUMBER
                     pass 
                     HEX_NUMBER2 = self.match(self.input, HEX_NUMBER, self.FOLLOW_HEX_NUMBER_in_number567)
 
@@ -307,7 +307,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "integer"
-    # interface.g:237:1: integer returns [value] : ( '+' DEC_NUMBER | '-' DEC_NUMBER | DEC_NUMBER | HEX_NUMBER );
+    # interface.g:238:1: integer returns [value] : ( '+' DEC_NUMBER | '-' DEC_NUMBER | DEC_NUMBER | HEX_NUMBER );
     def integer(self, ):
         value = None
 
@@ -319,7 +319,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:238:5: ( '+' DEC_NUMBER | '-' DEC_NUMBER | DEC_NUMBER | HEX_NUMBER )
+                # interface.g:239:5: ( '+' DEC_NUMBER | '-' DEC_NUMBER | DEC_NUMBER | HEX_NUMBER )
                 alt3 = 4
                 LA3 = self.input.LA(1)
                 if LA3 == 32:
@@ -337,7 +337,7 @@ class interfaceParser(Parser):
 
 
                 if alt3 == 1:
-                    # interface.g:238:7: '+' DEC_NUMBER
+                    # interface.g:239:7: '+' DEC_NUMBER
                     pass 
                     self.match(self.input, 32, self.FOLLOW_32_in_integer593)
 
@@ -350,7 +350,7 @@ class interfaceParser(Parser):
 
 
                 elif alt3 == 2:
-                    # interface.g:239:7: '-' DEC_NUMBER
+                    # interface.g:240:7: '-' DEC_NUMBER
                     pass 
                     self.match(self.input, 34, self.FOLLOW_34_in_integer607)
 
@@ -363,7 +363,7 @@ class interfaceParser(Parser):
 
 
                 elif alt3 == 3:
-                    # interface.g:240:7: DEC_NUMBER
+                    # interface.g:241:7: DEC_NUMBER
                     pass 
                     DEC_NUMBER5 = self.match(self.input, DEC_NUMBER, self.FOLLOW_DEC_NUMBER_in_integer621)
 
@@ -374,7 +374,7 @@ class interfaceParser(Parser):
 
 
                 elif alt3 == 4:
-                    # interface.g:241:7: HEX_NUMBER
+                    # interface.g:242:7: HEX_NUMBER
                     pass 
                     HEX_NUMBER6 = self.match(self.input, HEX_NUMBER, self.FOLLOW_HEX_NUMBER_in_integer637)
 
@@ -407,7 +407,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "defineValue"
-    # interface.g:244:1: defineValue returns [value] : ( IDENTIFIER | SCOPED_IDENTIFIER );
+    # interface.g:245:1: defineValue returns [value] : ( IDENTIFIER | SCOPED_IDENTIFIER );
     def defineValue(self, ):
         retval = self.defineValue_return()
         retval.start = self.input.LT(1)
@@ -418,7 +418,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:245:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
+                # interface.g:246:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
                 alt4 = 2
                 LA4_0 = self.input.LA(1)
 
@@ -433,7 +433,7 @@ class interfaceParser(Parser):
 
 
                 if alt4 == 1:
-                    # interface.g:245:7: IDENTIFIER
+                    # interface.g:246:7: IDENTIFIER
                     pass 
                     IDENTIFIER7 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_defineValue666)
 
@@ -444,7 +444,7 @@ class interfaceParser(Parser):
 
 
                 elif alt4 == 2:
-                    # interface.g:246:7: SCOPED_IDENTIFIER
+                    # interface.g:247:7: SCOPED_IDENTIFIER
                     pass 
                     SCOPED_IDENTIFIER8 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_defineValue683)
 
@@ -482,7 +482,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "simpleNumber"
-    # interface.g:262:1: simpleNumber returns [value] : ( number | defineValue );
+    # interface.g:263:1: simpleNumber returns [value] : ( number | defineValue );
     def simpleNumber(self, ):
         value = None
 
@@ -492,7 +492,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:263:5: ( number | defineValue )
+                # interface.g:264:5: ( number | defineValue )
                 alt5 = 2
                 LA5_0 = self.input.LA(1)
 
@@ -507,7 +507,7 @@ class interfaceParser(Parser):
 
 
                 if alt5 == 1:
-                    # interface.g:263:7: number
+                    # interface.g:264:7: number
                     pass 
                     self._state.following.append(self.FOLLOW_number_in_simpleNumber720)
                     number9 = self.number()
@@ -521,7 +521,7 @@ class interfaceParser(Parser):
 
 
                 elif alt5 == 2:
-                    # interface.g:264:7: defineValue
+                    # interface.g:265:7: defineValue
                     pass 
                     self._state.following.append(self.FOLLOW_defineValue_in_simpleNumber741)
                     defineValue10 = self.defineValue()
@@ -548,7 +548,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "simpleExpression"
-    # interface.g:267:1: simpleExpression returns [value] : ( integer | defineValue | '(' sumExpression ')' );
+    # interface.g:268:1: simpleExpression returns [value] : ( integer | defineValue | '(' sumExpression ')' );
     def simpleExpression(self, ):
         value = None
 
@@ -559,7 +559,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:268:5: ( integer | defineValue | '(' sumExpression ')' )
+                # interface.g:269:5: ( integer | defineValue | '(' sumExpression ')' )
                 alt6 = 3
                 LA6 = self.input.LA(1)
                 if LA6 == DEC_NUMBER or LA6 == HEX_NUMBER or LA6 == 32 or LA6 == 34:
@@ -575,7 +575,7 @@ class interfaceParser(Parser):
 
 
                 if alt6 == 1:
-                    # interface.g:268:7: integer
+                    # interface.g:269:7: integer
                     pass 
                     self._state.following.append(self.FOLLOW_integer_in_simpleExpression770)
                     integer11 = self.integer()
@@ -589,7 +589,7 @@ class interfaceParser(Parser):
 
 
                 elif alt6 == 2:
-                    # interface.g:269:7: defineValue
+                    # interface.g:270:7: defineValue
                     pass 
                     self._state.following.append(self.FOLLOW_defineValue_in_simpleExpression794)
                     defineValue12 = self.defineValue()
@@ -603,7 +603,7 @@ class interfaceParser(Parser):
 
 
                 elif alt6 == 3:
-                    # interface.g:270:7: '(' sumExpression ')'
+                    # interface.g:271:7: '(' sumExpression ')'
                     pass 
                     self.match(self.input, 29, self.FOLLOW_29_in_simpleExpression814)
 
@@ -634,7 +634,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "productExpression"
-    # interface.g:273:1: productExpression returns [value] : initialValue= simpleExpression ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )* ;
+    # interface.g:274:1: productExpression returns [value] : initialValue= simpleExpression ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )* ;
     def productExpression(self, ):
         value = None
 
@@ -645,8 +645,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:274:5: (initialValue= simpleExpression ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )* )
-                # interface.g:274:7: initialValue= simpleExpression ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )*
+                # interface.g:275:5: (initialValue= simpleExpression ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )* )
+                # interface.g:275:7: initialValue= simpleExpression ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )*
                 pass 
                 self._state.following.append(self.FOLLOW_simpleExpression_in_productExpression843)
                 initialValue = self.simpleExpression()
@@ -658,7 +658,7 @@ class interfaceParser(Parser):
                 #action end
 
 
-                # interface.g:275:9: ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )*
+                # interface.g:276:9: ( '*' mulValue= simpleExpression | '/' divValue= simpleExpression )*
                 while True: #loop7
                     alt7 = 3
                     LA7_0 = self.input.LA(1)
@@ -670,7 +670,7 @@ class interfaceParser(Parser):
 
 
                     if alt7 == 1:
-                        # interface.g:275:11: '*' mulValue= simpleExpression
+                        # interface.g:276:11: '*' mulValue= simpleExpression
                         pass 
                         self.match(self.input, 31, self.FOLLOW_31_in_productExpression861)
 
@@ -686,7 +686,7 @@ class interfaceParser(Parser):
 
 
                     elif alt7 == 2:
-                        # interface.g:276:11: '/' divValue= simpleExpression
+                        # interface.g:277:11: '/' divValue= simpleExpression
                         pass 
                         self.match(self.input, 35, self.FOLLOW_35_in_productExpression879)
 
@@ -721,7 +721,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "sumExpression"
-    # interface.g:280:1: sumExpression returns [value] : initialValue= productExpression ( '+' addValue= productExpression | '-' subValue= productExpression )* ;
+    # interface.g:281:1: sumExpression returns [value] : initialValue= productExpression ( '+' addValue= productExpression | '-' subValue= productExpression )* ;
     def sumExpression(self, ):
         value = None
 
@@ -732,8 +732,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:281:5: (initialValue= productExpression ( '+' addValue= productExpression | '-' subValue= productExpression )* )
-                # interface.g:281:7: initialValue= productExpression ( '+' addValue= productExpression | '-' subValue= productExpression )*
+                # interface.g:282:5: (initialValue= productExpression ( '+' addValue= productExpression | '-' subValue= productExpression )* )
+                # interface.g:282:7: initialValue= productExpression ( '+' addValue= productExpression | '-' subValue= productExpression )*
                 pass 
                 self._state.following.append(self.FOLLOW_productExpression_in_sumExpression919)
                 initialValue = self.productExpression()
@@ -745,7 +745,7 @@ class interfaceParser(Parser):
                 #action end
 
 
-                # interface.g:282:9: ( '+' addValue= productExpression | '-' subValue= productExpression )*
+                # interface.g:283:9: ( '+' addValue= productExpression | '-' subValue= productExpression )*
                 while True: #loop8
                     alt8 = 3
                     LA8_0 = self.input.LA(1)
@@ -757,7 +757,7 @@ class interfaceParser(Parser):
 
 
                     if alt8 == 1:
-                        # interface.g:282:11: '+' addValue= productExpression
+                        # interface.g:283:11: '+' addValue= productExpression
                         pass 
                         self.match(self.input, 32, self.FOLLOW_32_in_sumExpression937)
 
@@ -773,7 +773,7 @@ class interfaceParser(Parser):
 
 
                     elif alt8 == 2:
-                        # interface.g:283:11: '-' subValue= productExpression
+                        # interface.g:284:11: '-' subValue= productExpression
                         pass 
                         self.match(self.input, 34, self.FOLLOW_34_in_sumExpression955)
 
@@ -808,7 +808,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "valueExpression"
-    # interface.g:287:1: valueExpression returns [value] : ( sumExpression | QUOTED_STRING );
+    # interface.g:288:1: valueExpression returns [value] : ( sumExpression | QUOTED_STRING );
     def valueExpression(self, ):
         value = None
 
@@ -818,7 +818,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:288:5: ( sumExpression | QUOTED_STRING )
+                # interface.g:289:5: ( sumExpression | QUOTED_STRING )
                 alt9 = 2
                 LA9_0 = self.input.LA(1)
 
@@ -833,7 +833,7 @@ class interfaceParser(Parser):
 
 
                 if alt9 == 1:
-                    # interface.g:288:7: sumExpression
+                    # interface.g:289:7: sumExpression
                     pass 
                     self._state.following.append(self.FOLLOW_sumExpression_in_valueExpression993)
                     sumExpression14 = self.sumExpression()
@@ -847,7 +847,7 @@ class interfaceParser(Parser):
 
 
                 elif alt9 == 2:
-                    # interface.g:289:7: QUOTED_STRING
+                    # interface.g:290:7: QUOTED_STRING
                     pass 
                     QUOTED_STRING15 = self.match(self.input, QUOTED_STRING, self.FOLLOW_QUOTED_STRING_in_valueExpression1006)
 
@@ -871,7 +871,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "arrayExpression"
-    # interface.g:295:1: arrayExpression returns [size] : '[' simpleNumber ']' ;
+    # interface.g:296:1: arrayExpression returns [size] : '[' simpleNumber ']' ;
     def arrayExpression(self, ):
         size = None
 
@@ -880,8 +880,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:296:5: ( '[' simpleNumber ']' )
-                # interface.g:296:7: '[' simpleNumber ']'
+                # interface.g:297:5: ( '[' simpleNumber ']' )
+                # interface.g:297:7: '[' simpleNumber ']'
                 pass 
                 self.match(self.input, 37, self.FOLLOW_37_in_arrayExpression1035)
 
@@ -913,7 +913,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "typeIdentifier"
-    # interface.g:300:1: typeIdentifier returns [typeObj] : ( IDENTIFIER | SCOPED_IDENTIFIER );
+    # interface.g:301:1: typeIdentifier returns [typeObj] : ( IDENTIFIER | SCOPED_IDENTIFIER );
     def typeIdentifier(self, ):
         typeObj = None
 
@@ -923,7 +923,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:301:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
+                # interface.g:302:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
                 alt10 = 2
                 LA10_0 = self.input.LA(1)
 
@@ -938,7 +938,7 @@ class interfaceParser(Parser):
 
 
                 if alt10 == 1:
-                    # interface.g:301:7: IDENTIFIER
+                    # interface.g:302:7: IDENTIFIER
                     pass 
                     IDENTIFIER17 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_typeIdentifier1070)
 
@@ -957,7 +957,7 @@ class interfaceParser(Parser):
 
 
                 elif alt10 == 2:
-                    # interface.g:311:7: SCOPED_IDENTIFIER
+                    # interface.g:312:7: SCOPED_IDENTIFIER
                     pass 
                     SCOPED_IDENTIFIER18 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_typeIdentifier1088)
 
@@ -989,7 +989,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "docPostComments"
-    # interface.g:323:1: docPostComments returns [comments] : ( DOC_POST_COMMENT )* ;
+    # interface.g:324:1: docPostComments returns [comments] : ( DOC_POST_COMMENT )* ;
     def docPostComments(self, ):
         comments = None
 
@@ -998,15 +998,15 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:324:5: ( ( DOC_POST_COMMENT )* )
-                # interface.g:324:7: ( DOC_POST_COMMENT )*
+                # interface.g:325:5: ( ( DOC_POST_COMMENT )* )
+                # interface.g:325:7: ( DOC_POST_COMMENT )*
                 pass 
                 #action start
                 comments = [] 
                 #action end
 
 
-                # interface.g:325:7: ( DOC_POST_COMMENT )*
+                # interface.g:326:7: ( DOC_POST_COMMENT )*
                 while True: #loop11
                     alt11 = 2
                     LA11_0 = self.input.LA(1)
@@ -1016,7 +1016,7 @@ class interfaceParser(Parser):
 
 
                     if alt11 == 1:
-                        # interface.g:325:9: DOC_POST_COMMENT
+                        # interface.g:326:9: DOC_POST_COMMENT
                         pass 
                         DOC_POST_COMMENT19 = self.match(self.input, DOC_POST_COMMENT, self.FOLLOW_DOC_POST_COMMENT_in_docPostComments1129)
 
@@ -1046,7 +1046,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "docPreComment"
-    # interface.g:330:1: docPreComment returns [comment] : DOC_PRE_COMMENT ;
+    # interface.g:331:1: docPreComment returns [comment] : DOC_PRE_COMMENT ;
     def docPreComment(self, ):
         comment = None
 
@@ -1055,8 +1055,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:331:5: ( DOC_PRE_COMMENT )
-                # interface.g:331:7: DOC_PRE_COMMENT
+                # interface.g:332:5: ( DOC_PRE_COMMENT )
+                # interface.g:332:7: DOC_PRE_COMMENT
                 pass 
                 DOC_PRE_COMMENT20 = self.match(self.input, DOC_PRE_COMMENT, self.FOLLOW_DOC_PRE_COMMENT_in_docPreComment1173)
 
@@ -1081,7 +1081,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "defineDecl"
-    # interface.g:334:1: defineDecl returns [define] : DEFINE IDENTIFIER '=' valueExpression ';' ;
+    # interface.g:335:1: defineDecl returns [define] : DEFINE IDENTIFIER '=' valueExpression ';' ;
     def defineDecl(self, ):
         define = None
 
@@ -1091,8 +1091,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:335:5: ( DEFINE IDENTIFIER '=' valueExpression ';' )
-                # interface.g:335:7: DEFINE IDENTIFIER '=' valueExpression ';'
+                # interface.g:336:5: ( DEFINE IDENTIFIER '=' valueExpression ';' )
+                # interface.g:336:7: DEFINE IDENTIFIER '=' valueExpression ';'
                 pass 
                 self.match(self.input, DEFINE, self.FOLLOW_DEFINE_in_defineDecl1196)
 
@@ -1130,7 +1130,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "namedValue"
-    # interface.g:341:1: namedValue returns [namedValue] : IDENTIFIER ( '=' integer )? docPostComments ;
+    # interface.g:342:1: namedValue returns [namedValue] : IDENTIFIER ( '=' integer )? docPostComments ;
     def namedValue(self, ):
         namedValue = None
 
@@ -1141,19 +1141,19 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:342:5: ( IDENTIFIER ( '=' integer )? docPostComments )
-                # interface.g:342:7: IDENTIFIER ( '=' integer )? docPostComments
+                # interface.g:343:5: ( IDENTIFIER ( '=' integer )? docPostComments )
+                # interface.g:343:7: IDENTIFIER ( '=' integer )? docPostComments
                 pass 
                 IDENTIFIER23 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_namedValue1235)
 
-                # interface.g:342:18: ( '=' integer )?
+                # interface.g:343:18: ( '=' integer )?
                 alt12 = 2
                 LA12_0 = self.input.LA(1)
 
                 if (LA12_0 == 36) :
                     alt12 = 1
                 if alt12 == 1:
-                    # interface.g:342:20: '=' integer
+                    # interface.g:343:20: '=' integer
                     pass 
                     self.match(self.input, 36, self.FOLLOW_36_in_namedValue1239)
 
@@ -1195,7 +1195,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "namedValueList"
-    # interface.g:350:1: namedValueList returns [values] : (| namedValue | namedValue ',' docPostComments rest= namedValueList );
+    # interface.g:351:1: namedValueList returns [values] : (| namedValue | namedValue ',' docPostComments rest= namedValueList );
     def namedValueList(self, ):
         values = None
 
@@ -1207,11 +1207,11 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:351:5: (| namedValue | namedValue ',' docPostComments rest= namedValueList )
+                # interface.g:352:5: (| namedValue | namedValue ',' docPostComments rest= namedValueList )
                 alt13 = 3
                 alt13 = self.dfa13.predict(self.input)
                 if alt13 == 1:
-                    # interface.g:351:51: 
+                    # interface.g:352:51: 
                     pass 
                     #action start
                     values = [ ] 
@@ -1220,7 +1220,7 @@ class interfaceParser(Parser):
 
 
                 elif alt13 == 2:
-                    # interface.g:352:7: namedValue
+                    # interface.g:353:7: namedValue
                     pass 
                     self._state.following.append(self.FOLLOW_namedValue_in_namedValueList1321)
                     namedValue26 = self.namedValue()
@@ -1234,7 +1234,7 @@ class interfaceParser(Parser):
 
 
                 elif alt13 == 3:
-                    # interface.g:353:7: namedValue ',' docPostComments rest= namedValueList
+                    # interface.g:354:7: namedValue ',' docPostComments rest= namedValueList
                     pass 
                     self._state.following.append(self.FOLLOW_namedValue_in_namedValueList1364)
                     namedValue27 = self.namedValue()
@@ -1277,7 +1277,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "enumDecl"
-    # interface.g:361:1: enumDecl returns [enum] : ENUM IDENTIFIER '{' namedValueList '}' ';' ;
+    # interface.g:362:1: enumDecl returns [enum] : ENUM IDENTIFIER '{' namedValueList '}' ';' ;
     def enumDecl(self, ):
         enum = None
 
@@ -1287,8 +1287,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:362:5: ( ENUM IDENTIFIER '{' namedValueList '}' ';' )
-                # interface.g:362:7: ENUM IDENTIFIER '{' namedValueList '}' ';'
+                # interface.g:363:5: ( ENUM IDENTIFIER '{' namedValueList '}' ';' )
+                # interface.g:363:7: ENUM IDENTIFIER '{' namedValueList '}' ';'
                 pass 
                 self.match(self.input, ENUM, self.FOLLOW_ENUM_in_enumDecl1403)
 
@@ -1328,7 +1328,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "bitmaskDecl"
-    # interface.g:368:1: bitmaskDecl returns [bitmask] : BITMASK IDENTIFIER '{' namedValueList '}' ';' ;
+    # interface.g:369:1: bitmaskDecl returns [bitmask] : BITMASK IDENTIFIER '{' namedValueList '}' ';' ;
     def bitmaskDecl(self, ):
         bitmask = None
 
@@ -1338,8 +1338,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:369:5: ( BITMASK IDENTIFIER '{' namedValueList '}' ';' )
-                # interface.g:369:7: BITMASK IDENTIFIER '{' namedValueList '}' ';'
+                # interface.g:370:5: ( BITMASK IDENTIFIER '{' namedValueList '}' ';' )
+                # interface.g:370:7: BITMASK IDENTIFIER '{' namedValueList '}' ';'
                 pass 
                 self.match(self.input, BITMASK, self.FOLLOW_BITMASK_in_bitmaskDecl1444)
 
@@ -1379,7 +1379,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "referenceDecl"
-    # interface.g:375:1: referenceDecl returns [ref] : REFERENCE IDENTIFIER ';' ;
+    # interface.g:376:1: referenceDecl returns [ref] : REFERENCE IDENTIFIER ';' ;
     def referenceDecl(self, ):
         ref = None
 
@@ -1388,8 +1388,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:376:5: ( REFERENCE IDENTIFIER ';' )
-                # interface.g:376:7: REFERENCE IDENTIFIER ';'
+                # interface.g:377:5: ( REFERENCE IDENTIFIER ';' )
+                # interface.g:377:7: REFERENCE IDENTIFIER ';'
                 pass 
                 self.match(self.input, REFERENCE, self.FOLLOW_REFERENCE_in_referenceDecl1485)
 
@@ -1420,7 +1420,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "formalParameter"
-    # interface.g:382:1: formalParameter returns [parameter] : typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments ;
+    # interface.g:383:1: formalParameter returns [parameter] : typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments ;
     def formalParameter(self, ):
         parameter = None
 
@@ -1433,8 +1433,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:383:5: ( typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments )
-                # interface.g:383:7: typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments
+                # interface.g:384:5: ( typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments )
+                # interface.g:384:7: typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments
                 pass 
                 self._state.following.append(self.FOLLOW_typeIdentifier_in_formalParameter1520)
                 typeIdentifier34 = self.typeIdentifier()
@@ -1443,14 +1443,14 @@ class interfaceParser(Parser):
 
                 IDENTIFIER35 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_formalParameter1522)
 
-                # interface.g:383:33: ( arrayExpression )?
+                # interface.g:384:33: ( arrayExpression )?
                 alt14 = 2
                 LA14_0 = self.input.LA(1)
 
                 if (LA14_0 == 37) :
                     alt14 = 1
                 if alt14 == 1:
-                    # interface.g:383:33: arrayExpression
+                    # interface.g:384:33: arrayExpression
                     pass 
                     self._state.following.append(self.FOLLOW_arrayExpression_in_formalParameter1524)
                     arrayExpression36 = self.arrayExpression()
@@ -1460,14 +1460,14 @@ class interfaceParser(Parser):
 
 
 
-                # interface.g:383:50: ( direction )?
+                # interface.g:384:50: ( direction )?
                 alt15 = 2
                 LA15_0 = self.input.LA(1)
 
                 if (LA15_0 == IN or LA15_0 == OUT) :
                     alt15 = 1
                 if alt15 == 1:
-                    # interface.g:383:50: direction
+                    # interface.g:384:50: direction
                     pass 
                     self._state.following.append(self.FOLLOW_direction_in_formalParameter1527)
                     direction37 = self.direction()
@@ -1516,7 +1516,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "formalParameterList"
-    # interface.g:400:1: formalParameterList returns [parameters] : ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList );
+    # interface.g:401:1: formalParameterList returns [parameters] : ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList );
     def formalParameterList(self, ):
         parameters = None
 
@@ -1528,11 +1528,11 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:401:5: ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList )
+                # interface.g:402:5: ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList )
                 alt16 = 2
                 alt16 = self.dfa16.predict(self.input)
                 if alt16 == 1:
-                    # interface.g:401:7: formalParameter
+                    # interface.g:402:7: formalParameter
                     pass 
                     self._state.following.append(self.FOLLOW_formalParameter_in_formalParameterList1561)
                     formalParameter39 = self.formalParameter()
@@ -1548,7 +1548,7 @@ class interfaceParser(Parser):
 
 
                 elif alt16 == 2:
-                    # interface.g:405:7: formalParameter ',' docPostComments rest= formalParameterList
+                    # interface.g:406:7: formalParameter ',' docPostComments rest= formalParameterList
                     pass 
                     self._state.following.append(self.FOLLOW_formalParameter_in_formalParameterList1579)
                     formalParameter40 = self.formalParameter()
@@ -1591,7 +1591,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "functionDecl"
-    # interface.g:413:1: functionDecl returns [function] : FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:414:1: functionDecl returns [function] : FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def functionDecl(self, ):
         function = None
 
@@ -1602,12 +1602,12 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:414:5: ( FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:414:7: FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:415:5: ( FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:415:7: FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
                 self.match(self.input, FUNCTION, self.FOLLOW_FUNCTION_in_functionDecl1618)
 
-                # interface.g:414:16: ( typeIdentifier )?
+                # interface.g:415:16: ( typeIdentifier )?
                 alt17 = 2
                 LA17_0 = self.input.LA(1)
 
@@ -1619,7 +1619,7 @@ class interfaceParser(Parser):
                 elif (LA17_0 == SCOPED_IDENTIFIER) :
                     alt17 = 1
                 if alt17 == 1:
-                    # interface.g:414:16: typeIdentifier
+                    # interface.g:415:16: typeIdentifier
                     pass 
                     self._state.following.append(self.FOLLOW_typeIdentifier_in_functionDecl1620)
                     typeIdentifier43 = self.typeIdentifier()
@@ -1633,14 +1633,14 @@ class interfaceParser(Parser):
 
                 self.match(self.input, 29, self.FOLLOW_29_in_functionDecl1625)
 
-                # interface.g:414:47: ( formalParameterList )?
+                # interface.g:415:47: ( formalParameterList )?
                 alt18 = 2
                 LA18_0 = self.input.LA(1)
 
                 if (LA18_0 == IDENTIFIER or LA18_0 == SCOPED_IDENTIFIER) :
                     alt18 = 1
                 if alt18 == 1:
-                    # interface.g:414:47: formalParameterList
+                    # interface.g:415:47: formalParameterList
                     pass 
                     self._state.following.append(self.FOLLOW_formalParameterList_in_functionDecl1627)
                     formalParameterList42 = self.formalParameterList()
@@ -1683,7 +1683,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "handlerDecl"
-    # interface.g:426:1: handlerDecl returns [handler] : HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:427:1: handlerDecl returns [handler] : HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def handlerDecl(self, ):
         handler = None
 
@@ -1693,8 +1693,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:427:5: ( HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:427:7: HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:428:5: ( HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:428:7: HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
                 self.match(self.input, HANDLER, self.FOLLOW_HANDLER_in_handlerDecl1663)
 
@@ -1702,14 +1702,14 @@ class interfaceParser(Parser):
 
                 self.match(self.input, 29, self.FOLLOW_29_in_handlerDecl1667)
 
-                # interface.g:427:30: ( formalParameterList )?
+                # interface.g:428:30: ( formalParameterList )?
                 alt19 = 2
                 LA19_0 = self.input.LA(1)
 
                 if (LA19_0 == IDENTIFIER or LA19_0 == SCOPED_IDENTIFIER) :
                     alt19 = 1
                 if alt19 == 1:
-                    # interface.g:427:30: formalParameterList
+                    # interface.g:428:30: formalParameterList
                     pass 
                     self._state.following.append(self.FOLLOW_formalParameterList_in_handlerDecl1669)
                     formalParameterList45 = self.formalParameterList()
@@ -1751,7 +1751,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "eventDecl"
-    # interface.g:438:1: eventDecl returns [event] : EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:439:1: eventDecl returns [event] : EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def eventDecl(self, ):
         event = None
 
@@ -1761,8 +1761,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:439:5: ( EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:439:7: EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:440:5: ( EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:440:7: EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
                 self.match(self.input, EVENT, self.FOLLOW_EVENT_in_eventDecl1705)
 
@@ -1770,14 +1770,14 @@ class interfaceParser(Parser):
 
                 self.match(self.input, 29, self.FOLLOW_29_in_eventDecl1709)
 
-                # interface.g:439:28: ( formalParameterList )?
+                # interface.g:440:28: ( formalParameterList )?
                 alt20 = 2
                 LA20_0 = self.input.LA(1)
 
                 if (LA20_0 == IDENTIFIER or LA20_0 == SCOPED_IDENTIFIER) :
                     alt20 = 1
                 if alt20 == 1:
-                    # interface.g:439:28: formalParameterList
+                    # interface.g:440:28: formalParameterList
                     pass 
                     self._state.following.append(self.FOLLOW_formalParameterList_in_eventDecl1711)
                     formalParameterList47 = self.formalParameterList()
@@ -1819,7 +1819,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "declaration"
-    # interface.g:450:1: declaration returns [declaration] : ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl );
+    # interface.g:451:1: declaration returns [declaration] : ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl );
     def declaration(self, ):
         declaration = None
 
@@ -1834,7 +1834,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:451:5: ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl )
+                # interface.g:452:5: ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl )
                 alt21 = 7
                 LA21 = self.input.LA(1)
                 if LA21 == ENUM:
@@ -1858,7 +1858,7 @@ class interfaceParser(Parser):
 
 
                 if alt21 == 1:
-                    # interface.g:451:7: enumDecl
+                    # interface.g:452:7: enumDecl
                     pass 
                     self._state.following.append(self.FOLLOW_enumDecl_in_declaration1747)
                     enumDecl49 = self.enumDecl()
@@ -1872,7 +1872,7 @@ class interfaceParser(Parser):
 
 
                 elif alt21 == 2:
-                    # interface.g:452:7: bitmaskDecl
+                    # interface.g:453:7: bitmaskDecl
                     pass 
                     self._state.following.append(self.FOLLOW_bitmaskDecl_in_declaration1764)
                     bitmaskDecl50 = self.bitmaskDecl()
@@ -1886,7 +1886,7 @@ class interfaceParser(Parser):
 
 
                 elif alt21 == 3:
-                    # interface.g:453:7: referenceDecl
+                    # interface.g:454:7: referenceDecl
                     pass 
                     self._state.following.append(self.FOLLOW_referenceDecl_in_declaration1778)
                     referenceDecl51 = self.referenceDecl()
@@ -1900,7 +1900,7 @@ class interfaceParser(Parser):
 
 
                 elif alt21 == 4:
-                    # interface.g:454:7: functionDecl
+                    # interface.g:455:7: functionDecl
                     pass 
                     self._state.following.append(self.FOLLOW_functionDecl_in_declaration1790)
                     functionDecl52 = self.functionDecl()
@@ -1914,7 +1914,7 @@ class interfaceParser(Parser):
 
 
                 elif alt21 == 5:
-                    # interface.g:455:7: handlerDecl
+                    # interface.g:456:7: handlerDecl
                     pass 
                     self._state.following.append(self.FOLLOW_handlerDecl_in_declaration1803)
                     handlerDecl53 = self.handlerDecl()
@@ -1928,7 +1928,7 @@ class interfaceParser(Parser):
 
 
                 elif alt21 == 6:
-                    # interface.g:456:7: eventDecl
+                    # interface.g:457:7: eventDecl
                     pass 
                     self._state.following.append(self.FOLLOW_eventDecl_in_declaration1817)
                     eventDecl54 = self.eventDecl()
@@ -1942,7 +1942,7 @@ class interfaceParser(Parser):
 
 
                 elif alt21 == 7:
-                    # interface.g:457:7: defineDecl
+                    # interface.g:458:7: defineDecl
                     pass 
                     self._state.following.append(self.FOLLOW_defineDecl_in_declaration1833)
                     defineDecl55 = self.defineDecl()
@@ -1981,7 +1981,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "documentedDeclaration"
-    # interface.g:473:1: documentedDeclaration returns [declaration] : docPreComment declaration ;
+    # interface.g:474:1: documentedDeclaration returns [declaration] : docPreComment declaration ;
     def documentedDeclaration(self, ):
         declaration = None
 
@@ -1991,8 +1991,8 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:474:5: ( docPreComment declaration )
-                # interface.g:474:7: docPreComment declaration
+                # interface.g:475:5: ( docPreComment declaration )
+                # interface.g:475:7: docPreComment declaration
                 pass 
                 self._state.following.append(self.FOLLOW_docPreComment_in_documentedDeclaration1873)
                 docPreComment57 = self.docPreComment()
@@ -2029,7 +2029,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "filename"
-    # interface.g:484:1: filename returns [filename] : ( IDENTIFIER | SCOPED_IDENTIFIER );
+    # interface.g:485:1: filename returns [filename] : ( IDENTIFIER | SCOPED_IDENTIFIER );
     def filename(self, ):
         filename = None
 
@@ -2039,7 +2039,7 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:485:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
+                # interface.g:486:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
                 alt22 = 2
                 LA22_0 = self.input.LA(1)
 
@@ -2054,7 +2054,7 @@ class interfaceParser(Parser):
 
 
                 if alt22 == 1:
-                    # interface.g:485:7: IDENTIFIER
+                    # interface.g:486:7: IDENTIFIER
                     pass 
                     IDENTIFIER58 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_filename1908)
 
@@ -2065,7 +2065,7 @@ class interfaceParser(Parser):
 
 
                 elif alt22 == 2:
-                    # interface.g:486:7: SCOPED_IDENTIFIER
+                    # interface.g:487:7: SCOPED_IDENTIFIER
                     pass 
                     SCOPED_IDENTIFIER59 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_filename1926)
 
@@ -2089,14 +2089,14 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "usetypesStmt"
-    # interface.g:489:1: usetypesStmt : USETYPES filename ';' ;
+    # interface.g:490:1: usetypesStmt : USETYPES filename ';' ;
     def usetypesStmt(self, ):
         filename60 = None
 
         try:
             try:
-                # interface.g:490:5: ( USETYPES filename ';' )
-                # interface.g:490:7: USETYPES filename ';'
+                # interface.g:491:5: ( USETYPES filename ';' )
+                # interface.g:491:7: USETYPES filename ';'
                 pass 
                 self.match(self.input, USETYPES, self.FOLLOW_USETYPES_in_usetypesStmt1946)
 
@@ -2137,7 +2137,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "apiDocument"
-    # interface.g:506:1: apiDocument returns [iface] : ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF ;
+    # interface.g:507:1: apiDocument returns [iface] : ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF ;
     def apiDocument(self, ):
         iface = None
 
@@ -2149,10 +2149,10 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:507:5: ( ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF )
-                # interface.g:507:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF
+                # interface.g:508:5: ( ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF )
+                # interface.g:508:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF
                 pass 
-                # interface.g:507:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )?
+                # interface.g:508:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )?
                 alt25 = 2
                 LA25_0 = self.input.LA(1)
 
@@ -2162,9 +2162,9 @@ class interfaceParser(Parser):
                     if (LA25_1 == DOC_PRE_COMMENT or LA25_1 == USETYPES) :
                         alt25 = 1
                 if alt25 == 1:
-                    # interface.g:507:9: ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration )
+                    # interface.g:508:9: ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration )
                     pass 
-                    # interface.g:507:9: ( docPreComment )+
+                    # interface.g:508:9: ( docPreComment )+
                     cnt23 = 0
                     while True: #loop23
                         alt23 = 2
@@ -2180,7 +2180,7 @@ class interfaceParser(Parser):
 
 
                         if alt23 == 1:
-                            # interface.g:507:11: docPreComment
+                            # interface.g:508:11: docPreComment
                             pass 
                             self._state.following.append(self.FOLLOW_docPreComment_in_apiDocument1988)
                             docPreComment61 = self.docPreComment()
@@ -2203,7 +2203,7 @@ class interfaceParser(Parser):
                         cnt23 += 1
 
 
-                    # interface.g:508:13: ( usetypesStmt |firstDecl= documentedDeclaration )
+                    # interface.g:509:13: ( usetypesStmt |firstDecl= documentedDeclaration )
                     alt24 = 2
                     LA24_0 = self.input.LA(1)
 
@@ -2218,7 +2218,7 @@ class interfaceParser(Parser):
 
 
                     if alt24 == 1:
-                        # interface.g:508:16: usetypesStmt
+                        # interface.g:509:16: usetypesStmt
                         pass 
                         self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2010)
                         self.usetypesStmt()
@@ -2227,7 +2227,7 @@ class interfaceParser(Parser):
 
 
                     elif alt24 == 2:
-                        # interface.g:509:15: firstDecl= documentedDeclaration
+                        # interface.g:510:15: firstDecl= documentedDeclaration
                         pass 
                         self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2028)
                         firstDecl = self.documentedDeclaration()
@@ -2248,7 +2248,7 @@ class interfaceParser(Parser):
 
 
 
-                # interface.g:515:7: ( usetypesStmt | declaration |laterDecl= documentedDeclaration )*
+                # interface.g:516:7: ( usetypesStmt | declaration |laterDecl= documentedDeclaration )*
                 while True: #loop26
                     alt26 = 4
                     LA26 = self.input.LA(1)
@@ -2260,7 +2260,7 @@ class interfaceParser(Parser):
                         alt26 = 3
 
                     if alt26 == 1:
-                        # interface.g:515:9: usetypesStmt
+                        # interface.g:516:9: usetypesStmt
                         pass 
                         self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2067)
                         self.usetypesStmt()
@@ -2269,7 +2269,7 @@ class interfaceParser(Parser):
 
 
                     elif alt26 == 2:
-                        # interface.g:516:11: declaration
+                        # interface.g:517:11: declaration
                         pass 
                         self._state.following.append(self.FOLLOW_declaration_in_apiDocument2079)
                         declaration62 = self.declaration()
@@ -2286,7 +2286,7 @@ class interfaceParser(Parser):
 
 
                     elif alt26 == 3:
-                        # interface.g:521:11: laterDecl= documentedDeclaration
+                        # interface.g:522:11: laterDecl= documentedDeclaration
                         pass 
                         self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2108)
                         laterDecl = self.documentedDeclaration()
@@ -2594,9 +2594,10 @@ def ParseCode(apiFile, searchPath=[], ifaceName=None):
         parser.compileErrors > 0):
         return None
 
-    iface.text= ''.join([ token.text
-                          for token in tokens.getTokens()
-                          if token.type not in frozenset([ C_COMMENT,
+    if tokens.getTokens():
+        iface.text= ''.join([ token.text
+                            for token in tokens.getTokens()
+                            if token.type not in frozenset([ C_COMMENT,
                                                            CPP_COMMENT,
                                                            DOC_PRE_COMMENT,
                                                            DOC_POST_COMMENT ]) ])
