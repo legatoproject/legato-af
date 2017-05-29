@@ -269,6 +269,7 @@ def Main():
     # Set up the jinja2 environment
     TemplateEnvironment = jinja2.Environment(
         loader=jinja2.PackageLoader(langPkg.__name__),
+        extensions=['jinja2.ext.with_'],
         autoescape=False
     )
 

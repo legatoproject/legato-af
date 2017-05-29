@@ -30,7 +30,7 @@ Filters = { 'FormatHeaderComment': codeGenHelpers.FormatHeaderComment,
 
 Tests = { 'SizeParameter':         codeGenHelpers.IsSizeParameter }
 
-Globals = {  }
+Globals = { 'Labeler':             codeGenHelpers.Labeler }
 
 GeneratedFiles = { 'interface' : '%s_interface.h',
                    'local' : '%s_messages.h',

@@ -542,6 +542,7 @@ static void _Handle_{{apiName}}_{{function.name}}
     void* _dataPtr
 )
 {
+    {%- with error_unpack_label=Labeler("error_unpack") %}
     le_msg_MessageRef_t _msgRef = _reportPtr;
     _Message_t* _msgPtr = le_msg_GetPayloadPtr(_msgRef);
     uint8_t* _msgBufPtr = _msgPtr->buffer;
@@ -554,7 +555,7 @@ static void _Handle_{{apiName}}_{{function.name}}
     if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
                                   &_clientContextPtr ))
     {
-        goto error_unpack;
+        goto {{error_unpack_label}};
     }
 
     // The client data pointer is passed in as a parameter, since the lookup in the safe ref map
@@ -567,7 +568,9 @@ static void _Handle_{{apiName}}_{{function.name}}
     void* contextPtr = _clientDataPtr->contextPtr;
 
     // Unpack the remaining parameters
-    {{- pack.UnpackInputs(handler.apiType.parameters) }}
+    {%- call pack.UnpackInputs(handler.apiType.parameters) %}
+        goto {{error_unpack_label}};
+    {%- endcall %}
 
     // Call the registered handler
     if ( _handlerRef_{{apiName}}_{{function.name}} != NULL )
@@ -594,11 +597,14 @@ static void _Handle_{{apiName}}_{{function.name}}
     le_msg_ReleaseMsg(_msgRef);
 
     return;
+    {%- if error_unpack_label.IsUsed() %}
 
 error_unpack:
     // Handle any unpack errors by dying -- server should not be sending invalid data; if it is
     // something is seriously wrong.
     LE_FATAL("Error unpacking message");
+    {%- endif %}
+    {%- endwith %}
 }
 {%- endfor %}
 
@@ -619,6 +625,7 @@ error_unpack:
     {%-endfor%}
 )
 {
+    {%- with error_unpack_label=Labeler("error_unpack") %}
     le_msg_MessageRef_t _msgRef;
     le_msg_MessageRef_t _responseMsgRef;
     _Message_t* _msgPtr;
@@ -709,7 +716,7 @@ error_unpack:
     // Unpack the result first
     if (!{{function.returnType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize, &_result ))
     {
-        goto error_unpack;
+        goto {{error_unpack_label}};
     }
     {%- endif %}
     {%- if function is AddHandlerFunction %}
@@ -731,7 +738,9 @@ error_unpack:
     {%- endif %}
 
     // Unpack any "out" parameters
-    {{- pack.UnpackOutputs(function.parameters) }}
+    {%- call pack.UnpackOutputs(function.parameters) %}
+        goto {{error_unpack_label}};
+    {%- endcall %}
 
     // Release the message object, now that all results/output has been copied.
     le_msg_ReleaseMsg(_responseMsgRef);
@@ -743,12 +752,12 @@ error_unpack:
 
     return;
     {%- endif %}
-    {%- if function.returnType or any(function.parameters, "OutParameter") %}
+    {%- if error_unpack_label.IsUsed() %}
 
 error_unpack:
-    __attribute__((unused));
     LE_FATAL("Unexpected response from server.");
     {%- endif %}
+    {%- endwith %}
 }
 {%- endfor %}
 

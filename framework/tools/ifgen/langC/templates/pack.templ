@@ -56,7 +56,7 @@
     if (!le_pack_UnpackSize( &_msgBufPtr, &_msgBufSize,
                                &{{parameter.name}}Size ))
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     if ( ({{parameter.name}}Size > {{parameter.maxCount}}){% if parameter is StringParameter %} &&
          ({{parameter.name}}Size < UINT32_MAX){% endif %} )
@@ -80,7 +80,7 @@
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
                                {{parameter|FormatParameterName}}, {{parameter.maxCount}} ))
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     {%- elif parameter is ArrayParameter %}
     size_t {{parameter.name}}Size;
@@ -93,13 +93,13 @@
                          &{{parameter.name}}Result );
     if (!{{parameter.name}}Result)
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     {%- elif parameter.apiType is HandlerType %}
     void *contextPtr;
     if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize, &contextPtr ))
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
     {{parameter.apiType|FormatType}} {{parameter.name}};
@@ -109,7 +109,7 @@
     if (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize,
                                                &{{parameter.name}} ))
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     {%- endif %}
     {%- endfor %}
@@ -155,7 +155,7 @@
         (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
                                {{parameter|FormatParameterName}}, {{parameter.maxCount}} )))
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     {%- elif parameter is ArrayParameter %}
     bool {{parameter.name}}Result;
@@ -167,7 +167,7 @@
                              &{{parameter.name}}Result );
         if (!{{parameter.name}}Result)
         {
-            goto error_unpack;
+            {{- caller() }}
         }
     }
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
@@ -180,7 +180,7 @@
         (!{{parameter.apiType|UnpackFunction}}( &_msgBufPtr, &_msgBufSize,
                                                {{parameter|FormatParameterPtr}} )))
     {
-        goto error_unpack;
+        {{- caller() }}
     }
     {%- endif %}
     {%- endfor %}

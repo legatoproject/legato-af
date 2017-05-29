@@ -247,3 +247,15 @@ def IterNonNullParameters(function):
         if (parameter.direction & interfaceIR.DIR_IN) == interfaceIR.DIR_IN and \
            isinstance(parameter, interfaceIR.StringParameter):
             yield index
+
+class Labeler(object):
+    def __init__(self, label):
+        self.label = label
+        self.used = False
+
+    def __str__(self):
+        self.used = True
+        return self.label
+
+    def IsUsed(self):
+        return self.used

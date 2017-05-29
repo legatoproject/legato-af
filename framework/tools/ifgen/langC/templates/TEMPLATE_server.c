@@ -458,6 +458,7 @@ static void Handle_{{apiName}}_{{function.name}}
     le_msg_MessageRef_t _msgRef
 )
 {
+    {%- with error_unpack_label=Labeler("error_unpack") %}
     // Create a server command object
     {{apiName}}_ServerCmd_t* _serverCmdPtr = le_mem_ForceAlloc(_ServerCmdPool);
     _serverCmdPtr->cmdLink = LE_DLS_LINK_INIT;
@@ -473,12 +474,14 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- if any(function.parameters, "OutParameter") %}
     if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_serverCmdPtr->requiredOutputs))
     {
-        goto error_unpack;
+        goto {{error_unpack_label}};
     }
     {%- endif %}
 
     // Unpack the input parameters from the message
-    {{- pack.UnpackInputs(function.parameters) }}
+    {%- call pack.UnpackInputs(function.parameters) %}
+        goto {{error_unpack_label}};
+    {%- endcall %}
 
     // Call the function
     {{apiName}}_{{function.name}} ( _serverCmdPtr
@@ -492,14 +495,14 @@ static void Handle_{{apiName}}_{{function.name}}
         {%- endfor %} );
 
     return;
-    {%- if function.parameters %}
+    {%- if error_unpack_label.IsUsed() %}
 
 error_unpack:
-    __attribute__((unused));
     le_mem_Release(_serverCmdPtr);
 
     LE_KILL_CLIENT("Error unpacking inputs");
     {%- endif %}
+    {%- endwith %}
 }
 {%- else %}
 static void Handle_{{apiName}}_{{function.name}}
@@ -508,6 +511,7 @@ static void Handle_{{apiName}}_{{function.name}}
 
 )
 {
+    {%- with error_unpack_label=Labeler("error_unpack") %}
     // Get the message buffer pointer
     __attribute__((unused)) uint8_t* _msgBufPtr =
         ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
@@ -521,7 +525,7 @@ static void Handle_{{apiName}}_{{function.name}}
     uint32_t _requiredOutputs = 0;
     if (!le_pack_UnpackUint32(&_msgBufPtr, &_msgBufSize, &_requiredOutputs))
     {
-        goto error_unpack;
+        goto {{error_unpack_label}};
     }
     {%- endif %}
 
@@ -534,7 +538,7 @@ static void Handle_{{apiName}}_{{function.name}}
     if (!le_pack_UnpackReference( &_msgBufPtr, &_msgBufSize,
                                   &{{function.parameters[0]|FormatParameterName}} ))
     {
-        goto error_unpack;
+        goto {{error_unpack_label}};
     }
     // The passed in handlerRef is a safe reference for the server data object.  Need to get the
     // real handlerRef from the server data object and then delete both the safe reference and
@@ -553,7 +557,9 @@ static void Handle_{{apiName}}_{{function.name}}
     handlerRef = ({{function.parameters[0].apiType|FormatType}})serverDataPtr->handlerRef;
     le_mem_Release(serverDataPtr);
     {%- else %}
-    {{- pack.UnpackInputs(function.parameters) }}
+    {%- call pack.UnpackInputs(function.parameters) %}
+        goto {{error_unpack_label}};
+    {%- endcall %}
     {%- endif %}
     {#- Now create handler parameters, if there are any.  Should be zero or one #}
     {%- for handler in function.parameters if handler.apiType is HandlerType %}
@@ -650,12 +656,12 @@ static void Handle_{{apiName}}_{{function.name}}
     le_msg_Respond(_msgRef);
 
     return;
-    {%- if function.parameters %}
+    {%- if error_unpack_label.IsUsed() %}
 
 error_unpack:
-    __attribute__((unused));
     LE_KILL_CLIENT("Error unpacking message");
     {%- endif %}
+    {%- endwith %}
 }
 {%- endif %}
 {%- endfor %}
