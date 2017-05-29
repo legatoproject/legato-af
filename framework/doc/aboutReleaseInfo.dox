@@ -1,34 +1,35 @@
 /** @page aboutReleaseInfo Releases
 
-Release Information for Legato Application Framework
+Legato Application Framework Release Information
 
-Current Stable Release: 16.10.1 - Released December 23, 2016
+<b>Current Stable Release: 17.05.0</b>
 
-Legato release notes contain information on new features and resolved outstanding issues. To download
-the release either download the tarball or clone the tagged repo from GitHub.  If you
+Legato AF release notes contain information on new features and resolved outstanding issues. To
+download the release either download the tarball or clone the tagged repo from GitHub.  If you
 are upgrading from an earlier version of Legato, you will find essential information in our upgrade
 notes and user docs. The @ref basicBuildLegato "build Legato" page will walk you through
 making a release and uploading it to a target device.
 
-| Version      | Date      | Notes       | GitHub   | Tarball  | User Docs | Upgrade Notes |
-|--------------|-----------|-------------|----------|----------|-----------|---------------|
-| 16.10.1      | Dec 23, 2016 | [16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf) | [16.10.1 tag](https://github.com/legatoproject/legato-af/tree/16.10.1) | [legato-16.10.1.tar.bz2](https://downloads.sierrawireless.com/legato/16101/legato-16.10.1.tar.bz2) | [latest legato.io](http://legato.io/legato-docs/16_10/buildAppsMain.html) | [16.10.1 Upgrade Notes](http://legato.io/legato-docs/16_10/legatoUpgrade16_10_1.html) |
-| 16.07.0      | Aug 18, 2016 | [16.07.0 Release Notes](http://legato.io/legato-docs/16_07/Legato_16_07_ReleaseNotes.pdf)   | [16.07.0 tag](https://github.com/legatoproject/legato-af/tree/16.07.0) | [legato-16.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1607/legato-16.07.0.tar.bz2) | [16.07.0 legato.io](http://legato.io/legato-docs/16_07/buildAppsMain.html)  | [16.07.0 Upgrade Notes](http://legato.io/legato-docs/16_07/legatoUpgrade16_07.html) |
-| 16.04.0      | Jun 9, 2016  | [16.04.0 Release Notes](http://legato.io/legato-docs/16_04/Legato_16_04_ReleaseNotes.pdf)   | [16.04.0 tag](https://github.com/legatoproject/legato-af/tree/16.04.1) | [legato-16.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1604/legato-16.04.0.tar.bz2) | [16.04.0 legato.io](http://legato.io/legato-docs/16_04/buildAppsMain.html)  | [16.04.0 Upgrade Notes](http://legato.io/legato-docs/16_04/legatoUpgrade16_04.html) |
-| 16.01.2      | Feb 16, 2016 | [16.01.2 Release Notes](http://legato.io/legato-docs/16_01/Legato_16_01_2_ReleaseNotes.pdf) | [16.01.2 tag](https://github.com/legatoproject/legato-af/tree/16.01.2) | [legato-16.01.0.tar.bz2](https://downloads.sierrawireless.com/legato/1601/legato-16.01.2.tar.bz2) | [16.01.0 legato.io](http://legato.io/legato-docs/16_01/buildAppsMain.html)  | [16.01.2 Upgrade Notes](http://legato.io/legato-docs/16_01/legatoUpgrade16_01_2.html) |
-| 15.10.0 Beta | Nov 15, 2015 | [15.10.0 Release Notes](http://legato.io/legato-docs/15_10/Legato_15_10_ReleaseNotes.pdf) | [15.10.0 tag](https://github.com/legatoproject/legato-af/tree/15.10.2.Beta) | [legato-15.10.0.Beta.tar.bz2](https://downloads.sierrawireless.com/legato/1510/legato-15.10.0.Beta.tar.bz2) | [15.10.0 Beta legato.io](http://legato.io/legato-docs/15_10/buildAppsMain.html)  | [15.10.0 Beta Upgrade Notes](http://legato.io/legato-docs/15_10/legatoUpgrade15_10_1.html) |
-
-The Legato Linux Based Distribution Release for Sierra Wireless Products
-are available on
-[The Sierra Wireless Source.](http://source.sierrawireless.com/resources/legato/downloads/)
-
-To download the toolchains for Sierra Wireless Products visit
-[The Sierra Wireless Source.](http://source.sierrawireless.com/resources/legato/downloads/)
+| Version      | Date         | Notes       | GitHub   | Tarball  | User Docs |
+|--------------|--------------|-------------|----------|----------|-----------|
+| 17.05.0      | Jun 9, 2017  | @subpage releaseNotes17050 | [17.05.0 tag](https://github.com/legatoproject/legato-af/tree/17.05.0) | [legato-17.05.0.tar.bz2](https://downloads.sierrawireless.com/legato/1705/legato-17.05.0.tar.bz2) | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html) |
+| 16.10.3      | Apr 28, 2017 | @subpage releaseNotes16_10_3 | [16.10.3 tag](https://github.com/legatoproject/legato-af/tree/16.10.3) | [legato-16.10.3.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.3.tar.bz2) | [16.10.3 legato.io](http://legato.io/legato-docs/16_10_3/buildAppsMain.html) |
+| 16.10.1      | Dec 23, 2016 | [16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf) | [16.10.1 tag](https://github.com/legatoproject/legato-af/tree/16.10.1) | [legato-16.10.1.tar.bz2](https://downloads.sierrawireless.com/legato/16101/legato-16.10.1.tar.bz2) | [16.10.1 legato.io](http://legato.io/legato-docs/16_10/buildAppsMain.html) |
+| 16.07.0      | Aug 18, 2016 | [16.07.0 Release Notes](http://legato.io/legato-docs/16_07/Legato_16_07_ReleaseNotes.pdf)   | [16.07.0 tag](https://github.com/legatoproject/legato-af/tree/16.07.0) | [legato-16.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1607/legato-16.07.0.tar.bz2) | [16.07.0 legato.io](http://legato.io/legato-docs/16_07/buildAppsMain.html)  |
+| 16.04.0      | Jun 9, 2016  | [16.04.0 Release Notes](http://legato.io/legato-docs/16_04/Legato_16_04_ReleaseNotes.pdf)   | [16.04.0 tag](https://github.com/legatoproject/legato-af/tree/16.04.1) | [legato-16.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1604/legato-16.04.0.tar.bz2) | [16.04.0 legato.io](http://legato.io/legato-docs/16_04/buildAppsMain.html)  |
+| 16.01.2      | Feb 16, 2016 | [16.01.2 Release Notes](http://legato.io/legato-docs/16_01/Legato_16_01_2_ReleaseNotes.pdf) | [16.01.2 tag](https://github.com/legatoproject/legato-af/tree/16.01.2) | [legato-16.01.0.tar.bz2](https://downloads.sierrawireless.com/legato/1601/legato-16.01.2.tar.bz2) | [16.01.0 legato.io](http://legato.io/legato-docs/16_01/buildAppsMain.html)  |
+| 15.10.0 Beta | Nov 15, 2015 | [15.10.0 Release Notes](http://legato.io/legato-docs/15_10/Legato_15_10_ReleaseNotes.pdf) | [15.10.0 tag](https://github.com/legatoproject/legato-af/tree/15.10.2.Beta) | [legato-15.10.0.Beta.tar.bz2](https://downloads.sierrawireless.com/legato/1510/legato-15.10.0.Beta.tar.bz2) | [15.10.0 Beta legato.io](http://legato.io/legato-docs/15_10/basic_apps.html)  |
 
 For the latest (in progress) version of the Legato Application Framework clone it directly from
 [GitHub.](https://github.com/legatoproject/legato-af#welcome-to-legato)
 
-The Legato Application Framework is licensed under the MPLv2.
+@warning Please check with your Smart Module Vendor to verify which versions of Legato AF will work
+with which Smart Module firmware versions.  There may be some incompatibilities with versions of
+modem libraries.
+(e.g., [Sierra Wireless WP85xx modules](https://source.sierrawireless.com/resources/legato/wpfirmwarerelease14/)
+need to be updated with Release 14 before working with Legato AF 16.10.3 or later)
+
+The Legato Application Framework is licensed under the @ref aboutLicenses "MPLv2".
 
 The Legato team welcomes @ref aboutLegatoContributing "contributions" to the project.
 

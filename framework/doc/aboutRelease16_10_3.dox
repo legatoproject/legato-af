@@ -1,0 +1,111 @@
+/** @page releaseNotes16_10_3 16.10.3 Release Notes
+
+See @ref aboutLicenses for Legato AF License information.
+
+@tableofcontents
+
+The following provides a summary of changes that have been made in the 16.10.3 Legato AF Release.
+For a list of the changes in 16.10.0 and 16.10.1 see:
+[16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf)
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section rn16_10_3_Features New Features
+
+@subsection rn16_10_3_devModeGDB devMode and GDB
+
+Further improvements have been made to the Developer Mode core app:
+- @c devMode is no longer installed by default on the target.  To run @c devMode you must build
+  Legato AF 16.10.3 for your target device, then install @c devMode with @c app @c install.
+- GDB server is now bundled with @c devMode to enable easy removal for production deployments.
+
+More information on @ref basicTargetDevMode "how to install @c devMode"
+and @ref howToDebugGDB "GDB debugging" info can be found in on [legato.io](http://legato.io).
+
+@note To install @c devMode using
+[Developer Studio](https://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions)
+, refer to Developer Studio's internal documentation.
+
+@subsection rn16_10_3_binaryapps Binary Only Applications Supported
+
+The ability to @ref buildToolsmkapp "distribute binary only applications" without source code is now
+supported.  @c mkapp will build a binary only app bundle that can then be included in an
+@ref defFilesSdef without the source code.
+
+@section rn16_10_3_removeJava Experimental Java Support
+
+Thank you for the feedback given about the @b experimental Java Support in the Legato AF.  We are
+working on officially supporting Java within the framework, but until further work can be done we
+have removed Java Support from legato.io.
+
+@section rn16_10_3_KnownIssues Known Issues
+
+@subsection rn16_10_3_Constraints Constraints and Limitations
+
+@subsubsection rn16_10_3_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer is default installed with Modem Manager version @c 1.4.12-1ubuntu1 which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+-   NetworkManager crashing when plugging into your device over USB, or
+-   The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+-   Uninstall @c modemmanager from Ubuntu or
+-   Downgrade @c modemmanager to version 1.0.0-2ubuntu1
+
+[Download version 1.0.0-2ubuntu1 of modemmanager](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsection rn16_10_3_OpenIssues Open Issues
+
+The following is the list of known issues that still exist in Legato 16.10.3 and are currently under
+investigation:
+
+@b Legato @b AF
+-   Apps can't share writable files with each other unless both apps are "un-sandboxed".
+-   Real time scheduling policies are not able to promote themselves if needed.
+-   Not able to hot swap or hot plug SD IoT add-on cards
+
+@b Tools
+-   @c app @c runProc does not work for apps running outside of a Sandbox.  If you wish to run @c
+    app runProc your @c app must be running in a Sandbox.
+-   @c app @c status doesn’t have a "waiting" status if an app is waiting it gets reported as
+    "running".
+-   @c configEcm will give a confusing error message about IP's not being on the same subnet when
+    other errors are present.
+
+@b Config @b Tree
+-   Removing an @c app may remove another @c apps tree if the first @c apps requires section lists
+    the second @c app.
+
+@b Audio @b API
+-   No sound recorded when using an Analog interface.
+-   Not able to resume a playback after a recording has been paused.
+-   "Pop" noise on @c usb audio at the end of a play or when stopping an ongoing file
+
+@b Data @b Connection @b API
+-   "wifi client disconnect" does not release current Wifi connection
+
+@b eCall @b API
+-   First tone in DTMF is often missed or has a shorter duration.
+-   @c LE_ECALL_STATE_TIMEOUT_T6 is not handled when T6 expires. The timeout event is not generated
+    in the eCall handler.
+-   MSD transmissions fail over SMS when the FDN is locked.
+-   The fall-back SMS is not received during an Era-Glonass eCall session.
+
+@b GPIO  @b API
+- Only one service is able to access a GPIO pin at a time
+
+@b SPI @b API
+- Driver does not support speeds lower than 960000 baud
+
+@b UART @b API
+- Modem does not support serial baud rate of 1000000
+
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

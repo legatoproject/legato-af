@@ -15,18 +15,18 @@ Oracle Java Virtual Machine (JVM). Sierra Wireless doesn't distribute or maintai
 @section javaBuild_envVars Environment Variables
 
 Before you can build Java support in Legato, your shell needs to be setup with
-the environment variable @c JDK_INCLUDE_DIR
+the environment variable @c JAVA_INCLUDE_DIR
 
 On Ubuntu 15.10 and later, set:
 
 @verbatim
-JDK_INCLUDE_DIR=/usr/lib/jvm/java-8-openjdk-amd64/
+JAVA_INCLUDE_DIR=/usr/lib/jvm/java-8-openjdk-amd64/
 @endverbatim
 
 On earlier Ubuntu versions, set:
 
 @verbatim
-JDK_INCLUDE_DIR=/usr/lib/jvm/java-7-openjdk-amd64/
+JAVA_INCLUDE_DIR=/usr/lib/jvm/java-7-openjdk-amd64/
 @endverbatim
 
 Then set the Oracle's embedded JVM environment variable @c EJDK_DIR to the directory where you
@@ -243,6 +243,6 @@ Like C/C++ components, the ninja build tool is used to do dependency checking to
 an app. If the .class files are up to date against the .java sources, then Java code compiling won't
 occur. The build tools also assume that the @c javac command line compiler is somewhere in the path.
 
-Copyright (C) Sierra Wireless Inc.
+Copyright (C) Sierra Wireless Inc. Use of this work is subject to license.
 
 **/
