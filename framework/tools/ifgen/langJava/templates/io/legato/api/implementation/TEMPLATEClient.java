@@ -148,7 +148,7 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {%- elif parameter is InParameter %}
         {{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
         {%- elif parameter is StringParameter %}
-        buffer.writeLongRef({{parameter.maxCount}});
+        buffer.writeInt({{parameter.maxCount}});
         {%- endif %}
         {%- endfor %}
 
@@ -170,7 +170,7 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {%- if parameter is InParameter %}
         {{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
         {%- elif parameter is StringParameter or parameter is ArrayParameter %}
-        buffer.writeLongRef({{parameter.maxCount}});
+        buffer.writeInt({{parameter.maxCount}});
         {%- endif %}
         {%- endfor %}
         {%- set hasOuts = (function.returnType or any(function.parameters, "OutParameter")) %}
