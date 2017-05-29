@@ -101,6 +101,25 @@ REFERENCE <name>;
 The REFERENCE is used to define a reference to an object. The object reference is mapped to an
 opaque reference in C and an object instance or similar in other languages.
 
+@subsection apiFilesSyntax_typesHandler HANDLER
+
+A HANDLER is specified as:
+
+@verbatim
+HANDLER <handlerType>
+(
+     [<parameterList>]
+);
+@endverbatim
+
+The @c parameterList can contain one or more parameters separated by commas, or can be empty
+if there are no parameters.
+It can only contain scalar types or string types, as described in
+@ref apiFilesSyntax_function.
+All the parameters should be IN parameters.
+
+See @ref apiFilesC_handler for details on the C code generated from the above handler
+definition.
 
 @subsection apiFilesSyntax_typesUsetypes USETYPES
 
@@ -206,27 +225,6 @@ It can contain anything that's valid for a function, but it must contain one han
 The parameters are used when registering a handler for the specified event.
 
 See @ref apiFilesC_event for details on the C code generated from the above event
-definition.
-
-
-@section apiFilesSyntax_handler Specifying a Handler
-
-Do this to specify a handler:
-
-@verbatim
-HANDLER <handlerType>
-(
-    [<parameterList>]
-);
-@endverbatim
-
-The @c parameterList can contain one or more parameters separated by commas, or can be empty
-if there are no parameters.
-It can only contain scalar types or string types, as described above for
-@ref apiFilesSyntax_function.
-All the parameters should be IN parameters.
-
-See @ref apiFilesC_handler for details on the C code generated from the above handler
 definition.
 
 
