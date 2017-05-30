@@ -274,5 +274,16 @@ void le_sig_InstallShowStackHandler
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Install a default handler to handle the SIGTERM signal.
+ * Called automatically by main().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sig_InstallDefaultTermHandler
+(
+    void
+);
+
 
 #endif // LEGATO_SIGNALS_INCLUDE_GUARD

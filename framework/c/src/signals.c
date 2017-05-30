@@ -531,6 +531,35 @@ void le_sig_InstallShowStackHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Minimal signal handler that exists the application if a SIGTERM has been received.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TermSignalHandler
+(
+    int sigNum      ///< [IN] The signal that was received.
+)
+{
+    LE_CRIT("Terminated");
+    exit(EXIT_SUCCESS);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Install a default handler to handle the SIGTERM signal.
+ *
+ * Called automatically by main().
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sig_InstallDefaultTermHandler
+(
+    void
+)
+{
+    le_sig_Block(SIGTERM);
+    le_sig_SetEventHandler(SIGTERM, TermSignalHandler);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
