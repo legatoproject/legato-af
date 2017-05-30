@@ -444,7 +444,7 @@ void Generate
     {
         includes += " -I" + dir;
     }
-    script << "builddir = " << buildParams.workingDir << "\n\n";
+    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
     script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
     script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
     script << "ldFlags = " << buildParams.ldFlags << "\n\n";

@@ -3,6 +3,7 @@
 SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
 TEST_COVERAGE=${TEST_COVERAGE:-1}
+TEST_COVERAGE_DIR=${TEST_COVERAGE_DIR:-/data/coverage}
 WITH_COLORS=${WITH_COLORS:-true}
 TARGET_SSH_PORT=${TARGET_SSH_PORT:-22}
 
@@ -13,6 +14,10 @@ if [[ "$WITH_COLORS" == "true" ]]; then
     COLOR_RESET="\033[0m"
     COLOR_PASS="\033[1;32m"
 fi
+
+# This allows to build commands such as 'if <cmd> | <cmd>'
+# without having to check the exit status of each sub-commands.
+set -o pipefail
 
 function message {
     local color=$1
@@ -256,6 +261,12 @@ function StartVirtualTarget()
         CheckRet
     fi
 
+    # If available, use the partition built locally
+    local volume_opt
+    if [ -e "$SOURCEDIR/build/virt/legato.squashfs" ]; then
+        volume_opt="--volume=$SOURCEDIR/build/virt/legato.squashfs:/legato/legato.squashfs"
+    fi
+
     VIRT_CNT_NAME="virt-$(date +%Y%d%m-%H%M%S)"
 
     # If available, use the partition built locally
@@ -367,6 +378,72 @@ function TargetUpdateLegato()
     Exit 1
 }
 
+function TargetCleanCoverage()
+{
+    local target_ip=$1
+
+    ssh root@$target_ip "rm -rf $TEST_COVERAGE_DIR"
+    CheckRet
+}
+
+# Transfer coverage results stored on the target to the test host
+function TargetRetrieveCoverage()
+{
+    local target_type=$1
+    local target_ip=$2
+
+    message $COLOR_INFO "Getting code coverage from target $target_ip"
+
+    cd $SOURCEDIR
+
+    rm -rf build/$target_type/coverage/raw/
+    mkdir -p build/$target_type/coverage/raw/
+
+    # Restart legato to make sure that coverage has been saved
+    ssh root@$target_ip "/legato/systems/current/bin/legato restart"
+
+    # Transfer
+    if ! ssh root@$target_ip "cd $TEST_COVERAGE_DIR && tar c *" | tar x -C build/$target_type/coverage/raw/; then
+        message $COLOR_WARN "Unable to transfer coverage files from $TEST_COVERAGE_DIR"
+    fi
+
+    for d in $(find build/$target_type/coverage/raw -wholename "*/build/$target_type"); do
+        rsync -a $d/ build/$target_type/
+        CheckRet
+    done
+}
+
+function Job_TargetCleanCoverage()
+{
+    local target_ip=$2
+
+    if [ -z "$target_ip" ]; then
+        echo "Usage: $0 $1 <target IP>"
+        exit 1
+    fi
+
+    CheckSsh $target_ip
+    CheckRet
+
+    TargetCleanCoverage $target_ip
+}
+
+function Job_TargetRetrieveCoverage()
+{
+    local target_type=$2
+    local target_ip=$3
+
+    if [ -z "$target_type" ] || [ -z "$target_ip" ]; then
+        echo "Usage: $0 $1 <target type> <target IP>"
+        exit 1
+    fi
+
+    CheckSsh $target_ip
+    CheckRet
+
+    TargetRetrieveCoverage $target_type $target_ip
+}
+
 function TargetUnitTest()
 {
     if [ -z "$DEST_IP" ]; then
@@ -379,9 +456,23 @@ function TargetUnitTest()
     cd $BUILDDIR_BASE/$TARGET_TYPE
     CheckRet
 
+    if [[ "$TEST_COVERAGE" == "1" ]]; then
+        TargetCleanCoverage $DEST_IP
+    fi
+
     # Test
     $SOURCEDIR/apps/test/targetUnitTests $DEST_IP $TARGET_TYPE
-    CheckRet
+    local test_ret=$?
+
+    if [ $test_ret -ne 0 ]; then
+        message $COLOR_ERROR "Tests failed"
+    else
+        message $COLOR_PASS "Tests OK"
+    fi
+
+    if [[ "$TEST_COVERAGE" == "1" ]]; then
+        TargetRetrieveCoverage "$TARGET_TYPE" "$DEST_IP"
+    fi
 
     cd $SOURCEDIR
     CheckRet
@@ -570,18 +661,35 @@ function GenerateReport()
     if [[ "$TEST_COVERAGE" == "1" ]]; then
         message $COLOR_INFO "Generating report for $target ..."
 
+        cd $SOURCEDIR
+
         # Build
         gcovr --xml \
-            -r . -o $builddir/coverage.xml \
-            --exclude=".*(test|build|codegen)\b.*"
+              --root . \
+              --output $builddir/coverage.xml \
+              --exclude ".*(test|build|codegen)\b.*"
         CheckRet
 
         mkdir -p $builddir/coverage/html/
-        gcovr --html --html-details \
-            -r . -o $builddir/coverage/html/index.html \
-            --exclude=".*(test|build|codegen)\b.*"
+        gcovr --html \
+              --html-details \
+              --root . \
+              --output $builddir/coverage/html/index.html \
+              --exclude ".*(test|build|codegen)\b.*"
         CheckRet
     fi
+}
+
+function Job_GenerateReport()
+{
+    local target=$2
+
+    if [ -z "$target" ]; then
+        echo "Usage: $0 $1 <target>"
+        exit 1
+    fi
+
+    GenerateReport $target
 }
 
 message $COLOR_INFO "== Task: '$1' ==\n"
@@ -608,6 +716,15 @@ virt-target-ut)
     ;;
 run-virt-target-ut)
     Job_VirtualTargetUnitTest false
+    ;;
+target-clean-coverage)
+    Job_TargetCleanCoverage $@
+    ;;
+target-get-coverage)
+    Job_TargetRetrieveCoverage $@
+    ;;
+report-coverage)
+    Job_GenerateReport $@
     ;;
 dev-trial)
     Manual_DeveloperPrePushTrial

@@ -200,7 +200,7 @@ void Generate
     // Start the script with a comment, the file-level variable definitions, and
     // a set of generic rules.
     GenerateCommentHeader(script, modulePtr);
-    script << "builddir = " << buildParams.workingDir << "\n\n";
+    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
     script << "target = " << buildParams.target << "\n\n";
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
     GenerateBuildRules(script, buildParams.target, argc, argv);

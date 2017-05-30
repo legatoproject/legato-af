@@ -405,6 +405,19 @@ ifneq ($(DEBUG),yes)
   MKSYS_FLAGS += --cflags=-O2
 endif
 
+ifeq ($(TEST_COVERAGE),1)
+  MKSYS_FLAGS += --cflags=--coverage --ldflags=--coverage
+
+  # Except on localhost, storage coverage data (gcda) in /data/coverage by default
+  ifneq ($(TARGET),localhost)
+    TEST_COVERAGE_DIR ?= "/data/coverage"
+  endif
+
+  ifneq ($(TEST_COVERAGE_DIR),)
+    MKSYS_FLAGS += --cflags=-fprofile-dir=${TEST_COVERAGE_DIR}
+  endif
+endif
+
 # Define the default sdef file to use
 SDEF_TO_USE ?= default.sdef
 

@@ -41,6 +41,16 @@ if [ "$TEST_COVERAGE" == "1" ]
 then
     NINJA_CFLAGS="--coverage"
     NINJA_LDFLAGS="--coverage"
+
+    if [ "$LEGATO_TARGET" != "localhost" ]
+    then
+        TEST_COVERAGE_DIR=${TEST_COVERAGE_DIR:-"/data/coverage"}
+    fi
+
+    if [ -n "$TEST_COVERAGE_DIR" ]
+    then
+        NINJA_CFLAGS="$NINJA_CFLAGS -fprofile-dir=$TEST_COVERAGE_DIR"
+    fi
 fi
 
 # Enable optimization flags
