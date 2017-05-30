@@ -26,6 +26,7 @@
 //--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
+#include "start.h"
 #include "../limit.h"
 #include "../file.h"
 #include "../installer.h"
@@ -43,6 +44,9 @@
 /**
  * MAX_TRIES denotes the maximum number of times a new system can be tried (unless it becomes
  * marked "good") before it is reverted.
+ *
+ * It is also the maximum number of times in a row a good system will be rebooted before reverting
+ * to the golden master.
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_TRIES 4
@@ -71,8 +75,11 @@ static const char AppsDir[] = "/legato/apps";
 static const char SystemsUnpackDir[] = "/legato/systems/unpack";
 static const char AppsUnpackDir[] = "/legato/apps/unpack";
 static const char OldFwDir[] = "/mnt/flash/opt/legato";
-static const char LdconfigNotDoneMarkerFile[] = "/legato/systems/needs_ldconfig";
 
+static const char LdconfigNotDoneMarkerFile[] = "/legato/systems/needs_ldconfig";
+static const char GoldenVersionFile[] = "/mnt/legato/system/version";
+static const char CurrentVersionFile[] = "/legato/systems/current/version";
+static const char BootCountFile[] = "/legato/bootCount";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -245,10 +252,14 @@ static int WriteToFile
 {
     int written = 0;
     int fd;
+    char tempFileName[PATH_MAX];
+
+    // first write to a temporary file
+    snprintf(tempFileName, PATH_MAX - 1, "%s-", fileName);
 
     do
     {
-        fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+        fd = open(tempFileName, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     } while (fd == -1 && errno == EINTR);
 
     if (fd == -1)
@@ -279,6 +290,13 @@ static int WriteToFile
     }
 
     fd_Close(fd);
+
+    // Then rename to the real file.  This ensures writes to the file appear atomic.
+    if (-1 == rename(tempFileName, fileName))
+    {
+        LE_ERROR("Error renaming temporary file '%s' to '%s'", tempFileName, fileName);
+        return -1;
+    }
 
     return written;
 }
@@ -1036,6 +1054,93 @@ static SystemStatus_t GetStatus
     return status;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if a system is the golden system
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsCurrentSystemGolden
+(
+    void
+)
+{
+    char currentVersion[255] = "";
+    char goldenVersion[255] = "";
+
+    // If this fails, then the system in /mnt/legato is malformed -- cannot possibly be the golden
+    // system installed.
+    if (ReadFromFile(GoldenVersionFile, goldenVersion, sizeof(goldenVersion)) <= 0)
+    {
+        LE_ERROR("System on /mnt/legato is malformed. Ignoring it.");
+        return false;
+    }
+
+    // If this fails the system in /legato/systems/current is malformed -- again, not the golden
+    // system
+    if (ReadFromFile(CurrentVersionFile, currentVersion, sizeof(currentVersion)) <= 0)
+    {
+        LE_ERROR("System on /legato/systems/current is malformed.  Ignoring it.");
+        return false;
+    }
+
+    return 0 == strcmp(goldenVersion, currentVersion);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine the number of consecutive reboots.
+ */
+//--------------------------------------------------------------------------------------------------
+static int ReadBootCount
+(
+    void
+)
+{
+    char bootCountBuf[64];
+
+    if (ReadFromFile(BootCountFile,  bootCountBuf, sizeof(bootCountBuf)) < 0)
+    {
+        // File does not exist means first consecutive boot
+        return 0;
+    }
+
+    int bootCount;
+    le_result_t result = le_utf8_ParseInt(&bootCount, bootCountBuf);
+
+    if (result == LE_OUT_OF_RANGE)
+    {
+        LE_CRIT("Reboot count '%s' is out of range!", bootCountBuf);
+        return 0;
+    }
+
+    if (result != LE_OK)
+    {
+        LE_CRIT("Reboot count is malformed ('%s')", bootCountBuf);
+        return 0;
+    }
+
+    return bootCount;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the number of consecutive reboots.
+ */
+//--------------------------------------------------------------------------------------------------
+static void WriteBootCount
+(
+    int bootCount
+)
+{
+    char bootCountBuf[64];
+
+    snprintf(bootCountBuf, sizeof(bootCountBuf), "%d", bootCount);
+
+    if (WriteToFile(BootCountFile, bootCountBuf, strlen(bootCountBuf)) < 0)
+    {
+        exit(EXIT_FAILURE);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1218,7 +1323,7 @@ static bool ShouldInstallGolden
     (void)ReadFromFile("/legato/mntLegatoVersion", builtInVersion, sizeof(builtInVersion));
 
     // If this fails, then the system in /mnt/legato is malformed and should not be installed.
-    if (ReadFromFile("/mnt/legato/system/version", goldenVersion, sizeof(goldenVersion)) <= 0)
+    if (ReadFromFile(GoldenVersionFile, goldenVersion, sizeof(goldenVersion)) <= 0)
     {
         LE_ERROR("System on /mnt/legato is malformed. Ignoring it.");
         return false;
@@ -1363,14 +1468,14 @@ static int RunCurrentSystem
 
             exit(EXIT_SUCCESS);
 
-        case 2:
+        case LE_START_EXIT_RESTART:
 
-            LE_INFO("Supervisor exited with 2.  Legato framework restarting.");
+            LE_INFO("Supervisor exited with EXIT_RESTART(2).  Legato framework restarting.");
             break;
 
-        case 3:
+        case LE_START_EXIT_MANUAL_RESTART:
 
-            LE_INFO("Supervisor exited with 3.  Legato framework restarting.");
+            LE_INFO("Supervisor exited with EXIT_MANUAL_RESTART(3).  Legato framework restarting.");
             break;
 
         default:
@@ -1419,10 +1524,11 @@ static void SetCurrent
 //--------------------------------------------------------------------------------------------------
 static void Launch
 (
-    void
+    bool isReadOnly
 )
 {
     static int lastExitCode = EXIT_FAILURE; // Treat a reboot as a fault.
+    int bootCount;
 
     int tries;
 
@@ -1432,7 +1538,7 @@ static void Launch
             // If the supervisor exited with exit code 3 then don't
             // increment the try count, unless the system is new (untried).
             // This means that "legato restart" was used.
-            if ((lastExitCode != 3) || (tries == 0))
+            if ((lastExitCode != LE_START_EXIT_MANUAL_RESTART) || (tries == 0))
             {
                 MarkStatusTried(tries + 1);
             }
@@ -1440,6 +1546,17 @@ static void Launch
             // *** FALL THROUGH ***
 
         case STATUS_GOOD:
+            // Increment the number of times the system has been booted if system is not
+            // read only.  If it is read-only, nothing we can do to recover anyway.
+            if (!isReadOnly)
+            {
+                bootCount = ReadBootCount();
+                if (lastExitCode != LE_START_EXIT_MANUAL_RESTART)
+                {
+                    WriteBootCount(bootCount + 1);
+                }
+            }
+
             lastExitCode = RunCurrentSystem();
             break;
 
@@ -1508,6 +1625,9 @@ static int InstallGolden
     // the system's libraries can be found easily.
     RequestLdSoConfig();
 
+    // Remove boot count -- restart from 0 when installing a new golden image.
+    unlink(BootCountFile);
+
     // Flush to disk before marking golden install as complete.
     sync();
 
@@ -1549,8 +1669,34 @@ static void CheckAndInstallCurrentSystem
         LE_INFO("The previous 'current' system has index %d.", currentIndex);
     }
 
+    // Check if we should fall back to the "golden" system due to a boot loop
+    if ((newestIndex == currentIndex) &&
+        (GetStatus("current", NULL) == STATUS_GOOD) &&
+        (ReadBootCount() >= MAX_TRIES))
+    {
+        // If the golden system is boot looping, do not start Legato in an attempt to preserve
+        // flash memory.
+        if (IsCurrentSystemGolden())
+        {
+            // Remove the boot count file so Legato will boot normally next reboot.  If the
+            // board reboots despite Legato not being started, it means one of two things:
+            // 1) Legato is not causing the reset, in which case starting or not starting legato
+            //    doesn't matter, or
+            // 2) The module has been manually reset (e.g. power cycle) in which case we should
+            //    re-attempt to start Legato after manual intervention.
+            // Note: if a WDT is used which starts on boot, we should add code here to start
+            // a program which kicks the watchdog.  A watchdog reset at this point would defeat
+            // the purpose of not starting Legato.
+            unlink(BootCountFile);
+            LE_FATAL("Golden system entered boot loop -- not starting Legato");
+        }
+
+        LE_INFO("A good system has entered a reboot loop -- reinstalling from golden.");
+        currentIndex = InstallGolden(newestIndex, currentIndex);
+        newestIndex = currentIndex;
+    }
     // Check if we should install the "golden" system from /mnt/legato.
-    if (ShouldInstallGolden(newestIndex))
+    else if (ShouldInstallGolden(newestIndex))
     {
         currentIndex = InstallGolden(newestIndex, currentIndex);
         newestIndex = currentIndex;
@@ -1653,7 +1799,7 @@ int main
         }
 
         // Run the current system.
-        Launch();
+        Launch(isReadOnly);
     }
 
     return 0;

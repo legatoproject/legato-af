@@ -215,6 +215,7 @@
 #include "sysStatus.h"
 #include "fileDescriptor.h"
 
+#include "../start/start.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -449,14 +450,14 @@ static void StopSupervisor
         // Initiated by updateDaemon requesting restart
         LE_INFO("Legato framework shut down complete. Restarting...");
         sysStatus_DecrementTryCount();
-        exit(2);
+        exit(LE_START_EXIT_RESTART);
     }
     else if (State == STATE_RESTARTING_MANUAL)
     {
         // Initiated by user command restartLegato
         LE_INFO("Legato framework manual shut down complete. Restarting...");
         sysStatus_DecrementTryCount();
-        exit(3);
+        exit(LE_START_EXIT_MANUAL_RESTART);
     }
     else if (State == STATE_STOPPING)
     {
