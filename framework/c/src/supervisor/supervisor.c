@@ -215,22 +215,6 @@
 #include "sysStatus.h"
 #include "fileDescriptor.h"
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Minimum allowable time between boots.
- *
- * Less than this and the system is treated as a boot loop.
- */
-//--------------------------------------------------------------------------------------------------
-#define BOOT_PERIOD                        60000
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Reboot timer
- */
-//--------------------------------------------------------------------------------------------------
-le_timer_Ref_t RebootTimer;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -438,23 +422,6 @@ static void StartFramework
     {
         LE_INFO("Skipping app auto-start.");
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Handle fast reboot detect timer expring.
- *
- * Deletes the reboot count file
- */
-//--------------------------------------------------------------------------------------------------
-static void HandleRebootExpiry
-(
-    le_timer_Ref_t timer
-)
-{
-    // Just delete the file.  It should exist here, but if it doesn't there's no problem.
-    (void)unlink("/legato/bootCount");
 }
 
 
@@ -934,13 +901,6 @@ COMPONENT_INIT
     }
 
     StartFramework();
-
-    // Create and start the quick-reboot timer.  Although start also tries to check timing,
-    // also add a timing check here in case RTC is not working.
-    RebootTimer = le_timer_Create("Reboot");
-    le_timer_SetHandler(RebootTimer, HandleRebootExpiry);
-    le_timer_SetMsInterval(RebootTimer, BOOT_PERIOD);
-    le_timer_Start(RebootTimer);
 
     // Close stdin (and reopen to /dev/null to be safe).
     // This signals to the parent process that all apps have been started.
