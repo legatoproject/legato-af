@@ -4,6 +4,7 @@ SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
 TEST_COVERAGE=${TEST_COVERAGE:-1}
 WITH_COLORS=${WITH_COLORS:-true}
+TARGET_SSH_PORT=${TARGET_SSH_PORT:-22}
 
 if [[ "$WITH_COLORS" == "true" ]]; then
     COLOR_INFO="\033[1;36m"
@@ -25,11 +26,16 @@ function DoTestCleanup()
     StopVirtualTarget
 }
 
+function Exit()
+{
+    DoTestCleanup
+    exit $1
+}
+
 function Abort()
 {
     message $COLOR_WARN "Aborting ..."
-    DoTestCleanup
-    exit 1
+    Exit 1
 }
 
 trap 'Abort' INT
@@ -39,8 +45,7 @@ function CheckRet()
     RETVAL=$?
     if [ $RETVAL -ne 0 ]; then
         message $COLOR_ERROR "Exit Code $RETVAL"
-        DoTestCleanup
-        exit $RETVAL
+        Exit $RETVAL
     fi
 }
 
@@ -137,8 +142,7 @@ function CheckServiceDirectory()
     if ! kill -0 $SERVICE_DIRECTORY_PID > /dev/null 2>&1
     then
         message $COLOR_WARN "Service Directory is no longer running!"
-        DoTestCleanup
-        exit 1
+        Exit 1
     fi
 }
 
@@ -164,8 +168,7 @@ function CheckLogControlDaemon()
     if ! kill -0 $LOG_CTRL_DAEMON_PID > /dev/null 2>&1
     then
         message $COLOR_WARN "Log Control Daemon is no longer running!"
-        DoTestCleanup
-        exit 1
+        Exit 1
     fi
 }
 
@@ -190,8 +193,7 @@ function CheckConfigTree()
     if ! kill -0 $CONFIG_TREE_PID > /dev/null 2>&1
     then
         message $COLOR_WARN "Config Tree is no longer running!"
-        DoTestCleanup
-        exit 1
+        Exit 1
     fi
 }
 
@@ -245,7 +247,7 @@ function StartVirtualTarget()
     if ! which docker >/dev/null; then
         message $COLOR_ERROR "Unable to find 'docker', unable to executed virtual tests."
         echo "See https://docs.docker.com/engine/installation/ for installation instructions."
-        exit 1
+        Exit 1
     fi
 
     if [ -z "$VIRT_SKIP_PULL" ]; then
@@ -256,11 +258,18 @@ function StartVirtualTarget()
 
     VIRT_CNT_NAME="virt-$(date +%Y%d%m-%H%M%S)"
 
+    # If available, use the partition built locally
+    local volume_opt
+    if [ -e "$SOURCEDIR/build/virt/legato.squashfs" ]; then
+        volume_opt="--volume=$SOURCEDIR/build/virt/legato.squashfs:/legato/legato.squashfs"
+    fi
+
     message $COLOR_INFO "Starting virtual target ..."
 
     docker run \
                 --detach \
                 --name=$VIRT_CNT_NAME \
+                $volume_opt \
                 $VIRT_DOCKER_IMG
     CheckRet
 
@@ -301,16 +310,16 @@ function TargetIdentify()
 {
     if [ -z "$TARGET_TYPE" ]; then
         echo "Identifying target ..."
-        TARGET_MODEL=$(ssh -o ConnectTimeout=5 -p $TARGET_SSH_PORT  root@$DEST_IP "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2> /dev/null)
+        TARGET_MODEL=$(ssh -o ConnectTimeout=5 -p $TARGET_SSH_PORT root@$DEST_IP "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2> /dev/null)
         if [ -z "$TARGET_MODEL" ]; then
             echo "Unable to determine remote target model"
-            exit 1
+            Exit 1
         fi
 
         TARGET_TYPE=$($SOURCEDIR/bin/gettargettype $TARGET_MODEL)
         if [ -z "$TARGET_TYPE" ]; then
             echo "Unable to determine remote target type"
-            exit 1
+            Exit 1
         fi
     fi
 
@@ -326,7 +335,36 @@ function TargetUpdateLegato()
     CheckRet
 
     # Wait for target to bring up the new system.
-    sleep 60
+    sleep 30
+
+    # Mark good
+    message $COLOR_INFO "-> marking good"
+    for (( i=0; i<10; i++ )); do
+        echo "waiting ..."
+        if timeout 15 ssh -p $TARGET_SSH_PORT root@$DEST_IP "/legato/systems/current/bin/update --mark-good" > build/$TARGET_TYPE/target.log 2>&1; then
+            break
+        fi
+
+        if grep -q "The probation period has already ended" build/$TARGET_TYPE/target.log; then
+            break
+        fi
+
+        sleep 15
+    done
+
+    # Wait for system to be marked good
+    message $COLOR_INFO "-> checking status"
+    for (( i=0; i<10; i++ )); do
+        echo "waiting ..."
+        if timeout 15 ssh -p $TARGET_SSH_PORT root@$DEST_IP "/legato/systems/current/bin/legato status | grep current | grep good"; then
+            return 0
+        fi
+
+        sleep 15
+    done
+
+    message $COLOR_ERROR "Timeout !"
+    Exit 1
 }
 
 function TargetUnitTest()
@@ -432,7 +470,7 @@ function BuildClang()
 {
     if ! which clang; then
         echo "Unable to find clang"
-        exit 1
+        Exit 1
     fi
 
     echo "  Clang version:"
@@ -584,4 +622,6 @@ quick-test)
     exit 1
     ;;
 esac
+
+Exit 0
 
