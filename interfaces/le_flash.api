@@ -8,9 +8,14 @@
  *
  * This file contains data structures and prototypes definitions for high level Flash APIs.
  *
+ * The goal is to provide an API to update an image recorded:
+ * - in a flash partition in RAW mode at the block layer, using a Memory Technology Device (MTD).
+ * - in an Unsorted Block Images (UBI) volume, using a MTD and updating UBI information and headers.
+ *
+ *
  * @section le_flash_binding IPC interfaces binding
  *
- * All the functions of this API are provided by the @b flashService.
+ * All the functions of this API are provided by the @b fwupdateService.
  *
  * Here's a code sample binding to the flash service:
  * @verbatim
@@ -30,6 +35,68 @@
  *
  * - le_flash_AddBadImageDetectionHandler() API adds a handler to notify when an image becomes bad
  * - le_flash_RemoveBadImageDetectionHandler() API removes the bad image handler
+ *
+ * @section flash_Protection Flash access protection
+ * To address race conditions, le_flash_RequestAccess() has to be called first before trying to
+ * access to the flash. When all flash modifications are done, le_flash_ReleaseAccess() is required.
+ *
+ * @section le_flash_Open Open a partition
+ * Depending on how the read/write operations have to be done, the correct open API has to be used:
+ * - le_flash_OpenMtd() when the flash image is reachable at the block layer.
+ * - le_flash_OpenUbi() when the image is reachable through a UBI. Then le_flash_OpenUbiVolume()
+ * needs to be called to set the volume to be accessed. Volume can be set several time
+ * successively. le_flash_CloseUbiVolume() has to be called before changing the volume.
+ * Please refer to @subpage platformConstraintsFlash for details.
+ *
+ * @section le_flash_Close Close a partition
+ * When the read/write operation are over, the application has to call le_flash_Close() API to
+ * release resources and make the partition usable.
+ *
+ * @section le_flash_Read Read a data chunk
+ * To read data, le_flash_Read() has to be called. The data are read at the specified block index.
+ * Note that this index is not the index of the block into the partition, but a logical block index:
+ * - the bad blocks are skipped.
+ * - the blocks are not into a consecutive order for UBI volume.
+ *
+ * The data length to be read can't be higher than:
+ *      - an erase block size for MTD usage partition
+ *      - an erase block size minus 2 pages for UBI partitions (UBI uses 2 pages for its internal
+ * need)
+ *
+ * @section le_flash_Write Write a data chunk
+ * To write some data, le_flash_Write() can be used. The data are written at a specified block
+ * index. This index is a logical block index (see @ref le_flash_Read).
+ * The block is firstly erased, so no call to le_flash_EraseBlock() is needed.
+ * If the erase or the write reports an error, the block is marked "bad" and the write starts
+ * again at the next physical block.
+ * The data length to be written can't be higher than:
+ *      - an erase block size for MTD usage partition
+ *      - an erase block size minus 2 pages for UBI partitions (UBI uses 2 pages for its internal
+ * need)
+ *
+ * @section le_flash_GetBlockInformation Retrieve information about blocks and pages for a
+ * partition.
+ * To get information about blocks and pages, call le_flash_GetBlockInformation(). The API
+ * will return:
+ *      - The number of bad blocks belonging to this partition
+ *      - The number of erase blocks belonging to this partition
+ *      - The erase block size
+ *      - The page size
+ * The whole partition size in bytes can be computed by:
+ *      number of erase blocks * erase block size
+ * The whole partition available size for read and write purpose can be computed by:
+ *      (number of erase blocks - number of bad blocks) * erase block size
+ *
+ * @section le_flash_GetUbiVolumeInformation Retrieve UBI information.
+ * To get information about an UBI volume, call le_flash_GetUbiVolumeInformation(). The API
+ * will return:
+ *      - The number of free blocks in the whole UBI partition
+ *      - The currently number of blocks allocated to the UBI volume
+ *      - The real size of the UBI volume
+ * This API must be called after the UBI volume has been open by le_flash_OpenUbiVolume().
+ *
+ * This API is synchronous: it is blocking until the write is over. After the end of the write, the
+ * data are read to ensure the data has been saved correctly.
  *
  * <HR>
  *
@@ -65,6 +132,76 @@ DEFINE  IMAGE_NAME_MAX_BYTES = (IMAGE_NAME_MAX_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum partition name length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  PARTITION_NAME_MAX_LEN     = (50);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum partition name length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  PARTITION_NAME_MAX_BYTES   = (PARTITION_NAME_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum volume name length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  VOLUME_NAME_MAX_LEN     = (50);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum volume name length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  VOLUME_NAME_MAX_BYTES   = (VOLUME_NAME_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max byte storage size for write buffer
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_WRITE_SIZE = 256*1024;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max byte storage size for read buffer
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_READ_SIZE  = 256*1024;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default volume size to keep the current volume size untouched
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UBI_VOL_NO_SIZE = -1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open mode.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM OpenMode
+{
+    READ_ONLY,
+    WRITE_ONLY,
+    READ_WRITE
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Declare a reference type for referring a partition.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Partition;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for bad image detection.
  *
  * @note The image names are platform dependent.
@@ -86,3 +223,231 @@ EVENT BadImageDetection
     BadImageDetectionHandler handler
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the flash access authorization. This is required to avoid race operations.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RequestAccess
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the flash access requested by le_flash_RequestAccess API.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ReleaseAccess
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open a flash partition at the block layer for the given operation and return a descriptor.
+ * The read and write operation will be done using MTD.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
+ *      - LE_UNSUPPORTED   If the flash device cannot be opened
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t OpenMtd
+(
+    string      partitionName[PARTITION_NAME_MAX_BYTES]     IN, ///< Partition to be opened.
+    OpenMode    mode                                        IN, ///< Opening mode.
+    Partition   partitionRef                                OUT ///< Partition reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open a UBI volume for the given operation and return a descriptor. The read and write
+ * operation will be done using MTD, UBI metadata will be updated.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
+ *      - LE_UNSUPPORTED   If the flash device cannot be opened
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t OpenUbi
+(
+    string      partitionName[PARTITION_NAME_MAX_BYTES]     IN, ///< Partition to be opened.
+    OpenMode    mode                                        IN, ///< Opening mode.
+    Partition   partitionRef                                OUT ///< Partition reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Open the UBI volume of an UBI image to be used for the read and write operations. When open for
+ * writing and a volumeSize is given, the UBI volume will be adjusted to this size by freeing the
+ * PEBs over this size. If the data inside the volume require more PEBs, they will be added
+ * by the le_flash_Write() API.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t OpenUbiVolume
+(
+    Partition   partitionRef                       IN, ///< Partition reference.
+    string      volumeName[VOLUME_NAME_MAX_BYTES]  IN, ///< Volume name to be used.
+    int32       volumeSize                         IN  ///< Volume size to set if open for writing
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close the used UBI volume of an UBI image.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On failure
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CloseUbiVolume
+(
+    Partition   partitionRef                       IN  ///< Partition reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close a flash partition
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Close
+(
+    Partition   partitionRef                       IN  ///< Partition reference to be closed.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Erase a block inside a flash partition.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EraseBlock
+(
+    Partition   partitionRef                       IN, ///< Partition reference to be closed.
+    uint32      blockIndex                         IN  ///< Logical block index to be erased.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read data from a flash partition. The read data are:
+ * - at the logical block index given by blockIndex.
+ * - the maximum read data length is:
+ *      - an erase block size for MTD usage partition
+ *      - an erase block size minus 2 pages for UBI partitions
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Read
+(
+    Partition   partitionRef                       IN, ///< Partition reference to be used.
+    uint32      blockIndex                         IN, ///< Logical block index to be read.
+    uint8       readData[MAX_READ_SIZE]            OUT ///< Data buffer to copy the read data.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write data to a flash partition.
+ * - the block is firstly erased, so no call to le_flash_EraseBlock() is needed.
+ * - if the erase or the write reports an error, the block is marked "bad" and the write starts
+ *   again at the next physical block.
+ * - the data are programmed at the logical block index given by blockIndex.
+ * - the maximum written data length is:
+ *      - an erase block size for MTD usage partition. This is the eraseBlockSize returned by
+ *        le_flash_GetInformation().
+ *      - an erase block size minus 2 pages for UBI partitions. These are the eraseBlockSize and
+ *        pageSize returned by le_flash_GetInformation().
+ * If the write addresses an UBI volume and more PEBs are required to write the new data, new PEBs
+ * will be added into this volume.
+ *
+ * @note
+ *      The addressed block is automatically erased before to be written.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Write
+(
+    Partition   partitionRef                       IN, ///< Partition reference to be used.
+    uint32      blockIndex                         IN, ///< Logical block index to be write.
+    uint8       writeData[MAX_WRITE_SIZE]          IN  ///< Data buffer to be written.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve information about the partition opened: the number of bad blocks found inside the
+ * partition, the number of erase blocks, the size of the erase block and the size of the page.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBlockInformation
+(
+    Partition   partitionRef                       IN, ///< Partition reference to be used.
+    uint32      badBlocksNumber                   OUT, ///< Bad blocks number inside the partition
+    uint32      eraseBlocksNumber                 OUT, ///< Erase blocks number
+    uint32      eraseBlockSize                    OUT, ///< Erase block size
+    uint32      pageSize                          OUT  ///< Page size
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve information about the UBI volume opened: the number of free blocks for the UBI,
+ * the number of currently allocated blocks to the volume and its real size in bytes.
+ *
+ * @return
+ *      - LE_OK            On success
+ *      - LE_BAD_PARAMETER If a parameter is invalid
+ *      - LE_FAULT         On other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUbiVolumeInformation
+(
+    Partition   partitionRef                     IN, ///< Partition reference to be used.
+    uint32      freeBlockNumber                 OUT, ///< Free blocks number on the UBI partition
+    uint32      allocatedBlockNumber            OUT, ///< Allocated blocks number to the UBI volume
+    uint32      sizeInBytes                     OUT  ///< Real size in bytes of the UBI volume
+);

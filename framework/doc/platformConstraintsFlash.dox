@@ -4,44 +4,88 @@
 @note Please refer to the Product Technical specification document of your platform for further
 details.
 
-
-@section flashConstrain_ImageName Flash image names
+@section flashConstrain_Partition Partition names
 
 @warning This service is not supported on all platforms.
 
-- The image names for AR759x/AR758x can be:
-
-@note
-    Partitions names strings construction:
+-@note
+    Partitions names strings construction AR759x/AR758x:
 
     - For duplicates partitions of dual systems, the names follow the syntax:
       <partitionName>_<systemNumber><br>
-      For instance, modem_1 refers to modem partition of system 1, modem_2 refers to modem partition
-      of system 2
+      <partitionName>_active<br>
+      <partitionName>_update<br>
+      For instance:
+         - modem_1 refers to modem partition of system 1, modem_2 refers to modem partition
+           of system 2
+         - modem_active refers to the modem partition currently active.
+         - modem_update refers to the modem partition currently not active (ready for update).
     - For common partitions, the name string syntax is: <partitionName>
 
-Possible values returned by handler of type le_flash_BadImageDetectionHandlerRef_t:
+    If system 1 is active, system 2 is update and vice versa. Using "_active" and "_update" suffix
+    lets the service detects the system the use want to address.
+
 <center>
-    | API partition name | mtd name  |
-    |:                  :|:         :|
-    | sbl                | sbl       |
-    | tz_1               | tz        |
-    | tz_2               | tz        |
-    | rpm_1              | rpm       |
-    | rpm_2              | rpm       |
-    | modem_1            | modem     |
-    | modem_2            | modem2    |
-    | aboot_1            | aboot     |
-    | aboot_2            | aboot2    |
-    | boot_1             | boot      |
-    | boot_2             | boot2     |
-    | system_1           | system    |
-    | system_2           | system2   |
-    | lefwkro_1          | lefwkro   |
-    | lefwkro_2          | lefwkro2  |
-    | customer0          | customer0 |
-    | customer1          | customer1 |
+    | API partition name | mtd name               |
+    |:                  :|:                      :|
+    | sbl                | sbl                    | (see note)
+    | tz_1               | tz                     |
+    | tz_2               | tz                     |
+    | tz_active          | tz                     |
+    | tz_update          | tz                     |
+    | rpm_1              | rpm                    |
+    | rpm_2              | rpm                    |
+    | rpm_active         | rpm                    |
+    | rpm_update         | rpm                    |
+    | modem_1            | modem                  |
+    | modem_2            | modem2                 |
+    | modem_active       | modem or modem2        |
+    | modem_update       | modem or modem2        |
+    | aboot_1            | aboot                  |
+    | aboot_2            | aboot2                 |
+    | aboot_active       | aboot or aboot2        |
+    | aboot_update       | aboot or aboot2        |
+    | boot_1             | boot                   |
+    | boot_2             | boot2                  |
+    | boot_active        | boot or boot2          |
+    | boot_update        | boot or boot2          |
+    | system_1           | system                 |
+    | system_2           | system2                |
+    | system_active      | system or system2      |
+    | system_update      | system or system2      |
+    | lefwkro_1          | lefwkro                |
+    | lefwkro_2          | lefwkro2               |
+    | lefwkro_active     | lefwkro or lefwkro2    |
+    | lefwkro_update     | lefwkro or lefwkro2    |
+    | customer0_1        | customer0              | (dual)
+    | customer0_2        | customer1              | (dual)
+    | customer0_active   | customer0 or customer1 | (dual)
+    | customer0_update   | customer1 or customer1 | (dual)
+    | customer0          | customer0              | (not dual)
+    | customer1          | customer1              | (not dual)
+    | customer2          | customer2              | (not dual)
 </center>
+
+   - le_flash_OpenMtd() and le_flash_OpenUbi() API accept all partition name syntaxes, ie,
+     all names of the table above are allowed except "sbl".
+   - handler of type le_flash_BadImageDetectionHandlerRef_t only provides names following
+     the syntax <partitionName>_<systemNumber>.
+
+@note
+    The "sbl" partition cannot be flashed by the le_flash APIs due to its critical and specific
+    flash scheme. It is only possible to update the "sbl" partition by flashing a .cwe
+    with le_fwupdate_Download() API.
+
+@section flashConstrain_UbiVolume Ubi volume names
+
+@warning This service is not supported on all platforms.
+
+The different UBI volumes are identified by the string:
+   - "binary": binary image (squashfs, etc...)
+   - "hash_tree": DM-veritry hash tree
+   - "root_hash": DM-Verity root hash
+   - "signed_root": signed root hash
+   - "certificate": trust chain certificate
 
 <HR>
 
