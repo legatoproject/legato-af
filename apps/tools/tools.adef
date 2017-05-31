@@ -18,7 +18,6 @@ executables:
 
 bindings:
 {
-    cm.cm.le_data -> dataConnectionService.le_data
     cm.cm.le_mrc -> modemService.le_mrc
     cm.cm.le_mdc -> modemService.le_mdc
     cm.cm.le_sim -> modemService.le_sim

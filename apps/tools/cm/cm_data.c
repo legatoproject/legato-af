@@ -1072,8 +1072,6 @@ void cm_data_ProcessDataCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
-    le_data_ConnectService();
-
     if (strcmp(command, "help") == 0)
     {
         cm_data_PrintDataHelp();

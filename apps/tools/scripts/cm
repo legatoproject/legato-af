@@ -53,8 +53,9 @@ handle_err() {
 }
 
 get_default_gw() {
-    local iface=$1
-    ip route show dev $iface | grep "default" | cut -d' ' -f3
+    local family=$1
+    local iface=$2
+    ip -family $family route show dev $iface | grep "default" | cut -d' ' -f3
 }
 
 update_dns() {
@@ -158,7 +159,7 @@ cm_data_connect () {
         echo "No dns2."
     fi
 
-    local dgw=$(get_default_gw $iface)
+    local dgw=$(get_default_gw $family $iface)
 
     echo -n "Checking if device is up ... "
     ifconfig | grep "$iface" > /dev/null 2>&1
