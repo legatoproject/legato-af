@@ -483,7 +483,9 @@ static void MakeUnpackDirFromGolden
         symlink("/mnt/legato/system/lib", "/legato/systems/unpack/lib") ||
         symlink("/mnt/legato/system/modules", "/legato/systems/unpack/modules") ||
         symlink("/mnt/legato/system/config/apps.cfg", "/legato/systems/unpack/config/apps.cfg") ||
-        symlink("/mnt/legato/system/config/users.cfg", "/legato/systems/unpack/config/users.cfg"))
+        symlink("/mnt/legato/system/config/users.cfg", "/legato/systems/unpack/config/users.cfg") ||
+        symlink(
+            "/mnt/legato/system/config/modules.cfg", "/legato/systems/unpack/config/modules.cfg"))
     {
         LE_FATAL("Could not create symlinks (%m)");
     }
