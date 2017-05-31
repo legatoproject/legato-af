@@ -31,7 +31,7 @@ void cm_mrc_PrintRadioHelp
             "To enable/disable radio:\n"
             "\tcm radio <on/off>\n\n"
             "To set radio access technology prefererences\n"
-            "\tcm radio rat <[CDMA] [GSM] [UMTS] [LTE]>\n\n"
+            "\tcm radio rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]>\n\n"
             "To resume automatic RAT selection.\n"
             "\tcm radio rat AUTO\n\n"
             );
@@ -432,27 +432,27 @@ void cm_mrc_ProcessRadioCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
-    if (strcmp(command, "help") == 0)
+    if (0 == strcmp(command, "help"))
     {
         cm_mrc_PrintRadioHelp();
         exit(EXIT_SUCCESS);
     }
-    else if (strcmp(command, "status") == 0)
+    else if (0 == strcmp(command, "status"))
     {
         exit(cm_mrc_GetModemStatus());
     }
-    else if (strcmp(command, "on") == 0)
+    else if (0 == strcmp(command, "on"))
     {
         exit(cm_mrc_SetRadioPower(LE_ON));
     }
-    else if (strcmp(command, "off") == 0)
+    else if (0 == strcmp(command, "off"))
     {
         exit(cm_mrc_SetRadioPower(LE_OFF));
     }
-    else if (strcmp(command, "rat") == 0)
+    else if (0 == strcmp(command, "rat"))
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "RAT value missing. e.g. cm radio"
-                        " rat <[CDMA] [GSM] [UMTS] [LTE]> or <AUTO>"))
+                        " rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]> or <AUTO>"))
         {
             le_mrc_RatBitMask_t rat = 0;
             const char* ratStrPtr;
@@ -463,7 +463,7 @@ void cm_mrc_ProcessRadioCommand
                 ratStrPtr = le_arg_GetArg(index);
                 LE_DEBUG("Args (%d) => '%s'",index, ratStrPtr);
 
-                if (strcmp(ratStrPtr, "AUTO") == 0)
+                if (0 == strcmp(ratStrPtr, "AUTO"))
                 {
                     if(cm_mrc_SetRat(LE_MRC_BITMASK_RAT_ALL) == LE_OK)
                     {
@@ -476,21 +476,25 @@ void cm_mrc_ProcessRadioCommand
                         exit(EXIT_FAILURE);
                     }
                 }
-                else if (strcmp(ratStrPtr, "CDMA") == 0)
+                else if (0 == strcmp(ratStrPtr, "CDMA"))
                 {
                     rat |= LE_MRC_BITMASK_RAT_CDMA;
                 }
-                else if (strcmp(ratStrPtr, "GSM") == 0)
+                else if (0 == strcmp(ratStrPtr, "GSM"))
                 {
                     rat |= LE_MRC_BITMASK_RAT_GSM;
                 }
-                else if (strcmp(ratStrPtr, "LTE") == 0)
+                else if (0 == strcmp(ratStrPtr, "LTE"))
                 {
                     rat |= LE_MRC_BITMASK_RAT_LTE;
                 }
-                else if (strcmp(ratStrPtr, "UMTS") == 0)
+                else if (0 == strcmp(ratStrPtr, "UMTS"))
                 {
                     rat |= LE_MRC_BITMASK_RAT_UMTS;
+                }
+                else if (0 == strcmp(ratStrPtr, "TDSCDMA"))
+                {
+                    rat |= LE_MRC_BITMASK_RAT_TDSCDMA;
                 }
                 else
                 {
@@ -500,7 +504,7 @@ void cm_mrc_ProcessRadioCommand
                 }
             }
 
-            if(cm_mrc_SetRat(rat) == LE_OK)
+            if (LE_OK == cm_mrc_SetRat(rat))
             {
                 exit(EXIT_SUCCESS);
             }

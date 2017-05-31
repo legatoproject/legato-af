@@ -204,7 +204,7 @@
  * le_mrc_GetGsmSignalMetrics() the signal strength in dBm and the bit error rate measured on GSM
  * network.
  *
- * le_mrc_GetUmtsSignalMetrics() returns the signal metrics measured on UMTS network.
+ * le_mrc_GetUmtsSignalMetrics() returns the signal metrics measured on UMTS or TD-SCDMA networks.
  *
  * le_mrc_GetLteSignalMetrics() returns the signal metrics measured on LTE network.
  *
@@ -620,7 +620,7 @@ ENUM Rat
 {
     RAT_UNKNOWN,     ///< Unknown
     RAT_GSM,         ///< GSM network
-    RAT_UMTS,        ///< UMTS network
+    RAT_UMTS,        ///< UMTS or TD-SCDMA networks
     RAT_LTE,         ///< LTE network
     RAT_CDMA         ///< CDMA network
 };
@@ -635,6 +635,7 @@ BITMASK RatBitMask
 {
     BITMASK_RAT_GSM,    ///< GSM RAT Bit Mask
     BITMASK_RAT_UMTS,   ///< UMTS RAT Bit Mask
+    BITMASK_RAT_TDSCDMA,///< TD-SCDMA RAT Bit Mask
     BITMASK_RAT_LTE,    ///< LTE RAT Bit Mask
     BITMASK_RAT_CDMA,   ///< CDMA RAT Bit Mask
     BITMASK_RAT_ALL,    ///< To Set all RAT preference Bit Mask
@@ -1755,7 +1756,7 @@ FUNCTION le_result_t GetGsmSignalMetrics
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function returns the signal metrics measured on UMTS network.
+ * This function returns the signal metrics measured on UMTS or TD-SCDMA networks.
  *
  * @return
  *      - LE_OK on success

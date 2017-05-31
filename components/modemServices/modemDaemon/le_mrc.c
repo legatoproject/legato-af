@@ -3476,7 +3476,7 @@ le_result_t le_mrc_GetGsmSignalMetrics
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function returns the signal metrics measured on UMTS network.
+ * This function returns the signal metrics measured on UMTS or TD-SCDMA networks.
  *
  * @return
  *      - LE_OK on success
@@ -3516,7 +3516,6 @@ le_result_t le_mrc_GetUmtsSignalMetrics
             *ecioPtr = metricsPtr->umtsMetrics.ecio;
             *rscpPtr = metricsPtr->umtsMetrics.rscp;
             *sinrPtr = metricsPtr->umtsMetrics.sinr;
-
             return LE_OK;
         }
         else
