@@ -283,8 +283,16 @@ static void ShowStackSignalHandler
         // We cannot use stdio(3) services. Print line by line
         rc = read( fd, sigString, sizeof(sigString) );
         close(fd);
-        CHECK_WRITE(2, sigString, rc);
-        CHECK_WRITE(2, "\n", 1);
+        if (0 < rc)
+        {
+            CHECK_WRITE(2, sigString, rc);
+            CHECK_WRITE(2, "\n", 1);
+        }
+        else
+        {
+            snprintf(sigString, sizeof(sigString), "Cannot read legato version\n");
+            CHECK_WRITE(2, sigString, strlen(sigString));
+        }
     }
 
     // Dump some process command line
@@ -309,7 +317,15 @@ static void ShowStackSignalHandler
             }
             if (0 < rc)
             {
-                CHECK_WRITE(2, sigString, rc);
+                // Don't use CHECK_WRITE here so we can close the fd.
+                // Not too important as the program is about to crash,
+                // but static code analysis complains.
+                if (write(2, sigString, rc) != rc)
+                {
+                    close(fd);
+                    raise(sigNum);
+                    return;
+                }
             }
         }
         while( 0 < rc );
