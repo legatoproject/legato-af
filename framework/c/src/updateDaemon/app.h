@@ -123,5 +123,14 @@ le_result_t app_RemoveIndividual
     const char* appNamePtr  ///< [IN] Name of the app to remove.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if an app update was interrupted, and if so finish it.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_FinishUpdates
+(
+    void
+);
 
 #endif // LEGATO_APP_H_INCLUDE_GUARD

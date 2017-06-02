@@ -2055,6 +2055,9 @@ COMPONENT_INIT
         // If a system update needs finishing, finish it now.
         FinishSystemUpdate();
 
+        // If an app update nees finishing, finish it now.
+        app_FinishUpdates();
+
         // Make sure the users and groups are set up correctly for the apps we have installed
         // in the current system.  We may have updated or rolled-back to a different system with
         // different apps than we had last time we ran.

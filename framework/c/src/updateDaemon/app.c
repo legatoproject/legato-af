@@ -380,6 +380,163 @@ static le_result_t SetPermAppWritableDir
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Perform an application upgrade.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t PerformAppUpgrade
+(
+    const char* appMd5Ptr,
+    const char* appNamePtr
+)
+{
+    // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
+    char path[PATH_MAX] = "";
+    LE_ASSERT(le_path_Concat("/", path, sizeof(path),
+                             APPS_WRITEABLE_DIR, appNamePtr, NULL) == LE_OK);
+
+    fs_TryLazyUmount(path);
+
+    // Run the pre-install hook.
+    ExecPreinstallHook(appMd5Ptr, appNamePtr);
+
+    // Set smackfs file permission for installed files
+    SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
+
+    // Update non-writeable files dir symlink to point to the new version of the app
+    system_SymlinkApp("current", appMd5Ptr, appNamePtr);
+
+    // Load the root.cfg from the new version of the app into the system config tree.
+    ImportConfig(appMd5Ptr, appNamePtr);
+
+    // Update the writeable files.
+    system_UpdateCurrentAppWriteableFiles(appMd5Ptr, appNamePtr);
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Perform an application install.
+ *
+ * Assumes the app has not been previously installed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t PerformAppInstall
+(
+    const char* appMd5Ptr,
+    const char* appNamePtr
+)
+{
+    // Run the pre-install hook.
+    ExecPreinstallHook(appMd5Ptr, appNamePtr);
+
+    // Set smackfs file permission for installed files
+    SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
+
+    // Create a non-writeable files dir symlink pointing to the app's installed files.
+    system_SymlinkApp("current", appMd5Ptr, appNamePtr);
+
+    // Compute the path to the app's install directory's writeable files directory.
+    char srcDir[PATH_MAX];
+    int n = snprintf(srcDir,
+                     sizeof(srcDir),
+                     "/legato/apps/%s/writeable/.",
+                     appMd5Ptr);
+    LE_ASSERT(n < sizeof(srcDir));
+
+    // Create a user for this new app.
+    appUser_Add(appNamePtr);
+
+    // Import the applications config.
+    ImportConfig(appMd5Ptr, appNamePtr);
+
+    // Install the writeable files if there are any.
+    if (le_dir_IsDir(srcDir))
+    {
+        char destDir[PATH_MAX];
+        system_GetAppWriteableFilesDirPath(destDir, sizeof(destDir), "current", appNamePtr);
+
+        char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+        smack_GetAppLabel(appNamePtr, appLabel, sizeof(appLabel));
+
+        char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
+        LE_ASSERT(snprintf(dirLabel, sizeof(dirLabel), "%srwx", appLabel) < sizeof(dirLabel));
+
+        if (dir_MakePathSmack(destDir, (S_IRWXU | S_IRWXG | S_IRWXO), dirLabel) != LE_OK)
+        {
+            LE_ERROR("Couldn't create dir %s", destDir);
+            return LE_FAULT;
+        }
+
+        // Directory created, now copy files recursively.
+        if (file_CopyRecursive(srcDir, destDir, appLabel) != LE_OK)
+        {
+            LE_ERROR("Failed to copy files recursively from '%s' to '%s'", srcDir, destDir);
+            return LE_FAULT;
+        }
+
+        // While copying file, directories smack permission was not properly. Set it now.
+        if (SetPermAppWritableDir(destDir, appLabel) != LE_OK)
+        {
+            LE_ERROR("Failed to set smack permission in directory '%s'", destDir);
+            return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Perform application removal.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t PerformAppDelete
+(
+    const char* appMd5Ptr,
+    const char* appNamePtr,
+    le_cfg_IteratorRef_t i
+)
+{
+    if (!i)
+    {
+        i = le_cfg_CreateWriteTxn("system:/apps");
+    }
+
+    // Delete the /apps/<name> branch from the system's config tree.
+    le_cfg_DeleteNode(i, appNamePtr);
+    le_cfg_CommitTxn(i);
+
+    // Remove the app specific tree, (if it exists.)
+    le_cfgAdmin_DeleteTree(appNamePtr);
+
+    // Delete the app's files from the current running system.
+    system_RemoveApp(appNamePtr);
+
+    // Delete the user account for this app.
+    appUser_Remove(appNamePtr);
+
+    // Now, check to see if any systems have this application installed.
+    if (system_AppUsedInAnySystem(appMd5Ptr) == false)
+    {
+        // They do not, so uninstall the application now.
+        char appPath[PATH_MAX];
+        LE_ASSERT(snprintf(appPath, sizeof(appPath), "/legato/apps/%s", appMd5Ptr)
+                  < sizeof(appPath));
+        if (le_dir_RemoveRecursive(appPath) != LE_OK)
+        {
+            LE_ERROR("Was unable to remove old application path, '%s'.", appPath);
+        }
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Setup smack permission for contents in app's read-only directory.
  *
  * @return LE_OK if successful, LE_FAULT if fails.
@@ -557,92 +714,39 @@ le_result_t app_InstallIndividual
     // If this app is already in the current system but its app hash is different,
     if (systemHasThisApp)
     {
-        sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
+        char newAppName[PATH_MAX] = "";
+
+        // Mark update in progress so update can be finished if Legato crashes stopping app.
+        // Mark as untried so if, for some reason, the app fails to boot too many times it will
+        // revert back to the snapshot.
+        sysStatus_SetUntried();
+        le_utf8_Copy(newAppName, ".new.", sizeof(newAppName), NULL);
+        le_utf8_Append(newAppName, appNamePtr, sizeof(newAppName), NULL);
+        system_SymlinkApp("current", appMd5Ptr, newAppName);
+        sync();
 
         // Otherwise, stop it before we update it.
         supCtrl_StopApp(appNamePtr);
 
-        // Attempt to umount appsWritable/<appName> because it may have been mounted as a sandbox.
-        char path[PATH_MAX] = "";
-        LE_ASSERT(le_path_Concat("/", path, sizeof(path),
-                                 APPS_WRITEABLE_DIR, appNamePtr, NULL) == LE_OK);
+        sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
 
-        fs_TryLazyUmount(path);
+        le_result_t result = PerformAppUpgrade(appMd5Ptr, appNamePtr);
+        if (LE_OK != result)
+        {
+            return result;
+        }
 
-        // Run the pre-install hook.
-        ExecPreinstallHook(appMd5Ptr, appNamePtr);
-
-        // Set smackfs file permission for installed files
-        SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
-
-        // Update non-writeable files dir symlink to point to the new version of the app
-        system_SymlinkApp("current", appMd5Ptr, appNamePtr);
-
-        // Load the root.cfg from the new version of the app into the system config tree.
-        ImportConfig(appMd5Ptr, appNamePtr);
-
-        // Update the writeable files.
-        system_UpdateCurrentAppWriteableFiles(appMd5Ptr, appNamePtr);
+        system_RemoveApp(newAppName);
     }
     // If the app is not in the current system yet, install fresh.
     else
     {
         sysStatus_MarkBad();   // Mark "bad" for now because it will be in a bad state for a while.
 
-        // Run the pre-install hook.
-        ExecPreinstallHook(appMd5Ptr, appNamePtr);
-
-        // Set smackfs file permission for installed files
-        SetSmackPermReadOnlyDir(appMd5Ptr, appNamePtr);
-
-        // Create a non-writeable files dir symlink pointing to the app's installed files.
-        system_SymlinkApp("current", appMd5Ptr, appNamePtr);
-
-        // Compute the path to the app's install directory's writeable files directory.
-        char srcDir[PATH_MAX];
-        int n = snprintf(srcDir,
-                         sizeof(srcDir),
-                         "/legato/apps/%s/writeable/.",
-                         appMd5Ptr);
-        LE_ASSERT(n < sizeof(srcDir));
-
-        // Create a user for this new app.
-        appUser_Add(appNamePtr);
-
-        // Import the applications config.
-        ImportConfig(appMd5Ptr, appNamePtr);
-
-        // Install the writeable files if there are any.
-        if (le_dir_IsDir(srcDir))
+        le_result_t result = PerformAppInstall(appMd5Ptr, appNamePtr);
+        if (LE_OK != result)
         {
-            char destDir[PATH_MAX];
-            system_GetAppWriteableFilesDirPath(destDir, sizeof(destDir), "current", appNamePtr);
-
-            char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
-            smack_GetAppLabel(appNamePtr, appLabel, sizeof(appLabel));
-
-            char dirLabel[LIMIT_MAX_SMACK_LABEL_BYTES] = "";
-            LE_ASSERT(snprintf(dirLabel, sizeof(dirLabel), "%srwx", appLabel) < sizeof(dirLabel));
-
-            if (dir_MakePathSmack(destDir, (S_IRWXU | S_IRWXG | S_IRWXO), dirLabel) != LE_OK)
-            {
-                LE_ERROR("Couldn't create dir %s", destDir);
-                return LE_FAULT;
-            }
-
-            // Directory created, now copy files recursively.
-            if (file_CopyRecursive(srcDir, destDir, appLabel) != LE_OK)
-            {
-                LE_ERROR("Failed to copy files recursively from '%s' to '%s'", srcDir, destDir);
-                return LE_FAULT;
-            }
-
-            // While copying file, directories smack permission was not properly. Set it now.
-            if (SetPermAppWritableDir(destDir, appLabel) != LE_OK)
-            {
-                LE_ERROR("Failed to set smack permission in directory '%s'", destDir);
-                return LE_FAULT;
-            }
+            return result;
         }
     }
 
@@ -696,41 +800,31 @@ le_result_t app_RemoveIndividual
         return LE_FAULT;
     }
 
-    system_MarkModified();
+    char delAppName[PATH_MAX] = "";
 
-    sysStatus_MarkBad();
+    system_MarkModified();
 
     // Get the hash for this application.
     char appHash[LIMIT_MD5_STR_BYTES] = "";
     app_Hash(appNamePtr, appHash);
 
+    // Mark removal in progress so update can be finished if Legato crashes stopping app.
+    // Mark as untried so if, for some reason, the app fails to boot too many times it will
+    // revert back to the snapshot.
+    sysStatus_SetUntried();
+    le_utf8_Copy(delAppName, ".del.", sizeof(delAppName), NULL);
+    le_utf8_Append(delAppName, appNamePtr, sizeof(delAppName), NULL);
+    system_SymlinkApp("current", appHash, delAppName);
+    sync();
+
+    sysStatus_MarkBad();
+
     // Make sure that the application isn't running when we attempt to uninstall it.
     supCtrl_StopApp(appNamePtr);
 
-    // Delete the /apps/<name> branch from the system's config tree.
-    le_cfg_DeleteNode(i, appNamePtr);
-    le_cfg_CommitTxn(i);
+    PerformAppDelete(appHash, appNamePtr, i);
 
-    // Remove the app specific tree, (if it exists.)
-    le_cfgAdmin_DeleteTree(appNamePtr);
-
-    // Delete the app's files from the current running system.
-    system_RemoveApp(appNamePtr);
-
-    // Delete the user account for this app.
-    appUser_Remove(appNamePtr);
-
-    // Now, check to see if any systems have this application installed.
-    if (system_AppUsedInAnySystem(appHash) == false)
-    {
-        // They do not, so uninstall the application now.
-        char appPath[PATH_MAX];
-        LE_ASSERT(snprintf(appPath, sizeof(appPath), "/legato/apps/%s", appHash) < sizeof(appPath));
-        if (le_dir_RemoveRecursive(appPath) != LE_OK)
-        {
-            LE_ERROR("Was unable to remove old application path, '%s'.", appPath);
-        }
-    }
+    (void)unlink(delAppName);
 
     // Reload the bindings configuration
     system("/legato/systems/current/bin/sdir load");
@@ -742,4 +836,98 @@ le_result_t app_RemoveIndividual
     LE_INFO("App %s removed.", appNamePtr);
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Determine if an app update was interrupted, and if so finish it.
+ */
+//--------------------------------------------------------------------------------------------------
+void app_FinishUpdates
+(
+    void
+)
+{
+    DIR* dirPtr;
+    struct dirent curEntry;
+    struct dirent* curEntryPtr;
+    static const char* appDirPtr = SYSTEM_PATH "/current/apps";
+    bool finishedUpdate = false, updateSuccess = true;
+
+    LE_FATAL_IF(NULL == (dirPtr = opendir(appDirPtr)),
+                "Could not open app directory");
+
+    while ((0 == readdir_r(dirPtr, &curEntry, &curEntryPtr)) &&
+           curEntryPtr)
+    {
+        char appPath[PATH_MAX];
+        char appName[PATH_MAX];
+        char appMd5[LIMIT_MD5_STR_BYTES];
+        int matchLen = 0;
+
+        if ((1 == sscanf(curEntry.d_name, ".new.%s%n", appName, &matchLen)) &&
+            (strlen(curEntry.d_name) == matchLen))
+        {
+            // Interrupted install; finish the process.
+            if (!finishedUpdate)
+            {
+                // Before making any changes, mark the current system as bad.
+                // Don't need to make a snapshot because if we're finishing an upgrade
+                // there will already be a snapshot.
+                sysStatus_MarkBad();
+                finishedUpdate = true;
+            }
+
+            snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntry.d_name);
+            installer_GetAppHashFromSymlink(appPath, appMd5);
+
+            if (PerformAppUpgrade(appMd5, appName) != LE_OK)
+            {
+                LE_ERROR("Failed to finish upgrade of app '%s'", appName);
+                updateSuccess = false;
+            }
+
+            ExecPostinstallHook(appMd5);
+        }
+        else if ((1 == sscanf(curEntry.d_name, ".del.%s%n", appName, &matchLen)) &&
+                 (strlen(curEntry.d_name) == matchLen))
+        {
+            // Interrupted remove; finish the process.
+            if (!finishedUpdate)
+            {
+                // Before making any changes, mark the current system as bad.
+                if (LE_OK != system_Snapshot())
+                {
+                    break;
+                }
+
+                sysStatus_MarkBad();
+                finishedUpdate = true;
+            }
+
+            snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntry.d_name);
+            installer_GetAppHashFromSymlink(appPath, appMd5);
+
+            if (PerformAppDelete(appMd5, appName, NULL) != LE_OK)
+            {
+                LE_ERROR("Failed to finish removal of app '%s'", appName);
+                updateSuccess = false;
+            }
+        }
+        else
+        {
+            // Ignore regular apps.  I hope that should go without saying, but SONAR
+            // needs something here or it starts whining.
+        }
+    }
+
+    if (!updateSuccess)
+    {
+        LE_FATAL("Failed to apply pending updates");
+    }
+
+    if (finishedUpdate)
+    {
+        sysStatus_MarkTried();
+    }
 }
