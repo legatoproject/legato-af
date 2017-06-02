@@ -208,8 +208,7 @@ void EnsureClientInterfacesSatisfied
                                                    "in executable '%s' is unsatisfied. "
                                                    "It must either be declared"
                                                    " an external (inter-app) required interface"
-                                                   " (in a \"requires: api:\" section"
-                                                   " in the .adef)"
+                                                   " (in an \"extern:\" section in the .adef)"
                                                    " or be bound to a server side interface"
                                                    " (in the \"bindings:\" section"
                                                    " of the .adef)."),
