@@ -298,20 +298,18 @@ static void PositionHandlerFunction
                 , altitude, vAccuracy);
     }
 
-    // Get altitude on WGS-84
-    result = le_gnss_GetAltitudeOnWgs84( positionSampleRef
-                                       , &altitudeOnWgs84);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    // Get altitude in meters, between WGS-84 earth ellipsoid
+    // and mean sea level [resolution 1e-3]
+    result = le_gnss_GetAltitudeOnWgs84(positionSampleRef, &altitudeOnWgs84);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
-    if(result == LE_OK)
+    if (LE_OK == result)
     {
-         LE_INFO("altitude on WGS-84.%d"
-                , altitudeOnWgs84/1000);
+         LE_INFO("AltitudeOnWgs84.%d", altitudeOnWgs84/1000);
     }
     else
     {
-         LE_INFO("Altitude on WGS-84 unknown [%d]"
-                , altitudeOnWgs84);
+         LE_INFO("AltitudeOnWgs84 unknown [%d]", altitudeOnWgs84);
     }
 
     // Get DOP parameter

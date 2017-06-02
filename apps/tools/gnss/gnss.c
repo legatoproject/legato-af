@@ -2014,25 +2014,24 @@ static void GetGnssParams
     {
         exit(GetMinElevation());
     }
-
-   else if ((0 == strcmp(params, "posState"))   ||
-            (0 == strcmp(params, "loc2d"))      ||
-            (0 == strcmp(params, "alt"))        ||
-            (0 == strcmp(params, "altOnWgs84")) ||
-            (0 == strcmp(params, "loc3d"))      ||
-            (0 == strcmp(params, "gpsTime"))    ||
-            (0 == strcmp(params, "time"))       ||
-            (0 == strcmp(params, "epochTime"))  ||
-            (0 == strcmp(params, "timeAcc"))    ||
-            (0 == strcmp(params, "date"))       ||
-            (0 == strcmp(params, "hSpeed"))     ||
-            (0 == strcmp(params, "vSpeed"))     ||
-            (0 == strcmp(params, "motion"))     ||
-            (0 == strcmp(params, "direction"))  ||
-            (0 == strcmp(params, "satInfo"))    ||
-            (0 == strcmp(params, "satStat"))    ||
-            (0 == strcmp(params, "dop"))        ||
-            (0 == strcmp(params, "posInfo")))
+    else if ((0 == strcmp(params, "posState"))   ||
+             (0 == strcmp(params, "loc2d"))      ||
+             (0 == strcmp(params, "alt"))        ||
+             (0 == strcmp(params, "altOnWgs84")) ||
+             (0 == strcmp(params, "loc3d"))      ||
+             (0 == strcmp(params, "gpsTime"))    ||
+             (0 == strcmp(params, "time"))       ||
+             (0 == strcmp(params, "epochTime"))  ||
+             (0 == strcmp(params, "timeAcc"))    ||
+             (0 == strcmp(params, "date"))       ||
+             (0 == strcmp(params, "hSpeed"))     ||
+             (0 == strcmp(params, "vSpeed"))     ||
+             (0 == strcmp(params, "motion"))     ||
+             (0 == strcmp(params, "direction"))  ||
+             (0 == strcmp(params, "satInfo"))    ||
+             (0 == strcmp(params, "satStat"))    ||
+             (0 == strcmp(params, "dop"))        ||
+             (0 == strcmp(params, "posInfo")))
     {
         // Copy the param
         strcpy(ParamsName, params);

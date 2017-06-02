@@ -232,7 +232,7 @@
  * - le_gnss_GetDop()
  * - le_gnss_GetAltitudeOnWgs84()
  * - le_gnss_GetMagneticDeviation()
-
+ *
  * The handler can be managed using le_gnss_AddPositionHandler()
  * and le_gnss_RemovePositionHandler().
  * When a position is computed, the handler is called.
@@ -918,7 +918,7 @@ FUNCTION le_result_t GetLocation
  * Get the position sample's altitude.
  *
  * @return
- *  - LE_FAULT         Function failed to get the altitude.
+ *  - LE_FAULT         Function failed to get the altitude. Invalid Position reference provided.
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
@@ -1267,8 +1267,6 @@ FUNCTION le_result_t GetMagneticDeviation
     Sample positionSampleRef IN,        ///< Position sample's reference.
     int32  magneticDeviation OUT        ///< MagneticDeviation in degrees [resolution 1e-1].
 );
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function gets the last updated position sample object reference.

@@ -1083,7 +1083,7 @@ le_result_t le_gnss_GetLocation
  * Get the position sample's altitude.
  *
  * @return
- *  - LE_FAULT         Function failed to find the positionSample.
+ *  - LE_FAULT         Function failed to get the altitude. Invalid Position reference provided.
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
