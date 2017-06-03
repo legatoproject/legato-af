@@ -49,8 +49,11 @@ add_subdirectory(sms)
 # Simple shell piping application
 add_subdirectory(shellPiping)
 
+# lwm2m airvantage asset data sample application
+add_subdirectory(assetData)
+
 # lwm2m airvantage control applcation
-add_subdirectory(lwm2mAirVantageControl)
+add_subdirectory(avcControl)
 
 # Simple GPIO Cf3 application using GPIO Service
 if((LEGATO_TARGET MATCHES "wp85") OR (LEGATO_TARGET MATCHES "wp750x"))

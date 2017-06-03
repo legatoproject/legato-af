@@ -29,12 +29,8 @@ apps:
         ${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcService
         #if ${TARGET} = wp750x
             ${LEGATO_ROOT}/apps/platformServices/airVantage/avcCompat
-            ${LEGATO_ROOT}/apps/platformServices/airVantage/avcControl
         #elif ${TARGET} = wp85
             ${LEGATO_ROOT}/apps/platformServices/airVantage/avcCompat
-            ${LEGATO_ROOT}/apps/platformServices/airVantage/avcControl
-        #elif ${TARGET} = wp76xx
-            ${LEGATO_ROOT}/apps/platformServices/airVantage/avcControl
         #endif
     #endif
 }
