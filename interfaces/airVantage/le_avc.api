@@ -236,6 +236,21 @@ DEFINE PASSWORD_MAX_LEN_BYTES = PASSWORD_MAX_LEN + 1;
 //--------------------------------------------------------------------------------------------------
 DEFINE NUM_RETRY_TIMERS = 8;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Polling timer value range in minutes. 525600 minutes = 1 year.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE POLLING_TIMER_MAX_VAL = 525600;
+DEFINE POLLING_TIMER_MIN_VAL = 0;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Retry timer value range in minutes. 20160 minutes = 2 weeks.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE RETRY_TIMER_MAX_VAL = 20160;
+DEFINE RETRY_TIMER_MIN_VAL = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -390,8 +405,10 @@ EVENT SessionRequestEvent
  * previously suspended, then this resumes the download.
  *
  * @return
- *      - LE_OK on success
+ *      - LE_OK if connection request has been sent.
  *      - LE_FAULT on failure
+ *      - LE_DUPLICATE if already connected.
+ *      - LE_BUSY if currently retrying.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StartSession
@@ -638,11 +655,12 @@ FUNCTION uint16 GetHttpStatus
  * @return
  *      - LE_OK on success
  *      - LE_FAULT if not available
+ *      - LE_OUT_OF_RANGE if the polling timer value is out of range (0 to 525600).
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPollingTimer
 (
-    uint32  pollingTimer OUT    ///< Polling timer (0 to 525600 minutes).
+    uint32  pollingTimer OUT    ///< Polling timer
 );
 
 
@@ -653,8 +671,7 @@ FUNCTION le_result_t GetPollingTimer
  * @return
  *      - LE_OK on success.
  *      - LE_FAULT if not able to read the timers.
- *
- * @deprecated This API should not be used for new applications and will be removed in the future
+ *      - LE_OUT_OF_RANGE if one of the retry timers is out of range (0 to 20160).
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRetryTimers
@@ -681,7 +698,6 @@ FUNCTION le_result_t GetApnConfig
 );
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to write APN configuration.
@@ -705,11 +721,12 @@ FUNCTION le_result_t SetApnConfig
  *
  * @return
  *      - LE_OK on success.
+ *      - LE_OUT_OF_RANGE if the polling timer value is out of range (0 to 525600).
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetPollingTimer
 (
-    uint32  pollingTimer IN    ///< Polling timer (0 to 525600 minutes).
+    uint32  pollingTimer IN    ///< Polling timer
 );
 
 
@@ -719,13 +736,11 @@ FUNCTION le_result_t SetPollingTimer
  *
  * @return
  *      - LE_OK on success.
- *      - LE_FAULT if not able to write the timers.
- *
- * @deprecated This API should not be used for new applications and will be removed in the future
+ *      - LE_FAULT if not able to set the timers.
+ *      - LE_OUT_OF_RANGE if one of the retry timers is out of range (0 to 20160).
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetRetryTimers
 (
     uint16 timerValue[NUM_RETRY_TIMERS]   IN  ///< Array of 8 retry timers.
 );
-
