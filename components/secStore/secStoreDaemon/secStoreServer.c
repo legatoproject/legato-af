@@ -377,16 +377,18 @@ static le_result_t SetCurrSystem
 
         // This system is invalid and needs to be deleted.
         result = pa_secStore_Delete(CurrSysPath);
-        if (!isReadOnly)
+        if ((!isReadOnly) && (LE_NOT_FOUND == result))
         {
-            LE_FATAL_IF(result == LE_NOT_FOUND, "Could not find entry '%s'.", CurrSysPath);
+            LE_ERROR("Could not find entry '%s'.", CurrSysPath);
         }
     }
 
     // Find the ancestor index to create the system from.
     int ancestorIndex = FindAncestorSys(currIndex, &SecStoreSystems);
 
-    if (ancestorIndex != -1)
+    // In some cases the ancestor might have the same index as the current system:
+    // no need to create the system directory in this case.
+    if ((ancestorIndex != -1) && (ancestorIndex != currIndex))
     {
         // Copy all the files from the ancestor to our current system.
         char ancestorPath[LIMIT_MAX_PATH_BYTES];
