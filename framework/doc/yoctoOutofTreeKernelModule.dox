@@ -86,20 +86,20 @@ cd kmodule
 Create a kernel file like this simple @c ktest_module.c example:
 
 @code
-#include <linux/module.h>	/* Needed by all modules */
-#include <linux/kernel.h>	/* Needed for KERN_INFO */
-#include <linux/init.h>		/* Needed for the macros */
+#include <linux/module.h>    /* Needed by all modules */
+#include <linux/kernel.h>    /* Needed for KERN_INFO */
+#include <linux/init.h>      /* Needed for the macros */
 
 static int __init ktest_module_init(void)
 {
-	printk(KERN_INFO "Driver version %s\n", VERSION);
-	printk(KERN_INFO "Buona Sera :)\n");
-	return 0;
+    printk(KERN_INFO "Driver version %s\n", VERSION);
+    printk(KERN_INFO "Buona Sera :)\n");
+    return 0;
 }
 
 static void __exit ktest_module_exit(void)
 {
-	printk(KERN_INFO "Ciao!\n");
+    printk(KERN_INFO "Ciao!\n");
 }
 
 module_init(ktest_module_init);
@@ -126,11 +126,11 @@ KBUILD_DIR=/opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/
 #
 # Kernel module build dependency
 all:
-	make -C $(KBUILD_DIR) M=$(PWD) modules
+    make -C $(KBUILD_DIR) M=$(PWD) modules
 #
 # Kernel module clean dependency
 clean:
-	make -C $(KBUILD_DIR) M=$(PWD) clean
+    make -C $(KBUILD_DIR) M=$(PWD) clean
 @endcode
 
 @subsection howToAddKernelDriver_makeKernel_buildKernel Build Kernel
