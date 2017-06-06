@@ -661,7 +661,7 @@ watchdogTimeout: never  // Disable watchdog for these processes.
 @section defFilesAdef_extern extern
 
 Externs indicate which of your app's IPC API interfaces should be made available for binding to the
-IPC API interfaces of other apps. (The binding is preferably done in @ref defFilesSdef_bindings 
+IPC API interfaces of other apps. (The binding is preferably done in @ref defFilesSdef_bindings
 "a .sdef file's bindings section", but may also be done in @ref defFilesAdef_bindings
 "a .adef file's bindings section".)
 

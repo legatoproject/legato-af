@@ -34,7 +34,7 @@ apps:
 @endcode
 
 In addition to including applications in source for to your system builds.  You can also add binary
-application packages.  
+application packages.
 
 Binary app packages are apps distributed without their source code.  You include these apps in your
 @c .sdef file @c apps: section just like @.adef files.

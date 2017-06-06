@@ -728,3 +728,4 @@ FUNCTION le_result_t SetRetryTimers
 (
     uint16 timerValue[NUM_RETRY_TIMERS]   IN  ///< Array of 8 retry timers.
 );
+

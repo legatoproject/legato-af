@@ -1,4 +1,3 @@
-
 //--------------------------------------------------------------------------------------------------
 /**
  * @page c_le_avdata AirVantage Data
@@ -749,3 +748,4 @@ FUNCTION ReleaseSession
 (
     RequestSessionObj requestRef IN  ///< Reference to a previously opened AV session.
 );
+
