@@ -3,7 +3,7 @@
  * @page c_spi SPI
  *
  * @ref le_spi_interface.h "API Reference" <br>
- * @ref howToSPI "How To Setup SPI" <br>
+ * @subpage howToSPI "How To Setup SPI" <br>
  * @ref yoctoOutofTreeKernelModule
  *
  * <HR>
