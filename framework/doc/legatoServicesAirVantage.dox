@@ -26,8 +26,8 @@ Server and set up any Asset Data with the AirVantage service.
 
 | API                         | Description                                     |
 | --------------------------- | ----------------------------------------------- |
-| @ref c_le_avc               | API to configure AirVantage connectivity        |
-| @ref c_le_avdata            | API to setup AirVantage data                    |
+| @subpage c_le_avc           | API to configure AirVantage connectivity        |
+| @subpage c_le_avdata        | API to setup AirVantage data                    |
 
 <b>AirVantage Server Documentation</b>
 

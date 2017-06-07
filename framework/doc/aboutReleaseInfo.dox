@@ -23,8 +23,8 @@ making a release and uploading it to a target device.
 For the latest (in progress) version of the Legato Application Framework clone it directly from
 [GitHub.](https://github.com/legatoproject/legato-af#welcome-to-legato)
 
-@warning Please check with your Smart Module Vendor to verify which versions of Legato AF will work
-with which Smart Module firmware versions.  There may be some incompatibilities with versions of
+@warning Please check with your Module Vendor to verify which versions of Legato AF will work
+with which Module firmware versions.  There may be some incompatibilities with versions of
 modem libraries.
 (e.g., [Sierra Wireless WP85xx modules](https://source.sierrawireless.com/resources/legato/wpfirmwarerelease14/)
 need to be updated with Release 14 before working with Legato AF 16.10.3 or later)
