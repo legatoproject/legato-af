@@ -3,6 +3,7 @@ requires:
     api:
     {
         le_fwupdate.api  [types-only]
+        le_dualsys.api  [types-only]
     }
 }
 

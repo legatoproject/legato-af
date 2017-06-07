@@ -60,6 +60,8 @@ static void PrintUsage
             "fwupdateTest -- do_markgood: synchronize the sub systems",
             "fwupdateTest -- do_install_markgood: make a Swap & Sync operation",
             "fwupdateTest -- do_initdwnld: make an init download operation",
+            "fwupdateTest -- do_disablesync: disable the sync before update",
+            "fwupdateTest -- do_enablesync: enable the sync before update",
             "",
     };
 
@@ -158,6 +160,20 @@ COMPONENT_INIT
     {
         result = le_fwupdate_InitDownload();
         snprintf (string, sizeof(string), "le_fwupdate_InitDownload %d", result);
+        Print (string);
+        exit(0);
+    }
+    else if (0 == strcmp(testString, "do_disablesync"))
+    {
+        result = le_dualsys_DisableSyncBeforeUpdate(true);
+        snprintf (string, sizeof(string), "le_fwupdate_DisableSyncBeforeUpdate(true) %d", result);
+        Print (string);
+        exit(0);
+    }
+    else if (0 == strcmp(testString, "do_enablesync"))
+    {
+        result = le_dualsys_DisableSyncBeforeUpdate(false);
+        snprintf (string, sizeof(string), "le_fwupdate_DisableSyncBeforeUpdate(false) %d", result);
         Print (string);
         exit(0);
     }

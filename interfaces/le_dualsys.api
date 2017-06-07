@@ -1,0 +1,83 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_dualsys Dual systems partition definition
+ *
+ * @ref le_dualsys_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * Dual systems are systems composed with 2 set of partitions: one is said "active", so currently
+ * in use, and the other said "dual", so not used but ready-to-use.
+ *
+ * On dual systems, when fwupdate updates the firmware or a component, its works on the dual set,
+ * and after, commands a "swap" which performs a switch from "active" to "dual" and after the
+ * next reboot, the "new active" is used for normal work.  The "old dual" is so ready for update
+ * or for a roll-back if the active fails to start properly.
+ *
+ * In each set, 3 sub-systems are defined:
+ *     - The "modem" group: using the partitions sbl, tz, rpm and modem,
+ *     - The "lk" group: using the partition aboot
+ *     - The "linux" group using the partition boot, system, lefwkro and customer0 (or 1).
+ *
+ * @section le_dualsys_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b le_dualsys service.
+ *
+ * Here's a code sample binding to the le_dualsys service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_dualsys -> fwupdateService.le_dualsys
+   }
+   @endverbatim
+ *
+ *
+ * @warning All of these APIs are only available for all dual systems platforms. Please refer
+ * to the Product Technical Specification document of your platform for further details.
+ * Please refer to @subpage platformConstraintsFwUpdate for details.
+ *
+ * @section le_dualsys_DisableSyncBeforeUpdate Disable the check of sync before updating
+ *
+ * It is possible to force the update of any partition even if the systems are not synchronized.
+ * This is done by calling le_fwupdate_DisableSyncBeforeUpdate() with the value true. If the value
+ * is false, the synchronization will be mandatory before performing an update.
+ * Note that the synchronization is automatically done by calling the function
+ * le_fwupdate_InitDownload() when the synchronization check is enabled.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_dualsys_interface.h
+ *
+ * Legato @ref c_le_dualsys include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable (true) or enable (false) the synchronisation check before performing an update.
+ * The default behavior at startup is always to have the check enabled. It remains enabled
+ * until this service is called with the value true. To re-enable the synchronization check
+ * call this service with the value false.
+ *
+ * @note Upgrading some partitions without performing a sync before may let the whole system
+ *       into a unworkable state. THIS IS THE RESPONSABILITY OF THE CALLER TO KNOW WHAT IMAGES
+ *       ARE ALREADY FLASHED INTO THE UPDATE SYSTEM.
+ *
+ * @return
+ *      - LE_OK              On success
+ *      - LE_UNSUPPORTED     The feature is not supported
+ *      - LE_FAULT           On failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableSyncBeforeUpdate
+(
+    bool isDisabled  IN  ///< State of sync check : true (disable) or false (enable)
+);

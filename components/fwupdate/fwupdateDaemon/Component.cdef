@@ -4,12 +4,14 @@ provides:
     api:
     {
         le_fwupdate.api
+        le_dualsys.api
     }
 }
 
 sources:
 {
     fwupdateServer.c
+    le_dualsys.c
 }
 
 cflags:

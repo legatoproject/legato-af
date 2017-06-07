@@ -23,5 +23,6 @@ start: manual
 bindings:
 {
     fwupdateTest.fwupdateTestComp.le_fwupdate -> fwupdateService.le_fwupdate
+    fwupdateTest.fwupdateTestComp.le_dualsys -> fwupdateService.le_dualsys
 }
 

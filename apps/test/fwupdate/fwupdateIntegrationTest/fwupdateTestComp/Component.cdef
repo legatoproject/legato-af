@@ -8,6 +8,7 @@ requires:
     api:
     {
         le_fwupdate.api
+        le_dualsys.api
     }
 }
 

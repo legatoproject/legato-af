@@ -20,5 +20,6 @@ processes:
 extern:
 {
     fwupdateDaemon.fwupdateDaemon.le_fwupdate
+    fwupdateDaemon.fwupdateDaemon.le_dualsys
 }
 
