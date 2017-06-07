@@ -154,9 +154,14 @@ validate_ipV4()
     [ -n "$1" ] && [ "$masked_addr" = "$1" ]
 }
 
-#should be two ipV4 addrs and a netmask
+# should be two ipV4 addrs and a netmask
 check_values()
 {
+    if [ -z "$1" -o -z "$2" -o -z "$3" ]; then
+        echo "Not enough parameters"
+        return 1
+    fi
+
     for val in $@; do
         if ! validate_ipV4 $val; then
             echo "$val is not a valid ipV4 address"
@@ -176,10 +181,10 @@ check_values()
 # in an overlapping subnet
 check_no_conflicts()
 {
-    targ_addr=$1
-    ecm_mask=$2
+    local targ_addr=$1
+    local ecm_mask=$2
 
-    inet_list=$(ip -f inet addr | awk '/\d*:/,/inet/{ if (/\d*:/){a=$2}; if (/inet/){b=$2; print a b}}')
+    local inet_list=$(ip -f inet addr | awk '/\d*:/,/inet/{ if (/\d*:/){a=$2}; if (/inet/){b=$2; print a b}}')
     for item in $inet_list; do
         case $item in
             lo:*|usb0:*|ecm0:*|eem0:*)
@@ -253,7 +258,7 @@ create_conf()
         return 1
     fi
 
-    if [ -z $targ_addr ]; then
+    if [ -z "$targ_addr" ]; then
         if [ -f $ecm_conf ]; then
             echo "No target address. Exiting without changes."
             return 1
@@ -327,9 +332,9 @@ case $1 in
         bringdown_ecm
         ;;
     on)
-        # on requires some arguments else it will do default
+        # 'on' requires some arguments else it will do default
         echo ""
-        if create_conf $@; then
+        if create_conf "$@"; then
             host=$(get_param host.ipV4)
             config_dhcp $host
             restart_ecm > /dev/null
