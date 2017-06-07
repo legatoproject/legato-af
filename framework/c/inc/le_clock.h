@@ -40,6 +40,7 @@
  * These operations can be performed on time values:
  *  - @ref le_clk_Add
  *  - @ref le_clk_GreaterThan
+ *  - @ref le_clk_Equal
  *  - @ref le_clk_Sub
  *  - @ref le_clk_Multiply
  *
@@ -166,6 +167,22 @@ le_clk_Time_t le_clk_Add
  */
 //--------------------------------------------------------------------------------------------------
 bool le_clk_GreaterThan
+(
+    le_clk_Time_t timeA,
+    le_clk_Time_t timeB
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Compare two time values.
+ *
+ * @return
+ *      - TRUE if TimeA == TimeB
+ *      - FALSE otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_clk_Equal
 (
     le_clk_Time_t timeA,
     le_clk_Time_t timeB

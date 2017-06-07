@@ -1,0 +1,27 @@
+/*
+ * External watchdog bridge for Legato
+ *
+ * Copyright (C) Sierra Wirless Inc.
+ */
+
+sandboxed: false
+
+executables:
+{
+    externalWdog = ( externalWdog )
+}
+
+processes:
+{
+    run:
+    {
+        ( externalWdog )
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    externalWdog.externalWdog.le_wdog -> <root>.le_wdog
+}

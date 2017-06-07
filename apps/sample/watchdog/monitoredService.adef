@@ -1,0 +1,24 @@
+/*
+ * Sample app showing best practice for critical service monitored by a watchdog.
+ */
+
+executables:
+{
+    helloDaemon = ( helloDaemon )
+}
+
+processes:
+{
+    run:
+    {
+        ( helloDaemon )
+    }
+
+    faultAction: restart
+    maxWatchdogTimeout: 15000
+}
+
+bindings:
+{
+    helloDaemon.helloDaemon.le_wdog -> <root>.le_wdog
+}

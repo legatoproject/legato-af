@@ -71,6 +71,7 @@ struct App_t
     // Watchdog
     WatchdogAction_t  watchdogAction;
     WatchdogTimeout_t watchdogTimeout;
+    WatchdogTimeout_t maxWatchdogTimeout;
 
     /// Map of configuration tree names to access permissions (see permissions.h).
     std::map<std::string, Permissions_t> configTrees;

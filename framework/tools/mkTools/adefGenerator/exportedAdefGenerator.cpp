@@ -246,6 +246,7 @@ static void GenerateBasicInfo
     GenerateValue(defStream, "sandboxed", appPtr->isSandboxed);
     GenerateValue(defStream, "watchdogAction", appPtr->watchdogAction);
     GenerateValue(defStream, "watchdogTimeout", appPtr->watchdogTimeout);
+    GenerateValue(defStream, "maxWatchdogTimeout", appPtr->maxWatchdogTimeout);
     GenerateValue(defStream, "cpuShare", appPtr->cpuShare);
     GenerateValue(defStream, "maxFileSystemBytes", appPtr->maxFileSystemBytes);
     GenerateValue(defStream, "maxMemoryBytes", appPtr->maxMemoryBytes);
@@ -538,6 +539,7 @@ static void GenerateProcessesSection
         w |= GenerateValue(defStream, "maxFileDescriptors", procEnv->maxFileDescriptors, ind);
         w |= GenerateValue(defStream, "watchdogAction", procEnv->watchdogAction, ind);
         w |= GenerateValue(defStream, "watchdogTimeout", procEnv->watchdogTimeout, ind);
+        w |= GenerateValue(defStream, "maxWatchdogTimeout", procEnv->maxWatchdogTimeout, ind);
         w |= GenerateValue(defStream, "priority", procEnv->GetStartPriority(), ind);
         w |= GenerateValue(defStream, "maxPriority", procEnv->GetMaxPriority(), ind);
 

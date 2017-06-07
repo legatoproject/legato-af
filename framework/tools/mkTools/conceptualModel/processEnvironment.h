@@ -36,6 +36,7 @@ struct ProcessEnv_t
     // Watchdog
     WatchdogAction_t  watchdogAction;
     WatchdogTimeout_t watchdogTimeout;
+    WatchdogTimeout_t maxWatchdogTimeout;
 
     void SetStartPriority(const std::string& priority);
     const Priority_t& GetStartPriority() const { return startPriority; }

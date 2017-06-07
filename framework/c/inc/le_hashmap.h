@@ -380,11 +380,11 @@ void le_hashmap_RemoveAll
  * Iterates over the whole map, calling the supplied callback with each key-value pair. If the callback
  * returns false for any key then this function will return.
  *
- * @return  Returns nothing
+ * @return  Returns true if all elements were checked; or false if iteration was stopped early
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_hashmap_ForEach
+bool le_hashmap_ForEach
 (
     le_hashmap_Ref_t mapRef,                 ///< [in] Reference to the map.
     le_hashmap_ForEachHandler_t forEachFn,   ///< [in] Callback function to be called with each pair.
@@ -651,6 +651,37 @@ bool le_hashmap_EqualsVoidPointer
     const void* firstVoidPtr,    ///< [in] First pointer for comparing.
     const void* secondVoidPtr    ///< [in] Second pointer for comparing.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generic hash for any plain-old-datatype.
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_HASHMAP_MAKE_HASH(type)                              \
+    static size_t Hash##type                                    \
+    (                                                           \
+        const void* type##Name                                  \
+    )                                                           \
+    {                                                           \
+        size_t byte=0, hash = 0;                                \
+        unsigned char c;                                        \
+        const unsigned char* ptr = type##Name;                  \
+        for (byte = 0; byte < sizeof(type); ++byte)             \
+        {                                                       \
+            c = *ptr++;                                         \
+            hash = c + (hash << 6) + (hash << 16) - hash;       \
+        }                                                       \
+        return hash;                                            \
+    }                                                           \
+    static bool Equals##type                                    \
+    (                                                           \
+        const void* first##type,                                \
+        const void* second##type                                \
+    )                                                           \
+    {                                                           \
+        return memcmp(first##type, second##type, sizeof(type)) == 0; \
+    }
 
 
 

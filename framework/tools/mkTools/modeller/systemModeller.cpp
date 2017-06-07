@@ -130,6 +130,10 @@ static void ModelAppOverrides
         {
             SetWatchdogTimeout(appPtr, ToSimpleSectionPtr(subsectionPtr));
         }
+        else if (subsectionName == "maxWatchdogTimeout")
+        {
+            SetMaxWatchdogTimeout(appPtr, ToSimpleSectionPtr(subsectionPtr));
+        }
         else if (subsectionName == "preloaded")
         {
             const auto& tokenText = ToSimpleSectionPtr(subsectionPtr)->Text();

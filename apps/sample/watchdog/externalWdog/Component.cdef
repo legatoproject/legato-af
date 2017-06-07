@@ -1,0 +1,18 @@
+/*
+ * External watchdog bridge component
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+requires:
+{
+    api:
+    {
+        le_wdog.api
+    }
+}
+
+sources:
+{
+    watchdog.c
+}

@@ -671,11 +671,11 @@ void le_hashmap_RemoveAll
  * Iterates over the whole map, calling the supplied callback with each key-value pair. If the callback
  * returns false for any key then this function will return.
  *
- * @return  Returns nothing
+ * @return  Returns true if all elements were checked; or false if iteration was stopped early
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_hashmap_ForEach
+bool le_hashmap_ForEach
 (
     le_hashmap_Ref_t mapRef,                 ///< [in] Reference to the map
     le_hashmap_ForEachHandler_t forEachFn,    ///< [in] Callback function to be called with each pair
@@ -690,11 +690,21 @@ void le_hashmap_ForEach
         while (theLinkPtr != NULL) {
             Entry_t* currentEntryPtr = CONTAINER_OF(theLinkPtr, Entry_t, entryListLink);
             if (!forEachFn(currentEntryPtr->keyPtr, currentEntryPtr->valuePtr, context)) {
-                return;
+                // Check to see if this is the last element, and return false if not.
+                if (le_dls_PeekNext(listHeadPtr, theLinkPtr) != NULL) { return false; }
+                uint32_t j;
+                for (j = i; j < mapRef->bucketCount; ++j)
+                {
+                    le_dls_List_t* listHeadPtr = &(mapRef->bucketsPtr[j]);
+                    if (le_dls_Peek(listHeadPtr)) { return false; }
+                }
+                return true;   // Despite stopping early, all elements have been examined.
             }
             theLinkPtr = le_dls_PeekNext(listHeadPtr, theLinkPtr);
         }
     }
+
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------------

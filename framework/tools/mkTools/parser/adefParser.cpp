@@ -243,6 +243,10 @@ static parseTree::CompoundItem_t* ParseProcessesSubsection
     {
         return ParseWatchdogTimeout(lexer, subsectionNameTokenPtr);
     }
+    else if (subsectionName == "maxWatchdogTimeout")
+    {
+        return ParseSimpleSection(lexer, subsectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
     else
     {
         lexer.ThrowException(
@@ -655,6 +659,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "watchdogTimeout")
     {
         return ParseWatchdogTimeout(lexer, sectionNameTokenPtr);
+    }
+    else if (sectionName == "maxWatchdogTimeout")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
     }
     else
     {

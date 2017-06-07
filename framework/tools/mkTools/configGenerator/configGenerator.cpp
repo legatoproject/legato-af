@@ -538,6 +538,12 @@ static void GenerateProcessConfig
                 cfgStream << "      \"watchdogTimeout\" [" << procEnvPtr->watchdogTimeout.Get()
                           << "]" << std::endl;
             }
+            if (procEnvPtr->maxWatchdogTimeout.IsSet())
+            {
+                cfgStream << "      \"maxWatchdogTimeout\" ["
+                          << procEnvPtr->maxWatchdogTimeout.Get()
+                          << "]" << std::endl;
+            }
             if (procEnvPtr->watchdogAction.IsSet())
             {
                 cfgStream << "      \"watchdogAction\" \"" << procEnvPtr->watchdogAction.Get()
@@ -749,6 +755,11 @@ static void GenerateAppWatchdogConfig
     if (appPtr->watchdogTimeout.IsSet())
     {
         cfgStream << "  \"watchdogTimeout\" [" << appPtr->watchdogTimeout.Get()
+                  << "]" << std::endl;
+    }
+    if (appPtr->maxWatchdogTimeout.IsSet())
+    {
+        cfgStream << "  \"maxWatchdogTimeout\" [" << appPtr->maxWatchdogTimeout.Get()
                   << "]" << std::endl;
     }
     if (appPtr->watchdogAction.IsSet())

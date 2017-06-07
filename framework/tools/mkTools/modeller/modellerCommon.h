@@ -190,6 +190,18 @@ void SetWatchdogTimeout
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the app-level watchdog timeout setting.
+ */
+//--------------------------------------------------------------------------------------------------
+void SetMaxWatchdogTimeout
+(
+    model::App_t* appPtr,
+    const parseTree::SimpleSection_t* sectionPtr  ///< Ptr to section in parse tree.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a pointer to the API File object for a given .api file path.
  **/
 //--------------------------------------------------------------------------------------------------

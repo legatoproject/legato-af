@@ -133,6 +133,26 @@ bool le_clk_GreaterThan
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Compare two time values.
+ *
+ * @return
+ *      - TRUE if TimeA == TimeB
+ *      - FALSE otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_clk_Equal
+(
+    le_clk_Time_t timeA,
+    le_clk_Time_t timeB
+)
+{
+    return (timeA.sec == timeB.sec) &&
+        (timeA.usec == timeB.usec);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Subtract two time values, and return the result.
  *
  * @return

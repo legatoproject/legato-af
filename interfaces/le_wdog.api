@@ -47,6 +47,13 @@ DEFINE TIMEOUT_NEVER = -1;
  */
 DEFINE TIMEOUT_NOW = 0;
 
+/**
+ * External watchdog kick handler
+ */
+HANDLER ExternalWatchdogHandler
+(
+);
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Kicks the watchdog timer.
@@ -70,4 +77,17 @@ FUNCTION Kick
 FUNCTION Timeout
 (
     int32 milliseconds IN ///< The number of milliseconds until this timer expires
+);
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Register an external watchdog kick handler.
+ *
+ * Register an handler which will be triggered periodically if all monitored apps are alive.
+ */
+//-------------------------------------------------------------------------------------------------
+EVENT ExternalWatchdog
+(
+    int32 milliseconds IN,          ///< The period to kick external watchdog
+    ExternalWatchdogHandler handler ///< The handler for external watchdog kicks
 );

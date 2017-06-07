@@ -11,6 +11,7 @@ requires:
     api:
     {
         le_cfg.api
+        le_instStat.api
 
         // Manual start after notifying supervisor of start -- otherwise watchdog hangs on start.
         le_appInfo.api      [manual-start]

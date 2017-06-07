@@ -743,6 +743,11 @@ static void AddProcessesSection
                 procEnvPtr->watchdogTimeout = GetInt(timeoutSectionPtr);
             }
         }
+        else if (subsectionName == "maxWatchdogTimeout")
+        {
+            auto maxTimeoutSectionPtr = ToSimpleSectionPtr(subsectionPtr);
+            procEnvPtr->maxWatchdogTimeout = GetInt(maxTimeoutSectionPtr);
+        }
         else
         {
             subsectionPtr->ThrowException(
@@ -1357,6 +1362,20 @@ void PrintSummary
                                             appPtr->watchdogTimeout.Get())
                               << std::endl;
                 }
+
+                if (procEnvPtr->maxWatchdogTimeout.IsSet())
+                {
+                    std::cout << mk::format(LE_I18N("    Maximum watchdog timeout: %d"),
+                                            procEnvPtr->maxWatchdogTimeout.Get())
+                              << std::endl;
+                }
+                else if (appPtr->maxWatchdogTimeout.IsSet())
+                {
+                    std::cout << mk::format(LE_I18N("    Maximum watchdog timeout: %d"),
+                                            appPtr->maxWatchdogTimeout.Get())
+                              << std::endl;
+                }
+
                 if (procEnvPtr->watchdogAction.IsSet())
                 {
                     std::cout << mk::format(LE_I18N("    Watchdog action: %s"),
@@ -1370,8 +1389,10 @@ void PrintSummary
                               << std::endl;
                 }
                 if (   (!procEnvPtr->watchdogTimeout.IsSet())
+                    && (!procEnvPtr->maxWatchdogTimeout.IsSet())
                     && (!procEnvPtr->watchdogAction.IsSet())
                     && (!appPtr->watchdogTimeout.IsSet())
+                    && (!appPtr->maxWatchdogTimeout.IsSet())
                     && (!appPtr->watchdogAction.IsSet())  )
                 {
                     std::cout << LE_I18N("    Watchdog timeout: disabled") << std::endl;
@@ -1758,6 +1779,10 @@ model::App_t* GetApp
         else if (sectionName == "watchdogTimeout")
         {
             SetWatchdogTimeout(appPtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "maxWatchdogTimeout")
+        {
+            SetMaxWatchdogTimeout(appPtr, ToSimpleSectionPtr(sectionPtr));
         }
         else
         {
