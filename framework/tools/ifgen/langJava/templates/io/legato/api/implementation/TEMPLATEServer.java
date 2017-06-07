@@ -36,7 +36,8 @@ public class {{apiName}}Server implements AutoCloseable
 {
     private static final String protocolIdStr = "{{idString}}";
     private static final String serviceInstanceName = "{{apiName}}";
-    private static final int maxMsgSize = {{messageSize}};
+    /// Max message size.  Id (4 bytes) + max packed function call size
+    private static final int maxMsgSize = 4 + {{messageSize}};
 
     private Service service;
     private ServerSession currentSession;
