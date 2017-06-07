@@ -80,6 +80,12 @@ the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not availa
 they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
 NMEA sentences.
 
+@section platformConstraintsGnss_SetConstellation Set constellations
+
+The le_gnss_SetConstellation() API sets the constellations used in the solution.
+Please note that on Qualcomm-based platform, a new constellation set by le_gnss_SetConstellation()
+is valid only after a reboot of the module.
+
 @section References
 
 See @ref c_gnss API
