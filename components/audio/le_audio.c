@@ -614,9 +614,9 @@ static le_event_Id_t GetEventId
     void
 )
 {
-    struct eventIdList* currentPtr=NULL;
+    struct eventIdList* currentPtr = NULL;
     le_dls_Link_t*      linkPtr = le_dls_Peek(&EventIdList);
-    char                eventIdName[24];
+    char                eventIdName[25];
     int32_t             eventIdIdx = 1;
 
     while (linkPtr!=NULL)

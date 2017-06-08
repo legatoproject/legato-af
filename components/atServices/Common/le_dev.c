@@ -20,19 +20,26 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * String size for the buffer that contains a summary of all the device information available
+ */
+//--------------------------------------------------------------------------------------------------
+#define DSIZE_INFO_STR   1600
+
+//--------------------------------------------------------------------------------------------------
+/**
  * struct DevInfo contains useful information about the device in use
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int             fd;                 ///< file descriptor in use
-    char            linkName[DSIZE];    ///< device full path
-    char            fdSysPath[DSIZE];   ///< /proc/PID/fd/FD
-    unsigned int    major;              ///< device's major number
-    unsigned int    minor;              ///< device's minor number
-    char            uName[DSIZE];       ///< user name
-    char            gName[DSIZE];       ///< group name
-    char            devInfoStr[DSIZE];  ///< formatted string for all info
+    int             fd;                         ///< file descriptor in use
+    char            linkName[DSIZE];            ///< device full path
+    char            fdSysPath[DSIZE];           ///< /proc/PID/fd/FD
+    unsigned int    major;                      ///< device's major number
+    unsigned int    minor;                      ///< device's minor number
+    char            uName[DSIZE];               ///< user name
+    char            gName[DSIZE];               ///< group name
+    char            devInfoStr[DSIZE_INFO_STR]; ///< formatted string for all info
 }
 DevInfo_t;
 
@@ -113,7 +120,7 @@ static le_result_t GetDeviceInformation
         DevInfo.minor = minor(fdStats.st_rdev);
         snprintf(DevInfo.uName, DSIZE, "%s", passwd->pw_name);
         snprintf(DevInfo.gName, DSIZE, "%s", group->gr_name);
-        snprintf(DevInfo.devInfoStr, DSIZE, "%s, %s [%u, %u], (u: %s, g: %s)",
+        snprintf(DevInfo.devInfoStr, sizeof(DevInfo.devInfoStr), "%s, %s [%u, %u], (u: %s, g: %s)",
             DevInfo.fdSysPath,
             DevInfo.linkName,
             DevInfo.major,

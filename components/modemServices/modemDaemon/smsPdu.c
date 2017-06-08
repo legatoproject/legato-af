@@ -834,7 +834,7 @@ static size_t ConvertPhoneNumberIntoBinary
 
 /*
  * TP-SCTS 03.40
- * TP-SCTS: Service Center Time Stamp (7 bytes)
+ * TP-SCTS: Service Center Time Stamp (7 bytes, decimal semi-octets)
  */
 static uint32_t ConvertBinaryIntoTimestamp
 (
@@ -849,8 +849,10 @@ static uint32_t ConvertBinaryIntoTimestamp
         return 7;
     }
 
+    // In case there is an error in the binary input, the output would contain [a-f] characters
+    // while if the input is correct, the output contains only [0-9] characters.
     snprintf(timeStampPtr,timeStampSize,
-            "%u%u/%u%u/%u%u,%u%u:%u%u:%u%u%c%u%u",
+            "%x%x/%x%x/%x%x,%x%x:%x%x:%x%x%c%x%x",
             binPtr[0]&0x0F,
             (binPtr[0]>>4)&0x0F,
             binPtr[1]&0x0F,
@@ -2044,20 +2046,20 @@ static le_result_t DecodeDate
 {
     uint32_t timeStampSize;
 
-    timeStampSize = 18;
+    timeStampSize = LE_SMS_TIMESTAMP_MAX_BYTES;
     if (timeStampSize>dateSize)
     {
         LE_WARN("Buffer overflow will occur (%d>%zd)",timeStampSize,dateSize);
         return LE_OVERFLOW;
     }
 
-    snprintf(date, timeStampSize-1, "%d/%d/%d,%d:%d:%d",
-             ConvertFromByte(dateParameter->year),
-             ConvertFromByte(dateParameter->month),
-             ConvertFromByte(dateParameter->day),
-             ConvertFromByte(dateParameter->hours),
-             ConvertFromByte(dateParameter->minutes),
-             ConvertFromByte(dateParameter->seconds));
+    snprintf(date, timeStampSize, "%u/%u/%u,%u:%u:%u",
+             ConvertFromByte(dateParameter->year) % 100,
+             ConvertFromByte(dateParameter->month) % 100,
+             ConvertFromByte(dateParameter->day) % 100,
+             ConvertFromByte(dateParameter->hours) % 100,
+             ConvertFromByte(dateParameter->minutes) % 100,
+             ConvertFromByte(dateParameter->seconds) % 100);
     date[timeStampSize] = '\0';
 
     return LE_OK;

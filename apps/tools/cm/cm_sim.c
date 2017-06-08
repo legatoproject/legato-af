@@ -528,7 +528,6 @@ int cm_sim_UnblockSim
     res = le_sim_Unblock(SimId, pukPtr, newPinPtr);
     switch (res)
     {
-        uint32_t remainingPukTries=0;
         case LE_OK:
             printf("Success.\n");
             return EXIT_SUCCESS;
@@ -548,6 +547,9 @@ int cm_sim_UnblockSim
             printf("The PUK code length is not correct (8 digits).\n");
             break;
         default:
+        {
+            uint32_t remainingPukTries = 0;
+
             printf("Error: %s\n", LE_RESULT_TXT(res));
             res = le_sim_GetRemainingPUKTries(SimId, &remainingPukTries);
 
@@ -560,6 +562,7 @@ int cm_sim_UnblockSim
                 printf("Failed to get the remaining PUK tries: error = %d\n", res);
             }
             break;
+        }
     }
 
     return EXIT_FAILURE;
