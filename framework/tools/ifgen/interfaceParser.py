@@ -1,4 +1,4 @@
-# $ANTLR 3.5.2 interface.g 2017-05-29 08:21:05
+# $ANTLR 3.5.2 interface.g 2017-06-08 15:26:02
 
 import sys
 from antlr3 import *
@@ -53,6 +53,7 @@ T__37=37
 T__38=38
 T__39=39
 T__40=40
+T__41=41
 ALPHA=4
 ALPHANUM=5
 BITMASK=6
@@ -86,8 +87,8 @@ tokenNames = [
     "DEFINE", "DOC_POST_COMMENT", "DOC_PRE_COMMENT", "ENUM", "EVENT", "FUNCTION", 
     "HANDLER", "HEXNUM", "HEX_NUMBER", "IDENTIFIER", "IN", "NUM", "OUT", 
     "QUOTED_STRING", "REFERENCE", "SCOPED_IDENTIFIER", "SEMICOLON", "USETYPES", 
-    "WS", "'('", "')'", "'*'", "'+'", "','", "'-'", "'/'", "'='", "'['", 
-    "']'", "'{'", "'}'"
+    "WS", "'('", "')'", "'*'", "'+'", "','", "'-'", "'..'", "'/'", "'='", 
+    "'['", "']'", "'{'", "'}'"
 ]
 
 
@@ -104,26 +105,26 @@ class interfaceParser(Parser):
 
         super(interfaceParser, self).__init__(input, state, *args, **kwargs)
 
-        self.dfa13 = self.DFA13(
-            self, 13,
-            eot = self.DFA13_eot,
-            eof = self.DFA13_eof,
-            min = self.DFA13_min,
-            max = self.DFA13_max,
-            accept = self.DFA13_accept,
-            special = self.DFA13_special,
-            transition = self.DFA13_transition
+        self.dfa14 = self.DFA14(
+            self, 14,
+            eot = self.DFA14_eot,
+            eof = self.DFA14_eof,
+            min = self.DFA14_min,
+            max = self.DFA14_max,
+            accept = self.DFA14_accept,
+            special = self.DFA14_special,
+            transition = self.DFA14_transition
             )
 
-        self.dfa16 = self.DFA16(
-            self, 16,
-            eot = self.DFA16_eot,
-            eof = self.DFA16_eof,
-            min = self.DFA16_min,
-            max = self.DFA16_max,
-            accept = self.DFA16_accept,
-            special = self.DFA16_special,
-            transition = self.DFA16_transition
+        self.dfa17 = self.DFA17(
+            self, 17,
+            eot = self.DFA17_eot,
+            eof = self.DFA17_eof,
+            min = self.DFA17_min,
+            max = self.DFA17_max,
+            accept = self.DFA17_accept,
+            special = self.DFA17_special,
+            transition = self.DFA17_transition
             )
 
 
@@ -480,11 +481,21 @@ class interfaceParser(Parser):
     # $ANTLR end "defineValue"
 
 
+    class simpleNumber_return(ParserRuleReturnScope):
+        def __init__(self):
+            super(interfaceParser.simpleNumber_return, self).__init__()
+
+            self.value = None
+
+
+
+
 
     # $ANTLR start "simpleNumber"
     # interface.g:263:1: simpleNumber returns [value] : ( number | defineValue );
     def simpleNumber(self, ):
-        value = None
+        retval = self.simpleNumber_return()
+        retval.start = self.input.LT(1)
 
 
         number9 = None
@@ -515,7 +526,7 @@ class interfaceParser(Parser):
                     self._state.following.pop()
 
                     #action start
-                    value = number9 
+                    retval.value = number9 
                     #action end
 
 
@@ -529,9 +540,12 @@ class interfaceParser(Parser):
                     self._state.following.pop()
 
                     #action start
-                    value = ((defineValue10 is not None) and [defineValue10.value] or [None])[0] 
+                    retval.value = ((defineValue10 is not None) and [defineValue10.value] or [None])[0] 
                     #action end
 
+
+
+                retval.stop = self.input.LT(-1)
 
 
 
@@ -541,7 +555,7 @@ class interfaceParser(Parser):
 
         finally:
             pass
-        return value
+        return retval
 
     # $ANTLR end "simpleNumber"
 
@@ -665,7 +679,7 @@ class interfaceParser(Parser):
 
                     if (LA7_0 == 31) :
                         alt7 = 1
-                    elif (LA7_0 == 35) :
+                    elif (LA7_0 == 36) :
                         alt7 = 2
 
 
@@ -688,7 +702,7 @@ class interfaceParser(Parser):
                     elif alt7 == 2:
                         # interface.g:277:11: '/' divValue= simpleExpression
                         pass 
-                        self.match(self.input, 35, self.FOLLOW_35_in_productExpression879)
+                        self.match(self.input, 36, self.FOLLOW_36_in_productExpression879)
 
                         self._state.following.append(self.FOLLOW_simpleExpression_in_productExpression883)
                         divValue = self.simpleExpression()
@@ -871,31 +885,131 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "arrayExpression"
-    # interface.g:296:1: arrayExpression returns [size] : '[' simpleNumber ']' ;
+    # interface.g:296:1: arrayExpression returns [size] : ( '[' simpleNumber ']' | '[' minSize= simpleNumber '..' maxSize= simpleNumber ']' );
     def arrayExpression(self, ):
         size = None
 
 
+        minSize = None
+        maxSize = None
         simpleNumber16 = None
 
         try:
             try:
-                # interface.g:297:5: ( '[' simpleNumber ']' )
-                # interface.g:297:7: '[' simpleNumber ']'
-                pass 
-                self.match(self.input, 37, self.FOLLOW_37_in_arrayExpression1035)
+                # interface.g:297:5: ( '[' simpleNumber ']' | '[' minSize= simpleNumber '..' maxSize= simpleNumber ']' )
+                alt10 = 2
+                LA10_0 = self.input.LA(1)
 
-                self._state.following.append(self.FOLLOW_simpleNumber_in_arrayExpression1037)
-                simpleNumber16 = self.simpleNumber()
+                if (LA10_0 == 38) :
+                    LA10 = self.input.LA(2)
+                    if LA10 == DEC_NUMBER:
+                        LA10_2 = self.input.LA(3)
 
-                self._state.following.pop()
+                        if (LA10_2 == 39) :
+                            alt10 = 1
+                        elif (LA10_2 == 35) :
+                            alt10 = 2
+                        else:
+                            nvae = NoViableAltException("", 10, 2, self.input)
 
-                self.match(self.input, 38, self.FOLLOW_38_in_arrayExpression1039)
+                            raise nvae
 
-                #action start
-                size = simpleNumber16 
-                #action end
 
+                    elif LA10 == HEX_NUMBER:
+                        LA10_3 = self.input.LA(3)
+
+                        if (LA10_3 == 39) :
+                            alt10 = 1
+                        elif (LA10_3 == 35) :
+                            alt10 = 2
+                        else:
+                            nvae = NoViableAltException("", 10, 3, self.input)
+
+                            raise nvae
+
+
+                    elif LA10 == IDENTIFIER:
+                        LA10_4 = self.input.LA(3)
+
+                        if (LA10_4 == 39) :
+                            alt10 = 1
+                        elif (LA10_4 == 35) :
+                            alt10 = 2
+                        else:
+                            nvae = NoViableAltException("", 10, 4, self.input)
+
+                            raise nvae
+
+
+                    elif LA10 == SCOPED_IDENTIFIER:
+                        LA10_5 = self.input.LA(3)
+
+                        if (LA10_5 == 39) :
+                            alt10 = 1
+                        elif (LA10_5 == 35) :
+                            alt10 = 2
+                        else:
+                            nvae = NoViableAltException("", 10, 5, self.input)
+
+                            raise nvae
+
+
+                    else:
+                        nvae = NoViableAltException("", 10, 1, self.input)
+
+                        raise nvae
+
+
+                else:
+                    nvae = NoViableAltException("", 10, 0, self.input)
+
+                    raise nvae
+
+
+                if alt10 == 1:
+                    # interface.g:297:7: '[' simpleNumber ']'
+                    pass 
+                    self.match(self.input, 38, self.FOLLOW_38_in_arrayExpression1035)
+
+                    self._state.following.append(self.FOLLOW_simpleNumber_in_arrayExpression1037)
+                    simpleNumber16 = self.simpleNumber()
+
+                    self._state.following.pop()
+
+                    self.match(self.input, 39, self.FOLLOW_39_in_arrayExpression1039)
+
+                    #action start
+                    size = ((simpleNumber16 is not None) and [simpleNumber16.value] or [None])[0] 
+                    #action end
+
+
+
+                elif alt10 == 2:
+                    # interface.g:299:7: '[' minSize= simpleNumber '..' maxSize= simpleNumber ']'
+                    pass 
+                    self.match(self.input, 38, self.FOLLOW_38_in_arrayExpression1057)
+
+                    self._state.following.append(self.FOLLOW_simpleNumber_in_arrayExpression1061)
+                    minSize = self.simpleNumber()
+
+                    self._state.following.pop()
+
+                    self.match(self.input, 35, self.FOLLOW_35_in_arrayExpression1063)
+
+                    self._state.following.append(self.FOLLOW_simpleNumber_in_arrayExpression1067)
+                    maxSize = self.simpleNumber()
+
+                    self._state.following.pop()
+
+                    self.match(self.input, 39, self.FOLLOW_39_in_arrayExpression1069)
+
+                    #action start
+                            
+                    self.emitErrorMessage(self.getWarningHeaderForToken(minSize.start) +
+                                          " Minimum lengths are deprecated and will be ignored.")
+                    size = ((maxSize is not None) and [maxSize.value] or [None])[0]
+                            
+                    #action end
 
 
 
@@ -913,7 +1027,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "typeIdentifier"
-    # interface.g:301:1: typeIdentifier returns [typeObj] : ( IDENTIFIER | SCOPED_IDENTIFIER );
+    # interface.g:307:1: typeIdentifier returns [typeObj] : ( IDENTIFIER | SCOPED_IDENTIFIER );
     def typeIdentifier(self, ):
         typeObj = None
 
@@ -923,24 +1037,24 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:302:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
-                alt10 = 2
-                LA10_0 = self.input.LA(1)
+                # interface.g:308:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
+                alt11 = 2
+                LA11_0 = self.input.LA(1)
 
-                if (LA10_0 == IDENTIFIER) :
-                    alt10 = 1
-                elif (LA10_0 == SCOPED_IDENTIFIER) :
-                    alt10 = 2
+                if (LA11_0 == IDENTIFIER) :
+                    alt11 = 1
+                elif (LA11_0 == SCOPED_IDENTIFIER) :
+                    alt11 = 2
                 else:
-                    nvae = NoViableAltException("", 10, 0, self.input)
+                    nvae = NoViableAltException("", 11, 0, self.input)
 
                     raise nvae
 
 
-                if alt10 == 1:
-                    # interface.g:302:7: IDENTIFIER
+                if alt11 == 1:
+                    # interface.g:308:7: IDENTIFIER
                     pass 
-                    IDENTIFIER17 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_typeIdentifier1070)
+                    IDENTIFIER17 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_typeIdentifier1100)
 
                     #action start
                             
@@ -956,10 +1070,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt10 == 2:
-                    # interface.g:312:7: SCOPED_IDENTIFIER
+                elif alt11 == 2:
+                    # interface.g:318:7: SCOPED_IDENTIFIER
                     pass 
-                    SCOPED_IDENTIFIER18 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_typeIdentifier1088)
+                    SCOPED_IDENTIFIER18 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_typeIdentifier1118)
 
                     #action start
                             
@@ -989,7 +1103,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "docPostComments"
-    # interface.g:324:1: docPostComments returns [comments] : ( DOC_POST_COMMENT )* ;
+    # interface.g:330:1: docPostComments returns [comments] : ( DOC_POST_COMMENT )* ;
     def docPostComments(self, ):
         comments = None
 
@@ -998,27 +1112,27 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:325:5: ( ( DOC_POST_COMMENT )* )
-                # interface.g:325:7: ( DOC_POST_COMMENT )*
+                # interface.g:331:5: ( ( DOC_POST_COMMENT )* )
+                # interface.g:331:7: ( DOC_POST_COMMENT )*
                 pass 
                 #action start
                 comments = [] 
                 #action end
 
 
-                # interface.g:326:7: ( DOC_POST_COMMENT )*
-                while True: #loop11
-                    alt11 = 2
-                    LA11_0 = self.input.LA(1)
+                # interface.g:332:7: ( DOC_POST_COMMENT )*
+                while True: #loop12
+                    alt12 = 2
+                    LA12_0 = self.input.LA(1)
 
-                    if (LA11_0 == DOC_POST_COMMENT) :
-                        alt11 = 1
+                    if (LA12_0 == DOC_POST_COMMENT) :
+                        alt12 = 1
 
 
-                    if alt11 == 1:
-                        # interface.g:326:9: DOC_POST_COMMENT
+                    if alt12 == 1:
+                        # interface.g:332:9: DOC_POST_COMMENT
                         pass 
-                        DOC_POST_COMMENT19 = self.match(self.input, DOC_POST_COMMENT, self.FOLLOW_DOC_POST_COMMENT_in_docPostComments1129)
+                        DOC_POST_COMMENT19 = self.match(self.input, DOC_POST_COMMENT, self.FOLLOW_DOC_POST_COMMENT_in_docPostComments1159)
 
                         #action start
                         comments.append(StripPostComment(DOC_POST_COMMENT19.text)) 
@@ -1027,7 +1141,7 @@ class interfaceParser(Parser):
 
 
                     else:
-                        break #loop11
+                        break #loop12
 
 
 
@@ -1046,7 +1160,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "docPreComment"
-    # interface.g:331:1: docPreComment returns [comment] : DOC_PRE_COMMENT ;
+    # interface.g:337:1: docPreComment returns [comment] : DOC_PRE_COMMENT ;
     def docPreComment(self, ):
         comment = None
 
@@ -1055,10 +1169,10 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:332:5: ( DOC_PRE_COMMENT )
-                # interface.g:332:7: DOC_PRE_COMMENT
+                # interface.g:338:5: ( DOC_PRE_COMMENT )
+                # interface.g:338:7: DOC_PRE_COMMENT
                 pass 
-                DOC_PRE_COMMENT20 = self.match(self.input, DOC_PRE_COMMENT, self.FOLLOW_DOC_PRE_COMMENT_in_docPreComment1173)
+                DOC_PRE_COMMENT20 = self.match(self.input, DOC_PRE_COMMENT, self.FOLLOW_DOC_PRE_COMMENT_in_docPreComment1203)
 
                 #action start
                 comment = StripPreComment(DOC_PRE_COMMENT20.text) 
@@ -1081,7 +1195,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "defineDecl"
-    # interface.g:335:1: defineDecl returns [define] : DEFINE IDENTIFIER '=' valueExpression ';' ;
+    # interface.g:341:1: defineDecl returns [define] : DEFINE IDENTIFIER '=' valueExpression ';' ;
     def defineDecl(self, ):
         define = None
 
@@ -1091,21 +1205,21 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:336:5: ( DEFINE IDENTIFIER '=' valueExpression ';' )
-                # interface.g:336:7: DEFINE IDENTIFIER '=' valueExpression ';'
+                # interface.g:342:5: ( DEFINE IDENTIFIER '=' valueExpression ';' )
+                # interface.g:342:7: DEFINE IDENTIFIER '=' valueExpression ';'
                 pass 
-                self.match(self.input, DEFINE, self.FOLLOW_DEFINE_in_defineDecl1196)
+                self.match(self.input, DEFINE, self.FOLLOW_DEFINE_in_defineDecl1226)
 
-                IDENTIFIER21 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_defineDecl1198)
+                IDENTIFIER21 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_defineDecl1228)
 
-                self.match(self.input, 36, self.FOLLOW_36_in_defineDecl1200)
+                self.match(self.input, 37, self.FOLLOW_37_in_defineDecl1230)
 
-                self._state.following.append(self.FOLLOW_valueExpression_in_defineDecl1202)
+                self._state.following.append(self.FOLLOW_valueExpression_in_defineDecl1232)
                 valueExpression22 = self.valueExpression()
 
                 self._state.following.pop()
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_defineDecl1204)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_defineDecl1234)
 
                 #action start
                         
@@ -1130,7 +1244,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "namedValue"
-    # interface.g:342:1: namedValue returns [namedValue] : IDENTIFIER ( '=' integer )? docPostComments ;
+    # interface.g:348:1: namedValue returns [namedValue] : IDENTIFIER ( '=' integer )? docPostComments ;
     def namedValue(self, ):
         namedValue = None
 
@@ -1141,23 +1255,23 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:343:5: ( IDENTIFIER ( '=' integer )? docPostComments )
-                # interface.g:343:7: IDENTIFIER ( '=' integer )? docPostComments
+                # interface.g:349:5: ( IDENTIFIER ( '=' integer )? docPostComments )
+                # interface.g:349:7: IDENTIFIER ( '=' integer )? docPostComments
                 pass 
-                IDENTIFIER23 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_namedValue1235)
+                IDENTIFIER23 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_namedValue1265)
 
-                # interface.g:343:18: ( '=' integer )?
-                alt12 = 2
-                LA12_0 = self.input.LA(1)
+                # interface.g:349:18: ( '=' integer )?
+                alt13 = 2
+                LA13_0 = self.input.LA(1)
 
-                if (LA12_0 == 36) :
-                    alt12 = 1
-                if alt12 == 1:
-                    # interface.g:343:20: '=' integer
+                if (LA13_0 == 37) :
+                    alt13 = 1
+                if alt13 == 1:
+                    # interface.g:349:20: '=' integer
                     pass 
-                    self.match(self.input, 36, self.FOLLOW_36_in_namedValue1239)
+                    self.match(self.input, 37, self.FOLLOW_37_in_namedValue1269)
 
-                    self._state.following.append(self.FOLLOW_integer_in_namedValue1241)
+                    self._state.following.append(self.FOLLOW_integer_in_namedValue1271)
                     integer24 = self.integer()
 
                     self._state.following.pop()
@@ -1165,7 +1279,7 @@ class interfaceParser(Parser):
 
 
 
-                self._state.following.append(self.FOLLOW_docPostComments_in_namedValue1246)
+                self._state.following.append(self.FOLLOW_docPostComments_in_namedValue1276)
                 docPostComments25 = self.docPostComments()
 
                 self._state.following.pop()
@@ -1195,7 +1309,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "namedValueList"
-    # interface.g:351:1: namedValueList returns [values] : (| namedValue | namedValue ',' docPostComments rest= namedValueList );
+    # interface.g:357:1: namedValueList returns [values] : (| namedValue | namedValue ',' docPostComments rest= namedValueList );
     def namedValueList(self, ):
         values = None
 
@@ -1207,11 +1321,11 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:352:5: (| namedValue | namedValue ',' docPostComments rest= namedValueList )
-                alt13 = 3
-                alt13 = self.dfa13.predict(self.input)
-                if alt13 == 1:
-                    # interface.g:352:51: 
+                # interface.g:358:5: (| namedValue | namedValue ',' docPostComments rest= namedValueList )
+                alt14 = 3
+                alt14 = self.dfa14.predict(self.input)
+                if alt14 == 1:
+                    # interface.g:358:51: 
                     pass 
                     #action start
                     values = [ ] 
@@ -1219,10 +1333,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt13 == 2:
-                    # interface.g:353:7: namedValue
+                elif alt14 == 2:
+                    # interface.g:359:7: namedValue
                     pass 
-                    self._state.following.append(self.FOLLOW_namedValue_in_namedValueList1321)
+                    self._state.following.append(self.FOLLOW_namedValue_in_namedValueList1351)
                     namedValue26 = self.namedValue()
 
                     self._state.following.pop()
@@ -1233,22 +1347,22 @@ class interfaceParser(Parser):
 
 
 
-                elif alt13 == 3:
-                    # interface.g:354:7: namedValue ',' docPostComments rest= namedValueList
+                elif alt14 == 3:
+                    # interface.g:360:7: namedValue ',' docPostComments rest= namedValueList
                     pass 
-                    self._state.following.append(self.FOLLOW_namedValue_in_namedValueList1364)
+                    self._state.following.append(self.FOLLOW_namedValue_in_namedValueList1394)
                     namedValue27 = self.namedValue()
 
                     self._state.following.pop()
 
-                    self.match(self.input, 33, self.FOLLOW_33_in_namedValueList1366)
+                    self.match(self.input, 33, self.FOLLOW_33_in_namedValueList1396)
 
-                    self._state.following.append(self.FOLLOW_docPostComments_in_namedValueList1368)
+                    self._state.following.append(self.FOLLOW_docPostComments_in_namedValueList1398)
                     docPostComments28 = self.docPostComments()
 
                     self._state.following.pop()
 
-                    self._state.following.append(self.FOLLOW_namedValueList_in_namedValueList1372)
+                    self._state.following.append(self.FOLLOW_namedValueList_in_namedValueList1402)
                     rest = self.namedValueList()
 
                     self._state.following.pop()
@@ -1277,7 +1391,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "enumDecl"
-    # interface.g:362:1: enumDecl returns [enum] : ENUM IDENTIFIER '{' namedValueList '}' ';' ;
+    # interface.g:368:1: enumDecl returns [enum] : ENUM IDENTIFIER '{' namedValueList '}' ';' ;
     def enumDecl(self, ):
         enum = None
 
@@ -1287,23 +1401,23 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:363:5: ( ENUM IDENTIFIER '{' namedValueList '}' ';' )
-                # interface.g:363:7: ENUM IDENTIFIER '{' namedValueList '}' ';'
+                # interface.g:369:5: ( ENUM IDENTIFIER '{' namedValueList '}' ';' )
+                # interface.g:369:7: ENUM IDENTIFIER '{' namedValueList '}' ';'
                 pass 
-                self.match(self.input, ENUM, self.FOLLOW_ENUM_in_enumDecl1403)
+                self.match(self.input, ENUM, self.FOLLOW_ENUM_in_enumDecl1433)
 
-                IDENTIFIER29 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_enumDecl1405)
+                IDENTIFIER29 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_enumDecl1435)
 
-                self.match(self.input, 39, self.FOLLOW_39_in_enumDecl1407)
+                self.match(self.input, 40, self.FOLLOW_40_in_enumDecl1437)
 
-                self._state.following.append(self.FOLLOW_namedValueList_in_enumDecl1409)
+                self._state.following.append(self.FOLLOW_namedValueList_in_enumDecl1439)
                 namedValueList30 = self.namedValueList()
 
                 self._state.following.pop()
 
-                self.match(self.input, 40, self.FOLLOW_40_in_enumDecl1411)
+                self.match(self.input, 41, self.FOLLOW_41_in_enumDecl1441)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_enumDecl1413)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_enumDecl1443)
 
                 #action start
                         
@@ -1328,7 +1442,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "bitmaskDecl"
-    # interface.g:369:1: bitmaskDecl returns [bitmask] : BITMASK IDENTIFIER '{' namedValueList '}' ';' ;
+    # interface.g:375:1: bitmaskDecl returns [bitmask] : BITMASK IDENTIFIER '{' namedValueList '}' ';' ;
     def bitmaskDecl(self, ):
         bitmask = None
 
@@ -1338,23 +1452,23 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:370:5: ( BITMASK IDENTIFIER '{' namedValueList '}' ';' )
-                # interface.g:370:7: BITMASK IDENTIFIER '{' namedValueList '}' ';'
+                # interface.g:376:5: ( BITMASK IDENTIFIER '{' namedValueList '}' ';' )
+                # interface.g:376:7: BITMASK IDENTIFIER '{' namedValueList '}' ';'
                 pass 
-                self.match(self.input, BITMASK, self.FOLLOW_BITMASK_in_bitmaskDecl1444)
+                self.match(self.input, BITMASK, self.FOLLOW_BITMASK_in_bitmaskDecl1474)
 
-                IDENTIFIER31 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_bitmaskDecl1446)
+                IDENTIFIER31 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_bitmaskDecl1476)
 
-                self.match(self.input, 39, self.FOLLOW_39_in_bitmaskDecl1448)
+                self.match(self.input, 40, self.FOLLOW_40_in_bitmaskDecl1478)
 
-                self._state.following.append(self.FOLLOW_namedValueList_in_bitmaskDecl1450)
+                self._state.following.append(self.FOLLOW_namedValueList_in_bitmaskDecl1480)
                 namedValueList32 = self.namedValueList()
 
                 self._state.following.pop()
 
-                self.match(self.input, 40, self.FOLLOW_40_in_bitmaskDecl1452)
+                self.match(self.input, 41, self.FOLLOW_41_in_bitmaskDecl1482)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_bitmaskDecl1454)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_bitmaskDecl1484)
 
                 #action start
                         
@@ -1379,7 +1493,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "referenceDecl"
-    # interface.g:376:1: referenceDecl returns [ref] : REFERENCE IDENTIFIER ';' ;
+    # interface.g:382:1: referenceDecl returns [ref] : REFERENCE IDENTIFIER ';' ;
     def referenceDecl(self, ):
         ref = None
 
@@ -1388,14 +1502,14 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:377:5: ( REFERENCE IDENTIFIER ';' )
-                # interface.g:377:7: REFERENCE IDENTIFIER ';'
+                # interface.g:383:5: ( REFERENCE IDENTIFIER ';' )
+                # interface.g:383:7: REFERENCE IDENTIFIER ';'
                 pass 
-                self.match(self.input, REFERENCE, self.FOLLOW_REFERENCE_in_referenceDecl1485)
+                self.match(self.input, REFERENCE, self.FOLLOW_REFERENCE_in_referenceDecl1515)
 
-                IDENTIFIER33 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_referenceDecl1487)
+                IDENTIFIER33 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_referenceDecl1517)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_referenceDecl1489)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_referenceDecl1519)
 
                 #action start
                         
@@ -1420,7 +1534,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "formalParameter"
-    # interface.g:383:1: formalParameter returns [parameter] : typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments ;
+    # interface.g:389:1: formalParameter returns [parameter] : typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments ;
     def formalParameter(self, ):
         parameter = None
 
@@ -1433,26 +1547,26 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:384:5: ( typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments )
-                # interface.g:384:7: typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments
+                # interface.g:390:5: ( typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments )
+                # interface.g:390:7: typeIdentifier IDENTIFIER ( arrayExpression )? ( direction )? docPostComments
                 pass 
-                self._state.following.append(self.FOLLOW_typeIdentifier_in_formalParameter1520)
+                self._state.following.append(self.FOLLOW_typeIdentifier_in_formalParameter1550)
                 typeIdentifier34 = self.typeIdentifier()
 
                 self._state.following.pop()
 
-                IDENTIFIER35 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_formalParameter1522)
+                IDENTIFIER35 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_formalParameter1552)
 
-                # interface.g:384:33: ( arrayExpression )?
-                alt14 = 2
-                LA14_0 = self.input.LA(1)
+                # interface.g:390:33: ( arrayExpression )?
+                alt15 = 2
+                LA15_0 = self.input.LA(1)
 
-                if (LA14_0 == 37) :
-                    alt14 = 1
-                if alt14 == 1:
-                    # interface.g:384:33: arrayExpression
+                if (LA15_0 == 38) :
+                    alt15 = 1
+                if alt15 == 1:
+                    # interface.g:390:33: arrayExpression
                     pass 
-                    self._state.following.append(self.FOLLOW_arrayExpression_in_formalParameter1524)
+                    self._state.following.append(self.FOLLOW_arrayExpression_in_formalParameter1554)
                     arrayExpression36 = self.arrayExpression()
 
                     self._state.following.pop()
@@ -1460,16 +1574,16 @@ class interfaceParser(Parser):
 
 
 
-                # interface.g:384:50: ( direction )?
-                alt15 = 2
-                LA15_0 = self.input.LA(1)
+                # interface.g:390:50: ( direction )?
+                alt16 = 2
+                LA16_0 = self.input.LA(1)
 
-                if (LA15_0 == IN or LA15_0 == OUT) :
-                    alt15 = 1
-                if alt15 == 1:
-                    # interface.g:384:50: direction
+                if (LA16_0 == IN or LA16_0 == OUT) :
+                    alt16 = 1
+                if alt16 == 1:
+                    # interface.g:390:50: direction
                     pass 
-                    self._state.following.append(self.FOLLOW_direction_in_formalParameter1527)
+                    self._state.following.append(self.FOLLOW_direction_in_formalParameter1557)
                     direction37 = self.direction()
 
                     self._state.following.pop()
@@ -1477,7 +1591,7 @@ class interfaceParser(Parser):
 
 
 
-                self._state.following.append(self.FOLLOW_docPostComments_in_formalParameter1530)
+                self._state.following.append(self.FOLLOW_docPostComments_in_formalParameter1560)
                 docPostComments38 = self.docPostComments()
 
                 self._state.following.pop()
@@ -1516,7 +1630,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "formalParameterList"
-    # interface.g:401:1: formalParameterList returns [parameters] : ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList );
+    # interface.g:407:1: formalParameterList returns [parameters] : ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList );
     def formalParameterList(self, ):
         parameters = None
 
@@ -1528,13 +1642,13 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:402:5: ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList )
-                alt16 = 2
-                alt16 = self.dfa16.predict(self.input)
-                if alt16 == 1:
-                    # interface.g:402:7: formalParameter
+                # interface.g:408:5: ( formalParameter | formalParameter ',' docPostComments rest= formalParameterList )
+                alt17 = 2
+                alt17 = self.dfa17.predict(self.input)
+                if alt17 == 1:
+                    # interface.g:408:7: formalParameter
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameter_in_formalParameterList1561)
+                    self._state.following.append(self.FOLLOW_formalParameter_in_formalParameterList1591)
                     formalParameter39 = self.formalParameter()
 
                     self._state.following.pop()
@@ -1547,22 +1661,22 @@ class interfaceParser(Parser):
 
 
 
-                elif alt16 == 2:
-                    # interface.g:406:7: formalParameter ',' docPostComments rest= formalParameterList
+                elif alt17 == 2:
+                    # interface.g:412:7: formalParameter ',' docPostComments rest= formalParameterList
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameter_in_formalParameterList1579)
+                    self._state.following.append(self.FOLLOW_formalParameter_in_formalParameterList1609)
                     formalParameter40 = self.formalParameter()
 
                     self._state.following.pop()
 
-                    self.match(self.input, 33, self.FOLLOW_33_in_formalParameterList1581)
+                    self.match(self.input, 33, self.FOLLOW_33_in_formalParameterList1611)
 
-                    self._state.following.append(self.FOLLOW_docPostComments_in_formalParameterList1583)
+                    self._state.following.append(self.FOLLOW_docPostComments_in_formalParameterList1613)
                     docPostComments41 = self.docPostComments()
 
                     self._state.following.pop()
 
-                    self._state.following.append(self.FOLLOW_formalParameterList_in_formalParameterList1587)
+                    self._state.following.append(self.FOLLOW_formalParameterList_in_formalParameterList1617)
                     rest = self.formalParameterList()
 
                     self._state.following.pop()
@@ -1591,7 +1705,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "functionDecl"
-    # interface.g:414:1: functionDecl returns [function] : FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:420:1: functionDecl returns [function] : FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def functionDecl(self, ):
         function = None
 
@@ -1602,26 +1716,26 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:415:5: ( FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:415:7: FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:421:5: ( FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:421:7: FUNCTION ( typeIdentifier )? IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
-                self.match(self.input, FUNCTION, self.FOLLOW_FUNCTION_in_functionDecl1618)
+                self.match(self.input, FUNCTION, self.FOLLOW_FUNCTION_in_functionDecl1648)
 
-                # interface.g:415:16: ( typeIdentifier )?
-                alt17 = 2
-                LA17_0 = self.input.LA(1)
+                # interface.g:421:16: ( typeIdentifier )?
+                alt18 = 2
+                LA18_0 = self.input.LA(1)
 
-                if (LA17_0 == IDENTIFIER) :
-                    LA17_1 = self.input.LA(2)
+                if (LA18_0 == IDENTIFIER) :
+                    LA18_1 = self.input.LA(2)
 
-                    if (LA17_1 == IDENTIFIER) :
-                        alt17 = 1
-                elif (LA17_0 == SCOPED_IDENTIFIER) :
-                    alt17 = 1
-                if alt17 == 1:
-                    # interface.g:415:16: typeIdentifier
+                    if (LA18_1 == IDENTIFIER) :
+                        alt18 = 1
+                elif (LA18_0 == SCOPED_IDENTIFIER) :
+                    alt18 = 1
+                if alt18 == 1:
+                    # interface.g:421:16: typeIdentifier
                     pass 
-                    self._state.following.append(self.FOLLOW_typeIdentifier_in_functionDecl1620)
+                    self._state.following.append(self.FOLLOW_typeIdentifier_in_functionDecl1650)
                     typeIdentifier43 = self.typeIdentifier()
 
                     self._state.following.pop()
@@ -1629,20 +1743,20 @@ class interfaceParser(Parser):
 
 
 
-                IDENTIFIER44 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_functionDecl1623)
+                IDENTIFIER44 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_functionDecl1653)
 
-                self.match(self.input, 29, self.FOLLOW_29_in_functionDecl1625)
+                self.match(self.input, 29, self.FOLLOW_29_in_functionDecl1655)
 
-                # interface.g:415:47: ( formalParameterList )?
-                alt18 = 2
-                LA18_0 = self.input.LA(1)
+                # interface.g:421:47: ( formalParameterList )?
+                alt19 = 2
+                LA19_0 = self.input.LA(1)
 
-                if (LA18_0 == IDENTIFIER or LA18_0 == SCOPED_IDENTIFIER) :
-                    alt18 = 1
-                if alt18 == 1:
-                    # interface.g:415:47: formalParameterList
+                if (LA19_0 == IDENTIFIER or LA19_0 == SCOPED_IDENTIFIER) :
+                    alt19 = 1
+                if alt19 == 1:
+                    # interface.g:421:47: formalParameterList
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameterList_in_functionDecl1627)
+                    self._state.following.append(self.FOLLOW_formalParameterList_in_functionDecl1657)
                     formalParameterList42 = self.formalParameterList()
 
                     self._state.following.pop()
@@ -1650,9 +1764,9 @@ class interfaceParser(Parser):
 
 
 
-                self.match(self.input, 30, self.FOLLOW_30_in_functionDecl1630)
+                self.match(self.input, 30, self.FOLLOW_30_in_functionDecl1660)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_functionDecl1632)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_functionDecl1662)
 
                 #action start
                         
@@ -1683,7 +1797,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "handlerDecl"
-    # interface.g:427:1: handlerDecl returns [handler] : HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:433:1: handlerDecl returns [handler] : HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def handlerDecl(self, ):
         handler = None
 
@@ -1693,25 +1807,25 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:428:5: ( HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:428:7: HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:434:5: ( HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:434:7: HANDLER IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
-                self.match(self.input, HANDLER, self.FOLLOW_HANDLER_in_handlerDecl1663)
+                self.match(self.input, HANDLER, self.FOLLOW_HANDLER_in_handlerDecl1693)
 
-                IDENTIFIER46 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_handlerDecl1665)
+                IDENTIFIER46 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_handlerDecl1695)
 
-                self.match(self.input, 29, self.FOLLOW_29_in_handlerDecl1667)
+                self.match(self.input, 29, self.FOLLOW_29_in_handlerDecl1697)
 
-                # interface.g:428:30: ( formalParameterList )?
-                alt19 = 2
-                LA19_0 = self.input.LA(1)
+                # interface.g:434:30: ( formalParameterList )?
+                alt20 = 2
+                LA20_0 = self.input.LA(1)
 
-                if (LA19_0 == IDENTIFIER or LA19_0 == SCOPED_IDENTIFIER) :
-                    alt19 = 1
-                if alt19 == 1:
-                    # interface.g:428:30: formalParameterList
+                if (LA20_0 == IDENTIFIER or LA20_0 == SCOPED_IDENTIFIER) :
+                    alt20 = 1
+                if alt20 == 1:
+                    # interface.g:434:30: formalParameterList
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameterList_in_handlerDecl1669)
+                    self._state.following.append(self.FOLLOW_formalParameterList_in_handlerDecl1699)
                     formalParameterList45 = self.formalParameterList()
 
                     self._state.following.pop()
@@ -1719,9 +1833,9 @@ class interfaceParser(Parser):
 
 
 
-                self.match(self.input, 30, self.FOLLOW_30_in_handlerDecl1672)
+                self.match(self.input, 30, self.FOLLOW_30_in_handlerDecl1702)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_handlerDecl1674)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_handlerDecl1704)
 
                 #action start
                         
@@ -1751,7 +1865,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "eventDecl"
-    # interface.g:439:1: eventDecl returns [event] : EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
+    # interface.g:445:1: eventDecl returns [event] : EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' ;
     def eventDecl(self, ):
         event = None
 
@@ -1761,25 +1875,25 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:440:5: ( EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' )
-                # interface.g:440:7: EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';'
+                # interface.g:446:5: ( EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';' )
+                # interface.g:446:7: EVENT IDENTIFIER '(' ( formalParameterList )? ')' ';'
                 pass 
-                self.match(self.input, EVENT, self.FOLLOW_EVENT_in_eventDecl1705)
+                self.match(self.input, EVENT, self.FOLLOW_EVENT_in_eventDecl1735)
 
-                IDENTIFIER48 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_eventDecl1707)
+                IDENTIFIER48 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_eventDecl1737)
 
-                self.match(self.input, 29, self.FOLLOW_29_in_eventDecl1709)
+                self.match(self.input, 29, self.FOLLOW_29_in_eventDecl1739)
 
-                # interface.g:440:28: ( formalParameterList )?
-                alt20 = 2
-                LA20_0 = self.input.LA(1)
+                # interface.g:446:28: ( formalParameterList )?
+                alt21 = 2
+                LA21_0 = self.input.LA(1)
 
-                if (LA20_0 == IDENTIFIER or LA20_0 == SCOPED_IDENTIFIER) :
-                    alt20 = 1
-                if alt20 == 1:
-                    # interface.g:440:28: formalParameterList
+                if (LA21_0 == IDENTIFIER or LA21_0 == SCOPED_IDENTIFIER) :
+                    alt21 = 1
+                if alt21 == 1:
+                    # interface.g:446:28: formalParameterList
                     pass 
-                    self._state.following.append(self.FOLLOW_formalParameterList_in_eventDecl1711)
+                    self._state.following.append(self.FOLLOW_formalParameterList_in_eventDecl1741)
                     formalParameterList47 = self.formalParameterList()
 
                     self._state.following.pop()
@@ -1787,9 +1901,9 @@ class interfaceParser(Parser):
 
 
 
-                self.match(self.input, 30, self.FOLLOW_30_in_eventDecl1714)
+                self.match(self.input, 30, self.FOLLOW_30_in_eventDecl1744)
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_eventDecl1716)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_eventDecl1746)
 
                 #action start
                         
@@ -1819,7 +1933,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "declaration"
-    # interface.g:451:1: declaration returns [declaration] : ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl );
+    # interface.g:457:1: declaration returns [declaration] : ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl );
     def declaration(self, ):
         declaration = None
 
@@ -1834,33 +1948,33 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:452:5: ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl )
-                alt21 = 7
-                LA21 = self.input.LA(1)
-                if LA21 == ENUM:
-                    alt21 = 1
-                elif LA21 == BITMASK:
-                    alt21 = 2
-                elif LA21 == REFERENCE:
-                    alt21 = 3
-                elif LA21 == FUNCTION:
-                    alt21 = 4
-                elif LA21 == HANDLER:
-                    alt21 = 5
-                elif LA21 == EVENT:
-                    alt21 = 6
-                elif LA21 == DEFINE:
-                    alt21 = 7
+                # interface.g:458:5: ( enumDecl | bitmaskDecl | referenceDecl | functionDecl | handlerDecl | eventDecl | defineDecl )
+                alt22 = 7
+                LA22 = self.input.LA(1)
+                if LA22 == ENUM:
+                    alt22 = 1
+                elif LA22 == BITMASK:
+                    alt22 = 2
+                elif LA22 == REFERENCE:
+                    alt22 = 3
+                elif LA22 == FUNCTION:
+                    alt22 = 4
+                elif LA22 == HANDLER:
+                    alt22 = 5
+                elif LA22 == EVENT:
+                    alt22 = 6
+                elif LA22 == DEFINE:
+                    alt22 = 7
                 else:
-                    nvae = NoViableAltException("", 21, 0, self.input)
+                    nvae = NoViableAltException("", 22, 0, self.input)
 
                     raise nvae
 
 
-                if alt21 == 1:
-                    # interface.g:452:7: enumDecl
+                if alt22 == 1:
+                    # interface.g:458:7: enumDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_enumDecl_in_declaration1747)
+                    self._state.following.append(self.FOLLOW_enumDecl_in_declaration1777)
                     enumDecl49 = self.enumDecl()
 
                     self._state.following.pop()
@@ -1871,10 +1985,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt21 == 2:
-                    # interface.g:453:7: bitmaskDecl
+                elif alt22 == 2:
+                    # interface.g:459:7: bitmaskDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_bitmaskDecl_in_declaration1764)
+                    self._state.following.append(self.FOLLOW_bitmaskDecl_in_declaration1794)
                     bitmaskDecl50 = self.bitmaskDecl()
 
                     self._state.following.pop()
@@ -1885,10 +1999,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt21 == 3:
-                    # interface.g:454:7: referenceDecl
+                elif alt22 == 3:
+                    # interface.g:460:7: referenceDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_referenceDecl_in_declaration1778)
+                    self._state.following.append(self.FOLLOW_referenceDecl_in_declaration1808)
                     referenceDecl51 = self.referenceDecl()
 
                     self._state.following.pop()
@@ -1899,10 +2013,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt21 == 4:
-                    # interface.g:455:7: functionDecl
+                elif alt22 == 4:
+                    # interface.g:461:7: functionDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_functionDecl_in_declaration1790)
+                    self._state.following.append(self.FOLLOW_functionDecl_in_declaration1820)
                     functionDecl52 = self.functionDecl()
 
                     self._state.following.pop()
@@ -1913,10 +2027,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt21 == 5:
-                    # interface.g:456:7: handlerDecl
+                elif alt22 == 5:
+                    # interface.g:462:7: handlerDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_handlerDecl_in_declaration1803)
+                    self._state.following.append(self.FOLLOW_handlerDecl_in_declaration1833)
                     handlerDecl53 = self.handlerDecl()
 
                     self._state.following.pop()
@@ -1927,10 +2041,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt21 == 6:
-                    # interface.g:457:7: eventDecl
+                elif alt22 == 6:
+                    # interface.g:463:7: eventDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_eventDecl_in_declaration1817)
+                    self._state.following.append(self.FOLLOW_eventDecl_in_declaration1847)
                     eventDecl54 = self.eventDecl()
 
                     self._state.following.pop()
@@ -1941,10 +2055,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt21 == 7:
-                    # interface.g:458:7: defineDecl
+                elif alt22 == 7:
+                    # interface.g:464:7: defineDecl
                     pass 
-                    self._state.following.append(self.FOLLOW_defineDecl_in_declaration1833)
+                    self._state.following.append(self.FOLLOW_defineDecl_in_declaration1863)
                     defineDecl55 = self.defineDecl()
 
                     self._state.following.pop()
@@ -1981,7 +2095,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "documentedDeclaration"
-    # interface.g:474:1: documentedDeclaration returns [declaration] : docPreComment declaration ;
+    # interface.g:480:1: documentedDeclaration returns [declaration] : docPreComment declaration ;
     def documentedDeclaration(self, ):
         declaration = None
 
@@ -1991,15 +2105,15 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:475:5: ( docPreComment declaration )
-                # interface.g:475:7: docPreComment declaration
+                # interface.g:481:5: ( docPreComment declaration )
+                # interface.g:481:7: docPreComment declaration
                 pass 
-                self._state.following.append(self.FOLLOW_docPreComment_in_documentedDeclaration1873)
+                self._state.following.append(self.FOLLOW_docPreComment_in_documentedDeclaration1903)
                 docPreComment57 = self.docPreComment()
 
                 self._state.following.pop()
 
-                self._state.following.append(self.FOLLOW_declaration_in_documentedDeclaration1875)
+                self._state.following.append(self.FOLLOW_declaration_in_documentedDeclaration1905)
                 declaration56 = self.declaration()
 
                 self._state.following.pop()
@@ -2029,7 +2143,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "filename"
-    # interface.g:485:1: filename returns [filename] : ( IDENTIFIER | SCOPED_IDENTIFIER );
+    # interface.g:491:1: filename returns [filename] : ( IDENTIFIER | SCOPED_IDENTIFIER );
     def filename(self, ):
         filename = None
 
@@ -2039,24 +2153,24 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:486:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
-                alt22 = 2
-                LA22_0 = self.input.LA(1)
+                # interface.g:492:5: ( IDENTIFIER | SCOPED_IDENTIFIER )
+                alt23 = 2
+                LA23_0 = self.input.LA(1)
 
-                if (LA22_0 == IDENTIFIER) :
-                    alt22 = 1
-                elif (LA22_0 == SCOPED_IDENTIFIER) :
-                    alt22 = 2
+                if (LA23_0 == IDENTIFIER) :
+                    alt23 = 1
+                elif (LA23_0 == SCOPED_IDENTIFIER) :
+                    alt23 = 2
                 else:
-                    nvae = NoViableAltException("", 22, 0, self.input)
+                    nvae = NoViableAltException("", 23, 0, self.input)
 
                     raise nvae
 
 
-                if alt22 == 1:
-                    # interface.g:486:7: IDENTIFIER
+                if alt23 == 1:
+                    # interface.g:492:7: IDENTIFIER
                     pass 
-                    IDENTIFIER58 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_filename1908)
+                    IDENTIFIER58 = self.match(self.input, IDENTIFIER, self.FOLLOW_IDENTIFIER_in_filename1938)
 
                     #action start
                     filename = IDENTIFIER58.text 
@@ -2064,10 +2178,10 @@ class interfaceParser(Parser):
 
 
 
-                elif alt22 == 2:
-                    # interface.g:487:7: SCOPED_IDENTIFIER
+                elif alt23 == 2:
+                    # interface.g:493:7: SCOPED_IDENTIFIER
                     pass 
-                    SCOPED_IDENTIFIER59 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_filename1926)
+                    SCOPED_IDENTIFIER59 = self.match(self.input, SCOPED_IDENTIFIER, self.FOLLOW_SCOPED_IDENTIFIER_in_filename1956)
 
                     #action start
                     filename = SCOPED_IDENTIFIER59.text 
@@ -2089,23 +2203,23 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "usetypesStmt"
-    # interface.g:490:1: usetypesStmt : USETYPES filename ';' ;
+    # interface.g:496:1: usetypesStmt : USETYPES filename ';' ;
     def usetypesStmt(self, ):
         filename60 = None
 
         try:
             try:
-                # interface.g:491:5: ( USETYPES filename ';' )
-                # interface.g:491:7: USETYPES filename ';'
+                # interface.g:497:5: ( USETYPES filename ';' )
+                # interface.g:497:7: USETYPES filename ';'
                 pass 
-                self.match(self.input, USETYPES, self.FOLLOW_USETYPES_in_usetypesStmt1946)
+                self.match(self.input, USETYPES, self.FOLLOW_USETYPES_in_usetypesStmt1976)
 
-                self._state.following.append(self.FOLLOW_filename_in_usetypesStmt1948)
+                self._state.following.append(self.FOLLOW_filename_in_usetypesStmt1978)
                 filename60 = self.filename()
 
                 self._state.following.pop()
 
-                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_usetypesStmt1950)
+                self.match(self.input, SEMICOLON, self.FOLLOW_SEMICOLON_in_usetypesStmt1980)
 
                 #action start
                         
@@ -2137,7 +2251,7 @@ class interfaceParser(Parser):
 
 
     # $ANTLR start "apiDocument"
-    # interface.g:507:1: apiDocument returns [iface] : ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF ;
+    # interface.g:513:1: apiDocument returns [iface] : ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF ;
     def apiDocument(self, ):
         iface = None
 
@@ -2149,40 +2263,40 @@ class interfaceParser(Parser):
 
         try:
             try:
-                # interface.g:508:5: ( ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF )
-                # interface.g:508:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF
+                # interface.g:514:5: ( ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF )
+                # interface.g:514:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )? ( usetypesStmt | declaration |laterDecl= documentedDeclaration )* EOF
                 pass 
-                # interface.g:508:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )?
-                alt25 = 2
-                LA25_0 = self.input.LA(1)
+                # interface.g:514:7: ( ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration ) )?
+                alt26 = 2
+                LA26_0 = self.input.LA(1)
 
-                if (LA25_0 == DOC_PRE_COMMENT) :
-                    LA25_1 = self.input.LA(2)
+                if (LA26_0 == DOC_PRE_COMMENT) :
+                    LA26_1 = self.input.LA(2)
 
-                    if (LA25_1 == DOC_PRE_COMMENT or LA25_1 == USETYPES) :
-                        alt25 = 1
-                if alt25 == 1:
-                    # interface.g:508:9: ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration )
+                    if (LA26_1 == DOC_PRE_COMMENT or LA26_1 == USETYPES) :
+                        alt26 = 1
+                if alt26 == 1:
+                    # interface.g:514:9: ( docPreComment )+ ( usetypesStmt |firstDecl= documentedDeclaration )
                     pass 
-                    # interface.g:508:9: ( docPreComment )+
-                    cnt23 = 0
-                    while True: #loop23
-                        alt23 = 2
-                        LA23_0 = self.input.LA(1)
+                    # interface.g:514:9: ( docPreComment )+
+                    cnt24 = 0
+                    while True: #loop24
+                        alt24 = 2
+                        LA24_0 = self.input.LA(1)
 
-                        if (LA23_0 == DOC_PRE_COMMENT) :
-                            LA23_2 = self.input.LA(2)
+                        if (LA24_0 == DOC_PRE_COMMENT) :
+                            LA24_2 = self.input.LA(2)
 
-                            if (LA23_2 == DOC_PRE_COMMENT or LA23_2 == USETYPES) :
-                                alt23 = 1
-
-
+                            if (LA24_2 == DOC_PRE_COMMENT or LA24_2 == USETYPES) :
+                                alt24 = 1
 
 
-                        if alt23 == 1:
-                            # interface.g:508:11: docPreComment
+
+
+                        if alt24 == 1:
+                            # interface.g:514:11: docPreComment
                             pass 
-                            self._state.following.append(self.FOLLOW_docPreComment_in_apiDocument1988)
+                            self._state.following.append(self.FOLLOW_docPreComment_in_apiDocument2018)
                             docPreComment61 = self.docPreComment()
 
                             self._state.following.pop()
@@ -2194,42 +2308,42 @@ class interfaceParser(Parser):
 
 
                         else:
-                            if cnt23 >= 1:
-                                break #loop23
+                            if cnt24 >= 1:
+                                break #loop24
 
-                            eee = EarlyExitException(23, self.input)
+                            eee = EarlyExitException(24, self.input)
                             raise eee
 
-                        cnt23 += 1
+                        cnt24 += 1
 
 
-                    # interface.g:509:13: ( usetypesStmt |firstDecl= documentedDeclaration )
-                    alt24 = 2
-                    LA24_0 = self.input.LA(1)
+                    # interface.g:515:13: ( usetypesStmt |firstDecl= documentedDeclaration )
+                    alt25 = 2
+                    LA25_0 = self.input.LA(1)
 
-                    if (LA24_0 == USETYPES) :
-                        alt24 = 1
-                    elif (LA24_0 == DOC_PRE_COMMENT) :
-                        alt24 = 2
+                    if (LA25_0 == USETYPES) :
+                        alt25 = 1
+                    elif (LA25_0 == DOC_PRE_COMMENT) :
+                        alt25 = 2
                     else:
-                        nvae = NoViableAltException("", 24, 0, self.input)
+                        nvae = NoViableAltException("", 25, 0, self.input)
 
                         raise nvae
 
 
-                    if alt24 == 1:
-                        # interface.g:509:16: usetypesStmt
+                    if alt25 == 1:
+                        # interface.g:515:16: usetypesStmt
                         pass 
-                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2010)
+                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2040)
                         self.usetypesStmt()
 
                         self._state.following.pop()
 
 
-                    elif alt24 == 2:
-                        # interface.g:510:15: firstDecl= documentedDeclaration
+                    elif alt25 == 2:
+                        # interface.g:516:15: firstDecl= documentedDeclaration
                         pass 
-                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2028)
+                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2058)
                         firstDecl = self.documentedDeclaration()
 
                         self._state.following.pop()
@@ -2248,30 +2362,30 @@ class interfaceParser(Parser):
 
 
 
-                # interface.g:516:7: ( usetypesStmt | declaration |laterDecl= documentedDeclaration )*
-                while True: #loop26
-                    alt26 = 4
-                    LA26 = self.input.LA(1)
-                    if LA26 == USETYPES:
-                        alt26 = 1
-                    elif LA26 == BITMASK or LA26 == DEFINE or LA26 == ENUM or LA26 == EVENT or LA26 == FUNCTION or LA26 == HANDLER or LA26 == REFERENCE:
-                        alt26 = 2
-                    elif LA26 == DOC_PRE_COMMENT:
-                        alt26 = 3
+                # interface.g:522:7: ( usetypesStmt | declaration |laterDecl= documentedDeclaration )*
+                while True: #loop27
+                    alt27 = 4
+                    LA27 = self.input.LA(1)
+                    if LA27 == USETYPES:
+                        alt27 = 1
+                    elif LA27 == BITMASK or LA27 == DEFINE or LA27 == ENUM or LA27 == EVENT or LA27 == FUNCTION or LA27 == HANDLER or LA27 == REFERENCE:
+                        alt27 = 2
+                    elif LA27 == DOC_PRE_COMMENT:
+                        alt27 = 3
 
-                    if alt26 == 1:
-                        # interface.g:516:9: usetypesStmt
+                    if alt27 == 1:
+                        # interface.g:522:9: usetypesStmt
                         pass 
-                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2067)
+                        self._state.following.append(self.FOLLOW_usetypesStmt_in_apiDocument2097)
                         self.usetypesStmt()
 
                         self._state.following.pop()
 
 
-                    elif alt26 == 2:
-                        # interface.g:517:11: declaration
+                    elif alt27 == 2:
+                        # interface.g:523:11: declaration
                         pass 
-                        self._state.following.append(self.FOLLOW_declaration_in_apiDocument2079)
+                        self._state.following.append(self.FOLLOW_declaration_in_apiDocument2109)
                         declaration62 = self.declaration()
 
                         self._state.following.pop()
@@ -2285,10 +2399,10 @@ class interfaceParser(Parser):
 
 
 
-                    elif alt26 == 3:
-                        # interface.g:522:11: laterDecl= documentedDeclaration
+                    elif alt27 == 3:
+                        # interface.g:528:11: laterDecl= documentedDeclaration
                         pass 
-                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2108)
+                        self._state.following.append(self.FOLLOW_documentedDeclaration_in_apiDocument2138)
                         laterDecl = self.documentedDeclaration()
 
                         self._state.following.pop()
@@ -2303,10 +2417,10 @@ class interfaceParser(Parser):
 
 
                     else:
-                        break #loop26
+                        break #loop27
 
 
-                self.match(self.input, EOF, self.FOLLOW_EOF_in_apiDocument2134)
+                self.match(self.input, EOF, self.FOLLOW_EOF_in_apiDocument2164)
 
                 #action start
                 iface = self.iface 
@@ -2328,105 +2442,112 @@ class interfaceParser(Parser):
 
 
 
-    # lookup tables for DFA #13
+    # lookup tables for DFA #14
 
-    DFA13_eot = DFA.unpack(
+    DFA14_eot = DFA.unpack(
         u"\15\uffff"
         )
 
-    DFA13_eof = DFA.unpack(
+    DFA14_eof = DFA.unpack(
         u"\15\uffff"
         )
 
-    DFA13_min = DFA.unpack(
+    DFA14_min = DFA.unpack(
         u"\1\23\1\uffff\1\13\1\11\1\13\2\uffff\2\11\4\13"
         )
 
-    DFA13_max = DFA.unpack(
-        u"\1\50\1\uffff\1\50\1\42\1\50\2\uffff\2\11\4\50"
+    DFA14_max = DFA.unpack(
+        u"\1\51\1\uffff\1\51\1\42\1\51\2\uffff\2\11\4\51"
         )
 
-    DFA13_accept = DFA.unpack(
+    DFA14_accept = DFA.unpack(
         u"\1\uffff\1\1\3\uffff\1\2\1\3\6\uffff"
         )
 
-    DFA13_special = DFA.unpack(
+    DFA14_special = DFA.unpack(
         u"\15\uffff"
         )
 
 
-    DFA13_transition = [
-        DFA.unpack(u"\1\2\24\uffff\1\1"),
+    DFA14_transition = [
+        DFA.unpack(u"\1\2\25\uffff\1\1"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\4\25\uffff\1\6\2\uffff\1\3\3\uffff\1\5"),
+        DFA.unpack(u"\1\4\25\uffff\1\6\3\uffff\1\3\3\uffff\1\5"),
         DFA.unpack(u"\1\11\10\uffff\1\12\15\uffff\1\7\1\uffff\1\10"),
-        DFA.unpack(u"\1\4\25\uffff\1\6\6\uffff\1\5"),
+        DFA.unpack(u"\1\4\25\uffff\1\6\7\uffff\1\5"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u"\1\13"),
         DFA.unpack(u"\1\14"),
-        DFA.unpack(u"\1\4\25\uffff\1\6\6\uffff\1\5"),
-        DFA.unpack(u"\1\4\25\uffff\1\6\6\uffff\1\5"),
-        DFA.unpack(u"\1\4\25\uffff\1\6\6\uffff\1\5"),
-        DFA.unpack(u"\1\4\25\uffff\1\6\6\uffff\1\5")
+        DFA.unpack(u"\1\4\25\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack(u"\1\4\25\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack(u"\1\4\25\uffff\1\6\7\uffff\1\5"),
+        DFA.unpack(u"\1\4\25\uffff\1\6\7\uffff\1\5")
     ]
 
-    # class definition for DFA #13
+    # class definition for DFA #14
 
-    class DFA13(DFA):
+    class DFA14(DFA):
         pass
 
 
-    # lookup tables for DFA #16
+    # lookup tables for DFA #17
 
-    DFA16_eot = DFA.unpack(
-        u"\17\uffff"
+    DFA17_eot = DFA.unpack(
+        u"\25\uffff"
         )
 
-    DFA16_eof = DFA.unpack(
-        u"\17\uffff"
+    DFA17_eof = DFA.unpack(
+        u"\25\uffff"
         )
 
-    DFA16_min = DFA.unpack(
-        u"\3\23\1\13\1\11\3\13\2\uffff\4\46\1\13"
+    DFA17_min = DFA.unpack(
+        u"\3\23\1\13\1\11\3\13\2\uffff\4\43\1\13\1\11\4\47\1\13"
         )
 
-    DFA16_max = DFA.unpack(
-        u"\1\31\2\23\1\45\1\31\3\41\2\uffff\4\46\1\41"
+    DFA17_max = DFA.unpack(
+        u"\1\31\2\23\1\46\1\31\3\41\2\uffff\4\47\1\41\1\31\4\47\1\41"
         )
 
-    DFA16_accept = DFA.unpack(
-        u"\10\uffff\1\1\1\2\5\uffff"
+    DFA17_accept = DFA.unpack(
+        u"\10\uffff\1\1\1\2\13\uffff"
         )
 
-    DFA16_special = DFA.unpack(
-        u"\17\uffff"
+    DFA17_special = DFA.unpack(
+        u"\25\uffff"
         )
 
 
-    DFA16_transition = [
+    DFA17_transition = [
         DFA.unpack(u"\1\1\5\uffff\1\2"),
         DFA.unpack(u"\1\3"),
         DFA.unpack(u"\1\3"),
         DFA.unpack(u"\1\7\10\uffff\1\5\1\uffff\1\6\7\uffff\1\10\2\uffff"
-        u"\1\11\3\uffff\1\4"),
+        u"\1\11\4\uffff\1\4"),
         DFA.unpack(u"\1\12\10\uffff\1\13\1\14\5\uffff\1\15"),
         DFA.unpack(u"\1\7\22\uffff\1\10\2\uffff\1\11"),
         DFA.unpack(u"\1\7\22\uffff\1\10\2\uffff\1\11"),
         DFA.unpack(u"\1\7\22\uffff\1\10\2\uffff\1\11"),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\16"),
-        DFA.unpack(u"\1\16"),
-        DFA.unpack(u"\1\16"),
-        DFA.unpack(u"\1\16"),
+        DFA.unpack(u"\1\17\3\uffff\1\16"),
+        DFA.unpack(u"\1\17\3\uffff\1\16"),
+        DFA.unpack(u"\1\17\3\uffff\1\16"),
+        DFA.unpack(u"\1\17\3\uffff\1\16"),
+        DFA.unpack(u"\1\7\10\uffff\1\5\1\uffff\1\6\7\uffff\1\10\2\uffff"
+        u"\1\11"),
+        DFA.unpack(u"\1\20\10\uffff\1\21\1\22\5\uffff\1\23"),
+        DFA.unpack(u"\1\24"),
+        DFA.unpack(u"\1\24"),
+        DFA.unpack(u"\1\24"),
+        DFA.unpack(u"\1\24"),
         DFA.unpack(u"\1\7\10\uffff\1\5\1\uffff\1\6\7\uffff\1\10\2\uffff"
         u"\1\11")
     ]
 
-    # class definition for DFA #16
+    # class definition for DFA #17
 
-    class DFA16(DFA):
+    class DFA17(DFA):
         pass
 
 
@@ -2451,11 +2572,11 @@ class interfaceParser(Parser):
     FOLLOW_29_in_simpleExpression814 = frozenset([9, 18, 19, 25, 29, 32, 34])
     FOLLOW_sumExpression_in_simpleExpression816 = frozenset([30])
     FOLLOW_30_in_simpleExpression818 = frozenset([1])
-    FOLLOW_simpleExpression_in_productExpression843 = frozenset([1, 31, 35])
+    FOLLOW_simpleExpression_in_productExpression843 = frozenset([1, 31, 36])
     FOLLOW_31_in_productExpression861 = frozenset([9, 18, 19, 25, 29, 32, 34])
-    FOLLOW_simpleExpression_in_productExpression865 = frozenset([1, 31, 35])
-    FOLLOW_35_in_productExpression879 = frozenset([9, 18, 19, 25, 29, 32, 34])
-    FOLLOW_simpleExpression_in_productExpression883 = frozenset([1, 31, 35])
+    FOLLOW_simpleExpression_in_productExpression865 = frozenset([1, 31, 36])
+    FOLLOW_36_in_productExpression879 = frozenset([9, 18, 19, 25, 29, 32, 34])
+    FOLLOW_simpleExpression_in_productExpression883 = frozenset([1, 31, 36])
     FOLLOW_productExpression_in_sumExpression919 = frozenset([1, 32, 34])
     FOLLOW_32_in_sumExpression937 = frozenset([9, 18, 19, 25, 29, 32, 34])
     FOLLOW_productExpression_in_sumExpression941 = frozenset([1, 32, 34])
@@ -2463,92 +2584,97 @@ class interfaceParser(Parser):
     FOLLOW_productExpression_in_sumExpression959 = frozenset([1, 32, 34])
     FOLLOW_sumExpression_in_valueExpression993 = frozenset([1])
     FOLLOW_QUOTED_STRING_in_valueExpression1006 = frozenset([1])
-    FOLLOW_37_in_arrayExpression1035 = frozenset([9, 18, 19, 25])
-    FOLLOW_simpleNumber_in_arrayExpression1037 = frozenset([38])
-    FOLLOW_38_in_arrayExpression1039 = frozenset([1])
-    FOLLOW_IDENTIFIER_in_typeIdentifier1070 = frozenset([1])
-    FOLLOW_SCOPED_IDENTIFIER_in_typeIdentifier1088 = frozenset([1])
-    FOLLOW_DOC_POST_COMMENT_in_docPostComments1129 = frozenset([1, 11])
-    FOLLOW_DOC_PRE_COMMENT_in_docPreComment1173 = frozenset([1])
-    FOLLOW_DEFINE_in_defineDecl1196 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_defineDecl1198 = frozenset([36])
-    FOLLOW_36_in_defineDecl1200 = frozenset([9, 18, 19, 23, 25, 29, 32, 34])
-    FOLLOW_valueExpression_in_defineDecl1202 = frozenset([26])
-    FOLLOW_SEMICOLON_in_defineDecl1204 = frozenset([1])
-    FOLLOW_IDENTIFIER_in_namedValue1235 = frozenset([11, 36])
-    FOLLOW_36_in_namedValue1239 = frozenset([9, 18, 32, 34])
-    FOLLOW_integer_in_namedValue1241 = frozenset([11])
-    FOLLOW_docPostComments_in_namedValue1246 = frozenset([1])
-    FOLLOW_namedValue_in_namedValueList1321 = frozenset([1])
-    FOLLOW_namedValue_in_namedValueList1364 = frozenset([33])
-    FOLLOW_33_in_namedValueList1366 = frozenset([11, 19])
-    FOLLOW_docPostComments_in_namedValueList1368 = frozenset([19])
-    FOLLOW_namedValueList_in_namedValueList1372 = frozenset([1])
-    FOLLOW_ENUM_in_enumDecl1403 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_enumDecl1405 = frozenset([39])
-    FOLLOW_39_in_enumDecl1407 = frozenset([19, 40])
-    FOLLOW_namedValueList_in_enumDecl1409 = frozenset([40])
-    FOLLOW_40_in_enumDecl1411 = frozenset([26])
-    FOLLOW_SEMICOLON_in_enumDecl1413 = frozenset([1])
-    FOLLOW_BITMASK_in_bitmaskDecl1444 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_bitmaskDecl1446 = frozenset([39])
-    FOLLOW_39_in_bitmaskDecl1448 = frozenset([19, 40])
-    FOLLOW_namedValueList_in_bitmaskDecl1450 = frozenset([40])
-    FOLLOW_40_in_bitmaskDecl1452 = frozenset([26])
-    FOLLOW_SEMICOLON_in_bitmaskDecl1454 = frozenset([1])
-    FOLLOW_REFERENCE_in_referenceDecl1485 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_referenceDecl1487 = frozenset([26])
-    FOLLOW_SEMICOLON_in_referenceDecl1489 = frozenset([1])
-    FOLLOW_typeIdentifier_in_formalParameter1520 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_formalParameter1522 = frozenset([11, 20, 22, 37])
-    FOLLOW_arrayExpression_in_formalParameter1524 = frozenset([11, 20, 22])
-    FOLLOW_direction_in_formalParameter1527 = frozenset([11])
-    FOLLOW_docPostComments_in_formalParameter1530 = frozenset([1])
-    FOLLOW_formalParameter_in_formalParameterList1561 = frozenset([1])
-    FOLLOW_formalParameter_in_formalParameterList1579 = frozenset([33])
-    FOLLOW_33_in_formalParameterList1581 = frozenset([11, 19, 25])
-    FOLLOW_docPostComments_in_formalParameterList1583 = frozenset([19, 25])
-    FOLLOW_formalParameterList_in_formalParameterList1587 = frozenset([1])
-    FOLLOW_FUNCTION_in_functionDecl1618 = frozenset([19, 25])
-    FOLLOW_typeIdentifier_in_functionDecl1620 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_functionDecl1623 = frozenset([29])
-    FOLLOW_29_in_functionDecl1625 = frozenset([19, 25, 30])
-    FOLLOW_formalParameterList_in_functionDecl1627 = frozenset([30])
-    FOLLOW_30_in_functionDecl1630 = frozenset([26])
-    FOLLOW_SEMICOLON_in_functionDecl1632 = frozenset([1])
-    FOLLOW_HANDLER_in_handlerDecl1663 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_handlerDecl1665 = frozenset([29])
-    FOLLOW_29_in_handlerDecl1667 = frozenset([19, 25, 30])
-    FOLLOW_formalParameterList_in_handlerDecl1669 = frozenset([30])
-    FOLLOW_30_in_handlerDecl1672 = frozenset([26])
-    FOLLOW_SEMICOLON_in_handlerDecl1674 = frozenset([1])
-    FOLLOW_EVENT_in_eventDecl1705 = frozenset([19])
-    FOLLOW_IDENTIFIER_in_eventDecl1707 = frozenset([29])
-    FOLLOW_29_in_eventDecl1709 = frozenset([19, 25, 30])
-    FOLLOW_formalParameterList_in_eventDecl1711 = frozenset([30])
-    FOLLOW_30_in_eventDecl1714 = frozenset([26])
-    FOLLOW_SEMICOLON_in_eventDecl1716 = frozenset([1])
-    FOLLOW_enumDecl_in_declaration1747 = frozenset([1])
-    FOLLOW_bitmaskDecl_in_declaration1764 = frozenset([1])
-    FOLLOW_referenceDecl_in_declaration1778 = frozenset([1])
-    FOLLOW_functionDecl_in_declaration1790 = frozenset([1])
-    FOLLOW_handlerDecl_in_declaration1803 = frozenset([1])
-    FOLLOW_eventDecl_in_declaration1817 = frozenset([1])
-    FOLLOW_defineDecl_in_declaration1833 = frozenset([1])
-    FOLLOW_docPreComment_in_documentedDeclaration1873 = frozenset([6, 10, 13, 14, 15, 16, 24])
-    FOLLOW_declaration_in_documentedDeclaration1875 = frozenset([1])
-    FOLLOW_IDENTIFIER_in_filename1908 = frozenset([1])
-    FOLLOW_SCOPED_IDENTIFIER_in_filename1926 = frozenset([1])
-    FOLLOW_USETYPES_in_usetypesStmt1946 = frozenset([19, 25])
-    FOLLOW_filename_in_usetypesStmt1948 = frozenset([26])
-    FOLLOW_SEMICOLON_in_usetypesStmt1950 = frozenset([1])
-    FOLLOW_docPreComment_in_apiDocument1988 = frozenset([12, 27])
-    FOLLOW_usetypesStmt_in_apiDocument2010 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
-    FOLLOW_documentedDeclaration_in_apiDocument2028 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
-    FOLLOW_usetypesStmt_in_apiDocument2067 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
-    FOLLOW_declaration_in_apiDocument2079 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
-    FOLLOW_documentedDeclaration_in_apiDocument2108 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
-    FOLLOW_EOF_in_apiDocument2134 = frozenset([1])
+    FOLLOW_38_in_arrayExpression1035 = frozenset([9, 18, 19, 25])
+    FOLLOW_simpleNumber_in_arrayExpression1037 = frozenset([39])
+    FOLLOW_39_in_arrayExpression1039 = frozenset([1])
+    FOLLOW_38_in_arrayExpression1057 = frozenset([9, 18, 19, 25])
+    FOLLOW_simpleNumber_in_arrayExpression1061 = frozenset([35])
+    FOLLOW_35_in_arrayExpression1063 = frozenset([9, 18, 19, 25])
+    FOLLOW_simpleNumber_in_arrayExpression1067 = frozenset([39])
+    FOLLOW_39_in_arrayExpression1069 = frozenset([1])
+    FOLLOW_IDENTIFIER_in_typeIdentifier1100 = frozenset([1])
+    FOLLOW_SCOPED_IDENTIFIER_in_typeIdentifier1118 = frozenset([1])
+    FOLLOW_DOC_POST_COMMENT_in_docPostComments1159 = frozenset([1, 11])
+    FOLLOW_DOC_PRE_COMMENT_in_docPreComment1203 = frozenset([1])
+    FOLLOW_DEFINE_in_defineDecl1226 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_defineDecl1228 = frozenset([37])
+    FOLLOW_37_in_defineDecl1230 = frozenset([9, 18, 19, 23, 25, 29, 32, 34])
+    FOLLOW_valueExpression_in_defineDecl1232 = frozenset([26])
+    FOLLOW_SEMICOLON_in_defineDecl1234 = frozenset([1])
+    FOLLOW_IDENTIFIER_in_namedValue1265 = frozenset([11, 37])
+    FOLLOW_37_in_namedValue1269 = frozenset([9, 18, 32, 34])
+    FOLLOW_integer_in_namedValue1271 = frozenset([11])
+    FOLLOW_docPostComments_in_namedValue1276 = frozenset([1])
+    FOLLOW_namedValue_in_namedValueList1351 = frozenset([1])
+    FOLLOW_namedValue_in_namedValueList1394 = frozenset([33])
+    FOLLOW_33_in_namedValueList1396 = frozenset([11, 19])
+    FOLLOW_docPostComments_in_namedValueList1398 = frozenset([19])
+    FOLLOW_namedValueList_in_namedValueList1402 = frozenset([1])
+    FOLLOW_ENUM_in_enumDecl1433 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_enumDecl1435 = frozenset([40])
+    FOLLOW_40_in_enumDecl1437 = frozenset([19, 41])
+    FOLLOW_namedValueList_in_enumDecl1439 = frozenset([41])
+    FOLLOW_41_in_enumDecl1441 = frozenset([26])
+    FOLLOW_SEMICOLON_in_enumDecl1443 = frozenset([1])
+    FOLLOW_BITMASK_in_bitmaskDecl1474 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_bitmaskDecl1476 = frozenset([40])
+    FOLLOW_40_in_bitmaskDecl1478 = frozenset([19, 41])
+    FOLLOW_namedValueList_in_bitmaskDecl1480 = frozenset([41])
+    FOLLOW_41_in_bitmaskDecl1482 = frozenset([26])
+    FOLLOW_SEMICOLON_in_bitmaskDecl1484 = frozenset([1])
+    FOLLOW_REFERENCE_in_referenceDecl1515 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_referenceDecl1517 = frozenset([26])
+    FOLLOW_SEMICOLON_in_referenceDecl1519 = frozenset([1])
+    FOLLOW_typeIdentifier_in_formalParameter1550 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_formalParameter1552 = frozenset([11, 20, 22, 38])
+    FOLLOW_arrayExpression_in_formalParameter1554 = frozenset([11, 20, 22])
+    FOLLOW_direction_in_formalParameter1557 = frozenset([11])
+    FOLLOW_docPostComments_in_formalParameter1560 = frozenset([1])
+    FOLLOW_formalParameter_in_formalParameterList1591 = frozenset([1])
+    FOLLOW_formalParameter_in_formalParameterList1609 = frozenset([33])
+    FOLLOW_33_in_formalParameterList1611 = frozenset([11, 19, 25])
+    FOLLOW_docPostComments_in_formalParameterList1613 = frozenset([19, 25])
+    FOLLOW_formalParameterList_in_formalParameterList1617 = frozenset([1])
+    FOLLOW_FUNCTION_in_functionDecl1648 = frozenset([19, 25])
+    FOLLOW_typeIdentifier_in_functionDecl1650 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_functionDecl1653 = frozenset([29])
+    FOLLOW_29_in_functionDecl1655 = frozenset([19, 25, 30])
+    FOLLOW_formalParameterList_in_functionDecl1657 = frozenset([30])
+    FOLLOW_30_in_functionDecl1660 = frozenset([26])
+    FOLLOW_SEMICOLON_in_functionDecl1662 = frozenset([1])
+    FOLLOW_HANDLER_in_handlerDecl1693 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_handlerDecl1695 = frozenset([29])
+    FOLLOW_29_in_handlerDecl1697 = frozenset([19, 25, 30])
+    FOLLOW_formalParameterList_in_handlerDecl1699 = frozenset([30])
+    FOLLOW_30_in_handlerDecl1702 = frozenset([26])
+    FOLLOW_SEMICOLON_in_handlerDecl1704 = frozenset([1])
+    FOLLOW_EVENT_in_eventDecl1735 = frozenset([19])
+    FOLLOW_IDENTIFIER_in_eventDecl1737 = frozenset([29])
+    FOLLOW_29_in_eventDecl1739 = frozenset([19, 25, 30])
+    FOLLOW_formalParameterList_in_eventDecl1741 = frozenset([30])
+    FOLLOW_30_in_eventDecl1744 = frozenset([26])
+    FOLLOW_SEMICOLON_in_eventDecl1746 = frozenset([1])
+    FOLLOW_enumDecl_in_declaration1777 = frozenset([1])
+    FOLLOW_bitmaskDecl_in_declaration1794 = frozenset([1])
+    FOLLOW_referenceDecl_in_declaration1808 = frozenset([1])
+    FOLLOW_functionDecl_in_declaration1820 = frozenset([1])
+    FOLLOW_handlerDecl_in_declaration1833 = frozenset([1])
+    FOLLOW_eventDecl_in_declaration1847 = frozenset([1])
+    FOLLOW_defineDecl_in_declaration1863 = frozenset([1])
+    FOLLOW_docPreComment_in_documentedDeclaration1903 = frozenset([6, 10, 13, 14, 15, 16, 24])
+    FOLLOW_declaration_in_documentedDeclaration1905 = frozenset([1])
+    FOLLOW_IDENTIFIER_in_filename1938 = frozenset([1])
+    FOLLOW_SCOPED_IDENTIFIER_in_filename1956 = frozenset([1])
+    FOLLOW_USETYPES_in_usetypesStmt1976 = frozenset([19, 25])
+    FOLLOW_filename_in_usetypesStmt1978 = frozenset([26])
+    FOLLOW_SEMICOLON_in_usetypesStmt1980 = frozenset([1])
+    FOLLOW_docPreComment_in_apiDocument2018 = frozenset([12, 27])
+    FOLLOW_usetypesStmt_in_apiDocument2040 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
+    FOLLOW_documentedDeclaration_in_apiDocument2058 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
+    FOLLOW_usetypesStmt_in_apiDocument2097 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
+    FOLLOW_declaration_in_apiDocument2109 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
+    FOLLOW_documentedDeclaration_in_apiDocument2138 = frozenset([6, 10, 12, 13, 14, 15, 16, 24, 27])
+    FOLLOW_EOF_in_apiDocument2164 = frozenset([1])
 
 
 

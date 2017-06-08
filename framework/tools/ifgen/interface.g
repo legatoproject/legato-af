@@ -296,6 +296,12 @@ valueExpression returns [value]
 arrayExpression returns [size]
     : '[' simpleNumber ']'
         { $size = $simpleNumber.value }
+    | '[' minSize=simpleNumber '..' maxSize=simpleNumber ']'
+        {
+            self.emitErrorMessage(self.getWarningHeaderForToken($minSize.start) +
+                                  " Minimum lengths are deprecated and will be ignored.")
+            $size = $maxSize.value
+        }
     ;
 
 typeIdentifier returns [typeObj]
