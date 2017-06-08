@@ -1354,6 +1354,7 @@ FUNCTION le_result_t SetSuplServerUrl
  *
  * @return
  *  - LE_OK on success
+ *  - LE_BAD_PARAMETER on invalid parameter
  *  - LE_FAULT on failure
  *  - LE_BUSY service is busy
  *  - LE_TIMEOUT a time-out occurred
@@ -1376,6 +1377,7 @@ FUNCTION le_result_t InjectSuplCertificate
  *
  * @return
  *  - LE_OK on success
+ *  - LE_BAD_PARAMETER on invalid parameter
  *  - LE_FAULT on failure
  *  - LE_BUSY service is busy
  *  - LE_TIMEOUT a time-out occurred

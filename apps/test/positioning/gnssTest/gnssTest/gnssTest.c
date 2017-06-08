@@ -972,72 +972,71 @@ static void TestSuplCertificate
     memset(&ShortSuplCertificate, 0x69, sizeof(ShortSuplCertificate));
 
     //Gets the SUPL Assisted-GNSS LE_GNSS_STANDALONE_MODE mode.
-    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_GetSuplAssistedMode(&gnssMode)));
     LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
 
     //Set the SUPL Assisted-GNSS mode.
-    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_STANDALONE_MODE)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_SetSuplAssistedMode(LE_GNSS_STANDALONE_MODE)));
     LE_INFO("SUPL Stand alone mode set");
 
     //Gets the SUPL Assisted-GNSS mode.
-    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_GetSuplAssistedMode(&gnssMode)));
     LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
-    LE_ASSERT(gnssMode == LE_GNSS_STANDALONE_MODE);
+    LE_ASSERT(LE_GNSS_STANDALONE_MODE == gnssMode);
 
     //Set the SUPL Assisted-GNSSLE_GNSS_MS_BASED_MODE mode.
-    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_BASED_MODE)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_SetSuplAssistedMode(LE_GNSS_MS_BASED_MODE)));
     LE_INFO("SUPL Ms based mode set");
 
     //Gets the SUPL Assisted-GNSS mode.
-    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_GetSuplAssistedMode(&gnssMode)));
     LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
-    LE_ASSERT(gnssMode == LE_GNSS_MS_BASED_MODE);
+    LE_ASSERT(LE_GNSS_MS_BASED_MODE == gnssMode);
 
     //Set the SUPL Assisted-GNSS mode LE_GNSS_MS_ASSISTED_MODE.
-    LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE)));
     LE_INFO("SUPL Assisted mode set");
 
     //Gets the SUPL Assisted-GNSS mode.
-    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_GetSuplAssistedMode(&gnssMode)));
     LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
-    LE_ASSERT(gnssMode == LE_GNSS_MS_ASSISTED_MODE);
+    LE_ASSERT(LE_GNSS_MS_ASSISTED_MODE == gnssMode);
 
     //Set the SUPL Assisted-GNSS mode LE_GNSS_MS_ASSISTED_MODE.
     LE_ASSERT((le_gnss_SetSuplAssistedMode(LE_GNSS_MS_ASSISTED_MODE+10)) == LE_UNSUPPORTED);
 
     //Gets the SUPL Assisted-GNSS mode.
-    LE_ASSERT((le_gnss_GetSuplAssistedMode(&gnssMode)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_GetSuplAssistedMode(&gnssMode)));
     LE_INFO("Supl Assisted Mode obtained: %d",gnssMode);
-    LE_ASSERT(gnssMode == LE_GNSS_MS_ASSISTED_MODE);
+    LE_ASSERT(LE_GNSS_MS_ASSISTED_MODE == gnssMode);
 
     //Set the SUPL server URL
-    LE_ASSERT((le_gnss_SetSuplServerUrl("http://sls1.sirf")) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_SetSuplServerUrl("http://sls1.sirf")));
 
     //Set the SUPL server URL
-    LE_ASSERT((le_gnss_SetSuplServerUrl("http://sls1.sirf.com")) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_SetSuplServerUrl("http://sls1.sirf.com")));
     LE_INFO("le_gnss_SetSuplServerUrl OK");
 
     //Injects the SUPL certificate with lenght zero :
-    LE_ASSERT((le_gnss_InjectSuplCertificate(0,
-                               0,ShortSuplCertificate)) == LE_OK);
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_InjectSuplCertificate(0,0,ShortSuplCertificate)));
     //Injects the SUPL certificate with ID error
-    LE_ASSERT((le_gnss_InjectSuplCertificate(10,
-                               strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_FAULT);
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_InjectSuplCertificate(10,
+                               strlen(ShortSuplCertificate),ShortSuplCertificate)));
 
     //Injects the SUPL certificate to be used in A-GNSS sessions
-    LE_ASSERT((le_gnss_InjectSuplCertificate(0,
-                               strlen(ShortSuplCertificate),ShortSuplCertificate)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_InjectSuplCertificate(0,
+                               strlen(ShortSuplCertificate),ShortSuplCertificate)));
 
     // cannot test certificate with lenght greater than LE_GNSS_SUPL_CERTIFICATE_MAX_BYTES
     // there is no return code in this case.
     //Delete the SUPL certificate 10 (out of range)
-    LE_ASSERT((le_gnss_DeleteSuplCertificate(10)) == LE_FAULT);
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_DeleteSuplCertificate(10)));
 
     //Delete a SUPL certificate not used in A-GNSS sessions
-    LE_ASSERT((le_gnss_DeleteSuplCertificate(1)) == LE_FAULT);
+    LE_ASSERT(LE_FAULT == (le_gnss_DeleteSuplCertificate(1)));
 
     //Delete the SUPL certificate used in A-GNSS sessions
-    LE_ASSERT((le_gnss_DeleteSuplCertificate(0)) == LE_OK);
+    LE_ASSERT(LE_OK == (le_gnss_DeleteSuplCertificate(0)));
 
 }
 
