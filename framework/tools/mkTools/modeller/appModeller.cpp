@@ -260,7 +260,8 @@ static void AddExecutable
     // If none of the components in the executable has any source code files, then the executable
     // would just sit there doing nothing, so throw an exception.
     if (   (exePtr->hasCOrCppCode == false)
-        && (exePtr->hasJavaCode == false))
+        && (exePtr->hasJavaCode == false)
+        && (exePtr->hasPythonCode == false))
     {
         exePtr->exeDefPtr->ThrowException(LE_I18N("Executable doesn't contain any components"
                                                   " that have source code files."));

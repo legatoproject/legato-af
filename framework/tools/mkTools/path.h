@@ -239,6 +239,20 @@ bool IsCxxSource
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Figures out whether or not a given string is a Python source code file path.
+ *
+ * @return true if this is a Python source code file path.
+ */
+//--------------------------------------------------------------------------------------------------
+bool IsPythonSource
+(
+    const std::string& path
+);
+
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Figures out whether or not a given string is a library file path.
  *
  * @return true if this is a library file path.

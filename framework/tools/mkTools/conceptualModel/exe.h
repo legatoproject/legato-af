@@ -42,6 +42,7 @@ struct Exe_t : public HasTargetInfo_t
     bool hasCppCode;
     bool hasCOrCppCode;
     bool hasJavaCode;
+    bool hasPythonCode;
     bool hasIncompatibleLanguageCode;
 
     void AddComponentInstance(ComponentInstance_t* componentInstancePtr);

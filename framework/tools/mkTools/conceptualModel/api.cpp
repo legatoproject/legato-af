@@ -308,6 +308,25 @@ const
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the set of paths for the generated Python files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiTypesOnlyInterface_t::GetInterfaceFiles
+(
+    InterfacePythonFiles_t& pythonFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(componentPtr->workingDir, "");
+
+    pythonFiles.cExtensionBinaryFile = internalName + "_native.so";
+    pythonFiles.wrapperSourceFile = internalName + ".py";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Constructor for client-side interfaces.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -365,6 +384,28 @@ const
     javaFiles.implementationSourceFile = srcDir + "implementation/" + internalName + "Client.java";
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated Python files of an interface.
+ * NOTE: Python server code not yet implemented.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiClientInterface_t::GetInterfaceFiles
+(
+    InterfacePythonFiles_t& pythonFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(componentPtr->workingDir, "");
+
+    pythonFiles.cExtensionBinaryFile = internalName + "_native.so";
+    pythonFiles.cExtensionObjectFile = internalName + "_native.o";
+    pythonFiles.wrapperSourceFile = internalName + ".py";
+    pythonFiles.cExtensionSourceFile = internalName + "_native.c";
+    pythonFiles.cdefSourceFile = internalName + "_cdef.h";
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -433,6 +474,26 @@ const
 
     javaFiles.interfaceSourceFile = srcDir + internalName + ".java";
     javaFiles.implementationSourceFile = srcDir + "implementation/" + internalName + "Server.java";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated Python files of an interface.
+ * NOTE: Python server code not yet implemented.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ApiServerInterface_t::GetInterfaceFiles
+(
+    InterfacePythonFiles_t& pythonFiles
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(componentPtr->workingDir, "");
+
+    pythonFiles.cExtensionBinaryFile = internalName + "_native.so";
+    pythonFiles.wrapperSourceFile = internalName + ".py";
 }
 
 

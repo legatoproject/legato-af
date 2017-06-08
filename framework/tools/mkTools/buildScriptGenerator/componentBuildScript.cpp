@@ -1158,6 +1158,116 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate the Python ifgen build statement for the client/server side of an API.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GeneratePythonBuildStatement
+(
+    const model::InterfacePythonFiles_t& pythonFiles,
+    const model::Component_t* componentPtr,
+    const model::ApiFile_t* apiFilePtr,
+    const std::string& internalName,
+    const std::string& workDir,
+    bool isClient
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string apiFlag = "--gen-all";
+    std::string outputDir = path::Combine("$builddir", apiFilePtr->codeGenDir);
+    script << "build " << path::Combine(outputDir, pythonFiles.cdefSourceFile) << " $\n"
+              "      " << path::Combine(outputDir, pythonFiles.wrapperSourceFile) << " : $\n"
+              "      GenInterfaceCode " << apiFilePtr->path << " | ";
+
+    GetIncludedApis(apiFilePtr);
+    script << "\n"
+              "  ifgenFlags = --lang Python " << apiFlag << " --name-prefix "
+           << internalName << " $ifgenFlags\n"
+              "  outputDir = " << outputDir << "\n\n";
+
+    // Generate only the cffi cdef.h file of the included APIs
+    apiFlag = "--gen-cdef";
+    std::string apiList = "";
+    for (auto includedApiPtr : apiFilePtr->includes)
+    {
+        // Extract the basename of the included APIs
+        std::string pyCdefSourceFile = path::GetLastNode(includedApiPtr->path);
+        std::string baseName = path::RemoveSuffix(pyCdefSourceFile, ".api");
+        // Create the cffi cdef.h filename
+        std::string pyCdefSourceFilePath = path::Combine(outputDir, pyCdefSourceFile + "_cdef.h");
+        apiList += " " + pyCdefSourceFilePath;
+
+        script << "build " << pyCdefSourceFilePath << " : $\n"
+                  "      GenInterfaceCode " << includedApiPtr->path << " | ";
+
+        GetIncludedApis(includedApiPtr);
+        // cffi cdef.h files generated in folder includedApi
+        script << "\n"
+                  "  ifgenFlags = --lang Python " << apiFlag << " --name-prefix "
+               << baseName << " $ifgenFlags\n"
+                  "  outputDir = " << outputDir + "/includedApi" << "\n\n";
+    }
+    // generate the ffi C code. Add implicit dependencies on the included APIs
+    script << "build " << path::Combine(outputDir, pythonFiles.cExtensionSourceFile) <<  ": $\n"
+              "      GenPyApiCExtension " << path::Combine(outputDir, pythonFiles.cdefSourceFile)
+           << " | " << apiList << "\n"
+              "      workDir = " << outputDir << "\n";
+    script << "\n\n";
+
+
+    std::string interfaceIncludes;
+
+    for (auto apiFilePtr : componentPtr->clientUsetypesApis)
+    {
+        interfaceIncludes += " -I$builddir/" +
+            path::GetContainingDir(apiFilePtr->GetClientInterfaceFile(apiFilePtr->defaultPrefix));
+    }
+
+    script << "build " << path::Combine(outputDir, pythonFiles.cExtensionObjectFile) << " : $\n"
+              "      CompileC "
+           << path::Combine(outputDir, pythonFiles.cExtensionSourceFile) << "\n"
+              "      cFlags = -I=/usr/include/python2.7/ -DNO_LOG_SESSION"
+           << interfaceIncludes << " -D_FTS_H -DPY_BUILD $cFlags";
+
+    script << "\n\n";
+
+    std::string legatoRoot = envVars::Get("LEGATO_BUILD");
+
+    script << "build " << path::Combine(outputDir, pythonFiles.cExtensionBinaryFile) << " : $\n"
+              "      LinkCLib " << path::Combine(outputDir, pythonFiles.cExtensionObjectFile)
+           << "\n"
+              "      ldFlags = -L" << legatoRoot
+           << "/framework/lib -llegato -lpthread -lrt -lm -lpython2.7 $ldFlags\n";
+    script << "\n\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the Python ifgen build statement for the client side of an API.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GeneratePythonBuildStatement
+(
+    const model::ApiClientInterface_t* ifPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    model::InterfacePythonFiles_t pythonFiles;
+    ifPtr->GetInterfaceFiles(pythonFiles);
+
+    GeneratePythonBuildStatement(
+                               pythonFiles,
+                               ifPtr->componentPtr,
+                               ifPtr->apiFilePtr,
+                               ifPtr->internalName,
+                               buildParams.workingDir,
+                               true // isClient
+                               );
+}
+
+//
+//--------------------------------------------------------------------------------------------------
+/**
  * Print to a given script a build statement for building the object file for a given server-side
  * API interface.
  **/
@@ -1287,6 +1397,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
 //--------------------------------------------------------------------------------------------------
 {
     bool isJava = componentPtr->HasJavaCode();
+    bool isPython = componentPtr->HasPythonCode();
 
     for (auto typesOnlyApi : componentPtr->typesOnlyApis)
     {
@@ -1330,6 +1441,11 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         {
             GenerateJavaBuildStatement(clientApi);
         }
+        else if (isPython)
+        {
+            GeneratePythonBuildStatement(clientApi);
+
+        }
         else
         {
             GenerateCBuildStatement(clientApi);
@@ -1341,6 +1457,10 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         if (isJava)
         {
             GenerateJavaBuildStatement(serverApi);
+        }
+        else if (isPython)
+        {
+            throw mk::Exception_t(LE_I18N("Python server IPC not implemented."));
         }
         else
         {

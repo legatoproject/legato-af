@@ -11,6 +11,7 @@
 #
 
 import interfaceIR
+from jinja2 import environmentfilter
 
 #---------------------------------------------------------------------------------------------------
 # Global objects used by the C API
@@ -101,12 +102,13 @@ def FormatParameterPtr(parameter):
         # Everything else needs to have its address taken
         return "&" + FormatParameterName(parameter)
 
-
-def FormatParameter(parameter, forceInput=False):
+@environmentfilter
+def FormatParameter(env, parameter, forceInput=False):
     if isinstance(parameter, interfaceIR.StringParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
                 FormatType(parameter.apiType) +
-                (u" LE_NONNULL " if parameter.direction == interfaceIR.DIR_IN else u" ") +
+                (u" LE_NONNULL " if not env.globals.get('dontGenerateAttrs') and
+                 parameter.direction == interfaceIR.DIR_IN else u" ") +
                 parameter.name)
     elif isinstance(parameter, interfaceIR.ArrayParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +

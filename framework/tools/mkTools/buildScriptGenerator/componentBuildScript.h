@@ -50,6 +50,16 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GenerateJavaBuildStatement(const model::ApiClientInterface_t* ifPtr);
         virtual void GenerateJavaBuildStatement(const model::ApiServerInterface_t* ifPtr);
 
+        virtual void GeneratePythonBuildStatement(
+                                                const model::InterfacePythonFiles_t& pythonFiles,
+                                                const model::Component_t* componentPtr,
+                                                const model::ApiFile_t* apiFilePtr,
+                                                const std::string& internalName,
+                                                const std::string& workDir,
+                                                bool isClient
+                                                );
+        virtual void GeneratePythonBuildStatement(const model::ApiClientInterface_t* ifPtr);
+
         virtual void GenerateCommonCAndCxxFlags(model::Component_t* componentPtr);
 
         virtual void GenerateLdFlagsDef(model::Component_t* componentPtr);

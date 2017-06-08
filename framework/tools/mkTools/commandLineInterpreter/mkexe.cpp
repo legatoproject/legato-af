@@ -279,7 +279,8 @@ static void VerifyAtLeastOneSourceFile
 {
     // Check for C or C++ source files being built directly into the exe (outside of components).
     if (   (ExePtr->hasCOrCppCode == false)
-           && (ExePtr->hasJavaCode == false))
+        && (ExePtr->hasPythonCode == false)
+        && (ExePtr->hasJavaCode == false))
     {
         throw mk::Exception_t(LE_I18N("Executable doesn't contain any source code files."));
     }

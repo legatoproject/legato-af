@@ -352,6 +352,16 @@ void ExeBuildScriptGenerator_t::GenerateBuildStatements
                                                         classPath,
                                                         dependencies);
     }
+    else if (exePtr->hasPythonCode)
+    {
+        auto mainObjectFile = exePtr->MainObjectFile();
+        // Compute the path to the file to be generated.
+        auto launcherFile = mainObjectFile.sourceFilePath;
+
+        script << "build $builddir/" << exePtr->path << " : BundleFile " << launcherFile << "\n"
+               << "  modeFlags = u+rwx,g+rwx,o+xr-w";
+        script << "\n\n";
+    }
 }
 
 

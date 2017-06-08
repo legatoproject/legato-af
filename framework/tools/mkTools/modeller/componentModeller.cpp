@@ -174,6 +174,98 @@ static void AddJavaPackage
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Adds the source files from a given "pythonPackage:" section to a given Component_t object.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddPythonPackage
+(
+    model::Component_t* componentPtr,
+    parseTree::CompoundItem_t* sectionPtr,
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    auto tokenListPtr = static_cast<parseTree::TokenList_t*>(sectionPtr);
+
+    for (auto contentPtr: tokenListPtr->Contents())
+    {
+        std::string packagePath = contentPtr->text;
+        auto packagePtr = new model::PythonPackage_t(contentPtr->text, componentPtr->dir);
+
+        componentPtr->pythonPackages.push_back(packagePtr);
+    }
+
+    if (componentPtr->HasIncompatibleLanguageCode())
+    {
+        componentPtr->ThrowIncompatibleLanguageException(sectionPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds the python files corresponding to all client APIs.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddPythonClientFiles
+(
+    model::Component_t* componentPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Bundle all the api C extensions and wrappers
+    for (auto ifPtr : componentPtr->clientApis)
+    {
+        model::InterfacePythonFiles_t pythonFiles;
+        ifPtr->GetInterfaceFiles(pythonFiles);
+
+        model::Permissions_t soPerms(1, 0, 1);
+
+        auto soDestPath = path::Combine("lib/", pythonFiles.cExtensionBinaryFile);
+        auto soSrcPath = "$builddir/" + path::Combine(ifPtr->apiFilePtr->codeGenDir,
+                pythonFiles.cExtensionBinaryFile);
+        auto soFile = new model::FileSystemObject_t(soSrcPath, soDestPath, soPerms);
+
+        componentPtr->bundledFiles.insert(
+                std::shared_ptr<model::FileSystemObject_t>(soFile));
+        model::Permissions_t wrapperPerms(soPerms);
+
+        auto wrapperDestPath =  path::Combine("lib/", pythonFiles.wrapperSourceFile);
+        auto wrapperSrcPath = "$builddir/"
+            + path::Combine(ifPtr->apiFilePtr->codeGenDir,
+                    pythonFiles.wrapperSourceFile);
+        auto wrapperFile = new model::FileSystemObject_t(wrapperSrcPath,
+                wrapperDestPath,
+                wrapperPerms);
+
+        componentPtr->bundledFiles.insert(
+                std::shared_ptr<model::FileSystemObject_t>(wrapperFile));
+    }
+    for (auto pyPkgPtr : componentPtr->pythonPackages)
+    {
+        model::Permissions_t pyPerms(1, 0, 1);
+
+        auto pyDestPath =  "bin/"
+            + path::Combine(componentPtr->name, pyPkgPtr->packageName);
+        auto pySrcPath = pyPkgPtr->packagePath;
+        auto pyFile = new model::FileSystemObject_t(pySrcPath, pyDestPath, pyPerms);
+
+        if (path::IsPythonSource(pyPkgPtr->packagePath))
+        {
+            // It's just a single-file module.
+            componentPtr->bundledFiles.insert(
+                    std::shared_ptr<model::FileSystemObject_t>(pyFile));
+        }
+        else
+        {
+            componentPtr->bundledDirs.insert(
+                    std::shared_ptr<model::FileSystemObject_t>(pyFile));
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the contents of a "cflags:" section to the list of cFlags for a given Component_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -995,6 +1087,10 @@ model::Component_t* GetComponent
         {
             AddJavaPackage(componentPtr, sectionPtr, buildParams);
         }
+        else if (sectionName == "pythonPackage")
+        {
+            AddPythonPackage(componentPtr, sectionPtr, buildParams);
+        }
         else if (sectionName == "cflags")
         {
             AddCFlags(componentPtr, sectionPtr);
@@ -1055,6 +1151,12 @@ model::Component_t* GetComponent
         componentPtr->implicitDependencies.insert(liblegatoPath);
         componentPtr->implicitDependencies.insert(legatoJarPath);
         componentPtr->implicitDependencies.insert(liblegatoJniPath);
+    }
+
+    if (componentPtr->HasPythonCode())
+    {
+        // Add the python wrapper of each APIs
+        AddPythonClientFiles(componentPtr);
     }
 
     if (buildParams.beVerbose)

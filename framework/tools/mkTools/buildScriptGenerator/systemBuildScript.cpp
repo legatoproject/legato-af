@@ -70,6 +70,14 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     "            find $$LEGATO_ROOT/build/$target/framework/lib/* -type d -prune -o"
                        " \\( -type f -o -type l \\) -print | xargs cp -P -t $stagingDir/lib && $\n"
 
+    // Copy liblegato Python files into the system's staging area.
+    // cd in a subshell is used because it allows us to use the --parents option to recreate the
+    // relative directory structure inside $stagingDir. Without cd, --parents would reproduce the
+    // full path relative to LEGATO_ROOT, while we want it relative to lib/
+    "            (cd $$LEGATO_ROOT/build/$target/framework/lib/ ; "
+    "             find . -path './*/site-packages/*'"
+    "             -exec cp -P --parents -t $$LEGATO_ROOT/$stagingDir/lib/ {} \\; ; ) && $\n"
+
     // Create modules directory and copy kernel modules into it
     "            mkdir -p $stagingDir/modules && $\n"
     "            if [ -d $builddir/modules ] ; then $\n"

@@ -342,6 +342,11 @@ void BuildScriptGenerator_t::GenerateBuildRules
               "  command = ifgen --output-dir $outputDir $ifgenFlags $in\n"
               "\n";
 
+    // Generate a rule for generating a Python C Extension .c file for an API
+    script << "rule GenPyApiCExtension\n"
+              "  description = Generating Python API C Extension\n"
+              "  command = " << "cextgenerator.py $in -o $workDir > /dev/null\n";
+
     // Generate a rule for copying a file.
     script << "rule CopyFile\n"
               "  description = Copying file\n"

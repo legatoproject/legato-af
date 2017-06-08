@@ -84,9 +84,21 @@ ifdef JDK_INCLUDE_DIR
 LEGATO_JAVA=$(LIB_DIR)/liblegatoJni.so
 endif
 
+# Generate and integrate liblegato.py in the Legato framework.
+BUILD_LIBLEGATO_PY ?= 0
+# Version of Python used on target and on host for cffi.
+PYTHON := python2.7
+ifeq ($(BUILD_LIBLEGATO_PY),1)
+  # Check at least that Python 2.7 and the CFFI package are installed to build Python liblegato bindings.
+  ifeq ($(shell $(PYTHON) -c "import cffi" 2>&1 > /dev/null; echo $$?), 0)
+    LEGATO_PY=$(LIB_DIR)/$(PYTHON)/site-packages/liblegato.py
+  else
+    $(error BUILD_LIBLEGATO_PY is set, but $(PYTHON) or cffi not available)
+  endif
+endif
 
 .PHONY: all
-all: liblegato daemons targetTools $(LEGATO_JAVA)
+all: liblegato daemons targetTools $(LEGATO_JAVA) $(LEGATO_PY)
 	# Computing MD5 hash for contents of framework bin and lib directories.
 	md5=` ( find $(BIN_DIR) && \
 			find $(BIN_DIR) -type f | xargs cat && \
@@ -152,6 +164,33 @@ $(LIB_DIR)/liblegatoJni.so: $(LIB_DIR) $(BUILD_DIR)/legatoJni.o
 
 endif
 
+LEGATO_PY_SO=$(LIB_DIR)/$(PYTHON)/site-packages/_liblegato_py.so
+LEGATO_PY_CEXT=$(BUILD_DIR)/_liblegato_py.c
+
+$(LEGATO_PY_CEXT):
+	rm -rf $(BUILD_DIR)/_py_cdefs/
+	mkdir $(BUILD_DIR)/_py_cdefs/
+	bash $(LEGATO_ROOT)/framework/python/generate_cdefs.sh "$(BUILD_DIR)/_py_cdefs/"
+	$(PYTHON) $(LEGATO_ROOT)/framework/python/generate_c.py "$(BUILD_DIR)/_py_cdefs" $(BUILD_DIR) > /dev/null
+
+$(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
+	mkdir -p $(dir $@)
+	$(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(LEGATO_PY_SO) $(LEGATO_PY_CEXT) \
+		-Wall -Werror \
+		-D_FTS_H \
+		-fPIC \
+		-shared \
+		-pthread \
+		-I=/usr/include/$(PYTHON)/ \
+		-IC \
+		-I$(LEGATO_ROOT)/framework/include \
+		-I$(LEGATO_ROOT)/framework/liblegato \
+		-I$(LEGATO_ROOT)/framework/liblegato/linux \
+		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
+		-L$(LIB_DIR) -llegato -l$(PYTHON)
+
+$(LEGATO_PY): $(LEGATO_PY_SO)
+	cp $(LEGATO_ROOT)/framework/python/liblegato.py $(LEGATO_PY)
 
 .PHONY: daemons
 daemons: start supervisor serviceDirectory logCtrlDaemon configTree watchdog updateDaemon

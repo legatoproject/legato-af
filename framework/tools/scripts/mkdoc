@@ -27,6 +27,9 @@ for file in $(find -L $TOOLS_DIR -type f -executable | sort); do
     elif [[ $file = *mkinfo ]]; then
         # mkinfo is not a user run tool. It will become a part of build.
         echo "Skipping - $file"
+    elif [[ $file = *cextgenerator.py ]]; then
+        # Python wrapper is for internal use
+        echo "Skipping - $file"
     elif [[ $(basename "$file") = $(basename $0) ]]; then
         echo "Skipping - $file"
     else

@@ -151,6 +151,8 @@ static le_msg_SessionRef_t _ClientSessionRef;
  * Trace reference used for controlling tracing in this module.
  */
 //--------------------------------------------------------------------------------------------------
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
+
 static le_log_TraceRef_t TraceRef;
 
 /// Macro used to generate trace output in this module.
@@ -159,6 +161,13 @@ static le_log_TraceRef_t TraceRef;
 
 /// Macro used to query current trace state in this module
 #define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
+#else
+
+#define TRACE(...)
+#define IS_TRACE_ENABLED 0
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -311,8 +320,9 @@ void {{apiName}}_AdvertiseService
     LE_DEBUG("======= Starting Server %s ========", SERVICE_INSTANCE_NAME);
 
     // Get a reference to the trace keyword that is used to control tracing in this module.
+#if defined(MK_TOOLS_BUILD) && !defined(NO_LOG_SESSION)
     TraceRef = le_log_GetTraceRef("ipc");
-
+#endif
     le_msg_ProtocolRef_t protocolRef;
 
     // Create the server data pool

@@ -27,6 +27,7 @@ struct Component_t : public HasTargetInfo_t
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
     std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
     std::list<JavaPackage_t*> javaPackages; ///< List of packages of Java code.
+    std::list<PythonPackage_t*> pythonPackages; ///< List of packages of Python code.
     std::list<std::string> externalBuildCommands; ///< List of external build commands.
 
     std::set<std::string> staticLibs;   ///< Static library files required by this component.
@@ -86,6 +87,12 @@ struct Component_t : public HasTargetInfo_t
         return javaPackages.empty() != true;
     }
 
+    // Does the component have Python code?
+    bool HasPythonCode() const
+    {
+        return pythonPackages.empty() != true;
+    }
+
     // Is the component built using an external build process
     bool HasExternalBuild() const
     {
@@ -98,6 +105,7 @@ struct Component_t : public HasTargetInfo_t
         int buildMethods = 0;
         if (HasCOrCppCode())    { ++buildMethods; }
         if (HasJavaCode())      { ++buildMethods; }
+        if (HasPythonCode())    { ++buildMethods; }
         if (HasExternalBuild()) { ++buildMethods; }
 
         return buildMethods > 1;
