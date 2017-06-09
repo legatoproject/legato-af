@@ -22,6 +22,8 @@ ifeq ($(TARGET),virt)
     else
         export VIRT_TOOLCHAIN_PREFIX ?= arm-poky-linux-gnueabi-
     endif
+
+    export VIRT_TOOLCHAIN_DIR := $(shell $(FINDTOOLCHAIN) $(TARGET)_$(VIRT_TARGET_ARCH) dir)
 endif
 
 ifeq ($(TARGET),localhost)
