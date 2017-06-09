@@ -190,6 +190,7 @@ static void PrintMessage
     {
         case LE_SMS_FORMAT_TEXT:
         {
+            cm_cmn_FormatPrint(" Format", "LE_SMS_FORMAT_TEXT");
             res = le_sms_GetText(msgRef, content.text, sizeof(content.text));
             LE_ASSERT(res == LE_OK);
 
@@ -202,6 +203,7 @@ static void PrintMessage
 
         case LE_SMS_FORMAT_BINARY:
         {
+            cm_cmn_FormatPrint(" Format", "LE_SMS_FORMAT_BINARY");
             contentSz = sizeof(content.binary);
             res = le_sms_GetBinary(msgRef, content.binary, &contentSz);
             LE_ASSERT(res == LE_OK);
@@ -214,8 +216,17 @@ static void PrintMessage
             break;
         }
 
+        case LE_SMS_FORMAT_UNKNOWN:
         case LE_SMS_FORMAT_PDU:
         {
+            if (LE_SMS_FORMAT_PDU == format)
+            {
+                cm_cmn_FormatPrint(" Format", "LE_SMS_FORMAT_PDU");
+            }
+            else
+            {
+                cm_cmn_FormatPrint(" Format", "LE_SMS_FORMAT_UNKNOWN");
+            }
             contentSz = sizeof(content.pdu);
             res = le_sms_GetPDU(msgRef, content.pdu, &contentSz);
             LE_ASSERT(res == LE_OK);
@@ -230,6 +241,7 @@ static void PrintMessage
 
         case LE_SMS_FORMAT_UCS2:
         {
+            cm_cmn_FormatPrint(" Format", "LE_SMS_FORMAT_UCS2");
             contentSz = sizeof(content.ucs2) / 2;
 
             res = le_sms_GetUCS2(msgRef, content.ucs2, &contentSz);

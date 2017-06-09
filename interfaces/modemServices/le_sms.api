@@ -128,7 +128,8 @@
  * @note  - If two (or more) registered handler functions exist, they are
  * all called and get a different message object reference.
  *
- * @note - For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
+ * @note - For incoming SMS, if the returned format is LE_SMS_FORMAT_PDU, the PDU length can be
+ * retrieved by calling le_sms_GetPDULen() and the content can be read by le_sms_GetPDU().
  *
  * If a succession of messages is received, a new Message object is created for each, and
  * the handler is called for each new message.
@@ -212,8 +213,6 @@
  * - le_sms_GetPDU() - get the message PDU data received length.
  * - le_sms_GetCellBroadcastId() - get the message identifier received (3GPP 23.41).
  * - le_sms_GetCellBroadcastSerialNumber() get the message Serial Number received (3GPP 23.41).
- *
- * @note - Format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
  *
  * A sample code that implements a function for SMS Cell Broadcast reception can be found in
  * \b smsCBTest.c file (please refer to @ref c_smsCbSample page).
@@ -1049,7 +1048,6 @@ FUNCTION Delete
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
  *
- * @note For incoming SMS, format returned by le_sms_GetFormat is never LE_SMS_FORMAT_PDU.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION Format GetFormat

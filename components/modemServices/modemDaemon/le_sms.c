@@ -320,7 +320,7 @@ static le_sms_Msg_t* CreateMessage
     newSmsMsgObjPtr->readonly = true;
     newSmsMsgObjPtr->storageIdx = storageIdx;
     newSmsMsgObjPtr->type = LE_SMS_TYPE_RX;
-    newSmsMsgObjPtr->format = LE_SMS_FORMAT_UNKNOWN;
+    newSmsMsgObjPtr->format = LE_SMS_FORMAT_PDU;
 
     /* Save the protocol */
     newSmsMsgObjPtr->protocol = pduMsgPtr->protocol;
@@ -1702,6 +1702,7 @@ le_sms_MsgRef_t le_sms_Create
     msgPtr->timeoutValue = PA_SMS_SENDING_TIMEOUT;
     msgPtr->callBackPtr = NULL;
     msgPtr->ctxPtr = NULL;
+    msgPtr->format = LE_SMS_FORMAT_UNKNOWN;
 
     // Create and return a Safe Reference for this Message object.
     return le_ref_CreateRef(MsgRefMap, msgPtr);
