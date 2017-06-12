@@ -68,6 +68,7 @@ static void StatusHandler
 )
 //--------------------------------------------------------------------------------------------------
 {
+    le_result_t res;
     const char* statusPtr = NULL;
 
     switch (updateStatus)
@@ -117,6 +118,9 @@ static void StatusHandler
         case LE_AVC_SESSION_STOPPED:
             statusPtr = "SESSION_STOPPED";
             break;
+        case LE_AVC_REBOOT_PENDING:
+            statusPtr = "REBOOT_PENDING";
+            break;
     }
 
     if (statusPtr == NULL)
@@ -127,34 +131,48 @@ static void StatusHandler
     {
         LE_INFO("Air Vantage agent reported update status: %s", statusPtr);
 
-        le_result_t res;
+        // Pending operation has been notified, it can now be accepted
+        switch (updateStatus)
+        {
+            case LE_AVC_DOWNLOAD_PENDING:
+                LE_INFO("Accepting %s update.", GetUpdateType());
+                res = le_avc_AcceptDownload();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept download from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
 
-        if (updateStatus == LE_AVC_DOWNLOAD_PENDING)
-        {
-            LE_INFO("Accepting %s update.", GetUpdateType());
-            res = le_avc_AcceptDownload();
-            if (res != LE_OK)
-            {
-                LE_ERROR("Failed to accept download from Air Vantage (%s)", LE_RESULT_TXT(res));
-            }
-        }
-        else if (updateStatus == LE_AVC_INSTALL_PENDING)
-        {
-            LE_INFO("Accepting %s installation.", GetUpdateType());
-            res = le_avc_AcceptInstall();
-            if (res != LE_OK)
-            {
-                LE_ERROR("Failed to accept install from Air Vantage (%s)", LE_RESULT_TXT(res));
-            }
-        }
-       else if (updateStatus == LE_AVC_UNINSTALL_PENDING)
-        {
-            LE_INFO("Accepting %s uninstall.", GetUpdateType());
-            res = le_avc_AcceptUninstall();
-            if (res != LE_OK)
-            {
-                LE_ERROR("Failed to accept uninstall from Air Vantage (%s)", LE_RESULT_TXT(res));
-            }
+            case LE_AVC_INSTALL_PENDING:
+                LE_INFO("Accepting %s installation.", GetUpdateType());
+                res = le_avc_AcceptInstall();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept install from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            case LE_AVC_UNINSTALL_PENDING:
+                LE_INFO("Accepting %s uninstall.", GetUpdateType());
+                res = le_avc_AcceptUninstall();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept uninstall from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            case LE_AVC_REBOOT_PENDING:
+                LE_INFO("Accepting device reboot.");
+                res = le_avc_AcceptReboot();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept reboot from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            default:
+                // No action required
+                break;
         }
     }
 }

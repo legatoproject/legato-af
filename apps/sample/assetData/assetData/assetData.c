@@ -489,6 +489,9 @@ static void StatusHandler
         case LE_AVC_SESSION_STOPPED:
             statusPtr = "SESSION_STOPPED";
             break;
+        case LE_AVC_REBOOT_PENDING:
+            statusPtr = "REBOOT_PENDING";
+            break;
     }
 
     if (statusPtr == NULL)
