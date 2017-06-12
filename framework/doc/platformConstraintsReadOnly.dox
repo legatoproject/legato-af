@@ -27,9 +27,12 @@ finalize its configuration steps.
 <b>Build:</b><br>
 By default the targets <b>ar759x</b> and <b>ar758x</b> are R/O. For these
 platforms, two images R/W and R/O are created in the build/... directory.<br>
-The images <b>legato.cwe</b>, <b>legato.squashfs</b>, <b>legato.squashfs.ubi</b>
+The images suffixed with a <b>_ro</b>, ie, <b>legato_ro.cwe</b>,
+<b>legato_ro.squashfs</b>, <b>legato_ro.squashfs.ubi</b>
 are R/O and the others suffixed with a <b>_rw</b>, ie, <b>legato_rw.cwe</b>,
 <b>legato_rw.squashfs</b>, <b>legato_rw.squashfs.ubi</b> are R/W.
+The images without suffix are symbolic links to the R/W images: <b>legato.cwe</b>,
+<b>legato.squashfs</b>, <b>legato.squashfs.ubi</b>.
 
 <b>Restrictions:</b><br>
 The Legato ReadOnly feature is introducing the following restrictions:
