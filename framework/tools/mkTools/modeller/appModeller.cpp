@@ -51,6 +51,32 @@ static void PrintNote
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check if a process name already exists in an app
+ */
+//--------------------------------------------------------------------------------------------------
+static bool DoesProcessExist
+(
+    model::App_t* appPtr,
+    const std::string &processName
+)
+{
+    for (auto processEnvPtr : appPtr->processEnvs)
+    {
+        for (auto processPtr : processEnvPtr->processes)
+        {
+            if (processPtr->GetName() == processName)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the items from a given "bundles:" section to a given App_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -587,6 +613,7 @@ static void AddRequiredItems
 //--------------------------------------------------------------------------------------------------
 static void AddProcesses
 (
+    model::App_t* appPtr,
     model::ProcessEnv_t* procEnvPtr,
     const parseTree::CompoundItemList_t* sectionPtr ///< run section.
 )
@@ -604,15 +631,26 @@ static void AddProcesses
             );
         }
 
-        auto procPtr = new model::Process_t(processSpecPtr);
-        procEnvPtr->processes.push_back(procPtr);
-
         // If the first token is an open parenthesis, then no process name was specified and
         // the first content token is the executable path, which also is used as the process name.
         // Otherwise, the first content token is the process name, followed by the exe path.
         auto tokens = processSpecPtr->Contents();
         auto i = tokens.begin();
-        procPtr->SetName((*i)->text);
+        auto procName = (*i)->text;
+
+        if (DoesProcessExist(appPtr, procName))
+        {
+            (*i)->ThrowException(
+                mk::format(LE_I18N("Process name '%s' already used."
+                                   "  Process names must be unique"),
+                           procName)
+            );
+        }
+
+        auto procPtr = new model::Process_t(processSpecPtr);
+        procEnvPtr->processes.push_back(procPtr);
+
+        procPtr->SetName(procName);
         if (processSpecPtr->firstTokenPtr->type != parseTree::Token_t::OPEN_PARENTHESIS)
         {
             i++;
@@ -650,7 +688,7 @@ static void AddProcessesSection
 
         if (subsectionName == "run")
         {
-            AddProcesses(procEnvPtr, ToCompoundItemListPtr(subsectionPtr));
+            AddProcesses(appPtr, procEnvPtr, ToCompoundItemListPtr(subsectionPtr));
         }
         else if (subsectionName == "envVars")
         {

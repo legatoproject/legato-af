@@ -169,6 +169,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of processes created with CreateProc from one executable.
+ *
+ * @note CreateProc code assumes this is a two-digit number.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_CREATE_PROC                                   32
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * File link object.  Used to hold links that should be created for applications.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2337,6 +2347,40 @@ static void RemoveLinks
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets a process container for the app by name from the given process list
+ *
+ * @return
+ *      The pointer to a process container if successful.
+ *      NULL if the process container could not be found.
+ */
+//--------------------------------------------------------------------------------------------------
+static app_Proc_Ref_t FindProcContainerByName
+(
+    le_dls_List_t* procListPtr,     ///< [IN] The process list to search in.
+    const char* procNamePtr         ///< [IN] The process name to get for.
+)
+{
+    // Find the process in the app's list.
+    le_dls_Link_t* procLinkPtr = le_dls_Peek(procListPtr);
+
+    while (procLinkPtr != NULL)
+    {
+        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
+
+        if (strcmp(procNamePtr, proc_GetName(procContainerPtr->procRef)) == 0)
+        {
+            return procContainerPtr;
+        }
+
+        procLinkPtr = le_dls_PeekNext(procListPtr, procLinkPtr);
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the application system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2379,22 +2423,60 @@ app_Proc_Ref_t app_GetProcContainer
         return NULL;
     }
 
-    // Find the process in the app's list.
-    le_dls_Link_t* procLinkPtr = le_dls_Peek(&(appRef->procs));
+    return FindProcContainerByName(&(appRef->procs), procNamePtr);
+}
 
-    while (procLinkPtr != NULL)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a new temporary process name, based on the executable name.
+ *
+ * Temporary process name is guaranteed to be unique among currently running processes of an app.
+ * This is done by adding \@N to the end of the name, where N is a number from 0 - MAX_CREATE_PROC
+ * which is not used by another process with the same name.  If this would create a name longer
+ * than the maximum allowed process name, the last few characters at the end of the exeName are
+ * overwritten.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool MakeTempProcName
+(
+    app_Ref_t appRef,
+    char* tempProcNamePtr,
+    size_t tempProcNameSize,
+    const char* exeName
+)
+{
+    size_t numBytesCopied;
+    int i;
+
+    le_utf8_Copy(tempProcNamePtr, exeName, tempProcNameSize, &numBytesCopied);
+    for (i = 0; i < MAX_CREATE_PROC; ++i)
     {
-        ProcContainer_t* procContainerPtr = CONTAINER_OF(procLinkPtr, ProcContainer_t, link);
-
-        if (strcmp(procNamePtr, proc_GetName(procContainerPtr->procRef)) == 0)
+        // Is there enough space for the process number?
+        // Warning: assumes name is no more than 2 decimal digits.
+        size_t numLen = ((i < 10)?1:2);
+        while ((numBytesCopied + numLen + 1) >= tempProcNameSize)
         {
-            return procContainerPtr;
+            // No.  Truncate characters off the end to make space
+            while ((--numBytesCopied) &&
+                   (0 == le_utf8_NumBytesInChar(tempProcNamePtr[numBytesCopied])))
+            {
+                // Finding prevous character start
+            }
         }
+        snprintf(tempProcNamePtr + numBytesCopied, tempProcNameSize - numBytesCopied,
+                 "@%d", i);
 
-        procLinkPtr = le_dls_PeekNext(&(appRef->procs), procLinkPtr);
+        // Name is chosen to be invalid as a regular process name, so only search auxilliary
+        // processes.
+        if (!FindProcContainerByName(&(appRef->auxProcs), tempProcNamePtr))
+        {
+            // Found an available name
+            return true;
+        }
     }
 
-    return NULL;
+    return false;
 }
 
 
@@ -3308,6 +3390,8 @@ app_Proc_Ref_t app_CreateProc
 
     if (procContainerPtr == NULL)
     {
+        char procNameToUse[LIMIT_MAX_PROCESS_NAME_LEN + 1];
+
         // This is not a configured process so make sure the executable path is provided.
         if (execPathPtr == NULL)
         {
@@ -3322,7 +3406,13 @@ app_Proc_Ref_t app_CreateProc
 
         if (procNameToUsePtr == NULL)
         {
-            procNameToUsePtr = le_path_GetBasenamePtr(execPathPtr, "/");
+            if (!MakeTempProcName(appRef,
+                                  procNameToUse, sizeof(procNameToUse),
+                                  le_path_GetBasenamePtr(execPathPtr, "/")))
+            {
+                return NULL;
+            }
+            procNameToUsePtr = procNameToUse;
         }
 
         // Create the process.

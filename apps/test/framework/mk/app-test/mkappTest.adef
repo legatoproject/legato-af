@@ -49,7 +49,7 @@ processes:
         proc2 = ( /bin/fromComponents "foo /* bar - jam --crazy=12 -c 9" )
         proc3 = ( fromComponents --crazy=12 )
         (/bin/fromComponents)
-        ( fromComponents foo
+        proc4 = ( fromComponents foo
      bar /* some random
             comment mess */
      - jam --crazy  // Three args on one line with a C++ comment.

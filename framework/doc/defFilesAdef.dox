@@ -471,7 +471,7 @@ run:
 If the process name isn't specified, then the process will be given the same name as the
 executable it's running (e.g.  @c myExe)
 
-A given executable can be launched multiple times.
+A given executable can be launched multiple times; each process needs a unique name.
 @code
 run:
 {

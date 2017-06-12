@@ -18,7 +18,7 @@ struct ProcessEnv_t
     ProcessEnv_t();
 
     /// List of processes to run in this environment.
-    /// NB: It is permitted to have multiple sharing the same name.
+    /// NB: It is NOT permitted to have multiple sharing the same name.
     std::list<Process_t*> processes;
 
     /// The environment variable list is a map with the variable name as the key.
