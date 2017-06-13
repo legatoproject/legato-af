@@ -663,8 +663,11 @@ FUNCTION le_result_t ExitOnlyMode
  * Get the configured Operation mode.
  *
  * @return
- *      - LE_OK on success
- *      - LE_FAULT for other failures
+ *      - LE_OK     on success
+ *      - LE_FAULT  for other failures
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetConfiguredOperationMode
@@ -900,8 +903,11 @@ FUNCTION le_result_t SetMsdTxMode
  * Get the push/pull transmission mode.
  *
  * @return
- *  - LE_OK on success
- *  - LE_FAULT for other failures
+ *      - LE_OK     on success
+ *      - LE_FAULT  for other failures
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetMsdTxMode

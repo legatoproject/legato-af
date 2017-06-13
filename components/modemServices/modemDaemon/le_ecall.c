@@ -2220,8 +2220,11 @@ le_result_t le_ecall_ExitOnlyMode
  * Get the configured Operation mode.
  *
  * @return
- *      - LE_OK on success
- *      - LE_FAULT for other failures
+ *      - LE_OK     on success
+ *      - LE_FAULT  for other failures
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetConfiguredOperationMode
@@ -2229,6 +2232,12 @@ le_result_t le_ecall_GetConfiguredOperationMode
     le_ecall_OpMode_t *opModePtr    ///< [OUT] Operation mode
 )
 {
+    if (NULL == opModePtr)
+    {
+        LE_KILL_CLIENT("opModePtr is NULL!");
+        return LE_FAULT;
+    }
+
     return (pa_ecall_GetOperationMode(opModePtr));
 }
 
@@ -3189,8 +3198,11 @@ le_result_t le_ecall_SetMsdTxMode
  * Get the push/pull transmission mode.
  *
  * @return
- *  - LE_OK on success
- *  - LE_FAULT for other failures
+ *      - LE_OK     on success
+ *      - LE_FAULT  for other failures
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetMsdTxMode
@@ -3198,6 +3210,12 @@ le_result_t le_ecall_GetMsdTxMode
     le_ecall_MsdTxMode_t* modePtr   ///< [OUT] Transmission mode
 )
 {
+    if (NULL == modePtr)
+    {
+        LE_KILL_CLIENT("modePtr is NULL!");
+        return LE_FAULT;
+    }
+
     return (pa_ecall_GetMsdTxMode(modePtr));
 }
 
