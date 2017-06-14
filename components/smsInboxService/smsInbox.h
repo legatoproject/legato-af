@@ -107,9 +107,17 @@ typedef void (*SmsInbox_RxMessageHandlerFunc_t)
 //--------------------------------------------------------------------------------------------------
 SmsInbox_SessionRef_t SmsInbox_Open
 (
-    const char* mailboxName
+    const char* mailboxName,
         ///< [IN]
         ///< Session name.
+
+    le_msg_ServiceRef_t msgServiceRef,
+        ///< [IN]
+        ///< Message service reference
+
+    le_msg_SessionRef_t msgSession
+        ///< [IN]
+        ///< Client session reference
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -489,6 +497,21 @@ void SmsInbox_MarkUnread
         ///< Message identifier.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * handler function to release smsInbox service
+ */
+//--------------------------------------------------------------------------------------------------
+void SmsInbox_CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+        ///< [IN]
+        ///< message session reference.
+
+    void* contextPtr
+        ///< [IN]
+        ///< context pointer.
+);
 
 #endif // SMSINBOX_H_INCLUDE_GUARD
 

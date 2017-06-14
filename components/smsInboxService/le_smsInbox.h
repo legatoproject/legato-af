@@ -31,7 +31,16 @@ LE_NAME##_SessionRef_t LE_NAME##_Open \
     void \
 ) \
 { \
-    LE_NAME##Ref = (LE_NAME##_SessionRef_t) SmsInbox_Open(#LE_NAME); \
+    le_msg_ServiceRef_t msgServiceRef = LE_NAME##_GetServiceRef(); \
+    le_msg_SessionRef_t msgSession = LE_NAME##_GetClientSessionRef(); \
+    static le_msg_SessionEventHandlerRef_t msgSessionRef = NULL; \
+    if (msgSessionRef == NULL) \
+    { \
+        /* Register CloseSessionEventHandler for smsInbox service */ \
+        msgSessionRef = le_msg_AddServiceCloseHandler(msgServiceRef, \
+                        SmsInbox_CloseSessionEventHandler, NULL); \
+    } \
+    LE_NAME##Ref = (LE_NAME##_SessionRef_t) SmsInbox_Open(#LE_NAME,msgServiceRef,msgSession); \
     return LE_NAME##Ref; \
 } \
 \
