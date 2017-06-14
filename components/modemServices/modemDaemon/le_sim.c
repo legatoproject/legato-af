@@ -1585,7 +1585,7 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
  *
  * @return
  *      - LE_OK on success
- *      - LE_BAD_PARAMETER invalid SIM identifier
+ *      - LE_BAD_PARAMETER invalid SIM identifier or null ECS pointer is passed
  *      - LE_NOT_FOUND cannot determine the current selected subscription
  *      - LE_FAULT for unexpected errors
  *
@@ -1603,6 +1603,12 @@ le_result_t le_sim_IsEmergencyCallSubscriptionSelected
 {
     le_result_t res;
     Sim_t*      simPtr;
+
+    if (NULL == isEcsPtr)
+    {
+        LE_ERROR("isEcsPtr is NULL!");
+        return LE_BAD_PARAMETER;;
+    }
 
     if (simId >= LE_SIM_ID_MAX)
     {
