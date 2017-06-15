@@ -219,7 +219,7 @@ elif [ "$user_netassign" = "dhcp" ]; then
     mask=""
     nameserver=""
     mac=${user_mac-$mac}
-elif [ "$user_netassign" = "static" ] || [ -n "$user_addr$user_gway$user_mask$user_nameserver" ]; then
+elif [ "$user_netassign" = "static" ] || [ -n "$user_mac$user_addr$user_gway$user_mask$user_nameserver" ]; then
     mactype="fixed"
     netassign="static"
     addr=${user_addr-$addr}
@@ -227,6 +227,17 @@ elif [ "$user_netassign" = "static" ] || [ -n "$user_addr$user_gway$user_mask$us
     gway=${user_gway-$gway}
     nameserver=${user_nameserver-$nameserver}
     mac=${user_mac-$mac}
+    if [ `echo $mac | egrep "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$"` ]; then
+        firstoctet=$(echo $mac | cut -d":" -f1)
+        #Convert Hexadecimal value to Decimal
+        int_firstoctet=$((0x$firstoctet))
+        #If the first octet is odd, this is a multicast MAC, do not allow
+        if [ `expr $int_firstoctet % 2`  -eq 1 ]; then
+            exit_error "Multicast MAC address not allowed."
+        fi
+    else
+        exit_error "Please provide a valid MAC address."
+    fi
 elif [ $user_mactype = "fixed" ]; then
     if [ -n "$user_addr$user_gway$user_mask$user_nameserver$user_netassign" ]; then
         echo "Unexpected combination of parameters" >&2
