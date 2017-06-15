@@ -7,7 +7,8 @@
  * 'lwm2mCore'-based AVC on a product that also supports the modem-based AVC.
  *
  * Failure to disable the modem-based AVC indicates that it is still busy completing an operation.
- * When modem-based AVC is successfully disabled, we will start the avcService application.
+ * When modem-based AVC is successfully disabled, we will start both avcService and avcControl
+ * application.
  *
  * <hr>
  *
@@ -115,6 +116,7 @@ COMPONENT_INIT
     if (pa_avc_Disable() == LE_OK)
     {
         LE_INFO("Modem-based AVC disabled.");
+        le_appCtrl_Start(AVC_CONTROL_APP_NAME);
         le_appCtrl_Start(AVC_APP_NAME);
         ImportConfig();
     }

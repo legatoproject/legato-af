@@ -2,7 +2,7 @@
 # Copyright (C) Sierra Wireless, Inc.
 #*******************************************************************************
 
-mkapp(avcControl.adef)
+mkapp(lwm2mControl.adef)
 
 # This is a sample application
-add_dependencies(samples_c avcControl)
+add_dependencies(samples_c lwm2mControl)

@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        airVantage/le_avc.api
+    }
+}
+
+sources:
+{
+    lwm2mControl.c
+}
+
