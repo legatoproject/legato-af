@@ -3319,6 +3319,9 @@ le_result_t le_audio_SetEncodingFormat
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
+ * @note A client calling this function with either an invalid
+ * streamRef or null formatPtr parameter will be killed and the
+ * function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_GetEncodingFormat
@@ -3337,6 +3340,12 @@ le_result_t le_audio_GetEncodingFormat
     if (streamPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if (formatPtr == NULL)
+    {
+        LE_KILL_CLIENT("formatPtr is NULL!");
         return LE_FAULT;
     }
 
@@ -3385,6 +3394,8 @@ le_result_t le_audio_SetSampleAmrMode
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
+ * @note A client calling this function with a null modePtr parameter
+ * will be killed and the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_GetSampleAmrMode
@@ -3403,6 +3414,12 @@ le_result_t le_audio_GetSampleAmrMode
     if (streamPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid stream reference (%p) provided!", streamRef);
+        return LE_FAULT;
+    }
+
+    if (modePtr == NULL)
+    {
+        LE_KILL_CLIENT("modePtr is NULL!");
         return LE_FAULT;
     }
 
