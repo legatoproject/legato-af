@@ -4,13 +4,32 @@
  *
  * @ref le_wdog_interface.h "API Reference"
  *
- * <HR>
+ * @section Watchdog Service
  *
- * Simple watchdog service.
+ * Provides an API for monitoring critical applications and services for deadlocks and other
+ * similar faults.  The watchdog for a process is stared by calling @c le_wdog_Kick or
+ * @c le_wdog_Timeout.  Once started, the watchdog must be kicked periodically by calling
+ * @c le_wdog_Kick.  If the watchdog is not kicked (because it is deadlocked, for example),
+ * the watchdog service will attempt to recover the service by killing the process and
+ * executing the action specified in the process' watchdogAction (if specified)
+ * otherwise its faultAction.
  *
- * Provides a kickable watchdog with a timeout that can be configured in <c> .adef</c> or specified at run
- * time.  If a kick is not received within the specified time, the supervisor will be signalled
- * to perform the action specified in WatchdogAction.
+ * Generally a service which uses the watchdog should set @c watchdogTimeout to give the
+ * default timeout, and @c watchdogAction to give a recovery action.
+ *
+ * Critical services should also set @c maxWatchdogTimeout.  In this case the watchdog
+ * will be started on system boot, and cannot be stopped or set
+ * longer than the timeout given in @c maxWatchdogTimeout.  This ensures the service is
+ * always running as long as the system is running.
+ *
+ * @note If maxWatchdogTimeout is not set, no more action is taken if performing the process'
+ * @c watchdogAction doesn't recover the process.  If @c maxWatchdogTimeout is specified the
+ * system will be rebooted if the process does not recover.
+ *
+ * Additionally the watchdog service can be configured to call a callback periodically if
+ * the watchdog service process is functioning; i.e. all watchdogs have been kicked and/or
+ * non-functioning processes are being recovered.  Typically this callback will kick
+ * an external watchdog such as @c /dev/watchdog.
  *
  * <HR>
  *
