@@ -14,20 +14,20 @@ out the differences between AVC 1.0 and AVC 2.0.
 - TimeSeries enables users to aggregate multiple data points into a single push
 - TimeSeries Observe function has been replaced with a push function.
 
-| Section                     | Description                                     |
-| ----------------------------| ------------------------------------------------|
-| @subpage avRegister         | Register a target with AirVantage               |
-| @subpage avInstallUpload    | Build an App/System and deploy using AirVantage |
-| @subpage avMigration        | AVC 1.0 vs AVC 2.0 differences                  |
-| @subpage avData             | How to use AssetData with AirVantage 2.0        |
+| Section                      | Description                                     |
+| ---------------------------- | ------------------------------------------------|
+| @subpage avRegister          | Register a target with AirVantage               |
+| @subpage avInstallUpload     | Build an App/System and deploy using AirVantage |
+| @subpage avMigration         | AVC 1.0 vs AVC 2.0 differences                  |
+| @subpage avData "Asset Data" | How to use AssetData with AirVantage 2.0        |
 
 The AirVantage Platform Service exposes two API's that will help with connecting to the AirVantage
 Server and set up any Asset Data with the AirVantage service.
 
-| API                         | Description                                     |
-| --------------------------- | ----------------------------------------------- |
-| @subpage c_le_avc           | API to configure AirVantage connectivity        |
-| @subpage c_le_avdata        | API to setup AirVantage data                    |
+| API                          | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| @subpage c_le_avc            | API to configure AirVantage connectivity        |
+| @subpage c_le_avdata         | API to setup AirVantage data                    |
 
 <b>AirVantage Server Documentation</b>
 
