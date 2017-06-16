@@ -175,7 +175,7 @@ Example Application Model
 @note For further details on creating an Asset Data model see the sample application located in the
 {LEGATO_ROOT}/apps/sample/assetData
 
-@section avData_TimeSeries  TimeSieries
+@section avData_TimeSeries  TimeSeries
 
 A series of data points with time stamps can be collected and sent to the AirVantage server with the
 Time Series API.  This is useful for collecting historical data and analyzing trend.

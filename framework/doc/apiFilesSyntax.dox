@@ -176,29 +176,30 @@ if there are no parameters.  These parameters types are supported:
      - defaults to IN if a direction is not specified
 
 
-@code <type> <name> "[" [ <minSize> ".." ] <maxSize> "]" "IN" @endcode
+@code <type> <name> "[" <maxSize> "]" "IN" @endcode
      - an IN array
      - @c maxSize specifies the maximum number of elements allowed for the array
      - optional @c minSize specifies the minimum number of elements required for the array
 
+@deprecated [ <minSize> ".." ] is now deprecated.  Only <maxSize> needs to be specified.
 
-@code <type> <name> "[" <minSize> "]" "OUT" @endcode
+@code <type> <name> "[" <maxSize> "]" "OUT" @endcode
      - an OUT array
-     - array should be large enough to store @c minSize elements;  if supported by the
-       function implemention, a shorter OUT array can be used.
+     - array should be large enough to store @c maxSize of elements; if supported by the
+       function implementation, a shorter OUT array can be used.
 
 
-@code "string" <name> "[" [ <minSize> ".." ] <maxSize> "]" "IN" @endcode
+@code "string" <name> "[" <maxSize> "]" "IN" @endcode
      - an IN string
      - @c maxSize specifies the maximum string length allowed,
-     - optional @c minSize specifies the minimum string length required
      - string length is given as number of characters, excluding any terminating characters
 
+@deprecated [ <minSize> ".." ] is now deprecated.  Only <maxSize> needs to be specified.
 
-@code "string" <name> "[" <minSize> "]" "OUT" @endcode
+@code "string" <name> "[" <maxSize> "]" "OUT" @endcode
      - an OUT string
-     - string should be large enough to store @c minSize characters; if supported by the
-       function implemention, a shorter OUT string can be used.
+     - string should be large enough to store @c maxSize characters; if supported by the
+       function implementation, a shorter OUT string can be used.
      - string length is given as number of characters, excluding any terminating characters
 
 @code <handlerType> <name> @endcode
@@ -255,11 +256,11 @@ generated files, under the same conditions as function parameter comments.
 
 @section apiFilesSyntax_sample Sample API
 
-Here's the @c defn.api file containing just type defintions
+Here's the @c defn.api file containing just type definitions
 
 @verbinclude defn.api
 
-Here's the @c common.api file containing just type defintions, and using the types defined
+Here's the @c common.api file containing just type definitions, and using the types defined
 in @c defn.api
 
 @verbinclude common.api

@@ -1,6 +1,6 @@
 /** @page releaseNotes17050 17.05.0 Release Notes
 
-Release Date: June 9, 2017
+Release Date: June 23, 2017
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -10,28 +10,6 @@ The following provides a summary of changes that have been made in the 17.05 Leg
 "building Legato AF". </b>
 
 @section rn17_05_Features New Features
-
-@subsection rn17_05_FeaturesAirVantage AirVantage Connector Version 2
-
-Legato AF 17.05.0 enables AirVantage Connector 2.0 (AVC 2.0).  Version 2 upgrades the AirVantage
-Connector to improve support for Asset Data and TimeSeries management.
-
-AirVantage 1.0 is no longer enabled in 17.05.0 and above.
-
-AVC 2.0 New Features:
-- Asset data can be dynamically created within the application and there is no need to define the
-  data model in the @c .cdef
-- Asset data settings now support read/write from the Air Vantage Server
-- Asset data definitions have changed to resources (paths)
-- TimeSeries is no longer coupled with asset data
-- TimeSeries enables users to aggregate multiple data points into a single push
-- TimeSeries Observe function has been replaced with a push function.
-
-The @ref avMigration contains details on the changes between AirVantage V1 and AirVantage V2
-and how to migrate your configuration.
-
-@note The AirVantage documentation has been reorganized and is now located within the
-@ref legatoServicesAirVantage "AirVantage Connector Documentation"
 
 @subsection rn17_05_FeaturesFwupdate fwupdate Service
 
@@ -93,19 +71,60 @@ updating both the ACTIVE and UPDATE systems.
 
 For more information please see @ref platformConstraintsDualSys.
 
+@subsection rn17_05_FeaturesMinimumArray Minimum array and string sizes deprecated
+
+In API files the Minimum array and string sizes have been deprecated, due to minimum sizes not being
+properly enforced.
+
+The following function will now return the error:
+<c> reusable/INFRA_CmdMng/CmdServer/api/CmdMngIpc.api:8:16: error: Unexpected character u'.' </c>
+@code
+FUNCTION SomeFunction(string aString[1..255]);
+@endcode
+
+Change to:
+
+@code
+FUNCTION SomeFunction(string aString[255]);
+@endcode
+
 @subsection rn17_05_FeaturesTools Tooling Changes
 
 The following changes have been made to the Legato AF Tools:
 - Auto-Complete is now added for both zsh and bash commands
 - @ref buildToolsmkexe is now able to package and build drivers from kernel objects or @c .c sources.
+- @ref buildToolsifgen - @ref apiFilesSyntax_types "data type handler" has been deprecated;
+  User-defined type @c HANDLER is to be used instead
 
-@subsection rn17_05_FeaturesAlpha Alpha Release Features
+@subsection rn17_05_FeaturesExperimental Experimental Features
 
-@subsubsection rn17_05_FeaturesAlphaReadOnly Read Only Mode
+@subsection rn17_05_FeaturesExperimentalAirVantage AirVantage Connector Version 2
 
-In Legato Read-Only mode the system tree is built and deployed into a squashfs or ubifs image making
-the system read-only.  Any system configuration must be done before the system is built an installed
-on to the Target Device.
+AirVantage Connect version 2 has been launched as an @b experimental @b version.  Version 2 upgrades
+the AirVantage Connector to improve support for Asset Data and TimeSeries management.
+
+AirVantage 1.0 is no longer enabled in 17.05.0 and above.
+
+AVC 2.0 New Features:
+- Asset data can be dynamically created within the application and there is no need to define the
+  data model in the @c .cdef
+- Asset data settings now support read/write from the Air Vantage Server
+- Asset data definitions have changed to resources (paths)
+- TimeSeries is no longer coupled with asset data
+- TimeSeries enables users to aggregate multiple data points into a single push
+- TimeSeries Observe function has been replaced with a push function.
+
+The @ref avMigration contains details on the changes between AirVantage V1 and AirVantage V2
+and how to migrate your configuration.
+
+@note The AirVantage documentation has been reorganized and is now located within the
+@ref legatoServicesAirVantage "AirVantage Connector Documentation"
+
+@subsubsection rn17_05_FeaturesExperimentalReadOnly Read Only Mode
+
+In Legato AF Read-Only mode the system tree is built and deployed into a squashfs or ubifs image
+making the system read-only.  Any system configuration must be done before the system is built an
+installed on to the Target Device.
 
 While Legato is built as Read-Only the following actions are restricted:
 -Running Apps within Sandboxes
