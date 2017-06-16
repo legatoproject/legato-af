@@ -318,8 +318,8 @@ static void PositionHandlerFunction
                             , &vdop
                             , &pdop);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-    LE_INFO("DOP [H%.1f,V%.1f,P%.1f]"
-            , (float)(hdop)/100, (float)(vdop)/100, (float)(pdop)/100);
+    LE_INFO("DOP [H%.3f,V%.3f,P%.3f]"
+            , (float)(hdop)/1000, (float)(vdop)/1000, (float)(pdop)/1000);
 
     // Get horizontal speed
     result = le_gnss_GetHorizontalSpeed( positionSampleRef

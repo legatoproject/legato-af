@@ -1203,7 +1203,7 @@ FUNCTION le_result_t GetSatellitesStatus
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT16_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.20
+ * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.

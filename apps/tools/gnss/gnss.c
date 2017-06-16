@@ -1540,10 +1540,10 @@ static int GetDop
 
     if (result == LE_OK)
     {
-        printf("DOP [H%.1f,V%.1f,P%.1f]\n",
-               (float)(hdop)/100,
-               (float)(vdop)/100,
-               (float)(pdop)/100);
+        printf("DOP [H%.3f,V%.3f,P%.3f]\n",
+               (float)(hdop)/1000,
+               (float)(vdop)/1000,
+               (float)(pdop)/1000);
     }
     else if (result == LE_OUT_OF_RANGE)
     {

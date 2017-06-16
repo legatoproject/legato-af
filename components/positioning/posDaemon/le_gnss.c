@@ -2106,7 +2106,7 @@ le_result_t le_gnss_GetSatellitesStatus
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
  *
- * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.20
+ * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
  *
  */
 //--------------------------------------------------------------------------------------------------
