@@ -131,6 +131,11 @@
  * If a control app doesn't register for notifications using le_avc_AddStatusEventHandler(), then
  * any pending reboot will happen automatically.
  *
+ * @section c_le_avc_connection Connection required
+ * The AirVantage agent can request a connection to the AirVantage server, especially when a
+ * firmware package was installed (after a platform reboot). In this case a notification is sent to
+ * the control app, which can start the connection with le_avc_StartSession().
+ *
  * @section le_avcService_configdb Service Configuration Tree
  * @copydoc le_avcService_configdbPage_Hide
  *
@@ -295,7 +300,8 @@ ENUM Status
     UNINSTALL_FAILED,       ///< An error occurred uninstalling the update
     SESSION_STARTED,        ///< Session with AV server started
     SESSION_STOPPED,        ///< Session with AV server stopped
-    REBOOT_PENDING          ///< Device reboot is pending
+    REBOOT_PENDING,         ///< Device reboot is pending
+    CONNECTION_REQUIRED     ///< Connection to the server is required
 };
 
 
