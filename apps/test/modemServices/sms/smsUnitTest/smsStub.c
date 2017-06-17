@@ -50,3 +50,16 @@ le_msg_SessionEventHandlerRef_t MyAddServiceCloseHandler
 {
     return NULL;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Begin monitoring the event loop on the current thread.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_MonitorEventLoop
+(
+    uint32_t watchdog,          ///< Watchdog to use for monitoring
+    le_clk_Time_t watchdogInterval ///< Interval at which to check event loop is functioning
+)
+{
+}

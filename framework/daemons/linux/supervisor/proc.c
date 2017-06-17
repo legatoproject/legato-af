@@ -108,6 +108,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The name in the config tree that contains the watchdog action for the process
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_WDOG_ACTION "watchdogAction"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Minimum and maximum realtime priority levels.
  */
 //--------------------------------------------------------------------------------------------------
@@ -147,7 +155,9 @@ typedef struct proc_Ref
     le_sls_List_t argsList;         ///< Arguments list override.
     bool    argsListValid;          ///< Arguments list override valid flag.  true if argsList is
                                     ///  valid (possibly empty).
-    FaultAction_t faultAction;      ///< Fault action override.
+    FaultAction_t faultAction;      ///< Fault action.
+    FaultAction_t defaultFaultAction;///< Default fault action from config tree.
+    wdog_action_WatchdogAction_t watchdogAction;///< Watchdog action.
     bool    run;                    ///< run override.
     int     blockPipe;              ///< Write end of a pipe to the actual child process.  Used to
                                     ///  control blocking of the child process.
@@ -248,6 +258,119 @@ EnvVar_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the fault action for the process from the config tree and store in the process record
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetFaultAction
+(
+    proc_Ref_t procRef,              ///< [IN] The process reference.
+    le_cfg_IteratorRef_t procCfg     ///< [IN] The process config tree reference
+)
+{
+    if (procCfg == NULL)
+    {
+        // Use the default fault action.
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_IGNORE;
+        return;
+    }
+
+    char faultActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
+    le_result_t result = le_cfg_GetString(procCfg, CFG_NODE_FAULT_ACTION,
+                                          faultActionStr, sizeof(faultActionStr), "");
+
+    // Set the fault action based on the fault action string.
+    if (result != LE_OK)
+    {
+        LE_CRIT("Fault action string for process '%s' is too long.  Assume 'ignore'.",
+                procRef->namePtr);
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_IGNORE;
+        return;
+    }
+
+    if (strcmp(faultActionStr, RESTART_STR) == 0)
+    {
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_RESTART_PROC;
+        return;
+    }
+
+    if (strcmp(faultActionStr, RESTART_APP_STR) == 0)
+    {
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_RESTART_APP;
+        return;
+    }
+
+    if (strcmp(faultActionStr, STOP_APP_STR) == 0)
+    {
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_STOP_APP;
+        return;
+    }
+
+    if (strcmp(faultActionStr, REBOOT_STR) == 0)
+    {
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_REBOOT;
+        return;
+    }
+
+    if (strcmp(faultActionStr, IGNORE_STR) == 0)
+    {
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_IGNORE;
+        return;
+    }
+
+    if (faultActionStr[0] == '\0')  // If no fault action is specified,
+    {
+        LE_INFO("No fault action specified for process '%s'. Assuming 'ignore'.",
+                procRef->namePtr);
+
+        procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_IGNORE;
+        return;
+    }
+
+    LE_WARN("Unrecognized fault action for process '%s'.  Assume 'ignore'.",
+            procRef->namePtr);
+    procRef->defaultFaultAction = procRef->faultAction = FAULT_ACTION_IGNORE;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the watchdog action for the process from the config tree and store in the process record
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetWatchdogAction
+(
+    proc_Ref_t procRef,              ///< [IN] The process reference.
+    le_cfg_IteratorRef_t procCfg     ///< [IN] The process config tree reference
+)
+{
+    if (procCfg == NULL)
+    {
+        procRef->watchdogAction = WATCHDOG_ACTION_NOT_FOUND;
+    }
+    else
+    {
+        char watchdogActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
+        le_result_t result = le_cfg_GetString(procCfg, CFG_NODE_WDOG_ACTION,
+                                              watchdogActionStr, sizeof(watchdogActionStr), "");
+
+        // Set the watchdog action based on the fault action string.
+        if (result == LE_OK)
+        {
+            LE_WARN("%s watchdogAction '%s' in proc section", procRef->namePtr, watchdogActionStr);
+            procRef->watchdogAction = wdog_action_EnumFromString(watchdogActionStr);
+        }
+        else
+        {
+            LE_CRIT("Watchdog action string for process '%s' is too long.",
+                    procRef->namePtr);
+            procRef->watchdogAction = WATCHDOG_ACTION_ERROR;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the process system.
  */
 //--------------------------------------------------------------------------------------------------
@@ -339,11 +462,43 @@ proc_Ref_t proc_Create
     procPtr->priorityPtr = NULL;
     procPtr->argsListValid = false;
     procPtr->argsList = LE_SLS_LIST_INIT;
-    procPtr->faultAction = FAULT_ACTION_NONE;
     procPtr->run = true;
     procPtr->blockPipe = -1;
     procPtr->blockCallback = NULL;
     procPtr->blockContextPtr = NULL;
+
+    // Get watchdog action & fault action from config tree now, if this process has a config
+    // tree entry.
+    //
+    // Since something will be going
+    // wrong when these are used, we don't want to rely on the config tree being available.
+    le_cfg_IteratorRef_t procCfg = NULL;
+    if (procPtr->cfgPathPtr != NULL)
+    {
+        procCfg = le_cfg_CreateReadTxn(procPtr->cfgPathPtr);
+    }
+    GetFaultAction(procPtr, procCfg);
+    GetWatchdogAction(procPtr, procCfg);
+    if (procCfg)
+    {
+        le_cfg_CancelTxn(procCfg);
+    }
+
+    // If watchdog action isn't available in process environment, get it from the app environment.
+    if ((WATCHDOG_ACTION_NOT_FOUND == procPtr->watchdogAction ||
+         WATCHDOG_ACTION_ERROR == procPtr->watchdogAction))
+    {
+        const char* appCfgPath = app_GetConfigPath(appRef);
+
+        if (NULL != appCfgPath)
+        {
+            LE_DEBUG("Getting watchdog action for process '%s' from app '%s'",
+                     procPtr->namePtr, app_GetName(appRef));
+            le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(appCfgPath);
+            GetWatchdogAction(procPtr, appCfg);
+            le_cfg_CancelTxn(appCfg);
+        }
+    }
 
     return procPtr;
 }
@@ -1673,7 +1828,14 @@ void proc_SetFaultAction
     FaultAction_t faultAction           ///< [IN] Fault action.
 )
 {
-    procRef->faultAction = faultAction;
+    if (FAULT_ACTION_NONE == faultAction)
+    {
+        procRef->faultAction = procRef->defaultFaultAction;
+    }
+    else
+    {
+        procRef->faultAction = faultAction;
+    }
 }
 
 
@@ -1717,87 +1879,6 @@ void proc_Unblock
         fd_Close(procRef->blockPipe);
         procRef->blockPipe = -1;
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the fault action for the process.
- *
- * @return
- *      The fault action.
- */
-//--------------------------------------------------------------------------------------------------
-static FaultAction_t GetFaultAction
-(
-    proc_Ref_t procRef              ///< [IN] The process reference.
-)
-{
-    if (procRef->faultAction != FAULT_ACTION_NONE)
-    {
-        // Use the fault action override.
-        return procRef->faultAction;
-    }
-
-    if (procRef->cfgPathPtr == NULL)
-    {
-        // Use the default fault action.
-        return FAULT_ACTION_IGNORE;
-    }
-
-    // Read the process's fault action from the config tree.
-    le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
-
-    char faultActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
-    le_result_t result = le_cfg_GetString(procCfg, CFG_NODE_FAULT_ACTION,
-                                          faultActionStr, sizeof(faultActionStr), "");
-
-    le_cfg_CancelTxn(procCfg);
-
-    // Set the fault action based on the fault action string.
-    if (result != LE_OK)
-    {
-        LE_CRIT("Fault action string for process '%s' is too long.  Assume 'ignore'.",
-                procRef->namePtr);
-        return FAULT_ACTION_IGNORE;
-    }
-
-    if (strcmp(faultActionStr, RESTART_STR) == 0)
-    {
-        return FAULT_ACTION_RESTART_PROC;
-    }
-
-    if (strcmp(faultActionStr, RESTART_APP_STR) == 0)
-    {
-        return FAULT_ACTION_RESTART_APP;
-    }
-
-    if (strcmp(faultActionStr, STOP_APP_STR) == 0)
-    {
-        return FAULT_ACTION_STOP_APP;
-    }
-
-    if (strcmp(faultActionStr, REBOOT_STR) == 0)
-    {
-        return FAULT_ACTION_REBOOT;
-    }
-
-    if (strcmp(faultActionStr, IGNORE_STR) == 0)
-    {
-        return FAULT_ACTION_IGNORE;
-    }
-
-    if (faultActionStr[0] == '\0')  // If no fault action is specified,
-    {
-        LE_INFO("No fault action specified for process '%s'. Assuming 'ignore'.",
-                procRef->namePtr);
-
-        return FAULT_ACTION_IGNORE;
-    }
-
-    LE_WARN("Unrecognized fault action for process '%s'.  Assume 'ignore'.",
-            procRef->namePtr);
-    return FAULT_ACTION_IGNORE;
 }
 
 
@@ -1871,40 +1952,8 @@ wdog_action_WatchdogAction_t proc_GetWatchdogAction
     proc_Ref_t procRef             ///< [IN] The process reference.
 )
 {
-    // No actions are performed here. This just looks up the action for this process.
-    // The result is passed back up to app to handle as with fault action.
-    wdog_action_WatchdogAction_t watchdogAction = WATCHDOG_ACTION_NOT_FOUND;
-    {
-        // Read the process's fault action from the config tree.
-        le_cfg_IteratorRef_t procCfg = le_cfg_CreateReadTxn(procRef->cfgPathPtr);
-
-        char watchdogActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
-        le_result_t result = le_cfg_GetString(procCfg, wdog_action_GetConfigNode(),
-                watchdogActionStr, sizeof(watchdogActionStr), "");
-
-        le_cfg_CancelTxn(procCfg);
-
-        // Set the watchdog action based on the fault action string.
-        if (result == LE_OK)
-        {
-            LE_WARN("%s watchdogAction '%s' in proc section", procRef->namePtr, watchdogActionStr);
-            watchdogAction = wdog_action_EnumFromString(watchdogActionStr);
-            if (WATCHDOG_ACTION_ERROR == watchdogAction)
-            {
-                LE_WARN("%s watchdogAction '%s' unknown", procRef->namePtr, watchdogActionStr);
-            }
-        }
-        else
-        {
-            LE_CRIT("Watchdog action string for process '%s' is too long.",
-                    procRef->namePtr);
-            watchdogAction = WATCHDOG_ACTION_ERROR;
-        }
-    }
-
-    return watchdogAction;
+    return procRef->watchdogAction;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1992,7 +2041,7 @@ FaultAction_t proc_SigChildHandler
 
         if (WEXITSTATUS(procExitStatus) != EXIT_SUCCESS)
         {
-            faultAction = GetFaultAction(procRef);
+            faultAction = procRef->faultAction;
         }
     }
     else if (WIFSIGNALED(procExitStatus))
@@ -2004,7 +2053,7 @@ FaultAction_t proc_SigChildHandler
         LE_INFO("Process '%s' (PID: %d) has exited due to signal %d (%s).",
                 procRef->namePtr, procRef->pid, sig, strsignal(sig));
 
-        faultAction = GetFaultAction(procRef);
+        faultAction = procRef->faultAction;
     }
     else
     {

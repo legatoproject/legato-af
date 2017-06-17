@@ -24,6 +24,7 @@
 #include "pa_secStore.h"
 #include "limit.h"
 #include "user.h"
+#include "watchdogChain.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -56,6 +57,12 @@
 //--------------------------------------------------------------------------------------------------
 #define GLOBAL_PATH         "/global"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1738,4 +1745,9 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler(secStoreAdmin_GetServiceRef(),
                                   CleanupClientIterators,
                                   NULL);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }

@@ -652,6 +652,35 @@ void timer_DestructThread
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check all timers on the active list to ensure they have not expired for too long
+ *
+ * @return true if all active timers are set to expire in the future, false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool timer_CheckExpiry
+(
+    void
+)
+{
+    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    const Timer_t* timerPtr;
+    le_clk_Time_t threshold = le_clk_GetRelativeTime();
+
+    LE_DLS_FOREACH(&(threadRecPtr->activeTimerList), timerPtr, Timer_t, link)
+    {
+        // Timer should have expired, but is still on the active timer list.
+        // There's a timer fault.
+        if (le_clk_GreaterThan(threshold, timerPtr->expiryTime))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 // =============================================
 //  PUBLIC API FUNCTIONS
 // =============================================

@@ -15,12 +15,14 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 bindings:
 {
     voiceCallService.voiceCallService.le_mcc -> modemService.le_mcc
     voiceCallService.voiceCallService.le_audio -> audioService.le_audio
+    voiceCallService.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 extern:

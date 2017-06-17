@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -29,6 +30,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_CLIENTS         1
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -177,6 +185,12 @@ COMPONENT_INIT
     }
 
     le_fdMonitor_Create("atBinder-socket", sockFd, MonitorSocket, POLLIN);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+
     return;
 
 exit_close_socket:

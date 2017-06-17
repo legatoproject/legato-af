@@ -498,4 +498,28 @@ le_result_t le_mrc_SetRadioPower
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start watchdogs 0..N-1.  Typically this is used in COMPONENT_INIT to start all watchdogs needed
+ * by the process.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_Init
+(
+    uint32_t wdogCount
+)
+{
+}
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Begin monitoring the event loop on the current thread.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_MonitorEventLoop
+(
+    uint32_t watchdog,          ///< Watchdog to use for monitoring
+    le_clk_Time_t watchdogInterval ///< Interval at which to check event loop is functioning
+)
+{
+}

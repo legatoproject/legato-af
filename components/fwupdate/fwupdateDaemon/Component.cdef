@@ -19,6 +19,7 @@ sources:
 cflags:
 {
     -I$CURDIR/../platformAdaptor/inc
+    -I${LEGATO_ROOT}/components/watchdogChain
 }
 
 requires:
@@ -28,5 +29,7 @@ requires:
         $LEGATO_FWUPDATE_PA_DEFAULT
         $LEGATO_FWUPDATE_PA
         $LEGATO_FWUPDATE_PA_DUALSYS
+
+        ${LEGATO_ROOT}/components/watchdogChain
     }
 }

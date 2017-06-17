@@ -7,8 +7,14 @@ requires:
     }
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
+    fwupdate_stubs.c
     ${LEGATO_ROOT}/components/fwupdate/fwupdateDaemon/fwupdateServer.c
     ${LEGATO_ROOT}/components/fwupdate/fwupdateDaemon/le_flash.c
 }

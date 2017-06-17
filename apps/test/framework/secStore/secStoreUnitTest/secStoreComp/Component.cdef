@@ -10,6 +10,11 @@ requires:
     }
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
     ${LEGATO_ROOT}/components/secStore/secStoreDaemon/secStoreServer.c

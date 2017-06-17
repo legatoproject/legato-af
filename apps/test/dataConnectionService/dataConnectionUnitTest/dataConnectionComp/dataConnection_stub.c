@@ -1515,3 +1515,29 @@ le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
 {
     return LE_FAULT;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start watchdogs 0..N-1.  Typically this is used in COMPONENT_INIT to start all watchdogs needed
+ * by the process.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_Init
+(
+    uint32_t wdogCount
+)
+{
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Begin monitoring the event loop on the current thread.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_wdogChain_MonitorEventLoop
+(
+    uint32_t watchdog,          ///< Watchdog to use for monitoring
+    le_clk_Time_t watchdogInterval ///< Interval at which to check event loop is functioning
+)
+{
+}

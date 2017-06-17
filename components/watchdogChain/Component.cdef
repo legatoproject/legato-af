@@ -1,0 +1,17 @@
+/**
+ * Watchdog chain component.  This component should be included in an application to make use
+ * of the watchdog chain.
+ */
+
+requires:
+{
+    api:
+    {
+        le_wdog.api [manual-start]
+    }
+}
+
+sources:
+{
+    watchdogChain.c
+}

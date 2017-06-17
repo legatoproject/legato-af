@@ -9,6 +9,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_print.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -33,6 +34,13 @@
 //--------------------------------------------------------------------------------------------------
 #define REQUEST_COMMAND 1
 #define RELEASE_COMMAND 2
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 static le_event_Id_t CommandEvent;
 
@@ -884,6 +892,11 @@ COMPONENT_INIT
 
     // Register for MRC Network Registration state changes
     le_mrc_AddNetRegStateEventHandler(MrcNetRegHandler, NULL);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 
     LE_INFO("Cellular Network Server is ready");
 }

@@ -5,6 +5,11 @@ requires:
         le_cfg.api
         le_pm.api
     }
+
+    component:
+    {
+        ${LEGATO_ROOT}/components/watchdogChain
+    }
 }
 
 provides:
@@ -56,6 +61,7 @@ cflags:
     -I$CURDIR
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
     -I$LEGATO_ROOT/components/cfgEntries
+    -I${LEGATO_ROOT}/components/watchdogChain
     -I$LEGATO_BUILD/framework/libjansson/include
 }
 

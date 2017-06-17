@@ -62,6 +62,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_dev.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -111,6 +112,26 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define PARSER_BUFFER_MAX_BYTES 1024
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration of watchdogs used by this component
+ */
+//--------------------------------------------------------------------------------------------------
+enum
+{
+    WDOG_MAIN_LOOP,
+    WDOG_RX_LOOP,
+    WDOG_COUNT
+} Watchdog_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -717,6 +738,9 @@ static void *DeviceThread
 
     le_sem_Post(interfacePtr->waitingSemaphore);
 
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_MonitorEventLoop(WDOG_RX_LOOP, watchdogInterval);
     le_event_RunLoop();
 
     return NULL; // Should not happen
@@ -2202,4 +2226,9 @@ COMPONENT_INIT
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(
         le_atClient_GetServiceRef(), CloseSessionEventHandler, NULL);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(WDOG_MAIN_LOOP, watchdogInterval);
 }

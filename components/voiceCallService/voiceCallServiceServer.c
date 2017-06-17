@@ -13,6 +13,7 @@
 #include "legato.h"
 
 #include "interfaces.h"
+#include "watchdogChain.h"
 
 
 // Todo => Add Option to set Sim Profile.
@@ -33,6 +34,12 @@
 #define END_CALL_COMMAND            2
 #define ANSWER_CALL_COMMAND         3
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -931,6 +938,11 @@ COMPONENT_INIT
 
     // Register for command events
     le_event_AddHandler("VoiceCallProcessCommand", CommandEvent, ProcessCommand);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 
     LE_INFO("Voice Call Service is ready");
 }

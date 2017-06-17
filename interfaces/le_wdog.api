@@ -26,11 +26,6 @@
  * @c watchdogAction doesn't recover the process.  If @c maxWatchdogTimeout is specified the
  * system will be rebooted if the process does not recover.
  *
- * Additionally the watchdog service can be configured to call a callback periodically if
- * the watchdog service process is functioning; i.e. all watchdogs have been kicked and/or
- * non-functioning processes are being recovered.  Typically this callback will kick
- * an external watchdog such as @c /dev/watchdog.
- *
  * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
@@ -96,15 +91,30 @@ FUNCTION Timeout
     int32 milliseconds IN ///< The number of milliseconds until this timer expires
 );
 
-//-------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 /**
- * Register an external watchdog kick handler.
+ * Get the watchdog timeout configured for this process
  *
- * Register an handler which will be triggered periodically if all monitored apps are alive.
+ * @return
+ *      - LE_OK            The watchdog timeout is configured and returned
+ *      - LE_NOT_FOUND     The watchdog timeout is not set
  */
-//-------------------------------------------------------------------------------------------------
-EVENT ExternalWatchdog
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetWatchdogTimeout
 (
-    int32 milliseconds IN,          ///< The period to kick external watchdog
-    ExternalWatchdogHandler handler ///< The handler for external watchdog kicks
+    uint64 milliseconds OUT        ///< The watchdog timeout set for this process
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the max watchdog timeout configured for this process
+ *
+ * @return
+ *      - LE_OK            The max watchdog timeout is configured and returned
+ *      - LE_NOT_FOUND     The max watchdog timeout is not set
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetMaxWatchdogTimeout
+(
+    uint64 milliseconds OUT        ///< The max watchdog timeout set for this process
 );

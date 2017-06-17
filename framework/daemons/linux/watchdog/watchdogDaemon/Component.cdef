@@ -1,0 +1,38 @@
+provides:
+{
+    api:
+    {
+        le_wdog.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_instStat.api
+        configTreeWdog   = watchdog/frameworkWdog.api
+        logDaemonWdog    = watchdog/frameworkWdog.api
+        updateDaemonWdog = watchdog/frameworkWdog.api
+
+        // Manual start after notifying supervisor of start -- otherwise watchdog hangs on start.
+        supervisor/wdog.api [manual-start]
+        supervisorWdog   = watchdog/frameworkWdog.api [manual-start]
+    }
+
+    component:
+    {
+        $LEGATO_ROOT/platformAdaptor/wdog/linux/components/le_pa_wdog
+    }
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/framework/daemons/linux/watchdog/inc
+}
+
+sources:
+{
+    watchdog.c
+}

@@ -13,6 +13,7 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 bindings:
@@ -20,6 +21,7 @@ bindings:
     cellNetService.cellNetService.le_mrc -> modemService.le_mrc
     cellNetService.cellNetService.le_sim -> modemService.le_sim
     cellNetService.cellNetService.le_secStore -> secStore.le_secStore
+    cellNetService.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 extern:

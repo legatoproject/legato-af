@@ -30,5 +30,6 @@ sources:
 
 cflags:
 {
+    -I${LEGATO_ROOT}/components/watchdogChain
     -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
 }

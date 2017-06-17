@@ -3218,38 +3218,6 @@ le_result_t app_WatchdogTimeoutHandler
     // Get the current process fault action.
     wdog_action_WatchdogAction_t watchdogAction = proc_GetWatchdogAction(procRef);
 
-    // If WATCHDOG_ACTION_ERROR, we have reported the error already in proc. Let's give ourselves a
-    // second chance and see if we can find a good value at app level.
-    if (WATCHDOG_ACTION_NOT_FOUND == watchdogAction || WATCHDOG_ACTION_ERROR == watchdogAction)
-    {
-        // No action was defined for the proc. See if there is one for the app.
-        // Read the app's watchdog action from the config tree.
-        le_cfg_IteratorRef_t appCfg = le_cfg_CreateReadTxn(appRef->cfgPathRoot);
-
-        char watchdogActionStr[LIMIT_MAX_FAULT_ACTION_NAME_BYTES];
-        le_result_t result = le_cfg_GetString(appCfg, wdog_action_GetConfigNode(),
-                watchdogActionStr, sizeof(watchdogActionStr), "");
-
-        le_cfg_CancelTxn(appCfg);
-
-        // Set the watchdog action based on the watchdog action string.
-        if (result == LE_OK)
-        {
-            LE_DEBUG("%s watchdogAction '%s' in app section", appRef->name, watchdogActionStr);
-            watchdogAction = wdog_action_EnumFromString(watchdogActionStr);
-            if (WATCHDOG_ACTION_ERROR == watchdogAction)
-            {
-                LE_WARN("%s watchdog Action %s unknown", appRef->name, watchdogActionStr);
-            }
-        }
-        else
-        {
-            LE_CRIT("Watchdog action string for application '%s' is too long.",
-                    appRef->name);
-            watchdogAction = WATCHDOG_ACTION_ERROR;
-        }
-    }
-
     // Set the action pointer to error. If it's still error when we leave here something
     // has gone wrong!!
     *watchdogActionPtr = WATCHDOG_ACTION_ERROR;

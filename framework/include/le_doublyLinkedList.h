@@ -511,5 +511,17 @@ bool le_dls_IsListCorrupted
     const le_dls_List_t* listPtr    ///< [IN] List to check.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simple iteration through a doubly linked list
+ */
+//--------------------------------------------------------------------------------------------------
+#define LE_DLS_FOREACH(listPtr, iteratorPtr, type, member)              \
+    for ((iteratorPtr) = CONTAINER_OF(le_dls_Peek(listPtr), type, member); \
+         &((iteratorPtr)->member);                                      \
+         (iteratorPtr) = CONTAINER_OF(le_dls_PeekNext((listPtr),&((iteratorPtr)->member)), \
+                                      type, member))
+
+
 #endif  // LEGATO_DOUBLY_LINKED_LIST_INCLUDE_GUARD
 

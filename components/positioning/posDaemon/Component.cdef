@@ -4,6 +4,11 @@ requires:
     {
         le_cfg.api
     }
+
+    component:
+    {
+        $LEGATO_ROOT/components/watchdogChain
+    }
 }
 
 provides:
@@ -26,6 +31,7 @@ cflags:
 {
     -I$CURDIR/../platformAdaptor/inc
     -I$CURDIR/../../cfgEntries
+    -I$LEGATO_ROOT/components/watchdogChain
 }
 
 requires:

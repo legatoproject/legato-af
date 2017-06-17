@@ -8,13 +8,14 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "watchdogChain.h"
 
 COMPONENT_INIT
 {
-    while (1)
-    {
-        le_wdog_Timeout(30000);
-        LE_INFO("Hello World!");
-        usleep(10000000);
-    }
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = 8 };
+    LE_INFO("Hello World!");
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
+    sleep(20);
 }

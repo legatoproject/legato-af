@@ -1,0 +1,48 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_frameworkWdog Framework Watchdog API
+ *
+ * @ref frameworkWdog.h "API Reference"
+ *
+ * The framework Watchdog API is implemented by framework daemons to connect to the watchdog.
+ * Since the framework relies on many of the framework daemons (specifically supervisor, log
+ * and configTree), these daemons cannot call into the watchdog or they risk a deadlock.
+ *
+ * Instead each framework daemon should implement frameworkWdog.api, and the watchdog will
+ * call this function to give the framework daemon the kick function to call.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file frameworkWdog_interface.h
+ *
+ * Legato @ref c_frameworkWdog include file.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for framework daemon kick.  Called periodically by a framework daemon to notify
+ * the watchdogDaemon it's still alive.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER KickHandler
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event is fired by a framework daemon periodically in its event loop to notify
+ * the watchdogDaemon it's still alive.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT KickEvent
+(
+    uint32 interval,      ///< [IN] Interval to kick the timer, in ms.
+    KickHandler handler   ///< [IN] Handler for watchdog kick.
+);

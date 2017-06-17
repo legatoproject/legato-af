@@ -13,6 +13,7 @@
 #include "interfaces.h"
 #include "le_gnss_local.h"
 #include "posCfgEntries.h"
+#include "watchdogChain.h"
 
 #include <math.h>
 
@@ -29,7 +30,7 @@
 // (UERE) is equivalent for all the satellites, for civil application UERE is approximatively 7
 // meters.
 #define GNSS_UERE                                 7
-#define GNSS_ESTIMATED_VERTICAL_ERROR_FACTOR      GNSS_UERE * 1.5
+#define GNSS_ESTIMATED_VERTICAL_ERROR_FACTOR      (GNSS_UERE * 1.5)
 
 #define POSITIONING_SAMPLE_MAX          1
 
@@ -38,7 +39,14 @@
 #define POSITIONING_ACTIVATION_MAX      13      // Ideally should be a prime number.
 
 
-#define CHECK_VALIDITY(_par_,_max_) ((_par_) == (_max_))? false : true
+#define CHECK_VALIDITY(_par_,_max_) (((_par_) == (_max_))? false : true)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1056,6 +1064,11 @@ COMPONENT_INIT
     {
         LE_CRIT("GNSS module not available");
     }
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 
     LE_DEBUG("Positioning service started.");
 }

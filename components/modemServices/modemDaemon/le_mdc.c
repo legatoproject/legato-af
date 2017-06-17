@@ -14,6 +14,8 @@
 #include "jansson.h"
 #include "mdmCfgEntries.h"
 #include "pa_mdc.h"
+#include "le_ms_local.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -667,6 +669,11 @@ static void* CommandThread
     le_event_AddHandler("ProcessCommandHandler", CommandEventId, ProcessCommandEventHandler);
 
     le_sem_Post(initSemaphore);
+
+    // Monitor event loop
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_MonitorEventLoop(MS_WDOG_MDC_LOOP, watchdogInterval);
 
     // Run the event loop
     le_event_RunLoop();

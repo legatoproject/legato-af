@@ -32,6 +32,8 @@
 #include "smsPdu.h"
 #include "time.h"
 #include "mdmCfgEntries.h"
+#include "le_ms_local.h"
+#include "watchdogChain.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2274,7 +2276,12 @@ static void* SmsSenderThread
 
     le_sem_Post(SmsSem);
 
-    // Run the event loop.
+    // Watchdog SMS event loop
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_MonitorEventLoop(MS_WDOG_SMS_LOOP, watchdogInterval);
+
+    // Run the event loop
     le_event_RunLoop();
     return NULL;
 }

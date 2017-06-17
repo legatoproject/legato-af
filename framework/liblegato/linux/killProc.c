@@ -102,8 +102,11 @@ void kill_Soft
 )
 {
     // Check if there is already a timer for this process.
-    LE_FATAL_IF(le_hashmap_Get(ProcTimerHash, &pid) != NULL,
-                "Trying to kill a process that is already being killed.");
+    if (le_hashmap_Get(ProcTimerHash, &pid) != NULL)
+    {
+        LE_WARN("Trying to kill a process that is already being killed.");
+        return;
+    }
 
     // Create a process timer object.
     ProcTimerObj_t* procTimerPtr = le_mem_ForceAlloc(ProcTimerMemPool);

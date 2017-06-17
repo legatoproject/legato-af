@@ -13,6 +13,7 @@
 #include "le_audio_local.h"
 #include "le_media_local.h"
 #include "pa_audio.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -61,6 +62,13 @@
                                         (interface == LE_AUDIO_IF_DSP_FRONTEND_I2S_TX) || \
                                         (interface == LE_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE) \
                                     )
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
 // Data structures.
@@ -1309,6 +1317,11 @@ COMPONENT_INIT
     le_msg_AddServiceCloseHandler( le_audio_GetServiceRef(),
                                    CloseSessionEventHandler,
                                    NULL );
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }
 
 //--------------------------------------------------------------------------------------------------

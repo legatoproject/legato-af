@@ -21,6 +21,7 @@ requires:
     {
         $LEGATO_DCS_PA_DEFAULT
         $LEGATO_DCS_PA
+        ${LEGATO_ROOT}/components/watchdogChain
     }
 }
 
@@ -34,5 +35,7 @@ cflags:
     -I$LEGATO_ROOT/components/cfgEntries
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
     -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
+    -I${LEGATO_ROOT}/components/watchdogChain
+
 }
 

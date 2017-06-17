@@ -10,6 +10,7 @@
 #include "le_dev.h"
 #include "bridge.h"
 #include "le_atServer_local.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -167,6 +168,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define ESCAPE              0x1b
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Pool for device context
@@ -3025,4 +3034,9 @@ COMPONENT_INIT
         le_atServer_GetServiceRef(), CloseSessionEventHandler, NULL);
 
     bridge_Init();
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }

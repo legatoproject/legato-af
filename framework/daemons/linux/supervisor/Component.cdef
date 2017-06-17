@@ -10,6 +10,7 @@ sources:
     kernelModules.c
     devSmack.c
     wait.c
+    ../common/frameworkWdog.c
 }
 
 provides:
@@ -22,6 +23,7 @@ provides:
         le_appInfo.api              [manual-start]
         le_appProc.api              [manual-start]
         le_sup_ctrl.api     [async] [manual-start]
+        supervisorWdog = watchdog/frameworkWdog.api  [manual-start]
     }
 }
 
@@ -64,4 +66,9 @@ cflags:
     #else
         -DTARGET_IMPORTS_ARMV7
     #endif
+}
+
+cflags:
+{
+    -DFRAMEWORK_WDOG_NAME=supervisorWdog
 }

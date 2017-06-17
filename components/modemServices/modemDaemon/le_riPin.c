@@ -11,6 +11,8 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_riPin.h"
+#include "le_ms_local.h"
+#include "watchdogChain.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -120,6 +122,11 @@ static void* PulseRingSignalThread
     }
 
     le_sem_Post(ThreadSemaphore);
+
+    // Watchdog riPin loop
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_MonitorEventLoop(MS_WDOG_RIPIN_LOOP, watchdogInterval);
 
     // Run the event loop
     le_event_RunLoop();

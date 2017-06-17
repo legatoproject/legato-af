@@ -21,7 +21,6 @@
 #include "requestQueue.h"
 #include "internalConfig.h"
 
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Called when a config API, or a configAdmin session is opened.  This function will call into the
@@ -125,5 +124,6 @@ COMPONENT_INIT
     while ((filePtr == NULL) && (errno == EINTR));
 
     LE_FATAL_IF(filePtr == NULL, "Failed to redirect standard in to /dev/null.  %m.");
+
     LE_DEBUG("The configTree service has been started.");
 }

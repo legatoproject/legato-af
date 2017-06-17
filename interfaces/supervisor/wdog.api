@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_wdog Supervisor Watchdog API
+ * @page c_supervisor_wdog Supervisor Watchdog API
  *
  * @ref wdog_interface.h "API Reference"
  *
@@ -17,7 +17,7 @@
 /**
  * @file wdog_interface.h
  *
- * Legato @ref c_wdog include file.
+ * Legato @ref c_supervisor_wdog include file.
  *
  * Copyright (C) Sierra Wireless Inc.
  */

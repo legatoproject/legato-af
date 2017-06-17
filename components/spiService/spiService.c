@@ -11,9 +11,16 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "le_spiLibrary.h"
+#include "watchdogChain.h"
 
 #define MAX_EXPECTED_DEVICES (8)
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 typedef struct
 {
@@ -453,4 +460,9 @@ COMPONENT_INIT
 
     // Register a handler to be notified when clients disconnect
     le_msg_AddServiceCloseHandler(le_spi_GetServiceRef(), ClientSessionClosedHandler, NULL);
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }

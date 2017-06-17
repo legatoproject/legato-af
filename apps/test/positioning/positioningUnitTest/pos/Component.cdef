@@ -9,6 +9,11 @@ requires:
     }
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
     ${LEGATO_ROOT}/components/positioning/posDaemon/le_pos.c

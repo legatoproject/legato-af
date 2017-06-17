@@ -20,6 +20,7 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 requires:
@@ -33,4 +34,9 @@ requires:
 extern:
 {
     spiService.spiService.le_spi
+}
+
+bindings:
+{
+    spiService.watchdogChain.le_wdog -> <root>.le_wdog
 }

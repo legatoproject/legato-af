@@ -17,12 +17,15 @@ processes:
     }
     maxFileBytes: 5000K
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 bindings:
 {
     atServerDaemon.atServer.le_atClient -> atClientDaemon.atClient.le_atClient
+    atServerDaemon.watchdogChain.le_wdog -> <root>.le_wdog
     atBinderDaemon.atBinder.le_atServer -> atServerDaemon.atServer.le_atServer
+    atBinderDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 extern:

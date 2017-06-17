@@ -13,6 +13,7 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 requires:
@@ -21,6 +22,11 @@ requires:
     {
         [w] .
     }
+}
+
+bindings:
+{
+    posDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 extern:

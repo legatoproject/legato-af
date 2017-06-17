@@ -2852,6 +2852,5 @@ COMPONENT_INIT
 
     LE_FATAL_IF(filePtr == NULL, "Failed to redirect standard in to /dev/null.  %m.");
 
-
     LE_INFO("Log daemon ready.");
 }

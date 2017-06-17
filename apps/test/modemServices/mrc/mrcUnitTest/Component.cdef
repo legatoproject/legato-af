@@ -8,9 +8,15 @@ requires:
     }
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
     main.c
+    mrcStub.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mrc.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_sim.c
     simu/components/le_pa/pa_mrc_simu.c

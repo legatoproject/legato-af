@@ -966,6 +966,7 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "le_appCtrl", uid, "le_appCtrl");
     CreateBinding(uid, "le_framework", uid, "le_framework");
     CreateBinding(uid, "wdog", uid, "wdog");
+    CreateBinding(uid, "le_wdog", uid, "le_wdog");
     CreateBinding(uid, "le_cfg", uid, "le_cfg");
     CreateBinding(uid, "le_cfgAdmin", uid, "le_cfgAdmin");
     CreateBinding(uid, "le_update", uid, "le_update");
@@ -976,6 +977,11 @@ static void CreateHardCodedBindings
     CreateBinding(uid, "le_appProc", uid, "le_appProc");
     CreateBinding(uid, "appSmack", uid, "appSmack");
     CreateBinding(uid, "logFd", uid, "logFd");
+
+    CreateBinding(uid, "configTreeWdog", uid, "configTreeWdog");
+    CreateBinding(uid, "logDaemonWdog", uid, "logDaemonWdog");
+    CreateBinding(uid, "updateDaemonWdog", uid, "updateDaemonWdog");
+    CreateBinding(uid, "supervisorWdog", uid, "supervisorWdog");
 
     // This api is deprecated and will be removed in the future.
     CreateBinding(uid, "le_sup_ctrl", uid, "le_sup_ctrl");

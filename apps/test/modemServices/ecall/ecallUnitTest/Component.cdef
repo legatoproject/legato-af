@@ -10,9 +10,15 @@ requires:
     }
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
     main.c
+    ecallStub.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_ecall.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/asn1Msd.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mcc.c

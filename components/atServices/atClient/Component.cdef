@@ -6,6 +6,13 @@ provides:
     }
 }
 
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/watchdogChain
+    }
+}
 
 sources:
 {
@@ -16,4 +23,5 @@ sources:
 cflags:
 {
     -I$CURDIR/../Common
+    -I${LEGATO_ROOT}/components/watchdogChain
 }

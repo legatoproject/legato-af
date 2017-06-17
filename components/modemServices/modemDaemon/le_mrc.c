@@ -35,6 +35,8 @@
 #include "interfaces.h"
 #include "pa_mrc.h"
 #include "mdmCfgEntries.h"
+#include "le_ms_local.h"
+#include "watchdogChain.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -854,6 +856,11 @@ static void* MrcCommandThread
                         ProcessMrcCommandEventHandler);
 
     le_sem_Post(initSemaphore);
+
+    // Watchodg MRC loop
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_MonitorEventLoop(MS_WDOG_MRC_LOOP, watchdogInterval);
 
     // Run the event loop
     le_event_RunLoop();

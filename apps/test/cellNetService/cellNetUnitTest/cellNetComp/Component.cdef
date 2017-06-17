@@ -8,6 +8,11 @@ requires:
     }
 }
 
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
     ${LEGATO_ROOT}/components/cellNetService/cellNetServiceServer.c

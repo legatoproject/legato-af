@@ -11,6 +11,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pm.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -50,6 +51,13 @@
 #define LEGATO_WS_PROCNAME_LEN 30
 #define LEGATO_WS_NAME_LEN (sizeof(LEGATO_TAG_PREFIX) + LE_PM_TAG_LEN + LEGATO_WS_PROCNAME_LEN + 3)
 ///@}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 ///@{
 //--------------------------------------------------------------------------------------------------
@@ -371,6 +379,11 @@ COMPONENT_INIT
         }
         fclose(wlFd);
     }
+
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 
     // We're up and running
     LE_INFO("Power Manager service is running.");

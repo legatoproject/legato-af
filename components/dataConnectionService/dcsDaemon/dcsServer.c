@@ -39,6 +39,8 @@
 #include "pa_mdc.h"
 #include "pa_dcs.h"
 
+#include "watchdogChain.h"
+
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
@@ -133,6 +135,13 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define DEFAULT_NTP_SERVER              "pool.ntp.org"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 //--------------------------------------------------------------------------------------------------
 // Data structures
@@ -2558,6 +2567,12 @@ COMPONENT_INIT
 
     // Register for command events
     le_event_AddHandler("ProcessCommand", CommandEvent, ProcessCommand);
+
+    // Register main loop with watchdog chain
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 
     LE_INFO("Data Connection Service is ready");
 }

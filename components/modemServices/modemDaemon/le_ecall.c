@@ -17,6 +17,8 @@
 #include "asn1Msd.h"
 #include "pa_ecall.h"
 #include "le_mcc_local.h"
+#include "le_ms_local.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -1994,6 +1996,11 @@ static void* ECallThread
     }
 
     le_sem_Post(initSemaphore);
+
+    // Watchdog eCall event loop.
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_MonitorEventLoop(MS_WDOG_ECALL_LOOP, watchdogInterval);
 
     // Run the event loop
     le_event_RunLoop();

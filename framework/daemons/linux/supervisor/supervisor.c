@@ -214,7 +214,6 @@
 #include "fileSystem.h"
 #include "sysStatus.h"
 #include "fileDescriptor.h"
-
 #include "start.h"
 
 //--------------------------------------------------------------------------------------------------
@@ -421,6 +420,7 @@ static void StartFramework
     le_appCtrl_AdvertiseService();
     le_framework_AdvertiseService();
     wdog_AdvertiseService();
+    supervisorWdog_AdvertiseService();
     le_appInfo_AdvertiseService();
     le_appProc_AdvertiseService();
 
@@ -559,6 +559,7 @@ static void PrepareFullShutdown
     le_msg_HideService(le_appCtrl_GetServiceRef());
     le_msg_HideService(le_framework_GetServiceRef());
     le_msg_HideService(wdog_GetServiceRef());
+    le_msg_HideService(supervisorWdog_GetServiceRef());
     le_msg_HideService(le_appInfo_GetServiceRef());
     le_msg_HideService(le_appProc_GetServiceRef());
 }
@@ -617,7 +618,7 @@ static void BeginShutdown
  * Reboot the system.
  */
 //--------------------------------------------------------------------------------------------------
-static void Reboot
+void framework_Reboot
 (
     void
 )
@@ -693,7 +694,7 @@ static void SigChildHandler
         if (result == LE_FAULT)
         {
             // There was an app fault that could not be handled so restart the framework.
-            Reboot();
+            framework_Reboot();
         }
 
         if (result == LE_NOT_FOUND)
@@ -704,7 +705,7 @@ static void SigChildHandler
             if (r == LE_FAULT)
             {
                 CaptureDebugData();
-                Reboot();
+                framework_Reboot();
             }
             else if (r == LE_NOT_FOUND)
             {

@@ -13,6 +13,7 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 extern:
@@ -27,5 +28,6 @@ bindings:
 {
     secStore.secStoreDaemon.le_appInfo -> <root>.le_appInfo
     secStore.secStoreDaemon.le_update -> <root>.le_update
+    secStore.watchdogChain.le_wdog -> <root>.le_wdog
 }
 

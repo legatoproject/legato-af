@@ -184,7 +184,7 @@ supervisor: liblegato $(BIN_DIR)
 .PHONY: serviceDirectory
 serviceDirectory: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
-		$(SRC_DIR)/serviceDirectory/serviceDirectory.c \
+		$(SRC_DIR)/serviceDirectory \
 		--cflags=-I$(LEGATO_ROOT)/framework/liblegato \
 		--cflags=-I$(LEGATO_ROOT)/framework/liblegato/linux \
 		--cflags=-DNO_LOG_CONTROL \
@@ -214,7 +214,7 @@ watchdog: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		-i $(LEGATO_ROOT)/framework/liblegato \
 		-i $(LEGATO_ROOT)/framework/liblegato/linux \
-		$(SRC_DIR)/watchdog
+		$(SRC_DIR)/watchdog/watchdogDaemon
 
 .PHONY: updateDaemon
 updateDaemon: liblegato $(BIN_DIR)

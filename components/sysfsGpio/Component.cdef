@@ -1,3 +1,8 @@
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
+}
+
 sources:
 {
     gpioSysfs.c
@@ -9,6 +14,11 @@ requires:
     api:
     {
         le_cfg.api
+    }
+
+    component:
+    {
+        ${LEGATO_ROOT}/components/watchdogChain
     }
 }
 

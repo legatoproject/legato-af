@@ -16,6 +16,7 @@ cflags:
 {
     -I$CURDIR
     -I$CURDIR/platformAdaptor/inc
+    -I${LEGATO_ROOT}/components/watchdogChain
 }
 
 requires:
@@ -30,6 +31,8 @@ requires:
 
         $LEGATO_AUDIO_PA_AMR_DEFAULT
         $LEGATO_AUDIO_PA_AMR
+
+        $LEGATO_ROOT/components/watchdogChain
     }
 
     api:

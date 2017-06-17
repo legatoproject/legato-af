@@ -66,6 +66,7 @@
 #include "interfaces.h"
 #include "limit.h"
 #include "wait.h"
+#include "supervisor.h"
 #include "sysPaths.h"
 #include "properties.h"
 #include "smack.h"
@@ -2253,8 +2254,11 @@ void wdog_WatchdogTimedOut
                     ///        rather than just the framework so that possibly connected peripherals
                     ///        get reset as well.  So, for now we will just log an error message and
                     ///        restart the app.
-                    LE_CRIT("Watchdog action requires a reboot but a module reboot is not yet \
-                    supported restarting the app instead.");
+                    LE_EMERG("PID %d in app '%s' faulted: Rebooting system.",
+                             procId,
+                             app_GetName(appContainerPtr->appRef));
+                    framework_Reboot();
+                    break;
 
                 case WATCHDOG_ACTION_RESTART_APP:
                     if (app_GetState(appContainerPtr->appRef) != APP_STATE_STOPPED)

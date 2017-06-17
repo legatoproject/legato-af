@@ -13,6 +13,16 @@ requires:
         le_mcc.api
         le_audio.api
     }
+
+    component:
+    {
+        $LEGATO_ROOT/components/watchdogChain
+    }
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/watchdogChain
 }
 
 sources:

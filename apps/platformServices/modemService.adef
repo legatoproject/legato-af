@@ -2,8 +2,10 @@ sandboxed: false
 
 executables:
 {
-    modemDaemon = ($LEGATO_ROOT/components/modemServices/modemDaemon)
-    rSimDaemon  = ($LEGATO_ROOT/components/modemServices/rSimDaemon)
+    modemDaemon = ($LEGATO_ROOT/components/modemServices/modemDaemon
+                   $LEGATO_ROOT/components/watchdogChain)
+    rSimDaemon  = ($LEGATO_ROOT/components/modemServices/rSimDaemon
+                   $LEGATO_ROOT/components/watchdogChain)
 }
 
 processes:
@@ -15,6 +17,7 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 bundles:
@@ -29,6 +32,8 @@ bundles:
 bindings:
 {
     modemDaemon.modemDaemon.le_pm -> powerMgr.le_pm
+    modemDaemon.watchdogChain.le_wdog -> <root>.le_wdog
+    rSimDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 requires:

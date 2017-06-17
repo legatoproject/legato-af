@@ -107,7 +107,7 @@
 #include "interfaces.h"
 #include "user.h"
 #include "fileDescriptor.h"
-
+#include "pa_wdog.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -190,6 +190,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * System framework configuration
+ */
+//--------------------------------------------------------------------------------------------------
+#define SYSTEM_FRAMEWORK_CFG "/framework"
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Definition of Watchdog object, pool for allocation of watchdogs and container for organizing and
  *  finding watchdog objects.
  */
@@ -245,22 +252,6 @@ MandatoryWatchdogObj_t;
 //--------------------------------------------------------------------------------------------------
 LE_HASHMAP_MAKE_HASH(AppProcKey_t)
 
-//--------------------------------------------------------------------------------------------------
-/**
- * External watchdog definitions
- *
- * Each external watchdog will be tickled periodically if all watchdogs are running.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-
-    le_wdog_ExternalWatchdogHandlerFunc_t handler;
-    void* contextPtr;
-    le_timer_Ref_t timer;
-}
-ExternalWatchdogObj_t;
-
 static le_mem_PoolRef_t WatchdogPool;           ///< The memory pool the watchdogs will come from
 static le_hashmap_Ref_t WatchdogRefsContainer;  ///< The container we use to keep track of wdogs
 
@@ -268,7 +259,7 @@ static le_mem_PoolRef_t MandatoryWatchdogPool;  ///< The memory pool the mandato
                                                 ///< from
 static le_hashmap_Ref_t MandatoryWatchdogRefs;  ///< The container used to track mandatory watchdogs
 
-static le_mem_PoolRef_t ExternalWatchdogPool;   ///< The memory pool external for watchdog handlers
+static le_timer_Ref_t DefaultExternalWdogTimer; ///< Default external wdog timer
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -360,6 +351,96 @@ static WatchdogObj_t* LookupClientWatchdogPtrById
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Gets the application name of the process with the specified PID.
+ *
+ * Do not depend on the le_appInfo API as the watchdog must continue to work even if the supervisor
+ * has hung or crashed.
+ *
+ * @return
+ *      LE_OK if the application name was successfully found.
+ *      LE_OVERFLOW if the application name could not fit in the provided buffer.
+ *      LE_NOT_FOUND if the process is not part of an application.
+ *      LE_FAULT if there was an error.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetAppNameFromPid
+(
+    int32_t pid,                    ///< [IN] PID of the process.
+    char* appName,                  ///< [OUT] Application name
+    size_t appNameNumElements       ///< [IN] Application name size
+)
+{
+    char cgroupFilePath[LIMIT_MAX_PATH_BYTES] = {0};
+
+    LE_ASSERT(snprintf(cgroupFilePath, sizeof(cgroupFilePath), "/proc/%d/cgroup", pid)
+              < sizeof(cgroupFilePath));
+
+    FILE* cgroupFilePtr = fopen(cgroupFilePath, "r");
+
+    if (cgroupFilePtr == NULL)
+    {
+        LE_INFO("Cannot open %s. %m.", cgroupFilePath);
+        return LE_FAULT;
+    }
+
+    // Other than the cgroup path which contains an app name, allocate another 20 bytes for
+    // hierarchy ID, controller list, and misc. separators.
+    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 20] = {0};
+
+    // Read the first line.
+    LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
+
+    // Close the stream
+    if (fclose(cgroupFilePtr) != 0)
+    {
+        if (errno == EINTR)
+        {
+            LE_WARN("Closing '%s' caused EINTR. Proceeding anyway.", cgroupFilePath);
+        }
+        else
+        {
+            LE_FATAL("Failed to close '%s'. Errno = %d (%m).", cgroupFilePath, errno);
+        }
+    }
+
+    // Remove the trailing newline char.
+    size_t len = strlen(lineBuf);
+
+    if (lineBuf[len - 1] == '\n')
+    {
+        lineBuf[len - 1] = '\0';
+    }
+
+    // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
+    // e.g. 4:freezer:/SomeApp
+    // We are trying to get the 3rd token and remove the leading slash.
+    char* token;
+    char delim[2] = ":";
+    char *saveptr;
+
+    strtok_r(lineBuf, delim, &saveptr);
+    strtok_r(NULL, delim, &saveptr);
+    token = strtok_r(NULL, delim, &saveptr);
+
+    if (NULL == token)
+    {
+        LE_CRIT("Unexpected format for '%s'", lineBuf);
+        return LE_FAULT;
+    }
+
+    // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
+    // hence not part of any app.
+    if (strlen(token) <= 1)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    // Note that the leading slash of the token has to be removed.
+    return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The handler for all time outs. No registered application wants to see us get here.
  * Arrival here means that some process has failed to service its watchdog and therefore,
  * we need to tattle to the supervisor who, if the app still exists, will deal with it
@@ -379,7 +460,8 @@ static void WatchdogHandleExpiry
     if (procId == NO_PROC)
     {
         // Mandatory watchdog expired without the process restarting.  Restart Legato.
-        LE_FATAL("A mandatory watchdog expired");
+        LE_CRIT("A mandatory watchdog expired");
+        pa_wdog_Shutdown();
     }
 
     WatchdogObj_t* expiredDog = LookupClientWatchdogPtrById(procId);
@@ -387,8 +469,7 @@ static void WatchdogHandleExpiry
     {
         uid_t appId = expiredDog->appId;
 
-
-        if (LE_OK == le_appInfo_GetName(procId, appName, sizeof(appName) ))
+        if (LE_OK == GetAppNameFromPid(procId, appName, sizeof(appName) ))
         {
             LE_CRIT("app %s, proc %d timed out", appName, procId);
         }
@@ -408,6 +489,27 @@ static void WatchdogHandleExpiry
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Construct le_clk_Time_t object that will give an interval of the provided number
+ *  of milliseconds.
+ *
+ *      @return the constructed le_clk_Time_t
+ */
+//--------------------------------------------------------------------------------------------------
+static le_clk_Time_t MakeTimerInterval
+(
+    uint64_t milliseconds
+)
+{
+    le_clk_Time_t interval;
+
+    interval.sec = milliseconds / 1000;
+    interval.usec = (milliseconds - (interval.sec * 1000)) * 1000;
+
+    return interval;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Check a regular watchdog is running.
  */
 //--------------------------------------------------------------------------------------------------
@@ -421,15 +523,21 @@ bool CheckWatchdog
     bool* kickPtr = contextPtr;
     const WatchdogObj_t* dogPtr = valuePtr;
 
-    if (   (!dogPtr->timer)
-        || (!le_timer_IsRunning(dogPtr->timer)))
+    // If watchdog is operating correctly...
+    if (   (dogPtr->timer) &&
+           (le_clk_Equal(dogPtr->maxKickTimeoutInterval, MakeTimerInterval(LE_WDOG_TIMEOUT_NEVER)) ||
+            le_timer_IsRunning(dogPtr->timer)))
     {
-        // Invalid state -- no process or timer is not running.
+        // ...  continue to next watchdog
+        return true;
+    }
+    else
+    {
+        // ... otherwise mark as don't kick, and abort.  One failing watchdog
+        // is enough to prevent kick.
         *kickPtr = false;
         return false;
     }
-
-    return true;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -454,7 +562,6 @@ bool CheckMandatoryWatchdog
                          contextPtr);
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * The handler for external watchdog kicks.
@@ -468,15 +575,6 @@ static void ExternalWatchdogHandler
 )
 {
     bool kick = true;
-    ExternalWatchdogObj_t* externalWdogPtr;
-
-    externalWdogPtr = le_timer_GetContextPtr(timerRef);
-
-    if ((!externalWdogPtr) ||
-        (!externalWdogPtr->handler))
-    {
-        LE_FATAL("Invalid external watchdog.");
-    }
 
     // Check both watchdogs and mandatory watchdogs -- this will double count most mandatory
     // watchdogs since all running mandatory are also in the WatchdogRefContainer, but we need
@@ -490,7 +588,8 @@ static void ExternalWatchdogHandler
         kick)
     {
         // Kick the external watchdog
-        externalWdogPtr->handler(externalWdogPtr->contextPtr);
+        LE_DEBUG("Kick external watchdog");
+        pa_wdog_Kick();
     }
     else
     {
@@ -498,27 +597,6 @@ static void ExternalWatchdogHandler
         // so we can cleanly restart the board before the hardware watchdog expires.
         LE_FATAL("One or more watchdogs have failed.");
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Construct le_clk_Time_t object that will give an interval of the provided number
- *  of milliseconds.
- *
- *      @return the constructed le_clk_Time_t
- */
-//--------------------------------------------------------------------------------------------------
-static le_clk_Time_t MakeTimerInterval
-(
-    uint64_t milliseconds
-)
-{
-    le_clk_Time_t interval;
-
-    interval.sec = milliseconds / 1000;
-    interval.usec = (milliseconds - (interval.sec * 1000)) * 1000;
-
-    return interval;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -630,7 +708,7 @@ static le_clk_Time_t GetConfigKickTimeoutInterval
     int proc_milliseconds = CFG_TIMEOUT_USE_DEFAULT;
     int app_milliseconds = CFG_TIMEOUT_USE_DEFAULT;
 
-    if (LE_OK == le_appInfo_GetName(procId, appName, sizeof(appName) ))
+    if (LE_OK == GetAppNameFromPid(procId, appName, sizeof(appName) ))
     {    // Check if there is a config for the process name first else check under the app name
 
         // It's a real app. Let's look up the config!
@@ -688,6 +766,7 @@ static le_clk_Time_t GetConfigKickTimeoutInterval
         LE_WARN("Unknown app with pid %d requested watchdog - using default timeout %d ms", procId,
           proc_milliseconds);
     }
+
     return MakeTimerInterval(proc_milliseconds);
 }
 
@@ -711,6 +790,7 @@ static void InitNewWatchdog
     newDogPtr->appId = appId;
     newDogPtr->kickTimeoutInterval = kickTimeoutInterval;
     newDogPtr->maxKickTimeoutInterval = maxKickTimeoutInterval;
+
     if (le_clk_GreaterThan(newDogPtr->kickTimeoutInterval, newDogPtr->maxKickTimeoutInterval))
     {
         newDogPtr->kickTimeoutInterval = newDogPtr->maxKickTimeoutInterval;
@@ -788,25 +868,6 @@ static WatchdogObj_t* CreateNewWatchdog
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Clean up an existing watchdog.
- */
-//--------------------------------------------------------------------------------------------------
-static void CleanupWdog
-(
-    void* objectPtr
-)
-{
-    WatchdogObj_t* deadDogPtr = objectPtr;
-
-    // If this watchdog has a timer, delete it.
-    if (deadDogPtr->timer)
-    {
-        le_timer_Delete(deadDogPtr->timer);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Allocate a new manadatory watchdog object, construct it, and add it to the list of
  * mandatory watchdogs.
  */
@@ -840,6 +901,61 @@ static void CreateMandatoryWatchdog
     LE_ASSERT(LE_OK == le_timer_SetInterval(newDogPtr->watchdog.timer,
                                             newDogPtr->watchdog.kickTimeoutInterval));
     le_timer_Start(newDogPtr->watchdog.timer);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate a new framework watchdog object, construct it, and add it to the list of watchdogs
+ *
+ * @returns Newly created mandatory watchdog
+ */
+//--------------------------------------------------------------------------------------------------
+static MandatoryWatchdogObj_t* CreateFrameworkWatchdog
+(
+    const char* procNamePtr,
+    uint64_t maxWatchdogTimeout
+)
+{
+    MandatoryWatchdogObj_t* newDogPtr = le_mem_ForceAlloc(MandatoryWatchdogPool);
+    le_clk_Time_t maxWatchdogTime = MakeTimerInterval(maxWatchdogTimeout);
+
+    memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
+    strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
+
+    // Create watchdog setting initial timeout to max timeout.  This allows the maximum
+    // time for the framework daemon to connect
+    InitNewWatchdog(&(newDogPtr->watchdog), NO_PROC, 0,
+                    maxWatchdogTime, maxWatchdogTime);
+
+    LE_ASSERT(NULL == le_hashmap_Put(MandatoryWatchdogRefs, &(newDogPtr->key), newDogPtr));
+
+    // Immediately start this watchdog.
+    LE_ASSERT(LE_OK == le_timer_SetInterval(newDogPtr->watchdog.timer,
+                                            newDogPtr->watchdog.kickTimeoutInterval));
+    le_timer_Start(newDogPtr->watchdog.timer);
+
+    return newDogPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Clean up an existing watchdog.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CleanupWdog
+(
+    void* objectPtr
+)
+{
+    WatchdogObj_t* deadDogPtr = objectPtr;
+
+    // If this watchdog has a timer, delete it.
+    if (deadDogPtr->timer)
+    {
+        le_timer_Delete(deadDogPtr->timer);
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -947,7 +1063,6 @@ static void ResetClientWatchdog
         if (!le_clk_Equal(timeoutValue, MakeTimerInterval(LE_WDOG_TIMEOUT_NEVER)))
         {
             // timer should be stopped here so this should never fail
-            // testing
             LE_ASSERT(LE_OK == le_timer_SetInterval(watchDogPtr->timer, timeoutValue));
             le_timer_Start(watchDogPtr->timer);
         }
@@ -955,6 +1070,28 @@ static void ResetClientWatchdog
         {
             LE_DEBUG("Timeout set to NEVER!");
         }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Kick a framework daemon watchdog.
+ *
+ * The process of kicking a framework watchdog is somewhat different since kicks from framework
+ * daemons go through a different API.
+ */
+//--------------------------------------------------------------------------------------------------
+void ResetFrameworkWatchdog
+(
+    void* contextPtr
+)
+{
+    MandatoryWatchdogObj_t* watchDogPtr = contextPtr;
+
+    if (watchDogPtr != NULL)
+    {
+        le_timer_Restart(watchDogPtr->watchdog.timer);
     }
 }
 
@@ -992,60 +1129,68 @@ void le_wdog_Kick
     ResetClientWatchdog(TIMEOUT_KICK);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Register a function to be called to kick an external watchdog.
+ * Get the watchdog timeout configured for this process
+ *
+ * @return
+ *      - LE_OK            The watchdog timeout is configured and returned
+ *      - LE_NOT_FOUND     The watchdog timeout is not set
  */
 //--------------------------------------------------------------------------------------------------
-le_wdog_ExternalWatchdogHandlerRef_t le_wdog_AddExternalWatchdogHandler
+le_result_t le_wdog_GetWatchdogTimeout
 (
-    int32_t milliseconds,
-    le_wdog_ExternalWatchdogHandlerFunc_t handlerPtr,
-    void* contextPtr
+    uint64_t* millisecondsPtr
+        ///< [OUT] The watchdog timeout set for this process
 )
 {
-    ExternalWatchdogObj_t* externalWdogPtr = le_mem_ForceAlloc(ExternalWatchdogPool);
-
-    externalWdogPtr->handler = handlerPtr;
-    externalWdogPtr->contextPtr = contextPtr;
-    externalWdogPtr->timer = le_timer_Create("ExternalWdog");
-    if (!externalWdogPtr->timer)
+    WatchdogObj_t* watchDogPtr = GetClientWatchdogPtr();
+    if (watchDogPtr != NULL)
     {
-        LE_ERROR("Failed to create external watchdog timer");
-        le_mem_Release(externalWdogPtr);
-        return NULL;
-    }
-    le_timer_SetHandler(externalWdogPtr->timer, ExternalWatchdogHandler);
-    le_timer_SetContextPtr(externalWdogPtr->timer, externalWdogPtr);
-    le_timer_SetRepeat(externalWdogPtr->timer, 0); // repeat indefinitely
-    le_timer_SetMsInterval(externalWdogPtr->timer, milliseconds);
-
-    if (LE_OK != le_timer_Start(externalWdogPtr->timer))
-    {
-        LE_ERROR("Failed to start external watchdog timer");
-        le_timer_Delete(externalWdogPtr->timer);
-        le_mem_Release(externalWdogPtr);
-        return NULL;
+        uint64_t milliseconds;
+        milliseconds = watchDogPtr->kickTimeoutInterval.sec * 1000;
+        milliseconds += watchDogPtr->kickTimeoutInterval.usec / 1000;
+        *millisecondsPtr = milliseconds;
+        return LE_OK;
     }
 
-    return (le_wdog_ExternalWatchdogHandlerRef_t)externalWdogPtr;
+    return LE_NOT_FOUND;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Remove handler function for EVENT 'le_wdog_ExternalWatchdog'
+ * Get the max watchdog timeout configured for this process
+ *
+ * @return
+ *      - LE_OK            The max watchdog timeout is configured and returned
+ *      - LE_NOT_FOUND     The max watchdog timeout is not set
  */
 //--------------------------------------------------------------------------------------------------
-void le_wdog_RemoveExternalWatchdogHandler
+le_result_t le_wdog_GetMaxWatchdogTimeout
 (
-    le_wdog_ExternalWatchdogHandlerRef_t handlerRef
-        ///< [IN]
+    uint64_t* millisecondsPtr
+        ///< [OUT] The max watchdog timeout set for this process
 )
 {
-    ExternalWatchdogObj_t* externalWdogPtr = (ExternalWatchdogObj_t*)handlerRef;
+    WatchdogObj_t* watchDogPtr = GetClientWatchdogPtr();
+    if (watchDogPtr != NULL)
+    {
+        if (le_clk_Equal(watchDogPtr->maxKickTimeoutInterval, MakeTimerInterval(LE_WDOG_TIMEOUT_NEVER)))
+        {
+            return LE_NOT_FOUND;
+        }
+        else
+        {
+            uint64_t milliseconds;
+            milliseconds = watchDogPtr->maxKickTimeoutInterval.sec * 1000;
+            milliseconds += watchDogPtr->maxKickTimeoutInterval.usec / 1000;
+            *millisecondsPtr = milliseconds;
+            return LE_OK;
+        }
+    }
 
-    le_timer_Delete(externalWdogPtr->timer);
-    le_mem_Release(externalWdogPtr);
+    return LE_NOT_FOUND;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1242,6 +1387,43 @@ void HandleAppUninstall
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create watchdogs for all framework daemons.
+ */
+//--------------------------------------------------------------------------------------------------
+void InitFrameworkWdog
+(
+    uint64_t frameworkKickTimeout
+)
+{
+    // Kick at 4x the timeout so small jitter will not cause a spurious reset
+    uint64_t frameworkKickInterval = frameworkKickTimeout/4;
+
+    supervisorWdog_ConnectService();
+    supervisorWdog_AddKickEventHandler(frameworkKickInterval,
+                                       ResetFrameworkWatchdog,
+                                       CreateFrameworkWatchdog("supervisor",
+                                                               frameworkKickTimeout));
+
+
+    configTreeWdog_AddKickEventHandler(frameworkKickInterval,
+                                       ResetFrameworkWatchdog,
+                                       CreateFrameworkWatchdog("configTree",
+                                                               frameworkKickTimeout));
+
+    logDaemonWdog_AddKickEventHandler(frameworkKickInterval,
+                                      ResetFrameworkWatchdog,
+                                      CreateFrameworkWatchdog("logDaemon",
+                                                              frameworkKickTimeout));
+
+    updateDaemonWdog_AddKickEventHandler(frameworkKickInterval,
+                                         ResetFrameworkWatchdog,
+                                         CreateFrameworkWatchdog("updateDaemon",
+                                                                 frameworkKickTimeout));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize apps/processes with mandatory watchdog kicks.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1287,15 +1469,33 @@ static void InitMandatoryWdog
 COMPONENT_INIT
 {
     InitializeTimerContainer();
-    ExternalWatchdogPool = le_mem_CreatePool("ExternalWatchdogPool", sizeof(ExternalWatchdogObj_t));
-    LE_ASSERT(NULL != ExternalWatchdogPool);
 
     SystemProcessNotifySupervisor();
     wdog_ConnectService();
-    le_appInfo_ConnectService();
 
+    // Read the system defined external watchdog timeout from configtree
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(SYSTEM_FRAMEWORK_CFG);
+    int timeout = le_cfg_GetInt(iterRef, "externalWatchdogKick", 30000);
+    LE_DEBUG("External watchdog kick: %d", timeout);
+    le_cfg_CancelTxn(iterRef);
+
+    // Init framework daemons.
+    // No requirement so far for how often these need to kick the watchdog, so use
+    // default timing for now.
+    InitFrameworkWdog(TIMEOUT_DEFAULT);
+
+    // Init mandatory watchdog.
     InitMandatoryWdog();
 
     le_msg_AddServiceCloseHandler (le_wdog_GetServiceRef(), CleanUpClosedClient, NULL);
+
+    // Start a default external watchdog timer
+    DefaultExternalWdogTimer = le_timer_Create("DefaultExternalWdogTimer");
+    le_timer_SetMsInterval(DefaultExternalWdogTimer, timeout);
+    le_timer_SetHandler(DefaultExternalWdogTimer, ExternalWatchdogHandler);
+    le_timer_SetRepeat(DefaultExternalWdogTimer, 0); // repeat indefinitely
+    le_timer_Start(DefaultExternalWdogTimer);
+    pa_wdog_Init();
+
     LE_INFO("The watchdog service is ready");
 }

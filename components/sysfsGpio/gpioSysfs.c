@@ -13,6 +13,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "gpioSysfs.h"
+#include "watchdogChain.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -20,6 +21,13 @@
  * the generic GPIO functions. This code is generated.
  */
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The timer interval to kick the watchdog chain.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MS_WDOG_INTERVAL 8
 
 static struct gpioSysfs_Gpio SysfsGpioPin1 = {1,"gpio1",false,NULL,-1,NULL,NULL,NULL};
 static gpioSysfs_GpioRef_t gpioRefPin1 = &SysfsGpioPin1;
@@ -9685,5 +9693,11 @@ COMPONENT_INIT
     {
         LE_INFO("Skipping starting GPIO Service for Pin 64 - pin not available or disabled by config");
     }
+
+    // Begin monitoring main event loop
+    // Try to kick a couple of times before each timeout.
+    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }
 

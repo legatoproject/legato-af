@@ -6,6 +6,7 @@ provides:
         le_appRemove.api
         le_instStat.api
         le_updateCtrl.api
+        updateDaemonWdog = watchdog/frameworkWdog.api
     }
 }
 
@@ -36,4 +37,10 @@ sources:
     system.c
     updateCtrl.c
     supCtrl.c
+    ../common/frameworkWdog.c
+}
+
+cflags:
+{
+    -DFRAMEWORK_WDOG_NAME=updateDaemonWdog
 }

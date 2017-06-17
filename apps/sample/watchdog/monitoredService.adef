@@ -14,8 +14,8 @@ processes:
         ( helloDaemon )
     }
 
-    faultAction: restart
-    maxWatchdogTimeout: 15000
+    watchdogTimeout: 15000
+    watchdogAction: reboot
 }
 
 bindings:

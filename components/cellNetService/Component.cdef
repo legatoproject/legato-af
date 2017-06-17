@@ -14,6 +14,16 @@ requires:
         le_mrc.api
         le_secStore.api
     }
+
+    component:
+    {
+        $LEGATO_ROOT/components/watchdogChain
+    }
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/watchdogChain
 }
 
 sources:

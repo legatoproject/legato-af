@@ -1,6 +1,7 @@
 sources:
 {
     logDaemon.c
+    ../common/frameworkWdog.c
 }
 
 provides:
@@ -8,5 +9,11 @@ provides:
     api:
     {
         logDaemon/logFd.api
+        logDaemonWdog = watchdog/frameworkWdog.api
     }
+}
+
+cflags:
+{
+    -DFRAMEWORK_WDOG_NAME=logDaemonWdog
 }

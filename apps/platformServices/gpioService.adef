@@ -13,6 +13,9 @@ processes:
     {
         ( gpioService )
     }
+
+    faultAction: restart
+    watchdogTimeout: 30000
 }
 
 requires:

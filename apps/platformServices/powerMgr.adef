@@ -13,6 +13,7 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
 }
 
 requires:
@@ -24,6 +25,10 @@ requires:
     }
 }
 
+bindings:
+{
+    powerManagerService.watchdogChain.le_wdog -> <root>.le_wdog
+}
 
 extern:
 {

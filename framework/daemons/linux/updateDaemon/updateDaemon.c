@@ -51,7 +51,6 @@
 #include "properties.h"
 #include "fsSys.h"
 
-
 // Default probation period.
 #ifndef PROBATION_PERIOD
 #define PROBATION_PERIOD  (30 * 60 * 1000)  // 30 minutes.

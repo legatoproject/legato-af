@@ -113,6 +113,19 @@ int timer_GetClockType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Check all timers on the active list to ensure they have not expired
+ *
+ * @return true if all active timers are set to expire in the future, false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool timer_CheckExpiry
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Destruct timer resources for a given thread.
  *
  * This function must be called exactly once at thread shutdown, and before the Thread object is

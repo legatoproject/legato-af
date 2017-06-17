@@ -14,7 +14,13 @@ processes:
     }
 
     faultAction: restart
+    watchdogTimeout: 30000
     maxFileBytes: 2000K
+}
+
+bindings:
+{
+    fwupdateDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 extern:

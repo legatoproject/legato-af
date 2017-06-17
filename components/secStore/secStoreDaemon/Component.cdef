@@ -9,6 +9,7 @@ cflags:
     -I$LEGATO_ROOT/components/appCfg
     -I$LEGATO_ROOT/framework/liblegato
     -I$LEGATO_ROOT/framework/liblegato/linux
+    -I$LEGATO_ROOT/components/watchdogChain
 }
 
 requires:
@@ -18,6 +19,7 @@ requires:
         $LEGATO_SECSTORE_PA_DEFAULT
         $LEGATO_SECSTORE_PA
         $LEGATO_ROOT/components/appCfg
+        $LEGATO_ROOT/components/watchdogChain
     }
 
     api:
