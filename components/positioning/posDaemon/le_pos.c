@@ -98,6 +98,9 @@ typedef struct le_pos_Sample
     uint16_t        minutes;            ///< UTC Minutes into the hour [range 0..59].
     uint16_t        seconds;            ///< UTC Seconds into the minute [range 0..59].
     uint16_t        milliseconds;       ///< UTC Milliseconds into the second [range 0..999].
+    bool            leapSecondsValid;   ///< if true, leapSeconds is set
+    uint8_t         leapSeconds;        ///< UTC leap seconds in advance in seconds
+
     le_dls_Link_t   link;               ///< Object node link
 }
 le_pos_Sample_t;
@@ -595,6 +598,10 @@ static void PosSampleHandlerfunc
     uint16_t minutes;
     uint16_t seconds;
     uint16_t milliseconds;
+    // Leap seconds in advance
+    uint8_t leapSeconds;
+    PositionParam_t posParam;
+
     // Positioning sample parameters
     le_pos_SampleHandler_t* posSampleHandlerNodePtr;
     le_dls_Link_t*          linkPtr;
@@ -621,8 +628,8 @@ static void PosSampleHandlerfunc
                                 , &latitude
                                 , &longitude
                                 , &hAccuracy);
-    if ((result == LE_OK)
-    ||((result == LE_OUT_OF_RANGE)&&(latitude != INT32_MAX)&&(longitude != INT32_MAX)))
+    if ((LE_OK == result) ||
+        ((LE_OUT_OF_RANGE == result) && (INT32_MAX != latitude) && (INT32_MAX != longitude)))
     {
         locationValid = true;
         LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d"
@@ -639,8 +646,9 @@ static void PosSampleHandlerfunc
     result = le_gnss_GetAltitude( positionSampleRef
                                 , &altitude
                                 , &vAccuracy);
-    if ((result == LE_OK)
-    ||((result == LE_OUT_OF_RANGE)&&(altitude != INT32_MAX)))
+
+    if ((LE_OK == result) ||
+        ((LE_OUT_OF_RANGE != result) && (INT32_MAX != altitude)))
     {
         altitudeValid = true;
         LE_DEBUG("Altitude.%d, vAccuracy.%d"
@@ -655,166 +663,181 @@ static void PosSampleHandlerfunc
 
     // Positioning sample
     linkPtr = le_dls_Peek(&PosSampleHandlerList);
-    if (linkPtr != NULL)
+
+    if (NULL == linkPtr)
     {
-        PositionParam_t posParam;
+        // Release provided Position sample reference
+        le_gnss_ReleaseSampleRef(positionSampleRef);
+        return;
+    }
 
-        posParam.latitude = latitude;
-        posParam.longitude = longitude;
-        posParam.altitude = altitude;
-        posParam.vAccuracy = vAccuracy;
-        posParam.hAccuracy = hAccuracy;
-        posParam.locationValid = locationValid;
-        posParam.altitudeValid = altitudeValid;
+    posParam.latitude = latitude;
+    posParam.longitude = longitude;
+    posParam.altitude = altitude;
+    posParam.vAccuracy = vAccuracy;
+    posParam.hAccuracy = hAccuracy;
+    posParam.locationValid = locationValid;
+    posParam.altitudeValid = altitudeValid;
 
-        do
+    do
+    {
+        bool hflag, vflag;
+        // Get the node from the list
+        posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
+                                                                        le_pos_SampleHandler_t,
+                                                                        link);
+        if (LE_FAULT == ComputeMove(posSampleHandlerNodePtr,
+                                    &posParam,
+                                    &hflag,
+                                    &vflag))
         {
-            bool hflag, vflag;
-            // Get the node from the list
-            posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
-                                                                            le_pos_SampleHandler_t,
-                                                                            link);
+            // Release provided Position sample reference
+            le_gnss_ReleaseSampleRef(positionSampleRef);
+            return;
+        }
 
-            if (LE_FAULT == ComputeMove(posSampleHandlerNodePtr,
-                                        &posParam,
-                                        &hflag,
-                                        &vflag))
-             {
-                 // Release provided Position sample reference
-                 le_gnss_ReleaseSampleRef(positionSampleRef);
-                 return;
-             }
-
-            // Movement is detected in the following cases:
-            // - Vertical distance is beyond the magnitude
-            // - Horizontal distance is beyond the magnitude
-            // - We don't care about vertical & horizontal distance (magnitudes equal to 0)
-            //   therefore that movement handler is called each positioning acquisition rate
-            if ( ( (posSampleHandlerNodePtr->verticalMagnitude != 0)   && (vflag) )    ||
-                 ( (posSampleHandlerNodePtr->horizontalMagnitude != 0) && (hflag) )    ||
-                 ( (posSampleHandlerNodePtr->verticalMagnitude == 0)
-                    && (posSampleHandlerNodePtr->horizontalMagnitude == 0) )    )
+        // Movement is detected in the following cases:
+        // - Vertical distance is beyond the magnitude
+        // - Horizontal distance is beyond the magnitude
+        // - We don't care about vertical & horizontal distance (magnitudes equal to 0)
+        //   therefore that movement handler is called each positioning acquisition rate
+        if ( ((0 != posSampleHandlerNodePtr->verticalMagnitude)   && (vflag)) ||
+             ((0 != posSampleHandlerNodePtr->horizontalMagnitude) && (hflag)) ||
+             ((0 == posSampleHandlerNodePtr->verticalMagnitude)
+                && (0 == posSampleHandlerNodePtr->horizontalMagnitude))
+           )
+        {
+            if (NULL == posSampleNodePtr)
             {
-                if (posSampleNodePtr == NULL)
+                // Create the position sample node.
+                posSampleNodePtr = (le_pos_Sample_t*)le_mem_ForceAlloc(PosSamplePoolRef);
+                posSampleNodePtr->latitudeValid = CHECK_VALIDITY(latitude,INT32_MAX);
+                posSampleNodePtr->latitude = latitude;
+
+                posSampleNodePtr->longitudeValid = CHECK_VALIDITY(longitude,INT32_MAX);
+                posSampleNodePtr->longitude = longitude;
+
+                posSampleNodePtr->hAccuracyValid = CHECK_VALIDITY(hAccuracy,INT32_MAX);
+                posSampleNodePtr->hAccuracy = hAccuracy;
+
+                posSampleNodePtr->altitudeValid = CHECK_VALIDITY(altitude,INT32_MAX);
+                posSampleNodePtr->altitude = altitude;
+
+                posSampleNodePtr->vAccuracyValid = CHECK_VALIDITY(vAccuracy,INT32_MAX);
+                posSampleNodePtr->vAccuracy = vAccuracy;
+
+                // Get horizontal speed
+                le_gnss_GetHorizontalSpeed( positionSampleRef,
+                                            &hSpeed,
+                                            &hSpeedAccuracy);
+
+                posSampleNodePtr->hSpeedValid = CHECK_VALIDITY(hSpeed,UINT32_MAX);
+                posSampleNodePtr->hSpeed = hSpeed;
+                posSampleNodePtr->hSpeedAccuracyValid =
+                                                    CHECK_VALIDITY(hSpeedAccuracy,UINT32_MAX);
+                posSampleNodePtr->hSpeedAccuracy = hSpeedAccuracy;
+
+                // Get vertical speed
+                le_gnss_GetVerticalSpeed( positionSampleRef,
+                                          &vSpeed,
+                                          &vSpeedAccuracy);
+
+                posSampleNodePtr->vSpeedValid = CHECK_VALIDITY(vSpeed,INT32_MAX);
+                posSampleNodePtr->vSpeed = vSpeed;
+                posSampleNodePtr->vSpeedAccuracyValid =
+                                                    CHECK_VALIDITY(vSpeedAccuracy,INT32_MAX);
+                posSampleNodePtr->vSpeedAccuracy = vSpeedAccuracy;
+
+                // Heading not supported by GNSS engine
+                posSampleNodePtr->headingValid = false;
+                posSampleNodePtr->heading = UINT32_MAX;
+                posSampleNodePtr->headingAccuracyValid = false;
+                posSampleNodePtr->headingAccuracy = UINT32_MAX;
+
+                // Get direction
+                le_gnss_GetDirection( positionSampleRef,
+                                      &direction,
+                                      &directionAccuracy);
+
+                posSampleNodePtr->directionValid = CHECK_VALIDITY(direction,UINT32_MAX);
+                posSampleNodePtr->direction = direction;
+                posSampleNodePtr->directionAccuracyValid =
+                                                CHECK_VALIDITY(directionAccuracy,UINT32_MAX);
+                posSampleNodePtr->directionAccuracy = directionAccuracy;
+
+                // Get UTC time
+                if (LE_OK == le_gnss_GetDate(positionSampleRef,
+                                             &year,
+                                             &month,
+                                             &day))
                 {
-                    // Create the position sample node.
-                    posSampleNodePtr = (le_pos_Sample_t*)le_mem_ForceAlloc(PosSamplePoolRef);
-                    posSampleNodePtr->latitudeValid = CHECK_VALIDITY(latitude,INT32_MAX);
-                    posSampleNodePtr->latitude = latitude;
-
-                    posSampleNodePtr->longitudeValid = CHECK_VALIDITY(longitude,INT32_MAX);
-                    posSampleNodePtr->longitude = longitude;
-
-                    posSampleNodePtr->hAccuracyValid = CHECK_VALIDITY(hAccuracy,INT32_MAX);
-                    posSampleNodePtr->hAccuracy = hAccuracy;
-
-                    posSampleNodePtr->altitudeValid = CHECK_VALIDITY(altitude,INT32_MAX);
-                    posSampleNodePtr->altitude = altitude;
-
-                    posSampleNodePtr->vAccuracyValid = CHECK_VALIDITY(vAccuracy,INT32_MAX);
-                    posSampleNodePtr->vAccuracy = vAccuracy;
-
-                    // Get horizontal speed
-                    le_gnss_GetHorizontalSpeed( positionSampleRef
-                                                , &hSpeed
-                                                , &hSpeedAccuracy);
-                    posSampleNodePtr->hSpeedValid = CHECK_VALIDITY(hSpeed,UINT32_MAX);
-                    posSampleNodePtr->hSpeed = hSpeed;
-                    posSampleNodePtr->hSpeedAccuracyValid =
-                                                        CHECK_VALIDITY(hSpeedAccuracy,UINT32_MAX);
-                    posSampleNodePtr->hSpeedAccuracy = hSpeedAccuracy;
-
-                    // Get vertical speed
-                    le_gnss_GetVerticalSpeed( positionSampleRef
-                                            , &vSpeed
-                                            , &vSpeedAccuracy);
-                    posSampleNodePtr->vSpeedValid = CHECK_VALIDITY(vSpeed,INT32_MAX);
-                    posSampleNodePtr->vSpeed = vSpeed;
-                    posSampleNodePtr->vSpeedAccuracyValid =
-                                                        CHECK_VALIDITY(vSpeedAccuracy,INT32_MAX);
-                    posSampleNodePtr->vSpeedAccuracy = vSpeedAccuracy;
-
-                    // Heading not supported by GNSS engine
-                    posSampleNodePtr->headingValid = false;
-                    posSampleNodePtr->heading = UINT32_MAX;
-                    posSampleNodePtr->headingAccuracyValid = false;
-                    posSampleNodePtr->headingAccuracy = UINT32_MAX;
-
-                    // Get direction
-                    le_gnss_GetDirection( positionSampleRef
-                                        , &direction
-                                        , &directionAccuracy);
-
-                    posSampleNodePtr->directionValid = CHECK_VALIDITY(direction,UINT32_MAX);
-                    posSampleNodePtr->direction = direction;
-                    posSampleNodePtr->directionAccuracyValid =
-                                                    CHECK_VALIDITY(directionAccuracy,UINT32_MAX);
-                    posSampleNodePtr->directionAccuracy = directionAccuracy;
-
-                    // Get UTC time
-                    if (LE_OK == le_gnss_GetDate(positionSampleRef
-                                            , &year
-                                            , &month
-                                            , &day))
-                    {
-                        posSampleNodePtr->dateValid = true;
-                    }
-                    else
-                    {
-                        posSampleNodePtr->dateValid = false;
-                    }
-                    posSampleNodePtr->year = year;
-                    posSampleNodePtr->month = month;
-                    posSampleNodePtr->day = day;
-
-                    if (LE_OK == le_gnss_GetTime(positionSampleRef
-                                        , &hours
-                                        , &minutes
-                                        , &seconds
-                                        , &milliseconds))
-                    {
-                        posSampleNodePtr->timeValid = true;
-                    }
-                    else
-                    {
-                        posSampleNodePtr->timeValid = false;
-                    }
-                    posSampleNodePtr->hours = hours;
-                    posSampleNodePtr->minutes = minutes;
-                    posSampleNodePtr->seconds = seconds;
-                    posSampleNodePtr->milliseconds = milliseconds;
-
-                    posSampleNodePtr->link = LE_DLS_LINK_INIT;
-
-                    // Add the node to the queue of the list by passing in the node's link.
-                    le_dls_Queue(&PosSampleList, &(posSampleNodePtr->link));
+                    posSampleNodePtr->dateValid = true;
                 }
-
-                // Save the information reported to the handler function
-                posSampleHandlerNodePtr->lastLat = latitude;
-                posSampleHandlerNodePtr->lastLong = longitude;
-                posSampleHandlerNodePtr->lastAlt = altitude;
-
-                LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
-                         posSampleNodePtr,
-                         posSampleHandlerNodePtr->handlerFuncPtr);
-
-                uint8_t i;
-                for(i=0 ; i<NumOfHandlers-1 ; i++)
+                else
                 {
-                    le_mem_AddRef((void *)posSampleNodePtr);
+                    posSampleNodePtr->dateValid = false;
                 }
+                posSampleNodePtr->year = year;
+                posSampleNodePtr->month = month;
+                posSampleNodePtr->day = day;
 
-                // Call the client's handler
-                posSampleHandlerNodePtr->handlerFuncPtr(
-                                                le_ref_CreateRef(PosSampleMap, posSampleNodePtr),
-                                                posSampleHandlerNodePtr->handlerContextPtr);
+                if (LE_OK == le_gnss_GetTime(positionSampleRef,
+                                             &hours,
+                                             &minutes,
+                                             &seconds,
+                                             &milliseconds))
+                {
+                    posSampleNodePtr->timeValid = true;
+                }
+                else
+                {
+                    posSampleNodePtr->timeValid = false;
+                }
+                posSampleNodePtr->hours = hours;
+                posSampleNodePtr->minutes = minutes;
+                posSampleNodePtr->seconds = seconds;
+                posSampleNodePtr->milliseconds = milliseconds;
+
+                // Get UTC leap seconds in advance
+                if (LE_OK == le_gnss_GetGpsLeapSeconds(positionSampleRef,&leapSeconds))
+                {
+                    posSampleNodePtr->leapSecondsValid = true;
+                }
+                else
+                {
+                    posSampleNodePtr->leapSecondsValid = false;
+                }
+                posSampleNodePtr->leapSeconds = leapSeconds;
+                posSampleNodePtr->link = LE_DLS_LINK_INIT;
+
+                // Add the node to the queue of the list by passing in the node's link.
+                le_dls_Queue(&PosSampleList, &(posSampleNodePtr->link));
             }
 
-            // Move to the next node.
-            linkPtr = le_dls_PeekNext(&PosSampleHandlerList, linkPtr);
-        } while (linkPtr != NULL);
-    }
+            // Save the information reported to the handler function
+            posSampleHandlerNodePtr->lastLat = latitude;
+            posSampleHandlerNodePtr->lastLong = longitude;
+            posSampleHandlerNodePtr->lastAlt = altitude;
+
+            LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
+                     posSampleNodePtr,
+                     posSampleHandlerNodePtr->handlerFuncPtr);
+
+            uint8_t i;
+            for(i=0 ; i<NumOfHandlers-1 ; i++)
+            {
+                le_mem_AddRef((void *)posSampleNodePtr);
+            }
+
+            // Call the client's handler
+            posSampleHandlerNodePtr->handlerFuncPtr(
+                                            le_ref_CreateRef(PosSampleMap, posSampleNodePtr),
+                                            posSampleHandlerNodePtr->handlerContextPtr);
+        }
+
+        // Move to the next node.
+        linkPtr = le_dls_PeekNext(&PosSampleHandlerList, linkPtr);
+    } while (NULL != linkPtr);
 
     // Release provided Position sample reference
     le_gnss_ReleaseSampleRef(positionSampleRef);

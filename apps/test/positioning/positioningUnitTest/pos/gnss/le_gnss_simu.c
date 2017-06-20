@@ -474,6 +474,37 @@ le_result_t le_gnss_GetTimeAccuracy
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the position sample's UTC leap seconds in advance
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the leap seconds.
+ *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT8_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note The leap seconds in advance is the accumulated time in seconds since the start of GPS Epoch
+ * time (Jan 6, 1980). This value has to be added to the UTC time (since Jan. 1, 1970)
+ *
+ * @note Insertion of each UTC leap second is usually decided about six months in advance by the
+ * International Earth Rotation and Reference Systems Service (IERS).
+ *
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetGpsLeapSeconds
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint8_t* leapSecondsPtr
+        ///< [OUT] UTC leap seconds in advance in seconds
+)
+{
+     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the position sample's date.
  *
  * @return

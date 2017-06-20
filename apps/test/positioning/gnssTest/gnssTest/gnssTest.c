@@ -180,6 +180,8 @@ static void PositionHandlerFunction
     uint32_t gpsTimeOfWeek;
     // Time accuracy
     uint32_t timeAccuracy;
+    // Leap seconds in advance
+    uint8_t leapSeconds;
     // Position state
     le_gnss_FixState_t state;
     // Location
@@ -253,8 +255,13 @@ static void PositionHandlerFunction
                             , &timeAccuracy);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
-    LE_INFO("GPS time acc %d"
-            , timeAccuracy);
+    LE_INFO("GPS time acc %d", timeAccuracy);
+
+    // Get UTC leap seconds in advance
+    result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
+    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+
+    LE_INFO("UTC leap seconds in advance %d", leapSeconds);
 
     // Get position state
     result = le_gnss_GetPositionState( positionSampleRef, &state);
@@ -454,7 +461,6 @@ static void PositionHandlerFunction
     // Release provided Position sample reference
     le_gnss_ReleaseSampleRef(positionSampleRef);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**

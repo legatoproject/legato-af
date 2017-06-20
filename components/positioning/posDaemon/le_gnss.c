@@ -140,6 +140,8 @@ typedef struct le_gnss_PositionSample
     uint32_t        gpsTimeOfWeek;   ///< Amount of time in milliseconds into the GPS week.
     bool            timeAccuracyValid; ///< if true, timeAccuracy is set
     uint32_t        timeAccuracy;      ///< Estimated Accuracy for time in milliseconds
+    bool            leapSecondsValid;  ///< if true, leapSeconds is set
+    uint8_t         leapSeconds;       ///< UTC leap seconds in advance in seconds
     bool            positionLatencyValid; ///< if true, positionLatency is set
     uint32_t        positionLatency;      ///< Position measurement latency in milliseconds
     bool            hdopValid;       ///< if true, horizontal dilution is set
@@ -564,6 +566,9 @@ static void GetPosSampleData
     posSampleDataPtr->minutes = paPosDataPtr->time.minutes;
     posSampleDataPtr->seconds = paPosDataPtr->time.seconds;
     posSampleDataPtr->milliseconds = paPosDataPtr->time.milliseconds;
+    // Leap Seconds
+    posSampleDataPtr->leapSecondsValid = paPosDataPtr->leapSecondsValid;
+    posSampleDataPtr->leapSeconds = paPosDataPtr->leapSeconds;
     // Epoch time
     posSampleDataPtr->epochTime = paPosDataPtr->epochTime;
     // GPS time
@@ -573,11 +578,9 @@ static void GetPosSampleData
     // Time accuracy
     posSampleDataPtr->timeAccuracyValid = paPosDataPtr->timeAccuracyValid;
     posSampleDataPtr->timeAccuracy = paPosDataPtr->timeAccuracy;
-
     // Position measurement latency
     posSampleDataPtr->positionLatencyValid = paPosDataPtr->positionLatencyValid;
     posSampleDataPtr->positionLatency = paPosDataPtr->positionLatency;
-
     // DOP parameters
     posSampleDataPtr->hdopValid = paPosDataPtr->hdopValid;
     posSampleDataPtr->hdop = paPosDataPtr->hdop;
@@ -1439,6 +1442,67 @@ le_result_t le_gnss_GetTimeAccuracy
         {
             *timeAccuracyPtr = UINT16_MAX;
         }
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample's UTC leap seconds in advance
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the leap seconds.
+ *  - LE_OUT_OF_RANGE  The retrieved time accuracy is invalid (set to UINT8_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note The leap seconds in advance is the accumulated time in seconds since the start of GPS Epoch
+ * time (Jan 6, 1980). This value has to be added to the UTC time (since Jan. 1, 1970)
+ *
+ * @note Insertion of each UTC leap second is usually decided about six months in advance by the
+ * International Earth Rotation and Reference Systems Service (IERS).
+ *
+ * @note If the caller is passing an invalid position sample reference or a null pointer into this
+ *       function, it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetGpsLeapSeconds
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint8_t* leapSecondsPtr
+        ///< [OUT] UTC leap seconds in advance in seconds
+)
+{
+    le_result_t result;
+    le_gnss_PositionSample_t* positionSamplePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    // Check position sample's reference
+    if (NULL == positionSamplePtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        return LE_FAULT;
+    }
+
+    // Check input pointers
+    if (NULL == leapSecondsPtr)
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
+    // Get the position sample's leap seconds
+    if (positionSamplePtr->leapSecondsValid)
+    {
+        result = LE_OK;
+        *leapSecondsPtr = positionSamplePtr->leapSeconds;
+    }
+    else
+    {
+        result = LE_OUT_OF_RANGE;
+        *leapSecondsPtr = UINT8_MAX;
     }
 
     return result;

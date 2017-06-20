@@ -136,6 +136,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- time          --> Time of the last updated location\n"
          "\t\t\t\t\t- epochTime     --> Epoch time of the last updated location\n"
          "\t\t\t\t\t- timeAcc       --> Time accuracy in milliseconds\n"
+         "\t\t\t\t\t- LeapSeconds   --> Leap seconds in advance in seconds\n"
          "\t\t\t\t\t- date          --> Date of the last updated location\n"
          "\t\t\t\t\t- hSpeed        --> Horizontal speed(Horizontal Speed, Horizontal\n"
          "\t\t\t\t\t                    Speed accuracy)\n"
@@ -1339,6 +1340,39 @@ static int GetTimeAccuracy
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the UTC leap seconds in advance of last updated sample.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetLeapSeconds
+(
+    le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
+)
+{
+    uint8_t leapSeconds;
+    le_result_t result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
+
+    if (result == LE_OK)
+    {
+        printf("UTC leap seconds in advance %ds\n", leapSeconds);
+    }
+    else if (result == LE_OUT_OF_RANGE)
+    {
+        printf("Invalid UTC leap seconds in advance [%d]\n", leapSeconds);
+    }
+    else
+    {
+        printf("Failed! See log for details!\n");
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -1701,6 +1735,7 @@ static int GetPosInfo
     status = (EXIT_FAILURE == GetTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetEpochTime(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetTimeAccuracy(positionSampleRef)) ? EXIT_FAILURE : status;
+    status = (EXIT_FAILURE == GetLeapSeconds(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDate(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetDop(positionSampleRef)) ? EXIT_FAILURE : status;
     status = (EXIT_FAILURE == GetHorizontalSpeed(positionSampleRef)) ? EXIT_FAILURE : status;
@@ -1841,6 +1876,10 @@ static void PositionHandlerFunction
         else if (strcmp(ParamsName, "timeAcc") == 0)
         {
             status = GetTimeAccuracy(positionSampleRef);
+        }
+        else if (strcmp(ParamsName, "LeapSeconds") == 0)
+        {
+            status = GetLeapSeconds(positionSampleRef);
         }
         else if (strcmp(ParamsName, "date") == 0)
         {
@@ -2014,23 +2053,24 @@ static void GetGnssParams
     {
         exit(GetMinElevation());
     }
-    else if ((0 == strcmp(params, "posState"))   ||
-             (0 == strcmp(params, "loc2d"))      ||
-             (0 == strcmp(params, "alt"))        ||
-             (0 == strcmp(params, "altOnWgs84")) ||
-             (0 == strcmp(params, "loc3d"))      ||
-             (0 == strcmp(params, "gpsTime"))    ||
-             (0 == strcmp(params, "time"))       ||
-             (0 == strcmp(params, "epochTime"))  ||
-             (0 == strcmp(params, "timeAcc"))    ||
-             (0 == strcmp(params, "date"))       ||
-             (0 == strcmp(params, "hSpeed"))     ||
-             (0 == strcmp(params, "vSpeed"))     ||
-             (0 == strcmp(params, "motion"))     ||
-             (0 == strcmp(params, "direction"))  ||
-             (0 == strcmp(params, "satInfo"))    ||
-             (0 == strcmp(params, "satStat"))    ||
-             (0 == strcmp(params, "dop"))        ||
+    else if ((0 == strcmp(params, "posState"))    ||
+             (0 == strcmp(params, "loc2d"))       ||
+             (0 == strcmp(params, "alt"))         ||
+             (0 == strcmp(params, "altOnWgs84"))  ||
+             (0 == strcmp(params, "loc3d"))       ||
+             (0 == strcmp(params, "gpsTime"))     ||
+             (0 == strcmp(params, "time"))        ||
+             (0 == strcmp(params, "epochTime"))   ||
+             (0 == strcmp(params, "timeAcc"))     ||
+             (0 == strcmp(params, "LeapSeconds")) ||
+             (0 == strcmp(params, "date"))        ||
+             (0 == strcmp(params, "hSpeed"))      ||
+             (0 == strcmp(params, "vSpeed"))      ||
+             (0 == strcmp(params, "motion"))      ||
+             (0 == strcmp(params, "direction"))   ||
+             (0 == strcmp(params, "satInfo"))     ||
+             (0 == strcmp(params, "satStat"))     ||
+             (0 == strcmp(params, "dop"))         ||
              (0 == strcmp(params, "posInfo")))
     {
         // Copy the param

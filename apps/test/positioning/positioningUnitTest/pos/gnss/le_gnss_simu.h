@@ -356,6 +356,15 @@ le_result_t le_gnss_GetTimeAccuracy
         ///< [OUT] Estimated time accuracy in milliseconds
 );
 
+le_result_t le_gnss_GetGpsLeapSeconds
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+
+    uint8_t* leapSecondsPtr
+        ///< [OUT] UTC leap seconds in advance in seconds
+);
+
 le_result_t le_gnss_GetDate
 (
     le_gnss_SampleRef_t positionSampleRef,
