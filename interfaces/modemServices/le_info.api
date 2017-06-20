@@ -69,6 +69,14 @@
  * broken) of modem's RF devices such as power amplifier, antenna switch and transceiver.
  * That status is updated every time the module power on.
  *
+ * @section le_info_reset Query Reset Information
+ *
+ * le_info_GetResetInformation() is used to retrieve the last reset reason.
+ *
+ * A specific reset information is provided by a string for LE_INFO_RESET_UPDATE reset reason.
+ *
+ * @note See platform constraints @subpage platformConstraintsInfo
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -162,6 +170,21 @@ DEFINE MAX_ESN_LEN   = 32;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_ESN_BYTES = (MAX_ESN_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a reset specific information string, excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_RESET_LEN   = 50;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a reset specific information string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_RESET_BYTES = (MAX_RESET_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -345,6 +368,23 @@ DEFINE MAX_SKU_BYTES = (MAX_SKU_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Reset type enum
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Reset
+{
+    RESET_UNKNOWN,  ///< Unknown
+    RESET_USER,     ///< User request
+    RESET_HARD,     ///< Hardware switch
+    RESET_UPDATE,   ///< Software update
+    RESET_CRASH,    ///< Software crash
+    POWER_DOWN,     ///< Power Down
+    VOLT_CRIT,      ///< Power Down due to a critical voltage level
+    TEMP_CRIT       ///< Power Down due to a critical temperature level
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Retrieve the International Mobile Equipment Identity (IMEI).
  *
  * @return LE_FAULT       Function failed to retrieve the IMEI.
@@ -396,6 +436,25 @@ FUNCTION le_result_t GetFirmwareVersion
     string version[MAX_VERS_LEN] OUT     ///< Firmware version string
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the last reset information reason
+ *
+ * @return
+ *      - LE_OK          on success
+ *      - LE_UNSUPPORTED if it is not supported by the platform
+ *        LE_OVERFLOW    specific reset information length exceeds the maximum length.
+ *      - LE_FAULT       for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetResetInformation
+(
+    Reset reset OUT,                                ///< Reset information
+    string resetSpecificInfoStr[MAX_RESET_LEN] OUT  ///< Reset specific information
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

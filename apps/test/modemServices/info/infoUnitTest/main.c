@@ -12,6 +12,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Specific software update reason
+ */
+//--------------------------------------------------------------------------------------------------
+#define PA_SPECIFIC_REASON_SWAP "swap"
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Info parameters
  */
 //--------------------------------------------------------------------------------------------------
@@ -31,6 +38,8 @@ static char PriIdPn[LE_INFO_MAX_PRIID_PN_BYTES] = "11111";
 static char PriIdRev[LE_INFO_MAX_PRIID_REV_BYTES] = "2222";
 static char Sku[LE_INFO_MAX_SKU_BYTES] = "SKU1111111";
 static char Psn[LE_INFO_MAX_PSN_BYTES] = "LY523300110105";
+static char ResetStr[LE_INFO_MAX_RESET_BYTES] = { 0 };
+static le_info_Reset_t ResetInformation = LE_INFO_RESET_UNKNOWN;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -80,6 +89,7 @@ static void SetInfo
     pa_infoSimu_SetRfDeviceStatus(0, ManufacturedId1, ProductId1, Status1);
     pa_infoSimu_SetRfDeviceStatus(1, ManufacturedId2, ProductId2, Status2);
     pa_infoSimu_ResetErrorCase();
+    pa_infoSimu_SetResetInformation(LE_INFO_RESET_USER, "");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -230,6 +240,15 @@ COMPONENT_INIT
                                           &ProductIdNumElements,
                                           StatusPtr,
                                           &StatusNumElements));
+
+    LE_INFO("======== GetResetInformationTest ========");
+    pa_infoSimu_SetResetInformation(LE_INFO_RESET_USER, "");
+    LE_ASSERT_OK(le_info_GetResetInformation(&ResetInformation, ResetStr, sizeof(ResetStr)));
+    LE_ASSERT(LE_INFO_RESET_USER == ResetInformation);
+    pa_infoSimu_SetResetInformation(LE_INFO_RESET_UPDATE, PA_SPECIFIC_REASON_SWAP);
+    LE_ASSERT_OK(le_info_GetResetInformation(&ResetInformation, ResetStr, sizeof(ResetStr)));
+    LE_ASSERT(LE_INFO_RESET_UPDATE == ResetInformation);
+    LE_ASSERT(0 == memcmp(ResetStr,PA_SPECIFIC_REASON_SWAP, strlen(PA_SPECIFIC_REASON_SWAP)));
 
     LE_INFO("======== INFO API UnitTests OK ========");
     exit(0);

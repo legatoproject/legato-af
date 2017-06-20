@@ -13,6 +13,13 @@
 #include "cm_info.h"
 #include "cm_common.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of information string
+ */
+//--------------------------------------------------------------------------------------------------
+#define CM_INFO_MAX_STRING_BYTES 100
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the data help text to stdout.
@@ -44,6 +51,8 @@ void cm_info_PrintInfoHelp
             "\tcm info pri\n\n"
             "To print the SKU:\n"
             "\tcm info sku\n\n"
+            "To print the last reset reason:\n"
+            "\tcm info reset\n\n"
             );
 }
 
@@ -92,6 +101,37 @@ void cm_info_PrintImeiSv
     else
     {
         printf("%s\n", imeiSv);
+    }
+}
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print the last reset reason
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_info_PrintResetReason
+(
+    bool withHeaders
+)
+{
+    le_result_t result;
+    le_info_Reset_t reset;
+    char resetStr[LE_INFO_MAX_RESET_BYTES] = {0};
+
+    result = le_info_GetResetInformation(&reset, resetStr, LE_INFO_MAX_RESET_BYTES);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Failed to get last reset reason: %s", LE_RESULT_TXT(result));
+        snprintf(resetStr, LE_INFO_MAX_RESET_BYTES, "Unknown");
+    }
+
+    if (withHeaders)
+    {
+        cm_cmn_FormatPrint("LAST RESET REASON", resetStr);
+    }
+    else
+    {
+        printf("%s\n", resetStr);
     }
 }
 
@@ -325,6 +365,7 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintGetCarrierPri(true);
         cm_info_PrintGetSku(true);
         cm_info_PrintMcuVersion(true);
+        cm_info_PrintResetReason(true);
     }
     else if (strcmp(command, "firmware") == 0)
     {
@@ -365,6 +406,10 @@ void cm_info_ProcessInfoCommand
     else if (strcmp(command, "mcu") == 0)
     {
         cm_info_PrintMcuVersion(false);
+    }
+    else if (0 == strcmp(command, "reset"))
+    {
+        cm_info_PrintResetReason(false);
     }
     else
     {

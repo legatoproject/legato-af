@@ -1,0 +1,20 @@
+/** @page platformConstraintsInfo Information
+
+@c le_info_GetResetInformation() API is only supported by AR759x and AR758x platforms.
+
+| Constraint                              | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| ----------------------------------------| :----: | :----: | :----: | :----: | :-----:| :----: | :-----:| :----: |
+| le_info_GetResetInformation()           |        | X      | X      |        |        | X      | X      |        |
+
+The specific reset information for LE_INFO_RESET_UPDATE reset reason can be:
+
+  - "software"      Software Update
+  - "swap"          System Swap (for dual system platform)
+  - "swap_sync"     System Swap and synchronize (for dual system platform)
+
+See @ref c_info API
+@c le_info_GetResetInformation()
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

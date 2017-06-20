@@ -141,6 +141,43 @@ le_result_t le_info_GetFirmwareVersion
     return pa_info_GetFirmwareVersion(versionPtr, versionNumElements);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the last reset information reason
+ *
+ * @return
+ *      - LE_OK          on success
+ *      - LE_UNSUPPORTED if it is not supported by the platform
+ *        LE_OVERFLOW    specific reset information length exceed the maximum length.
+ *      - LE_FAULT       for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetResetInformation
+(
+    le_info_Reset_t* resetPtr,              ///< [OUT] Reset information
+    char* resetSpecificInfoStr,             ///< [OUT] Reset specific information
+    size_t resetSpecificInfoNumElements     ///< [IN] The length of specific information string.
+)
+{
+    // Check input parameters
+    if (resetPtr == NULL)
+    {
+        LE_KILL_CLIENT("resetPtr is NULL !");
+        return LE_FAULT;
+    }
+    // Check input parameters
+    if (resetSpecificInfoStr == NULL)
+    {
+        LE_KILL_CLIENT("resetSpecificInfoStr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_info_GetResetInformation(resetPtr, resetSpecificInfoStr,
+                                       resetSpecificInfoNumElements);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -427,3 +427,25 @@ le_result_t pa_info_GetRfDeviceStatus
     LE_ERROR("Unsupported function called");
     return LE_UNSUPPORTED;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the last reset information reason
+ *
+ * @return
+ *      - LE_OK          on success
+ *      - LE_UNSUPPORTED if it is not supported by the platform
+ *        LE_OVERFLOW    specific reset information length exceeds the maximum length.
+ *      - LE_FAULT       for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetResetInformation
+(
+    le_info_Reset_t* resetPtr,              ///< [OUT] Reset information
+    char* resetSpecificInfoStr,             ///< [OUT] Reset specific information
+    size_t resetSpecificInfoNumElements     ///< [IN] The length of specific information string.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
