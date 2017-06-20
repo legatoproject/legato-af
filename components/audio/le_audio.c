@@ -2827,11 +2827,12 @@ le_result_t le_audio_PlayFile
  * @return LE_BUSY          The player interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * @note the fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
+ * @note The fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
  * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
  * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
  * before calling the API.
  *
+ * @note Playback initiated with this function must be stopped by calling le_audio_Stop().
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_PlaySamples
@@ -2950,11 +2951,12 @@ le_result_t le_audio_RecordFile
  * @return LE_BUSY          The recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * @note the fd is closed by the API. To use again the same pipe, the fd parameter can be set to
+ * @note The fd is closed by the API. To use again the same pipe, the fd parameter can be set to
  * LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
  * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
  * before calling the API.
  *
+ * @note When using this function recording must be stopped by calling le_audio_Stop().
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_audio_GetSamples

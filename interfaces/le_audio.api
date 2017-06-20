@@ -198,6 +198,8 @@
  * to be opened first, then the PCM samples are sent throught the opened pipe.
  * A play can be done only on a connected stream. For instance, the
  * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
+ * If there are no more PCM samples to be played, the playback must be stopped by calling
+ * le_audio_Stop().
  *
  * @section le_audio_pb_rec Record
  *
@@ -217,6 +219,8 @@
  * to be opened first, then the PCM samples are sent throught the opened pipe.
  * Recording can only be done on a connected stream. For example, the
  * "I2S Rx", "Modem Voice Tx" and "Recorder" must be previously connected before recording a file.
+ * If there are no more PCM samples to be retrieved, the recording must be stopped by calling
+ * le_audio_Stop().
  *
  * A PCM configuration must be set with:
  * - le_audio_SetSamplePcmChannelNumber(): sets the channel number of a PCM
@@ -1135,11 +1139,12 @@ FUNCTION le_result_t PlayFile
  * @return LE_BUSY          Player interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * @note the fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
+ * @note The fd is closed by the IPC API. To use again the same pipe, the fd parameter can be set
  * to LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
  * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
  * before calling the API.
  *
+ * @note Playback initiated with this function must be stopped by calling le_audio_Stop().
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t PlaySamples
@@ -1178,10 +1183,12 @@ FUNCTION le_result_t RecordFile
  * @return LE_BUSY          Recorder interface is already active.
  * @return LE_OK            Function succeeded.
  *
- * @note the fd is closed by the API. To use again the same pipe, the fd parameter can be set to
+ * @note The fd is closed by the API. To use again the same pipe, the fd parameter can be set to
  * LE_AUDIO_NO_FD: in this case, the previous file descriptor is re-used.
  * If the fd as to be kept on its side, the application should duplicate the fd (e.g., using dup() )
  * before calling the API.
+ *
+ * @note When using this function recording must be stopped by calling le_audio_Stop().
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSamples
