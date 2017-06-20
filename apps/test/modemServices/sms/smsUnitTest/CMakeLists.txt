@@ -1,11 +1,11 @@
 #*******************************************************************************
 # Copyright (C) Sierra Wireless Inc.
-#
 #*******************************************************************************
 
 set(TEST_EXEC smsUnitTest)
 
 set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices")
+set(SIMU_CONFIG_TREE "${CMAKE_CURRENT_SOURCE_DIR}/simu/")
 
 if(TEST_COVERAGE EQUAL 1)
     set(CFLAGS "--cflags=\"--coverage\"")
@@ -20,6 +20,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_ROOT}/framework/c/src
     -i ${PA_DIR}/simu/components/le_pa
     -i ${PA_DIR}/simu/components/simuConfig
+    -i ${SIMU_CONFIG_TREE}
     -s ${PA_DIR}
     --cflags="-DWITHOUT_SIMUCONFIG"
     ${CFLAGS}

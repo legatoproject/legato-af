@@ -271,6 +271,17 @@
  *  Preferred SMS storage for incoming messages can be set or get with le_sms_SetPreferredStorage()
  *  and le_sms_GetPreferredStorage() functions.
  *
+ * @section le_sms_ops_statistics SMS statistics
+ *
+ * The number of SMS successfully sent or received through the Legato API can be counted.
+ * This feature is activated by default. le_sms_GetCount() allows retrieving the message count
+ * for each SMS type (cf. @ref le_sms_Type_t).
+ *
+ * le_sms_StopCount() stops the message counting and le_sms_StartCount() restarts it.
+ * le_sms_ResetCount() can be used to reset the message counters.
+ *
+ * @note The activation state of this feature is persistent even after a reboot of the platform.
+ *
  * @section le_sms_ops_samples Sample codes
  * A sample code that implements a function for Mobile Originated SMS message can be found in
  * \b smsMO.c file (please refer to @ref c_smsSampleMO page).
@@ -1606,5 +1617,50 @@ FUNCTION le_result_t RemoveCdmaCellBroadcastServices
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ClearCdmaCellBroadcastServices
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of messages successfully received or sent since last counter reset.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCount
+(
+    Type  messageType   IN,     ///< Message type
+    int32 messageCount  OUT     ///< Number of messages
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start to count the messages successfully received and sent.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StartCount
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop to count the messages successfully received and sent.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION StopCount
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset the count of messages successfully received and sent.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ResetCount
 (
 );

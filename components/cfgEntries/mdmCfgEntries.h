@@ -11,11 +11,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Paths to eCall data in the config tree
+ * Paths to modemService data in the config tree
  */
 //--------------------------------------------------------------------------------------------------
 #define MODEMSERVICE_CONFIG_TREE_ROOT_DIR  "modemService:"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Paths to eCall data in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
 #define CFG_NODE_ECALL                      "eCall"
 #define CFG_MODEMSERVICE_ECALL_PATH         MODEMSERVICE_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_ECALL
 #define CFG_NODE_SYSTEM_STD                 "systemStandard"
@@ -23,5 +28,17 @@
 #define CFG_NODE_VEH                        "vehicleType"
 #define CFG_NODE_VIN                        "vin"
 #define CFG_NODE_PROP                       "propulsionType"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Paths to SMS data in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_SMS                        "sms"
+#define CFG_MODEMSERVICE_SMS_PATH           MODEMSERVICE_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_SMS
+#define CFG_NODE_COUNTING                   "counting"
+#define CFG_NODE_RX_COUNT                   "rxCount"
+#define CFG_NODE_TX_COUNT                   "txCount"
+#define CFG_NODE_RX_CB_COUNT                "rxCbCount"
 
 #endif // LEGATO_MDMCFGENTRIES_INCLUDE_GUARD

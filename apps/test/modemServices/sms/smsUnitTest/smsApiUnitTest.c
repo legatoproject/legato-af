@@ -86,7 +86,11 @@ static uint8_t PDU_RECEIVE_TEST_PATTERN_BROADCAST_7BITS[]=
             0x20, 0xD0, 0xB0, 0x19, 0x9C, 0x82, 0x72, 0xB0
             };
 
-// Task context
+//--------------------------------------------------------------------------------------------------
+/**
+ * Task context structure
+ */
+//--------------------------------------------------------------------------------------------------
 typedef struct
 {
     le_thread_Ref_t appStorageFullThread;
@@ -94,12 +98,34 @@ typedef struct
     le_sms_Storage_t storage;
 } AppContext_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * SMS application structure
+ */
+//--------------------------------------------------------------------------------------------------
 typedef struct
 {
     le_thread_Ref_t appSmsReceiveThread;
     le_sms_RxMessageHandlerRef_t rxHdlrRef;
 } AppSmsContext_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * SMS counters structure
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int32_t rx;     ///< Received messages counter
+    int32_t tx;     ///< Sent messages counter
+    int32_t rxCb;   ///< Received broadcast messages counter
+} SmsCount_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Tests number enumeration
+ */
+//--------------------------------------------------------------------------------------------------
 typedef enum
 {
     SMS_SEND_TEST_NUMBER_1,
@@ -1058,6 +1084,146 @@ static void Testle_sms_CellBroadcast
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Retrieve message counters and test if the values are as expected
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetAndCheckSmsCounters
+(
+    SmsCount_t* countPtr,       ///< Actual message counters
+    SmsCount_t* expectedPtr     ///< Expected message counters
+)
+{
+    LE_ASSERT_OK(le_sms_GetCount(LE_SMS_TYPE_RX, &countPtr->rx));
+    LE_ASSERT(expectedPtr->rx == countPtr->rx);
+    LE_ASSERT_OK(le_sms_GetCount(LE_SMS_TYPE_TX, &countPtr->tx));
+    LE_ASSERT(expectedPtr->tx == countPtr->tx);
+    LE_ASSERT_OK(le_sms_GetCount(LE_SMS_TYPE_BROADCAST_RX, &countPtr->rxCb));
+    LE_ASSERT(expectedPtr->rxCb == countPtr->rxCb);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Testle_sms_Statistics: this function tests the SMS statistics
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_sms_Statistics
+(
+    void
+)
+{
+    SmsCount_t count;
+    SmsCount_t expected;
+    le_sms_MsgRef_t myMsg;
+    pa_sms_NewMessageIndication_t msgPtrNew;
+    int i;
+
+    memset(&count, 0, sizeof(SmsCount_t));
+    memset(&expected, 0, sizeof(SmsCount_t));
+
+    // Reset counters
+    le_sms_ResetCount();
+
+    // Check that counters are set to 0
+    GetAndCheckSmsCounters(&count, &expected);
+
+    // Start counting
+    le_sms_StartCount();
+
+    // Message sent synchronously
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+    LE_ASSERT_OK(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN));
+    LE_ASSERT_OK(le_sms_SetUCS2(myMsg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN)/2));
+    LE_ASSERT_OK(le_sms_Send(myMsg));
+    le_sms_Delete(myMsg);
+    expected.tx++;
+    GetAndCheckSmsCounters(&count, &expected);
+
+    // Message sent asynchronously
+    pa_sms_SetSmsErrCause(LE_OK);
+    le_sms_SendText(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
+                    CallbackSendTestHandler, (void*)( SMS_SEND_TEST_NUMBER_1));
+    WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
+    expected.tx++;
+    GetAndCheckSmsCounters(&count, &expected);
+    le_sem_Delete(SmsSendSemaphore);
+
+    // Broadcast message received
+    memset(&AppSmsReceiveCtx, 0, sizeof(AppSmsContext_t));
+    AppSmsReceiveCtx.appSmsReceiveThread = le_thread_Create("SmsReceiveThread",
+                                                            AppSmsReceiveHandler,
+                                                            &AppSmsReceiveCtx);
+    le_thread_Start(AppSmsReceiveCtx.appSmsReceiveThread);
+    WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
+    msgPtrNew.msgIndex = 0;                         // Message index
+    msgPtrNew.protocol = PA_SMS_PROTOCOL_GW_CB;     // protocol used
+    msgPtrNew.storage  = PA_SMS_STORAGE_NONE;       // SMS Storage used
+    msgPtrNew.pduLen   = sizeof(PDU_RECEIVE_TEST_PATTERN_BROADCAST_7BITS);
+    for (i=0; i < msgPtrNew.pduLen; i++)
+    {
+        msgPtrNew.pduCB[i] = PDU_RECEIVE_TEST_PATTERN_BROADCAST_7BITS[i];
+    }
+    pa_sms_SetSmsInStorage(&msgPtrNew);
+    WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
+    expected.rxCb++;
+    GetAndCheckSmsCounters(&count, &expected);
+
+    // Message received
+    msgPtrNew.msgIndex = 0;                         // Message index
+    msgPtrNew.protocol = PA_SMS_PROTOCOL_GSM;       // protocol used
+    msgPtrNew.storage  = PA_SMS_STORAGE_SIM;        // SMS Storage used
+    msgPtrNew.pduLen   = sizeof(PDU_RECEIVE_TEST_PATTERN_SMSPDU_UCS2_16_BITS);
+    for (i=0; i < msgPtrNew.pduLen; i++)
+    {
+        msgPtrNew.pduCB[i] = PDU_RECEIVE_TEST_PATTERN_SMSPDU_UCS2_16_BITS[i];
+    }
+    pa_sms_SetSmsInStorage(&msgPtrNew);
+    WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
+    expected.rx++;
+    GetAndCheckSmsCounters(&count, &expected);
+    le_sem_Delete(SmsReceiveThreadSemaphore);
+
+    // Stop counting
+    le_sms_StopCount();
+
+    // Message sent synchronously
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+    LE_ASSERT_OK(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN));
+    LE_ASSERT_OK(le_sms_SetUCS2(myMsg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN)/2));
+    LE_ASSERT_OK(le_sms_Send(myMsg));
+    le_sms_Delete(myMsg);
+    GetAndCheckSmsCounters(&count, &expected);
+
+    // Start counting again
+    le_sms_StartCount();
+
+    // Message sent synchronously
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+    LE_ASSERT_OK(le_sms_SetDestination(myMsg, DEST_TEST_PATTERN));
+    LE_ASSERT_OK(le_sms_SetUCS2(myMsg, UCS2_TEST_PATTERN, sizeof(UCS2_TEST_PATTERN)/2));
+    LE_ASSERT_OK(le_sms_Send(myMsg));
+    le_sms_Delete(myMsg);
+    expected.tx++;
+    GetAndCheckSmsCounters(&count, &expected);
+
+    // Reset counters
+    le_sms_ResetCount();
+
+    // Check that counters are set to 0
+    expected.rx = 0;
+    expected.tx = 0;
+    expected.rxCb = 0;
+    GetAndCheckSmsCounters(&count, &expected);
+
+    // Check error cases
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetCount(LE_SMS_TYPE_BROADCAST_RX + 1, &count.rx));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetCount(LE_SMS_TYPE_BROADCAST_RX, NULL));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * SMS API Unitary Test
  */
 //--------------------------------------------------------------------------------------------------
@@ -1107,6 +1273,9 @@ void testle_sms_SmsApiUnitTest
 
     LE_INFO("Test Testle_sms_RemoveFullStorageHandler started");
     Testle_sms_RemoveFullStorageHandler();
+
+    LE_INFO("Test Testle_sms_Statistics started");
+    Testle_sms_Statistics();
 
     LE_INFO("smsApiUnitTest sequence PASSED");
 }

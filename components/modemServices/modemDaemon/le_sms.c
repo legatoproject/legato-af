@@ -31,6 +31,7 @@
 #include "pa_sim.h"
 #include "smsPdu.h"
 #include "time.h"
+#include "mdmCfgEntries.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -58,7 +59,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_NUM_OF_LIST    128
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -165,6 +165,21 @@ typedef struct
 
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Data structure for message statistics.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    bool    counting;   ///< Is message counting activated
+    int32_t rxCount;    ///< Number of messages successfully received
+    int32_t rxCbCount;  ///< Number of broadcast messages successfully received
+    int32_t txCount;    ///< Number of messages successfully sent
+}
+le_sms_MsgStats_t;
+
+
+//--------------------------------------------------------------------------------------------------
 //                                       Static declarations
 //--------------------------------------------------------------------------------------------------
 
@@ -237,6 +252,169 @@ static le_event_Id_t SmsCommandEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static le_sem_Ref_t SmsSem;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure for message statistics.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sms_MsgStats_t MessageStats;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the message counting state
+ */
+//--------------------------------------------------------------------------------------------------
+static bool GetCountingState
+(
+    void
+)
+{
+    bool countingState;
+    le_cfg_IteratorRef_t iteratorRef;
+
+    iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_SMS_PATH);
+    countingState = le_cfg_GetBool(iteratorRef, CFG_NODE_COUNTING, true);
+    le_cfg_CancelTxn(iteratorRef);
+
+    LE_DEBUG("Retrieved counting state: %d", countingState);
+
+    return countingState;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the message counting state
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetCountingState
+(
+    bool countState     ///< New message counting state
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+
+    LE_DEBUG("New message counting state: %d", countState);
+
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_SMS_PATH);
+    le_cfg_SetBool(iteratorRef, CFG_NODE_COUNTING, countState);
+    le_cfg_CommitTxn(iteratorRef);
+
+    MessageStats.counting = countState;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the message count for a message type
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetMessageCount
+(
+    le_sms_Type_t   messageType,        ///< Message type
+    int32_t*        messageCountPtr     ///< Message count pointer
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+    char countPath[LE_CFG_STR_LEN_BYTES];
+
+    switch (messageType)
+    {
+        case LE_SMS_TYPE_RX:
+            snprintf(countPath, sizeof(countPath), "%s", CFG_NODE_RX_COUNT);
+            break;
+
+        case LE_SMS_TYPE_TX:
+            snprintf(countPath, sizeof(countPath), "%s", CFG_NODE_TX_COUNT);
+            break;
+
+        case LE_SMS_TYPE_BROADCAST_RX:
+            snprintf(countPath, sizeof(countPath), "%s", CFG_NODE_RX_CB_COUNT);
+            break;
+
+        default:
+            LE_ERROR("Unknown message type %d", messageType);
+            return LE_FAULT;
+    }
+
+    iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_SMS_PATH);
+    *messageCountPtr = le_cfg_GetInt(iteratorRef, countPath, 0);
+    le_cfg_CancelTxn(iteratorRef);
+
+    LE_DEBUG("Type=%d, count=%d", messageType, *messageCountPtr);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the message count for a message type
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetMessageCount
+(
+    le_sms_Type_t   messageType,    ///< Message type
+    int32_t         messageCount    ///< New message count
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+    char countPath[LE_CFG_STR_LEN_BYTES];
+
+    switch (messageType)
+    {
+        case LE_SMS_TYPE_RX:
+            MessageStats.rxCount = messageCount;
+            snprintf(countPath, sizeof(countPath), "%s", CFG_NODE_RX_COUNT);
+            break;
+
+        case LE_SMS_TYPE_TX:
+            MessageStats.txCount = messageCount;
+            snprintf(countPath, sizeof(countPath), "%s", CFG_NODE_TX_COUNT);
+            break;
+
+        case LE_SMS_TYPE_BROADCAST_RX:
+            MessageStats.rxCbCount = messageCount;
+            snprintf(countPath, sizeof(countPath), "%s", CFG_NODE_RX_CB_COUNT);
+            break;
+
+        default:
+            LE_ERROR("Unknown message type %d", messageType);
+            return LE_FAULT;
+    }
+
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_SMS_PATH);
+    le_cfg_SetInt(iteratorRef, countPath, messageCount);
+    le_cfg_CommitTxn(iteratorRef);
+
+    LE_DEBUG("Type=%d, count=%d", messageType, messageCount);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Initialize message statistics structure
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitializeMessageStatistics
+(
+    void
+)
+{
+    MessageStats.counting = GetCountingState();
+    if (LE_OK != GetMessageCount(LE_SMS_TYPE_RX, &MessageStats.rxCount))
+    {
+        LE_ERROR("Unable to retrieve received message count");
+    }
+    if (LE_OK != GetMessageCount(LE_SMS_TYPE_TX, &MessageStats.txCount))
+    {
+        LE_ERROR("Unable to retrieve sent message count");
+    }
+    if (LE_OK != GetMessageCount(LE_SMS_TYPE_BROADCAST_RX, &MessageStats.rxCbCount))
+    {
+        LE_ERROR("Unable to retrieve received broadcast message count");
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1061,6 +1239,24 @@ static void NewSmsHandler
         }
 
         newSmsMsgObjPtr->storage = newMessageIndicationPtr->storage;
+
+        // Update received message count if necessary
+        if (MessageStats.counting)
+        {
+            if (LE_SMS_TYPE_RX == newSmsMsgObjPtr->type)
+            {
+                SetMessageCount(newSmsMsgObjPtr->type, MessageStats.rxCount + 1);
+            }
+            else if (LE_SMS_TYPE_BROADCAST_RX == newSmsMsgObjPtr->type)
+            {
+                SetMessageCount(newSmsMsgObjPtr->type, MessageStats.rxCbCount + 1);
+            }
+            else
+            {
+                LE_ERROR("Unexpected message type %d received", newSmsMsgObjPtr->type);
+            }
+        }
+
         // Notify all the registered client's handlers with own reference.
         le_event_Report(NewSmsEventId, (void*)&newSmsMsgObjPtr, sizeof(le_sms_MsgRef_t));
 
@@ -1272,11 +1468,18 @@ static void SendSmsSendingStateEvent
     {
         LE_DEBUG("Sending CallBack (%p) Message (%p), Status %d",
                  Myfunction, messageRef, msgPtr->pdu.status);
+
+        // Update sent message count if necessary
+        if ((MessageStats.counting) && (LE_SMS_SENT == msgPtr->pdu.status))
+        {
+            SetMessageCount(LE_SMS_TYPE_TX, MessageStats.txCount + 1);
+        }
+
         Myfunction(messageRef, msgPtr->pdu.status, msgPtr->ctxPtr);
     }
     else
     {
-        LE_WARN("No CallBackFunction Found fot message %p, status %d!!",
+        LE_WARN("No CallBackFunction Found for message %p, status %d!!",
                 messageRef, msgPtr->pdu.status);
     }
 }
@@ -1605,6 +1808,9 @@ le_result_t le_sms_Init
 {
     // Initialize the smsPdu module
     smsPdu_Initialize();
+
+    // Initialize the message statistics
+    InitializeMessageStatistics();
 
     // Create a pool for Message objects
     MsgPool = le_mem_CreatePool("SmsMsgPool", sizeof(le_sms_Msg_t));
@@ -3054,6 +3260,12 @@ le_result_t le_sms_Send
             /* @todo Get message reference for acknowledge message feature */
             msgPtr->pdu.status = LE_SMS_SENT;
             result = LE_OK;
+
+            // Update sent message count if necessary
+            if (MessageStats.counting)
+            {
+                SetMessageCount(LE_SMS_TYPE_TX, MessageStats.txCount + 1);
+            }
         }
     }
     else
@@ -3920,4 +4132,103 @@ le_result_t le_sms_ClearCdmaCellBroadcastServices
     le_sem_Post(SmsSem);
 
     return res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of messages successfully received or sent since last counter reset.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sms_GetCount
+(
+    le_sms_Type_t messageType,      ///< Message type
+    int32_t*      messageCountPtr   ///< Number of messages
+)
+{
+    if (!messageCountPtr)
+    {
+        LE_KILL_CLIENT("messageCountPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    switch (messageType)
+    {
+        case LE_SMS_TYPE_RX:
+            *messageCountPtr = MessageStats.rxCount;
+            break;
+
+        case LE_SMS_TYPE_TX:
+            *messageCountPtr = MessageStats.txCount;
+            break;
+
+        case LE_SMS_TYPE_BROADCAST_RX:
+            *messageCountPtr = MessageStats.rxCbCount;
+            break;
+
+        default:
+            LE_ERROR("Unknown message type %d", messageType);
+            *messageCountPtr = 0;
+            return LE_BAD_PARAMETER;
+    }
+
+    LE_DEBUG("Type=%d, count=%d", messageType, *messageCountPtr);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start to count the messages successfully received and sent.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sms_StartCount
+(
+    void
+)
+{
+    LE_DEBUG("Start message counting");
+
+    // Start to count the messages
+    SetCountingState(true);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop to count the messages successfully received and sent.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sms_StopCount
+(
+    void
+)
+{
+    LE_DEBUG("Stop message counting");
+
+    // Stop to count the messages
+    SetCountingState(false);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset the count of messages successfully received and sent.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_sms_ResetCount
+(
+    void
+)
+{
+    LE_DEBUG("Reset message counters");
+
+    // Reset the message count for all types
+    SetMessageCount(LE_SMS_TYPE_RX, 0);
+    SetMessageCount(LE_SMS_TYPE_TX, 0);
+    SetMessageCount(LE_SMS_TYPE_BROADCAST_RX, 0);
 }
