@@ -12,7 +12,7 @@
  * @section c_le_avc_update Firmware/Application Update
  *
  * The API for firmware/application update is divided into two parts:
- *  - Allow a control app to contact the server for pending updates. If available,
+ *  - Allow an app to contact the server for pending updates. If available,
  *    can select to download or install the update.
  *    <br>
  *  - Allow an app to block an update from being installed. An app may need this if it's
@@ -22,17 +22,18 @@
  *
  * @subsection c_le_avc_update_control Update Control
  *
- * A control app can start a session with an AirVantage server to determine if there
+ * Any app can start a session with an AirVantage server to determine if there
  * is a pending update. This is done with le_avc_StartSession(). The current session can be
- * stopped using le_avc_StopSession().  This cancels any query for pending update, or suspends a
+ * stopped using le_avc_StopSession(). This cancels any query for pending update, or suspends a
  * download in progress; however, it <b>won't stop</b> an install in progress.
  *
- * The status of a pending update is sent to the control app using a notification.
- * The control app can use le_avc_AddStatusEventHandler() to register a handler function to
+ * The status of a pending update is sent to all apps registered for receiving a notification.
+ * An app can use le_avc_AddStatusEventHandler() to register a handler function to
  * receive this notification. The notification will be received after a session is started using
- * le_avc_StartSession(). Sometimes, the modem firmware may decide to start a session with
- * the AirVantage server. In this case, the notification could also be received, even if the
- * control app has not explicitly called le_avc_StartSession().
+ * le_avc_StartSession(). Sometimes, avcService may decide to start a session with the AirVantage
+ * server; for instance if a call to le_avc_AcceptDownload() when the session is stopped, avcService
+ * will open a session to proceed with the download. In this case, a session started
+ * notification could also be received, even if le_avc_StartSession() is not called explicitly.
  *
  * There can only be one pending update.  To query the type of update, use le_avc_GetUpdateType().
  * If it's an app update, then le_avc_GetAppUpdateName() can be used to get the name of
@@ -42,41 +43,36 @@
  * downloaded. If this API is called while no AirVantage session is active, calling this API will
  * initiate an AirVantage session. To defer the decision, le_avc_DeferDownload() can be used
  * to defer the download for the specified number of minutes. After the defer time has elapsed,
- * the pending download notification will be re-sent, to allow the control app to make a
- * new decision, or again defer.
+ * the pending download notification will be re-sent again to all registered apps.
  *
  * Once an update has been downloaded, a new notification will be received to indicate that an
- * install is pending. The control app can then use le_avc_AcceptInstall() to allow the
- * install to proceed. Note that even if the control app calls le_avc_AcceptInstall(),
- * the install may still be blocked by an app using the @ref c_le_avc_update_app
- * functions. To defer the decision, the control app can use le_avc_DeferInstall() to
- * defer the install for the specified number of minutes. After the defer time has elapsed, the
- * pending install notification will be re-sent to allow the control app to make a new
+ * install is pending. Apps can then use le_avc_AcceptInstall() to allow the install to proceed.
+ * Note that even if an app calls le_avc_AcceptInstall(), the install may still be blocked by another
+ * app using the @ref c_le_avc_update_app functions. To defer the decision, an app can use
+ * le_avc_DeferInstall() to defer the install for the specified number of minutes. After the defer
+ * time has elapsed, the pending install notification will be re-sent to allow apps to make a new
  * decision, or again defer.
  *
  * If an uninstall is pending, then le_avc_AcceptUninstall() can be used to allow the uninstall to
  * proceed. To defer the decision, le_avc_DeferUninstall() can be used to defer the uninstall for
  * the specified number of minutes. In case of an upgrade, the existing application will not be
  * uninstalled after le_avc_AcceptUninstall() is called. le_avc_AcceptUninstall() is only used to
- * signal the server to start downloading the new application. During an upgrade process the
- * control app has to accept the uninstall of the existing version followed by accepting the
- * download and install of the new version.
+ * signal the server to start downloading the new application. To proceed with an upgrade process,
+ * accept the uninstall of the existing version followed by accepting the download and install of
+ * the new version.
  *
  * Accepting an app install or uninstall will not initiate an AirVantage session if no session
- * is active.  The control app should start an AirVantage session before accepting an app
- * install/uninstall, to ensure the process is completed, and the server is updated.
+ * is active.  An app should start an AirVantage session before accepting an app install/uninstall,
+ * to ensure the process is completed, and the server is updated.
  *
- * If a control app doesn't register for notifications using le_avc_AddStatusEventHandler(),
+ * If no app has registered for notifications using le_avc_AddStatusEventHandler(),
  * then any pending downloads and installs will happen automatically, subject to any restrictions
- * imposed by app using the @ref c_le_avc_update_app functions.  Also, only the control app
- * registered for notifications will be allowed to use the other update control API functions.
+ * imposed by app using the @ref c_le_avc_update_app functions.
  *
- * Only one control app is allowed to register for notifications.  Any subsequent attempts by
- * either the same app, or a different app is treated as a fatal error (i.e. non-recoverable)
- * and will result in the client app being terminated.
+ * There is no restriction on the number of apps registering for notifications.
  *
- * In case of any error incurred during app download/install, an error code will be set and the
- * control app can retrieve it by calling le_avc_GetErrorCode().
+ * In case of any error incurred during app download/install, an error code will be set which can be
+ * retrieved by calling le_avc_GetErrorCode().
  *
  * @subsection c_le_avc_update_app Application Blocking
  *
@@ -92,11 +88,10 @@
  * If an install can't be applied because it's blocked, another attempt to apply the install
  * will be made at a later time.
  *
- * The control app can add a session controller handler using
- * le_avc_AddSessionRequestEventHandler(). If the control app registers a session request event
- * handler, requests by user apps to open or close session will be forwarded to the control app.
- * If the control app doesn't register a session request handler, avms session can be opened anytime
- * by user apps.
+ * An app can add a session control handler using le_avc_AddSessionRequestEventHandler(). Requests
+ * by user apps to open or close session will be forwarded to the session control handler. If no app
+ * has registered a session request handler, avc session can be opened or closed anytime by
+ * user apps.
  *
  * @section c_le_avc_GetPollingTimer Polling Timer
  *
@@ -123,12 +118,12 @@
  *
  * @section c_le_avc_reboot Device reboot
  * The AirVantage server can request to reboot the device: in this case a notification is sent to
- * the control app, which can either accept the reboot with le_avc_AcceptReboot() or defer it for
+ * registered apps, which can either accept the reboot with le_avc_AcceptReboot() or defer it for
  * the specified number of minutes with le_avc_DeferReboot(). After the defer time has elapsed, the
- * pending reboot notification will be re-sent, to allow the control app to make a new decision
+ * pending reboot notification will be re-sent, to allow the registered app to make a new decision
  * or defer again.
  *
- * If a control app doesn't register for notifications using le_avc_AddStatusEventHandler(), then
+ * If no app has registered for notifications using le_avc_AddStatusEventHandler(), then
  * any pending reboot will happen automatically.
  *
  * @section c_le_avc_connection Connection required
