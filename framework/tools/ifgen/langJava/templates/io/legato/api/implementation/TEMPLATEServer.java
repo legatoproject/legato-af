@@ -15,6 +15,7 @@
 package io.legato.api.implementation;
 
 import java.io.FileDescriptor;
+import java.math.BigInteger;
 import java.lang.AutoCloseable;
 import io.legato.Ref;
 import io.legato.Result;
@@ -26,6 +27,7 @@ import io.legato.Service;
 import io.legato.Protocol;
 import io.legato.ServerSession;
 import io.legato.SessionEvent;
+import io.legato.IntType;
 {%- for import in imports %}
 import io.legato.api.{{import}};
 {%- else %}

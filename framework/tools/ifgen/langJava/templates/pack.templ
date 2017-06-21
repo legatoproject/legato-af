@@ -3,28 +3,23 @@
  #
  # Copyright (C) Sierra Wireless Inc.
 -#}
-{%- set _getterMap = { "byte": "buffer.readByte()",
-                      "short": "buffer.readShort()",
-                      "int": "buffer.readInt()",
-                      "long": "buffer.readLong()",
-                      "boolean": "buffer.readBool()",
-                      "double": "buffer.readDouble()",
-                      "String": "buffer.readString()",
-                      "FileDescriptor": "message.getFd()",
-                      "Result": "Result.fromInt(buffer.readInt())",
-                      "OnOff": "OnOff.fromInt(buffer.readInt())" } %}
-{%- set _setterMap = { "byte":  "buffer.writeByte",
-                       "short":  "buffer.writeShort",
-                       "int":  "buffer.writeInt",
-                       "long":  "buffer.writeLong",
-                       "boolean":  "buffer.writeBool",
+{%- set _getterMap = { "boolean": "buffer.readBool()",
+                       "double": "buffer.readDouble()",
+                       "String": "buffer.readString()",
+                       "FileDescriptor": "message.getFd()",
+                       "Result": "Result.fromInt(buffer.readInt())",
+                       "OnOff": "OnOff.fromInt(buffer.readInt())" } %}
+{%- set _setterMap = { "boolean":  "buffer.writeBool",
                        "double":  "buffer.writeDouble",
+                       "BigInteger": "buffer.writeNumber",
                        "FileDescriptor":  "message.setFd",
                        "Result":  "buffer.writeInt",
                        "OnOff": "buffer.writeInt" } %}
 {%- macro PackValue(apiType, value) -%}
-    {%- if apiType is EnumType or apiType is BitMaskType -%}
-buffer.writeInt({{value}}.getValue());
+    {%- if apiType is BitMaskType -%}
+buffer.writeNumber({{value}}.getType(), {{value}}.getValue());
+    {%- elif apiType is EnumType -%}
+buffer.writeNumber({{value}}.getType(), {{value}}.getValue());
     {%- elif apiType is HandlerReferenceType -%}
 buffer.writeLongRef({{value}});
     {%- elif apiType is ReferenceType -%}
@@ -34,6 +29,8 @@ long ref{{value}} = (({{value}} == null)?0:handlerMap.newRef(new HandlerMapper({
 buffer.writeLongRef(ref{{value}});
     {%- elif apiType.name ==  'le_result_t' or apiType.name == 'le_onoff_t' -%}
 {{_setterMap[apiType|FormatType]}}({{value}}.getValue());
+    {%- elif apiType|FormatType == "BigInteger"  -%}
+{{_setterMap[apiType|FormatType]}}(IntType.fromApiType("{{apiType.name}}"), {{value}});
     {%- else -%}
 {{_setterMap[apiType|FormatType]}}({{value}});
     {%- endif %}
@@ -47,8 +44,10 @@ buffer.writeString({{value}}, {{parameter.maxCount}});
     {%- endif %}
 {%- endmacro %}
 {%- macro UnpackValue(valueType, valueName, functionName=None) -%}
-    {%- if valueType is EnumType or valueType is BitMaskType -%}
-        {{valueType|FormatType}}.fromInt(buffer.readInt())
+    {%- if valueType is EnumType -%}
+        {{valueType|FormatType}}.fromValue(buffer.readNumber({{valueType|FormatType}}.getType()))
+    {%- elif valueType is BitMaskType -%}
+        {{valueType|FormatType}}.fromValue(buffer.readNumber({{valueType|FormatType}}.TYPE))
     {%- elif valueType is HandlerReferenceType -%}
         buffer.readLongRef()
     {%- elif valueType is ReferenceType -%}
@@ -87,6 +86,8 @@ buffer.writeString({{value}}, {{parameter.maxCount}});
             return this;
         }
     }.setContext({{valueName}}Context, currentSession)
+    {%- elif valueType|FormatType == "BigInteger"  -%}
+    buffer.readNumber(IntType.fromApiType("{{valueType.name}}"))
     {%- else  -%}
     {{_getterMap[valueType|FormatType]}}
     {%- endif %}

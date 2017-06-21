@@ -10,7 +10,7 @@
 
 package io.legato;
 
-
+import java.math.BigInteger;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -330,5 +330,71 @@ public class MessageBuffer implements AutoCloseable
 
         LegatoJni.SetMessageInt(hostMessage.getRef(), location, (int)longRef);
         location += 4;
+    }
+
+    /**
+     * Read a number from the buffer
+     *
+     * @param type
+     *            The {@link IntType} to read
+     * @return the value
+     */
+    public BigInteger readNumber(IntType type)
+    {
+        switch (type)
+        {
+        case INT8:
+            return new BigInteger(Byte.toString(readByte()));
+        case UINT8:
+            return new BigInteger(Integer.toString(Byte.toUnsignedInt(readByte())));
+        case INT16:
+            return new BigInteger(Short.toString(readShort()));
+        case UINT16:
+            return new BigInteger(Integer.toString(Short.toUnsignedInt(readShort())));
+        case INT32:
+            return new BigInteger(Integer.toString(readInt()));
+        case UINT32:
+            return new BigInteger(Integer.toUnsignedString(readInt()));
+        case INT64:
+            return new BigInteger(Long.toString(readLong()));
+        case UINT64:
+            return new BigInteger(Long.toUnsignedString(readLong()));
+        }
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Write a {@link IntNumber} to the buffer at it's current location.
+     *
+     * @param type
+     *            the {@link IntType} of the number
+     * @param number
+     *            The value to write at the current buffer location.
+     */
+    public void writeNumber(IntType type, BigInteger number)
+    {
+        if (!type.isValidValue(number))
+        {
+            throw new IllegalArgumentException("Invalid value for " + type.name() + ": " + number);
+        }
+        switch (type)
+        {
+        case INT8:
+        case UINT8:
+            writeByte(number.byteValue());
+            break;
+        case INT16:
+        case UINT16:
+            writeShort(number.shortValue());
+            break;
+        case INT32:
+        case UINT32:
+            writeInt(number.intValue());
+            break;
+        case INT64:
+        case UINT64:
+            writeLong(number.longValue());
+            break;
+        }
     }
 }

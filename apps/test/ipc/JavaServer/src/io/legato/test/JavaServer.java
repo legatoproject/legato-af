@@ -5,6 +5,7 @@
 package io.legato.test;
 
 import java.util.logging.Logger;
+import java.math.BigInteger;
 
 import io.legato.Ref;
 import io.legato.Component;
@@ -15,13 +16,13 @@ public class JavaServer implements ipcTest, Component
     @Override
     public void EchoSimple
     (
-        int InValue,
-        Ref<Integer> OutValue
+        BigInteger InValue,
+        Ref<BigInteger> OutValue
     )
     {
         if (OutValue != null)
         {
-            OutValue.setValue(new Integer(InValue));
+            OutValue.setValue(InValue);
         }
     }
 
@@ -38,18 +39,18 @@ public class JavaServer implements ipcTest, Component
         }
     }
 
-    // @Override
-    // public void EchoLargeEnum
-    // (
-    //     ipcTest.LargeEnum InValue
-    //     Ref<ipcTest.LargeEnum> OutValue
-    // )
-    // {
-    //     if (OutValue != null)
-    //     {
-    //         OutValue.setValue(InValue);
-    //     }
-    // }
+    @Override
+    public void EchoLargeEnum
+    (
+        ipcTest.LargeEnum InValue,
+        Ref<ipcTest.LargeEnum> OutValue
+    )
+    {
+        if (OutValue != null)
+        {
+            OutValue.setValue(InValue);
+        }
+    }
 
     @Override
     public void EchoSmallBitMask
@@ -64,18 +65,18 @@ public class JavaServer implements ipcTest, Component
         }
     }
 
-    // @Override
-    // public void EchoLargeBitMask
-    // (
-    //     ipcTest.LargeBitMask InValue,
-    //     Ref<ipcTest.LargeBitMask> OutValue
-    // )
-    // {
-    //     if (OutValue != null)
-    //     {
-    //         OutValue.setValue(new ipcTest.LargeBitMask(InValue.getValue()));
-    //     }
-    // }
+    @Override
+    public void EchoLargeBitMask
+    (
+        ipcTest.LargeBitMask InValue,
+        Ref<ipcTest.LargeBitMask> OutValue
+    )
+    {
+        if (OutValue != null)
+        {
+            OutValue.setValue(new ipcTest.LargeBitMask(InValue.getValue()));
+        }
+    }
 
     @Override
     public void EchoReference

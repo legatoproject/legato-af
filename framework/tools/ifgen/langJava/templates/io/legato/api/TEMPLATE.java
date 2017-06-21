@@ -17,11 +17,13 @@
 package io.legato.api;
 
 import io.legato.Ref;
+import io.legato.IntType;
 import io.legato.Result;
 import io.legato.OnOff;
 import java.util.Map;
 import java.util.HashMap;
 import java.io.FileDescriptor;
+import java.math.BigInteger;
 
 public interface {{apiName}}
 {
@@ -52,62 +54,59 @@ public interface {{apiName}}
         }
     }
     {%- elif type is BitMaskType %}
-    public static class {{type.name}}
-    {
+    public static class {{type.name}} {
+        public static final IntType TYPE = IntType.fromSize({{type.size}}, true);
+
         {%- for element in type.elements %}
-        public static final int {{element.name}} = {{element.value}};
+        public static final BigInteger {{element.name}} = new BigInteger("{{element.value}}");
         {%- endfor %}
 
-        private int value;
+        private final BigInteger value;
 
-        public {{type.name}}(int newValue)
-        {
+        public {{type.name}}(BigInteger newValue) {
             value = newValue;
         }
 
-        public static {{type.name}} fromInt(int newValue)
-        {
+        public static {{type.name}} fromValue(BigInteger newValue) {
             return new {{type.name}}(newValue);
         }
 
-        public int getValue()
-        {
+        public BigInteger getValue() {
             return value;
+        }
+
+        public IntType getType() {
+            return TYPE;
         }
     }
     {%- elif type is EnumType %}
-    public enum {{type.name}}
-    {
+    public enum {{type.name}} {
         {%- for element in type.elements %}
-        {{element.name}}({{element.value}}){% if loop.last %};{% else %},{% endif %}
+        {{element.name}}("{{element.value}}"){% if loop.last %};{% else %},{% endif %}
         {%- endfor %}
 
-        private int value;
+        public static final IntType TYPE = IntType.fromSize({{type.size}}, true);
+        private BigInteger value;
 
-        {{type.name}}(int newValue)
-        {
-            value = newValue;
+        {{type.name}}(String newValue) {
+            value = new BigInteger(newValue);
         }
 
-        public int getValue()
-        {
+        public BigInteger getValue() {
             return value;
         }
 
-        private static final Map<Integer, {{type.name}}> valueMap
-             {#- #} = new HashMap<Integer, {{type.name}}>();
-
-        static
-        {
-            for ({{type.name}} item : {{type.name}}.values())
-            {
-                valueMap.put(item.value, item);
-            }
+        public static IntType getType() {
+            return TYPE;
         }
 
-        public static {{type.name}} fromInt(int newValue)
-        {
-            return valueMap.get(newValue);
+        public static {{type.name}} fromValue(BigInteger value) {
+            for ({{type.name}} out : values()) {
+                if (out.value.equals(value)) {
+                    return out;
+                }
+            }
+            throw new IllegalStateException();
         }
     }
     {%- elif type is HandlerType %}

@@ -44,14 +44,14 @@ def FormatHeaderComment(comment):
     return result
 
 _BasicTypeMapping = {
-    interfaceIR.UINT8_TYPE:  "byte",
-    interfaceIR.UINT16_TYPE: "short",
-    interfaceIR.UINT32_TYPE: "int",
-    interfaceIR.UINT64_TYPE: "long",
-    interfaceIR.INT8_TYPE:   "byte",
-    interfaceIR.INT16_TYPE:  "short",
-    interfaceIR.INT32_TYPE:  "int",
-    interfaceIR.INT64_TYPE:  "long",
+    interfaceIR.UINT8_TYPE:  "BigInteger",
+    interfaceIR.UINT16_TYPE: "BigInteger",
+    interfaceIR.UINT32_TYPE: "BigInteger",
+    interfaceIR.UINT64_TYPE: "BigInteger",
+    interfaceIR.INT8_TYPE:   "BigInteger",
+    interfaceIR.INT16_TYPE:  "BigInteger",
+    interfaceIR.INT32_TYPE:  "BigInteger",
+    interfaceIR.INT64_TYPE:  "BigInteger",
     interfaceIR.BOOL_TYPE:   "boolean",
     interfaceIR.CHAR_TYPE:   "byte",
     interfaceIR.DOUBLE_TYPE: "double",
@@ -87,11 +87,6 @@ def FormatType(context, apiType, qualifiedTypes=None):
 
 _BoxTypeMapping = {
     "boolean": "Boolean",
-    "byte":    "Byte",
-    "char":    "Character",
-    "int":     "Integer",
-    "long":    "Long",
-    "short":   "Short",
     "double":  "Double"
 }
 
@@ -104,11 +99,8 @@ def FormatBoxedType(context, apiType, qualifiedTypes=None):
     return javaType
 
 _LiteralInitMapping = {
+    "BigInteger": "BigInteger.ZERO",
     "boolean": "false",
-    "byte": "0",
-    "short": "0",
-    "int": "0",
-    "long": "0L",
     "float": "0.0f",
     "double": "0.0d",
     "char": "'\u0000'"

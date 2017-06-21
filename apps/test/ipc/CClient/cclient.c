@@ -39,8 +39,6 @@ static void TestEchoSmallEnum(void)
     CU_ASSERT(inValue == outValue);
 }
 
-#if 0
-// Not currently supported by Java
 static void TestEchoLargeEnum(void)
 {
     const ipcTest_LargeEnum_t inValue = IPCTEST_LE_LARGE_VALUE1;
@@ -49,7 +47,6 @@ static void TestEchoLargeEnum(void)
     ipcTest_EchoLargeEnum(inValue, &outValue);
     CU_ASSERT(inValue == outValue);
 }
-#endif
 
 static void TestEchoSmallBitMask(void)
 {
@@ -60,8 +57,6 @@ static void TestEchoSmallBitMask(void)
     CU_ASSERT(inValue == outValue);
 }
 
-#if 0
-// Not currently supported by Java
 static void TestEchoLargeBitMask(void)
 {
     const ipcTest_LargeBitMask_t inValue = IPCTEST_LBM_VALUE64 | IPCTEST_LBM_VALUE9;
@@ -70,7 +65,6 @@ static void TestEchoLargeBitMask(void)
     ipcTest_EchoLargeBitMask(inValue, &outValue);
     CU_ASSERT(inValue == outValue);
 }
-#endif
 
 static void TestEchoReference(void)
 {
@@ -217,9 +211,9 @@ static void* run_test(void* context)
               { "EchoSimple", TestEchoSimple },
               { "EchoSimple with NULL output", TestEchoSimpleNull },
               { "EchoSmallEnum", TestEchoSmallEnum },
-//              { "EchoLargeEnum", TestEchoLargeEnum },
+              { "EchoLargeEnum", TestEchoLargeEnum },
               { "EchoSmallBitMask", TestEchoSmallBitMask },
-//              { "EchoLargeBitMask", TestEchoLargeBitMask },
+              { "EchoLargeBitMask", TestEchoLargeBitMask },
               { "EchoReference", TestEchoReference },
               { "EchoReference with NULL reference", TestEchoErrorReference },
               { "EchoReference with NULL output", TestEchoReferenceNull },

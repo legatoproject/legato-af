@@ -33,8 +33,6 @@ void ipcTest_EchoSmallEnum
     }
 }
 
-#if 0
-// Not currently supported on Java
 void ipcTest_EchoLargeEnum
 (
     ipcTest_LargeEnum_t InValue,
@@ -46,7 +44,6 @@ void ipcTest_EchoLargeEnum
         *OutValuePtr = InValue;
     }
 }
-#endif
 
 void ipcTest_EchoSmallBitMask
 (
@@ -60,8 +57,6 @@ void ipcTest_EchoSmallBitMask
     }
 }
 
-#if 0
-// Not currently supported on Java
 void ipcTest_EchoLargeBitMask
 (
     ipcTest_LargeBitMask_t InValue,
@@ -73,7 +68,6 @@ void ipcTest_EchoLargeBitMask
         *OutValuePtr = InValue;
     }
 }
-#endif
 
 void ipcTest_EchoReference
 (

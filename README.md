@@ -21,7 +21,7 @@ $ sudo apt-get install build-essential \
 
 Optional packages: ```vim``` (or any text editor),
                    ```zsh``` (command interpreter for shell scripting),
-                   ```openjdk-8-jdk``` (for Java support),
+                   ```openjdk-8-jdk``` (for Java support, at least Java 8 is required),
                    ```doxygen graphviz``` (for doc generation)
 
   - Cross-build toolchain(s)<br/>
