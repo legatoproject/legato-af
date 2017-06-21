@@ -68,26 +68,69 @@ apps:
 Any of the following subsections can be used in an  @c .sdef @c apps: section, and will override
 the .adef setting for all processes in that app:
 
-@ref defFilesAdef_cpuShare <br>
-@ref defFilesAdef_processFaultAction <br>
-@ref defFilesAdef_groups <br>
-@ref defFilesAdef_processMaxCoreDumpFileBytes <br>
-@ref defFilesAdef_processMaxFileBytes <br>
-@ref defFilesAdef_processMaxFileDescriptors <br>
-@ref defFilesAdef_maxFileSystemBytes <br>
-@ref defFilesAdef_processMaxLockedMemoryBytes <br>
-@ref defFilesAdef_maxMemoryBytes <br>
-@ref defFilesAdef_maxMQueueBytes <br>
-@ref defFilesSdef_appsMaxPriority <br>
-@ref defFilesAdef_maxQueuedSignals <br>
-@ref defFilesAdef_maxThreads <br>
-@ref defFilesAdef_maxSecureStorageBytes <br>
-@ref defFilesAdef_pools <br>
-@ref defFilesAdef_sandboxed <br>
-@ref defFilesAdef_start  <br>
-@ref defFilesAdef_watchdogAction <br>
-@ref defFilesAdef_watchdogTimeout <br>
+<!--
+<DIV> tags added to support Developer Studio hover text implementation
+for adef information overridden in the sdef, please do not remove.
+-->
 
+<DIV id="defFilesSdef_cpuShare">
+@ref defFilesAdef_cpuShare
+</DIV>
+<DIV id="defFilesSdef_processFaultAction">
+@ref defFilesAdef_processFaultAction
+</DIV>
+<DIV id="defFilesSdef_groups">
+@ref defFilesAdef_groups
+</DIV>
+<DIV id="defFilesSdef_processMaxCoreDumpFileBytes">
+@ref defFilesAdef_processMaxCoreDumpFileBytes
+</DIV>
+<DIV id="defFilesSdef_processMaxFileBytes">
+@ref defFilesAdef_processMaxFileBytes
+</DIV>
+<DIV id="defFilesSdef_processMaxFileDescriptors">
+@ref defFilesAdef_processMaxFileDescriptors
+</DIV>
+<DIV id="defFilesSdef_maxFileSystemBytes">
+@ref defFilesAdef_maxFileSystemBytes
+</DIV>
+<DIV id="defFilesSdef_processMaxLockedMemoryBytes">
+@ref defFilesAdef_processMaxLockedMemoryBytes
+</DIV>
+<DIV id="defFilesSdef_maxMemoryBytes">
+@ref defFilesAdef_maxMemoryBytes
+</DIV>
+<DIV id="defFilesSdef_maxMQueueBytes">
+@ref defFilesAdef_maxMQueueBytes
+</DIV>
+<!--<DIV> tag used for maxpriority below to maintain indentation in HTML-->
+<DIV>
+@ref defFilesSdef_appsMaxPriority
+</DIV>
+<DIV id="defFilesSdef_maxQueuedSignals">
+@ref defFilesAdef_maxQueuedSignals
+</DIV>
+<DIV id="defFilesSdef_maxThreads">
+@ref defFilesAdef_maxThreads
+</DIV>
+<DIV id="defFilesSdef_maxSecureStorageBytes">
+@ref defFilesAdef_maxSecureStorageBytes
+</DIV>
+<DIV id="defFilesSdef_pools">
+@ref defFilesAdef_pools
+</DIV>
+<DIV id="defFilesSdef_sandboxed">
+@ref defFilesAdef_sandboxed
+</DIV>
+<DIV id="defFilesSdef_start">
+@ref defFilesAdef_start
+</DIV>
+<DIV id="defFilesSdef_watchdogAction">
+@ref defFilesAdef_watchdogAction
+</DIV>
+<DIV id="defFilesSdef_watchdogTimeout">
+@ref defFilesAdef_watchdogTimeout
+</DIV>
 @subsection defFilesSdef_appsInterfaceSearch interfaceSearch
 
 This section is used to specify directories in which @c mksys should look for interface files,
