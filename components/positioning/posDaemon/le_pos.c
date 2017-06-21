@@ -31,7 +31,7 @@
 #define GNSS_UERE                                 7
 #define GNSS_ESTIMATED_VERTICAL_ERROR_FACTOR      GNSS_UERE * 1.5
 
-#define POSITIONING_SAMPLE_MAX         1
+#define POSITIONING_SAMPLE_MAX          1
 
 
 /// Typically, we don't expect more than this number of concurrent activation requests.
@@ -126,6 +126,7 @@ typedef struct le_pos_SampleHandler
                                                       ///  handler's notification.
     int32_t                      lastAlt;             ///< The altitude associated with the last
                                                       ///  handler's notification.
+    le_msg_SessionRef_t          sessionRef;          ///< Store message session reference.
     le_dls_Link_t                link;                ///< Object node link
 }
 le_pos_SampleHandler_t;
@@ -133,18 +134,32 @@ le_pos_SampleHandler_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Position control Client request objet structure.
+ * Position control Client request object structure.
  *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_posCtrl_ActivationRef_t      posCtrlActivationRef;   ///< Potistioning control reference.
+    le_posCtrl_ActivationRef_t      posCtrlActivationRef;   ///< Positioning control reference.
     le_msg_SessionRef_t             sessionRef;             ///< Client session identifier.
     le_dls_Link_t                   link;                   ///< Object node link.
 }
 ClientRequest_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Position sample request object structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_pos_SampleRef_t              positionSampleRef;  ///< Store position smaple reference.
+    le_pos_Sample_t*                posSampleNodePtr;   ///< Position sample node pointer.
+    le_msg_SessionRef_t             sessionRef;         ///< Client session identifier.
+    le_dls_Link_t                   link;               ///< Object node link.
+}
+PosSampleRequest_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -199,6 +214,14 @@ static le_dls_List_t PosSampleHandlerList = LE_DLS_LIST_INIT;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t   PosSamplePoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for position sample request.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   PosSampleRequestPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -286,7 +309,7 @@ static void PosSampleDestructor
             // Get the node from the list
             posSampleNodePtr = (le_pos_Sample_t*)CONTAINER_OF(linkPtr, le_pos_Sample_t, link);
             // Check the node.
-            if ( posSampleNodePtr == (le_pos_Sample_t*)obj)
+            if (posSampleNodePtr == (le_pos_Sample_t*)obj)
             {
                 // Remove the node.
                 le_dls_Remove(&PosSampleList, linkPtr);
@@ -325,7 +348,7 @@ static void PosSampleHandlerDestructor
                                                                             le_pos_SampleHandler_t,
                                                                             link);
             // Check the node.
-            if ( posSampleHandlerNodePtr == (le_pos_SampleHandler_t*)obj)
+            if (posSampleHandlerNodePtr == (le_pos_SampleHandler_t*)obj)
             {
                 // Remove the node.
                 le_dls_Remove(&PosSampleHandlerList, linkPtr);
@@ -424,7 +447,7 @@ static bool IsBeyondMagnitude
     if (move > magnitude)
     {
         // Check that it doesn't just look like we are beyond the magnitude because of bad accuracy.
-        if ( (accuracy > move) || ((move - accuracy) < magnitude) )
+        if ((accuracy > move) || ((move - accuracy) < magnitude))
         {
             // Could be beyond the magnitude, but we also could be inside the fence.
             return false;
@@ -465,7 +488,7 @@ static uint32_t ComputeCommonSmallestRate
                                                                             le_pos_SampleHandler_t,
                                                                             link);
             // Check the node.
-            if ( posSampleHandlerNodePtr->acquisitionRate < rate )
+            if (posSampleHandlerNodePtr->acquisitionRate < rate)
             {
                 // Remove the node.
                 rate = posSampleHandlerNodePtr->acquisitionRate;
@@ -605,7 +628,7 @@ static void PosSampleHandlerfunc
     // Positioning sample parameters
     le_pos_SampleHandler_t* posSampleHandlerNodePtr;
     le_dls_Link_t*          linkPtr;
-    le_pos_Sample_t*        posSampleNodePtr=NULL;
+    PosSampleRequest_t*     posSampleRequestPtr=NULL;
 
     if (NULL == positionSampleRef)
     {
@@ -624,41 +647,32 @@ static void PosSampleHandlerfunc
     LE_DEBUG("Handler Function called with sample %p", positionSampleRef);
 
     // Get Location
-    result = le_gnss_GetLocation( positionSampleRef
-                                , &latitude
-                                , &longitude
-                                , &hAccuracy);
+    result = le_gnss_GetLocation(positionSampleRef, &latitude, &longitude, &hAccuracy);
     if ((LE_OK == result) ||
         ((LE_OUT_OF_RANGE == result) && (INT32_MAX != latitude) && (INT32_MAX != longitude)))
     {
         locationValid = true;
-        LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d"
-                    , latitude, longitude, hAccuracy/100);
+        LE_DEBUG("Position lat.%d, long.%d, hAccuracy.%d", latitude, longitude, hAccuracy/100);
     }
     else
     {
         locationValid = false;
-        LE_DEBUG("Position unknown [%d,%d,%d]"
-                , latitude, longitude, hAccuracy);
+        LE_DEBUG("Position unknown [%d,%d,%d]", latitude, longitude, hAccuracy);
     }
 
     // Get altitude
-    result = le_gnss_GetAltitude( positionSampleRef
-                                , &altitude
-                                , &vAccuracy);
+    result = le_gnss_GetAltitude(positionSampleRef, &altitude, &vAccuracy);
 
     if ((LE_OK == result) ||
         ((LE_OUT_OF_RANGE != result) && (INT32_MAX != altitude)))
     {
         altitudeValid = true;
-        LE_DEBUG("Altitude.%d, vAccuracy.%d"
-                , altitude/1000, vAccuracy/10);
+        LE_DEBUG("Altitude.%d, vAccuracy.%d", altitude/1000, vAccuracy/10);
     }
     else
     {
         altitudeValid = false;
-        LE_DEBUG("Altitude unknown [%d,%d]"
-                , altitude, vAccuracy);
+        LE_DEBUG("Altitude unknown [%d,%d]", altitude, vAccuracy);
     }
 
     // Positioning sample
@@ -686,10 +700,8 @@ static void PosSampleHandlerfunc
         posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)CONTAINER_OF(linkPtr,
                                                                         le_pos_SampleHandler_t,
                                                                         link);
-        if (LE_FAULT == ComputeMove(posSampleHandlerNodePtr,
-                                    &posParam,
-                                    &hflag,
-                                    &vflag))
+
+        if (LE_FAULT == ComputeMove(posSampleHandlerNodePtr, &posParam, &hflag, &vflag))
         {
             // Release provided Position sample reference
             le_gnss_ReleaseSampleRef(positionSampleRef);
@@ -701,118 +713,110 @@ static void PosSampleHandlerfunc
         // - Horizontal distance is beyond the magnitude
         // - We don't care about vertical & horizontal distance (magnitudes equal to 0)
         //   therefore that movement handler is called each positioning acquisition rate
-        if ( ((0 != posSampleHandlerNodePtr->verticalMagnitude)   && (vflag)) ||
+        if (((0 != posSampleHandlerNodePtr->verticalMagnitude) && (vflag)) ||
              ((0 != posSampleHandlerNodePtr->horizontalMagnitude) && (hflag)) ||
              ((0 == posSampleHandlerNodePtr->verticalMagnitude)
-                && (0 == posSampleHandlerNodePtr->horizontalMagnitude))
-           )
+             && (0 == posSampleHandlerNodePtr->horizontalMagnitude)))
         {
-            if (NULL == posSampleNodePtr)
+            // Create the position sample node.
+            posSampleRequestPtr = le_mem_ForceAlloc(PosSampleRequestPoolRef);
+            posSampleRequestPtr->posSampleNodePtr
+                                = (le_pos_Sample_t*)le_mem_ForceAlloc(PosSamplePoolRef);
+            posSampleRequestPtr->posSampleNodePtr->latitudeValid
+                                = CHECK_VALIDITY(latitude,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->latitude = latitude;
+
+            posSampleRequestPtr->posSampleNodePtr->longitudeValid
+                                = CHECK_VALIDITY(longitude,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->longitude = longitude;
+
+            posSampleRequestPtr->posSampleNodePtr->hAccuracyValid
+                                = CHECK_VALIDITY(hAccuracy,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->hAccuracy = hAccuracy;
+
+            posSampleRequestPtr->posSampleNodePtr->altitudeValid
+                                = CHECK_VALIDITY(altitude,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->altitude = altitude;
+
+            posSampleRequestPtr->posSampleNodePtr->vAccuracyValid
+                                = CHECK_VALIDITY(vAccuracy,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->vAccuracy = vAccuracy;
+
+            // Get horizontal speed
+            le_gnss_GetHorizontalSpeed(positionSampleRef, &hSpeed, &hSpeedAccuracy);
+            posSampleRequestPtr->posSampleNodePtr->hSpeedValid
+                                    = CHECK_VALIDITY(hSpeed,UINT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->hSpeed = hSpeed;
+            posSampleRequestPtr->posSampleNodePtr->hSpeedAccuracyValid =
+                                                CHECK_VALIDITY(hSpeedAccuracy,UINT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->hSpeedAccuracy = hSpeedAccuracy;
+
+            // Get vertical speed
+            le_gnss_GetVerticalSpeed(positionSampleRef, &vSpeed, &vSpeedAccuracy);
+            posSampleRequestPtr->posSampleNodePtr->vSpeedValid
+                                = CHECK_VALIDITY(vSpeed,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->vSpeed = vSpeed;
+            posSampleRequestPtr->posSampleNodePtr->vSpeedAccuracyValid =
+                                                CHECK_VALIDITY(vSpeedAccuracy,INT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->vSpeedAccuracy = vSpeedAccuracy;
+
+            // Heading not supported by GNSS engine
+            posSampleRequestPtr->posSampleNodePtr->headingValid = false;
+            posSampleRequestPtr->posSampleNodePtr->heading = UINT32_MAX;
+            posSampleRequestPtr->posSampleNodePtr->headingAccuracyValid = false;
+            posSampleRequestPtr->posSampleNodePtr->headingAccuracy = UINT32_MAX;
+
+            // Get direction
+            le_gnss_GetDirection(positionSampleRef, &direction, &directionAccuracy);
+
+            posSampleRequestPtr->posSampleNodePtr->directionValid
+                                = CHECK_VALIDITY(direction,UINT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->direction = direction;
+            posSampleRequestPtr->posSampleNodePtr->directionAccuracyValid =
+                                            CHECK_VALIDITY(directionAccuracy,UINT32_MAX);
+            posSampleRequestPtr->posSampleNodePtr->directionAccuracy = directionAccuracy;
+
+            // Get UTC time
+            if (LE_OK == le_gnss_GetDate(positionSampleRef, &year, &month, &day))
             {
-                // Create the position sample node.
-                posSampleNodePtr = (le_pos_Sample_t*)le_mem_ForceAlloc(PosSamplePoolRef);
-                posSampleNodePtr->latitudeValid = CHECK_VALIDITY(latitude,INT32_MAX);
-                posSampleNodePtr->latitude = latitude;
-
-                posSampleNodePtr->longitudeValid = CHECK_VALIDITY(longitude,INT32_MAX);
-                posSampleNodePtr->longitude = longitude;
-
-                posSampleNodePtr->hAccuracyValid = CHECK_VALIDITY(hAccuracy,INT32_MAX);
-                posSampleNodePtr->hAccuracy = hAccuracy;
-
-                posSampleNodePtr->altitudeValid = CHECK_VALIDITY(altitude,INT32_MAX);
-                posSampleNodePtr->altitude = altitude;
-
-                posSampleNodePtr->vAccuracyValid = CHECK_VALIDITY(vAccuracy,INT32_MAX);
-                posSampleNodePtr->vAccuracy = vAccuracy;
-
-                // Get horizontal speed
-                le_gnss_GetHorizontalSpeed( positionSampleRef,
-                                            &hSpeed,
-                                            &hSpeedAccuracy);
-
-                posSampleNodePtr->hSpeedValid = CHECK_VALIDITY(hSpeed,UINT32_MAX);
-                posSampleNodePtr->hSpeed = hSpeed;
-                posSampleNodePtr->hSpeedAccuracyValid =
-                                                    CHECK_VALIDITY(hSpeedAccuracy,UINT32_MAX);
-                posSampleNodePtr->hSpeedAccuracy = hSpeedAccuracy;
-
-                // Get vertical speed
-                le_gnss_GetVerticalSpeed( positionSampleRef,
-                                          &vSpeed,
-                                          &vSpeedAccuracy);
-
-                posSampleNodePtr->vSpeedValid = CHECK_VALIDITY(vSpeed,INT32_MAX);
-                posSampleNodePtr->vSpeed = vSpeed;
-                posSampleNodePtr->vSpeedAccuracyValid =
-                                                    CHECK_VALIDITY(vSpeedAccuracy,INT32_MAX);
-                posSampleNodePtr->vSpeedAccuracy = vSpeedAccuracy;
-
-                // Heading not supported by GNSS engine
-                posSampleNodePtr->headingValid = false;
-                posSampleNodePtr->heading = UINT32_MAX;
-                posSampleNodePtr->headingAccuracyValid = false;
-                posSampleNodePtr->headingAccuracy = UINT32_MAX;
-
-                // Get direction
-                le_gnss_GetDirection( positionSampleRef,
-                                      &direction,
-                                      &directionAccuracy);
-
-                posSampleNodePtr->directionValid = CHECK_VALIDITY(direction,UINT32_MAX);
-                posSampleNodePtr->direction = direction;
-                posSampleNodePtr->directionAccuracyValid =
-                                                CHECK_VALIDITY(directionAccuracy,UINT32_MAX);
-                posSampleNodePtr->directionAccuracy = directionAccuracy;
-
-                // Get UTC time
-                if (LE_OK == le_gnss_GetDate(positionSampleRef,
-                                             &year,
-                                             &month,
-                                             &day))
-                {
-                    posSampleNodePtr->dateValid = true;
-                }
-                else
-                {
-                    posSampleNodePtr->dateValid = false;
-                }
-                posSampleNodePtr->year = year;
-                posSampleNodePtr->month = month;
-                posSampleNodePtr->day = day;
-
-                if (LE_OK == le_gnss_GetTime(positionSampleRef,
-                                             &hours,
-                                             &minutes,
-                                             &seconds,
-                                             &milliseconds))
-                {
-                    posSampleNodePtr->timeValid = true;
-                }
-                else
-                {
-                    posSampleNodePtr->timeValid = false;
-                }
-                posSampleNodePtr->hours = hours;
-                posSampleNodePtr->minutes = minutes;
-                posSampleNodePtr->seconds = seconds;
-                posSampleNodePtr->milliseconds = milliseconds;
-
-                // Get UTC leap seconds in advance
-                if (LE_OK == le_gnss_GetGpsLeapSeconds(positionSampleRef,&leapSeconds))
-                {
-                    posSampleNodePtr->leapSecondsValid = true;
-                }
-                else
-                {
-                    posSampleNodePtr->leapSecondsValid = false;
-                }
-                posSampleNodePtr->leapSeconds = leapSeconds;
-                posSampleNodePtr->link = LE_DLS_LINK_INIT;
-
-                // Add the node to the queue of the list by passing in the node's link.
-                le_dls_Queue(&PosSampleList, &(posSampleNodePtr->link));
+                posSampleRequestPtr->posSampleNodePtr->dateValid = true;
             }
+            else
+            {
+                posSampleRequestPtr->posSampleNodePtr->dateValid = false;
+            }
+            posSampleRequestPtr->posSampleNodePtr->year = year;
+            posSampleRequestPtr->posSampleNodePtr->month = month;
+            posSampleRequestPtr->posSampleNodePtr->day = day;
+
+            if (LE_OK == le_gnss_GetTime(positionSampleRef, &hours, &minutes, &seconds,
+                                         &milliseconds))
+            {
+                posSampleRequestPtr->posSampleNodePtr->timeValid = true;
+            }
+            else
+            {
+                posSampleRequestPtr->posSampleNodePtr->timeValid = false;
+            }
+            posSampleRequestPtr->posSampleNodePtr->hours = hours;
+            posSampleRequestPtr->posSampleNodePtr->minutes = minutes;
+            posSampleRequestPtr->posSampleNodePtr->seconds = seconds;
+            posSampleRequestPtr->posSampleNodePtr->milliseconds = milliseconds;
+
+            // Get UTC leap seconds in advance
+            if (LE_OK == le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds))
+            {
+               posSampleRequestPtr->posSampleNodePtr->leapSecondsValid = true;
+            }
+            else
+            {
+                posSampleRequestPtr->posSampleNodePtr->leapSecondsValid = false;
+            }
+            posSampleRequestPtr->posSampleNodePtr->leapSeconds = leapSeconds;
+            posSampleRequestPtr->posSampleNodePtr->link = LE_DLS_LINK_INIT;
+
+            // Add the node to the queue of the list by passing in the node's link.
+            le_dls_Queue(&PosSampleList, &(posSampleRequestPtr->posSampleNodePtr->link));
 
             // Save the information reported to the handler function
             posSampleHandlerNodePtr->lastLat = latitude;
@@ -820,18 +824,19 @@ static void PosSampleHandlerfunc
             posSampleHandlerNodePtr->lastAlt = altitude;
 
             LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
-                     posSampleNodePtr,
+                     posSampleRequestPtr->posSampleNodePtr,
                      posSampleHandlerNodePtr->handlerFuncPtr);
 
-            uint8_t i;
-            for(i=0 ; i<NumOfHandlers-1 ; i++)
-            {
-                le_mem_AddRef((void *)posSampleNodePtr);
-            }
+            le_pos_SampleRef_t reqRef = le_ref_CreateRef(PosSampleMap, posSampleRequestPtr);
+
+            // Get the message session reference from handler function
+            posSampleRequestPtr->sessionRef = posSampleHandlerNodePtr->sessionRef;
+
+            // Store posSample reference which will be used in close session handler
+            posSampleRequestPtr->positionSampleRef = reqRef;
 
             // Call the client's handler
-            posSampleHandlerNodePtr->handlerFuncPtr(
-                                            le_ref_CreateRef(PosSampleMap, posSampleNodePtr),
+            posSampleHandlerNodePtr->handlerFuncPtr(reqRef,
                                             posSampleHandlerNodePtr->handlerContextPtr);
         }
 
@@ -890,11 +895,11 @@ static void LoadPositioningFromConfigDb
 
 //--------------------------------------------------------------------------------------------------
 /**
-* handler function to release Positioning service
+* handler function to release Positioning service for le_posCtrl APIs
 *
 */
 //--------------------------------------------------------------------------------------------------
-static void CloseSessionEventHandler
+static void PosCtrlCloseSessionEventHandler
 (
     le_msg_SessionRef_t sessionRef,
     void* contextPtr
@@ -905,13 +910,14 @@ static void CloseSessionEventHandler
     if (!sessionRef)
     {
         LE_ERROR("ERROR sessionRef is NULL");
+        return;
     }
 
-    // Shearch for all positioning control request references used by the current client session
-    //  that has been closed.
+    // Search for all positioning control request references used by the current client session
+    // that has been closed.
     le_ref_IterRef_t iterRef = le_ref_GetIterator(ActivationRequestRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
-    while ( result == LE_OK )
+    while (result == LE_OK)
     {
         ClientRequest_t * posCtrlHandlerPtr =
                         (ClientRequest_t *) le_ref_GetValue(iterRef);
@@ -926,6 +932,49 @@ static void CloseSessionEventHandler
 
             // Release positioning clent control request reference found.
             le_posCtrl_Release(saferef);
+        }
+
+        // Get the next value in the reference mpa
+        result = le_ref_NextNode(iterRef);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+* handler function to release Positioning service for le_pos APIs
+*
+*/
+//--------------------------------------------------------------------------------------------------
+static void PosCloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void* contextPtr
+)
+{
+    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    // Search for all position sample request references used by the current client session
+    // that has been closed.
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(PosSampleMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+    while (result == LE_OK)
+    {
+        PosSampleRequest_t *posSampleRequestPtr = (PosSampleRequest_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (posSampleRequestPtr->sessionRef == sessionRef)
+        {
+            le_pos_SampleRef_t safeRef = (le_pos_SampleRef_t) le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Release le_pos_sample_Release 0x%p, Session 0x%p\n", safeRef, sessionRef);
+
+            // Release positioning clent control request reference found.
+            le_pos_sample_Release(safeRef);
         }
 
         // Get the next value in the reference mpa
@@ -951,15 +1000,23 @@ COMPONENT_INIT
     le_mem_ExpandPool(PosSamplePoolRef,POSITIONING_SAMPLE_MAX);
     le_mem_SetDestructor(PosSamplePoolRef, PosSampleDestructor);
 
+    // Create a pool for Position sample request objects
+    PosSampleRequestPoolRef = le_mem_CreatePool("PosSampleRequestPoolRef",
+                                                sizeof(PosSampleRequest_t));
+    le_mem_ExpandPool(PosSampleRequestPoolRef, POSITIONING_SAMPLE_MAX);
+
     // Initialize the event client close function handler.
-    le_msg_ServiceRef_t msgService = le_posCtrl_GetServiceRef();
-    le_msg_AddServiceCloseHandler( msgService, CloseSessionEventHandler, NULL);
+    le_msg_ServiceRef_t posMsgService = le_pos_GetServiceRef();
+    le_msg_AddServiceCloseHandler(posMsgService, PosCloseSessionEventHandler, NULL);
+
+    // Initialize the event client close function handler.
+    le_msg_ServiceRef_t posCtrlMsgService = le_posCtrl_GetServiceRef();
+    le_msg_AddServiceCloseHandler(posCtrlMsgService, PosCtrlCloseSessionEventHandler, NULL);
 
     // Create a pool for Position Sample Handler objects
     PosSampleHandlerPoolRef = le_mem_CreatePool("PosSampleHandlerPoolRef",
                                                 sizeof(le_pos_SampleHandler_t));
     le_mem_SetDestructor(PosSampleHandlerPoolRef, PosSampleHandlerDestructor);
-
 
     // Create the reference HashMap for positioning sample
     PosSampleMap = le_ref_CreateMap("PosSampleMap", POSITIONING_SAMPLE_MAX);
@@ -1036,7 +1093,7 @@ le_posCtrl_ActivationRef_t le_posCtrl_Request
     clientRequestPtr->sessionRef = msgSession;
     clientRequestPtr->posCtrlActivationRef = reqRef;
 
-    LE_DEBUG("le_posCtrl_Request ref (%p), SessionRef (%p)" ,reqRef, msgSession);
+    LE_DEBUG("le_posCtrl_Request ref (%p), SessionRef (%p)", reqRef, msgSession);
 
     return reqRef;
 }
@@ -1056,7 +1113,7 @@ void le_posCtrl_Release
 )
 {
     void* posPtr = le_ref_Lookup(ActivationRequestRefMap, ref);
-    if ( posPtr == NULL )
+    if (posPtr == NULL)
     {
         LE_KILL_CLIENT("Invalid positioning service activation reference %p", ref);
     }
@@ -1112,6 +1169,7 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
                                                                         horizontalMagnitude,
                                                                         verticalMagnitude);
 
+    posSampleHandlerNodePtr->sessionRef = le_pos_GetClientSessionRef();
     AcqRate = ComputeCommonSmallestRate(posSampleHandlerNodePtr->acquisitionRate);
 
     LE_DEBUG("Computed Acquisistion rate is %d sec for an average speed of %d km/h",
@@ -1172,7 +1230,7 @@ void le_pos_RemoveMovementHandler
                                                                             le_pos_SampleHandler_t,
                                                                             link);
             // Check the node.
-            if ( (le_pos_MovementHandlerRef_t)posSampleHandlerNodePtr == handlerRef )
+            if ((le_pos_MovementHandlerRef_t)posSampleHandlerNodePtr == handlerRef)
             {
                 // Remove the node.
                 le_mem_Release(posSampleHandlerNodePtr);
@@ -1225,9 +1283,9 @@ le_result_t le_pos_sample_Get2DLocation
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1235,30 +1293,37 @@ le_result_t le_pos_sample_Get2DLocation
 
     if (latitudePtr)
     {
-        if (positionSamplePtr->latitudeValid)
+        if (posSampleRequestPtr->posSampleNodePtr->latitudeValid)
         {
-            *latitudePtr = positionSamplePtr->latitude;
-        } else {
+            *latitudePtr = posSampleRequestPtr->posSampleNodePtr->latitude;
+        }
+        else
+        {
             *latitudePtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (longitudePtr)
     {
-        if (positionSamplePtr->longitudeValid)
+        if (posSampleRequestPtr->posSampleNodePtr->longitudeValid)
         {
-            *longitudePtr = positionSamplePtr->longitude;
-        } else {
+            *longitudePtr = posSampleRequestPtr->posSampleNodePtr->longitude;
+        }
+        else
+        {
             *longitudePtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (horizontalAccuracyPtr)
     {
-        if (positionSamplePtr->hAccuracyValid)
+        if (posSampleRequestPtr->posSampleNodePtr->hAccuracyValid)
         {
-            *horizontalAccuracyPtr = positionSamplePtr->hAccuracy/100; // Update resolution
-        } else {
+            // Update resolution
+            *horizontalAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->hAccuracy/100;
+        }
+        else
+        {
             *horizontalAccuracyPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
@@ -1287,32 +1352,32 @@ le_result_t le_pos_sample_GetTime
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (positionSamplePtr->timeValid)
+    if (posSampleRequestPtr->posSampleNodePtr->timeValid)
     {
         result = LE_OK;
         if (hoursPtr)
         {
-            *hoursPtr = positionSamplePtr->hours;
+            *hoursPtr = posSampleRequestPtr->posSampleNodePtr->hours;
         }
         if (minutesPtr)
         {
-            *minutesPtr = positionSamplePtr->minutes;
+            *minutesPtr = posSampleRequestPtr->posSampleNodePtr->minutes;
         }
         if (secondsPtr)
         {
-            *secondsPtr = positionSamplePtr->seconds;
+            *secondsPtr = posSampleRequestPtr->posSampleNodePtr->seconds;
         }
         if (millisecondsPtr)
         {
-            *millisecondsPtr = positionSamplePtr->milliseconds;
+            *millisecondsPtr = posSampleRequestPtr->posSampleNodePtr->milliseconds;
         }
     }
     else
@@ -1359,28 +1424,28 @@ le_result_t le_pos_sample_GetDate
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
     }
 
-    if (positionSamplePtr->dateValid)
+    if (posSampleRequestPtr->posSampleNodePtr->dateValid)
     {
         result = LE_OK;
         if (yearPtr)
         {
-            *yearPtr = positionSamplePtr->year;
+            *yearPtr = posSampleRequestPtr->posSampleNodePtr->year;
         }
         if (monthPtr)
         {
-            *monthPtr = positionSamplePtr->month;
+            *monthPtr = posSampleRequestPtr->posSampleNodePtr->month;
         }
         if (dayPtr)
         {
-            *dayPtr = positionSamplePtr->day;
+            *dayPtr = posSampleRequestPtr->posSampleNodePtr->day;
         }
     }
     else
@@ -1430,9 +1495,9 @@ le_result_t le_pos_sample_GetAltitude
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1440,20 +1505,26 @@ le_result_t le_pos_sample_GetAltitude
 
     if (altitudePtr)
     {
-        if (positionSamplePtr->altitudeValid)
-    {
-            *altitudePtr = positionSamplePtr->altitude/1000; // Update resolution
-        } else {
+        if (posSampleRequestPtr->posSampleNodePtr->altitudeValid)
+        {
+            // Update resolution
+            *altitudePtr = posSampleRequestPtr->posSampleNodePtr->altitude/1000;
+        }
+        else
+        {
             *altitudePtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (altitudeAccuracyPtr)
     {
-        if (positionSamplePtr->vAccuracyValid)
+        if (posSampleRequestPtr->posSampleNodePtr->vAccuracyValid)
         {
-            *altitudeAccuracyPtr = positionSamplePtr->vAccuracy/10; // Update resolution
-        } else {
+            // Update resolution
+            *altitudeAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->vAccuracy/10;
+        }
+        else
+        {
             *altitudeAccuracyPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
@@ -1489,9 +1560,9 @@ le_result_t le_pos_sample_GetHorizontalSpeed
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1499,20 +1570,25 @@ le_result_t le_pos_sample_GetHorizontalSpeed
 
     if (hSpeedPtr)
     {
-        if (positionSamplePtr->hSpeedValid)
+        if (posSampleRequestPtr->posSampleNodePtr->hSpeedValid)
         {
-            *hSpeedPtr = positionSamplePtr->hSpeed/100; // Update resolution
-        } else {
+            *hSpeedPtr = posSampleRequestPtr->posSampleNodePtr->hSpeed/100; // Update resolution
+        }
+        else
+        {
             *hSpeedPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (hSpeedAccuracyPtr)
     {
-        if (positionSamplePtr->hSpeedAccuracyValid)
+        if (posSampleRequestPtr->posSampleNodePtr->hSpeedAccuracyValid)
         {
-            *hSpeedAccuracyPtr = positionSamplePtr->hSpeedAccuracy/10; // Update resolution
-        } else {
+            // Update resolution
+            *hSpeedAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->hSpeedAccuracy/10;
+        }
+        else
+        {
             *hSpeedAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
@@ -1542,9 +1618,9 @@ le_result_t le_pos_sample_GetVerticalSpeed
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1552,20 +1628,25 @@ le_result_t le_pos_sample_GetVerticalSpeed
 
     if (vSpeedPtr)
     {
-        if (positionSamplePtr->vSpeedValid)
+        if (posSampleRequestPtr->posSampleNodePtr->vSpeedValid)
         {
-            *vSpeedPtr = positionSamplePtr->vSpeed/100; // Update resolution
-        } else {
+            *vSpeedPtr = posSampleRequestPtr->posSampleNodePtr->vSpeed/100; // Update resolution
+        }
+        else
+        {
             *vSpeedPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (vSpeedAccuracyPtr)
     {
-        if (positionSamplePtr->vSpeedAccuracyValid)
+        if (posSampleRequestPtr->posSampleNodePtr->vSpeedAccuracyValid)
         {
-            *vSpeedAccuracyPtr = positionSamplePtr->vSpeedAccuracy/10; // Update resolution
-        } else {
+            // Update resolution
+            *vSpeedAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->vSpeedAccuracy/10;
+        }
+        else
+        {
             *vSpeedAccuracyPtr = INT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
@@ -1600,9 +1681,9 @@ le_result_t le_pos_sample_GetHeading
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1610,20 +1691,24 @@ le_result_t le_pos_sample_GetHeading
 
     if (headingPtr)
     {
-        if (positionSamplePtr->headingValid)
+        if (posSampleRequestPtr->posSampleNodePtr->headingValid)
         {
-            *headingPtr = positionSamplePtr->heading;
-        } else {
+            *headingPtr = posSampleRequestPtr->posSampleNodePtr->heading;
+        }
+        else
+        {
             *headingPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (headingAccuracyPtr)
     {
-        if (positionSamplePtr->headingAccuracyValid)
+        if (posSampleRequestPtr->posSampleNodePtr->headingAccuracyValid)
         {
-            *headingAccuracyPtr = positionSamplePtr->headingAccuracy;
-        } else {
+            *headingAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->headingAccuracy;
+        }
+        else
+        {
             *headingAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
@@ -1658,9 +1743,9 @@ le_result_t le_pos_sample_GetDirection
 )
 {
     le_result_t result = LE_OK;
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1668,20 +1753,26 @@ le_result_t le_pos_sample_GetDirection
 
     if (directionPtr)
     {
-        if (positionSamplePtr->directionValid)
+        if (posSampleRequestPtr->posSampleNodePtr->directionValid)
         {
-            *directionPtr = positionSamplePtr->direction/10; // Update resolution
-        } else {
+            // Update resolution
+            *directionPtr = posSampleRequestPtr->posSampleNodePtr->direction/10;
+        }
+        else
+        {
             *directionPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
     }
     if (directionAccuracyPtr)
     {
-        if (positionSamplePtr->directionAccuracyValid)
+        if (posSampleRequestPtr->posSampleNodePtr->directionAccuracyValid)
         {
-            *directionAccuracyPtr = positionSamplePtr->directionAccuracy/10; // Update resolution
-        } else {
+            // Update resolution
+            *directionAccuracyPtr = posSampleRequestPtr->posSampleNodePtr->directionAccuracy/10;
+        }
+        else
+        {
             *directionAccuracyPtr = UINT32_MAX;
             result = LE_OUT_OF_RANGE;
         }
@@ -1707,9 +1798,9 @@ le_result_t le_pos_sample_GetFixState
     le_pos_FixState_t*  statePtr              ///< [OUT] Position fix state.
 )
 {
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return LE_FAULT;
@@ -1717,7 +1808,7 @@ le_result_t le_pos_sample_GetFixState
 
     if (statePtr)
     {
-        *statePtr = positionSamplePtr->fixState;
+        *statePtr = posSampleRequestPtr->posSampleNodePtr->fixState;
     }
 
     return LE_OK;
@@ -1737,15 +1828,21 @@ void le_pos_sample_Release
     le_pos_SampleRef_t    positionSampleRef    ///< [IN] The position sample's reference.
 )
 {
-    le_pos_Sample_t* positionSamplePtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
-
-    if ( positionSamplePtr == NULL)
+    if (positionSampleRef == NULL)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
         return;
     }
-    le_ref_DeleteRef(PosSampleMap,positionSampleRef);
-    le_mem_Release(positionSamplePtr);
+    PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap, positionSampleRef);
+
+    if (posSampleRequestPtr->posSampleNodePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return;
+    }
+    le_ref_DeleteRef(PosSampleMap, positionSampleRef);
+    le_mem_Release(posSampleRequestPtr->posSampleNodePtr);
+    le_mem_Release(posSampleRequestPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1773,9 +1870,9 @@ le_result_t le_pos_Get2DLocation
 )
 {
     // At least one valid pointer
-    if (( latitudePtr == NULL)&&
-        ( longitudePtr == NULL)&&
-        ( hAccuracyPtr == NULL))
+    if ((latitudePtr == NULL)&&
+        (longitudePtr == NULL)&&
+        (hAccuracyPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -1789,10 +1886,7 @@ le_result_t le_pos_Get2DLocation
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get Location
-    gnssResult = le_gnss_GetLocation( positionSampleRef
-                                , &latitude
-                                , &longitude
-                                , &hAccuracy);
+    gnssResult = le_gnss_GetLocation(positionSampleRef, &latitude, &longitude, &hAccuracy);
     if ((gnssResult == LE_OK)||(gnssResult == LE_OUT_OF_RANGE))
     {
         if (latitudePtr)
@@ -1867,11 +1961,11 @@ le_result_t le_pos_Get3DLocation
 )
 {
     // At least one valid pointer
-    if (( latitudePtr == NULL)&&
-        ( longitudePtr == NULL)&&
-        ( hAccuracyPtr == NULL)&&
-        ( altitudePtr == NULL)&&
-        ( vAccuracyPtr == NULL))
+    if ((latitudePtr == NULL)&&
+        (longitudePtr == NULL)&&
+        (hAccuracyPtr == NULL)&&
+        (altitudePtr == NULL)&&
+        (vAccuracyPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -1887,10 +1981,7 @@ le_result_t le_pos_Get3DLocation
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get Location
-    gnssResult = le_gnss_GetLocation( positionSampleRef
-                                , &latitude
-                                , &longitude
-                                , &hAccuracy);
+    gnssResult = le_gnss_GetLocation(positionSampleRef, &latitude, &longitude, &hAccuracy);
     if ((gnssResult == LE_OK)||(gnssResult == LE_OUT_OF_RANGE))
     {
         if (latitudePtr)
@@ -1928,9 +2019,7 @@ le_result_t le_pos_Get3DLocation
     }
 
     // Get altitude
-    gnssResult = le_gnss_GetAltitude( positionSampleRef
-                                    , &altitude
-                                    , &vAccuracy);
+    gnssResult = le_gnss_GetAltitude(positionSampleRef, &altitude, &vAccuracy);
 
     if (((gnssResult == LE_OK)||(gnssResult == LE_OUT_OF_RANGE))
         &&(posResult != LE_FAULT))
@@ -1997,10 +2086,10 @@ le_result_t le_pos_GetTime
 )
 {
     // All pointers must be valid
-    if (( hoursPtr == NULL)||
-        ( minutesPtr == NULL)||
-        ( secondsPtr == NULL)||
-        ( millisecondsPtr == NULL))
+    if ((hoursPtr == NULL)||
+        (minutesPtr == NULL)||
+        (secondsPtr == NULL)||
+        (millisecondsPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -2010,11 +2099,11 @@ le_result_t le_pos_GetTime
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get UTC time
-    posResult = le_gnss_GetTime(positionSampleRef
-                            , hoursPtr
-                            , minutesPtr
-                            , secondsPtr
-                            , millisecondsPtr);
+    posResult = le_gnss_GetTime(positionSampleRef,
+                                hoursPtr,
+                                minutesPtr,
+                                secondsPtr,
+                                millisecondsPtr);
 
     // Release provided Position sample reference
     le_gnss_ReleaseSampleRef(positionSampleRef);
@@ -2045,9 +2134,9 @@ le_result_t le_pos_GetDate
 )
 {
     // All pointers must be valid
-    if (( yearPtr == NULL)||
-        ( monthPtr == NULL)||
-        ( dayPtr == NULL))
+    if ((yearPtr == NULL)||
+        (monthPtr == NULL)||
+        (dayPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -2057,10 +2146,7 @@ le_result_t le_pos_GetDate
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get date
-    posResult = le_gnss_GetDate(positionSampleRef
-                                , yearPtr
-                                , monthPtr
-                                , dayPtr);
+    posResult = le_gnss_GetDate(positionSampleRef, yearPtr, monthPtr, dayPtr);
 
     // Release provided Position sample reference
     le_gnss_ReleaseSampleRef(positionSampleRef);
@@ -2091,10 +2177,10 @@ le_result_t le_pos_GetMotion
 )
 {
     // At least one valid pointer
-    if (( hSpeedPtr == NULL)&&
-        ( hSpeedAccuracyPtr == NULL)&&
-        ( vSpeedPtr == NULL)&&
-        ( vSpeedAccuracyPtr == NULL))
+    if ((hSpeedPtr == NULL)&&
+        (hSpeedAccuracyPtr == NULL)&&
+        (vSpeedPtr == NULL)&&
+        (vSpeedAccuracyPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -2111,9 +2197,7 @@ le_result_t le_pos_GetMotion
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get horizontal speed
-    gnssResult = le_gnss_GetHorizontalSpeed( positionSampleRef
-                                            , &hSpeed
-                                            , &hSpeedAccuracy);
+    gnssResult = le_gnss_GetHorizontalSpeed(positionSampleRef, &hSpeed, &hSpeedAccuracy);
     if ((gnssResult == LE_OK)||(gnssResult == LE_OUT_OF_RANGE))
     {
         if (hSpeedPtr)
@@ -2147,9 +2231,7 @@ le_result_t le_pos_GetMotion
     }
 
     // Get vertical speed
-    gnssResult = le_gnss_GetVerticalSpeed( positionSampleRef
-                                        , &vSpeed
-                                        , &vSpeedAccuracy);
+    gnssResult = le_gnss_GetVerticalSpeed(positionSampleRef, &vSpeed, &vSpeedAccuracy);
 
    if (((gnssResult == LE_OK)||(gnssResult == LE_OUT_OF_RANGE))
         &&(posResult != LE_FAULT))
@@ -2212,8 +2294,8 @@ le_result_t le_pos_GetHeading
 {
 
     // At least one valid pointer
-    if (( headingPtr == NULL)&&
-        ( headingAccuracyPtr == NULL))
+    if ((headingPtr == NULL)&&
+        (headingAccuracyPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -2249,8 +2331,8 @@ le_result_t le_pos_GetDirection
 )
 {
     // At least one valid pointer
-    if (( directionPtr == NULL)&&
-        ( directionAccuracyPtr == NULL))
+    if ((directionPtr == NULL)&&
+        (directionAccuracyPtr == NULL))
     {
         LE_KILL_CLIENT("Invalid input parameters!");
         return LE_FAULT;
@@ -2264,9 +2346,7 @@ le_result_t le_pos_GetDirection
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
 
     // Get direction
-    gnssResult = le_gnss_GetDirection( positionSampleRef
-                                    , &direction
-                                    , &directionAccuracy);
+    gnssResult = le_gnss_GetDirection(positionSampleRef, &direction, &directionAccuracy);
 
     if ((gnssResult == LE_OK)||(gnssResult == LE_OUT_OF_RANGE))
     {
@@ -2340,7 +2420,7 @@ le_result_t le_pos_GetFixState
     }
 
     // Get position fix state.
-    le_gnss_GetPositionState( positionSampleRef, &gnssState);
+    le_gnss_GetPositionState(positionSampleRef, &gnssState);
 
     *statePtr = (le_pos_FixState_t)gnssState;
 

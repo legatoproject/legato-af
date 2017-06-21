@@ -3,7 +3,7 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the server service refrence stub
+ * Get the server service reference stub for le_posCtrl
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -17,11 +17,39 @@ le_msg_ServiceRef_t le_posCtrl_GetServiceRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the client session refrence stub
+ * Get the client session reference stub for le_posCtrl
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionRef_t le_posCtrl_GetClientSessionRef
+(
+    void
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference stub for le_pos
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_pos_GetServiceRef
+(
+    void
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference stub for le_pos
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_pos_GetClientSessionRef
 (
     void
 )

@@ -11,6 +11,8 @@
 
 le_msg_ServiceRef_t le_posCtrl_GetServiceRef(void);
 le_msg_SessionRef_t le_posCtrl_GetClientSessionRef(void);
+le_msg_ServiceRef_t le_pos_GetServiceRef(void);
+le_msg_SessionRef_t le_pos_GetClientSessionRef(void);
 le_cfg_ChangeHandlerRef_t le_cfg_AddChangeHandler(const char *newPath,
                                 le_cfg_ChangeHandlerFunc_t handlerPtr,
                                 void *contextPtr);
