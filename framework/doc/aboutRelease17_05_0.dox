@@ -96,7 +96,7 @@ The following changes have been made to the Legato AF Tools:
 - @ref buildToolsifgen - @ref apiFilesSyntax_types "data type handler" has been deprecated;
   User-defined type @c HANDLER is to be used instead
 
-@subsection rn17_05_FeaturesExperimental Experimental Features
+@section rn17_05_FeaturesExperimental Experimental Features
 
 @subsection rn17_05_FeaturesExperimentalAirVantage AirVantage Connector Version 2
 
@@ -117,10 +117,14 @@ AVC 2.0 New Features:
 The @ref avMigration contains details on the changes between AirVantage V1 and AirVantage V2
 and how to migrate your configuration.
 
-@note The AirVantage documentation has been reorganized and is now located within the
+@warning To sync AirVantage with a 17.05 Legato System Build, an extra step must be done to update
+the version number before you upload the
+@ref avInstallUpload_CustomSystem "System Bundle to sync with AirVantage."
+
+The AirVantage documentation has been reorganized and is now located within the
 @ref legatoServicesAirVantage "AirVantage Connector Documentation"
 
-@subsubsection rn17_05_FeaturesExperimentalReadOnly Read Only Mode
+@subsection rn17_05_FeaturesExperimentalReadOnly Read Only Mode
 
 In Legato AF Read-Only mode the system tree is built and deployed into a squashfs or ubifs image
 making the system read-only.  Any system configuration must be done before the system is built an

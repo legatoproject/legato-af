@@ -12,7 +12,6 @@ These overview topics are available:
 @subpage basicIPC <br>
 @subpage basicInternationalization <br>
 @subpage basicLog <br>
-@subpage basicLWM2MData <br>
 @subpage basicUpdates <br>
 @subpage aboutDocsGlossary
 
@@ -21,7 +20,7 @@ These overview topics are available:
 Legato is designed to make developing component-based software for embedded devices in the
 Internet-of-things (IoT) easier, faster, and less expensive.
 
-@image html LegatoPlatform.png
+@image html AF_Architecture.png
 
 Copyright (C) Sierra Wireless Inc.
 

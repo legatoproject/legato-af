@@ -96,6 +96,33 @@ installation. See @ref c_le_avc API for details.
 If the installation was successful, you should find @c helloWorld in the installed apps and
 on the targets' "Monitor" view app list in the AirVantage UI.
 
+@subsection avInstallUpload_CustomSystem Uploading a 17.05 Legato System Bundle
+
+If you have upgraded to 17.05 and wish to sync your Legato System with AirVantage, the target and
+revision number need to be updated in the app model before it is uploaded to the AirVantage Server.
+
+Once you've built your legato system, you need to extract the model.app from the zip file and update
+name="<target>_<legatoVersion>" and revision="<legatoVersion>" with the target and version that
+matches your Legato System.  (e.g., if version = "abc" then update model.app to
+name="WP8548_17.05.0_abc" and revision="17.05.0_abc")
+
+@verbatim
+$ cat build/<target>/system/staging/version             # displays the version number
+@endverbatim
+
+In the legato_model.zip, extract model.app; modify the name="<target>_<legatoVersion>" and
+revision="<legatoVersion>" to match the version number in the build.
+
+@verbatim
+$ unzip -d . legato_model.zip model.app
+$ vi model.app                          # edit the two fields
+$ zip -ur legato_model.zip model.app
+@endverbatim
+
+Once legato_model.zip has been updated, upload to the AirVantage server and publish the model.
+
+Sync the AirVantage Server with your target and this will link to your new app model.
+
 Copyright (C) Sierra Wireless Inc.
 
 **/
