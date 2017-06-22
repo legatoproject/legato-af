@@ -21,6 +21,12 @@ static le_gnss_PositionHandlerRef_t PositionHandlerRef = NULL;
 
 char ShortSuplCertificate[50]={0};
 
+// The epoch time is the number of seconds elapsed since January 1, 1970
+// not counting leaps seconds.
+static uint64_t EpochTime=0;
+// Time uncertainty in Milliseconds
+static uint32_t TimeAccuracy=0;
+
 //--------------------------------------------------------------------------------------------------
 //                                       Test Functions
 //--------------------------------------------------------------------------------------------------
@@ -40,6 +46,7 @@ static void TestLeGnssDevice
     uint32_t ttffValue;
     uint32_t acqRate;
     uint8_t  minElevation;
+    le_result_t result;
 
     le_gnss_ConstellationBitMask_t constellationMask;
     le_gnss_NmeaBitMask_t nmeaMask = 0;
@@ -63,7 +70,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
-    LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
+    result = le_gnss_SetAcquisitionRate(acqRate);
+    LE_ASSERT((result == LE_NOT_PERMITTED)||(result == LE_OUT_OF_RANGE));
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
 
@@ -113,7 +121,8 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
-    LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_NOT_PERMITTED);
+    result = le_gnss_SetAcquisitionRate(acqRate);
+    LE_ASSERT((result == LE_NOT_PERMITTED)||(result == LE_OUT_OF_RANGE));
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_NOT_PERMITTED);
 
@@ -174,12 +183,9 @@ static void PositionHandlerFunction
     uint16_t minutes;
     uint16_t seconds;
     uint16_t milliseconds;
-    uint64_t epochTime;
     // GPS time
     uint32_t gpsWeek;
     uint32_t gpsTimeOfWeek;
-    // Time accuracy
-    uint32_t timeAccuracy;
     // Leap seconds in advance
     uint8_t leapSeconds;
     // Position state
@@ -230,15 +236,15 @@ static void PositionHandlerFunction
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
     // Get Epoch time
-    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
+    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &EpochTime) == LE_OK);
 
     // Display time/date format 13:45:30 2009-06-15
     LE_INFO("%02d:%02d:%02d %d-%02d-%02d,"
             , hours, minutes, seconds
             , year, month, day);
 
-    // Display epoch time
-    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
+    // Display Epoch time
+    LE_INFO("epoch time: %llu:", (unsigned long long int) EpochTime);
 
     // Get GPS time
     result = le_gnss_GetGpsTime(positionSampleRef
@@ -251,11 +257,10 @@ static void PositionHandlerFunction
             , gpsTimeOfWeek);
 
     // Get time accuracy
-    result = le_gnss_GetTimeAccuracy(positionSampleRef
-                            , &timeAccuracy);
+    result = le_gnss_GetTimeAccuracy(positionSampleRef, &TimeAccuracy);
     LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
 
-    LE_INFO("GPS time acc %d", timeAccuracy);
+    LE_INFO("GPS time acc %d", TimeAccuracy);
 
     // Get UTC leap seconds in advance
     result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
@@ -495,26 +500,28 @@ static void TestLeGnssPositionHandler
     void
 )
 {
+    le_result_t result;
     le_thread_Ref_t positionThreadRef;
     le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
     uint64_t epochTime;
+    uint32_t ttff = 0;
     uint8_t  minElevation;
 
     LE_INFO("Start Test Testle_gnss_PositionHandlerTest");
 
     // Get Epoch time, samples already present
-    LE_ASSERT((le_gnss_GetEpochTime(positionSampleRef, &epochTime)) == LE_OK);
+    LE_ASSERT_OK(le_gnss_GetEpochTime(positionSampleRef, &epochTime));
     // Display epoch time
     LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
 
     // NMEA frame GPGSA is checked that no SV with elevation below 10
     // degrees are given.
     minElevation = 10;
-    LE_ASSERT((le_gnss_SetMinElevation(minElevation)) == LE_OK);
+    LE_ASSERT_OK(le_gnss_SetMinElevation(minElevation));
     LE_INFO("Set minElevation %d",minElevation);
 
     LE_INFO("Start GNSS");
-    LE_ASSERT((le_gnss_Start()) == LE_OK);
+    LE_ASSERT_OK(le_gnss_Start());
     LE_INFO("Wait 5 seconds");
     sleep(5);
 
@@ -522,8 +529,37 @@ static void TestLeGnssPositionHandler
     positionThreadRef = le_thread_Create("PositionThread",PositionThread,NULL);
     le_thread_Start(positionThreadRef);
 
-    LE_INFO("Wait for a 3D fix");
+    // test Cold Restart boosted by le_gnss_InjectUtcTime
+    // EpochTime and timeAccuracy should be valid and saved by now
+    sleep(2);
+
+    LE_INFO("Ask for a Cold restart");
+    LE_ASSERT_OK(le_gnss_ForceColdRestart());
+
+    // Last accurate epochTime and timeAccuracy are used
+    LE_ASSERT(0 != EpochTime);
+    LE_INFO("TimeAccuracy %d",TimeAccuracy);
+    LE_ASSERT_OK(le_gnss_InjectUtcTime(EpochTime , TimeAccuracy));
+
+    // Get TTFF,position fix should be still in progress for the FACTORY start
+    result = le_gnss_GetTtff(&ttff);
+    LE_ASSERT(LE_BUSY == result);
+    LE_INFO("TTFF is checked as not available immediatly after a Cold restart");
+
+    // Wait for a 3D fix
+    LE_INFO("Wait 60 seconds for a 3D fix");
     sleep(60);
+    // Get TTFF
+    result = le_gnss_GetTtff(&ttff);
+    LE_ASSERT((LE_OK == result)||(LE_BUSY == result));
+    if(result == LE_OK)
+    {
+        LE_INFO("TTFF cold restart = %d msec", ttff);
+    }
+    else
+    {
+        LE_INFO("TTFF cold restart not available");
+    }
 
     le_gnss_RemovePositionHandler(PositionHandlerRef);
 
@@ -535,13 +571,15 @@ static void TestLeGnssPositionHandler
 
     // Get Epoch time, get last position sample
     positionSampleRef = le_gnss_GetLastSampleRef();
-    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &epochTime) == LE_OK);
+    LE_ASSERT_OK(le_gnss_GetEpochTime(positionSampleRef, &epochTime));
 
     // Display epoch time
     LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
 
     LE_INFO("Stop GNSS");
-    LE_ASSERT((le_gnss_Stop()) == LE_OK);
+    LE_ASSERT_OK(le_gnss_Stop());
+    EpochTime=0;
+    TimeAccuracy=0;
 }
 
 //! [GnssPosition]
@@ -600,6 +638,9 @@ static void TestLeGnssStart
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
+    EpochTime=0;
+    TimeAccuracy=0;
+
 }
 //! [GnssControl]
 
@@ -739,6 +780,9 @@ static void TestLeGnssRestart
     /* Stop GNSS engine*/
     sleep(1);
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
+    EpochTime=0;
+    TimeAccuracy=0;
+
 }
 //! [GnssReStart]
 
@@ -818,6 +862,8 @@ static void TestLeGnssTtffMeasurement
 
     LE_INFO("Stop GNSS");
     LE_ASSERT((le_gnss_Stop()) == LE_OK);
+    EpochTime=0;
+    TimeAccuracy=0;
 
     LE_INFO("TTFF start = %d msec", ttffSave);
     LE_INFO("TTFF Hot restart = %d msec", ttff);

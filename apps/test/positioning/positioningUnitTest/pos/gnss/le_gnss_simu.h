@@ -596,6 +596,12 @@ le_result_t le_gnss_GetExtendedEphemerisValidity
     uint64_t *stopTimePtr      ///< [OUT] Stop time in seconds (since Jan. 1, 1970)
 );
 
+le_result_t le_gnss_InjectUtcTime
+(
+    uint64_t timeUtc,   ///< [IN] UTC time since Jan. 1, 1970 in milliseconds
+    uint32_t timeUnc    ///< [IN] Time uncertainty in milliseconds
+);
+
 le_result_t le_gnss_Start
 (
     void

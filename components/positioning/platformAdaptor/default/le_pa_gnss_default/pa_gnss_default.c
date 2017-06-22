@@ -302,6 +302,27 @@ le_result_t pa_gnss_DisableExtendedEphemerisFile
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to inject UTC time into the GNSS device.
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed to inject the UTC time.
+ *  - LE_TIMEOUT       A time-out occurred.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_gnss_InjectUtcTime
+(
+    uint64_t timeUtc,      ///< [IN] UTC time since Jan. 1, 1970 in milliseconds
+    uint32_t timeUnc       ///< [IN] Time uncertainty in milliseconds
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to restart the GNSS device.
  *
  * @return LE_FAULT         The function failed.

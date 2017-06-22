@@ -2607,6 +2607,26 @@ le_result_t le_gnss_GetExtendedEphemerisValidity
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to inject the UTC time into the GNSS device.
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed to inject the UTC time.
+ *  - LE_TIMEOUT       A time-out occurred.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_InjectUtcTime
+(
+    uint64_t timeUtc,   ///< [IN] UTC time since Jan. 1, 1970 in milliseconds
+    uint32_t timeUnc    ///< [IN] Time uncertainty in milliseconds
+)
+{
+    return pa_gnss_InjectUtcTime(timeUtc, timeUnc);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function starts the GNSS device.
  *
  * @return

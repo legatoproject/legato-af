@@ -84,6 +84,10 @@
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeReStart
  *
+ * @subsubsection le_gnss_InjectUtcTime Inject UTC time
+ * The le_gnss_InjectUtcTime() function injects the UTC time into the location engine. Providing an
+ * accurate UTC time reduces the time to find the first fix.
+ *
  * @subsubsection le_gnss_ForceHotRestart Force HOT restart
  * The le_gnss_ForceHotRestart() function performs a "HOT" restart of the GNSS device. The current
  * GNSS session is stopped, then started using the available @ref le_gnss_Data.
@@ -663,6 +667,23 @@ FUNCTION le_result_t GetExtendedEphemerisValidity
 (
     uint64 startTime OUT,     ///< Start time in seconds (since Jan. 1, 1970)
     uint64 stopTime OUT       ///< Stop time in seconds (since Jan. 1, 1970)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to inject the UTC time into the GNSS device.
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed to inject the UTC time.
+ *  - LE_TIMEOUT       A time-out occurred.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t InjectUtcTime
+(
+    uint64 timeUtc IN,   ///< [IN] UTC time since Jan. 1, 1970 in milliseconds
+    uint32 timeUnc IN    ///< [IN] Time uncertainty in milliseconds
 );
 
 //--------------------------------------------------------------------------------------------------
