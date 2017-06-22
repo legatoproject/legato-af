@@ -398,6 +398,30 @@ static void TestPSHandler
     LE_INFO("New PS state: %d", psState);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Set Signal Strength Indication Thresholds
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SetSignalStrengthIndThresholds
+(
+    void
+)
+{
+
+    LE_ASSERT(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_UNKNOWN, -80,-70)
+            == LE_BAD_PARAMETER);
+    LE_ASSERT(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_GSM, -80,-80)
+            == LE_BAD_PARAMETER);
+    LE_ASSERT(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_GSM, -70,-80)
+            == LE_BAD_PARAMETER);
+
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_GSM, -80,-70));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_CDMA, -80,-70));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_LTE, -80,-70));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_UMTS, -80,-70));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -471,6 +495,10 @@ COMPONENT_INIT
     LE_INFO("======== PSHdlr Test ========");
     Testle_mrc_PSHdlr();
     LE_INFO("======== PSHdlr Test PASSED ========");
+
+    LE_INFO("======== le_mrc_SetSignalStrengthIndThresholds Test ========");
+    Testle_mrc_SetSignalStrengthIndThresholds();
+    LE_INFO("======== le_mrc_SetSignalStrengthIndThresholds Test PASSED ========");
 
     LE_INFO("======== UnitTest of MRC API ends with SUCCESS ========");
 

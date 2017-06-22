@@ -51,12 +51,25 @@ static le_thread_Ref_t  RegistrationThreadRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Signal Strength Thread reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t  SignalStrengthChangeThreadRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Home PLMN references
  */
 //--------------------------------------------------------------------------------------------------
 static char mccHomeStr[LE_MRC_MCC_BYTES] = {0};
 static char mncHomeStr[LE_MRC_MCC_BYTES] = {0};
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Signal Strength handler reference.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mrc_SignalStrengthChangeHandlerRef_t SignalHdlrRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -529,8 +542,9 @@ static void Testle_mrc_RegisterModeAsync()
     bool isManual;
     int cmpRes;
     le_result_t res;
-    le_clk_Time_t time = {0,0};
-    time.sec = 120000;
+    le_clk_Time_t time;
+    time.sec = 180;
+    time.usec = 0;
 
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
@@ -557,6 +571,8 @@ static void Testle_mrc_RegisterModeAsync()
     le_thread_Cancel(RegistrationThreadRef);
     le_sem_Delete(ThreadSemaphore);
 
+    sleep(SLEEP_5S);
+
     memset(mccStr,0,LE_MRC_MCC_BYTES);
     memset(mncStr,0,LE_MRC_MNC_BYTES);
     res = le_mrc_GetRegisterMode(&isManual, mccStr, LE_MRC_MCC_BYTES, mncStr, LE_MRC_MNC_BYTES);
@@ -571,11 +587,11 @@ static void Testle_mrc_RegisterModeAsync()
     LE_INFO("le_mrc_GetRegisterMode %c, mcc.%s mnc.%s",
         (isManual ? 'Y':'N'), mccStr, mncStr);
 
-    sleep(5);
+    sleep(SLEEP_5S);
     res = le_mrc_SetAutomaticRegisterMode();
     LE_ASSERT(res == LE_OK);
 
-    sleep(5);
+    sleep(SLEEP_5S);
 }
 //! [Register]
 
@@ -1171,6 +1187,22 @@ static void Testle_mrc_GetNeighboringCellsInfo()
 }
 //! [Neighbor Cells]
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function for Signal Strength change Notifications.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSsHandler
+(
+    int32_t     ss,
+    void*       contextPtr
+)
+{
+    LE_INFO("New Signal Strength change: %ddBm", ss);
+    le_sem_Post(ThreadSemaphore);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1232,46 +1264,169 @@ static void TestCdmaSsHandler
     LE_INFO("New CDMA Signal Strength change: %ddBm", ss);
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Thread for test Signal Strength indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* MySignalStrengthThread
+(
+    void* context   ///< Context
+)
+{
+    le_sim_ConnectService();
+    le_mrc_ConnectService();
+
+    le_mrc_Rat_t rat = *((le_mrc_Rat_t *) context);
+
+    LE_INFO("Set Signal handler on rat %d", rat);
+    SignalHdlrRef = le_mrc_AddSignalStrengthChangeHandler(rat,
+                                                          -110,
+                                                          -100,
+                                                          TestSsHandler,
+                                                          NULL);
+
+    LE_ASSERT(SignalHdlrRef);
+
+    le_sem_Post(ThreadSemaphore);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Signal Strength change handling.
+ *
+ * Test API: le_mrc_SetSignalStrengthIndThresholds() API test
+ **/
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SetSignalStrengthIndThresholds
+(
+    void
+)
+{
+
+    le_mrc_Rat_t rat;
+    le_result_t res;
+    int32_t ss = 0;
+    int32_t ecio, rscp, sinr, io;
+    uint32_t ber, bler, er;
+    le_clk_Time_t time1;
+    time1.sec = 150;
+    time1.usec =0;
+
+    sleep(SLEEP_5S);
+
+    LE_ASSERT_OK(le_mrc_GetRadioAccessTechInUse(&rat));
+    LE_ASSERT(LE_MRC_RAT_UNKNOWN != rat);
+
+    // Init the semaphore for asynchronous callback
+    ThreadSemaphore = le_sem_Create("HandlerSignalStrength", 0);
+
+    SignalStrengthChangeThreadRef = le_thread_Create("ThreadStrengthInd", MySignalStrengthThread,
+        (void *) &rat);
+    le_thread_Start(SignalStrengthChangeThreadRef);
+
+    // Wait for complete asynchronous registration
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time1);
+    LE_ASSERT_OK(res);
+
+    le_mrc_MetricsRef_t metrics = le_mrc_MeasureSignalMetrics();
+    LE_ASSERT(metrics);
+
+    switch(rat)
+    {
+        case LE_MRC_RAT_GSM:
+            res = le_mrc_GetGsmSignalMetrics(metrics, &ss, &ber);
+            break;
+
+        case LE_MRC_RAT_UMTS:
+            res = le_mrc_GetUmtsSignalMetrics(metrics, &ss, &bler, &ecio, &rscp, &sinr);
+            break;
+
+        case LE_MRC_RAT_LTE:
+            res = le_mrc_GetLteSignalMetrics(metrics, &ss, &bler, &rscp, &rscp, &sinr);
+            break;
+
+        case LE_MRC_RAT_CDMA:
+            res = le_mrc_GetCdmaSignalMetrics(metrics, &ss, &er, &ecio, &sinr, &io);
+            break;
+
+        default:
+            res = LE_FAULT;
+            LE_ERROR("Unknow RAT");
+            break;
+    }
+    le_mrc_DeleteSignalMetrics(metrics);
+
+    LE_ASSERT_OK(res);
+
+    LE_INFO("Signal %d, rat %d", ss, rat);
+
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(rat, ss-1, ss+1));
+
+    // Wait for complete asynchronous registration
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time1);
+    LE_ASSERT_OK(res);
+
+    le_mrc_RemoveSignalStrengthChangeHandler(SignalHdlrRef);
+
+    le_thread_Cancel(SignalStrengthChangeThreadRef);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Signal Strength change handling.
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_SsHdlr()
+static void Testle_mrc_SsHdlr
+(
+    void
+)
 {
-    le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef=NULL;
+    le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef1 = NULL;
+    le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef2 = NULL;
+    le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef3 = NULL;
+    le_mrc_SignalStrengthChangeHandlerRef_t testHdlrRef4 = NULL;
 
-    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_GSM,
+    testHdlrRef1 = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_GSM,
                                                         -80,
                                                         -70,
                                                         TestGsmSsHandler,
                                                         NULL);
-    LE_ASSERT(testHdlrRef);
+    LE_ASSERT(testHdlrRef1);
 
-    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_UMTS,
+    testHdlrRef2 = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_UMTS,
                                                         -200,
                                                         -70,
                                                         TestUmtsSsHandler,
                                                         NULL);
-    LE_ASSERT(testHdlrRef);
+    LE_ASSERT(testHdlrRef2);
 
-    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_LTE,
+    testHdlrRef3 = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_LTE,
                                                         -80,
                                                         0,
                                                         TestLteSsHandler,
                                                         NULL);
-    LE_ASSERT(testHdlrRef);
+    LE_ASSERT(testHdlrRef3);
 
-    testHdlrRef = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_CDMA,
+    testHdlrRef4 = le_mrc_AddSignalStrengthChangeHandler(LE_MRC_RAT_CDMA,
                                                         -80,
                                                         10,
                                                         TestCdmaSsHandler,
                                                         NULL);
-    LE_ASSERT(testHdlrRef);
+    LE_ASSERT(testHdlrRef4);
 
-    sleep(SLEEP_5S);
-    le_mrc_RemoveSignalStrengthChangeHandler(testHdlrRef);
+    le_mrc_RemoveSignalStrengthChangeHandler(testHdlrRef1);
+    le_mrc_RemoveSignalStrengthChangeHandler(testHdlrRef2);
+    le_mrc_RemoveSignalStrengthChangeHandler(testHdlrRef3);
+    le_mrc_RemoveSignalStrengthChangeHandler(testHdlrRef4);
 }
 
 
@@ -1630,6 +1785,10 @@ COMPONENT_INIT
     LE_INFO("======== Signal Strength Handler Test ========");
     Testle_mrc_SsHdlr();
     LE_INFO("======== Signal Strength Handler Test PASSED ========");
+
+    LE_INFO("======== Set Signal Strength Thresholds Test ========");
+    Testle_mrc_SetSignalStrengthIndThresholds();
+    LE_INFO("======== Set Signal Strength Thresholds Test PASSED ========");
 
     LE_INFO("======== RatPreferences Test ========");
     Testle_mrc_RatPreferences();

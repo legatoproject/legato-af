@@ -3631,6 +3631,42 @@ le_result_t le_mrc_GetCdmaSignalMetrics
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set signal strength indication thresholds for a specific RAT.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  Bad parameters
+ *  - LE_FAULT          Function failed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetSignalStrengthIndThresholds
+(
+    le_mrc_Rat_t                             rat,                 ///< [IN] Radio Access Technology
+    int32_t                                  lowerRangeThreshold, ///< [IN] lower-range Signal
+                                                                  ///      strength threshold in dBm
+    int32_t                                  upperRangeThreshold  ///< [IN] upper-range Signal
+                                                                  ///      strength threshold in dBm
+)
+{
+    if ((rat < LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA))
+    {
+        LE_ERROR("Bad RAT parameter : %d", rat);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (lowerRangeThreshold >= upperRangeThreshold)
+    {
+        LE_ERROR("lowerRangeThreshold %d >= upperRangeThreshold %d !",
+            lowerRangeThreshold, upperRangeThreshold);
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_mrc_SetSignalStrengthIndThresholds(rat, lowerRangeThreshold, upperRangeThreshold);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to register an handler for Signal Strength value changes.
  *
  * @return A handler reference, which is only needed for later removal of the handler.

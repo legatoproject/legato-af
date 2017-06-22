@@ -216,7 +216,8 @@
  * le_mrc_AddSignalStrengthChangeHandler() API installs a signal strength change handler.
  * The RAT, the lower-range and the upper-range thresholds must be passed as input parameters. These
  * parameters are updated each time the function is called, the previous thresholds are replaced by
- * the new ones if the function is called with the same RAT.
+ * the new ones if the function is called with the same RAT. le_mrc_SetSignalStrengthIndThresholds()
+ * API changes or sets new thresholds.
  *
  * @warning The threshold values must be in the allowed platform range and the RAT must be valid,
  *          else, it's a fatal error, le_mrc_AddSignalStrengthChangeHandler API won't return.
@@ -738,6 +739,24 @@ EVENT SignalStrengthChange
     SignalStrengthChangeHandler handler
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set signal strength indication thresholds for a specific RAT.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  Bad parameters
+ *  - LE_FAULT          Function failed.
+ *
+ * @note <b>NOT multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSignalStrengthIndThresholds
+(
+    Rat     rat IN,                       ///< Radio Access Technology
+    int32   lowerRangeThreshold IN,       ///<  lower-range Signal strength threshold in dBm
+    int32   upperRangeThreshold IN        ///<  upper-range Signal strength threshold in dBm
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
