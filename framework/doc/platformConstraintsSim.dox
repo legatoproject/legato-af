@@ -22,7 +22,7 @@ described as follows:
 le_sim_SelectCard() and le_sim_GetSelectedCard() select and get the currently selected SIM card.
 The @ref le_sim_Id_t parameters supported by these APIs depend on the platform.
 
-For WP76xx, AR759x and AR758x, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_REMOTE types are supported.
+For WP76xx, WP77xx, AR759x and AR758x, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_REMOTE types are supported.
 
 For AR755x, only LE_SIM_EXTERNAL_SLOT_1 and LE_SIM_EMBEDDED types are supported.
 

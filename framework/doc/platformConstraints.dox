@@ -13,17 +13,17 @@ refer to @subpage platformConstraintsAtCmd section.
 the User must consider the constraints described in the corresponding page.
 - <b>'NA'</b> means the feature is not applicable to the platform
 
-| Features                                                               | AR755x | AR758x | AR759x | AR8652 | WPx5xx | WP76xx |
-| ---------------------------------------------------------------------- | :----: | :----: | :----: | :----: | :-----:| :-----:|
-| @subpage platformConstraintsAdc (@ref c_adc "le_adc")                  | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsAudio (@ref c_audio "le_audio")            | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsGnss (@ref c_gnss "le_gnss")               | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsSecStorage (@ref c_secStore "le_secStore") | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsSim (@ref c_sim "le_sim")                  | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsStk (@ref le_sim_stk "le_sim for STK")     | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsTemperature (@ref c_temp "le_temp")        | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsReadOnly                                   | X      | X      | X      | X      | X      | X      |
-| @subpage platformConstraintsDualSys (@ref c_fwupdate "le_fwupdate")    | NA     | X      | X      | NA     | NA     | NA     |
+| Features                                                               | AR755x | AR758x | AR759x | AR8652 | WPx5xx | WP76xx | WP77xx |
+| ---------------------------------------------------------------------- | :----: | :----: | :----: | :----: | :-----:| :-----:| :-----:|
+| @subpage platformConstraintsAdc (@ref c_adc "le_adc")                  | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsAudio (@ref c_audio "le_audio")            | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsGnss (@ref c_gnss "le_gnss")               | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsSecStorage (@ref c_secStore "le_secStore") | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsSim (@ref c_sim "le_sim")                  | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsStk (@ref le_sim_stk "le_sim for STK")     | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsTemperature (@ref c_temp "le_temp")        | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsReadOnly                                   | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsDualSys (@ref c_fwupdate "le_fwupdate")    | NA     | X      | X      | NA     | NA     | NA     | NA     |
 
 
 

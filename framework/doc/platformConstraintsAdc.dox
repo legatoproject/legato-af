@@ -3,7 +3,7 @@
 The AR755x, AR758x and AR8652 support 2 ADCs.
 The dedicated string in le_adc_ReadValue() API are "EXT_ADC1" and "EXT_ADC2".
 
-The WP750x, WP8548 and WP76xx support 4 ADCs.
+The WP750x, WP8548, WP76xx and WP77xx support 4 ADCs.
 The dedicated string in le_adc_ReadValue() API are "EXT_ADC0", "EXT_ADC1", "EXT_ADC2" and "EXT_ADC3".
 
 The AR759x support 4 ADCs.
