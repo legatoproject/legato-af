@@ -385,6 +385,36 @@ LE_SHARED le_result_t pa_info_GetPriId
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the Carrier PRI Name and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Name or the Revision Number strings length exceed the maximum length.
+ *      - LE_UNSUPPORTED   The function is not supported on the platform.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_info_GetCarrierPri
+(
+    char* capriNameStr,
+        ///< [OUT]
+        ///< The Carrier Product Requirement Information
+        ///< (CAPRI) Name string (null-terminated).
+
+    size_t capriNameStrNumElements,
+        ///< [IN]
+
+    char* capriRevStr,
+        ///< [OUT]
+        ///< The Carrier Product Requirement Information
+        ///< (CAPRI) Revision Number string (null-terminated).
+
+    size_t capriRevStrNumElements
+        ///< [IN]
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the product stock keeping unit number (SKU) string in ASCII text.
  *
  * @return

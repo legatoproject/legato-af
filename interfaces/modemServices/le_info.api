@@ -60,6 +60,9 @@
  * The Part number is a 7-digit string. Revision Number string contains 2-digit major
  *  version + '.' char + 2-digit minor version (xx.xx).
  *
+ * le_info_GetCarrierPri() is used to retrieve the Carrier Product Requirement Information (CAPRI) Name
+ * and the Revision number. Revision Number string is in major.minor_buildver format.
+ *
  * le_info_GetSku() is used to retrieve the product stock keeping unit number (SKU).
  *
  * le_info_GetPlatformSerialNumber() is used to retrieve the Platform Serial Number (PSN) string.
@@ -271,6 +274,38 @@ DEFINE MAX_PRIID_REV_LEN   = 5;
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE MAX_PRIID_REV_BYTES = (MAX_PRIID_REV_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Carrier Product Requirement Information (CAPRI) Name string.
+ * , excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CAPRI_NAME_LEN   = 16;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Carrier Product Requirement Information (CAPRI) Name string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CAPRI_NAME_BYTES = (MAX_CAPRI_NAME_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Carrier Product Requirement Information (CAPRI) Revision Number string.
+ * , excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CAPRI_REV_LEN   = 12;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the Carrier Product Requirement Information (CAPRI) Revision Number string.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CAPRI_REV_BYTES = (MAX_CAPRI_REV_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -549,6 +584,26 @@ FUNCTION le_result_t GetPriId
     string priIdRevStr[MAX_PRIID_REV_LEN] OUT ///< The Product Requirement Information Identifier
                                               ///< (PRI ID) Revision Number string
                                               ///< (null-terminated).
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Carrier PRI Name and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Part or the Revision Number strings length exceed the maximum length.
+ *      - LE_UNSUPPORTED   The function is not supported on the platform.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCarrierPri
+(
+    string capriNameStr[MAX_CAPRI_NAME_LEN] OUT,  ///< The Carrier Product Requirement Information
+                                                  ///< (CAPRI) Name string (null-terminated).
+    string capriRevStr[MAX_CAPRI_REV_LEN] OUT     ///< The Carrier Product Requirement Information
+                                                  ///< (CAPRI) Revision Number string
+                                                  ///< (null-terminated).
 );
 
 //--------------------------------------------------------------------------------------------------

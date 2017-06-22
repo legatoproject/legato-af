@@ -304,6 +304,39 @@ le_result_t pa_info_GetPriId
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Carrier PRI Name and Revision Number strings in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_OVERFLOW      The Name or the Revision Number strings length exceed the maximum length.
+ *      - LE_UNSUPPORTED   The function is not supported on the platform.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetCarrierPri
+(
+    char* capriNameStr,
+        ///< [OUT]
+        ///< The Carrier Product Requirement Information Name
+        ///< Carrier PRI Name string (null-terminated).
+
+    size_t capriNameStrNumElements,
+        ///< [IN]
+
+    char* capriIdRevStr,
+        ///< [OUT]
+        ///< The Carrier Product Requirement Information Identifier
+        ///< Carrier PRI Revision Number string (null-terminated).
+
+    size_t capriIdRevStrNumElements
+        ///< [IN]
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

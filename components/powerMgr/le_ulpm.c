@@ -456,7 +456,7 @@ le_result_t le_ulpm_GetFirmwareVersion
           if (readCnt == 1)
           {
 
-              if (index == versionNumElements - 1)
+              if (index == (versionNumElements - 1))
               {
                   // There is still data but we've run out of buffer space.
                   version[index] = '\0';
@@ -465,7 +465,16 @@ le_result_t le_ulpm_GetFirmwareVersion
               }
 
               // Store char.
-              version[index] = c;
+              // The MCU version stored at MCU_VERSION_FILE includes a new line character
+              // at the end. Trim this new line character if present.
+              if (c == '\n')
+              {
+                  version[index] = '\0';
+              }
+              else
+              {
+                  version[index] = c;
+              }
           }
           else if (readCnt == 0)
           {

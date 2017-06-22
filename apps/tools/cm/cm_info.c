@@ -217,6 +217,58 @@ void cm_info_PrintGetPriId
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print the carrier product requirement information (PRI) name and revision number.
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_info_PrintGetCarrierPri
+(
+    bool withHeaders
+)
+{
+    char priName[LE_INFO_MAX_CAPRI_NAME_BYTES] = {0};
+    char priRev[LE_INFO_MAX_CAPRI_REV_BYTES] = {0};
+
+    le_info_GetCarrierPri(priName, LE_INFO_MAX_CAPRI_NAME_BYTES, priRev, LE_INFO_MAX_CAPRI_REV_BYTES);
+
+    if(withHeaders)
+    {
+        cm_cmn_FormatPrint("Carrier PRI Name", priName);
+        cm_cmn_FormatPrint("Carrier PRI Rev", priRev);
+    }
+    else
+    {
+        printf("%s %s\n", priName, priRev);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print the MCU version
+ */
+//--------------------------------------------------------------------------------------------------
+void cm_info_PrintMcuVersion
+(
+    bool withHeaders
+)
+{
+    char mcuVersion[LE_ULPM_MAX_VERS_LEN+1] = {0};
+
+    le_ulpm_ConnectService();
+
+    le_ulpm_GetFirmwareVersion(mcuVersion, sizeof(mcuVersion));
+
+    if(withHeaders)
+    {
+        cm_cmn_FormatPrint("MCU Version", mcuVersion);
+    }
+    else
+    {
+        printf("%s\n", mcuVersion);
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -267,7 +319,9 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintFirmwareVersion(true);
         cm_info_PrintBootloaderVersion(true);
         cm_info_PrintGetPriId(true);
+        cm_info_PrintGetCarrierPri(true);
         cm_info_PrintGetSku(true);
+        cm_info_PrintMcuVersion(true);
     }
     else if (strcmp(command, "firmware") == 0)
     {
@@ -297,9 +351,17 @@ void cm_info_ProcessInfoCommand
     {
         cm_info_PrintGetPriId(false);
     }
+    else if (strcmp(command, "capri") == 0)
+    {
+        cm_info_PrintGetCarrierPri(false);
+    }
     else if (strcmp(command, "sku") == 0)
     {
         cm_info_PrintGetSku(false);
+    }
+    else if (strcmp(command, "mcu") == 0)
+    {
+        cm_info_PrintMcuVersion(false);
     }
     else
     {

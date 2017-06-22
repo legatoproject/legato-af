@@ -3,6 +3,7 @@ requires:
     api:
     {
         le_cfg.api
+        le_ulpm.api [manual-start]
         modemServices/le_mrc.api
         modemServices/le_mdc.api
         modemServices/le_sim.api
