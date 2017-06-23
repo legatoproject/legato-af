@@ -15,6 +15,7 @@ package io.legato.api.implementation;
 
 import java.math.BigInteger;
 import java.io.FileDescriptor;
+import java.util.Arrays;
 import java.lang.AutoCloseable;
 import io.legato.Ref;
 import io.legato.Result;
@@ -171,7 +172,18 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {%- else %}
         {%- for parameter in function.parameters %}
         {%- if parameter is InParameter %}
+        {%- if parameter is ArrayParameter %}
+        // ArrayParameter
+        if ( _{{parameter.name}}.length > {{parameter.maxCount}}) {
+            throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+        }
+        buffer.writeInt(_{{parameter.name}}.length);
+        for ({{parameter.apiType|FormatType}} element : _{{parameter.name}}) {
+            {{pack.PackParameter(parameter, "element")}};
+        }
+        {% else %}
         {{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
+        {% endif %}
         {%- elif parameter is StringParameter or parameter is ArrayParameter %}
         buffer.writeInt({{parameter.maxCount}});
         {%- endif %}
@@ -201,9 +213,20 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         {%- for parameter in function.parameters if parameter is OutParameter %}
         if (_{{parameter.name}} != null)
         {
+            {%- if parameter is ArrayParameter %}
+            {{parameter.apiType|FormatBoxedType}}[] tmpArray = new {{parameter.apiType|FormatBoxedType}}[buffer.readInt()];
+            if (tmpArray.length > {{parameter.maxCount}}) {
+                throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+            }
+            for (int i = 0; i < tmpArray.length; i++) {
+                tmpArray[i] = {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)}};
+            }
+            _{{parameter.name}}.setValue(tmpArray);
+            {%- else %}
             _{{parameter.name}}.setValue({{pack.UnpackValue(parameter.apiType,
                                                             parameter.name,
                                                             function.name)}});
+            {%- endif %}
         }
         {%- endfor %}
         {%- if function.returnType %}

@@ -118,8 +118,12 @@ def FormatParameter(context, parameter, name=None, qualifiedTypes=None):
     if name == None:
         name = parameter.name
     if parameter.direction == interfaceIR.DIR_OUT:
-        return "Ref<%s> %s" % (FormatBoxedType(context, parameter.apiType, qualifiedTypes),
-                               name)
+        if isinstance(parameter, interfaceIR.ArrayParameter):
+            return "Ref<%s[]> %s" % (FormatBoxedType(context, parameter.apiType, qualifiedTypes), name)
+        else:
+            return "Ref<%s> %s" % (FormatBoxedType(context, parameter.apiType, qualifiedTypes), name)
+    elif isinstance(parameter, interfaceIR.ArrayParameter):
+        return "%s[] %s" % (FormatType(context, parameter.apiType, qualifiedTypes), name)
     else:
         return "%s %s" % (FormatType(context, parameter.apiType, qualifiedTypes), name)
 

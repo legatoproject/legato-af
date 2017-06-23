@@ -104,18 +104,35 @@ public class {{apiName}}Server implements AutoCloseable
         {%- if parameter.apiType is HandlerType %}
         long {{parameter.name}}Context = buffer.readLongRef();
         {%- endif %}
+        {%- if parameter is ArrayParameter %}
+        {{parameter.apiType|FormatType}}[] _{{parameter.name}} = new {{parameter.apiType|FormatType}}[buffer.readInt()];
+        if ( _{{parameter.name}}.length > {{parameter.maxCount}}) {
+            throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+        }
+        for (int i = 0; i < _{{parameter.name}}.length; i++) {
+            _{{parameter.name}}[i] = {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)}};
+        }
+        {%- else %}
         {{parameter.apiType|FormatType}} _{{parameter.name}} =
             {#- #} {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)|indent(8)}};
+        {%- endif %}
         {%- endfor %}
 
         // Create space for outputs
         {%- for parameter in function.parameters if parameter is OutParameter %}
+        {%- if parameter is ArrayParameter %}
+        Ref<{{parameter.apiType|FormatBoxedType}}[]> _{{parameter.name}} = null;
+        if ((_requiredOutputs & (1 << {{loop.index0}})) != 0) {
+            _{{parameter.name}} = new Ref<>();
+        }
+        {%- else %}
         Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} = null;
         if ((_requiredOutputs & (1 << {{loop.index0}})) != 0)
         {
             _{{parameter.name}} =
                 new Ref<{{parameter.apiType|FormatBoxedType}}>({{parameter.apiType|DefaultValue}});
         }
+        {%- endif %}
 
         {%- endfor %}
         {% if function.returnType %}{{function.returnType|FormatType}} result = {% endif -%}
@@ -130,9 +147,18 @@ public class {{apiName}}Server implements AutoCloseable
         {{pack.PackValue(function.returnType, "result")}}
         {%- endif %}
         {%- for parameter in function.parameters if parameter is OutParameter %}
-        if (_{{parameter.name}} != null)
-        {
+        if (_{{parameter.name}} != null) {
+            {%- if parameter is ArrayParameter %}
+            if ( _{{parameter.name}}.getValue().length > {{parameter.maxCount}}) {
+                throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+            }
+            buffer.writeInt(_{{parameter.name}}.getValue().length);
+            for ({{parameter.apiType|FormatBoxedType}} element : _{{parameter.name}}.getValue()) {
+                {{pack.PackParameter(parameter, "element")}};
+            }
+            {%- else %}
             {{pack.PackParameter(parameter, "_"+parameter.name+".getValue()")}}
+            {%- endif %}
         }
         {%- endfor %}
     }

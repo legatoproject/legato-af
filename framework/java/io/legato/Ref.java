@@ -12,7 +12,6 @@ package io.legato;
 
 
 
-
 // -------------------------------------------------------------------------------------------------
 /**
  *  Simple reference type to help support API out parameters.
@@ -21,6 +20,11 @@ package io.legato;
 public class Ref<RefType>
 {
     private RefType value;
+
+    public Ref()
+    {
+        this(null);
+    }
 
     public Ref(RefType newValue)
     {
