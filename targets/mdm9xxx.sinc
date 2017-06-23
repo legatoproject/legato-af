@@ -80,4 +80,16 @@ buildVars:
     #else
         LEGATO_QMI_UTIL = ${LEGATO_QMI_UTIL_BIN}
     #endif
+
+    // Proprietary AT QMI Linker app
+    #if dir_exists(${LEGATO_ROOT}/apps/proprietary/atQmiLinker/src)
+        #if file_exists(${LEGATO_PROPRIETARY_QCT_DIR}/inc/framework/qmi_atcop_srvc.h)
+            LEGATO_QMI_AT_LINKER = ${LEGATO_ROOT}/apps/proprietary/atQmiLinker/src/atQmiLinker
+        #endif
+    #else
+        #if file_exists(${LEGATO_ROOT}/apps/proprietary/atQmiLinker/bin/${LEGATO_TARGET}/atQmiLinker.${LEGATO_TARGET}.app)
+            // Disable until LE-7286 is resolve
+            // LEGATO_QMI_AT_LINKER = ${LEGATO_ROOT}/apps/proprietary/atQmiLinker/bin/${LEGATO_TARGET}/atQmiLinker.${LEGATO_TARGET}.app
+        #endif
+    #endif
 }

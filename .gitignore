@@ -9,7 +9,7 @@
 /sources.md5
 /delivery
 /platformAdaptor
-/proprietary
+*proprietary
 doxygen.*.log
 doxygen.*.err
 _build_*

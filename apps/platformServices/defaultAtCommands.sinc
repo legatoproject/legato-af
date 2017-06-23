@@ -1,0 +1,37 @@
+//--------------------------------------------------------------------------------------------------
+// Definitions specific to AT commands processing.
+//
+// Copyright (C), Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+buildVars:
+{
+    // Proprietary AT AirVantage app
+    #if ${LEGATO_APP_AVC_CHOICE} = lwm2mcore
+        #if dir_exists(${LEGATO_ROOT}/apps/proprietary/atAirVantage/src)
+            LEGATO_AT_AIRVANTAGE_APP = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/src/atAirVantage
+        #else
+            #if file_exists(${LEGATO_ROOT}/apps/proprietary/atAirVantage/bin/${LEGATO_TARGET}/atAirVantage.${LEGATO_TARGET}.app)
+                // Disable until LE-7286 is resolve
+                // LEGATO_AT_AIRVANTAGE_APP = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/bin/${LEGATO_TARGET}/atAirVantage.${LEGATO_TARGET}.app
+            #endif
+        #endif
+    #endif
+}
+
+apps:
+{
+    #if ${LEGATO_APP_AVC_CHOICE} = lwm2mcore
+        #if ${LEGATO_TARGET} = wp750x
+            ${LEGATO_QMI_AT_LINKER}
+            ${LEGATO_AT_AIRVANTAGE_APP}
+        #elif ${LEGATO_TARGET} = wp85
+            ${LEGATO_QMI_AT_LINKER}
+            ${LEGATO_AT_AIRVANTAGE_APP}
+        #elif ${LEGATO_TARGET} = wp76xx
+            ${LEGATO_QMI_AT_LINKER}
+            ${LEGATO_AT_AIRVANTAGE_APP}
+        #endif
+    #endif
+}
+

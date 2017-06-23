@@ -41,7 +41,7 @@ do
     esac
 done
 
-REPO_EXCLUDE_PATTERN='(legato|qmi/src|proprietary|docManagement)'
+REPO_EXCLUDE_PATTERN='(legato|qmi/src|proprietary/qct|proprietary/.*/src|docManagement)'
 
 RELEASE_DIR=$LEGATO_ROOT/releases
 VERSION=$(cat $LEGATO_ROOT/version)
@@ -98,6 +98,7 @@ cd $LEGATO_ROOT
 StageComponent() {
     local comp_name=$1
     local comp_src=$2
+    local target
 
     echo "Staging ${comp_name}:"
 
@@ -106,8 +107,8 @@ StageComponent() {
             continue
         fi
 
-        src="build/${target}/${comp_src}"
-        dst="platformAdaptor/qmi/bin/${target}/components/${comp_name}/"
+        local src="build/${target}/${comp_src}"
+        local dst="platformAdaptor/qmi/bin/${target}/components/${comp_name}/"
 
         if ! [ -e "$LEGATO_ROOT/$src" ]; then
             echo "$src doesn't exist"
@@ -148,9 +149,45 @@ StagePaComponent() {
     local comp_name=$1
     local service=$2
 
-    comp_src="system/app/$service/staging/read-only/lib/libComponent_$comp_name.so"
+    local comp_src="system/app/$service/staging/read-only/lib/libComponent_$comp_name.so"
 
     StageComponent $comp_name $comp_src "${@:3}"
+}
+
+StageProprietaryApp() {
+    local app_name=$1
+    local target
+
+    echo "Staging app ${app_name}:"
+
+    for target in "${@:2}"; do
+        if ! echo "$TARGETS" | grep -E $target'(,|$)' > /dev/null; then
+            continue
+        fi
+
+        local src="build/${target}/proprietary/${app_name}/${app_name}.${target}.app"
+        local dst="apps/proprietary/${app_name}/bin/${target}/${app_name}.${target}.app"
+
+        echo -n "        (target $target) = $src -> $dst"
+
+        # If package is already available, do not replace the .app file unless
+        # the content has changed.
+        if [ -e "$dst" ]; then
+            local src_sha=$(tar jxfO $src | sha1sum)
+            local dst_sha=$(tar jxfO $dst | sha1sum)
+
+            if [[ "$src_sha" == "$dst_sha" ]]; then
+                echo " (skipped)"
+                continue
+            fi
+        fi
+
+        echo
+        install -D $LEGATO_ROOT/$src $STAGE_DIR/$dst
+        if [ $? -ne 0 ]; then
+            ExitWithError "Unable to copy '$src'"
+        fi
+    done
 }
 
 StagePaComponent swiQmi          modemService        ar7 wp85 ar758x ar759x wp76xx
@@ -168,6 +205,13 @@ if [ -e "$LEGATO_ROOT/build/wp85/system/app/avcCompat" ]; then
     StagePaComponent le_pa_avc       avcCompat           wp85
 elif [ -e "$LEGATO_ROOT/build/wp85/system/app/avcService" ]; then
     StagePaComponent le_pa_avc       avcService          wp85
+fi
+
+if [ -e "$LEGATO_ROOT/apps/proprietary/atQmiLinker" ]; then
+    StageProprietaryApp atQmiLinker     wp85 wp76xx
+fi
+if [ -e "$LEGATO_ROOT/apps/proprietary/atAirVantage" ]; then
+    StageProprietaryApp atAirVantage    wp85 wp76xx
 fi
 
 cp version $STAGE_DIR
