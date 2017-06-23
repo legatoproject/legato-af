@@ -426,6 +426,7 @@ SYSTEM_TARGETS = $(foreach target,$(TARGETS),system_$(target))
 .PHONY: $(SYSTEM_TARGETS)
 $(SYSTEM_TARGETS):system_%: framework_%
 	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) $(SDEF_TO_USE) \
+			-d build/$(TARGET)/debug \
 			$(MKSYS_FLAGS)
 	mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).update \
 	    build/$(TARGET)/system.$(TARGET).update

@@ -59,6 +59,7 @@ if [ "$DEBUG" != "yes" ]; then
 fi
 
 BUILD_DIR=$LEGATO_ROOT/build/$LEGATO_TARGET/framework
+DEBUG_DIR=$LEGATO_ROOT/build/$LEGATO_TARGET/debug
 
 NINJA_SCRIPT=$BUILD_DIR/build.ninja
 NINJA_SCRIPT_GENERATOR=$0
@@ -97,7 +98,7 @@ builddir = $BUILD_DIR
 rule Compile
   description = Compiling liblegato source file
   depfile = \$out.d
-  command = $TARGET_CC -MMD -MF \$out.d -c \$in -o \$out -Wall -fPIC -Werror \$flags \$
+  command = $TARGET_CC -MMD -MF \$out.d -g -c \$in -o \$out -Wall -fPIC -Werror \$flags \$
             -DLE_COMPONENT_NAME=framework \$
             -I$LEGATO_ROOT/framework/c/inc \$
             -DDISABLE_SMACK=$DISABLE_SMACK \$
@@ -107,7 +108,8 @@ rule Compile
 
 rule Link
   description = Linking liblegato
-  command = $TARGET_CC -shared -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
+  command = $TARGET_CC -shared -g -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
+            && $LEGATO_ROOT/framework/tools/scripts/splitdebug -d $DEBUG_DIR \$out
 
 build $LIBLEGATO : Link $LIBLEGATO_OBJECTS
 

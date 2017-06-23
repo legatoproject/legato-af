@@ -62,7 +62,7 @@ BIN_DIR := $(BUILD_DIR)/bin
 APP_DIR := $(LEGATO_ROOT)/build/$(TARGET)/tools
 LIB_DIR := $(BUILD_DIR)/lib
 
-LOCAL_MKTOOLS_FLAGS = -t $(TARGET)
+LOCAL_MKTOOLS_FLAGS = -t $(TARGET) -d $(LEGATO_ROOT)/build/$(TARGET)/debug
 
 ifneq ($(DEBUG),yes)
   LOCAL_MKTOOLS_FLAGS += --cflags=-O2

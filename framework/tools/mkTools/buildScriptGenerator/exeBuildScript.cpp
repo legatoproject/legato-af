@@ -450,7 +450,7 @@ void Generate
     script << "ldFlags = " << buildParams.ldFlags << "\n\n";
     script << "target = " << buildParams.target << "\n\n";
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-    GenerateBuildRules(script, buildParams.target, argc, argv);
+    GenerateBuildRules(script, buildParams, argc, argv);
 
     if (!buildParams.codeGenOnly)
     {

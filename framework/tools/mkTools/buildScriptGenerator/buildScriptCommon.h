@@ -72,7 +72,7 @@ void GenerateIfgenFlagsDef
 void GenerateBuildRules
 (
     std::ofstream& script,      ///< Ninja script to write rules to.
-    const std::string& target,  ///< Build target (e.g., "localhost");
+    const mk::BuildParams_t& buildParams,  ///< Build parameters
     int argc,                   ///< Count of the number of command line parameters.
     const char** argv           ///< Pointer to array of pointers to command line argument strings.
 );

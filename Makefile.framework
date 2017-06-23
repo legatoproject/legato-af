@@ -56,6 +56,7 @@ NINJA_FLAGS =
 # The daemons are built using mkexe.
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS)
 LOCAL_MKEXE_FLAGS += -o $(BIN_DIR)/$@ -t $(TARGET) -w $(BUILD_DIR)/$@ -l $(LIB_DIR)
+LOCAL_MKEXE_FLAGS += -d $(LEGATO_ROOT)/build/$(TARGET)/debug
 
 # Do not be verbose by default.
 VERBOSE ?= 0

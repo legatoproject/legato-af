@@ -26,6 +26,7 @@ BuildParams_t::BuildParams_t
     target("localhost"),
     libOutputDir(""),
     workingDir(""),
+    debugDir(""),
     codeGenOnly(false)
 //--------------------------------------------------------------------------------------------------
 {

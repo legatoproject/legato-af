@@ -130,6 +130,13 @@ static void GetCommandLineArgs
                                     " artifacts (such as .o files and generated source code files)"
                                     " should be put."));
 
+    args::AddOptionalString(&BuildParams.debugDir,
+                            "",
+                            'd',
+                            "debug-dir",
+                            LE_I18N("Generate debug symbols and place them in the specified"
+                                    " directory.  Debug symbol files will be named with build-id"));
+
     args::AddOptionalString(&BuildParams.target,
                              "localhost",
                              't',

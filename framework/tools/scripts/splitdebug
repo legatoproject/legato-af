@@ -1,0 +1,37 @@
+#! /bin/bash
+#
+# Split debug info into a separate file
+#
+
+set -e
+
+usage()
+{
+    echo >&2 "Usage: $0 -d debug_dir infile outfile"
+}
+
+while getopts "d:" OPTION; do
+    case $OPTION in
+        d)
+            DEBUG_DIR="$OPTARG"
+            ;;
+        [?])
+            usage
+            exit 1
+    esac
+done
+
+shift $((OPTIND-1))
+
+if [[ $# != 1 ]]; then
+    echo "Expected 1 argument, seen $#"
+    usage
+    exit 1
+fi
+
+CROSS_PREFIX=${TOOLCHAIN_DIR:+${TOOLCHAIN_DIR}/}${TOOLCHAIN_PREFIX}
+
+BUILD_ID=$(${CROSS_PREFIX}readelf -n $1|sed 's/    Build ID: //;t;d')
+mkdir -p $DEBUG_DIR/.build-id/${BUILD_ID:0:2}
+${CROSS_PREFIX}objcopy --only-keep-debug $1 $DEBUG_DIR/.build-id/${BUILD_ID:0:2}/${BUILD_ID:2}.debug
+${CROSS_PREFIX}strip --strip-unneeded $1

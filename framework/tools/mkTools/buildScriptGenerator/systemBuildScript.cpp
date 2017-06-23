@@ -351,7 +351,7 @@ void Generate
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
 
     // Add a set of generic rules.
-    GenerateBuildRules(script, buildParams.target, argc, argv);
+    GenerateBuildRules(script, buildParams, argc, argv);
     GenerateAppBuildRules(script);
     GenerateSystemBuildRules(script, systemPtr);
 

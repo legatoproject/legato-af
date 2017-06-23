@@ -26,6 +26,8 @@ struct BuildParams_t
     std::list<std::string>  sourceDirs;         ///< Source search directory paths.
     std::string             libOutputDir;       ///< Dir path for built libraries ("" if not set).
     std::string             workingDir;         ///< Dir path for intermediate build products.
+    std::string             debugDir;           ///< Dir path for debug symbol files.
+                                                ///< If unset no debug symbols are generated.
     std::string             cFlags;             ///< Flags to be passed to the C compiler.
     std::string             cxxFlags;           ///< Flags to be passed to the C++ compiler.
     std::string             ldFlags;            ///< Flags to be passed to the linker.

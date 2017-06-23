@@ -127,12 +127,13 @@ void GenerateIfgenFlagsDef
 void GenerateBuildRules
 (
     std::ofstream& script,      ///< Ninja script to write rules to.
-    const std::string& target,  ///< Build target (e.g., "localhost");
+    const mk::BuildParams_t& buildParams, ///< Build parameters
     int argc,                   ///< Count of the number of command line parameters.
-    const char** argv           ///< Pointer to array of pointers to command line argument strings.
+    const char** argv            ///< Pointer to array of pointers to command line argument strings.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    std::string target = buildParams.target;
     std::string cCompilerPath = GetCCompilerPath(target);
     std::string cxxCompilerPath = GetCxxCompilerPath(target);
     std::string crossToolPath = GetToolChainPath(target);
@@ -160,6 +161,10 @@ void GenerateBuildRules
     {
         script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
     }
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -g";
+    }
     script << " $cFlags" // Include user-provided CFLAGS last so other settings can be overridden.
               "\n\n";
 
@@ -179,33 +184,78 @@ void GenerateBuildRules
     {
         script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
     }
-    script << " $cxxFlags"// Include user-provided CXXFLAGS last so other settings can be overridden
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -g";
+    }
+    script << " $cxxFlags" // Include user-provided CXXFLAGS last so
+                           // other settings can be overridden
               "\n\n";
 
     // Generate rules for linking C and C++ object code files into shared libraries.
     script << "rule LinkCLib\n"
               "  description = Linking C library\n"
-              "  command = " << cCompilerPath << " " << sysrootOption <<
-              " -shared -o $out $in $ldFlags\n"
-              "\n";
+              "  command = " << cCompilerPath << " " << sysrootOption;
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -Wl,--build-id -g";
+    }
+    script << " -shared -o $out $in $ldFlags";
+    if (!buildParams.debugDir.empty())
+    {
+        script << " $\n"
+                  "      && splitdebug -d " << buildParams.debugDir <<
+                  " $out";
+    }
+    script << "\n\n";
 
     script << "rule LinkCxxLib\n"
               "  description = Linking C++ library\n"
-              "  command = " << cxxCompilerPath << " " << sysrootOption <<
-              " -shared -o $out $in $ldFlags\n"
-              "\n";
+              "  command = " << cxxCompilerPath << " " << sysrootOption;
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -Wl,--build-id -g";
+    }
+    script << " -shared -o $out $in $ldFlags";
+    if (!buildParams.debugDir.empty())
+    {
+        script << " $\n"
+                  "      && splitdebug -d " << buildParams.debugDir <<
+                  " $out";
+    }
+    script << "\n\n";
 
     script << "rule LinkCExe\n"
               "  description = Linking C executable\n"
-              "  command = " << cCompilerPath << " " << sysrootOption <<
-              " -o $out $in $ldFlags\n"
-              "\n";
+              "  command = " << cCompilerPath << " " << sysrootOption;
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -Wl,--build-id -g";
+    }
+    script << " -o $out $in $ldFlags";
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -g $\n"
+                  "      && splitdebug -d " << buildParams.debugDir <<
+                  " $out";
+    }
+    script << "\n\n";
 
     script << "rule LinkCxxExe\n"
               "  description = Linking C++ executable\n"
-              "  command = " << cxxCompilerPath << " " << sysrootOption <<
-              " -o $out $in $ldFlags\n"
-              "\n";
+              "  command = " << cxxCompilerPath << " " << sysrootOption;
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -Wl,--build-id -g";
+    }
+    script << " -o $out $in $ldFlags";
+    if (!buildParams.debugDir.empty())
+    {
+        script << " -g $\n"
+                  "      && splitdebug -d " << buildParams.debugDir <<
+                  " $out";
+    }
+    script << "\n\n";
 
     // Generate rules for compiling Java code.
     script << "rule CompileJava\n"
