@@ -1,0 +1,82 @@
+#! /bin/bash
+#
+# Debug a process on a remote development system over ssh
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+# Use port 12345 for debugging by default.
+DEBUG_PORT=12345
+
+usage()
+{
+    echo >&1 "Usage: $0 appName processName [dest_ip]"
+}
+
+if [[ $# != 2 ]] && [[ $# != 3 ]]; then
+   usage
+   exit 1
+fi
+
+APP_NAME=$1
+PROC_NAME=$2
+if [[ $# == 3 ]]; then
+    export DEST_IP=$3
+fi
+
+if app status devMode |grep -q "^\[not installed\]"; then
+    cat >&2 <<EOF
+devMode not installed on target.  The devMode application must be installed on
+the target to debug.
+EOF
+    exit 1
+fi
+
+APP_INFO=$(app info $APP_NAME)
+
+if ! echo "$APP_INFO" |grep -q "status: running"; then
+    echo "App $APP_NAME is not running"
+fi
+
+PROC_PID=$(echo "$APP_INFO" |sed "s/^    $PROC_NAME\\[\\([0-9]*\\)\\].*\$/\\1/;t;d")
+
+if [[ -z "$PROC_PID" ]]; then
+    echo >&2 "Process $PROC_NAME not running in application $APP_NAME"
+    exit 1
+fi
+
+APP_MD5=$(echo "$APP_INFO" |sed 's/  app.md5: //;t;d')
+
+TARGET_MODEL=$(ssh -o ConnectTimeout=5 root@$DEST_IP \
+                   "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2>/dev/null)
+if [ -z "$TARGET_MODEL" ]; then
+    echo >&1 "Unable to determine remote target model"
+    exit 1
+fi
+
+TARGET=$(${LEGATO_ROOT}/bin/gettargettype $TARGET_MODEL)
+if [ -z "$TARGET" ]; then
+    echo >&1 "Unable to determine remote target type"
+    exit 1
+fi
+
+if [[ ! -e "${LEGATO_ROOT}/build/${TARGET}/staging/apps/${APP_MD5}/read-only/bin/${PROC_NAME}" ]]; then
+    echo >&2 "Cannot find executable for target"
+    exit 1
+fi
+
+# Connect to target and start the debugger
+ssh -f -L ${DEBUG_PORT}:localhost:${DEBUG_PORT} root@${DEST_IP} \
+    /legato/systems/current/apps/devMode/read-only/bin/gdbserver \
+    --attach localhost:${DEBUG_PORT} ${PROC_PID}
+
+TOOLCHAIN_DIR_PARAM="${TARGET^^}_TOOLCHAIN_DIR"
+TOOLCHAIN_PREFIX_PARAM="${TARGET^^}_TOOLCHAIN_PREFIX"
+if [[ -z "$DEBUGGER" ]]; then
+    DEBUGGER="${!TOOLCHAIN_DIR_PARAM}/${!TOOLCHAIN_PREFIX_PARAM}gdb"
+fi
+
+$DEBUGGER -ex "set sysroot remote:/" \
+          -ex "set debug-file-directory ${LEGATO_ROOT}/build/${TARGET}/debug" \
+          -ex "file ${LEGATO_ROOT}/build/${TARGET}/staging/apps/${APP_MD5}/read-only/bin/${PROC_NAME}" \
+          -ex "target remote localhost:${DEBUG_PORT}" \

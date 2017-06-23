@@ -8,8 +8,12 @@ the same executable (@c hw_proc1, @c hw_proc2, etc.).
 
 High-level steps to use GDB with a sandboxed app:
 
-When building your app:
-- Make sure to build debug symbols
+To debug a running app which is part of the default system:
+- On your dev machine, run @verbatim $ remoteDebug appName processName targetIP @endverbatim.
+
+To debug app startup, or app which is not part of default system:
+When compiling:
+- @ref howToDebugGDB_building Make sure to build debug symbols
 
 On the target device:
 - Make sure the @ref basicTargetDevMode_installDev "devMode app" @c is installed and running
@@ -59,14 +63,7 @@ sources:
 {
     hello.c
 }
-
-cflags:
-{
-    -g
-}
 @endcode
-
-See @ref defFilesCdef_cFlags for more info on @c cflags.
 
 @subsection howToDebugGDB_sampleCode_helloC hello.c
 
@@ -83,7 +80,7 @@ COMPONENT_INIT
 
 See @ref basicAppsCreate for more info.
 
-@section howToDebugGDB_Building
+@section howToDebugGDB_building Building with Debug Symbols
 
 When building your app, build as normal, but add @verbatim -d <debug-path> @endverbatim to the
 mkapp command-line to generate debug symbols in @c <debug-path>.  You can use the same
