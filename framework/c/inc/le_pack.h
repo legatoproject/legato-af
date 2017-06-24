@@ -363,8 +363,6 @@ static inline bool le_pack_PackString
     uint32_t maxStringCount
 )
 {
-    uint8_t* newBufferPtr;
-    uint8_t* stringStartPtr;
     size_t bytesCopied;
 
     if (*sizePtr < (maxStringCount + sizeof(uint32_t)))
@@ -372,34 +370,22 @@ static inline bool le_pack_PackString
         return false;
     }
 
-    // First copy in the string
-    stringStartPtr = *bufferPtr + sizeof(uint32_t);
-
     if (!stringPtr)
     {
-        // No string is treated as empty string here.
-        newBufferPtr = NULL;
-        bytesCopied = 0;
-    }
-    else if (*sizePtr < maxStringCount)
-    {
-        newBufferPtr = (uint8_t *)memccpy(stringStartPtr, stringPtr, '\0', *sizePtr);
-        bytesCopied = *sizePtr;
-    }
-    else
-    {
-        newBufferPtr = (uint8_t *)memccpy(stringStartPtr, stringPtr, '\0', maxStringCount);
-        bytesCopied = maxStringCount;
+        return false;
     }
 
-    if (newBufferPtr)
+    // First copy in the string -- up to maxStringCount bytes, allowing enough
+    // space at the begining for a uint32.
+    for (bytesCopied = 0;
+         bytesCopied < maxStringCount && stringPtr[bytesCopied];
+         ++bytesCopied)
     {
-        // Bytes copied, excluding terminating NULL which is being stripped.
-        bytesCopied = newBufferPtr - stringStartPtr - 1;
+        (*bufferPtr)[bytesCopied + sizeof(uint32_t)] = stringPtr[bytesCopied];
     }
 
-    // Check entire string was copied, less than max possible string size.
-    if (!(stringPtr && (bytesCopied <= maxStringCount) && ('\0' == stringPtr[bytesCopied])))
+    // String was too long to fit in the buffer -- return false.
+    if (stringPtr[bytesCopied] != '\0')
     {
         return false;
     }
