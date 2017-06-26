@@ -1,30 +1,60 @@
 /** @page legatoServices Services APIs
 
-This section contains detailed info about Legato's ready-built services available for commonly needed
-features. The Services @subpage legatoServicesOverview page for background info.
+Legato's Services APIs are pre-built IPC interfaces designed to create and run multiple services in
+different ways:
+- OEM's can create Legato apps to run as services on their specific hardware.
+- 3rd party software providers can create apps to enable supported hardware.
+- 3rd party software providers can use the built-in APIs for it's core daemons to control and
+  configure other services and Apps.
 
-This table lists Legato's Services &mdash; multi-app safe denotes if the Service supports
-arbitration among apps (so multiple apps can share the same resources).
+A simple interface definition language (IDL) similar to C is provided to help define APIs so they
+can be used in multiple, different programming languages. See @ref apiFiles.
 
-| Service                               | Description                                        | multi-app safe             |
-| ------------------------------------- | -------------------------------------------------- | :------------------------: |
-| @subpage legatoServicesAirVantage     | AirVantage server for communication and data       | x  |
-| @subpage c_audio                      | Control audio features                             |    |
-| @subpage c_le_cellnet                 | Register and manage modems                         | x  |
-| @subpage legatoServicesConfigTree     | Target configuration database                      | x  |
-| @subpage c_le_data                    | Request data connection                            | x  |
-| @subpage c_gpio                       | Configure general purpose input/output             |    |
-| @subpage legatoServicesModem          | Modem services                                     |    |
-| @subpage legatoServicesPositioning    | Posititioning services                             |    |
-| @subpage legatoServicesPowerMain      | Device power management                            |    |
-| @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data                  | x  |
-| @subpage legatoServicesSMS            | SMS and SMS Inbox                                  | x  |
-| @subpage c_spi                        | Configure SPI interface                            |    |
-| @subpage legatoServicesSupervisor     | Control framework and apps                         |    |
-| @subpage legatoServicesUpdateMain     | Update Legato apps                                 |    |
-| @subpage c_le_voicecall               | Voice communications                               | x  |
-| @subpage legatoServicesWiFi           | WiFi                                               |    |
-| @subpage legatoAtServices             | AT commands services                               | x  |
+To access the APIs the associated services must be running on the Legato System before you can
+use the API; targets may already have various service Apps installed on the default Legato System.
+Please check with your hardware vendor for the specifics of what services are enabled and supported
+as some of the services may have @ref platformConstraints "limited support" for the target devices.
+
+All Legato AF Daemons and many of the Platform Services are @a multi-app @a safe, this means that
+the API's can be used by several Apps concurrently, and arbitration is fully managed among the Apps
+so multiple Apps can share the same resources.
+
+The Legato AF Daemons provide full-featured interface access to configure and
+control services and Apps:
+
+| Daemon                                | Description                             | multi-app safe            |
+| ------------------------------------- | --------------------------------------- | :------------------------:|
+| @subpage legatoServicesConfigTree     | Target configuration database           | @image html green_dot.png |
+| @subpage c_logging                    | Control logging messages and outputs    | @image html green_dot.png |
+| @subpage legatoServicesSupervisor     | Control framework, services and Apps    | @image html green_dot.png |
+| @subpage legatoServicesUpdateMain     | Update Legato System and Apps           | @image html green_dot.png |
+| @subpage c_wdog                       | Configures watchdogs for Apps           | @image html green_dot.png |
+
+Platform Services provide full-featured interface access to system and modem resources:
+
+| Service                               | Description                             | multi-app safe            |
+| ------------------------------------- | ----------------------------------------| :------------------------:|
+| @subpage legatoServicesAirVantage     | Configure AirVantage Connect Service    | @image html green_dot.png |
+| @subpage c_audio                      | Control audio features                  |                           |
+| @subpage c_le_cellnet                 | Register and manage modems              | @image html green_dot.png |
+| @subpage c_le_data                    | Request data connection                 | @image html green_dot.png |
+| @subpage c_gpio                       | Configure general purpose input/output  |                           |
+| @subpage legatoServicesModem          | Modem services                          |                           |
+| @subpage legatoServicesPositioning    | Positioning services                    |                           |
+| @subpage legatoServicesPowerMain      | Device power management                 |                           |
+| @subpage legatoServicesSecStoreMain   | Secure storage for sensitive data       | @image html green_dot.png |
+| @subpage legatoServicesSMS            | SMS and SMS Inbox                       | @image html green_dot.png |
+| @subpage c_spi                        | Configure SPI interface                 |                           |
+| @subpage c_le_voicecall               | Voice communications                    | @image html green_dot.png |
+| @subpage legatoServicesWiFi           | WiFi                                    |                           |
+| @subpage legatoAtServices             | AT commands services                    | @image html green_dot.png |
+
+@warning Some Services shouldn't be used together in the same app (e.g, if you use a multi-app safe
+service like Data Connection, you can't also use the Modem Data Control Service).
+
+Overview of Legato AF Architecture:
+
+@image html AF_Architecture.png width=@textwidth
 
 Copyright (C) Sierra Wireless Inc.
 

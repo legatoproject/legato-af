@@ -2,12 +2,12 @@
 /**
  * @page c_wdog Watchdog Service
  *
- * @ref le_wdog_interface.h "API Reference"
+ * @ref le_wdog_interface.h "Type/Function Reference"
  *
  * @section Watchdog Service
  *
  * Provides an API for monitoring critical applications and services for deadlocks and other
- * similar faults.  The watchdog for a process is stared by calling @c le_wdog_Kick or
+ * similar faults.  The watchdog for a process is started by calling @c le_wdog_Kick or
  * @c le_wdog_Timeout.  Once started, the watchdog must be kicked periodically by calling
  * @c le_wdog_Kick.  If the watchdog is not kicked (because it is deadlocked, for example),
  * the watchdog service will attempt to recover the service by killing the process and
@@ -30,8 +30,6 @@
  * the watchdog service process is functioning; i.e. all watchdogs have been kicked and/or
  * non-functioning processes are being recovered.  Typically this callback will kick
  * an external watchdog such as @c /dev/watchdog.
- *
- * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
  */

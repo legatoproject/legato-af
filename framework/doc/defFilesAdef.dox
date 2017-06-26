@@ -1134,7 +1134,20 @@ The @c watchdogTimeout section sets the default timeout in milliseconds for proc
 app. Will be used if there's no value set in the processes section for
 a given process. See @ref defFilesAdef_processWatchdogTimeout in the processes section.
 
-<HR>
+@section defFilesAdef_maxWatchdogTimeout maxWatchdogTimeout
+
+The @c maxWatchdogTimeout section should be set for critical services.  If the @c maxWatchdogTimeout
+is set the watchdog will be started on system boot, and can't be stopped longer than the
+timeout given in @c maxWatchdogTimeout.  This is to ensure that the service is running as long as
+the system is running.
+
+Unlike the @c watchdogTimeout, the @c maxWatchdogTimeout value can not be
+set to @c never. If a @c maxWatchdogTimeout is set then le_wdog_Timeout() can not exceed the
+@c maxWatchdogTimeout value.
+
+@note If @c maxWatchdogTimeout is not set, no more action is taken if performing the process'
+@c watchdogAction doesn't recover the process.  If @c maxWatchdogTimeout is specified the system
+will be rebooted if the process does not recover.
 
 Copyright (C) Sierra Wireless Inc.
 

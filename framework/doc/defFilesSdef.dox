@@ -131,6 +131,11 @@ for adef information overridden in the sdef, please do not remove.
 <DIV id="defFilesSdef_watchdogTimeout">
 @ref defFilesAdef_watchdogTimeout
 </DIV>
+<DIV id="defFilesSdef_maxWatchdogTimeout">
+@ref defFilesAdef_maxWatchdogTimeout
+</DIV>
+
+
 @subsection defFilesSdef_appsInterfaceSearch interfaceSearch
 
 This section is used to specify directories in which @c mksys should look for interface files,
