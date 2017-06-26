@@ -173,10 +173,22 @@ StageProprietaryApp() {
         # If package is already available, do not replace the .app file unless
         # the content has changed.
         if [ -e "$dst" ]; then
-            local src_sha=$(tar jxfO $src | sha1sum)
-            local dst_sha=$(tar jxfO $dst | sha1sum)
+            # Creates a temporary directory in which both tarball are extracted.
+            local tmpdir=$(mktemp -d --suffix="releaselegato")
+            mkdir "$tmpdir/src" "$tmpdir/dst"
 
-            if [[ "$src_sha" == "$dst_sha" ]]; then
+            if ! tar jxf $src -C "$tmpdir/src" ||
+               ! tar jxf $dst -C "$tmpdir/dst"; then
+                rm -rf $tmpdir
+                ExitWithError "Error while extracting $app_name"
+            fi
+
+            # The content of the directory is then compared.
+            diff -r "$tmpdir/src" "$tmpdir/dst" >/dev/null 2>&1
+            local diffret=$?
+            #rm -rf "$tmpdir"
+
+            if [ $diffret -eq 0 ]; then
                 echo " (skipped)"
                 continue
             fi
