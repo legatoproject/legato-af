@@ -29,9 +29,9 @@ if [[ $# != 1 ]]; then
     exit 1
 fi
 
-CROSS_PREFIX=${TOOLCHAIN_DIR:+${TOOLCHAIN_DIR}/}${TOOLCHAIN_PREFIX}
+PATH="${TOOLCHAIN_DIR}:${PATH}"
 
-BUILD_ID=$(${CROSS_PREFIX}readelf -n $1|sed 's/    Build ID: //;t;d')
+BUILD_ID=$(${TOOLCHAIN_PREFIX}readelf -n $1|sed 's/    Build ID: //;t;d')
 mkdir -p $DEBUG_DIR/.build-id/${BUILD_ID:0:2}
-${CROSS_PREFIX}objcopy --only-keep-debug $1 $DEBUG_DIR/.build-id/${BUILD_ID:0:2}/${BUILD_ID:2}.debug
-${CROSS_PREFIX}strip --strip-unneeded $1
+${TOOLCHAIN_PREFIX}objcopy --only-keep-debug $1 $DEBUG_DIR/.build-id/${BUILD_ID:0:2}/${BUILD_ID:2}.debug
+${TOOLCHAIN_PREFIX}strip --strip-unneeded $1
