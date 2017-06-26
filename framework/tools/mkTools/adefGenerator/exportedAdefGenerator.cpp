@@ -154,7 +154,7 @@ enum class RemapSrc_t
 template <typename ValueType_t>
 static bool GenerateValue
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const std::string& name,
     const ValueType_t& value,
     const std::string& indent = ""
@@ -183,7 +183,7 @@ static bool GenerateValue
 template <>
 bool GenerateValue
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const std::string& name,
     const std::string& value,
     const std::string& indent
@@ -211,7 +211,7 @@ bool GenerateValue
 template <>
 bool GenerateValue
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const std::string& name,
     const bool& value,
     const std::string& indent
@@ -231,7 +231,7 @@ bool GenerateValue
 //--------------------------------------------------------------------------------------------------
 static void GenerateBasicInfo
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -278,7 +278,7 @@ static void GenerateBasicInfo
 //--------------------------------------------------------------------------------------------------
 static void GenerateConfigPermissions
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const ConfigPermissionMap_t& configTrees
 )
 //--------------------------------------------------------------------------------------------------
@@ -313,7 +313,7 @@ static void GenerateConfigPermissions
 //--------------------------------------------------------------------------------------------------
 static void GenerateFsObjectItem
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::FileSystemObject_t& item,
     WritePerm_t writePermissions
 )
@@ -341,7 +341,7 @@ static void GenerateFsObjectItem
 //--------------------------------------------------------------------------------------------------
 static void GenerateFsObjectItems
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const std::string& sectionName,
     const FsObjectSet_t& items,
     WritePerm_t writePermissions
@@ -373,7 +373,7 @@ static void GenerateFsObjectItems
 //--------------------------------------------------------------------------------------------------
 static void GenerateRequiresSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     model::App_t* appPtr,
     RequiredFsObject_t required
 )
@@ -399,7 +399,7 @@ static void GenerateRequiresSection
 //--------------------------------------------------------------------------------------------------
 static void GenerateBundlesSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     model::App_t* appPtr,
     BundledFsObject_t bundled
 )
@@ -423,7 +423,7 @@ static void GenerateBundlesSection
 //--------------------------------------------------------------------------------------------------
 static bool GenerateEnvVars
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const std::map<std::string, std::string>& envVars
 )
 //--------------------------------------------------------------------------------------------------
@@ -455,7 +455,7 @@ static bool GenerateEnvVars
 //--------------------------------------------------------------------------------------------------
 static void GenerateRunSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const ProcessList_t& processes
 )
 //--------------------------------------------------------------------------------------------------
@@ -512,7 +512,7 @@ static void GenerateRunSection
 //--------------------------------------------------------------------------------------------------
 static void GenerateProcessesSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -569,7 +569,7 @@ static void GenerateProcessesSection
 template <typename ApiObject_t>
 static void GenerateApiUsage
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const std::string& apiAlias,
     ApiObject_t apiObject,
     bool isOptional = false
@@ -603,25 +603,30 @@ static void GenerateApiUsage
  * Generate an API requirement for a component interface that has been bound to an external source.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateExternComponentApiUsage
+static bool GenerateExternComponentApiUsage
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::ComponentInstance_t* componentInstPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
+    bool generatedCode = false;
+
     for (auto clientApiInstPtr : componentInstPtr->clientApis)
     {
         auto bindingPtr = clientApiInstPtr->bindingPtr;
 
         if (bindingPtr->serverType != model::Binding_t::INTERNAL)
         {
+            generatedCode = true;
             GenerateApiUsage(defStream,
                              bindingPtr->clientIfName,
                              clientApiInstPtr,
                              clientApiInstPtr->ifPtr->optional);
         }
     }
+
+    return generatedCode;
 }
 
 
@@ -635,35 +640,37 @@ static void GenerateExternComponentApiUsage
 //--------------------------------------------------------------------------------------------------
 static bool GenerateExternRequiresSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    if (appPtr->externClientInterfaces.empty())
-    {
-        return false;
-    }
-
-    defStream << "    requires:\n"
-                 "    {\n";
+    bool generatedCode = false;
+    std::stringstream substream;
 
     for (auto mapItem : appPtr->executables)
     {
         for (auto componentInstPtr : mapItem.second->componentInstances)
         {
-            GenerateExternComponentApiUsage(defStream, componentInstPtr);
+            generatedCode |= GenerateExternComponentApiUsage(substream, componentInstPtr);
         }
     }
 
     for (auto mapItem : appPtr->externClientInterfaces)
     {
-        GenerateApiUsage(defStream, mapItem.first, mapItem.second, mapItem.second->ifPtr->optional);
+        GenerateApiUsage(substream, mapItem.first, mapItem.second, mapItem.second->ifPtr->optional);
+        generatedCode = true;
     }
 
-    defStream << "    }\n";
+    if (generatedCode)
+    {
+        defStream << "    requires:\n"
+                     "    {\n"
+                  << substream.str()
+                  << "    }\n";
+    }
 
-    return true;
+    return generatedCode;
 }
 
 
@@ -674,7 +681,7 @@ static bool GenerateExternRequiresSection
 //--------------------------------------------------------------------------------------------------
 static void GenerateExternProvidesSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -704,7 +711,7 @@ static void GenerateExternProvidesSection
 //--------------------------------------------------------------------------------------------------
 static void GenerateExternSection
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -731,7 +738,7 @@ static void GenerateExternSection
 //--------------------------------------------------------------------------------------------------
 static void GenerateBinding
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::Binding_t* bindingPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -762,7 +769,7 @@ static void GenerateBinding
 //--------------------------------------------------------------------------------------------------
 static void GenerateBindings
 (
-    std::ofstream& defStream,
+    std::ostream& defStream,
     const model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
@@ -987,6 +994,7 @@ void GenerateExportedAdef
     GenerateProcessesSection(defStream, appPtr);
     GenerateExternSection(defStream, appPtr);
     GenerateBindings(defStream, appPtr);
+
 }
 
 
