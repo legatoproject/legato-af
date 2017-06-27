@@ -191,7 +191,7 @@ def CalcHash(interface):
 
     # Add a interface version on to hash text to ensure when pack/unpack method changes all
     # interfaces are considered changed.
-    hashText = "v2," + repr(interface)
+    hashText = "v3," + repr(interface)
 
     h = hashlib.md5()
     h.update( hashText )

@@ -36,7 +36,7 @@
 #define _MAX_MSG_SIZE {{messageSize}}
 
 // Define the message type for communicating between client and server
-typedef struct
+typedef struct __attribute__((packed))
 {
     uint32_t id;
     uint8_t buffer[_MAX_MSG_SIZE];
