@@ -62,7 +62,7 @@ static int CurrentActivationsCount = 0;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_pos_Sample
 {
-    le_pos_FixState_t fixState;        ///< Position Fix state
+    le_pos_FixState_t fixState;      ///< Position Fix state
     bool            latitudeValid;   ///< if true, latitude is set
     int32_t         latitude;        ///< altitude
     bool            longitudeValid;  ///< if true, longitude is set
@@ -624,6 +624,8 @@ static void PosSampleHandlerfunc
     // Leap seconds in advance
     uint8_t leapSeconds;
     PositionParam_t posParam;
+    // the position fix state
+    le_gnss_FixState_t gnssState;
 
     // Positioning sample parameters
     le_pos_SampleHandler_t* posSampleHandlerNodePtr;
@@ -813,6 +815,18 @@ static void PosSampleHandlerfunc
                 posSampleRequestPtr->posSampleNodePtr->leapSecondsValid = false;
             }
             posSampleRequestPtr->posSampleNodePtr->leapSeconds = leapSeconds;
+
+            // Get position fix state
+            if (LE_OK != le_gnss_GetPositionState(positionSampleRef, &gnssState))
+            {
+                posSampleRequestPtr->posSampleNodePtr->fixState = LE_POS_STATE_UNKNOWN;
+                LE_ERROR("Failed to get a position fix");
+            }
+            else
+            {
+                posSampleRequestPtr->posSampleNodePtr->fixState = (le_pos_FixState_t)gnssState;
+            }
+
             posSampleRequestPtr->posSampleNodePtr->link = LE_DLS_LINK_INIT;
 
             // Add the node to the queue of the list by passing in the node's link.

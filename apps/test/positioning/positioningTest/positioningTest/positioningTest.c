@@ -255,6 +255,45 @@ static void Testle_pos_TestAcquisitionRate()
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Setting/Getting enabled GPS NMEA sentences mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_pos_ActivateGpsNmeaSentences
+(
+    void
+)
+{
+    le_gnss_NmeaBitMask_t gpsNmeaMask = LE_GNSS_NMEA_MASK_GPGGA | LE_GNSS_NMEA_MASK_GPGSA |
+                                     LE_GNSS_NMEA_MASK_GPGSV | LE_GNSS_NMEA_MASK_GPRMC |
+                                     LE_GNSS_NMEA_MASK_GPVTG | LE_GNSS_NMEA_MASK_PSTIS |
+                                     LE_GNSS_NMEA_MASK_PQXFI;
+    le_gnss_NmeaBitMask_t nmeaMask;
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(gpsNmeaMask));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT(nmeaMask == gpsNmeaMask);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset the GPS NMEA sentences mask
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_pos_ResetGpsNmeaSentences
+(
+    void
+)
+{
+    le_gnss_NmeaBitMask_t gpsNmeaMask = 0;
+    le_gnss_NmeaBitMask_t nmeaMask;
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(gpsNmeaMask));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT(nmeaMask == gpsNmeaMask);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * App init.
  *
  */
@@ -266,6 +305,8 @@ COMPONENT_INIT
 
 
     LE_INFO("======== Positioning Test started  ========");
+
+    Testle_pos_ActivateGpsNmeaSentences();
 
     Testle_pos_TestAcquisitionRate();
     // Add Position Handler Test
@@ -286,6 +327,8 @@ COMPONENT_INIT
 
     // Stop Navigation thread
     le_thread_Cancel(navigationThreadRef);
+
+    Testle_pos_ResetGpsNmeaSentences();
 
     exit(EXIT_SUCCESS);
 }
