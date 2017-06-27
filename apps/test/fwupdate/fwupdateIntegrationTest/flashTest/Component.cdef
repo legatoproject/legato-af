@@ -1,0 +1,19 @@
+sources:
+{
+    main.c
+}
+
+requires:
+{
+    api:
+    {
+        le_flash.api
+    }
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/3rdParty/include
+    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
+}
+

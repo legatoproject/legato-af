@@ -404,4 +404,33 @@ LE_SHARED le_result_t pa_fwupdate_GetSystem
                          ///< [OUT] System array for "modem/lk/linux" partition groups
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start the bad image indication
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_StartBadImageIndication
+(
+    le_event_Id_t eventId       ///< the event Id to use to report the bad image
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the bad image indication
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_fwupdate_StopBadImageIndication
+(
+    void
+);
+
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD
+

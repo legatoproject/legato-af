@@ -380,6 +380,41 @@ le_result_t pa_fwupdate_GetSystem
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Start the bad image indication
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_StartBadImageIndication
+(
+    le_event_Id_t eventId       ///< the event Id to use to report the bad image
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop the bad image indication
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          on failure
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_fwupdate_StopBadImageIndication
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init this component
  */
 //--------------------------------------------------------------------------------------------------

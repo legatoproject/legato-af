@@ -6,6 +6,7 @@
 | @subpage c_fwupdate                | Firmware image updates                             |                            |
 | @subpage c_update                  | Apply app and firmware updates                     | @image html green_dot.png  |
 | @subpage c_updateCtrl              | Control app and firmware updates                   | @image html green_dot.png  |
+| @subpage c_flash                   | Flash management                                   | @image html green_dot.png  |
 
  <br>
 

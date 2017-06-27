@@ -5,6 +5,7 @@ provides:
     {
         le_fwupdate.api
         le_dualsys.api
+        le_flash.api
     }
 }
 
@@ -12,6 +13,7 @@ sources:
 {
     fwupdateServer.c
     le_dualsys.c
+    le_flash.c
 }
 
 cflags:

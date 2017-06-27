@@ -1,0 +1,88 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_flash Flash API
+ *
+ * @ref le_flash_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * This file contains data structures and prototypes definitions for high level Flash APIs.
+ *
+ * @section le_flash_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b flashService.
+ *
+ * Here's a code sample binding to the flash service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_flash -> fwupdateService.le_flash
+   }
+   @endverbatim
+ *
+ * @warning These APIs are not available for all platforms. Please refer to the Product Technical
+ * Specification document of your platform for further details.
+ * Please refer to @subpage platformConstraintsFlash for details.
+ *
+ * @section le_flash_BadImageDetection Bad image detection
+ *
+ * This functionality allows the user to be notified when an image becomes bad.
+ *
+ * - le_flash_AddBadImageDetectionHandler() API adds a handler to notify when an image becomes bad
+ * - le_flash_RemoveBadImageDetectionHandler() API removes the bad image handler
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_flash_interface.h
+ *
+ * Legato @ref c_flash include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Image length maximum length.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  IMAGE_NAME_MAX_LEN = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Image length maximum length.
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  IMAGE_NAME_MAX_BYTES = (IMAGE_NAME_MAX_LEN+1);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for bad image detection.
+ *
+ * @note The image names are platform dependent.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER BadImageDetectionHandler
+(
+    string   imageName[IMAGE_NAME_MAX_BYTES]  IN       ///< bad image name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on bad image status.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT BadImageDetection
+(
+    BadImageDetectionHandler handler
+);
+

@@ -3,10 +3,12 @@ requires:
     api:
     {
         le_fwupdate.api         [types-only]
+        le_flash.api            [types-only]
     }
 }
 
 sources:
 {
     ${LEGATO_ROOT}/components/fwupdate/fwupdateDaemon/fwupdateServer.c
+    ${LEGATO_ROOT}/components/fwupdate/fwupdateDaemon/le_flash.c
 }

@@ -1,0 +1,26 @@
+sandboxed: false
+
+executables:
+{
+    flashTest = ( flashTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (flashTest)
+    }
+}
+
+start: manual
+
+bindings:
+{
+    flashTest.flashTest.le_flash -> fwupdateService.le_flash
+}

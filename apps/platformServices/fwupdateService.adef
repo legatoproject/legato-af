@@ -21,5 +21,6 @@ extern:
 {
     fwupdateDaemon.fwupdateDaemon.le_fwupdate
     fwupdateDaemon.fwupdateDaemon.le_dualsys
+    fwupdateDaemon.fwupdateDaemon.le_flash
 }
 

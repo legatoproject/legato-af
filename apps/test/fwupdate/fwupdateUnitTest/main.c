@@ -18,6 +18,23 @@ extern void _fwupdateComp_COMPONENT_INIT(void);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * context definition.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    le_sem_Ref_t semReportRef;
+    le_sem_Ref_t semStartRef;
+} context_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * context for bad image notification test
+ */
+//--------------------------------------------------------------------------------------------------
+static context_t CtxBadImageTest;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Redefinition of le_fwupdate COMPONENT_INIT
  */
 //--------------------------------------------------------------------------------------------------
@@ -25,6 +42,13 @@ void le_fwupdate_Init
 (
     void
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Bad image handler
+ */
+//--------------------------------------------------------------------------------------------------
+static le_flash_BadImageDetectionHandlerRef_t BadImageHandler;
 
 //--------------------------------------------------------------------------------------------------
 // Test public functions.
@@ -607,6 +631,137 @@ static void Testle_fwupdate_GetResumePosition
     LE_INFO ("======== Test: le_fwupdate_GetResumePosition PASSED ========");
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * test handler for bad image notification
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void BadImageTestHandler
+(
+    const char *imageName,      ///< image name
+    void *contextPtr            ///< context pointer
+)
+{
+    LE_INFO("imageName %s", imageName);
+    LE_ASSERT(strcmp(imageName, "test bad image handler") == 0);
+    le_sem_Post((le_sem_Ref_t)contextPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * bad image thread
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void *BadImageThread
+(
+    void *contextPtr      ///< context pointer
+)
+{
+    context_t *ctxPtr = (context_t*)contextPtr;
+    pa_fwupdateSimu_SetReturnCode (LE_OK);
+    BadImageHandler = le_flash_AddBadImageDetectionHandler(BadImageTestHandler,
+                                                           (void*)ctxPtr->semReportRef);
+    LE_ASSERT(BadImageHandler != NULL);
+
+    le_sem_Post(ctxPtr->semStartRef);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove bad image handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveBadImageHandler
+(
+    void *param1Ptr,        ///< the handler
+    void *dummyPtr          ///< unused
+)
+{
+    le_flash_RemoveBadImageDetectionHandler((le_flash_BadImageDetectionHandlerRef_t)param1Ptr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This test gets the le_flash_AddBadImageDetectionHandler API
+ *
+ * API Tested:
+ *  le_flash_AddBadImageDetectionHandler().
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_flash_AddBadImageDetectionHandler
+(
+    void
+)
+{
+    le_flash_BadImageDetectionHandlerRef_t handler;
+
+    LE_INFO ("======== Test: le_flash_AddBadImageDetectionHandler ========");
+
+    // Simulate bad parameter error: API needs to return NULL
+    handler = le_flash_AddBadImageDetectionHandler(NULL, NULL);
+    LE_ASSERT (handler == NULL);
+
+    // Simulate error in pa_fwupdate_StartBadImageIndication(): API needs to return NULL
+    pa_fwupdateSimu_SetReturnCode (LE_FAULT);
+    handler = le_flash_AddBadImageDetectionHandler(BadImageTestHandler, NULL);
+    LE_ASSERT (handler == NULL);
+
+    // Simulate nominal behavior: API needs to return != NULL
+    CtxBadImageTest.semReportRef = le_sem_Create("bad image sem", 0);
+    LE_ASSERT(CtxBadImageTest.semReportRef != NULL);
+    CtxBadImageTest.semStartRef = le_sem_Create("thread start", 0);
+    LE_ASSERT(CtxBadImageTest.semStartRef != NULL);
+    le_thread_Ref_t threadRef = le_thread_Create("bad image test thread", BadImageThread,
+                                                 (void*)&CtxBadImageTest);
+    LE_ASSERT(threadRef != NULL);
+    le_thread_Start(threadRef);
+    le_clk_Time_t timeout = {.sec = 10, .usec = 0};
+    le_result_t result = le_sem_WaitWithTimeOut(CtxBadImageTest.semStartRef, timeout);
+    LE_INFO("thread started");
+    pa_fwupdateSimu_ReportBadImage();
+    timeout.sec = 10;
+    timeout.usec = 0;
+    result = le_sem_WaitWithTimeOut(CtxBadImageTest.semReportRef, timeout);
+    LE_ASSERT(result == LE_OK);
+    LE_INFO("event received");
+    // trig the remove of bad detection handler
+    le_event_QueueFunctionToThread(threadRef, RemoveBadImageHandler, BadImageHandler, NULL);
+
+    LE_ASSERT(le_thread_Cancel(threadRef) == LE_OK);
+
+    LE_INFO ("======== Test: le_flash_AddBadImageDetectionHandler PASSED ========");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This test gets the le_flash_RemoveBadImageDetectionHandler API
+ *
+ * API Tested:
+ *  le_flash_RemoveBadImageDetectionHandler().
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_flash_RemoveBadImageDetectionHandler
+(
+    void
+)
+{
+    LE_INFO ("======== Test: le_flash_RemoveBadImageDetectionHandler ========");
+
+    // Simulate bad parameter error
+    le_flash_RemoveBadImageDetectionHandler(NULL);
+
+    // Simulate nominal case: done in nominal case of le_flash_AddBadImageDetectionHandler
+
+    LE_INFO ("======== Test: le_flash_RemoveBadImageDetectionHandler PASSED ========");
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Each Test called once.
@@ -641,6 +796,8 @@ COMPONENT_INIT
     Testle_fwupdate_GetBootloaderVersion();
     Testle_fwupdate_InitDownload();
     Testle_fwupdate_GetResumePosition();
+    Testle_flash_AddBadImageDetectionHandler();
+    Testle_flash_RemoveBadImageDetectionHandler();
 
 
     LE_INFO ("======== Test FW update implementation Tests SUCCESS ========");

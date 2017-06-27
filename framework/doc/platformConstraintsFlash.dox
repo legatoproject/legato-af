@@ -1,0 +1,35 @@
+/** @page platformConstraintsFlash Flash
+
+
+@note Please refer to the Product Technical specification document of your platform for further
+details.
+
+
+@section flashConstrain_ImageName Flash image names
+
+@warning This service is not supported on all platforms.
+
+- The image names for AR759x/AR758x can be:
+    - "sbl"
+    - "tz_1"
+    - "tz_2"
+    - "rpm_1"
+    - "rpm_2"
+    - "modem_1"
+    - "modem_2"
+    - "aboot_1"
+    - "aboot_2"
+    - "boot_1"
+    - "boot_2"
+    - "system_1"
+    - "system_2"
+    - "lefwkro_1"
+    - "lefwkro_2"
+    - "customer_0"
+    - "customer_1"
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
