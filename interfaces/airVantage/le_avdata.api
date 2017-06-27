@@ -584,7 +584,7 @@ FUNCTION DeleteRecord
  *
  * @return:
  *      - LE_OK on success
- *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was NOT added because the time series buffer is full.
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -605,7 +605,7 @@ FUNCTION le_result_t RecordInt
  *
  * @return:
  *      - LE_OK on success
- *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was NOT added because the time series buffer is full.
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -626,7 +626,7 @@ FUNCTION le_result_t RecordFloat
  *
  * @return:
  *      - LE_OK on success
- *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was NOT added because the time series buffer is full.
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
@@ -647,7 +647,7 @@ FUNCTION le_result_t RecordBool
  *
  * @return:
  *      - LE_OK on success
- *      - LE_OVERFLOW if the current entry was NOT added because the time series buffer is full.
+ *      - LE_NO_MEMORY if the current entry was NOT added because the time series buffer is full.
  *      - LE_FAULT on any other error
  */
 //--------------------------------------------------------------------------------------------------
