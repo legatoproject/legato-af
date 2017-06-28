@@ -826,6 +826,7 @@ static inline bool le_pack_UnpackString
     uint8_t** bufferPtr,
     size_t* sizePtr,
     char *stringPtr,
+    uint32_t bufferSize,
     uint32_t maxStringCount
 )
 {
@@ -842,7 +843,8 @@ static inline bool le_pack_UnpackString
         return false;
     }
 
-    if (stringSize > maxStringCount)
+    if ((stringSize > maxStringCount) ||
+        (stringSize > bufferSize))
     {
         return false;
     }

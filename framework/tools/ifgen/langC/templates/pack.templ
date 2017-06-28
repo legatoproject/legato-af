@@ -78,7 +78,9 @@
     {%- elif parameter is StringParameter %}
     char {{parameter|FormatParameterName}}[{{parameter.maxCount + 1}}];
     if (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               {{parameter|FormatParameterName}}, {{parameter.maxCount}} ))
+                               {{parameter|FormatParameterName}},
+                               sizeof({{parameter|FormatParameterName}}),
+                               {{parameter.maxCount}} ))
     {
         {{- caller() }}
     }
@@ -153,7 +155,9 @@
     {%- if parameter is StringParameter %}
     if ({{parameter|FormatParameterName}} &&
         (!le_pack_UnpackString( &_msgBufPtr, &_msgBufSize,
-                               {{parameter|FormatParameterName}}, {{parameter.maxCount}} )))
+                               {{parameter|FormatParameterName}},
+                               {{parameter.name}}Size,
+                               {{parameter.maxCount}} )))
     {
         {{- caller() }}
     }
