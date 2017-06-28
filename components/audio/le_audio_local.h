@@ -80,13 +80,14 @@ le_audio_If_t;
 //--------------------------------------------------------------------------------------------------
 
 typedef struct {
-    pcm_Handle_t                pcmHandle;        ///< audio resource handle
-    le_audio_SamplePcmConfig_t  pcmConfig;        ///< PCM paramaeters
-    int                         fd;               ///< File descriptor used for file capture or playback
-    le_thread_Ref_t             mainThreadRef;    ///< main thread reference
-    le_audio_If_t               interface;        ///< audio interface
-    bool                        pause;            ///< pause in capture
-    le_audio_MediaEvent_t       mediaEvent;       ///< media event to be sent
+    pcm_Handle_t                pcmHandle;          ///< audio resource handle
+    le_audio_SamplePcmConfig_t  pcmConfig;          ///< PCM paramaeters
+    int                         fd;                 ///< File descriptor for file capture/playback
+    le_thread_Ref_t             mainThreadRef;      ///< main thread reference
+    le_audio_If_t               interface;          ///< audio interface
+    bool                        pause;              ///< pause in capture
+    le_audio_MediaEvent_t       mediaEvent;         ///< media event to be sent
+    int                         framesFuncTimeout;  ///< Timeout for getFramesFunc callback
 }
 le_audio_PcmContext_t;
 

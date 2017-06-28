@@ -328,13 +328,6 @@ static void DestroyPlayThread
                                         contextPtr,
                                         NULL);
     }
-    else
-    {
-        LE_DEBUG("Close pipe Tx");
-        close(threadCtxPtr->pipefd[1]);
-    }
-
-    RecPbThreadRef = NULL;
 }
 
 //--------------------------------------------------------------------------------------------------

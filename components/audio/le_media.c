@@ -51,6 +51,13 @@
 #define FORMAT_PCM 1
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * For PlaySamples wait indefinitely until more samples are available or playback is stopped
+*/
+//--------------------------------------------------------------------------------------------------
+#define NO_MORE_SAMPLES_INFINITE_TIMEOUT -1
+
+//--------------------------------------------------------------------------------------------------
 // Data structures.
 //--------------------------------------------------------------------------------------------------
 
@@ -1383,70 +1390,96 @@ static le_result_t GetPlaybackFrames
 {
     le_audio_Stream_t* streamPtr = contextPtr;
     le_audio_PcmContext_t* pcmContextPtr = streamPtr->pcmContextPtr;
-    int32_t len=1;
-    fd_set rfds;
-    struct timeval tv;
+    int32_t len = 0;
     int ret;
-    long usec = pa_pcm_GetPeriodSize(pcmContextPtr->pcmHandle) * (1000000/
-                                  (pcmContextPtr->pcmConfig.byteRate));
-    uint32_t size = *bufsizePtr, amount = 0;
+    uint32_t size = *bufsizePtr;
+    uint32_t amount = 0;
+    nfds_t nfds = 1;
+    struct pollfd pfd;
 
-    while (size && len)
+    pfd.fd = pcmContextPtr->fd;
+    pfd.events = POLLIN;
+
+    while (size)
     {
-        // Select on fd to check when there is no more samples to read
-        do
-        {
-            FD_ZERO(&rfds);
-            FD_SET(pcmContextPtr->fd, &rfds);
-            tv.tv_sec = 0;
-            tv.tv_usec =  usec;
-            ret = select(pcmContextPtr->fd+1, &rfds, NULL, NULL, &tv);
-        }
-        while ((ret == -1) && (errno == EINTR));
+        LE_DEBUG("Waiting %d milliseconds for playback frames on fd %d",
+                 pcmContextPtr->framesFuncTimeout, pcmContextPtr->fd);
+        ret = poll(&pfd, nfds, pcmContextPtr->framesFuncTimeout);
 
-        if ((ret == 1) && (FD_ISSET(pcmContextPtr->fd, &rfds)))
+        switch (ret)
         {
-            // reading file descriptor
-            if (pcmContextPtr->pause)
-            {
-                amount = *bufsizePtr;
-                memset(bufferPtr, 0, amount);
-                // To exit of the loop
-                len = 0;
-            }
-            else
-            {
-                len = read(pcmContextPtr->fd, bufferPtr + amount, size);
-
-                if (len > 0)
+            case -1:
+                if ((errno == EINTR) || (errno == EAGAIN))
                 {
-                    size -= len;
-                    amount += len;
+                    // read again
+                    LE_WARN("Failed in poll: %m");
+                    continue;
                 }
-                else if (len < 0)
+                else
                 {
-                    if ((errno == EINTR) || (errno == EAGAIN))
+                    LE_ERROR("Failed in poll: %m");
+                    return LE_FAULT;
+                }
+                break;
+            case 0:
+                // timeout: no data read
+                LE_DEBUG("No data read");
+                if (!amount)
+                {
+                    // no more samples available at this point:
+                    // increase timeout indefinetely
+                    pcmContextPtr->framesFuncTimeout = NO_MORE_SAMPLES_INFINITE_TIMEOUT;
+                }
+                *bufsizePtr = amount;
+                return LE_OK;
+            default:
+                // playback is paused: return without reading samples
+                if (pcmContextPtr->pause)
+                {
+                    amount = *bufsizePtr;
+                    memset(bufferPtr, 0, amount);
+                    return LE_OK;
+                }
+                else if (pfd.revents & POLLIN)
+                {
+                    len = read(pcmContextPtr->fd, bufferPtr + amount, size);
+
+                    if (len == 0)
                     {
-                        // read again
-                        len = 1;
+                        LE_ERROR("Failed to read on fd %d, writing end of pipe was closed",
+                                 pcmContextPtr->fd);
+                        return LE_CLOSED;
                     }
-                    else
+                    else if (len > 0)
                     {
-                        LE_ERROR("read error, errno %d, %s", errno, strerror(errno));
+                        size -= len;
+                        amount += len;
+                        *bufsizePtr = amount;
+                        // update timeout value for remaining data to be read
+                        long msec = (pa_pcm_GetPeriodSize(pcmContextPtr->pcmHandle) *
+                                     (1000000 / (pcmContextPtr->pcmConfig.byteRate))) / 1000;
+                        pcmContextPtr->framesFuncTimeout = msec;
+                        continue;
+                    }
+                    else if (len < 0)
+                    {
+                        LE_ERROR("Failed in read: %m");
                         return LE_FAULT;
                     }
                 }
-            }
-        }
-        else
-        {
-            // No data read
-            LE_DEBUG("No data read");
-            break;
+                else if ((pfd.revents & POLLHUP) || (pfd.revents & POLLRDHUP))
+                {
+                    LE_ERROR("Write-end of pipe was closed (%m)");
+                    return LE_CLOSED;
+                }
+                else if (pfd.revents & POLLERR)
+                {
+                    LE_ERROR("Failed in poll: %m");
+                    return LE_FAULT;
+                }
+                break;
         }
     }
-
-    *bufsizePtr = amount;
 
     return LE_OK;
 }
@@ -1849,6 +1882,7 @@ le_result_t le_media_PlaySamples
     }
 
     pcmContextPtr->pcmHandle = pcmHandle;
+    pcmContextPtr->framesFuncTimeout = 0;
 
     pa_pcm_SetCallbackHandlers( pcmHandle,
                                 GetPlaybackFrames,
