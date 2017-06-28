@@ -375,7 +375,7 @@ static void GenerateRequiresSection
 (
     std::ostream& defStream,
     model::App_t* appPtr,
-    RequiredFsObject_t required
+    RequiredFsObject_t& required
 )
 //--------------------------------------------------------------------------------------------------
 {
