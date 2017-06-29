@@ -188,9 +188,14 @@ static le_result_t LocalSwap
 )
 {
     uint8_t  channel = 0;
+    uint8_t  resp[LE_SIM_RESPONSE_MAX_BYTES] = {0};
+    size_t   lenResp = LE_SIM_RESPONSE_MAX_BYTES;
+
+    // Response for APDU command successfully executed
+    uint8_t  respOk[2]= {0x90, 0x00};
 
     // Get the logical channel to send APDu command.
-    if (pa_sim_OpenLogicalChannel(&channel) != LE_OK)
+    if (LE_OK != pa_sim_OpenLogicalChannel(&channel))
     {
         LE_ERROR("Cannot open Logical Channel!");
         return LE_FAULT;
@@ -203,39 +208,54 @@ static le_result_t LocalSwap
                              0x89, 0xC0, 0x02, 0x10, 0x01};
 
         pduReq[0] = channel;
-        if (pa_sim_SendApdu(channel, pduReq, sizeof(pduReq),
-                            NULL, NULL) != LE_OK)
+        if (LE_OK != pa_sim_SendApdu(channel, pduReq,
+                                     sizeof(pduReq), resp, &lenResp))
         {
             LE_ERROR("Cannot send APDU message!");
             return LE_FAULT;
         }
+
+        // Check if the command is successfully executed.
+        if ((lenResp < sizeof(respOk))
+            || (0 != memcmp(resp, respOk, sizeof(respOk))))
+        {
+            LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
+            return LE_FAULT;
+        }
+
         swapApduReqPtr[0] = channel;
     }
 
-    if (pa_sim_SendApdu(channel,
-                        swapApduReqPtr,
-                        swapApduLen,
-                        NULL, NULL) != LE_OK)
+    if (LE_OK != pa_sim_SendApdu(channel,
+                                 swapApduReqPtr,
+                                 swapApduLen,
+                                 resp, &lenResp))
     {
         LE_ERROR("Cannot swap subscription!");
         return LE_FAULT;
     }
 
-    if (pa_sim_CloseLogicalChannel(channel) != LE_OK)
+    if (LE_OK != pa_sim_CloseLogicalChannel(channel))
     {
         LE_ERROR("Cannot close Logical Channel!");
         return LE_FAULT;
     }
 
-    if ( (manufacturer == LE_SIM_OBERTHUR)
-         || (manufacturer == LE_SIM_MORPHO) )
+    // Check if the command is successfully executed.
+    if ((lenResp < sizeof(respOk))
+        || (0 != memcmp(resp, respOk, sizeof(respOk))))
+    {
+        LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
+        return LE_FAULT;
+    }
+
+    if ((manufacturer == LE_SIM_OBERTHUR)
+         || (manufacturer == LE_SIM_MORPHO))
     {
         return LE_OK;
     }
-    else
-    {
-        return pa_sim_Refresh();
-    }
+
+    return pa_sim_Refresh();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1511,15 +1531,20 @@ le_result_t le_sim_LocalSwapToEmergencyCallSubscription
         return LE_BAD_PARAMETER;
     }
 
-    if (SelectSIMCard(simId) != LE_OK)
+    if (LE_OK != SelectSIMCard(simId))
     {
         return LE_FAULT;
     }
     simPtr = &SimList[simId];
 
-    if (LocalSwap(manufacturer,
-                  EcsSwapApduReq[manufacturer].apduReq,
-                  EcsSwapApduReq[manufacturer].apduLength) == LE_OK)
+    //Clear sim information.
+    simPtr->ICCID[0] = '\0';
+    simPtr->IMSI[0] = '\0';
+    simPtr->phoneNumber[0] = '\0';
+
+    if (LE_OK == LocalSwap(manufacturer,
+                           EcsSwapApduReq[manufacturer].apduReq,
+                           EcsSwapApduReq[manufacturer].apduLength))
     {
         simPtr->Subscription = ECS;
         return LE_OK;
@@ -1562,15 +1587,20 @@ le_result_t le_sim_LocalSwapToCommercialSubscription
         return LE_BAD_PARAMETER;
     }
 
-    if (SelectSIMCard(simId) != LE_OK)
+    if (LE_OK != SelectSIMCard(simId))
     {
         return LE_FAULT;
     }
     simPtr = &SimList[simId];
 
-    if (LocalSwap(manufacturer,
-                  CommercialSwapApduReq[manufacturer].apduReq,
-                  CommercialSwapApduReq[manufacturer].apduLength) == LE_OK)
+    //Clear sim information.
+    simPtr->ICCID[0] = '\0';
+    simPtr->IMSI[0] = '\0';
+    simPtr->phoneNumber[0] = '\0';
+
+    if (LE_OK == LocalSwap(manufacturer,
+                           CommercialSwapApduReq[manufacturer].apduReq,
+                           CommercialSwapApduReq[manufacturer].apduLength))
     {
         simPtr->Subscription = COMMERCIAL;
         return LE_OK;
