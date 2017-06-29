@@ -957,6 +957,8 @@ le_result_t smack_GetDevLabel
     {
         bufPtr[0] = '\0';
     }
+
+    return LE_OK;
 }
 
 #endif
