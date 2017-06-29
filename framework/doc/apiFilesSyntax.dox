@@ -209,6 +209,9 @@ if there are no parameters.  These parameters types are supported:
 The @c returnType is optional, and if specified, can be any type that's not an array, string,
 or handler.
 
+@warning Make sure that the function's @c maxSize is appropriately defined. If the client sends a
+value that larger then the @c <maxSize>, an error will be written to the log
+@c ((strlen(<name>) | <name>Size) > <maxSize>) and the client will be terminated.
 
 @section apiFilesSyntax_event Specifying an Event
 
