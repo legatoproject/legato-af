@@ -222,6 +222,7 @@ extern "C" {
 #include "le_atomFile.h"
 #include "le_crc.h"
 #include "le_fs.h"
+#include "le_rand.h"
 
 #ifdef __cplusplus
 }
