@@ -334,6 +334,13 @@ stage_mklegatoimgro:
 stage_mklegatoimg:
 	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
 
+.PHONY: stage_mkavmodel
+stage_mkavmodel:
+	@if [ -f "apps/platformServices/airVantageConnector/tools/scripts/mkavmodel" ] ; then \
+		cp "apps/platformServices/airVantageConnector/tools/scripts/mkavmodel" bin/ ; \
+		mkavmodel -t $(TARGET) -o build/$(TARGET) -v $(LEGATO_VERSION) ; \
+	fi
+
 # ==== localhost needs no staging. Just a blank rule ====
 
 .PHONY: stage_localhost
@@ -349,7 +356,7 @@ stage_shared:
 stage_9x15: stage_shared
 
 .PHONY: stage_ar7 stage_ar86 stage_wp85 stage_wp750x
-stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 $(STAGE_MKLEGATOIMG)
+stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 $(STAGE_MKLEGATOIMG) stage_mkavmodel
 
 # ==== AR758X (9x28-based Sierra Wireless modules) ====
 
@@ -357,7 +364,7 @@ stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 $(STAGE_
 stage_9x28: stage_shared
 
 .PHONY: stage_ar758x stage_wp76xx
-stage_ar758x stage_wp76xx: stage_embedded stage_9x28 $(STAGE_MKLEGATOIMG)
+stage_ar758x stage_wp76xx: stage_embedded stage_9x28 $(STAGE_MKLEGATOIMG) stage_mkavmodel
 
 # ==== AR759X (9x40-based Sierra Wireless modules) ====
 
