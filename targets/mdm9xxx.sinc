@@ -88,8 +88,7 @@ buildVars:
         #endif
     #else
         #if file_exists(${LEGATO_ROOT}/apps/proprietary/atQmiLinker/bin/${LEGATO_TARGET}/atQmiLinker.${LEGATO_TARGET}.app)
-            // Disable until LE-7286 is resolve
-            // LEGATO_QMI_AT_LINKER = ${LEGATO_ROOT}/apps/proprietary/atQmiLinker/bin/${LEGATO_TARGET}/atQmiLinker.${LEGATO_TARGET}.app
+            LEGATO_QMI_AT_LINKER = ${LEGATO_ROOT}/apps/proprietary/atQmiLinker/bin/${LEGATO_TARGET}/atQmiLinker.${LEGATO_TARGET}.app
         #endif
     #endif
 }

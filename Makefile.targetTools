@@ -28,7 +28,6 @@ ifeq ($(findstring $(TARGET), localhost ar7 ar86),)
   BUILD_PRODUCTS += devMode
 endif
 
-# TODO: BEGIN: to remove once LE-7286 is resolve
 ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx),)
 	# Create list of all proprietay apps, then add them as product to build
 	APPS_PROPRIETARY_SRC_DIR = $(LEGATO_ROOT)/apps/proprietary
@@ -40,7 +39,6 @@ ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx),)
 	endif
 	BUILD_PRODUCTS += ${PROPRIETARY_APPS}
 endif
-# TODO: to remove once LE-7286 is resolve; END
 
 .PHONY: all $(BUILD_PRODUCTS)
 all: $(BUILD_PRODUCTS)
@@ -164,8 +162,6 @@ devMode:
 			-i $(FRAMEWORK_SRC_DIR) \
 			$(LOCAL_MKAPP_FLAGS)
 
-
-# TODO: BEGIN: to remove once LE-7286 is resolve
 # Rule to bundle proprietary apps
 ${PROPRIETARY_APPS}: export LEGATO_PROPRIETARY_QCT_DIR=${LEGATO_ROOT}/proprietary/qct/${LEGATO_TARGET}
 ${PROPRIETARY_APPS}:
@@ -175,4 +171,3 @@ ${PROPRIETARY_APPS}:
 			-o $(LEGATO_ROOT)/build/$(TARGET)/proprietary/$@ \
 			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/proprietary/$@ \
 			$(LOCAL_MKTOOLS_FLAGS)
-# TODO: to remove once LE-7286 is resolve; END

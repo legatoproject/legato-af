@@ -12,8 +12,7 @@ buildVars:
             LEGATO_AT_AIRVANTAGE_APP = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/src/atAirVantage
         #else
             #if file_exists(${LEGATO_ROOT}/apps/proprietary/atAirVantage/bin/${LEGATO_TARGET}/atAirVantage.${LEGATO_TARGET}.app)
-                // Disable until LE-7286 is resolve
-                // LEGATO_AT_AIRVANTAGE_APP = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/bin/${LEGATO_TARGET}/atAirVantage.${LEGATO_TARGET}.app
+                LEGATO_AT_AIRVANTAGE_APP = ${LEGATO_ROOT}/apps/proprietary/atAirVantage/bin/${LEGATO_TARGET}/atAirVantage.${LEGATO_TARGET}.app
             #endif
         #endif
     #endif
