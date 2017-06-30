@@ -1436,3 +1436,31 @@ le_result_t le_gnss_GetNmeaSentences
     *nmeaMaskPtr = LE_GNSS_NMEA_MASK_GPGGA;
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference stub
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_gnss_GetServiceRef
+(
+    void
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference stub
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_gnss_GetClientSessionRef
+(
+    void
+)
+{
+    return NULL;
+}

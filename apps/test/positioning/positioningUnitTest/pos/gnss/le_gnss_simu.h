@@ -696,4 +696,14 @@ le_result_t le_gnss_GetNmeaSentences
     le_gnss_NmeaBitMask_t* nmeaMaskPtr ///< [OUT] Bit mask for enabled NMEA sentences.
 );
 
+le_msg_ServiceRef_t le_gnss_GetServiceRef
+(
+    void
+);
+
+le_msg_SessionRef_t le_gnss_GetClientSessionRef
+(
+    void
+);
+
 #endif /* le_gnss_stub.h */

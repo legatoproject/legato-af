@@ -178,9 +178,25 @@ typedef struct le_gnss_PositionHandler
 {
     le_gnss_PositionHandlerFunc_t handlerFuncPtr;      ///< The handler function address.
     void*                         handlerContextPtr;   ///< The handler function context.
+    le_msg_SessionRef_t           sessionRef;          ///< Store message session reference.
     le_dls_Link_t                 link;                ///< Object node link
 }
 le_gnss_PositionHandler_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Position sample request objet structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_gnss_SampleRef_t             positionSampleRef;  ///< Store position smaple reference.
+    le_gnss_PositionSample_t*       positionSampleNodePtr; ///< Position sample node pointer.
+    le_msg_SessionRef_t             sessionRef;         ///< Client session identifier.
+    le_dls_Link_t                   link;               ///< Object node link.
+}
+le_gnss_PositionSampleRequest_t;
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
@@ -252,6 +268,14 @@ static le_mem_PoolRef_t   PositionSamplePoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Memory Pool for position samples request object.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t   PositionSampleRequestPoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create and initialize the position samples list.
  *
  */
@@ -296,7 +320,7 @@ static void PositionHandlerDestructor
             positionHandlerNodePtr =
                 (le_gnss_PositionHandler_t*)CONTAINER_OF(linkPtr, le_gnss_PositionHandler_t, link);
             // Check the node.
-            if ( positionHandlerNodePtr == (le_gnss_PositionHandler_t*)obj)
+            if (positionHandlerNodePtr == (le_gnss_PositionHandler_t*)obj)
             {
                 // Remove the node.
                 le_dls_Remove(&PositionHandlerList, linkPtr);
@@ -325,7 +349,7 @@ static void PositionSampleDestructor
     le_gnss_PositionSample_t *positionSampleNodePtr;
     le_dls_Link_t   *linkPtr;
 
-    LE_FATAL_IF((obj == NULL), "Position Sample Object does not exist!");
+    LE_FATAL_IF((NULL == obj), "Position Sample Object does not exist!");
 
     linkPtr = le_dls_Peek(&PositionSampleList);
     if (linkPtr != NULL)
@@ -336,7 +360,7 @@ static void PositionSampleDestructor
             positionSampleNodePtr = (le_gnss_PositionSample_t*)
                                     CONTAINER_OF(linkPtr, le_gnss_PositionSample_t, link);
             // Check the node.
-            if ( positionSampleNodePtr == (le_gnss_PositionSample_t*)obj)
+            if (positionSampleNodePtr == (le_gnss_PositionSample_t*)obj)
             {
                 // Remove the node.
                 le_dls_Remove(&PositionSampleList, linkPtr);
@@ -369,8 +393,8 @@ static void CreateNmeaPipe
     umask(0);
     result = mknod(LE_GNSS_NMEA_NODE_PATH, S_IFIFO|0666, 0);
 
-    LE_ERROR_IF((result != 0)&&(result != EEXIST)
-            , "Could not create %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+    LE_ERROR_IF((result != 0)&&(result != EEXIST),
+           "Could not create %s. errno.%d (%s)", LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -393,12 +417,12 @@ static le_result_t OpenNmeaPipe
     // Open NMEA pipe
     do
     {
-        if ( ((NmeaPipeFd=open(LE_GNSS_NMEA_NODE_PATH,
+        if (((NmeaPipeFd=open(LE_GNSS_NMEA_NODE_PATH,
                                 O_WRONLY|O_APPEND|O_CLOEXEC|O_NONBLOCK)) == -1)
-            && (errno != EINTR) )
+            && (errno != EINTR))
         {
-            LE_WARN_IF( errno != 6, "Open %s failure: errno.%d (%s)"
-                    , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+            LE_WARN_IF(errno != 6, "Open %s failure: errno.%d (%s)",
+                       LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
             return LE_FAULT;
         }
     }while (NmeaPipeFd==-1);
@@ -431,10 +455,10 @@ static le_result_t CloseNmeaPipe
     {
         result = close(NmeaPipeFd);
     }
-    while ( (result != 0) && (errno == EINTR) );
+    while ((result != 0) && (errno == EINTR));
 
-    LE_ERROR_IF(result != 0, "Could not close %s. errno.%d (%s)"
-                , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+    LE_ERROR_IF(result != 0, "Could not close %s. errno.%d (%s)",
+               LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
 
     if(result != 0)
     {
@@ -660,7 +684,7 @@ static void PaPositionHandler
 
     le_gnss_PositionHandler_t*  positionHandlerNodePtr;
     le_dls_Link_t*              linkPtr;
-    le_gnss_PositionSample_t*   positionSampleNodePtr=NULL;
+    le_gnss_PositionSampleRequest_t*    positionSampleRequestNodePtr=NULL;
     uint8_t i;
 
     if (NULL == positionPtr)
@@ -682,23 +706,30 @@ static void PaPositionHandler
     }
 
     linkPtr = le_dls_Peek(&PositionHandlerList);
-    if (linkPtr != NULL)
+    if (NULL != linkPtr)
     {
+        // Create the position request sample node.
+        positionSampleRequestNodePtr =
+                 (le_gnss_PositionSampleRequest_t*)le_mem_ForceAlloc(PositionSampleRequestPoolRef);
+
         // Create the position sample node.
-        positionSampleNodePtr =
-                    (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
+        positionSampleRequestNodePtr->positionSampleNodePtr =
+                 (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
 
-        // Copy the position sample to the position sample node
-        memcpy(positionSampleNodePtr, &LastPositionSample, sizeof(le_gnss_PositionSample_t));
-
-        // Add the node to the queue of the list by passing in the node's link.
-        le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
-
-        // Add reference for each subscribed handler
+        // Add reference for each subscribe handler.
         for(i=0 ; i<NumOfPositionHandlers-1 ; i++)
         {
-            le_mem_AddRef((void *)positionSampleNodePtr);
+            le_mem_AddRef((void *)positionSampleRequestNodePtr);
+            le_mem_AddRef((void *)positionSampleRequestNodePtr->positionSampleNodePtr);
         }
+
+        // Copy the position sample to the position sample node
+        memcpy(positionSampleRequestNodePtr->positionSampleNodePtr, &LastPositionSample,
+                     sizeof(le_gnss_PositionSample_t));
+
+        // Add the node to the queue of the list by passing in the node's link.
+        le_dls_Queue(&PositionSampleList, &(positionSampleRequestNodePtr->
+                                                positionSampleNodePtr->link));
 
         // Call Handler(s)
         do
@@ -708,23 +739,105 @@ static void PaPositionHandler
                 (le_gnss_PositionHandler_t*)CONTAINER_OF(linkPtr, le_gnss_PositionHandler_t, link);
 
             LE_DEBUG("Report sample %p to the corresponding handler (handler %p)",
-                     positionSampleNodePtr,
+                     positionSampleRequestNodePtr->positionSampleNodePtr,
                      positionHandlerNodePtr->handlerFuncPtr);
 
             // Create a safe reference and call the client's handler
-            void* safePositionSampleRef = le_ref_CreateRef(PositionSampleMap,
-                                                           positionSampleNodePtr);
+            le_gnss_SampleRef_t safePositionSampleRef = le_ref_CreateRef(PositionSampleMap,
+                                                           positionSampleRequestNodePtr);
+
+            // Store message session reference which will be useful for close session handler
+            positionSampleRequestNodePtr->sessionRef = positionHandlerNodePtr->sessionRef;
+
+            // Store safereference which will be useful for close session handler
+            positionSampleRequestNodePtr->positionSampleRef = safePositionSampleRef;
+
             if(safePositionSampleRef != NULL)
             {
-                positionHandlerNodePtr->handlerFuncPtr(safePositionSampleRef
-                                                    , positionHandlerNodePtr->handlerContextPtr);
+                positionHandlerNodePtr->handlerFuncPtr(safePositionSampleRef,
+                                                   positionHandlerNodePtr->handlerContextPtr);
             }
             // Move to the next node.
             linkPtr = le_dls_PeekNext(&PositionHandlerList, linkPtr);
-        } while (linkPtr != NULL);
+        } while (NULL != linkPtr);
     }
 
     le_mem_Release(positionPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Handler function to close session service for le_gnss APIs
+*
+*/
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,
+    void* contextPtr
+)
+{
+    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    // Search for all position sample request references used by the current client session
+    // that has been closed.
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(PositionSampleMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        le_gnss_PositionSampleRequest_t *positionSampleRequestPtr =
+                                (le_gnss_PositionSampleRequest_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (positionSampleRequestPtr->sessionRef == sessionRef)
+        {
+            le_gnss_SampleRef_t safeRef = (le_gnss_SampleRef_t)le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Release le_gnss_ReleaseSampleRef 0x%p, Session 0x%p\n", safeRef, sessionRef);
+
+            // Release positioning client control request reference found.
+            le_gnss_ReleaseSampleRef(safeRef);
+        }
+
+        // Get the next value in the reference mpa.
+        result = le_ref_NextNode(iterRef);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Validate position sample reference pointer
+ *
+ * @return
+ *      LE_OK if successful.
+ *      LE_FAULT if the pointer is NULL.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ValidatePositionSamplePtr
+(
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
+)
+{
+    if (NULL == positionSampleRequestNodePtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRequestNodePtr);
+        return LE_FAULT;
+    }
+    else if (NULL == positionSampleRequestNodePtr->positionSampleNodePtr)
+    {
+        LE_ERROR("Invalid reference (%p) provided!",
+                       positionSampleRequestNodePtr->positionSampleNodePtr);
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -782,25 +895,34 @@ le_result_t gnss_Init
     le_sig_SetEventHandler(SIGPIPE, SigPipeHandler);
 
     // Create a pool for Position  Handler objects
-    PositionHandlerPoolRef = le_mem_CreatePool("PositionHandlerPoolRef"
-                                                , sizeof(le_gnss_PositionHandler_t));
+    PositionHandlerPoolRef = le_mem_CreatePool("PositionHandlerPoolRef",
+                                               sizeof(le_gnss_PositionHandler_t));
     le_mem_SetDestructor(PositionHandlerPoolRef, PositionHandlerDestructor);
 
     // Create a pool for Position Sample objects
-    PositionSamplePoolRef = le_mem_CreatePool("PositionSamplePoolRef"
-                                            , sizeof(le_gnss_PositionSample_t));
+    PositionSamplePoolRef = le_mem_CreatePool("PositionSamplePoolRef",
+                                              sizeof(le_gnss_PositionSample_t));
     le_mem_ExpandPool(PositionSamplePoolRef,GNSS_POSITION_SAMPLE_MAX);
     le_mem_SetDestructor(PositionSamplePoolRef, PositionSampleDestructor);
 
+    // Create a pool for Position Sample request objects
+    PositionSampleRequestPoolRef = le_mem_CreatePool("PositionSampleRequestPoolRef",
+                                                     sizeof(le_gnss_PositionSampleRequest_t));
+    le_mem_ExpandPool(PositionSampleRequestPoolRef,GNSS_POSITION_SAMPLE_MAX);
+
     // Create the reference HashMap for positioning sample
     PositionSampleMap = le_ref_CreateMap("PositionSampleMap", GNSS_POSITION_SAMPLE_MAX);
+
+    // Initialize the event client close function handler.
+    le_msg_ServiceRef_t msgService = le_gnss_GetServiceRef();
+    le_msg_AddServiceCloseHandler(msgService, CloseSessionEventHandler, NULL);
 
     // Initialize Handler context
     NumOfPositionHandlers = 0;
     PaHandlerRef = NULL;
 
     // Initialize last Position sample
-    memset(&LastPositionSample, 0, sizeof(LastPositionSample) );
+    memset(&LastPositionSample, 0, sizeof(LastPositionSample));
     LastPositionSample.fixState = LE_GNSS_STATE_FIX_NO_POS;
 
     // Subscribe to PA position Data handler
@@ -822,7 +944,7 @@ le_result_t gnss_Init
              LE_ERROR("Failed to add PA NMEA handler!");
          }
     }
-    else if ((resultStat == 0 )&& (S_ISCHR(nmeaFileStat.st_mode))) // Character device file
+    else if ((resultStat == 0) && (S_ISCHR(nmeaFileStat.st_mode))) // Character device file
     {
         LE_INFO("%s is a character device file", LE_GNSS_NMEA_NODE_PATH);
     }
@@ -840,8 +962,8 @@ le_result_t gnss_Init
     }
     else
     {
-        LE_ERROR("Could not get file info for '%s'. errno.%d (%s)"
-                , LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
+        LE_ERROR("Could not get file info for '%s'. errno.%d (%s)",
+               LE_GNSS_NMEA_NODE_PATH, errno, strerror(errno));
     }
 
     return result;
@@ -864,17 +986,18 @@ le_gnss_PositionHandlerRef_t le_gnss_AddPositionHandler
 {
     le_gnss_PositionHandler_t*  positionHandlerPtr=NULL;
 
-    LE_FATAL_IF((handlerPtr == NULL), "handlerPtr pointer is NULL !");
+    LE_FATAL_IF((NULL == handlerPtr), "handlerPtr pointer is NULL !");
 
     // Create the position sample handler node.
     positionHandlerPtr = (le_gnss_PositionHandler_t*)le_mem_ForceAlloc(PositionHandlerPoolRef);
     positionHandlerPtr->handlerFuncPtr = handlerPtr;
     positionHandlerPtr->handlerContextPtr = contextPtr;
+    positionHandlerPtr->sessionRef = le_gnss_GetClientSessionRef();
 
     LE_DEBUG("handler %p", handlerPtr);
 
     // Subscribe to PA position Data handler
-    if (PaHandlerRef == NULL)
+    if (NULL == PaHandlerRef)
     {
         if ((PaHandlerRef=pa_gnss_AddPositionDataHandler(PaPositionHandler)) == NULL)
         {
@@ -921,7 +1044,7 @@ void le_gnss_RemovePositionHandler
             positionHandlerNodePtr =
                 (le_gnss_PositionHandler_t*)CONTAINER_OF(linkPtr, le_gnss_PositionHandler_t, link);
             // Check the node.
-            if ( (le_gnss_PositionHandlerRef_t)positionHandlerNodePtr == handlerRef )
+            if ((le_gnss_PositionHandlerRef_t)positionHandlerNodePtr == handlerRef)
             {
                 // Remove the node.
                 le_mem_Release(positionHandlerNodePtr);
@@ -967,25 +1090,25 @@ le_result_t le_gnss_GetPositionState
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr =
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr =
                                                 le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check position sample's reference
-    if ( positionSamplePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
-
     // Check input pointers
-    if (statePtr == NULL)
+    if (NULL == statePtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
     // Get the position Fix state
-    *statePtr = positionSamplePtr->fixState;
+    *statePtr = positionSampleRequestNodePtr->positionSampleNodePtr->fixState;
 
     return result;
 }
@@ -1032,20 +1155,21 @@ le_result_t le_gnss_GetLocation
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (latitudePtr)
     {
-        if (positionSamplePtr->latitudeValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->latitudeValid)
         {
-            *latitudePtr = positionSamplePtr->latitude;
+            *latitudePtr = positionSampleRequestNodePtr->positionSampleNodePtr->latitude;
         }
         else
         {
@@ -1055,9 +1179,9 @@ le_result_t le_gnss_GetLocation
     }
     if (longitudePtr)
     {
-        if (positionSamplePtr->longitudeValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->longitudeValid)
         {
-            *longitudePtr = positionSamplePtr->longitude;
+            *longitudePtr = positionSampleRequestNodePtr->positionSampleNodePtr->longitude;
         }
         else
         {
@@ -1067,9 +1191,9 @@ le_result_t le_gnss_GetLocation
     }
     if (hAccuracyPtr)
     {
-        if (positionSamplePtr->hAccuracyValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->hAccuracyValid)
         {
-            *hAccuracyPtr = positionSamplePtr->hAccuracy;
+            *hAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->hAccuracy;
         }
         else
         {
@@ -1116,20 +1240,21 @@ le_result_t le_gnss_GetAltitude
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t * positionSamplePtr
+    le_gnss_PositionSampleRequest_t * positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (altitudePtr)
     {
-        if (positionSamplePtr->altitudeValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->altitudeValid)
         {
-            *altitudePtr = positionSamplePtr->altitude;
+            *altitudePtr = positionSampleRequestNodePtr->positionSampleNodePtr->altitude;
         }
         else
          {
@@ -1139,9 +1264,9 @@ le_result_t le_gnss_GetAltitude
     }
     if (vAccuracyPtr)
     {
-        if (positionSamplePtr->vAccuracyValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->vAccuracyValid)
         {
-            *vAccuracyPtr = positionSamplePtr->vAccuracy;
+            *vAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->vAccuracy;
         }
         else
         {
@@ -1189,45 +1314,45 @@ le_result_t le_gnss_GetTime
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check position sample's reference
-    if ( positionSamplePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
-
     // Check input pointers
-    if ((hoursPtr == NULL)
-        || (minutesPtr == NULL)
-        || (secondsPtr == NULL)
-        || (millisecondsPtr == NULL))
+    if ((NULL == hoursPtr)
+        || (NULL == minutesPtr)
+        || (NULL == secondsPtr)
+        || (NULL == millisecondsPtr))
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
     // Get the position sample's time
-    if (positionSamplePtr->timeValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->timeValid)
     {
         result = LE_OK;
         if (hoursPtr)
         {
-            *hoursPtr = positionSamplePtr->hours;
+            *hoursPtr = positionSampleRequestNodePtr->positionSampleNodePtr->hours;
         }
         if (minutesPtr)
         {
-            *minutesPtr = positionSamplePtr->minutes;
+            *minutesPtr = positionSampleRequestNodePtr->positionSampleNodePtr->minutes;
         }
         if (secondsPtr)
         {
-            *secondsPtr = positionSamplePtr->seconds;
+            *secondsPtr = positionSampleRequestNodePtr->positionSampleNodePtr->seconds;
         }
         if (millisecondsPtr)
         {
-            *millisecondsPtr = positionSamplePtr->milliseconds;
+            *millisecondsPtr = positionSampleRequestNodePtr->positionSampleNodePtr->milliseconds;
         }
     }
     else
@@ -1280,35 +1405,35 @@ le_result_t le_gnss_GetGpsTime
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check position sample's reference
-    if ( positionSamplePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
-
     // Check input pointers
-    if ((gpsWeekPtr == NULL)
-        || (gpsTimeOfWeekPtr == NULL))
+    if ((NULL == gpsWeekPtr)
+        || (NULL == gpsTimeOfWeekPtr))
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
     // Get the position sample's GPS time
-    if (positionSamplePtr->timeValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->timeValid)
     {
         result = LE_OK;
         if (gpsWeekPtr)
         {
-            *gpsWeekPtr = positionSamplePtr->gpsWeek;
+            *gpsWeekPtr = positionSampleRequestNodePtr->positionSampleNodePtr->gpsWeek;
         }
         if (gpsTimeOfWeekPtr)
         {
-            *gpsTimeOfWeekPtr = positionSamplePtr->gpsTimeOfWeek;
+            *gpsTimeOfWeekPtr = positionSampleRequestNodePtr->positionSampleNodePtr->gpsTimeOfWeek;
         }
     }
     else
@@ -1353,14 +1478,8 @@ le_result_t le_gnss_GetEpochTime
 )
 {
     le_result_t result;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
-    // Check position sample's reference
-    if ( NULL == positionSamplePtr)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
 
     // Check input pointers
     if (NULL == millisecondsPtr)
@@ -1369,12 +1488,19 @@ le_result_t le_gnss_GetEpochTime
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
     // Get the position sample's time
-    if (positionSamplePtr->timeValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->timeValid)
     {
         // Get the epoch time
         result = LE_OK;
-        *millisecondsPtr = positionSamplePtr->epochTime;
+        *millisecondsPtr = positionSampleRequestNodePtr->positionSampleNodePtr->epochTime;
     }
     else
     {
@@ -1409,30 +1535,30 @@ le_result_t le_gnss_GetTimeAccuracy
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check position sample's reference
-    if ( positionSamplePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
-
     // Check input pointers
-    if (timeAccuracyPtr == NULL)
+    if (NULL == timeAccuracyPtr)
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
     // Get the position sample's time accuracy
-    if (positionSamplePtr->timeAccuracyValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->timeAccuracyValid)
     {
         result = LE_OK;
         if (timeAccuracyPtr)
         {
-            *timeAccuracyPtr = positionSamplePtr->timeAccuracy;
+            *timeAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->timeAccuracy;
         }
     }
     else
@@ -1476,15 +1602,8 @@ le_result_t le_gnss_GetGpsLeapSeconds
 )
 {
     le_result_t result;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
-
-    // Check position sample's reference
-    if (NULL == positionSamplePtr)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
 
     // Check input pointers
     if (NULL == leapSecondsPtr)
@@ -1493,11 +1612,18 @@ le_result_t le_gnss_GetGpsLeapSeconds
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
     // Get the position sample's leap seconds
-    if (positionSamplePtr->leapSecondsValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->leapSecondsValid)
     {
         result = LE_OK;
-        *leapSecondsPtr = positionSamplePtr->leapSeconds;
+        *leapSecondsPtr = positionSampleRequestNodePtr->positionSampleNodePtr->leapSeconds;
     }
     else
     {
@@ -1542,40 +1668,40 @@ le_result_t le_gnss_GetDate
 {
 
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr =
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr =
                                                 le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
-    // Check position sample's reference
-    if ( positionSamplePtr == NULL)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
-
     // Check input pointers
-    if ((yearPtr == NULL)
-        || (monthPtr == NULL)
-        || (dayPtr == NULL))
+    if ((NULL == yearPtr)
+        || (NULL == monthPtr)
+        || (NULL == dayPtr))
     {
         LE_KILL_CLIENT("Invalid pointer provided!");
         return LE_FAULT;
     }
 
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
     // Get the position sample's date
-    if (positionSamplePtr->dateValid)
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->dateValid)
     {
         result = LE_OK;
         if (yearPtr)
         {
-            *yearPtr = positionSamplePtr->year;
+            *yearPtr = positionSampleRequestNodePtr->positionSampleNodePtr->year;
         }
         if (monthPtr)
         {
-            *monthPtr = positionSamplePtr->month;
+            *monthPtr = positionSampleRequestNodePtr->positionSampleNodePtr->month;
         }
         if (dayPtr)
         {
-            *dayPtr = positionSamplePtr->day;
+            *dayPtr = positionSampleRequestNodePtr->positionSampleNodePtr->day;
         }
     }
     else
@@ -1630,21 +1756,21 @@ le_result_t le_gnss_GetHorizontalSpeed
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (hspeedPtr)
     {
-        if (positionSamplePtr->hSpeedValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->hSpeedValid)
         {
-            *hspeedPtr = positionSamplePtr->hSpeed;
+            *hspeedPtr = positionSampleRequestNodePtr->positionSampleNodePtr->hSpeed;
         }
         else
         {
@@ -1654,9 +1780,10 @@ le_result_t le_gnss_GetHorizontalSpeed
     }
     if (hspeedAccuracyPtr)
     {
-        if (positionSamplePtr->hSpeedAccuracyValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->hSpeedAccuracyValid)
         {
-            *hspeedAccuracyPtr = positionSamplePtr->hSpeedAccuracy;
+            *hspeedAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                               hSpeedAccuracy;
         }
         else
         {
@@ -1703,21 +1830,21 @@ le_result_t le_gnss_GetVerticalSpeed
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (vspeedPtr)
     {
-        if (positionSamplePtr->vSpeedValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->vSpeedValid)
         {
-            *vspeedPtr = positionSamplePtr->vSpeed;
+            *vspeedPtr = positionSampleRequestNodePtr->positionSampleNodePtr->vSpeed;
         }
         else
         {
@@ -1727,9 +1854,10 @@ le_result_t le_gnss_GetVerticalSpeed
     }
     if (vspeedAccuracyPtr)
     {
-        if (positionSamplePtr->vSpeedAccuracyValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->vSpeedAccuracyValid)
         {
-            *vspeedAccuracyPtr = positionSamplePtr->vSpeedAccuracy;
+            *vspeedAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                               vSpeedAccuracy;
         }
         else
         {
@@ -1777,21 +1905,21 @@ le_result_t le_gnss_GetDirection
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (directionPtr)
     {
-        if (positionSamplePtr->directionValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->directionValid)
         {
-            *directionPtr = positionSamplePtr->direction;
+            *directionPtr = positionSampleRequestNodePtr->positionSampleNodePtr->direction;
         }
         else
         {
@@ -1801,9 +1929,10 @@ le_result_t le_gnss_GetDirection
     }
     if (directionAccuracyPtr)
     {
-        if (positionSamplePtr->directionAccuracyValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->directionAccuracyValid)
         {
-            *directionAccuracyPtr = positionSamplePtr->directionAccuracy;
+            *directionAccuracyPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                    directionAccuracy;
         }
         else
         {
@@ -1896,24 +2025,24 @@ le_result_t le_gnss_GetSatellitesInfo
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
     int i;
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (satIdPtr)
     {
-        if (positionSamplePtr->satInfoValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satInfoValid)
         {
             for(i=0; i<*satIdNumElementsPtr; i++)
             {
-                satIdPtr[i] = positionSamplePtr->satInfo[i].satId;
+                satIdPtr[i] = positionSampleRequestNodePtr->positionSampleNodePtr->satInfo[i].satId;
             }
         }
         else
@@ -1928,11 +2057,12 @@ le_result_t le_gnss_GetSatellitesInfo
 
     if (satConstPtr)
     {
-        if (positionSamplePtr->satInfoValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satInfoValid)
         {
             for(i=0; i<*satConstNumElementsPtr; i++)
             {
-                satConstPtr[i] = positionSamplePtr->satInfo[i].satConst;
+                satConstPtr[i] = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                               satInfo[i].satConst;
             }
         }
         else
@@ -1947,11 +2077,12 @@ le_result_t le_gnss_GetSatellitesInfo
 
     if (satUsedPtr)
     {
-        if (positionSamplePtr->satsUsedCountValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satsUsedCountValid)
         {
             for(i=0; i<*satUsedNumElementsPtr; i++)
             {
-                satUsedPtr[i] = positionSamplePtr->satInfo[i].satUsed;
+                satUsedPtr[i] = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                              satInfo[i].satUsed;
             }
         }
         else
@@ -1966,11 +2097,12 @@ le_result_t le_gnss_GetSatellitesInfo
 
     if (satSnrPtr)
     {
-        if (positionSamplePtr->satInfoValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satInfoValid)
         {
             for(i=0; i<*satSnrNumElementsPtr; i++)
             {
-                satSnrPtr[i] = positionSamplePtr->satInfo[i].satSnr;
+                satSnrPtr[i] = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                             satInfo[i].satSnr;
             }
         }
         else
@@ -1985,11 +2117,12 @@ le_result_t le_gnss_GetSatellitesInfo
 
     if (satAzimPtr)
     {
-        if (positionSamplePtr->satInfoValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satInfoValid)
         {
             for(i=0; i<*satAzimNumElementsPtr; i++)
             {
-                satAzimPtr[i] = positionSamplePtr->satInfo[i].satAzim;
+                satAzimPtr[i] = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                              satInfo[i].satAzim;
             }
         }
         else
@@ -2004,11 +2137,12 @@ le_result_t le_gnss_GetSatellitesInfo
 
     if (satElevPtr)
     {
-        if (positionSamplePtr->satInfoValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satInfoValid)
         {
             for(i=0; i<*satElevNumElementsPtr; i++)
             {
-                satElevPtr[i] = positionSamplePtr->satInfo[i].satElev;
+                satElevPtr[i] = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                              satInfo[i].satElev;
             }
         }
         else
@@ -2064,7 +2198,7 @@ le_gnss_SbasConstellationCategory_t le_gnss_GetSbasConstellationCategory
             LE_WARN("SBAS unknown category, satId %d", satId);
             break;
     }
-    LE_DEBUG("satellite id , SBAS category (%d, %d)", satId, sbasCategory);
+    LE_DEBUG("satellite id, SBAS category (%d, %d)", satId, sbasCategory);
 
     return sbasCategory;
 }
@@ -2103,22 +2237,23 @@ le_result_t le_gnss_GetSatellitesStatus
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     // Satellites in View count
     if (satsInViewCountPtr)
     {
-        if (positionSamplePtr->satsInViewCountValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satsInViewCountValid)
         {
-            *satsInViewCountPtr = positionSamplePtr->satsInViewCount;
+            *satsInViewCountPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                                satsInViewCount;
         }
         else
         {
@@ -2130,9 +2265,10 @@ le_result_t le_gnss_GetSatellitesStatus
     // Tracking satellites in View count
     if (satsTrackingCountPtr)
     {
-        if (positionSamplePtr->satsTrackingCountValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satsTrackingCountValid)
         {
-            *satsTrackingCountPtr = positionSamplePtr->satsTrackingCount;
+            *satsTrackingCountPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                                  satsTrackingCount;
         }
         else
         {
@@ -2144,9 +2280,10 @@ le_result_t le_gnss_GetSatellitesStatus
     // Satellites in View used for establishing a fix
     if (satsUsedCountPtr)
     {
-        if (positionSamplePtr->satsUsedCountValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->satsUsedCountValid)
         {
-            *satsUsedCountPtr = positionSamplePtr->satsUsedCount;
+            *satsUsedCountPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                              satsUsedCount;
         }
         else
         {
@@ -2194,21 +2331,21 @@ le_result_t le_gnss_GetDop
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (hdopPtr)
     {
-        if (positionSamplePtr->hdopValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->hdopValid)
         {
-            *hdopPtr = positionSamplePtr->hdop;
+            *hdopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->hdop;
         }
         else
         {
@@ -2218,9 +2355,9 @@ le_result_t le_gnss_GetDop
     }
     if (vdopPtr)
     {
-        if (positionSamplePtr->vdopValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->vdopValid)
         {
-            *vdopPtr = positionSamplePtr->vdop;
+            *vdopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->vdop;
         }
         else
         {
@@ -2230,9 +2367,9 @@ le_result_t le_gnss_GetDop
     }
     if (pdopPtr)
     {
-        if (positionSamplePtr->pdopValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->pdopValid)
         {
-            *pdopPtr = positionSamplePtr->pdop;
+            *pdopPtr = positionSampleRequestNodePtr->positionSampleNodePtr->pdop;
         }
         else
         {
@@ -2275,14 +2412,8 @@ le_result_t le_gnss_GetAltitudeOnWgs84
 )
 {
     le_result_t result;
-    le_gnss_PositionSample_t * positionSamplePtr
+    le_gnss_PositionSampleRequest_t * positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
-
-    if (NULL == positionSamplePtr)
-    {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
-    }
 
     // Check input pointer
     if (NULL == altitudeOnWgs84Ptr)
@@ -2291,9 +2422,16 @@ le_result_t le_gnss_GetAltitudeOnWgs84
         return LE_FAULT;
     }
 
-    if (positionSamplePtr->altitudeOnWgs84Valid)
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        *altitudeOnWgs84Ptr = positionSamplePtr->altitudeOnWgs84;
+        return result;
+    }
+
+    if (positionSampleRequestNodePtr->positionSampleNodePtr->altitudeOnWgs84Valid)
+    {
+        *altitudeOnWgs84Ptr = positionSampleRequestNodePtr->positionSampleNodePtr->altitudeOnWgs84;
         result = LE_OK;
     }
     else
@@ -2332,21 +2470,22 @@ le_result_t le_gnss_GetMagneticDeviation
 )
 {
     le_result_t result = LE_OK;
-    le_gnss_PositionSample_t* positionSamplePtr
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
                                             = le_ref_Lookup(PositionSampleMap,positionSampleRef);
 
     // Check position sample's reference
-    if ( positionSamplePtr == NULL)
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
-        return LE_FAULT;
+        return result;
     }
 
     if (magneticDeviationPtr)
     {
-        if (positionSamplePtr->magneticDeviationValid)
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->magneticDeviationValid)
         {
-            *magneticDeviationPtr = positionSamplePtr->magneticDeviation;
+            *magneticDeviationPtr = positionSampleRequestNodePtr->positionSampleNodePtr->
+                                                                  magneticDeviation;
         }
         else
         {
@@ -2374,21 +2513,30 @@ le_gnss_SampleRef_t le_gnss_GetLastSampleRef
     void
 )
 {
-    le_gnss_PositionSample_t*   positionSampleNodePtr=NULL;
+    le_gnss_PositionSampleRequest_t*   positionSampleRequestNodePtr=NULL;
 
     // Create the position sample node.
-    positionSampleNodePtr = (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
+    positionSampleRequestNodePtr =
+               (le_gnss_PositionSampleRequest_t*)le_mem_ForceAlloc(PositionSampleRequestPoolRef);
+    positionSampleRequestNodePtr->positionSampleNodePtr =
+               (le_gnss_PositionSample_t*)le_mem_ForceAlloc(PositionSamplePoolRef);
 
     // Copy the position sample to the position sample node
-    memcpy(positionSampleNodePtr, &LastPositionSample, sizeof(le_gnss_PositionSample_t));
+    memcpy(positionSampleRequestNodePtr->positionSampleNodePtr, &LastPositionSample,
+           sizeof(le_gnss_PositionSample_t));
 
     // Add the node to the queue of the list by passing in the node's link.
-    le_dls_Queue(&PositionSampleList, &(positionSampleNodePtr->link));
+    le_dls_Queue(&PositionSampleList, &(positionSampleRequestNodePtr->positionSampleNodePtr->link));
 
-    LE_DEBUG("Get sample %p", positionSampleNodePtr);
+    LE_DEBUG("Get sample %p", positionSampleRequestNodePtr->positionSampleNodePtr);
+
+    positionSampleRequestNodePtr->sessionRef = le_gnss_GetClientSessionRef();
+
+    le_gnss_SampleRef_t reqRef = le_ref_CreateRef(PositionSampleMap, positionSampleRequestNodePtr);
+    positionSampleRequestNodePtr->positionSampleRef = reqRef;
 
     // Create a safe reference and call the client's handler
-    return le_ref_CreateRef(PositionSampleMap, positionSampleNodePtr);
+    return reqRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2404,16 +2552,19 @@ void le_gnss_ReleaseSampleRef
     le_gnss_SampleRef_t    positionSampleRef    ///< [IN] The position sample's reference.
 )
 {
-    le_gnss_PositionSample_t* positionSamplePtr = le_ref_Lookup(PositionSampleMap,
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr = le_ref_Lookup(PositionSampleMap,
                                                                 positionSampleRef);
 
-    if ( positionSamplePtr == NULL)
+    // Check position sample's reference
+    le_result_t result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
     {
-        LE_KILL_CLIENT("Invalid reference (%p) provided!",positionSampleRef);
         return;
     }
+
     le_ref_DeleteRef(PositionSampleMap,positionSampleRef);
-    le_mem_Release(positionSamplePtr);
+    le_mem_Release(positionSampleRequestNodePtr->positionSampleNodePtr);
+    le_mem_Release(positionSampleRequestNodePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2481,7 +2632,7 @@ le_result_t le_gnss_GetConstellation
 {
     le_result_t result = LE_FAULT;
 
-    if (constellationMaskPtr == NULL)
+    if (NULL == constellationMaskPtr)
     {
         LE_KILL_CLIENT("Pointer is NULL !");
         return LE_FAULT;
@@ -2710,10 +2861,10 @@ le_result_t le_gnss_Stop
             // Stop GNSS
             result = pa_gnss_Stop();
             // Update GNSS device state
-            if(result == LE_OK)
+            if (LE_OK == result)
             {
                 // Initialize last Position sample
-                memset(&LastPositionSample, 0, sizeof(LastPositionSample) );
+                memset(&LastPositionSample, 0, sizeof(LastPositionSample));
                 LastPositionSample.fixState = LE_GNSS_STATE_FIX_NO_POS;
 
                 GnssState = LE_GNSS_STATE_READY;
@@ -3192,7 +3343,7 @@ le_result_t le_gnss_GetAcquisitionRate
 {
     le_result_t result = LE_FAULT;
 
-    if (ratePtr == NULL)
+    if (NULL == ratePtr)
     {
         LE_KILL_CLIENT("Pointer is NULL !");
         return LE_FAULT;
@@ -3259,7 +3410,7 @@ le_result_t le_gnss_GetSuplAssistedMode
     le_gnss_AssistedMode_t * assistedModePtr      ///< [OUT] Assisted-GNSS mode.
 )
 {
-    if (assistedModePtr == NULL)
+    if (NULL == assistedModePtr)
     {
         LE_KILL_CLIENT("assistedModePtr is NULL !");
         return LE_FAULT;
@@ -3315,9 +3466,9 @@ le_result_t le_gnss_InjectSuplCertificate
     const char*  suplCertificatePtr  ///< [IN] SUPL certificate contents.
 )
 {
-    return pa_gnss_InjectSuplCertificate( suplCertificateId
-                                        , suplCertificateLen
-                                        , suplCertificatePtr);
+    return pa_gnss_InjectSuplCertificate(suplCertificateId,
+                                         suplCertificateLen,
+                                         suplCertificatePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
