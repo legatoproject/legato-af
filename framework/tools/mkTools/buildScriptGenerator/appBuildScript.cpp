@@ -489,8 +489,9 @@ void GenerateStagingBundleBuildStatements
                 destPath += ".so";
             }
 
-            // Hard link the component library into the app's lib directory.
-            script << "build " << destPath << " : HardLink " << componentPtr->lib << "\n\n";
+            // Copy the component library into the app's lib directory.
+            // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
+            script << "build " << destPath << " : CopyFile " << componentPtr->lib << "\n\n";
 
             // Add the component library to the set of bundled files.
             bundledFiles.insert(destPath);
@@ -575,7 +576,6 @@ void GenerateAppBundleBuildStatement
         {
             script << "build " << interfacesDir << "/" << path::GetLastNode(apiFile.second->path)
                    << ": CopyFile " << apiFile.second->path << "\n"
-                      "  modeFlags = +r\n"
                       "\n";
         }
 

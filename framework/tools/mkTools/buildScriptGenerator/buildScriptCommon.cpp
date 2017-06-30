@@ -297,17 +297,10 @@ void GenerateBuildRules
               "  command = ifgen --output-dir $outputDir $ifgenFlags $in\n"
               "\n";
 
-    // Generate a rule for creating a hard link.
-    script << "rule HardLink\n"
-              "  description = Creating hard link\n"
-              "  command = ln -T -f $in $out\n"
-              "\n";
-
     // Generate a rule for copying a file.
     script << "rule CopyFile\n"
               "  description = Copying file\n"
-              "  command = cp -d -f -T $in $out && $\n"
-              "            chmod $modeFlags $out\n"
+              "  command = cp -d -f -T $in $out\n"
               "\n";
 
     // Generate a rule for re-building the build.ninja script when it is out of date.
