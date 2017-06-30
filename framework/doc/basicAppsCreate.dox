@@ -168,7 +168,7 @@ This will connect to the target and install the app.
 @section basicAppsCreate_usage Usage
 
 These usage tips are based on running a secure shell (SSH) to interface with
-the target. See <a href="http://www.mangoh.io/getting-started.html">mangoh.io</a> if you
+the target. See <a href="http://mangoh.io/mangoh-red-resources-getting-started">mangoh.io</a> if you
 need to setup your target device.
 
 @subsection basicAppsCreate_usageLogin Target Login

@@ -4,7 +4,7 @@ Welcome mangOH board developers. If you've successfully setup your mangOH board,
 congrats you've already run your first Legato app!
 
 If you've landed here and haven't setup your mangOH board, go to
-<a href= "http://www.mangoh.io/getting-started.html">mangOH.io</a> to get started.
+<a href="http://mangoh.io/mangoh-red-resources-getting-started">mangOH.io</a> to get started.
 
 @section mangohDevelopers_installed What was installed
 While you were setting up your mangOH board, all the prerequisites, toolchain, and source

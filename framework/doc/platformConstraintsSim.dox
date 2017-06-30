@@ -41,7 +41,7 @@ Your platform might need a reboot to detect a SIM card insertion or removal.
 @subsection platformConstraintsSim_swapMangOH mangOH&trade;
 
 As indicated in the mangOH&trade;
-<a href="http://mangoh.io/documentation/user-developer-guide.html">User Guide</a>:
+<a href="http://mangoh.io/mangoh-green-resources-documentation">User Guide</a>:
 
 | SIM slot                          | Detection         |
 |                                   |                   |
