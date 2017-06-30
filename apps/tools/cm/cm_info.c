@@ -230,7 +230,10 @@ void cm_info_PrintGetCarrierPri
     char priName[LE_INFO_MAX_CAPRI_NAME_BYTES] = {0};
     char priRev[LE_INFO_MAX_CAPRI_REV_BYTES] = {0};
 
-    le_info_GetCarrierPri(priName, LE_INFO_MAX_CAPRI_NAME_BYTES, priRev, LE_INFO_MAX_CAPRI_REV_BYTES);
+    le_info_GetCarrierPri(priName,
+                          LE_INFO_MAX_CAPRI_NAME_BYTES,
+                          priRev,
+                          LE_INFO_MAX_CAPRI_REV_BYTES);
 
     if(withHeaders)
     {

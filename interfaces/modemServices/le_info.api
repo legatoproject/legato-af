@@ -58,8 +58,8 @@
  * le_info_GetPriId() is used to retrieve the Product Requirement Information Identifier (PRI ID)
  * Part Number and the Revision Number.
  *
- * le_info_GetCarrierPri() is used to retrieve the Carrier Product Requirement Information (CAPRI) Name
- * and the Revision number. Revision Number string is in major.minor_buildver format.
+ * le_info_GetCarrierPri() is used to retrieve the Carrier Product Requirement Information (CAPRI)
+ * Name and the Revision number. Revision Number string is in major.minor_buildver format.
  *
  * le_info_GetSku() is used to retrieve the product stock keeping unit number (SKU).
  *
