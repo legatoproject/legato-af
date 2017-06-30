@@ -302,10 +302,15 @@ static void TreatCommandError
     // Send error to the host
     if (modemCmdDescPtr->atServerCmdRef)
     {
-        le_atServer_SendFinalResponse(modemCmdDescPtr->atServerCmdRef,
-                                      LE_ATSERVER_ERROR,
-                                      false,
-                                      "");
+        le_result_t res = le_atServer_SendFinalResponse(modemCmdDescPtr->atServerCmdRef,
+                                                        LE_ATSERVER_ERROR,
+                                                        false,
+                                                        "");
+
+        if (LE_OK != res)
+        {
+            LE_ERROR("Error to send final response, %d", res);
+        }
     }
 
     // Release the command has it occurs an error
@@ -482,10 +487,16 @@ static void AtCmdHandler
     if (NULL == modemCmdDescPtr)
     {
         LE_ERROR("Bad context");
-        le_atServer_SendFinalResponse(commandRef,
-                                      LE_ATSERVER_ERROR,
-                                      false,
-                                      "");
+        le_result_t res = le_atServer_SendFinalResponse(commandRef,
+                                                        LE_ATSERVER_ERROR,
+                                                        false,
+                                                        "");
+
+        if (LE_OK != res)
+        {
+            LE_ERROR("Error to send final response, %d", res);
+        }
+
         return;
     }
 
