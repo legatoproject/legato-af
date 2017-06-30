@@ -18,8 +18,11 @@ IP=${IP:="/sbin/ip"}
 IFCONFIG=${IFCONFIG:="/sbin/ifconfig"}
 CURL=${CURL:-"/usr/bin/curl"}
 RESOLV_CONF=${RESOLV_CONF="/etc/resolv.conf"}
-LOG=${LOG:="/tmp/cm.log"}
+LOG=${LOG:="/var/log/cm"}
 TEST_SITE=${TEST_SITE:="http://www.akamai.com"}
+RUN_TIME=${RUN_TIME:="/var/run/cm"}
+DEFAULT_ROUTE=${DEFAULT_ROUTE:="$RUN_TIME/default.bck"}
+DEFAULT_RESOLV_CONF=${DEFAULT_RESOLV_CONF:="$RUN_TIME/resolv.conf.bck"}
 
 cm() {
     $CM "$@"
@@ -41,7 +44,9 @@ handle_err() {
     local err=$1
     local log=$LOG
 
-    sed -i "1s/^/$(date) - /" $log
+    if [ -f "$log" ]; then
+        sed -i "1s/^/$(date) - /" $log
+    fi
 
     if [ $err -ne 0 ]; then
         echo "failed"
@@ -52,13 +57,41 @@ handle_err() {
     fi
 }
 
-get_default_gw() {
-    local family=$1
-    local iface=$2
-    ip -family $family route show dev $iface | grep "default" | cut -d' ' -f3
+update_route() {
+    local default_route=$(ip route show | grep "default")
+    if [ ! -z "${default_route// }" ]; then
+        echo "$default_route" > $DEFAULT_ROUTE
+        ip route del default
+    fi
+
+    if [ "$1" == "connect" ]; then
+        local family=$2
+        local iface=$3
+        local gw=$4
+        echo -n "Routing ... "
+        ip -family $family route add default via $gw dev $iface > $LOG 2>&1
+        handle_err $?
+   elif [ "$1" == "disconnect" ]; then
+        if [ -f "$DEFAULT_ROUTE" ]; then
+            local gw=$(cat $DEFAULT_ROUTE | cut -d' ' -f3)
+            local iface=$(cat $DEFAULT_ROUTE | cut -d' ' -f5)
+            echo -n "Routing ... "
+            ip route add default via $gw dev $iface > $LOG 2>&1
+            handle_err $?
+        fi
+    fi
 }
 
 update_dns() {
+    if [ "$1" == "connect" ]; then
+        mv $RESOLV_CONF $DEFAULT_RESOLV_CONF
+    elif [ "$1" == "disconnect" ]; then
+        if [ -f "$DEFAULT_RESOLV_CONF" ]; then
+            mv $DEFAULT_RESOLV_CONF $RESOLV_CONF
+        fi
+    fi
+    shift 1
+
     for i in $@; do
         if [ "$1" != "N/A" ]; then
             grep $1 $RESOLV_CONF > /dev/null 2>&1
@@ -67,8 +100,8 @@ update_dns() {
                 echo "nameserver $1" >> $RESOLV_CONF
                 echo "ok"
             fi
+            shift 1
         fi
-        shift 1
     done
 }
 
@@ -94,6 +127,8 @@ cm_data_connect () {
         echo -n "Disconnecting ... "
         cm data connect $opt > $LOG 2>&1
         handle_err $?
+        update_route disconnect
+        update_dns disconnect
         exit 0
     fi
 
@@ -159,20 +194,13 @@ cm_data_connect () {
         echo "No dns2."
     fi
 
-    local dgw=$(get_default_gw $family $iface)
-
     echo -n "Checking if device is up ... "
     ifconfig | grep "$iface" > /dev/null 2>&1
     handle_err $?
 
-    if [ -z "${dgw// }" ]; then
-        echo -n "Routing ... "
-        ip -family $family route add default via $gw dev $iface \
-            > $LOG 2>&1
-        handle_err $?
-    fi
+    update_route connect $family $iface $gw
 
-    update_dns $dns1 $dns2
+    update_dns connect $dns1 $dns2
 
     echo -n "Testing connection ... "
     curl --silent $TEST_SITE > $LOG 2>&1
@@ -183,6 +211,7 @@ cm_data_connect () {
 
 if [ "$1" = "data" ]; then
     if [ "$2" = "connect" ] && [ $# -le 3 ]; then
+        mkdir -p $RUN_TIME
         shift 2
         cm_data_connect $@
     fi
