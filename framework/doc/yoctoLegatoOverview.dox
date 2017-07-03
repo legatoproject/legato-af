@@ -11,7 +11,7 @@ Legato is compatible with Yocto 1.7.2
 @section yoctoLegatoOverview_yoctoDirectories Yocto Linux Directories
 
 Untar the @b Legato Distribution file to a directory
-(available at <a href="http://source.sierrawireless.com/resources/legato/legatolinuxdist/">Legato Downloads</a>):
+(available at <a href="http://source.sierrawireless.com/resources/legato/downloads/">Legato Downloads</a>):
 @code
 $ cd <some directory>
 $ tar xvjf [Legato-Dist-Source file]
