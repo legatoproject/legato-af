@@ -1,0 +1,15 @@
+requires:
+{
+    api:
+    {
+        ecallApp.api
+        le_gpioPin13 = le_gpio.api
+        le_gpioPin2 = le_gpio.api
+        le_ecall.api
+    }
+}
+
+sources:
+{
+    gpioTrigger.c
+}

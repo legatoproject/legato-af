@@ -1,9 +1,10 @@
-sandboxed: true  // On Yocto R/O platforms this application should not be sandboxed.
+sandboxed: true // On Yocto R/O platforms this application should not be sandboxed.
 
 executables:
 {
     eCallDemo = ( eCallAppComponent )
     trig  = ( triggerComponent )
+    gpio  = ( gpioComponent )
 }
 
 processes:
@@ -13,17 +14,14 @@ processes:
         LE_LOG_LEVEL = DEBUG
     }
 
+    priority: rt32  // The maximum priority is given to the eCallDemo app.
     run:
     {
-        ( eCallDemo )
-        ( trig )
+        (eCallDemo)
     }
-
-    priority: rt32  // The maximum priority is given to the eCallDemo app.
 }
 
-start:
-    manual
+start: manual
 
 bindings:
 {
@@ -32,6 +30,11 @@ bindings:
     eCallDemo.eCallAppComponent.le_posCtrl -> positioningService.le_posCtrl
 
     trig.triggerComponent.ecallApp -> eCallDemo.eCallAppComponent.ecallApp
+
+    gpio.gpioComponent.ecallApp -> eCallDemo.eCallAppComponent.ecallApp
+    gpio.gpioComponent.le_ecall -> modemService.le_ecall
+    gpio.gpioComponent.le_gpioPin13 -> gpioService.le_gpioPin13
+    gpio.gpioComponent.le_gpioPin2 -> gpioService.le_gpioPin2
 }
 
 requires:
@@ -41,4 +44,10 @@ requires:
         [w] system
         [w] eCallDemo
     }
+}
+
+extern:
+{
+    le_gpioPin13 = gpio.gpioComponent.le_gpioPin13
+    le_gpioPin2 = gpio.gpioComponent.le_gpioPin2
 }
