@@ -54,11 +54,7 @@ static void PrintUsage
     bool sandboxed = (getuid() != 0);
     const char * usagePtr[] = {
        "Usage of the 'dtmfTest' app is:",
-#if (ENABLE_CODEC == 1)
-    "  app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <MIC/I2S/PCM> "
-#else
-    "  app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <I2S/PCM> "
-#endif
+       "  app runProc dtmfTest --exe=dtmfTest -- <loc/rem> <MIC/I2S/PCM> "
        "<dtmfs> <duration in ms> <pause in ms> [<tel number> <inband/outband>]",
        "",
     };
@@ -191,7 +187,6 @@ static void ConnectAudioToI2S
 }
 
 
-#if (ENABLE_CODEC == 1)
 //--------------------------------------------------------------------------------------------------
 /**
  * Connect audio to analog input/output.
@@ -235,7 +230,6 @@ static void ConnectAudioToCodec
     }
     LE_INFO("Audio connected to Codec interface");
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -478,15 +472,10 @@ static void PlayLocalDtmf
     }
     else if(strncmp(argString, "MIC", strlen("MIC")) == 0)
     {
-#if (ENABLE_CODEC == 1)
         LE_INFO("Play DTMF on Speaker");
         // Redirect audio to the in-built Microphone and Speaker.
         FeOutRef = le_audio_OpenSpeaker();
         LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
-#else
-        PrintUsage();
-        return;
-#endif
      }
 
     AudioOutputConnectorRef = le_audio_CreateConnector();
@@ -607,11 +596,7 @@ COMPONENT_INIT
         }
         else
         {
-#if (ENABLE_CODEC == 1)
             ConnectAudioToCodec();
-#else
-            PrintUsage();
-#endif
         }
 
         DtmfHandlerRef1 = le_audio_AddDtmfDetectorHandler(MdmRxAudioRef,

@@ -44,19 +44,24 @@ static void ConnectAudio
     MdmTxAudioRef = le_audio_OpenModemVoiceTx();
     LE_ERROR_IF((MdmTxAudioRef==NULL), "OpenModemVoiceTx returns NULL!");
 
-#if (ENABLE_CODEC == 1)
     // Redirect audio to the in-built Microphone and Speaker.
     FeOutRef = le_audio_OpenSpeaker();
-    LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
-    FeInRef = le_audio_OpenMic();
-    LE_ERROR_IF((FeInRef==NULL), "OpenMic returns NULL!");
-#else
-    // Redirect audio to the PCM interface.
-    FeOutRef = le_audio_OpenPcmTx(0);
-    LE_ERROR_IF((FeOutRef==NULL), "OpenPcmTx returns NULL!");
-    FeInRef = le_audio_OpenPcmRx(0);
-    LE_ERROR_IF((FeInRef==NULL), "OpenPcmRx returns NULL!");
-#endif
+    if ((FeOutRef==NULL))
+    {
+        LE_ERROR("OpenSpeaker returns NULL!");
+        LE_INFO("Switching to PCM Inteface...");
+        // Redirect audio to the PCM interface.
+        FeOutRef = le_audio_OpenPcmTx(0);
+        LE_ERROR_IF((FeOutRef==NULL), "OpenPcmTx returns NULL!");
+        FeInRef = le_audio_OpenPcmRx(0);
+        LE_ERROR_IF((FeInRef==NULL), "OpenPcmRx returns NULL!");
+
+    }
+    else
+    {
+        FeInRef = le_audio_OpenMic();
+        LE_ERROR_IF((FeInRef==NULL), "OpenMic returns NULL!");
+    }
 
     AudioInputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioInputConnectorRef==NULL), "AudioInputConnectorRef is NULL!");
@@ -169,11 +174,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_STARTED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_STARTED.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Mute Speaker");
-#else
-            LE_INFO("Mute PCM Tx interface.");
-#endif
+            LE_INFO("Mute audio interface");
             le_audio_Mute(FeOutRef);
             break;
         }
@@ -239,11 +240,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_STOPPED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_STOPPED.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Unmute Speaker");
-#else
-            LE_INFO("Unmute PCM Tx interface.");
-#endif
+            LE_INFO("Unmute audio interface");
             le_audio_Unmute(FeOutRef);
             break;
         }
@@ -251,11 +248,7 @@ static void MyECallEventHandler
         {
             // PSAP has correctly received the MSD
             LE_INFO("eCall state is LE_ECALL_STATE_RESET.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Unmute Speaker");
-#else
-            LE_INFO("Unmute PCM Tx interface.");
-#endif
+            LE_INFO("Unmute audio interface");
             le_audio_Unmute(FeOutRef);
             break;
         }
@@ -267,11 +260,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_FAILED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_FAILED.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Unmute Speaker");
-#else
-            LE_INFO("Unmute PCM Tx interface.");
-#endif
+            LE_INFO("Unmute audio interface");
             le_audio_Unmute(FeOutRef);
             break;
         }
@@ -389,11 +378,7 @@ COMPONENT_INIT
 
         PsapNumber = le_arg_GetArg(0);
         LE_INFO("======== Start eCallWVoice Test with PSAP.%s ========", PsapNumber);
-#if (ENABLE_CODEC == 1)
-        LE_INFO("         Audio is connected on Analogic interface.");
-#else
-        LE_INFO("         Audio is connected on PCM interface.");
-#endif
+        LE_INFO("         Audio will be connected on Analogic or PCM interface.");
         StartTestECall();
 
         LE_INFO("======== eCallWVoice Test SUCCESS ========");

@@ -273,7 +273,6 @@ static void ConnectAudioToFileLocalRec
     }
 }
 
-#if (ENABLE_CODEC == 1)
 //--------------------------------------------------------------------------------------------------
 /**
  * Connect audio to analogic input/output.
@@ -316,7 +315,6 @@ static void ConnectAudioToCodec
         LE_ERROR_IF((res!=LE_OK), "Failed to connect mdmRx on Output connector!");
     }
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -462,14 +460,12 @@ static void ConnectAudio
 )
 {
 
-#if (ENABLE_CODEC == 1)
     if (strcmp(AudioTestCase,"MIC")==0)
     {
         LE_INFO("Connect MIC and SPEAKER ");
         ConnectAudioToCodec();
     }
     else
-#endif
     if (strcmp(AudioTestCase,"PCM")==0)
     {
         LE_INFO("Connect PCM ");
@@ -487,14 +483,12 @@ static void ConnectAudio
     }
     else if ((strncmp(AudioTestCase,"R-",2)==0) || (strncmp(AudioTestCase,"L-",2)==0))
     {
-#if (ENABLE_CODEC == 1)
         if (strcmp(MainAudioSoundPath,"MIC")==0)
         {
             LE_INFO("Connect MIC and SPEAKER ");
             ConnectAudioToCodec();
         }
         else
-#endif
         if (strcmp(MainAudioSoundPath,"PCM")==0)
         {
             LE_INFO("Connect PCM ");
@@ -736,9 +730,7 @@ static void PrintUsage()
             "   audioMccTest <Phone number> <test case> [main audio path] [file's name]",
             "",
             "Test cases are:",
-#if (ENABLE_CODEC == 1)
             " - MIC (for mic/speaker)",
-#endif
             " - PCM (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
                 "execute 'wm8940_demo --pcm' command)",
             " - I2S (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
@@ -750,9 +742,7 @@ static void PrintUsage()
             " - L-REC (for Local recording)",
             "",
             "Main audio paths are: (for file playback/recording only)",
-#if (ENABLE_CODEC == 1)
             " - MIC (for mic/speaker)",
-#endif
             " - PCM (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
                 "execute 'wm8940_demo --pcm' command)",
             " - I2S (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "

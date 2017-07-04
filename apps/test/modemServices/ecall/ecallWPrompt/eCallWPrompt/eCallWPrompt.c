@@ -125,17 +125,27 @@ static void ConnectAudio
 )
 {
     // Open and connect an output stream.
-#ifdef ENABLE_CODEC
     // Redirect audio to the in-built Speaker.
     FeOutRef = le_audio_OpenSpeaker();
-    LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
-    LE_INFO("Open Speaker: FeOutRef.%p", FeOutRef);
-#else
-    // Redirect audio to the I2S interface.
-    FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
-    LE_ERROR_IF((FeOutRef==NULL), "OpenI2sTx returns NULL!");
-    LE_INFO("Open I2S: FeOutRef.%p", FeOutRef);
-#endif
+    if (FeOutRef == NULL)
+    {
+        LE_ERROR("OpenSpeaker returns NULL!");
+        LE_INFO("Switching to I2S interface...");
+        // Redirect audio to the I2S interface.
+        FeOutRef = le_audio_OpenI2sTx(LE_AUDIO_I2S_STEREO);
+        if (FeOutRef==NULL)
+        {
+            LE_ERROR("OpenI2sTx returns NULL!");
+        }
+        else
+        {
+            LE_INFO("Open I2S: FeOutRef.%p", FeOutRef);
+        }
+    }
+    else
+    {
+        LE_INFO("Open Speaker: FeOutRef.%p", FeOutRef);
+    }
 
     AudioOutputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
@@ -199,11 +209,7 @@ static void MyECallEventHandler
         }
         case LE_ECALL_STATE_CONNECTED:
         {
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Mute Speaker and voice prompt.");
-#else
-            LE_INFO("Mute I2S Tx interface and voice prompt.");
-#endif
+            LE_INFO("Mute audio interface and voice prompt.");
             le_audio_Mute(FeOutRef);
             le_audio_Mute(FileAudioRef);
             LE_INFO("eCall state is LE_ECALL_STATE_CONNECTED.");
@@ -267,11 +273,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_STOPPED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_STOPPED.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Unmute Speaker and voice prompt.");
-#else
-            LE_INFO("Unmute I2S Tx interface and voice prompt.");
-#endif
+            LE_INFO("Unmute audio interface and voice prompt.");
             le_audio_Unmute(FeOutRef);
             le_audio_Unmute(FileAudioRef);
             break;
@@ -279,11 +281,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_RESET:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_RESET.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Unmute Speaker and voice prompt.");
-#else
-            LE_INFO("Unmute I2S Tx interface and voice prompt.");
-#endif
+            LE_INFO("Unmute audio interface and voice prompt.");
             le_audio_Unmute(FeOutRef);
             le_audio_Unmute(FileAudioRef);
             break;
@@ -296,11 +294,7 @@ static void MyECallEventHandler
         case LE_ECALL_STATE_FAILED:
         {
             LE_INFO("eCall state is LE_ECALL_STATE_FAILED.");
-#if (ENABLE_CODEC == 1)
-            LE_INFO("Unmute Speaker and voice prompt.");
-#else
-            LE_INFO("Unmute I2S Tx interface and voice prompt.");
-#endif
+            LE_INFO("Unmute audio interface and voice prompt.");
             le_audio_Unmute(FeOutRef);
             le_audio_Unmute(FileAudioRef);
             break;

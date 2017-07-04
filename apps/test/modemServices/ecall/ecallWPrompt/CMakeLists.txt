@@ -2,16 +2,9 @@
 # Copyright (C) Sierra Wireless Inc.
 #*******************************************************************************
 
-if((LEGATO_COMPONENTS_AUDIO MATCHES "ar7") OR (LEGATO_COMPONENTS_AUDIO MATCHES "ar86"))
-    set(CODEC_ENABLE_FLAG 1)
-else()
-     set(CODEC_ENABLE_FLAG 0)
-endif()
-
 # Creates application from the eCallWPrompt.adef
 mkapp(eCallWPrompt.adef
     -i ${LEGATO_ROOT}/interfaces/modemServices
-    --cflags=-DENABLE_CODEC=${CODEC_ENABLE_FLAG}
 )
 
 # This is a C test

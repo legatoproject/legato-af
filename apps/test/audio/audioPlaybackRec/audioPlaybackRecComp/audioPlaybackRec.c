@@ -912,7 +912,6 @@ static void ConnectAudioToFileLocalRec
     }
 }
 
-#if (1 == ENABLE_CODEC)
 //--------------------------------------------------------------------------------------------------
 /**
  * Connect speaker and MIC to connectors
@@ -944,7 +943,6 @@ static void ConnectAudioToCodec
         LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector!");
     }
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1025,14 +1023,12 @@ static void ConnectAudio
 {
     if ((strncmp(AudioTestCase,"PB",2)==0) || (strncmp(AudioTestCase,"REC",3)==0))
     {
-#if (1 == ENABLE_CODEC)
         if (strcmp(MainAudioSoundPath,"MIC")==0)
         {
             LE_INFO("Connect MIC and SPEAKER ");
             ConnectAudioToCodec();
         }
         else
-#endif
         if (strcmp(MainAudioSoundPath,"PCM")==0)
         {
             LE_INFO("Connect PCM ");
@@ -1190,9 +1186,7 @@ static void PrintUsage
             " - REC_SAMPLES (for Local samples recording) [option]",
             "",
             "Main audio paths are: (for file playback/recording only)",
-#if (1 == ENABLE_CODEC)
             " - MIC (for mic/speaker)",
-#endif
             " - PCM (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
                 "execute 'wm8940_demo --pcm' command)",
             " - I2S (not supported on mangOH board - for AR755x, AR8652 devkit's codec use, "
