@@ -2576,6 +2576,9 @@ void le_gnss_ReleaseSampleRef
  *  - LE_UNSUPPORTED   If the request is not supported.
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
  *  - LE_OK            The function succeeded.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetConstellation
@@ -2673,9 +2676,11 @@ le_result_t le_gnss_GetConstellation
  * This function enables the use of the 'Extended Ephemeris' file into the GNSS device.
  *
  * @return
- *  - LE_FAULT         The function failed to enable the 'Extended Ephemeris' file.
+ *  - LE_FAULT         The function failed.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_EnableExtendedEphemerisFile
@@ -2692,9 +2697,11 @@ le_result_t le_gnss_EnableExtendedEphemerisFile
  * This function disables the use of the 'Extended Ephemeris' file into the GNSS device.
  *
  * @return
- *  - LE_FAULT         The function failed to disable the 'Extended Ephemeris' file.
+ *  - LE_FAULT         The function failed.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_DisableExtendedEphemerisFile
@@ -3161,6 +3168,8 @@ le_result_t le_gnss_GetTtff
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_Enable
@@ -3220,6 +3229,8 @@ le_result_t le_gnss_Enable
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized or started.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_Disable
@@ -3283,6 +3294,9 @@ le_result_t le_gnss_Disable
  *
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetAcquisitionRate
@@ -3386,6 +3400,9 @@ le_result_t le_gnss_GetAcquisitionRate
  *  - LE_FAULT on failure
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetSuplAssistedMode
@@ -3433,6 +3450,9 @@ le_result_t le_gnss_GetSuplAssistedMode
  *
  * @note If the SUPL server URL size is bigger than the maximum string length (including NULL
  * terminator) size, it is a fatal error, the function will not return.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetSuplServerUrl
@@ -3506,6 +3526,9 @@ le_result_t le_gnss_DeleteSuplCertificate
  *
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetNmeaSentences
@@ -3643,6 +3666,9 @@ le_gnss_State_t le_gnss_GetState
  *  - LE_FAULT on failure
  *  - LE_OUT_OF_RANGE if the minimum elevation is above range
  *  - LE_UNSUPPORTED request not supported
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetMinElevation

@@ -80,11 +80,46 @@ the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not availa
 they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
 NMEA sentences.
 
-@section platformConstraintsGnss_SetConstellation Set constellations
+@section platformConstraintsGnss_SettingConfiguration Setting configuration
 
-The le_gnss_SetConstellation() API sets the constellations used in the solution.
-Please note that on Qualcomm-based platform, a new constellation set by le_gnss_SetConstellation()
-is valid only after a reboot of the module.
+This section summarizes for each GNSS setting API, on Qualcomm-based platform, how the setting is
+performed.
+
+Most of the APIs write the setting into a non volatile (NV) memory at each call, making it
+persistent to reset. Pay attention that in this case, a reboot of the device is required to take the
+change into account.
+For exemple, a new constellation set by le_gnss_SetConstellation() is only valid after a reboot of
+the module.
+Enabling/Disabling the 'Extended Ephemeris' file injection into the GNSS device set by
+le_gnss_EnableExtendedEphemerisFile()/le_gnss_DisableExtendedEphemerisFile() is only valid after a
+reboot of the module.
+
+It is recommended to call these APIs, for which the setting takes effect after a reboot, only once
+in a GNSS session.
+
+Other APIs don't write the setting into a non volatile memory making it lost after a device reboot.
+This setting is operational imediately in the next GNSS session (no reboot is needed).
+However, there are difference upon GNSS restart session and upon Legato restart.
+
+The following APIs write the setting to NV, the setting is persistent and effective after reboot:
+    le_gnss_SetConstellation()
+    le_gnss_EnableExtendedEphemerisFile()
+    le_gnss_DisableExtendedEphemerisFile()
+    le_gnss_SetSuplServerUrl()
+    le_gnss_SetNmeaSentences()
+    le_gnss_SetMinElevation()
+
+The following APIs don't write the setting to NV, the setting is thus not persistent to reboot but
+effective imediately in next GNSS session. The setting is persistent to GNSS factory/cold/warm/hot
+restart, but is lost after Legato restart:
+    le_gnss_Enable()
+    le_gnss_Disable()
+    le_gnss_SetAcquisitionRate()
+
+The following APIs don't write the setting to NV, the setting is thus not persistent to reboot but
+effective imediately in next GNSS session. The setting is persistent to GNSS factory/cold/warm/hot
+restart, but is not lost after Legato restart:
+    le_gnss_SetSuplAssistedMode()
 
 @section References
 

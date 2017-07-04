@@ -55,6 +55,11 @@
  * @note For more information about start performances, please refer to your specific
  * platform documentation.
  *
+ * @subsubsection SettingConfiguration Setting configuration
+ *
+ * @warning The GNSS setting configuration depends on the platform. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ *
  * @subsubsection le_gnss_Data GNSS data
  * The following table describes the <b>minimum</b> required data for those starting modes:
  *
@@ -125,8 +130,9 @@
  * The le_gnss_SetConstellation() function selects the GNSS constellation(s) used in solution.
  * If all GNSS constellations are disabled, the GNSS engine is disabled.
  *
- * @warning Your platform may require a reboot to take into account this change. Please refer to
- * your platform documentation for further details.
+ * @warning Your GNSS device may require a restart to take into account this change.
+ * Please refer to your platform documentation @ref platformConstraintsGnss_SettingConfiguration for
+ * further details.
  *
  * Combinations of constellation for GPS, GLONASS, BDS, GALILEO and QZSS satellites are currently
  * supported. Constellation for SBAS satellites is not supported.
@@ -154,7 +160,8 @@
  * @ref le_gnss_NMEA with a bit mask. The supported values are listed in @ref le_gnss_NmeaBitMask_t.
  *
  * @warning Your GNSS device may require a restart to take into account this change.
- * Please refer to your platform documentation for further details.
+ * Please refer to your platform documentation @ref platformConstraintsGnss_SettingConfiguration for
+ * further details.
  *
  * @note All supported NMEA sentences are enabled by default.
  *
@@ -587,6 +594,9 @@ BITMASK NmeaBitMask
  *  - LE_UNSUPPORTED   If the request is not supported.
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
  *  - LE_OK            The function succeeded.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetConstellation
@@ -616,6 +626,8 @@ FUNCTION le_result_t GetConstellation
  *  - LE_FAULT         The function failed.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t EnableExtendedEphemerisFile
@@ -630,6 +642,8 @@ FUNCTION le_result_t EnableExtendedEphemerisFile
  *  - LE_FAULT         The function failed.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t DisableExtendedEphemerisFile
@@ -804,6 +818,8 @@ FUNCTION le_result_t GetTtff
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Enable
@@ -820,6 +836,8 @@ FUNCTION le_result_t Enable
  *  - LE_NOT_PERMITTED If the GNSS device is not initialized or started.
  *  - LE_OK            The function succeeded.
  *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Disable
@@ -841,6 +859,9 @@ FUNCTION le_result_t Disable
  *
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetAcquisitionRate
@@ -1351,6 +1372,9 @@ FUNCTION ReleaseSampleRef
  *  - LE_FAULT on failure
  *  - LE_UNSUPPORTED request not supported
  *  - LE_TIMEOUT a time-out occurred
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSuplAssistedMode
@@ -1386,6 +1410,9 @@ FUNCTION le_result_t GetSuplAssistedMode
  *
  * @note If the SUPL server URL size is bigger than the maximum string length (including NULL
  * terminator) size, it is a fatal error, the function will not return.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSuplServerUrl
@@ -1450,6 +1477,9 @@ FUNCTION le_result_t DeleteSuplCertificate
  *
  * @warning This function may be subject to limitations depending on the platform. Please refer to
  *          the @ref platformConstraintsGnss page.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetNmeaSentences
@@ -1496,6 +1526,9 @@ FUNCTION State GetState
  *  - LE_FAULT on failure
  *  - LE_OUT_OF_RANGE if the minimum elevation is above range
  *  - LE_UNSUPPORTED request not supported
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetMinElevation
