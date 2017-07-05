@@ -47,7 +47,7 @@ static bool SessionStarted = false;
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t RetryTimerRef = NULL;
-static int RetryTimersIndex = 0;
+static uint16_t RetryTimersIndex = 0;
 #define NUM_RETRY_TIMERS 4
 static uint16_t RetryTimers[NUM_RETRY_TIMERS] = {15, 60, 240, 480};
 
@@ -334,7 +334,7 @@ static void StartSession
 
         // This is the case when we've run out of timers. Reset/cleanup, and don't start the next
         // retry timer (since there aren't any left).
-        if ((RetryTimersIndex >= NUM_RETRY_TIMERS) || (RetryTimersIndex < 0))
+        if (RetryTimersIndex >= NUM_RETRY_TIMERS)
         {
             ResetRetryTimers();
         }
