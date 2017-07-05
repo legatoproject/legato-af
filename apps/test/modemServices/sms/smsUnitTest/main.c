@@ -14,6 +14,7 @@
 #include "pa_simu.h"
 #include "pa_sim_simu.h"
 #include "pa_sms_simu.h"
+
 #include "le_sim_local.h"
 #include "args.h"
 #include "main.h"
@@ -24,6 +25,45 @@ le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 
 #define DUMPSIZE 132
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Server Service Reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_ServiceRef_t _ServerServiceRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client Session Reference for the current message received from a client
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_SessionRef_t _ClientSessionRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_mrc_GetServiceRef
+(
+    void
+)
+{
+    return _ServerServiceRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_mrc_GetClientSessionRef
+(
+    void
+)
+{
+    return _ClientSessionRef;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

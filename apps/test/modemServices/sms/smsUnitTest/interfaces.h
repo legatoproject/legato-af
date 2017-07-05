@@ -40,3 +40,24 @@ le_msg_SessionEventHandlerRef_t myAddServiceCloseHandler
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_mrc_GetServiceRef
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_mrc_GetClientSessionRef
+(
+    void
+);
+

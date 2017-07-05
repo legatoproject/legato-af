@@ -28,6 +28,46 @@ static bool ConnectionStateReceivedByHandler = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Server Service Reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_ServiceRef_t _ServerServiceRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client Session Reference for the current message received from a client
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_SessionRef_t _ClientSessionRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_mrc_GetServiceRef
+(
+    void
+)
+{
+    return _ServerServiceRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_mrc_GetClientSessionRef
+(
+    void
+)
+{
+    return _ClientSessionRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The goal of this test is to:
  * - Allocate profile.
  * - Test the configuration of profiles.

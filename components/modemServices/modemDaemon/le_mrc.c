@@ -145,10 +145,11 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int32_t        cellsCount;          // number of detected cells
-    le_dls_List_t  paNgbrCellInfoList;  // list of pa_mrc_CellInfo_t
-    le_dls_List_t  safeRefCellInfoList; // list of CellSafeRef_t
-    le_dls_Link_t *currentLinkPtr;      // link for current CellSafeRef_t reference
+    int32_t             cellsCount;          // number of detected cells
+    le_msg_SessionRef_t sessionRef;          // Message session reference
+    le_dls_List_t       paNgbrCellInfoList;  // list of pa_mrc_CellInfo_t
+    le_dls_List_t       safeRefCellInfoList; // list of CellSafeRef_t
+    le_dls_Link_t       *currentLinkPtr;     // link for current CellSafeRef_t reference
 } CellList_t;
 
 
@@ -173,10 +174,11 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int32_t        opsCount;            // number of Preferred operators
-    le_dls_List_t  paPrefOpList;        // list of pa_mrc_PreferredNetworkOperator_t
-    le_dls_List_t  safeRefPrefOpList;   // list of safe reference of PreferredOperatorsSafeRef_t
-    le_dls_Link_t *currentLinkPtr;      // link for current PreferredOperatorsSafeRef_t reference
+    int32_t             opsCount;          // number of Preferred operators
+    le_msg_SessionRef_t sessionRef;        // Message session reference
+    le_dls_List_t       paPrefOpList;      // list of pa_mrc_PreferredNetworkOperator_t
+    le_dls_List_t       safeRefPrefOpList; // list of safe reference of PreferredOperatorsSafeRef_t
+    le_dls_Link_t       *currentLinkPtr;   // link for current PreferredOperatorsSafeRef_t reference
 } PreferredOperatorsList_t;
 
 
@@ -200,9 +202,10 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_dls_List_t  paScanInfoList;      // list of pa_mrc_ScanInformation_t
-    le_dls_List_t  safeRefScanInfoList; // list of ScanInfoSafeRef_t
-    le_dls_Link_t *currentLink;         // link for iterator
+    le_msg_SessionRef_t sessionRef;          // Message session reference
+    le_dls_List_t       paScanInfoList;      // list of pa_mrc_ScanInformation_t
+    le_dls_List_t       safeRefScanInfoList; // list of ScanInfoSafeRef_t
+    le_dls_Link_t       *currentLink;        // link for iterator
 } ScanInfoList_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -231,23 +234,36 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    CmdType_t       command;          ///< Command Request.
-    void           *callBackPtr;      ///< The Callback Response.
-    void           *context;          ///< Context.
+    CmdType_t      command;                          ///< Command Request.
+    void           *callBackPtr;                     ///< The Callback Response.
+    void           *contextPtr;                      ///< Context pointer.
     union
     {
         struct
         {
-            le_mrc_RatBitMask_t ratMask;      ///< ratMask.
+                   le_mrc_RatBitMask_t ratMask;      ///< ratMask.
         } scan;
 
         struct
         {
-            char  mccStr[LE_MRC_MCC_BYTES];  ///< Mobile Country Code
-            char  mncStr[LE_MRC_MNC_BYTES];  ///< Mobile Network Code
+            char   mccStr[LE_MRC_MCC_BYTES];         ///< Mobile Country Code.
+            char   mncStr[LE_MRC_MNC_BYTES];         ///< Mobile Network Code.
         } selection;
     };
+    le_msg_SessionRef_t sessionRef;                  ///< Message session reference.
 } CmdRequest_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Signal metrics structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_mrc_SignalMetrics_t *paSignalMetricsPtr;      ///< Signal metrics from platform apaptor.
+    le_msg_SessionRef_t sessionRef;                  ///< Message session reference.
+} SignalMetrics_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -366,6 +382,13 @@ static le_event_Id_t PSChangeId;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t  MetricsPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory Pool for client session Signal Metrics.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t  MetricsSessionPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -783,10 +806,10 @@ static void ProcessMrcCommandEventHandler
 {
     le_result_t res;
 
-    void * ctxPtr = ((CmdRequest_t*) msgCommand)->context;
+    void * ctxPtr = ((CmdRequest_t*) msgCommand)->contextPtr;
     CmdType_t command = ((CmdRequest_t*) msgCommand)->command;
 
-    if( command == LE_MRC_CMD_TYPE_ASYNC_REGISTRATION)
+    if (LE_MRC_CMD_TYPE_ASYNC_REGISTRATION == command)
     {
         char * mccStr = ((CmdRequest_t*) msgCommand)->selection.mccStr;
         char * mncStr = ((CmdRequest_t*) msgCommand)->selection.mncStr;
@@ -816,7 +839,7 @@ static void ProcessMrcCommandEventHandler
             LE_WARN("No handler function, status %d!!", res);
         }
     }
-    else if(command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
+    else if (command == LE_MRC_CMD_TYPE_ASYNC_SCAN)
     {
         le_mrc_CellularNetworkScanHandlerFunc_t handlerFunc =
                         ((CmdRequest_t*) msgCommand)->callBackPtr;
@@ -836,12 +859,15 @@ static void ProcessMrcCommandEventHandler
             &(newScanInformationListPtr->paScanInfoList));
         UNLOCK();
 
-        if (res != LE_OK)
+        if (LE_OK != res)
         {
             le_mem_Release(newScanInformationListPtr);
         }
         else
         {
+            // Store message session reference.
+            newScanInformationListPtr->sessionRef = ((CmdRequest_t*)msgCommand)->sessionRef;
+
             scanInformationListRef =
                      le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
         }
@@ -1094,6 +1120,116 @@ static le_result_t GetPreferredOperatorsList
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * handler function to release memory objects of modem radio control service.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef, ///< [IN] Session reference of client application.
+    void* contextPtr                ///< [IN] Context pointer got from ServiceCloseHandler.
+)
+{
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+
+    // Search for all references used by the current client session that has been closed.
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(CellListRefMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        CellList_t *cellListPtr = (CellList_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (cellListPtr->sessionRef == sessionRef)
+        {
+            le_mrc_NeighborCellsRef_t safeRef =
+                                      (le_mrc_NeighborCellsRef_t)le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Call le_mrc_DeleteNeighborCellsInfo 0x%p, Session 0x%p", safeRef, sessionRef);
+
+            // Delete neighbour cell information.
+            le_mrc_DeleteNeighborCellsInfo(safeRef);
+        }
+
+        // Get the next value in the reference
+        result = le_ref_NextNode(iterRef);
+    }
+
+    // Search for all references used by the current client session that has been closed.
+    iterRef = le_ref_GetIterator(PreferredOperatorsListRefMap);
+    result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        PreferredOperatorsList_t *preferredOperatorsListPtr =
+                                 (PreferredOperatorsList_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (preferredOperatorsListPtr->sessionRef == sessionRef)
+        {
+            le_mrc_PreferredOperatorListRef_t safeRef =
+                                      (le_mrc_PreferredOperatorListRef_t)le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Call le_mrc_DeletePreferredOperatorsList 0x%p, Session 0x%p", safeRef,
+                                                                                    sessionRef);
+
+            // Delete preferred operator list.
+            le_mrc_DeletePreferredOperatorsList(safeRef);
+        }
+
+        // Get the next value in the reference
+        result = le_ref_NextNode(iterRef);
+    }
+
+    // Search for all references used by the current client session that has been closed.
+    iterRef = le_ref_GetIterator(ScanInformationListRefMap);
+    result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        ScanInfoList_t *scanInfoListPtr = (ScanInfoList_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (scanInfoListPtr->sessionRef == sessionRef)
+        {
+            le_mrc_ScanInformationListRef_t safeRef =
+                                        (le_mrc_ScanInformationListRef_t)le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Call le_mrc_DeleteCellularNetworkScan 0x%p, Session 0x%p", safeRef,
+                                                                                 sessionRef);
+
+            // Delete cellular network scan list.
+            le_mrc_DeleteCellularNetworkScan(safeRef);
+        }
+
+        // Get the next value in the reference
+        result = le_ref_NextNode(iterRef);
+    }
+
+    // Search for all references used by the current client session that has been closed.
+    iterRef = le_ref_GetIterator(MetricsRefMap);
+    result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        SignalMetrics_t* signalMetricsPtr =
+                                (SignalMetrics_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (signalMetricsPtr->sessionRef == sessionRef)
+        {
+            le_mrc_MetricsRef_t safeRef = (le_mrc_MetricsRef_t)le_ref_GetSafeRef(iterRef);
+            LE_DEBUG("Call le_mrc_DeleteSignalMetrics 0x%p, Session 0x%p", safeRef, sessionRef);
+
+            // Delete signal metrics.
+            le_mrc_DeleteSignalMetrics(safeRef);
+        }
+
+        // Get the next value in the reference
+        result = le_ref_NextNode(iterRef);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 // APIs.
@@ -1138,11 +1274,11 @@ void le_mrc_Init
     CellInfoSafeRefPool = le_mem_CreatePool("CellInfoSafeRefPool", sizeof(CellSafeRef_t));
 
     // Create the Safe Reference Map to use for neighboring cells information list object Safe
-    //  References.
+    // References.
     CellListRefMap = le_ref_CreateMap("CellListRefMap", MAX_NUM_NEIGHBOR_LISTS);
 
     // Create the Safe Reference Map to use for preferred Operators information object Safe
-    //  References.
+    // References.
     PreferredOperatorsRefMap = le_ref_CreateMap("PreferredOperatorsMap",
                     MAX_NUM_PREFERRED_OPERATORS);
 
@@ -1151,18 +1287,25 @@ void le_mrc_Init
                     sizeof(CellSafeRef_t));
 
     // Create the Safe Reference Map to use for preferred Operators information list object Safe
-    //  References.
+    // References.
     PreferredOperatorsListRefMap = le_ref_CreateMap("PreferredOperatorsListRefMap",
                     MAX_NUM_PREFERRED_OPERATORS_LISTS);
 
     PreferredNetworkOperatorPool = le_mem_CreatePool("PreferredNetworkOperatorPool",
                                              sizeof(pa_mrc_PreferredNetworkOperator_t));
 
+    // Create the pool for each client session Signal Metrics.
+    MetricsSessionPool = le_mem_CreatePool("MetricsSessionPool", sizeof(SignalMetrics_t));
+
     // Create the pool for Signal Metrics.
     MetricsPool = le_mem_CreatePool("MetricsPool", sizeof(pa_mrc_SignalMetrics_t));
 
     // Create the Safe Reference Map to use for Signal Metrics object Safe References.
     MetricsRefMap = le_ref_CreateMap("MetricsRefMap", MAX_NUM_METRICS);
+
+    // Add a handler to the close session service
+    le_msg_ServiceRef_t msgService = le_mrc_GetServiceRef();
+    le_msg_AddServiceCloseHandler(msgService, CloseSessionEventHandler, NULL);
 
     // Create an event Id for new Network Registration State notification
     NewNetRegStateId = le_event_CreateIdWithRefCounting("NewNetRegState");
@@ -1319,7 +1462,7 @@ void le_mrc_SetManualRegisterModeAsync
     }
 
     memset(&cmd, 0, sizeof(CmdRequest_t));
-    cmd.context = contextPtr;
+    cmd.contextPtr = contextPtr;
     cmd.callBackPtr = handlerPtr;
     cmd.command = LE_MRC_CMD_TYPE_ASYNC_REGISTRATION;
     strncpy(cmd.selection.mccStr, mccPtr, LE_MRC_MCC_LEN);
@@ -1850,10 +1993,13 @@ le_mrc_PreferredOperatorListRef_t le_mrc_GetPreferredOperatorsList
         le_result_t res = GetPreferredOperatorsList(
             &(OperatorListPtr->paPrefOpList), false, true, &OperatorListPtr->opsCount);
 
-        if (res == LE_OK)
+        if (LE_OK == res)
         {
             if (OperatorListPtr->opsCount)
             {
+                // Save message session reference.
+                OperatorListPtr->sessionRef = le_mrc_GetClientSessionRef();
+
                 // Create and return a Safe Reference for this List object.
                 return le_ref_CreateRef(PreferredOperatorsListRefMap, OperatorListPtr);
             }
@@ -2561,6 +2707,9 @@ le_mrc_ScanInformationListRef_t le_mrc_PerformCellularNetworkScan
         return NULL;
     }
 
+    // Store message session reference.
+    newScanInformationListPtr->sessionRef = le_mrc_GetClientSessionRef();
+
     return le_ref_CreateRef(ScanInformationListRefMap, newScanInformationListPtr);
 }
 
@@ -2587,10 +2736,13 @@ void le_mrc_PerformCellularNetworkScanAsync
 {
     CmdRequest_t cmd;
 
-    cmd.context = contextPtr;
+    cmd.contextPtr = contextPtr;
     cmd.callBackPtr = handlerPtr;
     cmd.command = LE_MRC_CMD_TYPE_ASYNC_SCAN;
     cmd.scan.ratMask = ratMask;
+
+    // Get client session reference.
+    cmd.sessionRef = le_mrc_GetClientSessionRef();
 
     // Sending Cellular Network scan command
     LE_DEBUG("Send asynchronous Cellular Network scan command");
@@ -3002,6 +3154,9 @@ le_mrc_NeighborCellsRef_t le_mrc_GetNeighborCellsInfo
                                                 &(ngbrCellsInfoListPtr->paNgbrCellInfoList));
         if (ngbrCellsInfoListPtr->cellsCount > 0)
         {
+            // Save message session reference.
+            ngbrCellsInfoListPtr->sessionRef = le_mrc_GetClientSessionRef();
+
             // Create and return a Safe Reference for this List object.
             return le_ref_CreateRef(CellListRefMap, ngbrCellsInfoListPtr);
         }
@@ -3355,27 +3510,34 @@ le_mrc_MetricsRef_t le_mrc_MeasureSignalMetrics
     void
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = (pa_mrc_SignalMetrics_t*)le_mem_ForceAlloc(MetricsPool);
-
-    if (metricsPtr != NULL)
+    SignalMetrics_t* signalMetricsPtr = (SignalMetrics_t*)le_mem_ForceAlloc(MetricsSessionPool);
+    if (NULL == signalMetricsPtr)
     {
-        if (pa_mrc_MeasureSignalMetrics(metricsPtr) == LE_OK)
-        {
-            // Create and return a Safe Reference for this object.
-            return le_ref_CreateRef(MetricsRefMap, metricsPtr);
-        }
-        else
-        {
-            le_mem_Release(metricsPtr);
-            LE_ERROR("Unable to measure the signal metrics!");
-            return NULL;
-        }
+        LE_ERROR("Unable to allocate memory for current client signal metrics!");
+        return NULL;
     }
-    else
+
+    signalMetricsPtr->paSignalMetricsPtr = (pa_mrc_SignalMetrics_t*)le_mem_ForceAlloc(MetricsPool);
+    if (NULL == signalMetricsPtr->paSignalMetricsPtr)
     {
+        le_mem_Release(signalMetricsPtr);
         LE_ERROR("Unable to allocate memory for signal metrics!");
         return NULL;
     }
+
+    if (LE_OK != pa_mrc_MeasureSignalMetrics(signalMetricsPtr->paSignalMetricsPtr))
+    {
+        le_mem_Release(signalMetricsPtr->paSignalMetricsPtr);
+        le_mem_Release(signalMetricsPtr);
+        LE_ERROR("Unable to measure the signal metrics!");
+        return NULL;
+    }
+
+    // Store message session reference.
+    signalMetricsPtr->sessionRef = le_mrc_GetClientSessionRef();
+
+    // Create and return a Safe Reference for this object.
+    return le_ref_CreateRef(MetricsRefMap, signalMetricsPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3392,8 +3554,8 @@ void le_mrc_DeleteSignalMetrics
     le_mrc_MetricsRef_t  MetricsRef ///< [IN] The signal metrics reference.
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
-    if (metricsPtr == NULL)
+    SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (NULL == signalMetricsPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
         return;
@@ -3402,7 +3564,8 @@ void le_mrc_DeleteSignalMetrics
     // Invalidate the Safe Reference.
     le_ref_DeleteRef(MetricsRefMap, MetricsRef);
 
-    le_mem_Release(metricsPtr);
+    le_mem_Release(signalMetricsPtr->paSignalMetricsPtr);
+    le_mem_Release(signalMetricsPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3420,16 +3583,14 @@ le_mrc_Rat_t le_mrc_GetRatOfSignalMetrics
     le_mrc_MetricsRef_t  MetricsRef ///< [IN] The signal metrics reference.
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
-    if (metricsPtr == NULL)
+    SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (NULL == signalMetricsPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
         return LE_MRC_RAT_UNKNOWN;
     }
-    else
-    {
-        return (metricsPtr->rat);
-    }
+
+    return (signalMetricsPtr->paSignalMetricsPtr->rat);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3451,27 +3612,22 @@ le_result_t le_mrc_GetGsmSignalMetrics
     uint32_t*           berPtr      ///< [OUT] Bit error rate.
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
-    if (metricsPtr == NULL)
+    SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (NULL == signalMetricsPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
         return LE_FAULT;
     }
-    else
-    {
-        if (metricsPtr->rat == LE_MRC_RAT_GSM)
-        {
-            *rssiPtr = metricsPtr->ss;
-            *berPtr = metricsPtr->er;
 
-            return LE_OK;
-        }
-        else
-        {
-            LE_ERROR("The measured signal is not GSM (RAT.%d)", metricsPtr->rat);
-            return LE_FAULT;
-        }
+    if (LE_MRC_RAT_GSM == signalMetricsPtr->paSignalMetricsPtr->rat)
+    {
+        *rssiPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
+        *berPtr = signalMetricsPtr->paSignalMetricsPtr->er;
+        return LE_OK;
     }
+
+    LE_ERROR("The measured signal is not GSM (RAT.%d)", signalMetricsPtr->paSignalMetricsPtr->rat);
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3501,29 +3657,25 @@ le_result_t le_mrc_GetUmtsSignalMetrics
                                     ///<       not available)
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
-    if (metricsPtr == NULL)
+    SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (NULL == signalMetricsPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
         return LE_FAULT;
     }
-    else
+
+    if (LE_MRC_RAT_UMTS == signalMetricsPtr->paSignalMetricsPtr->rat)
     {
-        if (metricsPtr->rat == LE_MRC_RAT_UMTS)
-        {
-            *ssPtr = metricsPtr->ss;
-            *blerPtr = metricsPtr->er;
-            *ecioPtr = metricsPtr->umtsMetrics.ecio;
-            *rscpPtr = metricsPtr->umtsMetrics.rscp;
-            *sinrPtr = metricsPtr->umtsMetrics.sinr;
-            return LE_OK;
-        }
-        else
-        {
-            LE_ERROR("The measured signal is not UMTS (RAT.%d)", metricsPtr->rat);
-            return LE_FAULT;
-        }
+        *ssPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
+        *blerPtr = signalMetricsPtr->paSignalMetricsPtr->er;
+        *ecioPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.ecio;
+        *rscpPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.rscp;
+        *sinrPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.sinr;
+        return LE_OK;
     }
+
+    LE_ERROR("The measured signal is not UMTS (RAT.%d)", signalMetricsPtr->paSignalMetricsPtr->rat);
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3550,30 +3702,25 @@ le_result_t le_mrc_GetLteSignalMetrics
     int32_t*            snrPtr      ///< [OUT] SNR level in dB with 1 decimal place (15 = 1.5 dB)
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
-    if (metricsPtr == NULL)
+    SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (NULL == signalMetricsPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
         return LE_FAULT;
     }
-    else
-    {
-        if (metricsPtr->rat == LE_MRC_RAT_LTE)
-        {
-            *ssPtr = metricsPtr->ss;
-            *blerPtr = metricsPtr->er;
-            *rsrqPtr = metricsPtr->lteMetrics.rsrq;
-            *rsrpPtr = metricsPtr->lteMetrics.rsrp;
-            *snrPtr = metricsPtr->lteMetrics.snr;
 
-            return LE_OK;
-        }
-        else
-        {
-            LE_ERROR("The measured signal is not LTE (RAT.%d)", metricsPtr->rat);
-            return LE_FAULT;
-        }
+    if (LE_MRC_RAT_LTE == signalMetricsPtr->paSignalMetricsPtr->rat)
+    {
+        *ssPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
+        *blerPtr = signalMetricsPtr->paSignalMetricsPtr->er;
+        *rsrqPtr = signalMetricsPtr->paSignalMetricsPtr->lteMetrics.rsrq;
+        *rsrpPtr = signalMetricsPtr->paSignalMetricsPtr->lteMetrics.rsrp;
+        *snrPtr = signalMetricsPtr->paSignalMetricsPtr->lteMetrics.snr;
+        return LE_OK;
     }
+
+    LE_ERROR("The measured signal is not LTE (RAT.%d)", signalMetricsPtr->paSignalMetricsPtr->rat);
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3603,30 +3750,25 @@ le_result_t le_mrc_GetCdmaSignalMetrics
                                     ///<       available)
 )
 {
-    pa_mrc_SignalMetrics_t* metricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
-    if (metricsPtr == NULL)
+    SignalMetrics_t* signalMetricsPtr = le_ref_Lookup(MetricsRefMap, MetricsRef);
+    if (NULL == signalMetricsPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", MetricsRef);
         return LE_FAULT;
     }
-    else
-    {
-        if (metricsPtr->rat == LE_MRC_RAT_CDMA)
-        {
-            *ssPtr = metricsPtr->ss;
-            *erPtr = metricsPtr->er;
-            *ecioPtr = metricsPtr->cdmaMetrics.ecio;
-            *sinrPtr = metricsPtr->cdmaMetrics.sinr;
-            *ioPtr = metricsPtr->cdmaMetrics.io;
 
-            return LE_OK;
-        }
-        else
-        {
-            LE_ERROR("The measured signal is not CDMA (RAT.%d)", metricsPtr->rat);
-            return LE_FAULT;
-        }
+    if (LE_MRC_RAT_CDMA == signalMetricsPtr->paSignalMetricsPtr->rat)
+    {
+        *ssPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
+        *erPtr = signalMetricsPtr->paSignalMetricsPtr->er;
+        *ecioPtr = signalMetricsPtr->paSignalMetricsPtr->cdmaMetrics.ecio;
+        *sinrPtr = signalMetricsPtr->paSignalMetricsPtr->cdmaMetrics.sinr;
+        *ioPtr = signalMetricsPtr->paSignalMetricsPtr->cdmaMetrics.io;
+        return LE_OK;
     }
+
+    LE_ERROR("The measured signal is not CDMA (RAT.%d)", signalMetricsPtr->paSignalMetricsPtr->rat);
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
