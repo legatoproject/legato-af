@@ -502,17 +502,12 @@ static void TestLeGnssPositionHandler
 {
     le_result_t result;
     le_thread_Ref_t positionThreadRef;
-    le_gnss_SampleRef_t positionSampleRef = le_gnss_GetLastSampleRef();
+    le_gnss_SampleRef_t positionSampleRef;
     uint64_t epochTime;
     uint32_t ttff = 0;
     uint8_t  minElevation;
 
     LE_INFO("Start Test Testle_gnss_PositionHandlerTest");
-
-    // Get Epoch time, samples already present
-    LE_ASSERT_OK(le_gnss_GetEpochTime(positionSampleRef, &epochTime));
-    // Display epoch time
-    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
 
     // NMEA frame GPGSA is checked that no SV with elevation below 10
     // degrees are given.
@@ -728,8 +723,7 @@ static void TestLeGnssRestart
     // Get Epoch time : it should be 0 after a COLD restart
     positionSampleRef = le_gnss_GetLastSampleRef();
     LE_ASSERT((LE_OUT_OF_RANGE == le_gnss_GetEpochTime(positionSampleRef, &epochTime)));
-    // Display epoch time
-    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
+    LE_ASSERT(0 == epochTime);
 
     // Wait for a 3D fix
     LE_INFO("Wait 60 seconds for a 3D fix");
@@ -759,8 +753,7 @@ static void TestLeGnssRestart
     // Get Epoch time : it should be 0 after a FACTORY restart
     positionSampleRef = le_gnss_GetLastSampleRef();
     LE_ASSERT((LE_OUT_OF_RANGE == le_gnss_GetEpochTime(positionSampleRef, &epochTime)));
-    // Display epoch time
-    LE_INFO("epoch time: %llu:", (unsigned long long int) epochTime);
+    LE_ASSERT(0 == epochTime);
 
     // Wait for a 3D fix
     LE_INFO("Wait 60 seconds for a 3D fix");
