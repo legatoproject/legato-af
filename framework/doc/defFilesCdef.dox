@@ -153,6 +153,10 @@ and compiler flags when running the external build commands.  The current direct
 will be the component's object directory.  This makes it easy to build and configure
 packages based on GNU autotools.  See example below.
 
+@warning Any files which need to be copied into the App must be listed in a
+bundles: file: section.  To avoid compiling successfully even though expected files are
+missing, bundles: dir: sections cannot be used.
+
 For example, suppose a component requires the libwarpspeed.so library, which is a third-party
 library built using autoconf and make.  First create a Component.cdef for the warpspeed library in
 that library's directory:

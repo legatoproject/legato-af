@@ -1,0 +1,12 @@
+bundles:
+{
+    file:
+    {
+        $LEGATO_BUILD/external/foo /usr/share/foo
+    }
+}
+
+externalBuild:
+{
+    "mkdir -p ${LEGATO_BUILD}/external && touch ${LEGATO_BUILD}/external/foo"
+}

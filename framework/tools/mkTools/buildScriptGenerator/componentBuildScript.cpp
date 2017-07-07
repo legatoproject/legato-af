@@ -653,7 +653,16 @@ void GenerateBuildStatements
         }
 
         // Overall build depends on last line
-        script << "build " << componentPtr->name << "ExternalBuild : phony "
+        script << "build " << componentPtr->name << "ExternalBuild";
+
+        // Assume every bundled file could be a build output of the external build step,
+        // if this has bundled files
+        for (auto fileSystemObjPtr : componentPtr->bundledFiles)
+        {
+            script << " " << fileSystemObjPtr->srcPath;
+        }
+
+        script << " : phony "
                << componentPtr->name << "ExternalBuild_line"
                << (lineno - 1);
         script << "\n\n";

@@ -58,8 +58,7 @@ void GenerateAppBuildRules
         // Add a bundled file into the app's staging area.
         "rule BundleFile\n"
         "  description = Bundling file\n"
-        "  command = cp -T $in $out && $\n"
-        "            chmod $modeFlags $out\n"
+        "  command = bundle -m $modeFlags $in $out\n"
         "\n"
 
         // Generate a rule for creating an info.properties file.

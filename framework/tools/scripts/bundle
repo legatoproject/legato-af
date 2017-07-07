@@ -1,0 +1,81 @@
+#! /bin/sh
+#
+# Bundle a file or directory into a staging directory.
+# Ensures all bundled files are regular files.
+#
+# Copyright (C) Sierra Wireless Inc.
+#
+
+set -e
+
+usage()
+{
+    echo >&2 "Usage:  $0 [-d] [-m mode] [--] SOURCE DESTINATION"
+}
+
+bundle_file()
+{
+    if [ ! -e "$1" ]; then
+        echo >&2 "$0: Cannot bundle '$1': No such file or directory"
+        exit 1
+    elif [ ! -f "$1" ]; then
+        echo >&2 "$0: Cannot bundle '$1': Not a regular file"
+        exit 1
+    elif [ -z "$mode" ]; then
+        install -T "$1" "$2"
+    else
+        install -m "$mode" -T "$1" "$2"
+    fi
+}
+
+if [ "$#" = "0" ]; then
+    usage
+    exit 1
+fi
+
+directory=no
+mode=""
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        -d)
+            directory=yes
+            shift
+            ;;
+        -m)
+            if [ "$#" -lt 2 ]; then
+                usage
+                exit 1
+            fi
+            mode="$2"
+            shift 2
+            ;;
+        --)
+            break
+            ;;
+        -*)
+            echo >&2 "Unrecognized option '$1'"
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ $# -lt 2 ]; then
+   usage
+   exit 1
+fi
+
+if [ $directory = no ]; then
+    bundle_file "$1" "$2"
+else
+    for file in $(cd "$1" && find .); do
+        if [ -d "$1"/"$file" ]; then
+            mkdir "$2"/"$file"
+        else
+            bundle_file "$1"/"$file" "$2"/"$file"
+        fi
+    done
+fi
