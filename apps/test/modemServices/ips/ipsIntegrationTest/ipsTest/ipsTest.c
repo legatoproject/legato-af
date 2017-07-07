@@ -29,11 +29,13 @@
 #define DEFAULT_ISP_WARNING_THRESHOLD       3400
 #define DEFAULT_IPS_CRITICAL_THRESHOLD      3200
 
-#define TEST_IPS_HI_CRITICAL_THRESHOLD   4000
-#define TEST_IPS_NORMAL_THRESHOLD        3700
-#define TEST_IPS_WARNING_THRESHOLD       3600
-#define TEST_IPS_CRITICAL_THRESHOLD      3400
+#define TEST_IPS_HI_CRITICAL_THRESHOLD      4000
+#define TEST_IPS_NORMAL_THRESHOLD           3700
+#define TEST_IPS_WARNING_THRESHOLD          3600
+#define TEST_IPS_CRITICAL_THRESHOLD         3400
 
+/* Simulated external battery level */
+#define TEST_IPS_EXT_BATTERY_LEVEL          57
 
 /* Value for managed Current value displaying and remaining event */
 static int WaitForNbEvents;
@@ -138,6 +140,29 @@ static void Testle_ips_GetBatteryLevel
     LE_ASSERT_OK(le_ips_GetBatteryLevel(&batteryLevel));
     LE_ASSERT(0 == batteryLevel);
     LE_INFO("======== Testle_ips_GetBatteryLevel Test PASSED ========");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: le_ips_SetBatteryLevel()
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_ips_SetBatteryLevel
+(
+    void
+)
+{
+    uint8_t batteryLevel;
+    le_ips_PowerSource_t powerSource;
+
+    LE_INFO("======== Testle_ips_SetBatteryLevel Test ========");
+    LE_ASSERT_OK(le_ips_SetBatteryLevel(TEST_IPS_EXT_BATTERY_LEVEL));
+    LE_ASSERT_OK(le_ips_GetBatteryLevel(&batteryLevel));
+    LE_ASSERT(TEST_IPS_EXT_BATTERY_LEVEL == batteryLevel);
+    LE_ASSERT_OK(le_ips_GetPowerSource(&powerSource));
+    LE_ASSERT(LE_IPS_POWER_SOURCE_BATTERY == powerSource);
+    LE_INFO("======== Testle_ips_SetBatteryLevel Test PASSED ========");
 }
 
 
@@ -480,6 +505,7 @@ COMPONENT_INIT
             Testle_ips_GetVoltageThresholds();
             Testle_ips_SetGetVoltageThresholds();
             Testle_ips_ThresholdEventHandler();
+            Testle_ips_SetBatteryLevel();
             LE_INFO("======== Test IPS implementation Test SUCCESS ========");
         }
         else if(strcmp(testNumberStr, "HANDLER") == 0)

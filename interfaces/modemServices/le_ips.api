@@ -33,6 +33,13 @@
  *     - @ref LE_IPS_POWER_SOURCE_BATTERY for a battery.
  * - le_ips_GetBatteryLevel() API gives the Platform battery level.
  *
+ * In case the device is powered by an external battery monitored by an application, this
+ * application can set the battery level with the le_ips_SetBatteryLevel() API. This value will
+ * then be used when the battery level is requested through the le_ips_GetBatteryLevel() API.
+ *
+ * @note The value set by le_ips_SetBatteryLevel() will be reported by le_ips_GetBatteryLevel()
+ * until Legato is restarted.
+ *
  * @section le_ips_voltageThresholds Platform input voltage thresholds
  *
  * @warning When a critical event occurs, some platform may automatically switch off.
@@ -137,6 +144,9 @@ EVENT ThresholdEvent
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the value.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetInputVoltage
@@ -177,6 +187,9 @@ FUNCTION le_result_t SetVoltageThresholds
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the thresholds.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetVoltageThresholds
@@ -195,6 +208,9 @@ FUNCTION le_result_t GetVoltageThresholds
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the value.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPowerSource
@@ -212,9 +228,31 @@ FUNCTION le_result_t GetPowerSource
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to get the value.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBatteryLevel
 (
     uint8    batteryLevel    OUT ///< [OUT] The battery level in percent.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Platform battery level in percent.
+ * This is useful when an external battery is used and its level is provided by the application
+ * monitoring it.
+ *
+ * @note The battery level set through this API will be the value reported by
+ * le_ips_GetBatteryLevel() until Legato is restarted.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BAD_PARAMETER Incorrect battery level provided.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetBatteryLevel
+(
+    uint8    batteryLevel    IN  ///< [IN] The battery level in percent.
 );

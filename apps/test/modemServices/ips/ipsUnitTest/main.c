@@ -36,6 +36,13 @@
 //--------------------------------------------------------------------------------------------------
 #define TEST_IPS_BATTERY_LEVEL              57
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * External battery level for tests
+ */
+//--------------------------------------------------------------------------------------------------
+#define TEST_IPS_EXT_BATTERY_LEVEL          100
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -204,6 +211,31 @@ static void Testle_ips_GetBatteryLevel
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test: le_ips_SetBatteryLevel()
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_ips_SetBatteryLevel
+(
+    void
+)
+{
+    le_ips_PowerSource_t powerSource;
+    uint8_t batteryLevel;
+    LE_INFO("======== Testle_ips_SetBatteryLevel Test ========");
+    // Set different PA values in order to check that these ones are not used
+    pa_ipsSimu_SetBatteryLevel(TEST_IPS_BATTERY_LEVEL);
+    pa_ipsSimu_SetPowerSource(LE_IPS_POWER_SOURCE_EXTERNAL);
+    LE_ASSERT(LE_BAD_PARAMETER == le_ips_SetBatteryLevel(TEST_IPS_EXT_BATTERY_LEVEL + 1));
+    LE_ASSERT_OK(le_ips_SetBatteryLevel(TEST_IPS_EXT_BATTERY_LEVEL));
+    LE_ASSERT_OK(le_ips_GetBatteryLevel(&batteryLevel));
+    LE_ASSERT(TEST_IPS_EXT_BATTERY_LEVEL == batteryLevel);
+    LE_ASSERT_OK(le_ips_GetPowerSource(&powerSource));
+    LE_ASSERT(LE_IPS_POWER_SOURCE_BATTERY == powerSource);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * main of the test
  *
  */
@@ -220,6 +252,7 @@ COMPONENT_INIT
     Testle_ips_SetGetVoltageThresholds();
     Testle_ips_GetPowerSource();
     Testle_ips_GetBatteryLevel();
+    Testle_ips_SetBatteryLevel();
 
     LE_INFO("======== UnitTest of IPS API ends with SUCCESS ========");
 
