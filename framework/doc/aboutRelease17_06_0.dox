@@ -1,0 +1,133 @@
+/** @page releaseNotes17060 17.06.0 Release Notes
+
+Release Date: July 7, 2017
+
+See @ref aboutLicenses to view Legato AF Licensing Information.
+
+The following provides a summary of changes that have been made in the 17.06 Legato AF Release.
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section rn_17_06_ReleaseNotes Legato Application Framework Release Process
+
+Legato AF releases are not tied to any specific module product release.  Once we have released
+Legato AF, module vendors (like Sierra Wireless) will take the release and integrate it into their
+own <b> product release. </b>
+
+<b> Legato AF Release Schedule VS Module Vendor Release Schedule </b>
+
+@image html LegatoReleaseVSModuleVendorRelease.png
+
+Example:
+ - Legato AF Team posts release 17.07
+ - Module Vendor takes release 17.07 and builds an associated Linux Distro to create a "Legato
+   Platform"
+ - Module Vendor tests and releases a "Legato Platform" with their Modem Firmware as "Product
+   Release Y"
+ - Legato AF Team posts release 17.08, 17.09 and 17.010 without the Module Vendor packaging it into
+   a Product Release.  Releases are able to installed with the vendor's Product Release Y,
+   but <b> may not be officially supported by the Module Vendor. </b>
+ - Module Vendor takes release 17.11 and creates a "Legato Platform" and "Product Release Z",
+   and so on..
+
+For any questions about the Product Releases please contact your Module Vendor directly.
+
+@section rn17_06_Features New Features
+
+The 17.06 release contains a few new API additions and bug fixes.  GitHub contains the
+complete list of
+[Legato AF 17.06.0 Fixes](https://github.com/legatoproject/legato-af/commits/17.06.0) .
+
+@subsection rn17_06_FeaturesAPI Changes API Changes
+
+The following new APIs have been added:
+- @ref le_mrc_SetSignalStrengthIndThresholds function has been added to support setting or changing new
+  thresholds.
+- @ref le_gnss_InjectUtcTime function has been added to support the injecting of UTC into the location
+  engine.
+- @ref le_gnss_GetGpsLeapSeconds function has been added to support getting the UTC leap seconds in
+  advance.
+
+@section rn17_06_Fixes Fixed Issues
+
+All development work is tagged in GitHub as "17.06.0".  The list of changes and commit messages can
+be found on GitHub.
+
+[Legato AF 17.06.0 Fixes](https://github.com/legatoproject/legato-af/commits/17.06.0)
+
+@section rn17_06_KnownIssues Known Issues
+
+@subsection rn17_06_Constraints Constraints and Limitations
+
+@subsubsection rn17_06_ContraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato AF, a
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+needed on your dev machine (or running in a virtual box on Windows).  Any release older then Ubuntu
+12.04 is no longer supported by the Legato AF.
+
+@subsubsection rn17_06_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer is default installed with Modem Manager version @c 1.4.12-1ubuntu1 which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- Downgrade @c modemmanager to version 1.0.0-2ubuntu1
+[Download version 1.0.0-2ubuntu1 of modemmanager](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsection rn17_06_OpenIssues Open Issues
+
+The following is the list of known issues that still exist in Legato 17.06.0 and are currently under
+investigation:
+
+@b Legato @b AF
+- Apps can't share writable files with each other unless both apps are "un-sandboxed".
+- Real time scheduling policies are not able to promote themselves if needed.
+
+@b Config @b Tree
+- Removing an @c app may remove another @c apps tree if the first @c apps requires section lists
+  the second @c app.
+
+@b Tools
+- @c app @c runProc does not work for apps running outside of a Sandbox.  If you wish to run @c
+  app runProc your @c app must be running in a Sandbox.
+- @c app @c status doesn’t have a "waiting" status if an app is waiting it gets reported as
+  "running".
+- @c configEcm will give a confusing error message about IP's not being on the same subnet when
+  other errors are present.
+
+@b Audio @b API
+- No sound recorded when using an Analog interface.
+- Not able to resume a playback after a recording has been paused.
+- "Pop" noise on @c usb audio at the end of a play or when stopping an ongoing file
+
+@b Data @b Connection @b API
+- "wifi client disconnect" does not release current Wifi connection
+
+@b eCall @b API
+- First tone in DTMF is often missed or has a shorter duration.
+- @c LE_ECALL_STATE_TIMEOUT_T6 is not handled when T6 expires. The timeout event is not generated
+  in the eCall handler.
+- MSD transmissions fail over SMS when the FDN is locked.
+- The fall-back SMS is not received during an Era-Glonass eCall session.
+
+@b GPIO  @b API
+- Only one service is able to access a GPIO pin at a time
+
+@b SPI @b API
+- Driver does not support speeds lower than 960000 baud
+
+@b UART @b API
+- Modem does not support serial baud rate of 1000000
+
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
