@@ -198,6 +198,7 @@ static bool TestRange(uint32_t min, uint32_t max, uint64_t numSamples)
 
     // Fill the buckets with random numbers.
     size_t i = 0;
+    le_clk_Time_t startTime = le_clk_GetRelativeTime();
     for (i = 0; i < numSamples; i++)
     {
         uint32_t r = le_rand_GetNumBetween(min, max);
@@ -212,6 +213,20 @@ static bool TestRange(uint32_t min, uint32_t max, uint64_t numSamples)
 
         // Add to bucket.
         bucket[(r - min) / bucketSize]++;
+
+        if (0 == (i % 1000000))
+        {
+            le_clk_Time_t elapsedTime = le_clk_Sub(le_clk_GetRelativeTime(), startTime);
+            double sampleSpeed = 0;
+            if (elapsedTime.sec != 0)
+            {
+                sampleSpeed = ((double)(i))/elapsedTime.sec;
+            }
+            LE_INFO("[%.1f%%] Collecting ... %zd samples [%.1f ksamples/s]",
+                        ((float)(i)*100)/numSamples,
+                        i,
+                        sampleSpeed/1000);
+        }
     }
 
     // We use a simple chi-square test here because we are only trying to detect simple biases.
