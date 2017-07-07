@@ -822,7 +822,7 @@ static void FsSetAppend
 
             dest.insert(new model::FileSystemObject_t
                         {
-                            "./" + dirName + item->destPath,
+                            path::Combine(path::Combine(".", dirName), item->destPath),
                             item->destPath,
                             item->permissions
                         });

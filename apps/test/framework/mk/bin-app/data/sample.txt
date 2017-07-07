@@ -1,0 +1,1 @@
+Sample data file to be included in binary app.

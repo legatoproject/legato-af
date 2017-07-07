@@ -51,6 +51,14 @@ bindings:
     helloWorld.helloComponent.le_cfg -> <root>.le_cfg
 }
 
+bundles:
+{
+    file:
+    {
+        data/sample.txt data/
+    }
+}
+
 extern:
 {
     helloWorld.helloComponent.le_info
