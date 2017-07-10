@@ -52,7 +52,7 @@ uint32_t le_rand_GetNumBetween
     }
     while ((fd == -1) && (errno == EINTR));
 
-    LE_FATAL_IF((fd == -1) && (errno != EEXIST), "Failed to open /dev/urandom. %m.");
+    LE_FATAL_IF(fd == -1, "Failed to open /dev/urandom. %m.");
 #endif
 
     // Determine range of numbers to reject.
@@ -123,7 +123,7 @@ void le_rand_GetBuffer
     }
     while ((fd == -1) && (errno == EINTR));
 
-    LE_FATAL_IF((fd == -1) && (errno != EEXIST), "Failed to open /dev/urandom. %m.");
+    LE_FATAL_IF(fd == -1, "Failed to open /dev/urandom. %m.");
 #endif
 
     // Get random numbers.
