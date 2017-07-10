@@ -42,6 +42,19 @@ static le_cfg_IteratorRef_t SimuIteratorRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Connect the current client thread to the service providing this API (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_ConnectService
+(
+    void
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Create a read transaction and open a new iterator for traversing the config tree.
  *
  * @note This action creates a read lock on the given tree, which will start a read-timeout.

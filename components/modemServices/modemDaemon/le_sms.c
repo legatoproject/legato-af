@@ -1736,9 +1736,12 @@ static void* SmsSenderThread
 {
     LE_INFO("Sms command Thread started");
 
+    // Connect to services used by this thread
+    le_cfg_ConnectService();
+
     // Register for SMS command events
     le_event_AddHandler("ProcessSmsSendingCommandHandler", SmsCommandEventId,
-        ProcessSmsSendingCommandHandler);
+                        ProcessSmsSendingCommandHandler);
 
     le_sem_Post(SmsSem);
 
