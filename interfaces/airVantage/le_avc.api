@@ -126,6 +126,11 @@
  * If no app has registered for notifications using le_avc_AddStatusEventHandler(), then
  * any pending reboot will happen automatically.
  *
+ * @section c_le_avc_GetCredentialStatus Credential Status
+ * The device is provisioned with bootstrap credentials from factory. The Device Management (DM)
+ * credentials are proivsioned by AirVantage Bootstrap Server. This api is used to retrieve the
+ * status of credentials provisioned on the device.
+ *
  * @section c_le_avc_connection Connection required
  * The AirVantage agent can request a connection to the AirVantage server, especially when a
  * firmware package was installed (after a platform reboot). In this case a notification is sent to
@@ -355,6 +360,20 @@ ENUM SessionType
     BOOTSTRAP_SESSION,              ///< Bootstrap session.
     DM_SESSION,                     ///< Device Management session.
     SESSION_INVALID                 ///< Session type invalid.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Status of the device credentials
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM CredentialStatus
+{
+    NO_CREDENTIAL_PROVISIONED = 1,  ///< Neither Bootstrap nor Device Management
+                                    ///< credential is provisioned.
+    BS_CREDENTIAL_PROVISIONED,      ///< Bootstrap credential is provisioned but Device
+                                    ///< Management credential is not provisioned.
+    DM_CREDENTIAL_PROVISIONED       ///< Device Management credential is provisioned.
 };
 
 
@@ -786,3 +805,22 @@ FUNCTION le_result_t SetRetryTimers
 (
     uint16 timerValue[NUM_RETRY_TIMERS]   IN  ///< Array of 8 retry timers.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to retrieve status of the credentials provisioned on the device.
+ *
+ * @return
+ *     LE_AVC_NO_CREDENTIAL_PROVISIONED
+ *          - If neither Bootstrap nor Device Management credential is provisioned.
+ *     LE_AVC_BS_CREDENTIAL_PROVISIONED
+ *          - If Bootstrap credential is provisioned but Device Management credential is
+              not provisioned.
+ *     LE_AVC_DM_CREDENTIAL_PROVISIONED
+ *          - If Device management key is provisioned.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION CredentialStatus GetCredentialStatus
+(
+);
+
