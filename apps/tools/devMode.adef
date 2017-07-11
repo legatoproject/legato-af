@@ -4,7 +4,10 @@ bundles:
 {
     file:
     {
-        [rx] $LEGATO_SYSROOT/usr/bin/gdbserver        /bin/gdbserver
+        // Only package gdbserver if it is provided by the toolchain.
+        #if file_exists($LEGATO_SYSROOT/usr/bin/gdbserver)
+            [rx] $LEGATO_SYSROOT/usr/bin/gdbserver        /bin/gdbserver
+        #endif
     }
 }
 

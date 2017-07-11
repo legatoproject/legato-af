@@ -23,10 +23,8 @@ BUILD_PRODUCTS = 	config		\
 					app \
 					update \
 					sbtrace \
-					scripts
-ifeq ($(findstring $(TARGET), localhost ar7 ar86),)
-  BUILD_PRODUCTS += devMode
-endif
+					scripts \
+					devMode
 
 ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx),)
 	# Create list of all proprietay apps, then add them as product to build

@@ -68,18 +68,26 @@ COMPONENT_INIT
     struct stat buf;
     if (stat("/etc/tcf-agent.conf", &buf) != 0)
     {
-        system("echo `/usr/bin/ud_getusbinfo NAME` `/usr/bin/ud_getusbinfo IMEI` > "
-               "/etc/tcf-agent.conf");
+        // On SWI platforms, use ud_getusbinfo to provide name & IMEI of the target.
+        if (stat("/usr/bin/ud_getusbinfo", &buf) == 0)
+        {
+            if (0 != system("echo `/usr/bin/ud_getusbinfo NAME` `/usr/bin/ud_getusbinfo IMEI` > "
+                   "/etc/tcf-agent.conf"))
+            {
+                LE_ERROR("Unable to populate '/etc/tcf-agent.conf'");
+            }
+        }
     }
 
-    system("/usr/sbin/tcf-agent -d -L- -l0");
-
+    if (0 != system("/usr/sbin/tcf-agent -d -L- -l0"))
+    {
+        LE_ERROR("Unable to launch tcf-agent");
+    }
 
     /* Obtain a wake lock */
     // Note that the wake lock is released if the app is stopped.
     le_pm_WakeupSourceRef_t wakeUpSource = le_pm_NewWakeupSource(0, "devModeApp");
     le_pm_StayAwake(wakeUpSource);
-
 
     /* Setup a timer to attempt to mark the system as "Good" within 10 seconds of system changes. */
     MarkGoodTimer = le_timer_Create("MarkGood");
@@ -93,4 +101,11 @@ COMPONENT_INIT
     // In case a new system has been installed, handle this system change. Otherwise calling this
     // handler does no harm.
     SysChangeHandler(NULL, NULL);
+
+    // Provide a warning if 'gdbserver' is not packaged with this app
+    if (stat("/bin/gdbserver", &buf) != 0)
+    {
+        LE_WARN("'/bin/gdbserver' has not been packaged with this app, usage of gdbCfg is "
+                "not possible");
+    }
 }
