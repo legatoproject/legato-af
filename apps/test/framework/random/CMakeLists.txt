@@ -16,5 +16,8 @@ add_test(
     COMMAND ${EXECUTABLE_OUTPUT_PATH}/${APP_TARGET}
 )
 
+# Extend the timeout as this test can take some time to collect enough samples
+set_tests_properties(${APP_TARGET} PROPERTIES TIMEOUT 300)
+
 # This is a C test
 add_dependencies(tests_c ${APP_TARGET})
