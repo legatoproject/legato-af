@@ -426,20 +426,44 @@ void simTest_SimSelect
 )
 {
     // Select the embedded SIM
-    le_result_t res = le_sim_SelectCard(LE_SIM_EMBEDDED);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_sim_SelectCard(LE_SIM_EMBEDDED));
 
     // Get the selected card
     le_sim_Id_t simId = le_sim_GetSelectedCard();
-    LE_ASSERT(simId == LE_SIM_EMBEDDED);
+    LE_ASSERT(LE_SIM_EMBEDDED == simId);
 
-    // Select the embedded SIM
-    res = le_sim_SelectCard(LE_SIM_EXTERNAL_SLOT_1);
-    LE_ASSERT(res == LE_OK);
+    // Select the LE_SIM_EXTERNAL_SLOT_1 SIM
+    LE_ASSERT_OK(le_sim_SelectCard(LE_SIM_EXTERNAL_SLOT_1));
 
     // Get the selected card
     simId = le_sim_GetSelectedCard();
-    LE_ASSERT(simId == LE_SIM_EXTERNAL_SLOT_1);
+    LE_ASSERT(LE_SIM_EXTERNAL_SLOT_1 == simId);
+
+    // Check if SIM present
+    if (!le_sim_IsPresent(LE_SIM_EMBEDDED))
+    {
+        LE_INFO("SIM not present");
+    }
+
+    // Get the selected card by le_sim_GetSelectedCard()
+    // Notice that the selected card received is the one used by the
+    // last Legato API and not the one set by le_sim_SelectCard().
+    simId = le_sim_GetSelectedCard();
+    LE_ASSERT(LE_SIM_EMBEDDED == simId);
+
+    // Check SIM ready
+    if (!le_sim_IsReady(LE_SIM_EXTERNAL_SLOT_1))
+    {
+        LE_INFO("SIM not ready");
+    }
+
+    // Get the selected card by le_sim_GetSelectedCard()
+    // Notice that the selected card received is the one used by the
+    // last Legato API and not the one set by le_sim_SelectCard().
+    simId = le_sim_GetSelectedCard();
+    LE_ASSERT(LE_SIM_EXTERNAL_SLOT_1 == simId);
+
+
 }
 //! [Select]
 

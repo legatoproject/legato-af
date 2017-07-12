@@ -31,11 +31,17 @@
  *
  *
  * @section le_sim_SelectCard Select a card to use
- * le_sim_SelectCard() function is used to select the SIM. By default, the SIM in slot 1 is used.
+ * le_sim_SelectCard() function is used to select the SIM identifier. By default, the SIM in slot 1
+ * is used.
+ * Additionally, any Legato SIM API with a SIM card identifier passed in parameter, selects that
+ * SIM identifier. le_sim_GetSelectedCard() returns the current selected card, not necessarily the
+ * one set previously by le_sim_SelectCard().
+ *
  * @note The SIM selection is not reset persistent; this function has to be called at each start-up.
  *
- * @note: It is recommended to wait for a SIM handler notification after a new SIM selection before
+ * @note It is recommended to wait for a SIM handler notification after a new SIM selection before
  * calling le_sim API functions.
+ *
  *
  * A sample code can be seen in the following page:
  * - @subpage c_simTestSelect
