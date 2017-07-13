@@ -58,7 +58,7 @@ void GenerateAppBuildRules
         // Add a bundled file into the app's staging area.
         "rule BundleFile\n"
         "  description = Bundling file\n"
-        "  command = bundle -m $modeFlags $in $out\n"
+        "  command = legato-install -m $modeFlags $in $out\n"
         "\n"
 
         // Generate a rule for creating an info.properties file.
