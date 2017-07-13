@@ -177,6 +177,7 @@ ${PROPRIETARY_APPS}: export LEGATO_PROPRIETARY_QCT_DIR=${LEGATO_ROOT}/proprietar
 ${PROPRIETARY_APPS}:
 	mkapp $(APPS_PROPRIETARY_SRC_DIR)/$@/src/$@.adef \
 			-b \
+			-i ${LEGATO_ROOT}/interfaces/modemServices \
 			-t $(TARGET) \
 			-o $(LEGATO_ROOT)/build/$(TARGET)/proprietary/$@ \
 			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/proprietary/$@ \

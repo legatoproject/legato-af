@@ -18,6 +18,7 @@ processes:
 bindings:
 {
     dcsDaemon.dataConnectionService.le_mdc -> modemService.le_mdc
+    dcsDaemon.dataConnectionService.le_mrc -> modemService.le_mrc
     dcsDaemon.dataConnectionService.le_cellnet -> cellNetService.le_cellnet
     dcsDaemon.dataConnectionService.le_wifiClient -> <root>.le_wifiClient
 }

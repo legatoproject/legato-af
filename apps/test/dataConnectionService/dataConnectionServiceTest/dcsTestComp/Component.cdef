@@ -7,6 +7,7 @@ requires:
 {
     api:
     {
+        modemServices/le_mdc.api                            [types-only]
         le_data.api
     }
 }

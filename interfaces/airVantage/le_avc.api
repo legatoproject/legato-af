@@ -118,8 +118,8 @@
         }
  * @endcode
  *
- * @note that even if an App calls le_avc_AcceptInstall(), the install may still be blocked by another
- * App using the @ref c_le_avc_update_app functions. To defer the decision, an App can use
+ * @note that even if an App calls le_avc_AcceptInstall(), the install may still be blocked by
+ * another App using the @ref c_le_avc_update_app functions. To defer the decision, an App can use
  * le_avc_DeferInstall() to defer the install for the specified number of minutes. After the defer
  * time has elapsed, the pending install notification will be re-sent to allow Apps to make a new
  * decision, or again defer.
@@ -201,15 +201,15 @@
  * Example of calling retry timers, the session will be retried after 15 minutes, 1 hour, 4 hours,
  * 8 hours, 1 day and 2 days, the last two retries are disabled:
  * @code
- * uint16_t RetryTimers[LE_AVC_NUM_RETRY_TIMERS] = {15, 60, 240, 480, 1440, 2880, 0, 0};
- * le_avc_SetRetryTimers(RetryTimers, LE_AVC_NUM_RETRY_TIMERS);
+   uint16_t RetryTimers[LE_AVC_NUM_RETRY_TIMERS] = {15, 60, 240, 480, 1440, 2880, 0, 0};
+   le_avc_SetRetryTimers(RetryTimers, LE_AVC_NUM_RETRY_TIMERS);
  * @endcode
  *
  * @section c_le_avc_reboot Device reboot
  *
  * The AirVantage server can request to reboot the device. If a reboot is requested a notification
- * is sent to the registered Apps. The App can either accept the reboot with @c le_avc_AcceptReboot()
- * or defer it for a specified number of minutes with @c le_avc_DeferReboot(). After the defer time
+ * is sent to the registered Apps. The App can either accept the reboot with le_avc_AcceptReboot()
+ * or defer it for a specified number of minutes with le_avc_DeferReboot(). After the defer time
  * has elapsed, the pending reboot notification will be re-sent. This allows the registered app to
  * make a new decision or defer the reboot again.
  *
@@ -218,7 +218,7 @@
  *
  * @section c_le_avc_GetCredentialStatus Credential Status
  * The device is provisioned with bootstrap credentials from factory. The Device Management (DM)
- * credentials are proivsioned by AirVantage Bootstrap Server. This api is used to retrieve the
+ * credentials are provisioned by AirVantage Bootstrap Server. This API is used to retrieve the
  * status of credentials provisioned on the device.
  *
  * @section c_le_avc_connection Connection required
@@ -226,6 +226,28 @@
  * The AirVantage agent can request a connection to the AirVantage server, especially when a
  * firmware package is installed (after a platform reboot). In this case a notification is sent to
  * the control App, which can start the connection with le_avc_StartSession().
+ *
+ * @section c_le_avc_routing Data routing
+ *
+ * By default the AirVantage connection uses the default mobile data profile and the default route
+ * set by the data connection service.
+ *
+ * If the user wishes to control the network configuration, e.g. to use the AirVantage agent with
+ * multi-PDP contexts, they should first bind the application to the data connection service:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_data -> dataConnectionService.le_data
+   }
+   @endverbatim
+ *
+ * The data connection service should then be configured before launching the AirVantage connection:
+ * - le_data_SetCellularProfileIndex() allows to change the data profile to use.
+ * - le_data_GetDefaultRouteStatus() indicates if the default route is activated in the data
+ * connection service. This default route can be deactivated in the data connection service
+ * configuration database, as explained in @ref c_le_data_defaultRoute. If the default route is
+ * deactivated, the AirVantage agent will automatically add routes to be able to reach the
+ * AirVantage server through the connection used by AirVantage.
  *
  * @section le_avcService_configdb Service Configuration Tree
  * @copydoc le_avcService_configdbPage_Hide

@@ -57,6 +57,48 @@
  * le_data_Release().  The data connection will be released only after le_data_Release()
  * is called by all applications that previously called le_data_Request().
  *
+ * @note When using the cellular technology, the data connection service can use a specific cellular
+ * data profile if it has been set with the le_data_SetCellularProfileIndex() API or in the
+ * configuration tree. Otherwise the default cellular profile is used. The profile in use can be
+ * retrieved by le_data_GetCellularProfileIndex(). The profile to use is loaded when the first data
+ * connection is initiated. The cellular data profile can be configured by le_mdc APIs or
+ * cm data tool.
+ *
+ * @section c_le_data_routing Data connection routing
+ *
+ * @subsection c_le_data_defaultRoute Default route
+ *
+ * By default, the default route is automatically configured by the data connection service using
+ * the modem parameters when the cellular technology is connected. If an application wishes to
+ * configure its own default route, it should deactivate it in the data connection service by
+ * setting the parameter @c useDefaultRoute to false in the configuration tree (see @ref
+ * c_le_data_configdb):
+ * @verbatim
+   $ config set dataConnectionService:/routing/useDefaultRoute false bool
+   @endverbatim
+ *
+ * @note The default route activation status can be retrieved with le_data_GetDefaultRouteStatus().
+ *
+ * @warning The default route activation status is only read at start-up and the change will only
+ * be effective after a Legato restart.
+ *
+ * A sample code showing how to set the modem default route if it isn't set by the data connection
+ * server is presented in the following page:
+ * - @subpage c_mdcDefaultRoute
+ *
+ * @subsection c_le_data_addRemoveRoute Add or remove a route
+ *
+ * Specific routes can be added for the cellular connection with le_data_AddRoute(), which is
+ * used to route IP packets to a specific address through the data connection service interface.
+ * When the routes are not necessary anymore, they can be removed with le_data_DelRoute().
+ * @code
+   // Add a route to the 8.8.8.8 IP address for the cellular connection
+   le_data_AddRoute("8.8.8.8");
+
+   // Remove a route to the 8.8.8.8 IP address for the cellular connection
+   le_data_DelRoute("8.8.8.8");
+   @endcode
+ *
  * @section c_le_data_rank Technology rank
  *
  * The technology to use for the default data connection can be chosen by the applications
@@ -94,14 +136,18 @@
  /**
  * @interface c_le_data_configdbPage_Hide
  *
- * The configuration of the Wi-Fi access point is stored in the configuration database of the
- * @c dataConnectionService under the following path:
+ * The configuration of the default routing, the Wi-Fi access point and the cellular profile are
+ * stored in the configuration database of the @c dataConnectionService under the following path:
  * @verbatim
     dataConnectionService:/
+        routing/
+            useDefaultRoute<bool> == true
         wifi/
             SSID<string> == TestSsid
             secProtocol<int> == 3
             passphrase<string> == Passw0rd
+        cellular/
+            profileIndex<int> == index
    @endverbatim
  *
  * @note The security protocol is one of the supported protocols defined in the
@@ -112,7 +158,12 @@
  * the only access point to use for the default data connection.
  *
  */
-//--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_mdcDefaultRoute Sample code for default route
+ *
+ * @snippet "apps/test/dataConnectionService/dataConnectionServiceRouteTest/dcsRouteTestComp/dcsRouteTest.c" DefaultRoute
+ */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -123,6 +174,8 @@
  * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
+
+USETYPES le_mdc.api;
 
 //--------------------------------------------------------------------------------------------------
 // Objects references.
@@ -263,4 +316,90 @@ FUNCTION Technology GetNextUsedTechnology
 //--------------------------------------------------------------------------------------------------
 FUNCTION Technology GetTechnology
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the default route activation status for the data connection service interface.
+ *
+ * @return
+ *      - true:  the default route is set by the data connection service
+ *      - false: the default route is not set by the data connection service
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool GetDefaultRouteStatus
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only added for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AddRoute
+(
+    string  ipDestAddrStr[le_mdc.IPV6_ADDR_MAX_LEN] IN  ///< The destination IP address in dotted
+                                                        ///< format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only removed for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DelRoute
+(
+    string  ipDestAddrStr[le_mdc.IPV6_ADDR_MAX_LEN] IN  ///< The destination IP address in dotted
+                                                        ///< format
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the cellular profile index used by the data connection service when the cellular technology
+ * is active.
+ *
+ * @return
+ *      - Cellular profile index
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION int32 GetCellularProfileIndex
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cellular profile index used by the data connection service when the cellular technology
+ * is active.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if the profile index is invalid
+ *      - LE_BUSY           the cellular connection is in use
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCellularProfileIndex
+(
+    int32      profileIndex        IN       ///< Cellular profile index to be used
 );

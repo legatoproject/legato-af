@@ -22,6 +22,13 @@ static le_cfg_IteratorRef_t IteratorRefSimu;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Simulated routing config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static bool UseDefaultRoute = true;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Simulated wifi config tree
  */
 //--------------------------------------------------------------------------------------------------
@@ -29,6 +36,20 @@ static le_cfg_IteratorRef_t IteratorRefSimu;
 static char WifiSsid[LE_WIFIDEFS_MAX_SSID_BYTES] = {0};
 static char WifiPassphrase[LE_WIFIDEFS_MAX_PASSPHRASE_BYTES] = {0};
 static int  WifiSecProtocol = WIFI_SECPROTOCOL_INIT;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulated RAT
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mrc_Rat_t RatInUse = LE_MRC_RAT_UNKNOWN;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulated MDC profile
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t MdcProfileIndex = LE_MDC_DEFAULT_PROFILE;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -608,6 +629,34 @@ le_cfg_IteratorRef_t le_cfg_CreateReadTxn
     return (le_cfg_IteratorRef_t)IteratorRefSimu;
 }
 
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Create a write transaction and open a new iterator for both reading and writing.
+ *
+ *  @note: This action creates a write transaction. If the application holds the iterator for
+ *         longer than the configured write transaction timeout, the iterator will cancel the
+ *         transaction.  All further reads will fail to return data and all writes will be thrown
+ *         away.
+ *
+ *  @note A tree transaction is global to that tree, so a long held write transaction will block
+ *        other user's write transactions from being started.  However other trees in the system
+ *        will be unaffected.
+ *
+ *  \b Responds \b With:
+ *
+ *  This will respond with a newly created iterator reference.
+ */
+// -------------------------------------------------------------------------------------------------
+le_cfg_IteratorRef_t le_cfg_CreateWriteTxn
+(
+    const char *    basePath
+        ///< [IN]
+        ///< Path to the location to create the new iterator.
+)
+{
+    return (le_cfg_IteratorRef_t)IteratorRefSimu;
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Close the write iterator and commit the write transaction. This updates the config tree
@@ -676,6 +725,10 @@ bool le_cfg_NodeExists
     else if (0 == strncmp(path, CFG_NODE_SECPROTOCOL, strlen(CFG_NODE_SECPROTOCOL)))
     {
         exists = (WifiSecProtocol != WIFI_SECPROTOCOL_INIT);
+    }
+    else if (0 == strncmp(path, CFG_NODE_PROFILEINDEX, strlen(CFG_NODE_PROFILEINDEX)))
+    {
+        exists = true;
     }
 
     return exists;
@@ -771,6 +824,78 @@ int32_t le_cfg_GetInt
     if (0 == strncmp(path, CFG_NODE_SECPROTOCOL, strlen(CFG_NODE_SECPROTOCOL)))
     {
         value = WifiSecProtocol;
+    }
+    else if (0 == strncmp(path, CFG_NODE_PROFILEINDEX, strlen(CFG_NODE_PROFILEINDEX)))
+    {
+        value = MdcProfileIndex;
+    }
+
+    return value;
+}
+
+// -------------------------------------------------------------------------------------------------
+/**
+ *  Write a signed integer value to the configuration tree. Only valid during a write transaction.
+ *
+ *  If the path is empty, the iterator's current node will be set.
+ */
+// -------------------------------------------------------------------------------------------------
+void le_cfg_SetInt
+(
+    le_cfg_IteratorRef_t iteratorRef,
+        ///< [IN]
+        ///< Iterator to use as a basis for the transaction.
+
+    const char* path,
+        ///< [IN]
+        ///< Full or relative path to the value to write.
+
+    int32_t value
+        ///< [IN]
+        ///< Value to write.
+)
+{
+    if (0 == strncmp(path, CFG_NODE_SECPROTOCOL, strlen(CFG_NODE_SECPROTOCOL)))
+    {
+        WifiSecProtocol = value;
+    }
+    else if(0 == strncmp(path, CFG_NODE_PROFILEINDEX, strlen(CFG_NODE_PROFILEINDEX)))
+    {
+        MdcProfileIndex = value;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read a value from the tree as a boolean. If the node is empty or doesn't exist, the default
+ * value is returned. Default value is also returned if the node is a different type than
+ * expected.
+ *
+ * Valid for both read and write transactions.
+ *
+ * If the path is empty, the iterator's current node will be read.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_cfg_GetBool
+(
+    le_cfg_IteratorRef_t iteratorRef,   ///< [IN] Iterator to use as a basis for the transaction.
+    const char* path,                   ///< [IN] Path to the target node. Can be an absolute path,
+                                        ///<      or a path relative from the iterator's current
+                                        ///<      position
+    bool defaultValue                   ///< [IN] Default value to use if the original can't be
+                                        ///<      read.
+)
+{
+    bool value;
+
+    if (0 == strncmp(path, CFG_NODE_DEFAULTROUTE, strlen(CFG_NODE_DEFAULTROUTE)))
+    {
+        value = UseDefaultRoute;
+    }
+    else
+    {
+        value = defaultValue;
+        LE_ERROR("Unsupported path '%s', using default value %d", path, defaultValue);
     }
 
     return value;
@@ -1192,4 +1317,46 @@ void le_mdc_RemoveSessionStateHandler
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)sessionStateHandlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current Radio Access Technology in use.
+ *
+ * @return LE_FAULT         Function failed to get the Radio Access Technology.
+ * @return LE_BAD_PARAMETER A bad parameter was passed.
+ * @return LE_OK            Function succeeded.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetRadioAccessTechInUse
+(
+    le_mrc_Rat_t*   ratPtr  ///< [OUT] The Radio Access Technology.
+)
+{
+    if (ratPtr == NULL)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    *ratPtr = RatInUse;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulate RAT
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrcTest_SetRatInUse
+(
+    le_mrc_Rat_t rat    ///< [IN] RAT in use
+)
+{
+    if (LE_MRC_RAT_CDMA >= rat)
+    {
+        RatInUse = rat;
+    }
 }

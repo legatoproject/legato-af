@@ -6,6 +6,7 @@ requires:
         le_cellnet.api                                      [types-only]
         le_cfg.api                                          [types-only]
         modemServices/le_mdc.api                            [types-only]
+        modemServices/le_mrc.api                            [types-only]
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api    [types-only]
     }
 }

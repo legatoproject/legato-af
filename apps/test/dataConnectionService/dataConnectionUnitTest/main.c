@@ -364,9 +364,79 @@ static void Testle_data_Service
 )
 {
     int i;
+    int32_t profileIndex;
+    le_result_t result;
+    uint32_t loop;
 
     // Initialize application contexts
     memset(AppCtx, 0, CLIENTS_NB * sizeof(AppContext_t));
+
+    LE_ASSERT(le_data_GetDefaultRouteStatus());
+
+    profileIndex = le_data_GetCellularProfileIndex();
+    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+
+    // Set RAT to GSM
+    le_mrcTest_SetRatInUse(LE_MRC_RAT_GSM);
+    // Valid profile index values: 1 - 16
+    result = le_data_SetCellularProfileIndex(0);
+    LE_ASSERT(LE_BAD_PARAMETER == result);
+    profileIndex = le_data_GetCellularProfileIndex();
+    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+
+    for (loop = 17; loop < 200; loop++)
+    {
+        result = le_data_SetCellularProfileIndex(loop);
+        LE_ASSERT(LE_BAD_PARAMETER == result);
+        profileIndex = le_data_GetCellularProfileIndex();
+        LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    }
+
+    for (loop = 1; loop < 17; loop++)
+    {
+        result = le_data_SetCellularProfileIndex(loop);
+        LE_ASSERT(LE_OK == result);
+        profileIndex = le_data_GetCellularProfileIndex();
+        LE_ASSERT(loop == profileIndex);
+    }
+
+
+    result = le_data_SetCellularProfileIndex(LE_MDC_DEFAULT_PROFILE);
+    LE_ASSERT(LE_OK == result);
+    profileIndex = le_data_GetCellularProfileIndex();
+    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+
+    // Set RAT to CDMA
+    le_mrcTest_SetRatInUse(LE_MRC_RAT_CDMA);
+    // Valid profile index values: 101 - 107
+    for (loop = 0; loop < 101; loop++)
+    {
+        result = le_data_SetCellularProfileIndex(loop);
+        LE_ASSERT(LE_BAD_PARAMETER == result);
+        profileIndex = le_data_GetCellularProfileIndex();
+        LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    }
+
+    for (loop = 108; loop < 200; loop++)
+    {
+        result = le_data_SetCellularProfileIndex(loop);
+        LE_ASSERT(LE_BAD_PARAMETER == result);
+        profileIndex = le_data_GetCellularProfileIndex();
+        LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    }
+
+    for (loop = 101; loop < 108; loop++)
+    {
+        result = le_data_SetCellularProfileIndex(loop);
+        LE_ASSERT(LE_OK == result);
+        profileIndex = le_data_GetCellularProfileIndex();
+        LE_ASSERT(loop == profileIndex);
+    }
+
+    result = le_data_SetCellularProfileIndex(LE_MDC_DEFAULT_PROFILE);
+    LE_ASSERT(LE_OK == result);
+    profileIndex = le_data_GetCellularProfileIndex();
+    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
 
     // Start threads in order to simulate multi-users of data connection service
     for (i = 0; i < CLIENTS_NB; i++)
@@ -401,12 +471,19 @@ static void Testle_data_Service
         SynchronizeTest();
     }
 
+    LE_INFO("Clients started");
+
+    LE_ASSERT(LE_BUSY == le_data_SetCellularProfileIndex(LE_MDC_DEFAULT_PROFILE));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_AddRoute("216.58.206.45.228"));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_DelRoute("216.58.206.45.228"));
+    LE_ASSERT_OK(le_data_AddRoute("216.58.206.45"));
+    LE_ASSERT_OK(le_data_DelRoute("216.58.206.45"));
+
     // Configure Wifi to be able to use it
     le_cfg_IteratorRef_t wifiTestIteratorRef = (le_cfg_IteratorRef_t)0x01234567;
     le_cfgTest_SetStringNodeValue(wifiTestIteratorRef, CFG_NODE_SSID, "TestSSID");
     le_cfgTest_SetIntNodeValue(wifiTestIteratorRef, CFG_NODE_SECPROTOCOL, 3);
     le_cfgTest_SetStringNodeValue(wifiTestIteratorRef, CFG_NODE_PASSPHRASE, "pa$$w0rd");
-
 
     LE_INFO("Simulate cellular disconnection");
 
@@ -461,6 +538,8 @@ static void Testle_data_Service
     {
         LE_ASSERT(LE_TIMEOUT == le_sem_WaitWithTimeOut(AppCtx[i].appSemaphore, timeToWait));
     }
+
+    LE_ASSERT(LE_UNSUPPORTED == le_data_AddRoute("216.58.206.45.228"));
 }
 
 //--------------------------------------------------------------------------------------------------

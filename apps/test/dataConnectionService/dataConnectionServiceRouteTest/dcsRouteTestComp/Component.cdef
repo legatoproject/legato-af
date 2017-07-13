@@ -1,0 +1,13 @@
+sources:
+{
+    dcsRouteTest.c
+}
+
+requires:
+{
+    api:
+    {
+        modemServices/le_mdc.api
+        le_data.api
+    }
+}

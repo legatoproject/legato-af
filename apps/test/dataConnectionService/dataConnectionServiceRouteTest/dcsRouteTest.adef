@@ -1,0 +1,22 @@
+sandboxed: false
+
+executables:
+{
+    dcsRouteTest = ( dcsRouteTestComp )
+}
+
+processes:
+{
+    run:
+    {
+        ( dcsRouteTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    dcsRouteTest.dcsRouteTestComp.le_data -> dataConnectionService.le_data
+    dcsRouteTest.dcsRouteTestComp.le_mdc  -> modemService.le_mdc
+}

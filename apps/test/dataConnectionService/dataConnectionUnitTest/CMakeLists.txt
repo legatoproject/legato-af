@@ -19,6 +19,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_ROOT}/framework/c/src
     -i ${LEGATO_ROOT}/interfaces/modemServices
     -i ${LEGATO_ROOT}/components/cfgEntries
+    -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
     ${CFLAGS}
     ${LFLAGS}
     -C "-fvisibility=default"

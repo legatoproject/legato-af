@@ -32,12 +32,11 @@
 #include <stdlib.h>
 
 #include "legato.h"
-
 #include "interfaces.h"
 #include "le_cfg_interface.h"
 #include "mdmCfgEntries.h"
-
 #include "le_print.h"
+#include "pa_mdc.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -49,10 +48,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define DCS_CONFIG_TREE_ROOT_DIR    "dataConnectionService:"
+#define CFG_PATH_ROUTING            "routing"
+#define CFG_NODE_DEFAULTROUTE       "useDefaultRoute"
 #define CFG_PATH_WIFI               "wifi"
 #define CFG_NODE_SSID               "SSID"
 #define CFG_NODE_SECPROTOCOL        "secProtocol"
 #define CFG_NODE_PASSPHRASE         "passphrase"
+#define CFG_PATH_CELLULAR           "cellular"
+#define CFG_NODE_PROFILEINDEX       "profileIndex"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -98,6 +101,32 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define MAX_STOP_SESSION_RETRIES    5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximal length of a system command
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_SYSTEM_CMD_LENGTH       200
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Size of the reference maps
+ */
+//--------------------------------------------------------------------------------------------------
+#define REFERENCE_MAP_SIZE          5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enumeration for the routing actions
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    ROUTE_ADD,      ///< Add a route
+    ROUTE_DELETE    ///< Delete a route
+}
+RouteAction_t;
 
 //--------------------------------------------------------------------------------------------------
 // Data structures
@@ -234,6 +263,13 @@ static bool IsConnected = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Index profile use for data connection on cellular
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t MdcIndexProfile = LE_MDC_DEFAULT_PROFILE;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Count the number of requests
  */
 //--------------------------------------------------------------------------------------------------
@@ -308,6 +344,15 @@ static bool TechAvailability[DCS_TECH_NUMBER];
  */
 //--------------------------------------------------------------------------------------------------
 static le_data_Technology_t CurrentTech = LE_DATA_MAX;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default route activation status, read at start-up in config tree.
+ * - true:  default route is set by DCS
+ * - false: default route is not set by DCS
+ */
+//--------------------------------------------------------------------------------------------------
+static bool DefaultRouteStatus = true;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -679,12 +724,93 @@ static void DataSessionStateHandler
     LE_PRINT_VALUE("%d", profileIndex);
     LE_PRINT_VALUE("%i", connectionStatus);
 
+    // Check if the session state change is for the used cellular profile
+    if (profileRef != MobileProfileRef)
+    {
+        return;
+    }
+
     // Update connection status and send notification to registered applications
     IsConnected = (connectionStatus == LE_MDC_CONNECTED) ? true : false;
     SendConnStateEvent(IsConnected);
 
     // Handle new connection status for this technology
     ConnectionStatusHandler(LE_DATA_CELLULAR, IsConnected);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get data profile index to use for cellular technology from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static int32_t GetDataProfileIndex
+(
+    void
+)
+{
+    int32_t index = LE_MDC_DEFAULT_PROFILE;
+
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+
+    // Get Cid Profile
+    if (le_cfg_NodeExists(cfg, CFG_NODE_PROFILEINDEX))
+    {
+        index = le_cfg_GetInt(cfg, CFG_NODE_PROFILEINDEX, LE_MDC_DEFAULT_PROFILE);
+        LE_DEBUG("Use data profile index %d", index);
+    }
+    le_cfg_CancelTxn(cfg);
+
+    return index;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Set data profile index to use for cellular technology in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetDataProfileIndex
+(
+    int32_t profileIndex            ///< [IN] Profile index to be stored
+)
+{
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateWriteTxn(configPath);
+    // Set Cid Profile
+    le_cfg_SetInt(cfg, CFG_NODE_PROFILEINDEX, profileIndex);
+    le_cfg_CommitTxn(cfg);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get default route activation status from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static bool GetDefaultRouteStatus
+(
+    void
+)
+{
+    bool defaultRouteStatus = true;
+
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_ROUTING);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+
+    // Get default gateway activation status
+    if (le_cfg_NodeExists(cfg, CFG_NODE_DEFAULTROUTE))
+    {
+        defaultRouteStatus = le_cfg_GetBool(cfg, CFG_NODE_DEFAULTROUTE, true);
+        LE_DEBUG("Default gateway activation status = %d", defaultRouteStatus);
+    }
+    le_cfg_CancelTxn(cfg);
+
+    return defaultRouteStatus;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -707,17 +833,18 @@ static le_result_t LoadSelectedTechProfile
 
     switch (technology)
     {
-        // TODO: we only try to load the 1st profile stored in MDC database
         case LE_DATA_CELLULAR:
         {
             le_mdc_ProfileRef_t profileRef;
 
-            LE_DEBUG("Use the default cellular profile");
-            profileRef = le_mdc_GetProfile(LE_MDC_DEFAULT_PROFILE);
+            // Get profile Index to use for cellular data connection service
+            MdcIndexProfile = GetDataProfileIndex();
+
+            profileRef = le_mdc_GetProfile(MdcIndexProfile);
 
             if (!profileRef)
             {
-                LE_ERROR("Default profile not available");
+                LE_ERROR("Profile of index %d is not available", MdcIndexProfile);
                 return LE_FAULT;
             }
 
@@ -732,9 +859,7 @@ static le_result_t LoadSelectedTechProfile
 
                 MobileProfileRef = profileRef;
 
-                uint32_t profileIndex;
-                profileIndex = le_mdc_GetProfileIndex(MobileProfileRef);
-                LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, profileIndex);
+                LE_DEBUG("Working with profile %p at index %d", MobileProfileRef, MdcIndexProfile);
             }
 
             // MobileProfileRef is now referencing the default profile to use for data connection
@@ -751,8 +876,8 @@ static le_result_t LoadSelectedTechProfile
             if (NULL == MobileSessionStateHandlerRef)
             {
                 MobileSessionStateHandlerRef = le_mdc_AddSessionStateHandler(MobileProfileRef,
-                                                                         DataSessionStateHandler,
-                                                                         NULL);
+                    DataSessionStateHandler,
+                    NULL);
             }
         }
         break;
@@ -915,19 +1040,11 @@ static bool IsDefaultGatewayPresent
 //--------------------------------------------------------------------------------------------------
 /**
  * Save the default route
- *
- * @return
- *      - LE_OK           Function succeed
- *      - LE_OVERFLOW     buffer provided are too small
- *      - LE_NOT_FOUND    No default gateway is set
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t SaveDefaultGateway
+static void SaveDefaultGateway
 (
-    char    *interfacePtr,      ///< [IN] Pointer on the interface name
-    size_t   interfaceSize,     ///< [IN] Interface name size
-    char    *gatewayPtr,        ///< [IN] Pointer on the gateway name
-    size_t   gatewaySize        ///< [IN] Gateway name size
+    void
 )
 {
     le_result_t result;
@@ -938,12 +1055,13 @@ static le_result_t SaveDefaultGateway
 
     if (NULL == routeFile)
     {
-        return result;
+        LE_ERROR("Could not open file %s", ROUTE_FILE);
+        return;
     }
 
     // Initialize default value
-    interfacePtr[0] = '\0';
-    gatewayPtr[0]   = '\0';
+    InterfaceDataBackup.defaultInterface[0] = '\0';
+    InterfaceDataBackup.defaultGateway[0]   = '\0';
 
     result = LE_NOT_FOUND;
     while (fgets(line, sizeof(line), routeFile))
@@ -963,14 +1081,20 @@ static le_result_t SaveDefaultGateway
                     struct in_addr addr;
                     addr.s_addr=ng;
 
-                    result = le_utf8_Copy(interfacePtr, ifacePtr, interfaceSize, NULL);
+                    result = le_utf8_Copy(InterfaceDataBackup.defaultInterface,
+                                          ifacePtr,
+                                          sizeof(InterfaceDataBackup.defaultInterface),
+                                          NULL);
                     if (result != LE_OK)
                     {
-                        LE_WARN("inferface buffer is too small");
+                        LE_WARN("interface buffer is too small");
                         break;
                     }
 
-                    result = le_utf8_Copy(gatewayPtr, inet_ntoa(addr), gatewaySize, NULL);
+                    result = le_utf8_Copy(InterfaceDataBackup.defaultGateway,
+                                          inet_ntoa(addr),
+                                          sizeof(InterfaceDataBackup.defaultGateway),
+                                          NULL);
                     if (result != LE_OK)
                     {
                         LE_WARN("gateway buffer is too small");
@@ -983,7 +1107,53 @@ static le_result_t SaveDefaultGateway
     }
 
     le_flock_CloseStream(routeFile);
-    return result;
+
+    switch (result)
+    {
+        case LE_OK:
+            LE_DEBUG("default gateway is: '%s' on '%s'", InterfaceDataBackup.defaultGateway,
+                                                         InterfaceDataBackup.defaultInterface);
+            break;
+
+        case LE_NOT_FOUND:
+            LE_DEBUG("No default gateway to save");
+            break;
+
+        default:
+            LE_WARN("Could not save the default gateway");
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete the default gateway in the system, if it is present
+ *
+ * return
+ *      LE_OK           Function succeed
+ *      LE_FAULT        Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DeleteDefaultGateway
+(
+    void
+)
+{
+    char systemCmd[MAX_SYSTEM_CMD_LENGTH] = {0};
+
+    if (IsDefaultGatewayPresent())
+    {
+        // Remove the last default GW
+        snprintf(systemCmd, sizeof(systemCmd), "/sbin/route del default");
+        LE_DEBUG("Execute '%s'", systemCmd);
+        if (-1 == system(systemCmd))
+        {
+            LE_WARN("system '%s' failed", systemCmd);
+            return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1003,28 +1173,21 @@ static le_result_t SetDefaultGateway
 )
 {
     const char *optionPtr = "";
-    char systemCmd[200] = {0};
+    char systemCmd[MAX_SYSTEM_CMD_LENGTH] = {0};
 
-    if ((0 == strcmp(gatewayPtr,"")) || (0 == strcmp(interfacePtr,"")))
+    if ((0 == strcmp(gatewayPtr, "")) || (0 == strcmp(interfacePtr, "")))
     {
         LE_WARN("Default gateway or interface is empty");
         return LE_FAULT;
     }
-    else
+
+    if (LE_OK != DeleteDefaultGateway())
     {
-        LE_DEBUG("Try set the gateway %s on %s", gatewayPtr, interfacePtr);
+        LE_ERROR("Unable to delete default gateway");
+        return LE_FAULT;
     }
 
-    if (IsDefaultGatewayPresent())
-    {
-        // Remove the last default GW
-        LE_DEBUG("Execute '/sbin/route del default'");
-        if (-1 == system("/sbin/route del default"))
-        {
-            LE_WARN("system '%s' failed", systemCmd);
-            return LE_FAULT;
-        }
-    }
+    LE_DEBUG("Try set the gateway '%s' on '%s'", gatewayPtr, interfacePtr);
 
     if (isIpv6)
     {
@@ -1032,10 +1195,9 @@ static le_result_t SetDefaultGateway
     }
 
     // TODO: use of ioctl instead, should be done when rework the DCS
-    snprintf(systemCmd, sizeof(systemCmd),
-             "/sbin/route %s add default gw %s %s", optionPtr, gatewayPtr, interfacePtr);
-
-    LE_DEBUG("Execute '%s", systemCmd);
+    snprintf(systemCmd, sizeof(systemCmd), "/sbin/route %s add default gw %s %s",
+             optionPtr, gatewayPtr, interfacePtr);
+    LE_DEBUG("Execute '%s'", systemCmd);
     if (-1 == system(systemCmd))
     {
         LE_WARN("system '%s' failed", systemCmd);
@@ -1094,32 +1256,30 @@ static le_result_t SetRouteConfiguration
 
     if (!(le_mdc_IsIPv6(profileRef) || le_mdc_IsIPv4(profileRef)))
     {
-        LE_WARN("Profile is not using IPv4 nor IPv6");
+        LE_ERROR("Profile is not using IPv4 nor IPv6");
         return LE_FAULT;
     }
 
-
     if (le_mdc_IsIPv6(profileRef))
     {
-
         if (LE_OK != le_mdc_GetIPv6GatewayAddress(profileRef,
                                                   ipv6GatewayAddr,
                                                   sizeof(ipv6GatewayAddr)))
         {
-            LE_INFO("le_mdc_GetIPv6GatewayAddress failed");
+            LE_ERROR("le_mdc_GetIPv6GatewayAddress failed");
             return LE_FAULT;
         }
 
         if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
         {
-            LE_WARN("le_mdc_GetInterfaceName failed");
+            LE_ERROR("le_mdc_GetInterfaceName failed");
             return LE_FAULT;
         }
 
         // Set the default ipv6 gateway retrieved from modem
         if (LE_OK != SetDefaultGateway(interface, ipv6GatewayAddr, isIpv6))
         {
-            LE_WARN("SetDefaultGateway for ipv6 gateway failed");
+            LE_ERROR("SetDefaultGateway for ipv6 gateway failed");
             return LE_FAULT;
         }
     }
@@ -1131,20 +1291,20 @@ static le_result_t SetRouteConfiguration
                                                   ipv4GatewayAddr,
                                                   sizeof(ipv4GatewayAddr)))
         {
-            LE_INFO("le_mdc_GetIPv4GatewayAddress failed");
+            LE_ERROR("le_mdc_GetIPv4GatewayAddress failed");
             return LE_FAULT;
         }
 
         if (LE_OK != le_mdc_GetInterfaceName(profileRef, interface, sizeof(interface)))
         {
-            LE_WARN("le_mdc_GetInterfaceName failed");
+            LE_ERROR("le_mdc_GetInterfaceName failed");
             return LE_FAULT;
         }
 
         // Set the default ipv4 gateway retrieved from modem
         if (LE_OK != SetDefaultGateway(interface, ipv4GatewayAddr, !(isIpv6)))
         {
-            LE_WARN("SetDefaultGateway for ipv4 gateway failed");
+            LE_ERROR("SetDefaultGateway for ipv4 gateway failed");
             return LE_FAULT;
         }
     }
@@ -1479,7 +1639,8 @@ static le_result_t RemoveNameserversFromResolvConf
 //--------------------------------------------------------------------------------------------------
 static le_result_t SetDnsConfiguration
 (
-    le_mdc_ProfileRef_t profileRef      ///< [IN] Modem data connection profile reference
+    le_mdc_ProfileRef_t profileRef,     ///< [IN] Modem data connection profile reference
+    bool addDnsRoutes                   ///< [IN] Add routes for DNS
 )
 {
     char dns1Addr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
@@ -1491,18 +1652,28 @@ static le_result_t SetDnsConfiguration
                                                 dns1Addr, sizeof(dns1Addr),
                                                 dns2Addr, sizeof(dns2Addr)))
         {
-            LE_INFO("IPv4: le_mdc_GetDNSAddresses failed");
+            LE_ERROR("IPv4: le_mdc_GetDNSAddresses failed");
             return LE_FAULT;
         }
 
         if (LE_OK != AddNameserversToResolvConf(dns1Addr, dns2Addr))
         {
-            LE_INFO("IPv4: Could not write in resolv file");
+            LE_ERROR("IPv4: Could not write in resolv file");
             return LE_FAULT;
         }
 
         strcpy(InterfaceDataBackup.newDnsIPv4[0], dns1Addr);
         strcpy(InterfaceDataBackup.newDnsIPv4[1], dns2Addr);
+
+        // Add the DNS routes if necessary
+        if (addDnsRoutes)
+        {
+            if (   (LE_OK != le_data_AddRoute(dns1Addr))
+                || (LE_OK != le_data_AddRoute(dns2Addr)))
+            {
+                LE_ERROR("IPv4: Could not add DNS routes");
+            }
+        }
     }
     else
     {
@@ -1516,18 +1687,28 @@ static le_result_t SetDnsConfiguration
                                                 dns1Addr, sizeof(dns1Addr),
                                                 dns2Addr, sizeof(dns2Addr)))
         {
-            LE_INFO("IPv6: le_mdc_GetDNSAddresses failed");
+            LE_ERROR("IPv6: le_mdc_GetDNSAddresses failed");
             return LE_FAULT;
         }
 
         if (LE_OK != AddNameserversToResolvConf(dns1Addr, dns2Addr))
         {
-            LE_INFO("IPv6: Could not write in resolv file");
+            LE_ERROR("IPv6: Could not write in resolv file");
             return LE_FAULT;
         }
 
         strcpy(InterfaceDataBackup.newDnsIPv6[0], dns1Addr);
         strcpy(InterfaceDataBackup.newDnsIPv6[1], dns2Addr);
+
+        // Add the DNS routes if necessary
+        if (addDnsRoutes)
+        {
+            if (   (LE_OK != le_data_AddRoute(dns1Addr))
+                || (LE_OK != le_data_AddRoute(dns2Addr)))
+            {
+                LE_ERROR("IPv6: Could not add DNS routes");
+            }
+        }
     }
     else
     {
@@ -1540,41 +1721,35 @@ static le_result_t SetDnsConfiguration
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the default gateway retrieved from modem
+ * Set the default route (if necessary) and DNS
  *
  * @return
  *      LE_FAULT        Function failed
  *      LE_OK           Function succeed
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t SetModemGateway
+static le_result_t SetDefaultRouteAndDns
 (
-    void
+    bool setDefaultRoute    ///< [IN] Should the default route be set?
 )
 {
-    // Save gateway configuration
-    if (LE_OK != SaveDefaultGateway(InterfaceDataBackup.defaultInterface,
-                                    sizeof(InterfaceDataBackup.defaultInterface),
-                                    InterfaceDataBackup.defaultGateway,
-                                    sizeof(InterfaceDataBackup.defaultGateway)))
+    // Check if the default route should be set
+    if (setDefaultRoute)
     {
-        LE_WARN("Could not save the default gateway");
-    }
-    else
-    {
-        LE_DEBUG("default gw is: '%s' on '%s'", InterfaceDataBackup.defaultGateway,
-                                                InterfaceDataBackup.defaultInterface);
+        SaveDefaultGateway();
+
+        if (LE_OK != SetRouteConfiguration(MobileProfileRef))
+        {
+            LE_ERROR("Failed to set configuration route");
+            return LE_FAULT;
+        }
     }
 
-    if (LE_OK != SetRouteConfiguration(MobileProfileRef))
+    // Set the DNS configuration in all cases and add the DNS routes
+    // if the default route is not set
+    if (LE_OK != SetDnsConfiguration(MobileProfileRef, !(setDefaultRoute)))
     {
-        LE_ERROR("Failed to get configuration route");
-        return LE_FAULT;
-    }
-
-    if (LE_OK != SetDnsConfiguration(MobileProfileRef))
-    {
-        LE_ERROR("Failed to get configuration DNS");
+        LE_ERROR("Failed to set DNS configuration");
         return LE_FAULT;
     }
 
@@ -1602,8 +1777,8 @@ static void TryStartDataSession
         // First wait a few seconds for the default DHCP client
         sleep(3);
 
-        // Set the gateway retrieved from the modem
-        if (LE_OK != SetModemGateway())
+        // Set the default route (if necessary) and the DNS
+        if (LE_OK != SetDefaultRouteAndDns(DefaultRouteStatus))
         {
             // Impossible to use this technology, try the next one
             ConnectionStatusHandler(LE_DATA_CELLULAR, false);
@@ -1717,7 +1892,7 @@ static void TryStartTechSession
                 }
                 else
                 {
-                    LE_WARN("Impossible to use Cellular profile, error %d (%s)",
+                    LE_WARN("Impossible to use cellular profile, error %d (%s)",
                             result, LE_RESULT_TXT(result));
 
                     // Impossible to use this technology, try the next one
@@ -1800,7 +1975,10 @@ static void TryStopDataSession
         StopSessionRetries = 0;
 
         // Restore backed up parameters
-        RestoreDefaultGateway();
+        if (DefaultRouteStatus)
+        {
+            RestoreDefaultGateway();
+        }
         RestoreInitialNameservers();
     }
     else
@@ -2139,6 +2317,107 @@ static void CloseSessionEventHandler
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Check IP address
+ *
+ * @return
+ *      - LE_OK     on success
+ *      - LE_FAULT  on failure
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t CheckIpAddress
+(
+    int af,             ///< Address family
+    const char* addStr  ///< IP address to check
+)
+{
+    struct sockaddr_in sa;
+
+    if (inet_pton(af, addStr, &(sa.sin_addr)))
+    {
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Change the route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only removed for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t ChangeRoute
+(
+    const char* ipDestAddrStr,    ///< Destination IP address in dotted format
+    RouteAction_t action          ///< Add or remove the route
+)
+{
+    const char optionPtr[] = "-A inet";
+    char actionStr[MAX_SYSTEM_CMD_LENGTH] = {0};
+    char systemCmd[MAX_SYSTEM_CMD_LENGTH] = {0};
+    char interfaceStr[LE_MDC_INTERFACE_NAME_MAX_BYTES] = {0};
+
+    // Check if the cellular technology is being used
+    if (LE_DATA_CELLULAR != CurrentTech)
+    {
+        LE_ERROR("Cellular technology not used");
+        return LE_UNSUPPORTED;
+    }
+
+    // Check if the given address is in IPv4 format
+    if (LE_OK != CheckIpAddress(AF_INET, ipDestAddrStr))
+    {
+        LE_ERROR("Bad address");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Retrieve the cellular interface name
+    if (   (!MobileProfileRef)
+        || (LE_OK != le_mdc_GetInterfaceName(MobileProfileRef, interfaceStr, sizeof(interfaceStr))))
+    {
+        LE_WARN("le_mdc_GetInterfaceName failed");
+        return LE_FAULT;
+    }
+
+    switch (action)
+    {
+        case ROUTE_ADD:
+            snprintf(actionStr, sizeof(actionStr), "add");
+            break;
+
+        case ROUTE_DELETE:
+            snprintf(actionStr, sizeof(actionStr), "del");
+            break;
+
+        default:
+            LE_ERROR("Unknown action %d", action);
+            return LE_FAULT;
+    }
+
+    snprintf(systemCmd, sizeof(systemCmd), "/sbin/route %s %s %s dev %s",
+             optionPtr, actionStr, ipDestAddrStr, interfaceStr);
+    LE_DEBUG("Execute '%s'", systemCmd);
+    if (-1 == system(systemCmd))
+    {
+        LE_WARN("system '%s' failed", systemCmd);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
 // APIs
 //--------------------------------------------------------------------------------------------------
 
@@ -2197,12 +2476,15 @@ le_data_RequestObjRef_t le_data_Request
 )
 {
     uint32_t command = REQUEST_COMMAND;
+    le_msg_SessionRef_t sessionRef = le_data_GetClientSessionRef();
+
     le_event_Report(CommandEvent, &command, sizeof(command));
 
     // Need to return a unique reference that will be used by Release.  Don't actually have
     // any data for now, but have to use some value other than NULL for the data pointer.
-    le_data_RequestObjRef_t reqRef = le_ref_CreateRef(RequestRefMap,
-                                                     (void*)le_data_GetClientSessionRef());
+    le_data_RequestObjRef_t reqRef = le_ref_CreateRef(RequestRefMap, (void*)sessionRef);
+
+    LE_DEBUG("Connection requested by session %p, reference %p", sessionRef, reqRef);
 
     return reqRef;
 }
@@ -2516,6 +2798,145 @@ le_data_Technology_t le_data_GetTechnology
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the cellular profile index used by the data connection service when the cellular technology
+ * is active.
+ *
+ * @return
+ *      - Cellular profile index
+ */
+//--------------------------------------------------------------------------------------------------
+int32_t le_data_GetCellularProfileIndex
+(
+    void
+)
+{
+    return GetDataProfileIndex();
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cellular profile index used by the data connection service when the cellular technology
+ * is active.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if the profile index is invalid
+ *      - LE_BUSY           the cellular connection is in use
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_SetCellularProfileIndex
+(
+    int32_t profileIndex    ///< [IN] Cellular profile index to be used
+)
+{
+    le_mrc_Rat_t rat;
+    int32_t profileIndexMin;
+    int32_t profileIndexMax;
+
+    if ((IsConnected) && (LE_DATA_CELLULAR == CurrentTech))
+    {
+        LE_ERROR("Cellular connection in use");
+        return LE_BUSY;
+    }
+
+    if (LE_OK != le_mrc_GetRadioAccessTechInUse(&rat))
+    {
+        rat = LE_MRC_RAT_GSM;
+    }
+
+    switch (rat)
+    {
+        /* 3GPP2 */
+        case LE_MRC_RAT_CDMA:
+            profileIndexMin = PA_MDC_MIN_INDEX_3GPP2_PROFILE;
+            profileIndexMax = PA_MDC_MAX_INDEX_3GPP2_PROFILE;
+        break;
+
+        /* 3GPP */
+        default:
+            profileIndexMin = PA_MDC_MIN_INDEX_3GPP_PROFILE;
+            profileIndexMax = PA_MDC_MAX_INDEX_3GPP_PROFILE;
+        break;
+    }
+
+    if (   ((profileIndex >= profileIndexMin) && (profileIndex <= profileIndexMax))
+        || (LE_MDC_DEFAULT_PROFILE == profileIndex))
+    {
+        MdcIndexProfile = profileIndex;
+        SetDataProfileIndex(profileIndex);
+        return LE_OK;
+    }
+
+    return LE_BAD_PARAMETER;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the default route activation status for the data connection service interface.
+ *
+ * @return
+ *      - true:  the default route is set by the data connection service
+ *      - false: the default route is not set by the data connection service
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_data_GetDefaultRouteStatus
+(
+    void
+)
+{
+    return DefaultRouteStatus;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add a route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only added for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_AddRoute
+(
+    const char* ipDestAddrStr     ///< [IN] The destination IP address in dotted format
+)
+{
+    return ChangeRoute(ipDestAddrStr, ROUTE_ADD);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete a route on the data connection service interface, if the data session is connected using
+ * the cellular technology and has an IPv4 or IPv6 address.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_UNSUPPORTED    cellular technology not currently used
+ *      - LE_BAD_PARAMETER  incorrect IP address
+ *      - LE_FAULT          for all other errors
+ *
+ * @note Limitations:
+ *      - only IPv4 is supported for the moment
+ *      - route only removed for a cellular connection
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_DelRoute
+(
+    const char* ipDestAddrStr     ///< [IN] The destination IP address in dotted format
+)
+{
+    return ChangeRoute(ipDestAddrStr, ROUTE_DELETE);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Server initialization
  */
 //--------------------------------------------------------------------------------------------------
@@ -2532,6 +2953,9 @@ COMPONENT_INIT
     // Create safe reference map for request references. The size of the map should be based on
     // the expected number of simultaneous data requests, so take a reasonable guess.
     RequestRefMap = le_ref_CreateMap("Requests", 5);
+
+    // Retrieve default gateway activation status
+    DefaultRouteStatus = GetDefaultRouteStatus();
 
     // Set a timer to retry the stop data session
     StopDcsTimer = le_timer_Create("StopDcsTimer");

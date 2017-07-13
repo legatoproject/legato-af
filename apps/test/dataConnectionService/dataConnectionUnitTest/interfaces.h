@@ -2,6 +2,8 @@
 #include "le_cellnet_interface.h"
 #include "le_cfg_interface.h"
 #include "le_mdc_interface.h"
+#include "le_mrc_interface.h"
+#include "le_cfg_interface.h"
 #include "le_wifiClient_interface.h"
 
 //--------------------------------------------------------------------------------------------------
@@ -20,12 +22,26 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Simulated routing config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_DEFAULTROUTE       "useDefaultRoute"
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Simulated wifi config tree
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_NODE_SSID               "SSID"
 #define CFG_NODE_SECPROTOCOL        "secProtocol"
 #define CFG_NODE_PASSPHRASE         "passphrase"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulated MDC profile config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_PROFILEINDEX       "profileIndex"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -102,4 +118,14 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
     le_msg_ServiceRef_t             serviceRef, ///< [in] Reference to the service.
     le_msg_SessionEventHandler_t    handlerFunc,///< [in] Handler function.
     void*                           contextPtr  ///< [in] Opaque pointer value to pass to handler.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulate RAT
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrcTest_SetRatInUse
+(
+    le_mrc_Rat_t rat    ///< [IN] RAT in use
 );
