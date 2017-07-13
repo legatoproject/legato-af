@@ -185,7 +185,7 @@ void GenerateMakefile
 //--------------------------------------------------------------------------------------------------
 void Generate
 (
-    const model::Module_t* modulePtr,
+    model::Module_t* modulePtr,
     const mk::BuildParams_t& buildParams,
     int argc,           ///< Count of the number of command line parameters.
     const char** argv   ///< Pointer to array of pointers to command line argument strings.

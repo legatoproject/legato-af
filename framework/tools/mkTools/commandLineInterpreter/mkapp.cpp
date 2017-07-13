@@ -334,11 +334,14 @@ void MakeApp
         modeller::PrintSummary(appPtr);
     }
 
+    // Generate code for all the components in the app.
+    GenerateCode(appPtr->components, BuildParams);
+
     // Generate app-specific code and configuration files.
     GenerateCode(appPtr, BuildParams);
 
-    // Generate code for all the components in the app.
-    GenerateCode(appPtr->components, BuildParams);
+    // Generate the build script for the application.
+    ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);
 
     // If we're building for binary distribution, then generate the redistributable .adef file to
     // go with the app.
@@ -346,9 +349,6 @@ void MakeApp
     {
         adefGen::GenerateExportedAdef(appPtr, BuildParams);
     }
-
-    // Generate the build script for the application.
-    ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);
 
     // Now delete the appPtr
     delete appPtr;

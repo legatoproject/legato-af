@@ -456,9 +456,6 @@ void MakeExecutable
 
     ConstructObjectModel();
 
-    // Generate _main.c.
-    code::GenerateExeMain(ExePtr, BuildParams);
-
     // For each component in the executable.
     for (auto componentInstancePtr : ExePtr->componentInstances)
     {
@@ -473,6 +470,10 @@ void MakeExecutable
         // Generate a custom "_componentMain.c" file for this component.
         code::GenerateComponentMainFile(componentPtr, BuildParams, false);
     }
+
+    // Generate _main.c.  Requires all components to be generated first as lib names are
+    // generated there.
+    code::GenerateExeMain(ExePtr, BuildParams);
 
     // Generate a build.ninja for the executable.
     ninja::Generate(ExePtr, BuildParams, argc, argv);

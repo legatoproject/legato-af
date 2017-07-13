@@ -82,12 +82,16 @@ void GenerateInterfacesHeader
 //--------------------------------------------------------------------------------------------------
 void GenerateComponentMainFile
 (
-    const model::Component_t* componentPtr,
+    model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams,
     bool isStandAlone   ///< true = fully resolve all interface name variables.
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // This generator is for Linux & generates necessary code to create a Linux shared library.
+    // Add the component-specific info now (if not already present)
+    componentPtr->setTargetInfo(new target::LinuxComponentInfo_t(componentPtr, buildParams));
+
     if (componentPtr->HasCOrCppCode())
     {
         GenerateCLangComponentMainFile(componentPtr, buildParams, isStandAlone);

@@ -9,13 +9,12 @@
 #ifndef LEGATO_MKTOOLS_MODEL_COMPONENT_H_INCLUDE_GUARD
 #define LEGATO_MKTOOLS_MODEL_COMPONENT_H_INCLUDE_GUARD
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Represents a single component.
  */
 //--------------------------------------------------------------------------------------------------
-struct Component_t
+struct Component_t : public HasTargetInfo_t
 {
     const parseTree::CdefFile_t* defFilePtr;  ///< Pointer to root of parse tree for .cdef file.
 
@@ -25,16 +24,12 @@ struct Component_t
 
     std::string workingDir; ///< Working dir path for this component, relative to working dir root.
 
-    std::string lib;        ///< Absolute path to component library file ("" if no lib).
-
-    std::string initFuncName;   ///< Real name of the COMPONENT_INIT function ("" if no lib).
-
     std::list<ObjectFile_t*> cObjectFiles;  ///< List of .o files to build from C source files.
     std::list<ObjectFile_t*> cxxObjectFiles;///< List of .o files to build from C++ source files.
     std::list<JavaPackage_t*> javaPackages; ///< List of packages of Java code.
     std::list<std::string> externalBuildCommands; ///< List of external build commands.
 
-    std::set<std::string> staticLibs;   ///< Static library files to be linked with the exe.
+    std::set<std::string> staticLibs;   ///< Static library files required by this component.
 
     std::list<std::string> ldFlags;     ///< List of linker options.
     std::list<std::string> cFlags;      ///< List of options to pass to the C compiler.

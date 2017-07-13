@@ -743,31 +743,25 @@ static void PrintSummary
     std::cout << mk::format(LE_I18N("== '%s' component summary =="), componentPtr->name)
               << std::endl;
 
-    if (componentPtr->lib != "")
+    if (!componentPtr->cObjectFiles.empty())
     {
-        std::cout << mk::format(LE_I18N("  Component library: '%s'"), componentPtr->lib)
-                  << std::endl;
+        std::cout << LE_I18N("  C sources:") << std::endl;
 
-        if (!componentPtr->cObjectFiles.empty())
+        for (auto objFilePtr : componentPtr->cObjectFiles)
         {
-            std::cout << LE_I18N("  C sources:") << std::endl;
-
-            for (auto objFilePtr : componentPtr->cObjectFiles)
-            {
-                std::cout << mk::format(LE_I18N("    '%s'"), objFilePtr->sourceFilePath)
-                          << std::endl;
-            }
+            std::cout << mk::format(LE_I18N("    '%s'"), objFilePtr->sourceFilePath)
+                      << std::endl;
         }
+    }
 
-        if (!componentPtr->cxxObjectFiles.empty())
+    if (!componentPtr->cxxObjectFiles.empty())
+    {
+        std::cout << LE_I18N("  C++ sources:") << std::endl;
+
+        for (auto objFilePtr : componentPtr->cxxObjectFiles)
         {
-            std::cout << LE_I18N("  C++ sources:") << std::endl;
-
-            for (auto objFilePtr : componentPtr->cxxObjectFiles)
-            {
-                std::cout << mk::format(LE_I18N("    '%s'"), objFilePtr->sourceFilePath)
-                          << std::endl;
-            }
+            std::cout << mk::format(LE_I18N("    '%s'"), objFilePtr->sourceFilePath)
+                      << std::endl;
         }
     }
 
@@ -997,40 +991,14 @@ model::Component_t* GetComponent
                                                  "build/" + buildParams.target + "/framework/lib/");
     auto liblegatoPath = path::Combine(baseLibPath, "liblegato.so");
 
-    // If the library output directory has not been specified, then put each component's library
-    // file under its own working directory.
-    std::string baseComponentPath;
-
-    if (buildParams.libOutputDir.empty())
-    {
-        baseComponentPath = path::Combine(path::Combine(buildParams.workingDir,
-                                                        componentPtr->workingDir),
-                                          "obj");
-    }
-    // Otherwise, put the component library directly into the library output directory.
-    else
-    {
-        baseComponentPath = buildParams.libOutputDir;
-    }
-
     // If there are C sources or C++ sources, a library will be built for this component.
     if (componentPtr->HasCOrCppCode())
     {
-        componentPtr->lib = path::Combine(baseComponentPath,
-                                          "libComponent_" + componentPtr->name + ".so");
-
-        // It will have an init function that will need to be executed (unless it is built
-        // "stand-alone").
-        componentPtr->initFuncName = "_" + componentPtr->name + "_COMPONENT_INIT";
-
         // Changes to liblegato should trigger re-linking of the component library.
         componentPtr->implicitDependencies.insert(liblegatoPath);
     }
     else if (componentPtr->HasJavaCode())
     {
-        componentPtr->lib = path::Combine(baseComponentPath,
-                                          "libComponent_" + componentPtr->name + ".jar");
-
         // Changes to liblegato should trigger re-linking of the component library.
         auto legatoJarPath = path::Combine(baseLibPath, "legato.jar");
         auto liblegatoJniPath = path::Combine(baseLibPath, "liblegatoJni.so");

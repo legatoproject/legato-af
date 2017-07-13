@@ -15,7 +15,7 @@
  * Represents a single application.
  */
 //--------------------------------------------------------------------------------------------------
-struct App_t
+struct App_t : public HasTargetInfo_t
 {
     App_t(parseTree::AdefFile_t* filePtr);
 

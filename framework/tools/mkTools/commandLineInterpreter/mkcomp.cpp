@@ -288,10 +288,15 @@ void MakeComponent
 
     // Generate the conceptual object model.
     model::Component_t* componentPtr = modeller::GetComponent(ComponentPath, BuildParams);
+
+    // Add Linux info -- for now always compiling for Linux.
+    componentPtr->setTargetInfo(new target::LinuxComponentInfo_t(componentPtr, BuildParams));
+
     if (!BuildOutputPath.empty())
     {
-        componentPtr->lib = BuildOutputPath;
+        componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib = BuildOutputPath;
     }
+
 
     // Generate a custom "interfaces.h" file for this component.
     code::GenerateInterfacesHeader(componentPtr, BuildParams);

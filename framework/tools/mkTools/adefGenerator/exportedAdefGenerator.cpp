@@ -8,68 +8,6 @@
 
 #include "mkTools.h"
 
-
-
-namespace std
-{
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Explicit specialization of the template std::less.  This is for use in the collection
- * std::set<FileSystemObject_t*>.
- **/
-//--------------------------------------------------------------------------------------------------
-template <>
-struct less<model::FileSystemObject_t*>
-{
-    //----------------------------------------------------------------------------------------------
-    /**
-     * Function call operator that handles the actual comparisons of the object.
-     *
-     * @return true if a is < b, false otherwise.
-     **/
-    //----------------------------------------------------------------------------------------------
-    bool operator ()
-    (
-        model::FileSystemObject_t* const& a,
-        model::FileSystemObject_t* const& b
-    )
-    const
-    //----------------------------------------------------------------------------------------------
-    {
-        // Test srcPath, is a < b?
-
-        if (a->srcPath < b->srcPath)
-        {
-            return true;
-        }
-        else if (a->srcPath > b->srcPath)
-        {
-            return false;
-        }
-
-        // srcPath is equal, so test destPath.
-
-        if (a->destPath < b->destPath)
-        {
-            return true;
-        }
-        else if (a->destPath > b->destPath)
-        {
-            return false;
-        }
-
-        // destPath is equal, so test the permissions.
-
-        return a->permissions < b->permissions;
-    }
-};
-
-
-}  // namespace std
-
-
 namespace adefGen
 {
 
@@ -794,137 +732,6 @@ static void GenerateBindings
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Append one list of FS objects to another.
- **/
-//--------------------------------------------------------------------------------------------------
-static void FsSetAppend
-(
-    FsObjectSet_t& dest,
-    const FsObjectList_t& src,
-    RemapSrc_t remap
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto item : src)
-    {
-        if (remap == RemapSrc_t::Yes)
-        {
-            std::string dirName;
-
-            if (item->permissions.IsWriteable())
-            {
-                dirName = "writeable";
-            }
-            else
-            {
-                dirName = "read-only";
-            }
-
-            dest.insert(new model::FileSystemObject_t
-                        {
-                            path::Combine(path::Combine(".", dirName), item->destPath),
-                            item->destPath,
-                            item->permissions
-                        });
-        }
-        else
-        {
-            dest.insert(item);
-        }
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gather up the required/bundled FS objects for a single component and it's sub-components.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GatherFsObjects
-(
-    const model::Component_t* componentPtr,
-    RequiredFsObject_t& required,
-    BundledFsObject_t& bundled
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gather up all the required/bundled FS objects for a component collection.
- **/
-//--------------------------------------------------------------------------------------------------
-template <typename CollectionType_t>
-static void GatherFsObjectsFromComponents
-(
-    const CollectionType_t& components,
-    RequiredFsObject_t& required,
-    BundledFsObject_t& bundled
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto component : components)
-    {
-        GatherFsObjects(component, required, bundled);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gather up the required/bundled FS objects for a given application or component object.
- **/
-//--------------------------------------------------------------------------------------------------
-template <typename ModelObject_t>
-static void AppendFromModelObject
-(
-    const ModelObject_t* modelObjectPtr,
-    RequiredFsObject_t& required,
-    BundledFsObject_t& bundled
-)
-//--------------------------------------------------------------------------------------------------
-{
-    FsSetAppend(required.files, modelObjectPtr->requiredFiles, RemapSrc_t::No);
-    FsSetAppend(required.dirs, modelObjectPtr->requiredDirs, RemapSrc_t::No);
-    FsSetAppend(required.devices, modelObjectPtr->requiredDevices, RemapSrc_t::No);
-
-    FsSetAppend(bundled.files, modelObjectPtr->bundledFiles, RemapSrc_t::Yes);
-    FsSetAppend(bundled.dirs, modelObjectPtr->bundledDirs, RemapSrc_t::Yes);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Gather up the required/bundled FS objects for a given component and it's subcomponents.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GatherFsObjects
-(
-    const model::Component_t* componentPtr,
-    RequiredFsObject_t& required,
-    BundledFsObject_t& bundled
-)
-//--------------------------------------------------------------------------------------------------
-{
-    AppendFromModelObject(componentPtr, required, bundled);
-    GatherFsObjectsFromComponents(componentPtr->subComponents, required, bundled);
-
-    if (!componentPtr->lib.empty())
-    {
-        size_t pos = componentPtr->lib.find("read-only/lib/");
-        std::string newPath = path::Combine(".", componentPtr->lib.substr(pos));
-
-        model::Permissions_t perm;
-
-        perm.SetReadable();
-        perm.SetExecutable();
-
-        bundled.files.insert(new model::FileSystemObject_t { newPath, "/lib/", perm });
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Gather up the required/bundled FS objects for a given application and it's subcomponents.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -936,22 +743,34 @@ static void GatherFsObjects
 )
 //--------------------------------------------------------------------------------------------------
 {
-    AppendFromModelObject(appPtr, required, bundled);
-    GatherFsObjectsFromComponents(appPtr->components, required, bundled);
+    path::Path_t stagingPath = "$builddir";
+    stagingPath += appPtr->workingDir;
+    stagingPath += "staging";
 
-    for (auto exeIter : appPtr->executables)
+    auto stagingPrefix = stagingPath.str + "/";
+
+    auto& allBundledFiles = appPtr->getTargetInfo<target::FileSystemAppInfo_t>()->allBundledFiles;
+
+    for (auto fileObjIter = allBundledFiles.begin();
+         fileObjIter != allBundledFiles.end();
+         ++fileObjIter)
     {
-        model::Exe_t* exePtr = exeIter.second;
+        if (fileObjIter->destPath.compare(0, stagingPrefix.length(), stagingPrefix) != 0)
+        {
+            // Internal error
+            throw mk::Exception_t(
+                mk::format(LE_I18N("INTERNAL ERROR: Bundled file '%s' (source '%s') is outside the"
+                                   " staging directory."),
+                           fileObjIter->destPath, fileObjIter->srcPath)
+            );
+        }
 
-        size_t pos = exePtr->path.find("read-only/bin/");
-        std::string newPath = path::Combine(".", exePtr->path.substr(pos));
+        auto basePath = fileObjIter->destPath.substr(stagingPrefix.length() - 1);
+        auto newPath = std::string(".") + basePath;
 
-        model::Permissions_t perm;
-
-        perm.SetReadable();
-        perm.SetExecutable();
-
-        bundled.files.insert(new model::FileSystemObject_t { newPath, "/bin/", perm });
+        bundled.files.insert(new model::FileSystemObject_t(newPath,
+                                                           basePath,
+                                                           fileObjIter->permissions));
     }
 }
 

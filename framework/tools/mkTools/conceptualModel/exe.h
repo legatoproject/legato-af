@@ -16,7 +16,7 @@ struct App_t;
  * Represents a single executable.
  */
 //--------------------------------------------------------------------------------------------------
-struct Exe_t
+struct Exe_t : public HasTargetInfo_t
 {
     Exe_t(const std::string& exePath, App_t* appPtr, const std::string& workingDir);
 

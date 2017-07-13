@@ -85,6 +85,7 @@ System --+--> Bindings --*--> Binding
 namespace model
 {
 
+#include "targetInfo.h"
 #include "programmingLanguage.h"
 #include "objectFile.h"
 #include "javaPackage.h"
@@ -102,7 +103,6 @@ namespace model
 #include "module.h"
 #include "command.h"
 #include "system.h"
-
 
 } // namespace model
 

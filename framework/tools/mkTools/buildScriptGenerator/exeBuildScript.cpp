@@ -81,7 +81,7 @@ static void GetDependentLibLdFlags
     for (auto i = list.rbegin(); i != list.rend(); i++)
     {
         auto componentPtr = (*i)->componentPtr;
-        auto& lib = componentPtr->lib;
+        auto& lib = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
 
         // If the component has itself been built into a library, link with that.
         if (lib != "")
@@ -141,7 +141,7 @@ static void GenerateBuildStatement
         for (auto componentInstancePtr : exePtr->componentInstances)
         {
             auto componentPtr = componentInstancePtr->componentPtr;
-            script << " " << componentPtr->lib;
+            script << " " << componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
 
             for (const auto& dependency : componentPtr->implicitDependencies)
             {
@@ -335,8 +335,10 @@ void GenerateBuildStatements
 
             if (componentPtr->HasJavaCode())
             {
-                classPath.push_back(componentPtr->lib);
-                dependencies.push_back(componentPtr->lib);
+                classPath.push_back(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()
+                                                ->lib);
+                dependencies.push_back(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()
+                                                   ->lib);
             }
         }
 
@@ -423,7 +425,7 @@ static void GenerateNinjaScriptBuildStatement
 //--------------------------------------------------------------------------------------------------
 void Generate
 (
-    const model::Exe_t* exePtr,
+    model::Exe_t* exePtr,
     const mk::BuildParams_t& buildParams,
     int argc,           ///< Count of the number of command line parameters.
     const char** argv   ///< Pointer to array of pointers to command line argument strings.

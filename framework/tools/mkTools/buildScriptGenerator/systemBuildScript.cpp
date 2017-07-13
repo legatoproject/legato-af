@@ -319,7 +319,7 @@ static void GenerateNinjaScriptBuildStatement
 //--------------------------------------------------------------------------------------------------
 void Generate
 (
-    const model::System_t* systemPtr,
+    model::System_t* systemPtr,
     const mk::BuildParams_t& buildParams,
     const std::string& outputDir,   ///< Path to the directory where the built system will be put.
     int argc,           ///< Count of the number of command line parameters.

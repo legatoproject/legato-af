@@ -15,7 +15,7 @@
  * Represents a single system.
  */
 //--------------------------------------------------------------------------------------------------
-struct System_t
+struct System_t : public HasTargetInfo_t
 {
     System_t(parseTree::SdefFile_t* filePtr);
 

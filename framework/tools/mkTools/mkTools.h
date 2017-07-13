@@ -29,8 +29,13 @@
 #include <stack>
 #include <stdexcept>
 #include <string>
+#include <typeindex>
+#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
+// Allow xgettext to pull all error messages.  Also prepares for localization
+#define LE_I18N(x) (x)
 
 #include "exception.h"
 #include "buildParams.h"
@@ -47,8 +52,6 @@
 #include "codeGenerator/codeGenerator.h"
 #include "configGenerator/configGenerator.h"
 #include "adefGenerator/exportedAdefGenerator.h"
-
-// Allow xgettext to pull all error messages.  Also prepares for localization
-#define LE_I18N(x) (x)
+#include "targetInfo/linux.h"
 
 #endif  // LEGATO_MKTOOLS_H_INCLUDE_GUARD

@@ -20,6 +20,11 @@ struct Permissions_t
     /// Constructor
     Permissions_t(): permissions(0) {}
     Permissions_t(const Permissions_t& original): permissions(original.permissions) {}
+    Permissions_t(bool readable,
+                  bool writable,
+                  bool executable): permissions((readable?PERM_READABLE:0) |
+                                                (writable?PERM_WRITEABLE:0) |
+                                                (executable?PERM_EXECUTABLE:0)) {}
 
     /// Getters
     bool IsReadable() const { return (permissions & PERM_READABLE); }
@@ -32,6 +37,14 @@ struct Permissions_t
     void SetExecutable() { permissions |= PERM_EXECUTABLE; }
 
     friend inline bool operator <(const Permissions_t& a, const Permissions_t& b);
+    bool operator==(const Permissions_t& a) const
+    {
+        return this->permissions == a.permissions;
+    }
+    bool operator!=(const Permissions_t& a) const
+    {
+        return !(*this == a);
+    }
 
 private:
 

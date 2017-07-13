@@ -35,7 +35,7 @@ void GenerateInterfacesHeader
 //--------------------------------------------------------------------------------------------------
 void GenerateComponentMainFile
 (
-    const model::Component_t* componentPtr,
+    model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams,
     bool isStandAlone   ///< true = fully resolve all interface name variables.
 );

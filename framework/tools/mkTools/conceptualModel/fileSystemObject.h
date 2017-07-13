@@ -24,11 +24,13 @@ struct FileSystemObject_t
     (
         const std::string& newSrcPath,
         const std::string& destPath,
-        const Permissions_t& permissions
+        const Permissions_t& permissions,
+        const FileSystemObject_t* baseObject = NULL
     )
     :   srcPath(newSrcPath),
         destPath(destPath),
-        permissions(permissions)
+        permissions(permissions),
+        parseTreePtr(baseObject?(baseObject->parseTreePtr):NULL)
     {
     }
 
@@ -37,7 +39,34 @@ struct FileSystemObject_t
     std::string srcPath;        ///< File system path where the object is found.
     std::string destPath;       ///< Path to where the object will be put on target.
     Permissions_t permissions;  ///< Read, write, and/or execute permissions on the object.
+
+    /// Two file sytem objects refer to the same file if the destination paths are the same.
+    bool operator==(const FileSystemObject_t& a) const
+    {
+        return destPath == a.destPath;
+    }
+
+    bool operator!=(const FileSystemObject_t& a) const
+    {
+        return !(*this == a);
+    }
+
+    struct Hash_t
+    {
+        typedef model::FileSystemObject_t argument_type;
+        typedef std::size_t result_type;
+
+        // Hash a FileSystemObject.  Destination path should be unique.
+        result_type operator()(const argument_type& s) const
+        {
+            return std::hash<std::string>()(s.destPath);
+        }
+    };
 };
+
+/// Convenience typedef for constructing unordered sets of file system objects.
+typedef std::unordered_set<model::FileSystemObject_t,
+                           model::FileSystemObject_t::Hash_t> FileSystemObjectSet_t;
 
 
 #endif // LEGATO_MKTOOLS_MODEL_FILE_SYSTEM_OBJECT_H_INCLUDE_GUARD

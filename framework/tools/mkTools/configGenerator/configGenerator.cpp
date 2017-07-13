@@ -431,7 +431,8 @@ static std::string GenerateClassPath
 
         if (componentPtr->HasJavaCode())
         {
-            classPath += ":lib/" + path::GetLastNode(componentPtr->lib);
+            classPath += ":lib/" +
+                path::GetLastNode(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib);
         }
     }
 

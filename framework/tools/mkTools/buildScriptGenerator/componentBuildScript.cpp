@@ -112,7 +112,8 @@ static void GenerateCommonCAndCxxFlags
     script << " -DLE_LOG_LEVEL_FILTER_PTR=" << componentPtr->name << "_LogLevelFilterPtr ";
 
     // Define the COMPONENT_INIT.
-    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void " << componentPtr->initFuncName << "()\"";
+    script << " \"-DCOMPONENT_INIT=LE_CI_LINKAGE LE_SHARED void "
+           << componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->initFuncName << "()\"";
 }
 
 
@@ -142,9 +143,9 @@ static void GetImplicitDependencies
     {
         // If the sub-component has itself been built into a library, the component depends
         // on that sub-component library.
-        if (subComponentPtr->lib != "")
+        if (subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
         {
-            script << " " << subComponentPtr->lib;
+            script << " " << subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
         }
 
         // If the sub-component has an external build step, this component depends on that
@@ -234,11 +235,18 @@ void GetDependentLibLdFlags
     for (auto subComponentPtr : componentPtr->subComponents)
     {
         // If the component has itself been built into a library, link with that.
-        if (subComponentPtr->lib != "")
+        if (subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
         {
-            script << " \"-L" << path::GetContainingDir(subComponentPtr->lib) << "\"";
+            script << " \"-L"
+                   << path::GetContainingDir(
+                       subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+                      )
+                   << "\"";
 
-            script << " -l" << path::GetLibShortName(subComponentPtr->lib);
+            script << " -l"
+                   << path::GetLibShortName(
+                       subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+                   );
         }
 
         // If the component has an external build, add the external build's working directory.
@@ -375,7 +383,8 @@ static void GenerateComponentLibBuildStatement
         return;
     }
     // Create the build statement.
-    script << "build " << componentPtr->lib << ": " << rule;
+    script << "build " << componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+           << ": " << rule;
 
     // Includes object files compiled from the component's C/C++ source files.
     for (auto objFilePtr : componentPtr->cObjectFiles)
@@ -624,7 +633,7 @@ void GenerateBuildStatements
         auto classDestPath = "$builddir/" + componentPtr->workingDir + "/obj";
 
         GenerateJavaBuildCommand(script,
-                                 componentPtr->lib,
+                                 componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib,
                                  classDestPath,
                                  sourceList,
                                  { legatoJarPath },
@@ -840,7 +849,7 @@ static void GenerateNinjaScriptBuildStatement
 //--------------------------------------------------------------------------------------------------
 void Generate
 (
-    const model::Component_t* componentPtr,
+    model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams,
     int argc,           ///< Count of the number of command line parameters.
     const char** argv   ///< Pointer to an array of pointers to command line argument strings.

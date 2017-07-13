@@ -15,7 +15,7 @@
  * Represents a single module.
  */
 //--------------------------------------------------------------------------------------------------
-struct Module_t
+struct Module_t : public HasTargetInfo_t
 {
     Module_t(parseTree::MdefFile_t* filePtr);  ///< Constructor
 

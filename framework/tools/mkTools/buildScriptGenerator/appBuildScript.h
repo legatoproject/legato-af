@@ -53,8 +53,7 @@ void GenerateExeBuildStatements
 void GenerateStagingBundleBuildStatements
 (
     std::ofstream& script,
-    std::set<std::string>& bundledFiles, ///< Set to fill with bundled file paths.
-    const model::App_t* appPtr,
+    model::App_t* appPtr,
     const mk::BuildParams_t& buildParams
 );
 
@@ -68,7 +67,7 @@ void GenerateStagingBundleBuildStatements
 void GenerateAppBundleBuildStatement
 (
     std::ofstream& script,
-    const model::App_t* appPtr,
+    model::App_t* appPtr,
     const mk::BuildParams_t& buildParams,
     const std::string& outputDir    ///< Path to the directory into which the built app will be put.
 );

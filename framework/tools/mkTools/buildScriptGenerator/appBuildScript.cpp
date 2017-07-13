@@ -189,22 +189,39 @@ static std::string PermissionsToModeFlags
 static void GenerateFileBundleBuildStatement
 (
     std::ofstream& script,
-    model::Permissions_t permissions,  ///< Permissions to set on the dest file.
-    std::set<std::string>& bundledFiles, ///< Set to fill with bundled file paths.
-    const std::string& srcPath,   ///< Absolute path of source directory on localhost.
-    const std::string& destPath,  ///< Absolute path of dest (staging) directory on localhost.
-    std::function<void(const std::string&)> exceptionFunc ///< Function to use to throw exceptions.
+    const model::FileSystemObject_t& fileObject,  ///< File object to generate
+    model::FileSystemObjectSet_t& bundledFiles    ///< Set to fill with bundled file paths.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string containingDir = path::GetContainingDir(destPath);
+    std::string containingDir = path::GetContainingDir(fileObject.destPath);
+    auto bundledFileIter = bundledFiles.find(fileObject);
 
-    if (bundledFiles.find(destPath) == bundledFiles.end())
+    if (bundledFileIter == bundledFiles.end())
     {
-        script << "build " << destPath << " : BundleFile " << srcPath << "\n"
-               << "  modeFlags = " << PermissionsToModeFlags(permissions) << "\n";
+        script << "build " << fileObject.destPath << " : BundleFile " << fileObject.srcPath << "\n"
+               << "  modeFlags = " << PermissionsToModeFlags(fileObject.permissions) << "\n";
 
-        bundledFiles.insert(destPath);
+        bundledFiles.insert(fileObject);
+    }
+    else
+    {
+        if (fileObject.srcPath != bundledFileIter->srcPath)
+        {
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("error: Cannot bundle file '%s' with destination '%s' since it"
+                                   " conflicts with existing bundled file '%s'."),
+                           fileObject.srcPath, fileObject.destPath, bundledFileIter->srcPath)
+            );
+        }
+        else if (fileObject.permissions != bundledFileIter->permissions)
+        {
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("error: Cannot bundle file '%s'.  It is already bundled with"
+                                   " different permissions."),
+                           fileObject.srcPath)
+            );
+        }
     }
 }
 
@@ -218,31 +235,30 @@ static void GenerateFileBundleBuildStatement
 static void GenerateDirBundleBuildStatements
 (
     std::ofstream& script,
-    const model::Permissions_t& permissions,
-    std::set<std::string>& bundledFiles, ///< Set to fill with bundled file paths.
-    const std::string& srcPath,   ///< Absolute path of source directory on localhost.
-    const std::string& destPath,  ///< Absolute path of dest (staging) directory on localhost.
-    std::function<void(const std::string&)> exceptionFunc ///< Function to use to throw exceptions.
+    const model::FileSystemObject_t& fileObject, ///< File system object to bundle
+    model::FileSystemObjectSet_t& bundledFiles   ///< Set to fill with bundled file paths.
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Attempt to open the source as a directory stream.
-    DIR* dir = opendir(srcPath.c_str());
+    DIR* dir = opendir(fileObject.srcPath.c_str());
     if (dir == NULL)
     {
         // If failed for some reason other than this just not being a directory,
         if (errno != ENOTDIR)
         {
             int err = errno;
-            exceptionFunc(
-                mk::format(LE_I18N("Can't access file or directory '%s' (%s)"), srcPath, strerror(err))
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("Can't access file or directory '%s' (%s)"),
+                           fileObject.srcPath,
+                           strerror(err))
             );
         }
         // If the source is not a directory,
         else
         {
-            exceptionFunc(
-                mk::format(LE_I18N("Not a directory: '%s'."), srcPath)
+            fileObject.parseTreePtr->ThrowException(
+                mk::format(LE_I18N("Not a directory: '%s'."), fileObject.srcPath)
             );
         }
     }
@@ -261,7 +277,7 @@ static void GenerateDirBundleBuildStatements
         {
             if (errno != 0)
             {
-                exceptionFunc(
+                throw mk::Exception_t(
                     mk::format(LE_I18N("Internal error: readdir() failed.  Errno = %s"),
                                strerror(errno))
                 );
@@ -275,33 +291,33 @@ static void GenerateDirBundleBuildStatements
         // Skip "." and ".."
         else if ((strcmp(entryPtr->d_name, ".") != 0) && (strcmp(entryPtr->d_name, "..") != 0))
         {
-            auto entrySrcPath = path::Combine(srcPath, entryPtr->d_name);
-            auto entryDestPath = path::Combine(destPath, entryPtr->d_name);
+            auto entrySrcPath = path::Combine(fileObject.srcPath, entryPtr->d_name);
+            auto entryDestPath = path::Combine(fileObject.destPath, entryPtr->d_name);
 
             // If this is a directory, then recursively descend into it.
             if (file::DirectoryExists(entrySrcPath))
             {
                 GenerateDirBundleBuildStatements(script,
-                                                 permissions,
-                                                 bundledFiles,
-                                                 entrySrcPath,
-                                                 entryDestPath,
-                                                 exceptionFunc);
+                                                 model::FileSystemObject_t(entrySrcPath,
+                                                                           entryDestPath,
+                                                                           fileObject.permissions,
+                                                                           &fileObject),
+                                                 bundledFiles);
             }
             // If this is a file, create a build statement for it.
             else if (file::FileExists(entrySrcPath))
             {
                 GenerateFileBundleBuildStatement(script,
-                                                 permissions,
-                                                 bundledFiles,
-                                                 entrySrcPath,
-                                                 entryDestPath,
-                                                 exceptionFunc);
+                                                 model::FileSystemObject_t(entrySrcPath,
+                                                                           entryDestPath,
+                                                                           fileObject.permissions,
+                                                                           &fileObject),
+                                                 bundledFiles);
             }
             // If this is anything else, we don't support it.
             else
             {
-                exceptionFunc(
+                fileObject.parseTreePtr->ThrowException(
                     mk::format(LE_I18N("File system object is not a directory or a file: '%s'."),
                                entrySrcPath)
                 );
@@ -322,20 +338,13 @@ static void GenerateDirBundleBuildStatements
 static void GenerateFileBundleBuildStatement
 (
     std::ofstream& script,
-    std::set<std::string>& bundledFiles, ///< Set to fill with bundled file paths.
+    model::FileSystemObjectSet_t& bundledFiles, ///< Set to fill with bundled file paths.
     const model::App_t* appPtr, ///< App to bundle the file into.
     const model::FileSystemObject_t* fileSystemObjPtr,  ///< File bundling info.
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Create a lambda function that uses the file system object's parse tree object to throw
-    // an exception that contains the definition file path, line number, etc.
-    auto throwException = [&fileSystemObjPtr](const std::string& msg)
-        {
-            fileSystemObjPtr->parseTreePtr->ThrowException(msg);
-        };
-
     // The file will be put in the app's staging area.
     path::Path_t destPath = "$builddir";
     destPath += appPtr->workingDir;
@@ -354,11 +363,11 @@ static void GenerateFileBundleBuildStatement
     destPath += fileSystemObjPtr->destPath;
 
     GenerateFileBundleBuildStatement(script,
-                                     fileSystemObjPtr->permissions,
-                                     bundledFiles,
-                                     fileSystemObjPtr->srcPath,
-                                     destPath.str,
-                                     throwException);
+                                     model::FileSystemObject_t(fileSystemObjPtr->srcPath,
+                                                               destPath.str,
+                                                               fileSystemObjPtr->permissions,
+                                                               fileSystemObjPtr),
+                                     bundledFiles);
 }
 
 
@@ -371,20 +380,13 @@ static void GenerateFileBundleBuildStatement
 static void GenerateDirBundleBuildStatements
 (
     std::ofstream& script,
-    std::set<std::string>& bundledFiles, ///< Set to fill with bundled file paths.
+    model::FileSystemObjectSet_t& bundledFiles, ///< Set to fill with bundled file paths.
     const model::App_t* appPtr, ///< App to bundle the directory into.
     const model::FileSystemObject_t* fileSystemObjPtr,  ///< Directory bundling info.
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Create a lambda function that uses the file system object's parse tree object to throw
-    // an exception that contains the definition file path, line number, etc.
-    auto throwException = [&fileSystemObjPtr](const std::string& msg)
-        {
-            fileSystemObjPtr->parseTreePtr->ThrowException(msg);
-        };
-
     // The files will be put in the app's staging area.
     path::Path_t destPath = "$builddir";
     destPath += appPtr->workingDir;
@@ -404,11 +406,11 @@ static void GenerateDirBundleBuildStatements
     destPath += fileSystemObjPtr->destPath;
 
     GenerateDirBundleBuildStatements(script,
-                                     fileSystemObjPtr->permissions,
-                                     bundledFiles,
-                                     fileSystemObjPtr->srcPath,
-                                     destPath.str,
-                                     throwException);
+                                     model::FileSystemObject_t(fileSystemObjPtr->srcPath,
+                                                               destPath.str,
+                                                               fileSystemObjPtr->permissions,
+                                                               fileSystemObjPtr),
+                                     bundledFiles);
 }
 
 
@@ -426,19 +428,20 @@ static void GenerateDirBundleBuildStatements
 void GenerateStagingBundleBuildStatements
 (
     std::ofstream& script,
-    std::set<std::string>& bundledFiles, ///< Set to fill with bundled file paths.
-    const model::App_t* appPtr,
+    model::App_t* appPtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
+    auto& allBundledFiles = appPtr->getTargetInfo<target::FileSystemAppInfo_t>()->allBundledFiles;
+
     // Start with the application's list of bundled items first, so they override any items
     // bundled by components.
     // NOTE: Source paths for bundled items are always absolute.
     for (auto fileSystemObjPtr : appPtr->bundledFiles)
     {
         GenerateFileBundleBuildStatement(script,
-                                         bundledFiles,
+                                         allBundledFiles,
                                          appPtr,
                                          fileSystemObjPtr,
                                          buildParams);
@@ -446,7 +449,7 @@ void GenerateStagingBundleBuildStatements
     for (auto fileSystemObjPtr : appPtr->bundledDirs)
     {
         GenerateDirBundleBuildStatements(script,
-                                         bundledFiles,
+                                         allBundledFiles,
                                          appPtr,
                                          fileSystemObjPtr,
                                          buildParams);
@@ -459,7 +462,7 @@ void GenerateStagingBundleBuildStatements
         for (auto fileSystemObjPtr : componentPtr->bundledFiles)
         {
             GenerateFileBundleBuildStatement(script,
-                                             bundledFiles,
+                                             allBundledFiles,
                                              appPtr,
                                              fileSystemObjPtr,
                                              buildParams);
@@ -467,7 +470,7 @@ void GenerateStagingBundleBuildStatements
         for (auto fileSystemObjPtr : componentPtr->bundledDirs)
         {
             GenerateDirBundleBuildStatements(script,
-                                             bundledFiles,
+                                             allBundledFiles,
                                              appPtr,
                                              fileSystemObjPtr,
                                              buildParams);
@@ -478,23 +481,22 @@ void GenerateStagingBundleBuildStatements
         if ((componentPtr->HasCOrCppCode()) || (componentPtr->HasJavaCode()))
         {
             auto destPath = "$builddir/" + appPtr->workingDir
-                          + "/staging/read-only/lib/libComponent_" + componentPtr->name;
-
-            if (componentPtr->HasJavaCode())
-            {
-                destPath += ".jar";
-            }
-            else
-            {
-                destPath += ".so";
-            }
+                          + "/staging/read-only/lib/" +
+                path::GetLastNode(componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib);
+            auto lib = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
 
             // Copy the component library into the app's lib directory.
             // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
-            script << "build " << destPath << " : CopyFile " << componentPtr->lib << "\n\n";
+            script << "build " << destPath << " : CopyFile "
+                   << lib << "\n\n";
 
             // Add the component library to the set of bundled files.
-            bundledFiles.insert(destPath);
+            allBundledFiles.insert(model::FileSystemObject_t(
+                                       lib,
+                                       destPath,
+                                       model::Permissions_t(true,
+                                                            false,
+                                                            componentPtr->HasCOrCppCode())));
         }
     }
 }
@@ -509,16 +511,19 @@ void GenerateStagingBundleBuildStatements
 void GenerateAppBundleBuildStatement
 (
     std::ofstream& script,
-    const model::App_t* appPtr,
+    model::App_t* appPtr,
     const mk::BuildParams_t& buildParams,
     const std::string& outputDir    ///< Path to the directory into which the built app will be put.
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::set<std::string> bundledFiles;
+    // Give this a FS target info
+    appPtr->setTargetInfo(new target::FileSystemAppInfo_t());
 
     // Generate build statements for bundling files into the staging area.
-    GenerateStagingBundleBuildStatements(script, bundledFiles, appPtr, buildParams);
+    GenerateStagingBundleBuildStatements(script,
+                                         appPtr,
+                                         buildParams);
 
     // Compute the staging directory path.
     auto stagingDir = "$builddir/" + path::Combine(appPtr->workingDir, "staging");
@@ -530,9 +535,9 @@ void GenerateAppBundleBuildStatement
     script << "build " << infoPropertiesPath << " : MakeAppInfoProperties |";
 
     // This depends on all the bundled files and executables in the app.
-    for (auto filePath : bundledFiles)
+    for (auto filePath : appPtr->getTargetInfo<target::FileSystemAppInfo_t>()->allBundledFiles)
     {
-        script << " " << filePath;
+        script << " " << filePath.destPath;
     }
     for (auto mapItem : appPtr->executables)
     {
@@ -670,7 +675,7 @@ static void GenerateNinjaScriptBuildStatement
 //--------------------------------------------------------------------------------------------------
 void Generate
 (
-    const model::App_t* appPtr,
+    model::App_t* appPtr,
     const mk::BuildParams_t& buildParams,
     const std::string& outputDir,   ///< Path to the directory into which the built app will be put.
     int argc,           ///< Count of the number of command line parameters.

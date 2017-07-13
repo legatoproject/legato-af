@@ -174,9 +174,12 @@ void GenerateCLangExeMain
                 outputFile << "    LoadLib(\"" << filePath << "\");\n";
             }
         }
-        if (!componentPtr->lib.empty())
+
+        std::string componentLib = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
+
+        if (!componentLib.empty())
         {
-            outputFile << "    LoadLib(\"" << path::GetLastNode(componentPtr->lib) << "\");\n";
+            outputFile << "    LoadLib(\"" << path::GetLastNode(componentLib) << "\");\n";
         }
     }
 
