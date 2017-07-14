@@ -9,6 +9,9 @@
  */
 
 #include "legato.h"
+#include "file.h"
+#include "dir.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -16,6 +19,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define FS_PREFIX_DATA_PATH      "/data/le_fs/"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -177,6 +181,14 @@ le_result_t le_fs_Open
     mode_t mode = 0;
     int fd;
     char path[PATH_MAX];
+
+    // Check whether input is null. filePathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (filePathPtr == NULL)
+    {
+        LE_ERROR("File path can't be null");
+        return LE_BAD_PARAMETER;
+    }
 
     // Check if the pointers are set
     *fileRefPtr = (le_fs_FileRef_t)NULL;
@@ -494,6 +506,14 @@ le_result_t le_fs_GetSize
     struct stat st;
     char path[PATH_MAX];
 
+    // Check whether input is null. filePathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (filePathPtr == NULL)
+    {
+        LE_ERROR("File path can't be null");
+        return LE_BAD_PARAMETER;
+    }
+
     // Check if the pointers are set
     if (NULL == sizePtr)
     {
@@ -546,6 +566,14 @@ le_result_t le_fs_Delete
     int rc;
     char path[PATH_MAX];
 
+    // Check whether input is null. filePathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (filePathPtr == NULL)
+    {
+        LE_ERROR("File path can't be null");
+        return LE_BAD_PARAMETER;
+    }
+
     // Check if the pointer is set
     // Check if the file path starts with '/'
     if ('/' != *filePathPtr)
@@ -576,6 +604,93 @@ le_result_t le_fs_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function checks whether a regular file exists at the provided path under file system service
+ * storage.
+ *
+ * @return
+ *  - true              If file exists and it is a regular file.
+ *  - false             Otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_fs_Exists
+(
+    const char* filePathPtr     ///< [IN] File path
+)
+{
+    char path[PATH_MAX] = "";
+
+    // Check whether input is null. filePathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (filePathPtr == NULL)
+    {
+        LE_ERROR("File path can't be null");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Check if the file path starts with '/'
+    if ('/' != *filePathPtr)
+    {
+        LE_ERROR("File path should start with '/'");
+        return false;
+    }
+
+    if (NULL == BuildPathName(path, PATH_MAX, filePathPtr))
+    {
+        return false;
+    }
+
+    return file_Exists(path);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Removes a directory located at storage managed by file system service by first recursively
+ * removing sub-directories, files, symlinks, hardlinks, devices, etc.  Symlinks are not followed,
+ * only the links themselves are deleted.
+ *
+ * A file or device may not be able to be removed if it is busy, in which case an error message
+ * is logged and LE_FAULT is returned.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
+ *  - LE_FAULT          There is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fs_RemoveDirRecursive
+(
+    const char* dirPathPtr     ///< [IN] Directory path
+)
+{
+    char path[PATH_MAX] = "";
+
+    // Check whether input is null. dirPathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (dirPathPtr == NULL)
+    {
+        LE_ERROR("Directory path can't be null");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Check if the pointer is set
+    // Check if the file path starts with '/'
+    if ('/' != *dirPathPtr)
+    {
+        LE_ERROR("File path should start with '/'");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (NULL == BuildPathName(path, PATH_MAX, dirPathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    return le_dir_RemoveRecursive(path);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function is called to rename an existing file.
  * If rename fails, the file will keep its original name.
  *
@@ -595,6 +710,21 @@ le_result_t le_fs_Move
     int rc;
     char srcPath[PATH_MAX];
     char destPath[PATH_MAX];
+
+    // Check whether input is null. srcPathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (srcPathPtr == NULL)
+    {
+        LE_ERROR("Source file path can't be null");
+        return LE_BAD_PARAMETER;
+    }
+
+    // destPathPtr can be null as it is a pointer (i.e. pointer to const char).
+    if (destPathPtr == NULL)
+    {
+        LE_ERROR("Destination file path can't be null");
+        return LE_BAD_PARAMETER;
+    }
 
     // Check if the file paths start with '/'
     if ('/' != *srcPathPtr)

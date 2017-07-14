@@ -118,8 +118,8 @@
         }
  * @endcode
  *
- * @note that even if an App calls le_avc_AcceptInstall(), the install may still be blocked by
- * another App using the @ref c_le_avc_update_app functions. To defer the decision, an App can use
+ * @note Even if an App calls le_avc_AcceptInstall(), the install may still be blocked by another
+ * App using the @ref c_le_avc_update_app functions. To defer the decision, an App can use
  * le_avc_DeferInstall() to defer the install for the specified number of minutes. After the defer
  * time has elapsed, the pending install notification will be re-sent to allow Apps to make a new
  * decision, or again defer.
@@ -158,6 +158,11 @@
  * by user Apps to open or close session will be forwarded to the session control handler. If no App
  * has registered a session request handler, AVC session can be opened or closed anytime by
  * user Apps.
+ *
+ * @note If firmware is updated (via fwupdate tool) or new legato is installed (via instlegato)
+ * , all suspend/resume information stored by avcService is erased. So if developer updates firmware
+ * or legato (via ethernet or ecm etc.) in the middle of any update initiated by avcService, this
+ * need to be cancelled and restarted again from airVantage server.
  *
  * @section c_le_avc_Timers Timers
  *

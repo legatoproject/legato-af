@@ -18,6 +18,8 @@
  * - get the size of a file with le_fs_GetSize()
  * - delete a file with le_fs_Delete()
  * - move a file with le_fs_Move()
+ * - recursively deletes a folder with le_fs_RemoveDirRecursive()
+ * - checks whether a regular file exists le_fs_Exists()
  *
  *
  * <HR>
@@ -228,6 +230,42 @@ le_result_t le_fs_Move
 (
     const char* srcPath, ///< [IN] Path to file to rename
     const char* destPath ///< [IN] New path to file
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Removes a directory located at storage managed by file system service by first recursively
+ * removing sub-directories, files, symlinks, hardlinks, devices, etc.  Symlinks are not followed,
+ * only the links themselves are deleted.
+ *
+ * A file or device may not be able to be removed if it is busy, in which case an error message
+ * is logged and LE_FAULT is returned.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    The prefix cannot be added and the function is unusable
+ *  - LE_FAULT          There is an error.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fs_RemoveDirRecursive
+(
+    const char* dirPathPtr     ///< [IN] Directory path
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function checks whether a regular file exists at the provided path under file system service
+ * storage.
+ *
+ * @return
+ *  - true              If file exists and it is a regular file.
+ *  - false             Otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_fs_Exists
+(
+    const char* filePathPtr     ///< [IN] File path
 );
 
 #endif // LE_FS_H_INCLUDE_GUARD

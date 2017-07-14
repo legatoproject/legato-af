@@ -49,6 +49,7 @@
 #include "updateCtrl.h"
 #include "installer.h"
 #include "properties.h"
+#include "fsSys.h"
 
 
 // Default probation period.
@@ -1357,6 +1358,11 @@ static void FinishSystemUpdate
 
         // Cleanup unnecessary trees copied from old system.
         CleanupAppConfigTrees();
+
+        // Flag that new system is installed. This function should be called before deleting the
+        // 'user', 'app' and 'module' config trees. Otherwise, race condition may arise if there
+        // is a power cut immediately after deletion of these config trees.
+        fsSys_FlagNewSys();
 
         // Delete users.cfg and apps.cfg.
         DeleteFile(usersFilePath);
