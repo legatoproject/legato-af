@@ -62,6 +62,10 @@
  * @c le_sms_Send() is a blocking function, it will return once the Modem has given back a
  * positive or negative answer to the sending operation. The return of @c le_sms_Send() API
  * provides definitive status of the sending operation.
+ * TP-Validity-Period(TP-VP) parameter value indicates the time period for which the short message
+ * is valid, i.e. for how long the Service Center (SC) shall guarantee its existence in the SC
+ * memory before delivery to the recipient has been carried out. The default validity period(TP-VP)
+ * is set to 7 days for MO SMS.
  *
  * When a message sending has failed and returned LE_FAULT, call le_sms_GetErrorCode() to retrieve
  * the 3GPP message error code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error
@@ -75,6 +79,7 @@
 
  * To send an asynchronous message, le_sms_SendAsync() API can be called instead of le_sms_Send()
  *  and a specific timeout value can be used with le_sms_SetTimeout() API.
+ * The default validity period(TP-VP) is set to 7 days for MO SMS.
  *
  * A text message can be sent with one simple function: le_sms_SendText(). You only have to pass
  *  the three following parameters:
@@ -83,12 +88,14 @@
  * characters as only the 7-bit alphabet is supported.
  * - the callback function to get a notification indicating the sending result: LE_SMS_SENT,
  *  LE_SMS_SENDING_FAILED or LE_SMS_SENDING_TIMEOUT.
+ * The default validity period(TP-VP) is set to 7 days for MO SMS.
  *
  * A PDU message can be sent using the le_sms_SendPdu() functions. The parameters to give are:
  * - the PDU content, total length is set with this API, maximum 176 bytes long = 36 (header) +
  *  140 (payload).
  * - the callback function to get a notification indicating the sending result: LE_SMS_SENT,
  *  LE_SMS_SENDING_FAILED or LE_SMS_SENDING_TIMEOUT.
+ * The default validity period(TP-VP) is set to 7 days for MO SMS.
  *
  * When a message sending has failed, call le_sms_GetErrorCode() to retrieve the 3GPP message error
  * code or le_sms_Get3GPP2ErrorCode() to retrieve the 3GPP2 message error code.
