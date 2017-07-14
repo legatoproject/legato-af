@@ -611,8 +611,6 @@ static void SendIntermediateRsp
     RspString_t* rspStringPtr
 )
 {
-    devPtr->rspState = AT_RSP_INTERMEDIATE;
-
     if (rspStringPtr == NULL)
     {
         LE_ERROR("Bad rspStringPtr");
@@ -625,6 +623,8 @@ static void SendIntermediateRsp
         le_mem_Release(rspStringPtr);
         return;
     }
+
+    devPtr->rspState = AT_RSP_INTERMEDIATE;
 
     // Check if command is currently in processing
     if ((!devPtr->processing) ||
@@ -651,8 +651,6 @@ static void SendUnsolRsp
     RspString_t* rspStringPtr
 )
 {
-    devPtr->rspState = AT_RSP_UNSOLICITED;
-
     if (rspStringPtr == NULL)
     {
         LE_ERROR("Bad rspStringPtr");
@@ -665,6 +663,8 @@ static void SendUnsolRsp
         le_mem_Release(rspStringPtr);
         return;
     }
+
+    devPtr->rspState = AT_RSP_UNSOLICITED;
 
     if (!devPtr->processing && !devPtr->suspended)
     {

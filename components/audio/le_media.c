@@ -1331,12 +1331,19 @@ static void PlayTreatEvent
 )
 {
     le_audio_Stream_t* streamPtr = param1Ptr;
-    le_audio_PcmContext_t* pcmContextPtr = streamPtr->pcmContextPtr;
+    le_audio_PcmContext_t* pcmContextPtr = NULL;
     bool mediaClose = false;
 
-    if (!streamPtr || !pcmContextPtr)
+    if (!streamPtr)
     {
-        LE_ERROR("streamPtr or pcmContextPtr is null !!!");
+        LE_ERROR("streamPtr is null !!!");
+        return;
+    }
+
+    pcmContextPtr = streamPtr->pcmContextPtr;
+    if (!pcmContextPtr)
+    {
+        LE_ERROR("pcmContextPtr is null !!!");
         return;
     }
 
@@ -1525,14 +1532,20 @@ static void PlayCaptResult
 )
 {
     le_audio_Stream_t* streamPtr = contextPtr;
-    le_audio_PcmContext_t* pcmContextPtr = streamPtr->pcmContextPtr;
+    le_audio_PcmContext_t* pcmContextPtr = NULL;
 
-    if (!streamPtr || !pcmContextPtr)
+    if (!streamPtr)
     {
-        LE_ERROR("streamPtr %p or pcmContextPtr %p is null !!!", streamPtr, pcmContextPtr);
+        LE_ERROR("streamPtr %p is null !!!", streamPtr);
         return;
     }
 
+    pcmContextPtr = streamPtr->pcmContextPtr;
+    if (!pcmContextPtr)
+    {
+        LE_ERROR("pcmContextPtr %p is null !!!", pcmContextPtr);
+        return;
+    }
     if (LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY == streamPtr->audioInterface)
     {
         LE_DEBUG("Playback result: res %d mainThreadRef %p", res, pcmContextPtr->mainThreadRef);

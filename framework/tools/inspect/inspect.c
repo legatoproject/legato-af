@@ -3401,12 +3401,14 @@ static void LookupThreadName
     do
     {
         threadObjRef = GetNextThreadObj(threadObjIterRef);
-
-        if (threadObjSafeRefAddr == (size_t)threadObjRef->safeRef)
+        if (threadObjRef)
         {
-            // copy thread name to the out buffer
-            strncpy(threadObjNameBuffer, threadObjRef->name, threadObjNameBufferSize);
-            return;
+            if (threadObjSafeRefAddr == (size_t)threadObjRef->safeRef)
+            {
+               // copy thread name to the out buffer
+               strncpy(threadObjNameBuffer, threadObjRef->name, threadObjNameBufferSize);
+               return;
+            }
         }
     }
     while (threadObjRef != NULL);
