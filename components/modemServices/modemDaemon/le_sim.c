@@ -258,6 +258,7 @@ static void GetSimCardInformation
         case LE_SIM_ABSENT:
             simPtr->ICCID[0] = '\0';
             simPtr->IMSI[0] = '\0';
+            simPtr->phoneNumber[0] = '\0';
             simPtr->isPresent = false;
             break;
 
@@ -495,6 +496,7 @@ le_result_t le_sim_Init
         SimList[i].simId = i;
         SimList[i].ICCID[0] = '\0';
         SimList[i].IMSI[0] = '\0';
+        SimList[i].phoneNumber[0] = '\0';
         SimList[i].isPresent = false;
         SimList[i].Subscription = UNKNOWN_SUBSCRIPTION;
         GetSimCardInformation(&SimList[i], LE_SIM_ABSENT);
