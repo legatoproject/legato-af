@@ -101,6 +101,8 @@ ifneq ($(MAKECMDGOALS),clean)
     export TARGET_CC = $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)gcc
   endif
 
+  export $(TARGET)_CC = $(TARGET_CC)
+
 endif
 
 include $(wildcard modules/*/moduleDefs)
@@ -239,7 +241,7 @@ sdk: tools
 FRAMEWORK_TARGETS = $(foreach target,$(TARGETS),framework_$(target))
 .PHONY: $(FRAMEWORK_TARGETS)
 $(FRAMEWORK_TARGETS): tools package.properties
-	$(MAKE) -f Makefile.framework
+	$(MAKE) -f Makefile.framework CC=$(TARGET_CC)
 
 # Rule building the C tests for a given target
 TESTS_C_TARGETS = $(foreach target,$(TARGETS),tests_c_$(target))

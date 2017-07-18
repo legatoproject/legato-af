@@ -1,6 +1,6 @@
 /** @page defFilesOverview Overview
 
-Legato definition files are used as input to the @ref buildTools tools @c mksys, @c mkapp,
+Legato definition files are used as input to the @ref toolsBuild tools @c mksys, @c mkapp,
 @c mkcomp, and @c mkexe (known collectively as the mk tools). The definition files, together
 with @ref apiFiles, make it easier to develop component-based software, automatically generating a
 lot of boiler-plate code.

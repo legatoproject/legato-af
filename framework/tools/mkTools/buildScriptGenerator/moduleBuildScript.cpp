@@ -118,7 +118,7 @@ void GenerateMakefile
 {
     std::string buildPath = path::MakeAbsolute(buildParams.workingDir
                                 + "/modules/" + modulePtr->name);
-    std::string compilerPath = GetCCompilerPath(envVars::Get("LEGATO_TARGET"));
+    const std::string& compilerPath = buildParams.cCompilerPath;
 
     std::ofstream makefile;
     OpenFile(makefile, buildPath + "/Makefile", buildParams.beVerbose);

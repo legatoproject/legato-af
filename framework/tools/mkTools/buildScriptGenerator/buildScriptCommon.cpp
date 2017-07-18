@@ -133,16 +133,26 @@ void GenerateBuildRules
 )
 //--------------------------------------------------------------------------------------------------
 {
-    std::string target = buildParams.target;
-    std::string cCompilerPath = GetCCompilerPath(target);
-    std::string cxxCompilerPath = GetCxxCompilerPath(target);
-    std::string crossToolPath = GetToolChainPath(target);
+    const std::string& target = buildParams.target;
+    const std::string& cCompilerPath = buildParams.cCompilerPath;
+    const std::string& cxxCompilerPath = buildParams.cxxCompilerPath;
     std::string sysrootOption;
+    std::string crossToolPath;
 
-    std::string envValue = envVars::Get("LEGATO_SYSROOT");
-    if (!envValue.empty())
+    if (!buildParams.sysrootPath.empty())
     {
-        sysrootOption = path::Combine("--sysroot=", envValue);
+        sysrootOption = "--sysroot=" + buildParams.sysrootPath;
+    }
+
+    if (!cCompilerPath.empty())
+    {
+        crossToolPath = path::GetContainingDir(cCompilerPath);
+
+        // "." is not valid for our purposes.
+        if (crossToolPath == ".")
+        {
+            crossToolPath = "";
+        }
     }
 
     // Generate rule for compiling a C source code file.
@@ -280,9 +290,7 @@ void GenerateBuildRules
     script << "rule BuildExternal\n"
               "  description = Running external build step\n"
               "  command = cd $builddir/$workingdir; $\n"
-              "            env CC=" << cCompilerPath << " $\n"
-              "            CXX=" << cxxCompilerPath << " $\n"
-              "            CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
+              "            env CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
               "            CXXFLAGS=\"" << sysrootOption << " $cxxFlags\" $\n"
               "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n";
     if (!crossToolPath.empty())

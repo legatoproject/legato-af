@@ -192,7 +192,7 @@ Legato.
 Remove the @c /opt/swi directory and all of it contents.
 
 Revert any changes you may have made to your .bashrc, .profile etc. that were used to set up
-xxxxx_TOOLCHAIN_DIR environment variables.
+xxxxx_TOOLCHAIN_DIR and related build environment variables.
 
 Remove any packages (that are no longer needed) that were installed in @ref buildPackages .
 

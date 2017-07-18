@@ -1,19 +1,34 @@
 /** @page buildToolsmkcomp mkcomp
 
-Make Component: run @c mkcomp to pre-build a component library (<c>.so</c>) file.
+@c mkcomp can be used to build libraries from component sources, if
+a separate step is needed as a part of a complex, custom, staged build system
+(instead of letting @c mksys, @c mkapp, or @c mkexe handle it).  But, this should generally be
+avoided.
 
-@c mkcomp is normally not needed when building through the command line.
+@warning This tool is really only here for legacy reasons, and it will likely be removed in future
+versions of Legato.
 
-When using the command line, an entire app or system of interacting apps can be
-built using @ref buildToolsmkapp or @ref buildToolsmksys.  Those tools also build the component
-libraries as needed.
+@c mkcomp can be used to pre-build a component library (<c>.so</c>) file.
 
-@c mkcomp is primarily a workaround to support integration with some legacy programs that implement
-their own @c main() function.  In such cases, @c mkcomp can be used to build component libraries
-for use by the legacy program.
+@c mkcomp is normally not needed when building through the command line (and is not guaranteed to
+work and is <b> not supported </b>).
 
-To display usage, run
-@verbatim mkcomp --help@endverbatim
+Use @ref buildToolsmksys or @ref buildToolsmkapp.  Those tools also build the component
+libraries, as needed, and @ref buildToolsmksys can even perform optimizations like sharing of
+component libraries between apps.
+
+@c mkcomp is a legacy tool that was used at times as a workaround to support integration with
+some legacy programs that implement their own @c main() function.  But, the procedure for doing
+that has changed (see @ref howToPortLegacyGen).
+
+To display usage info, run
+
+@verbatim
+$ mkcomp --help
+@endverbatim
+
+See @ref buildToolsmk_ToolChainConfig for information on how @c mkcomp decides what compilers, etc.
+to use.
 
 <HR>
 

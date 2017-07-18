@@ -424,8 +424,12 @@ void MakeExecutable
 {
     GetCommandLineArgs(argc, argv);
 
+    // Get tool chain info from environment variables.
+    // (Must be done after command-line args parsing and before setting target-specific env vars.)
+    FindToolChain(BuildParams);
+
     // Set the target-specific environment variables (e.g., LEGATO_TARGET).
-    envVars::SetTargetSpecific(BuildParams.target);
+    envVars::SetTargetSpecific(BuildParams);
 
     // If we have not been asked to ignore any already existing build.ninja, and the command-line
     // arguments and environment variables we were given are the same as last time, just run ninja.

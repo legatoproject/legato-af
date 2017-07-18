@@ -266,7 +266,7 @@ created to generate the latest version of definition files from the various vers
 Parse Trees that are supported.  E.g., parse using old version, then modify the parse tree to
 the new version and regenerate the file.
 
-Digital signing of system and application update files will be added to the update-pack
+Digital signing of system and application update files can be added to the update-pack
 stage of the build.
 
 We could allow the "bundles" section to be used in the .sdef.

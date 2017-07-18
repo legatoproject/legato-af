@@ -1,41 +1,31 @@
-/** @page buildTools Build
+/** @page toolsBuild Build Tools
 
-@section buildTools_mktoolsOverview Overview
+The most commonly used Legato build tools are:
 
-Legato AF contains tools to build components, drivers, executables, apps and app systems.
+| Tool                  |  Description                                                         |
+|---------------        |--------------------------------------------------------------------- |
+| @ref buildToolsmksys  | Generate a system bundle to install and run on a target.             |
+| @ref buildToolsmkapp  | Generate a binary app package to distribute to others for use in their systems or an app bundle to install and run on a target. |
 
-| Tool                      |  Description                                                         |
-|---------------            |--------------------------------------------------------------------- |
-| @subpage buildToolsmkapp  | Generate an app bundle to install and run on a target.               |
-| @subpage buildToolsmksys  | Generate a system bundle to install and run on a target.             |
-| @subpage buildToolsmkexe  | Create an executable program.                                        |
-| @subpage buildToolsmkcomp | Pre-build a component library ( @c .so) file.                        |
+The Legato Framework includes a set of build tools that aim to reduce development and maintenance
+effort by
+ - generating boiler-plate code
+ - simplifying component-based software development
+ - building and packaging drivers from kernel objects or source code
+ - packaging apps and config settings for deployment to target devices.
 
-Build tools are used to:
- - generate boiler-plate code
- - simplify component-based software development
- - package and build drivers from kernel objects or source code
- - package apps and config settings to deploy to targets.
+There are two main sets of tools:
+- @subpage buildToolsmk, a group of related tools for
+<b>building components, executables and apps</b> for deployment to a target device
+- @subpage buildToolsifgen, a code generator for generating IPC code from <c>.api</c>
+files.
 
-@ref buildToolsmksys and @ref buildToolsmkapp build apps and systems for deployment on Target
-Devices.  @ref buildToolsmksys is a powerful tool that checks all app bindings before deployment to
-prevent build bugs in your app and prevent the app from hanging.
-
-@ref buildToolsmkexe is used to build an executable for a target without packaging it
-as an app.  This can be useful to build command-line tools to copy to
-a target or bundle in a root file system image.
-
-@ref buildToolsmkcomp can be used to build libraries from component sources, if
-a separate step is needed as a part of a complex, custom, staged build system
-(instead of letting mksys, mkapp, or mkexe handle it).
-
-@section buildToolsIfGen Interface Generation Tool
-
-The @subpage buildToolsifgen tool is used to parse interface def .api files and generate include
-files and IPC code. The @c ifgen tool is usually run automatically by @c mktools.
-
+@note @ref buildToolsifgen is normally automatically invoked by the @ref buildToolsmk,
+so you can generally ignore it unless you are trying to interface something that doesn't use
+Legato with something that does use Legato.
 
 <HR>
+
 Copyright (C) Sierra Wireless Inc.
 
 **/

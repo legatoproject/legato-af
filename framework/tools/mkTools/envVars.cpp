@@ -15,7 +15,6 @@
 extern char**environ;
 
 
-
 namespace envVars
 {
 
@@ -64,7 +63,7 @@ std::string GetRequired
     if (value == nullptr)
     {
         throw mk::Exception_t(
-            mk::format(LE_I18N("The required environment value %s has not been set."), name)
+            mk::format(LE_I18N("The required environment variable %s has not been set."), name)
         );
     }
 
@@ -94,6 +93,69 @@ void Set
 }
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set compiler, linker, etc. environment variables according to the target device type, if they're
+ * not already set.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetToolChainVars
+(
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    if (!buildParams.cCompilerPath.empty())
+    {
+        Set("CC", buildParams.cCompilerPath.c_str());
+    }
+
+    if (!buildParams.cxxCompilerPath.empty())
+    {
+        Set("CXX", buildParams.cxxCompilerPath.c_str());
+    }
+
+    if (!buildParams.sysrootPath.empty())
+    {
+        Set("LEGATO_SYSROOT", buildParams.sysrootPath.c_str());
+    }
+
+    if (!buildParams.linkerPath.empty())
+    {
+        Set("LD", buildParams.linkerPath.c_str());
+    }
+
+    if (!buildParams.archiverPath.empty())
+    {
+        Set("AR", buildParams.archiverPath.c_str());
+    }
+
+    if (!buildParams.assemblerPath.empty())
+    {
+        Set("AS", buildParams.assemblerPath.c_str());
+    }
+
+    if (!buildParams.stripPath.empty())
+    {
+        Set("STRIP", buildParams.stripPath.c_str());
+    }
+
+    if (!buildParams.objcopyPath.empty())
+    {
+        Set("OBJCOPY", buildParams.objcopyPath.c_str());
+    }
+
+    if (!buildParams.readelfPath.empty())
+    {
+        Set("READELF", buildParams.readelfPath.c_str());
+    }
+    else
+    {
+        std::cout << "*************************** readelfPath is empty\n";
+    }
+}
+
+
 //----------------------------------------------------------------------------------------------
 /**
  * Adds target-specific environment variables (e.g., LEGATO_TARGET) to the process's environment.
@@ -105,14 +167,17 @@ void Set
 //----------------------------------------------------------------------------------------------
 void SetTargetSpecific
 (
-    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
     // WARNING: If you add another target-specific variable, remember to update IsReserved().
 
+    // Set compiler, linker, etc variables specific to the target device type, if they're not set.
+    SetToolChainVars(buildParams);
+
     // Set LEGATO_TARGET.
-    Set("LEGATO_TARGET", target.c_str());
+    Set("LEGATO_TARGET", buildParams.target.c_str());
 
     // Set LEGATO_BUILD based on the contents of LEGATO_ROOT, which must be already defined.
     std::string path = GetRequired("LEGATO_ROOT");
@@ -120,21 +185,8 @@ void SetTargetSpecific
     {
         throw mk::Exception_t(LE_I18N("LEGATO_ROOT environment variable is empty."));
     }
-    path = path::Combine(path, "build/" + target);
+    path = path::Combine(path, "build/" + buildParams.target);
     Set("LEGATO_BUILD", path.c_str());
-
-    // Set LEGATO_SYSROOT.
-    auto sysRoot = ninja::GetSysRootPath(ninja::GetCCompilerPath(target));
-    if (!sysRoot.empty())
-    {
-        if (setenv("LEGATO_SYSROOT", sysRoot.c_str(), false /* not overwrite existing */) != 0)
-        {
-            throw mk::Exception_t(
-                mk::format(LE_I18N("Failed to set LEGATO_SYSROOT environment variable to '%s'."),
-                           sysRoot)
-            );
-        }
-    }
 }
 
 

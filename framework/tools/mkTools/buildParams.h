@@ -34,6 +34,17 @@ struct BuildParams_t
     bool                    codeGenOnly;        ///< true = only generate code, don't compile, etc.
     bool                    binPack;            ///< true = generate a binary package for redist.
 
+    // File system paths to tool chain executables
+    std::string             cCompilerPath;      ///< C compiler
+    std::string             cxxCompilerPath;    ///< C++ compiler
+    std::string             sysrootPath;        ///< Root directory of compiler's system files
+    std::string             linkerPath;         ///< Linker
+    std::string             archiverPath;       ///< Static library archiver
+    std::string             assemblerPath;      ///< Assembler
+    std::string             stripPath;          ///< Debug symbol stripper (needed for -d option)
+    std::string             objcopyPath;        ///< Object file copier (needed for -d option)
+    std::string             readelfPath;        ///< ELF file reader (needed for -d option)
+
     /// Constructor
     BuildParams_t();
 };

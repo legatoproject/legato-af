@@ -29,9 +29,13 @@ if [[ $# != 1 ]]; then
     exit 1
 fi
 
-PATH="${TOOLCHAIN_DIR}:${PATH}"
+BUILD_ID=$(${READELF} -n $1|sed 's/    Build ID: //;t;d')
+if [ $? -ne 0 -o -z "$BUILD_ID" ]
+then
+    echo "Failed to extract build ID from '$1'" >&2
+    exit 1
+fi
 
-BUILD_ID=$(${TOOLCHAIN_PREFIX}readelf -n $1|sed 's/    Build ID: //;t;d')
 mkdir -p $DEBUG_DIR/.build-id/${BUILD_ID:0:2}
-${TOOLCHAIN_PREFIX}objcopy --only-keep-debug $1 $DEBUG_DIR/.build-id/${BUILD_ID:0:2}/${BUILD_ID:2}.debug
-${TOOLCHAIN_PREFIX}strip --strip-unneeded $1
+${OBJCOPY} --only-keep-debug $1 $DEBUG_DIR/.build-id/${BUILD_ID:0:2}/${BUILD_ID:2}.debug
+${STRIP} --strip-unneeded $1

@@ -1,14 +1,16 @@
 /** @page buildToolsifgen ifgen
 
 The @c ifgen Interface Generation tool parses interface definition (<c>.api</c>) files,
-and generates include files and IPC code (as needed).
+and generates IPC code (as needed).
 
-@c ifgen can be run manually, but it's usually run automatically by
-the @c mktools.
+@c ifgen is usually run automatically by the @ref buildToolsmk, but can
+be used on its own to generate IPC code to be compiled into a legacy program that is built
+using its own build system.  See @ref howtoPortingLegacyC_useLegatoSvcs for more information
+on this use case.
 
 @c ifgen usage details are displayed using the @c -h or @c -@c -help options:
 
-Related info about ifgen: @ref apiFiles.
+Related info about <c>ifgen</c>: @ref apiFiles.
 
 <HR>
 

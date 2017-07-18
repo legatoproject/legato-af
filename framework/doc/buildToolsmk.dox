@@ -1,0 +1,129 @@
+/** @page buildToolsmk mk Tools
+
+@section buildToolsmk_Overview Overview
+
+| Tool                      |  Description                                                         |
+|---------------            |--------------------------------------------------------------------- |
+| @subpage buildToolsmksys  | Generate a system bundle to install and run on a target.             |
+| @subpage buildToolsmkapp  | Generate a binary app package to distribute to others for use in their systems or an app bundle to install and run on a target. |
+| @subpage buildToolsmkexe  | Create an executable program. (You should never need this.)          |
+| @subpage buildToolsmkcomp | Pre-build a component library ( @c .so) file. (You should never need this.) |
+
+@ref buildToolsmksys is the @b preferred tool to use. It checks inter-app communications bindings
+to prevent build bugs in your app and prevent the app from hanging at start-up because of missing
+or misspelled bindings.  The output of @ref buildToolsmksys is an update bundle that contains
+all the apps that your device should be running, so your device can be @b atomically updated
+(meaning all or none).  Using this approach ensures that your device is never left in a
+partially-updated, non-working state.
+
+
+@section buildToolsmk_ToolChainConfig Tool Chain Configuration
+
+This section describes how the mk tools choose what compilers, linkers, etc. to use and how
+to control that choice.
+
+@subsection buildToolsmk_ToolChainConfig_C C/C++
+
+@warning The mk tools are designed to work with the GNU Compiler Collection (gcc and related tools)
+and other tools (such as @c clang) that are command-line compatible with GCC.  If your tool chain
+doesn't accept the same command-line arguments as GCC, then you will almost certainly
+not be able to use the mk tools.
+
+@subsubsection buildToolsmk_ToolChainConfig_C_TargetSpecific Target-Specific Tool Path Environment Variables
+
+The selection of compiler, linker, etc., can be controlled by the @b target command-line option
+that is provided to the tool via the @c -t option.  E.g., to choose the "wp85" target with @c mksys:
+
+@verbatim
+$ mksys -t wp85 mySystem.sdef
+@endverbatim
+
+The mk tools will convert this target name to @b uppercase, and then look for environment variables
+that begin with this target name as follows
+(where @c XXXX should be replaced by the target name in all uppercase):
+
+| Env Var Name     | Tool                                 |
+|----------------- |------------------------------------- |
+| @c XXXX_CC       | C compiler                           |
+| @c XXXX_CXX      | C++ compiler                         |
+| @c XXXX_LD       | Linker                               |
+| @c XXXX_AR       | Archiver                             |
+| @c XXXX_AS       | Assembler                            |
+| @c XXXX_STRIP    | Debug symbol stripper                |
+| @c XXXX_OBJCOPY  | Object file copier/translator        |
+| @c XXXX_READELF  | ELF file information extraction tool |
+
+In addition, it's possible to select the compiler sysroot using an environment variable:
+
+| Env Var Name    | Tool                   |
+|---------------- |----------------------- |
+| @c XXXX_SYSROOT | C/C++ compiler sysroot directory path |
+
+@note If the compiler sysroot path is not specified, and the compiler is @c gcc, then the mk tools
+will ask @c gcc what its default sysroot path is.
+
+So, for example,
+
+@verbatim
+$ mksys -t wp85 mySystem.sdef
+@endverbatim
+
+will use the following environment variables if they are set:
+
+@verbatim
+WP85_CC
+WP85_CXX
+WP85_LD
+WP85_AR
+WP85_AS
+WP85_STRIP
+WP85_OBJCOPY
+WP85_READELF
+WP85_SYSROOT
+@endverbatim
+
+@note The target name specified on the command-line will also be made available to def files in the
+@c LEGATO_TARGET environment variable (see @ref defFileFormatUsingEnvVarsIn).
+
+@subsubsection buildToolsmk_ToolChainConfig_C_MixedCaseToolVars Using Mixed-Case Target Names
+
+If one of the above mentioned variables is not found, the mk tools will try looking for a variable
+that does @e not have the target name converted to all uppercase.
+
+For example, if @c WP85_CC can't be found, then the mk tools will look for @c wp85_CC.
+
+@subsubsection buildToolsmk_ToolChainConfig_C_NonTargetSpecific Non-Target-Specific Tool Variables
+
+If neither of the above forms of target-specific variable is found for a given tool, the mk tools
+will look for a non-target-specific variable, such as @c CC.
+
+@subsubsection buildToolsmk_ToolChainConfig_C_DirAndPrefix XXXX_TOOLCHAIN_DIR and XXXX_TOOLCHAIN_PREFIX
+
+The mk tools also support the option
+of leaving a tool-specific variable (like @c CC, @c WP85_CC, etc.) unset, and instead setting
+the @c XXXX_TOOLCHAIN_DIR and/or @c XXXX_TOOLCHAIN_PREFIX variables.
+
+| Env Var Name  | Tool                   |
+|-------------- |----------------------- |
+| @c XXXX_TOOLCHAIN_DIR | Directory in which the build tools can be found |
+| @c XXXX_TOOLCHAIN_PREFIX | Prefix of the names of the tools (e.g., "arm-poky-linux-gnueabi-") |
+
+In this case, the mk tools will assume that the tools in the directory specified by
+@c XXXX_TOOLCHAIN_DIR are the GNU Compiler Collection, and that the names of those executables
+are prefixed with the string contained in @c XXXX_TOOLCHAIN_PREFIX.
+
+For example, if building for the @c wp85 target and all of @c WP85_CC, @c wp85_CC, and @c CC are
+not set, then the mk tools will generate @c CC as follows:
+
+@verbatim
+CC=${WP85_TOOLCHAIN_DIR}/${WP85_TOOLCHAIN_PREFIX}gcc
+@endverbatim
+
+And, if the all-uppercase version of one of these is not found, the mk tools will look for the
+mixed-case version.  E.g., @c wp85_TOOLCHAIN_DIR.
+
+<HR>
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

@@ -1,18 +1,28 @@
 /** @page buildToolsmkexe mkexe
 
-Make Executable: run @c mkexe to create an executable program.
+@c mkexe builds an executable for a target without packaging it as an app.
+It's used to build some internal parts of the framework, such as the Supervisor and
+Service Directory.
 
-@c mkexe is normally not needed.  The @ref buildToolsmkapp or @ref buildToolsmksys should
-be used to build an entire app or system of interacting apps to deploy to a target device.
+@c mkexe is normally not needed outside of the framework build.
+Instead, @ref buildToolsmksys (or @ref buildToolsmkapp) should be used to build apps to deploy to
+a target device.
 
-@c mkexe is only needed to build an executable program to copy to a target device and
-run outside of any app.  This sometimes comes in handy to build:
- - command-line tools that can be run by the root user through @c ssh or
- - programs executed by other on-target programs after the Legato framework has started
- (e.g., scripts to run when a DHCP client is granted or loses a DHCP lease).
+@c mkexe can be used to build command-line tools to copy to a target
+or to bundle in a root file system image; but using @c mkexe for this purpose isn't really
+necessary.  Command-line tools can be placed inside an app and either that app can be installed
+directly on the target (see @ref defFilesSdef_commands), or the executable can be copied from
+the app's build directory on the build PC file system after the app has been built.
 
-To display usage, run
-@verbatim mkexe --help@endverbatim
+To display usage info, run
+
+@verbatim
+$ mkexe --help
+@endverbatim
+
+See @ref buildToolsmk_ToolChainConfig for information on how @c mkexe decides what compilers, etc.
+to use.
+
 
 <HR>
 

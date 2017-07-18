@@ -38,9 +38,6 @@ namespace ninja
 {
 
 
-#include "toolChain.h"
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Generate a build script for a stand-alone component library.

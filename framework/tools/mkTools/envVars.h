@@ -67,7 +67,7 @@ void Set
 //----------------------------------------------------------------------------------------------
 void SetTargetSpecific
 (
-    const std::string& target  ///< Name of the target platform (e.g., "localhost" or "ar7").
+    const mk::BuildParams_t& buildParams
 );
 
 

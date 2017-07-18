@@ -7,7 +7,10 @@
 # should be set by that system:
 #
 # - TARGET = e.g., localhost, ar7, wp85, raspi, etc.
-# - TARGET_CC = path to the appropriate C compiler for the target.
+# - CC = path to the appropriate C compiler for the target.
+# - STRIP = path to the appropriate debug symbol stripper for the target.
+# - READELF = path to the appropriate ELF file info extractor for the target.
+# - OBJCOPY = path to the appropriate object file copier/translator utility for the target.
 #
 # Copyright (C) Sierra Wireless Inc.
 # --------------------------------------------------------------------------------------------------
@@ -45,8 +48,17 @@ all: $(BUILD_PRODUCTS)
 ifndef TARGET
   $(error TARGET is not set)
 endif
-ifndef TARGET_CC
-  $(error TARGET_CC is not set)
+ifndef CC
+  $(error CC is not set)
+endif
+ifndef STRIP
+  $(error STRIP is not set)
+endif
+ifndef OBJCOPY
+  $(error OBJCOPY is not set)
+endif
+ifndef READELF
+  $(error READELF is not set)
 endif
 
 export LEGATO_ROOT ?= $(CURDIR)

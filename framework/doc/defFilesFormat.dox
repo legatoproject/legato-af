@@ -116,15 +116,24 @@ requires:
 }
 @endcode
 
-Some useful environment variables:
+A double dollar sign ('$$') is replaced by a dollar sign ('$').
+
+Furthermore, the mk tools will create some environment variables:
 
  - @c LEGATO_ROOT = path to where the Legato framework sources are located
  - @c LEGATO_TARGET = build target (e.g., wp85, localhost)
  - @c LEGATO_BUILD = shorthand for <c>$LEGATO_ROOT/build/$TARGET</c>
  - @c LEGATO_SYSROOT = path of the directory containing the target device's system files
  - @c CURDIR = path of the directory containing the definition file being parsed
+ - @c CC = path to the C compiler
+ - @c CXX = path to the C++ compiler
+ - @c LD = path to the linker
+ - @c AR = path to the archiver to be used to generate static libraries
+ - @c AS = path to the assembler to be used if assembly code source files are found
+ - @c STRIP = path to the debug symbol stripper utility
+ - @c OBJCOPY = path to the object file copier/translator utility
+ - @c READELF = path to the ELF file information extractor utility
 
-A double dollar sign ('$$') is replaced by a dollar sign ('$').
 
 @section defFileFormatIncludeDirectives Include Directives
 

@@ -14,6 +14,22 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Figure out what compiler, linker, etc. to use based on the target device type and store that
+ * info in the @c buildParams object.
+ *
+ * If a given tool is not specified through the means documented in
+ * @ref buildToolsmk_ToolChainConfig, then the corresponding entry in @c buildParams will be
+ * left empty.
+ */
+//--------------------------------------------------------------------------------------------------
+void FindToolChain
+(
+    mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Run the Ninja build tool.  Executes the build.ninja script in the root of the working directory
  * tree, if it exists.
  *
