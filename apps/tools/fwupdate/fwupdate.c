@@ -384,6 +384,11 @@ COMPONENT_INIT
     if (le_arg_NumArgs() >= 1)
     {
         const char* command = le_arg_GetArg(0);
+        if (NULL == command)
+        {
+            LE_ERROR("command is NULL");
+            exit(EXIT_FAILURE);
+        }
 
         if ( strcmp(command, "help") == 0 )
         {

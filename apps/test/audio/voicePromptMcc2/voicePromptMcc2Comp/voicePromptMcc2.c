@@ -367,10 +367,20 @@ COMPONENT_INIT
 
         LE_INFO("======== Start voicePromptMcc2 Test ========");
         destinationNumber = le_arg_GetArg(0);
+        if (NULL == destinationNumber)
+        {
+            LE_ERROR("destinationNumber is NULL");
+            exit(EXIT_FAILURE);
+        }
 
         if ( le_arg_NumArgs() == 2 )
         {
             const char* mode = le_arg_GetArg(1);
+            if (NULL == mode)
+            {
+                LE_ERROR("mode is NULL");
+                exit(EXIT_FAILURE);
+            }
 
             if ( strcmp(mode, "AMR") == 0 )
             {

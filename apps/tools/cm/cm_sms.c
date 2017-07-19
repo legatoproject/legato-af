@@ -562,11 +562,27 @@ static void HandleSendBin
     int maxCountSms = CMODEM_SMS_DEFAULT_MAX_BIN_SMS;
 
     const char* number = le_arg_GetArg(2);
+    if (NULL == number)
+    {
+        LE_ERROR("number is NULL");
+        exit(EXIT_FAILURE);
+    }
     const char* filePath = le_arg_GetArg(3);
+    if (NULL == filePath)
+    {
+        LE_ERROR("filePath is NULL");
+        exit(EXIT_FAILURE);
+    }
+
 
     if (numArgs > 4)
     {
         const char* arg = le_arg_GetArg(4);
+        if (NULL == arg)
+        {
+            LE_ERROR("arg is NULL");
+            exit(EXIT_FAILURE);
+        }
         maxCountSms = atoi(arg);
 
         if (maxCountSms <= 0)
@@ -660,7 +676,17 @@ void cm_sms_ProcessSmsCommand
         cm_cmn_CheckEnoughParams(2, numArgs, "Destination or content missing. e.g. cm sms send <number> <content>");
 
         const char* number = le_arg_GetArg(2);
+        if (NULL == number)
+        {
+            LE_ERROR("number is NULL");
+            exit(EXIT_FAILURE);
+        }
         const char* content = le_arg_GetArg(3);
+        if (NULL == content)
+        {
+            LE_ERROR("content is NULL");
+            exit(EXIT_FAILURE);
+        }
 
         cm_sms_SendText(number, content);
 
@@ -683,6 +709,11 @@ void cm_sms_ProcessSmsCommand
         cm_cmn_CheckEnoughParams(1, numArgs, "Index of message missing. e.g. cm sms get <idx>");
 
         const char* indexStr = le_arg_GetArg(2);
+        if (NULL == indexStr)
+        {
+            LE_ERROR("indexStr is NULL");
+            exit(EXIT_FAILURE);
+        }
         int index = atoi(indexStr);
 
         cm_sms_GetMessage(index);

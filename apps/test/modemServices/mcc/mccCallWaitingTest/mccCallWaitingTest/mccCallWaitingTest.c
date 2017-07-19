@@ -632,6 +632,11 @@ COMPONENT_INIT
     {
         // This function gets the telephone number from the User (interactive case).
         const char* phoneNumber = le_arg_GetArg(0);
+        if (NULL == phoneNumber)
+        {
+            LE_ERROR("phoneNumber is NULL");
+            exit(EXIT_FAILURE);
+        }
         strncpy(OutgoingNumber, phoneNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
 
         LE_INFO("Phone number %s", OutgoingNumber);

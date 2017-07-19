@@ -431,10 +431,16 @@ static void ExecuteNextOption
 
     if ( NextOptionArg < le_arg_NumArgs() )
     {
-        if ( strncmp(le_arg_GetArg(NextOptionArg), "STOP", 4) == 0 )
+        const char* nextOptionArgPtr = le_arg_GetArg(NextOptionArg);
+        if (NULL == nextOptionArgPtr)
+        {
+            LE_ERROR("nextOptionArgPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        if ( strncmp(nextOptionArgPtr, "STOP", 4) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* stop = le_arg_GetArg(NextOptionArg);
+            const char* stop = nextOptionArgPtr;
 
             if (strlen(stop) > 5) // higher than "STOP="
             {
@@ -445,10 +451,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "PLAY", 4) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "PLAY", 4) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* play = le_arg_GetArg(NextOptionArg);
+            const char* play = nextOptionArgPtr;
             if (strlen(play) > 5) // higher than "PLAY="
             {
                 LE_INFO("PLAY will be done in %d seconds", atoi(play+5));
@@ -458,10 +464,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "RECORD", 6) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "RECORD", 6) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* play = le_arg_GetArg(NextOptionArg);
+            const char* play = nextOptionArgPtr;
             if (strlen(play) > 7) // higher than "RECORD="
             {
                 LE_INFO("RECORD will be done in %d seconds", atoi(play+7));
@@ -471,10 +477,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "PAUSE", 5) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "PAUSE", 5) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* pause = le_arg_GetArg(NextOptionArg);
+            const char* pause = nextOptionArgPtr;
 
             if (strlen(pause) > 6) // higher than "PAUSE="
             {
@@ -485,10 +491,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "RESUME", 6) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "RESUME", 6) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* resume = le_arg_GetArg(NextOptionArg);
+            const char* resume = nextOptionArgPtr;
 
             if (strlen(resume) > 7) // higher than "RESUME="
             {
@@ -499,10 +505,10 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "DISCONNECT", 10) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "DISCONNECT", 10) == 0 )
         {
             le_clk_Time_t interval={0};
-            const char* resume = le_arg_GetArg(NextOptionArg);
+            const char* resume = nextOptionArgPtr;
 
             if (strlen(resume) > 11) // higher than "DISCONNECT="
             {
@@ -513,12 +519,12 @@ static void ExecuteNextOption
                 le_timer_Start(OptionTimerRef);
             }
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "LOOP", 4) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "LOOP", 4) == 0 )
         {
             PlayInLoop = true;
             nextOption = true;
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg), "MUTE", 4) == 0 )
+        else if ( strncmp(nextOptionArgPtr, "MUTE", 4) == 0 )
         {
 
             le_clk_Time_t interval;
@@ -534,7 +540,7 @@ static void ExecuteNextOption
             le_timer_SetRepeat(MuteTimerRef,0);
             le_timer_Start(MuteTimerRef);
         }
-        else if ( strncmp(le_arg_GetArg(NextOptionArg),"GAIN",4) == 0 )
+        else if ( strncmp(nextOptionArgPtr,"GAIN",4) == 0 )
         {
             le_clk_Time_t interval;
             interval.sec = 0;
@@ -1257,6 +1263,11 @@ COMPONENT_INIT
         LE_INFO("======== Start Audio implementation Test (audioPlaybackRecTest) ========");
 
         AudioTestCase = le_arg_GetArg(0);
+        if (NULL == AudioTestCase)
+        {
+            LE_INFO("AudioTestCase is NULL");
+            exit(EXIT_FAILURE);
+        }
         LE_INFO("   Test case.%s", AudioTestCase);
 
         if(le_arg_NumArgs() >= 3)
@@ -1276,9 +1287,28 @@ COMPONENT_INIT
                 LE_INFO("EXIT audioPlaybackRec");
                 exit(EXIT_FAILURE);
             }
-            ChannelsCount = atoi(le_arg_GetArg(3));
-            SampleRate = atoi(le_arg_GetArg(4));
-            BitsPerSample = atoi(le_arg_GetArg(5));
+            const char* channelsCountPtr  = le_arg_GetArg(3);
+            const char* sampleRatePtr    = le_arg_GetArg(4);
+            const char* bitsPerSamplePtr = le_arg_GetArg(5);
+
+            if (NULL == channelsCountPtr)
+            {
+                LE_ERROR("channelsCountPtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == sampleRatePtr)
+            {
+                LE_ERROR("sampleRatePtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == bitsPerSamplePtr)
+            {
+                LE_ERROR("bitsPerSamplePtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            ChannelsCount = atoi(channelsCountPtr);
+            SampleRate = atoi(sampleRatePtr);
+            BitsPerSample = atoi(bitsPerSamplePtr);
             LE_INFO("   Get/Play PCM samples with ChannelsCount.%d SampleRate.%d BitsPerSample.%d",
                     ChannelsCount, SampleRate, BitsPerSample);
             NextOptionArg = 6;
@@ -1287,6 +1317,11 @@ COMPONENT_INIT
         {
             const char* recFormat = le_arg_GetArg(3);
 
+            if (NULL == recFormat)
+            {
+                LE_ERROR("recFormat is NULL");
+                exit(EXIT_FAILURE);
+            }
             if (strncmp(recFormat,"WAV", 3)==0)
             {
                 AudioFormat = LE_AUDIO_WAVE;

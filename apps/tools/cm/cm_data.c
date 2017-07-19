@@ -1072,6 +1072,12 @@ void cm_data_ProcessDataCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
+    const char*  dataParam = le_arg_GetArg(2);
+    if (dataParam == NULL)
+    {
+        LE_INFO("dataParam is NULL");
+        exit(EXIT_FAILURE);
+    }
     if (strcmp(command, "help") == 0)
     {
         cm_data_PrintDataHelp();
@@ -1087,7 +1093,7 @@ void cm_data_ProcessDataCommand
                                      numArgs,
                                      "Profile index missing. e.g. cm data profile <index>"))
         {
-            exit(cm_data_SetProfileInUse(atoi(le_arg_GetArg(2))));
+            exit(cm_data_SetProfileInUse(atoi(dataParam)));
         }
     }
     else if (strcmp(command, "connect") == 0)
@@ -1099,13 +1105,13 @@ void cm_data_ProcessDataCommand
             exit(EXIT_FAILURE);
         }
 
-        cm_data_StartDataConnection(le_arg_GetArg(2));
+        cm_data_StartDataConnection(dataParam);
     }
     else if (strcmp(command, "apn") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "APN name missing. e.g. cm data apn <apn name>"))
         {
-            exit(cm_data_SetApnName(le_arg_GetArg(2)));
+            exit(cm_data_SetApnName(dataParam));
         }
     }
     else if (strcmp(command, "pdp") == 0)
@@ -1114,7 +1120,7 @@ void cm_data_ProcessDataCommand
                                      numArgs,
                                      "PDP type name missing. e.g. cm data pdp <pdp type>"))
         {
-            exit(cm_data_SetPdpType(le_arg_GetArg(2)));
+            exit(cm_data_SetPdpType(dataParam));
         }
     }
     else if (strcmp(command, "auth") == 0)
@@ -1122,12 +1128,24 @@ void cm_data_ProcessDataCommand
         // configure all authentication info
         if (numArgs == 5)
         {
-            exit(cm_data_SetAuthentication(le_arg_GetArg(2), le_arg_GetArg(3), le_arg_GetArg(4)));
+            const char* userNamePtr = le_arg_GetArg(3);
+            const char* passwordPtr = le_arg_GetArg(4);
+            if (NULL == userNamePtr)
+            {
+                LE_ERROR("userNamePtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == passwordPtr)
+            {
+                LE_ERROR("passwordPtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            exit(cm_data_SetAuthentication(dataParam, userNamePtr, passwordPtr));
         }
         // for none option
         else if (numArgs == 3)
         {
-            exit(cm_data_SetAuthentication(le_arg_GetArg(2), "", ""));
+            exit(cm_data_SetAuthentication(dataParam, "", ""));
         }
         else
         {

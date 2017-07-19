@@ -553,7 +553,13 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() > 0)
     {
-        NbConnection = atoi(le_arg_GetArg(0));
+        const char* nbConnectionPtr = le_arg_GetArg(0);
+        if (NULL == nbConnectionPtr)
+        {
+            LE_ERROR("nbConnectionPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        NbConnection = atoi(nbConnectionPtr);
     }
 
     LE_INFO("Nb connection %d", NbConnection);

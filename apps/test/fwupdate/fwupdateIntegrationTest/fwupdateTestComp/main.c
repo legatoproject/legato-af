@@ -116,10 +116,20 @@ COMPONENT_INIT
     if (le_arg_NumArgs() >= 1)
     {
         testString = le_arg_GetArg(0);
+        if (NULL == testString)
+        {
+            LE_ERROR("testString is NULL");
+            exit(EXIT_FAILURE);
+        }
 
         if (le_arg_NumArgs() >= 2)
         {
             secondString = le_arg_GetArg(1);
+            if (NULL == secondString)
+            {
+                LE_ERROR("secondString is NULL");
+                exit(EXIT_FAILURE);
+            }
         }
     }
 

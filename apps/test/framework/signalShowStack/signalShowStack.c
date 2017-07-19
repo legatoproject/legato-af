@@ -168,6 +168,11 @@ COMPONENT_INIT
     if (1 == le_arg_NumArgs())
     {
         argPtr = le_arg_GetArg(0);
+        if (NULL == argPtr)
+        {
+            LE_ERROR("argPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
         if (0 == strcmp("SEGV", argPtr))
         {
             run_segv();

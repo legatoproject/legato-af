@@ -86,6 +86,11 @@ COMPONENT_INIT
     if (le_arg_NumArgs() == 1)
     {
         phoneNumber = le_arg_GetArg(0);
+        if (NULL == phoneNumber)
+        {
+            LE_ERROR("phoneNumber is NULL");
+            exit(EXIT_FAILURE);
+        }
     }
     else
     {

@@ -88,6 +88,11 @@ void cm_adc_ProcessAdcCommand
         }
 
         channelName = le_arg_GetArg(2);
+        if (NULL == channelName)
+        {
+            LE_ERROR("channelName is NULL");
+            exit(EXIT_FAILURE);
+        }
 
         if(LE_OK != cm_adc_ReadAndPrintValue(channelName))
         {

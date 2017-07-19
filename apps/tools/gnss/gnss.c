@@ -2166,6 +2166,11 @@ COMPONENT_INIT
     }
 
     const char* commandPtr = le_arg_GetArg(0);
+    if(NULL == commandPtr)
+    {
+        LE_ERROR("commandPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
     size_t numArgs = le_arg_NumArgs();
 
     if (strcmp(commandPtr, "help") == 0)
@@ -2191,26 +2196,38 @@ COMPONENT_INIT
     }
     else if (strcmp(commandPtr, "restart") == 0)
     {
+        const char* restartTypePtr = le_arg_GetArg(1);
+        if (NULL == restartTypePtr)
+        {
+            LE_ERROR("restartTypePtr is NULL");
+            exit(EXIT_FAILURE);
+        }
         // Following function exit on failure, so no need to check return code.
         CheckEnoughParams( 1,
                            numArgs,
                           "Restart type missing");
-        exit(Restart(le_arg_GetArg(1)));
+        exit(Restart(restartTypePtr));
 
     }
     else if (strcmp(commandPtr, "fix") == 0)
     {
+        const char* fixPeriodPtr = le_arg_GetArg(1);
+        if (NULL == fixPeriodPtr)
+        {
+            LE_ERROR("fixPeriodPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
         uint32_t fixPeriod = DEFAULT_3D_FIX_TIME;
         //Check whether any watch period value is specified.
-        if (le_arg_GetArg(1) != NULL)
+        if (NULL != fixPeriodPtr)
         {
             char *endPtr;
             errno = 0;
-            fixPeriod = strtoul(le_arg_GetArg(1), &endPtr, 10);
+            fixPeriod = strtoul(fixPeriodPtr, &endPtr, 10);
 
             if (endPtr[0] != '\0' || errno != 0)
             {
-                fprintf(stderr, "Bad fix period value: %s\n", le_arg_GetArg(1));
+                fprintf(stderr, "Bad fix period value: %s\n", fixPeriodPtr);
                 exit(EXIT_FAILURE);
             }
         }
@@ -2218,32 +2235,56 @@ COMPONENT_INIT
     }
     else if (strcmp(commandPtr, "get") == 0)
     {
+        const char* paramsPtr = le_arg_GetArg(1);
+        if (NULL == paramsPtr)
+        {
+            LE_ERROR("paramsPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
         CheckEnoughParams( 1,
                            numArgs,
                            "Missing arguments");
-        GetGnssParams(le_arg_GetArg(1));
+        GetGnssParams(paramsPtr);
     }
     else if (strcmp(commandPtr, "set") == 0)
     {
+        const char* argNamePtr = le_arg_GetArg(1);
+        const char* argValPtr = le_arg_GetArg(2);
+        if (NULL == argNamePtr)
+        {
+            LE_ERROR("argNamePtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        if (NULL == argValPtr)
+        {
+            LE_ERROR("argValPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
         CheckEnoughParams( 2,
                            numArgs,
                            "Missing arguments");
-        exit(SetGnssParams(le_arg_GetArg(1), le_arg_GetArg(2)));
+        exit(SetGnssParams(argNamePtr, argValPtr));
     }
     else if (strcmp(commandPtr, "watch") == 0)
     {
 
+        const char* watchPeriodPtr = le_arg_GetArg(1);
+        if (NULL == watchPeriodPtr)
+        {
+            LE_ERROR("watchPeriodPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
         uint32_t watchPeriod = DEFAULT_WATCH_PERIOD;
         //Check whether any watch period value is specified.
-        if (le_arg_GetArg(1) != NULL)
+        if (NULL != watchPeriodPtr)
         {
             char *endPtr;
             errno = 0;
-            watchPeriod = strtoul(le_arg_GetArg(1), &endPtr, 10);
+            watchPeriod = strtoul(watchPeriodPtr, &endPtr, 10);
 
             if (endPtr[0] != '\0' || errno != 0)
             {
-                fprintf(stderr, "Bad watch period value: %s\n", le_arg_GetArg(1));
+                fprintf(stderr, "Bad watch period value: %s\n", watchPeriodPtr);
                 exit(EXIT_FAILURE);
             }
         }

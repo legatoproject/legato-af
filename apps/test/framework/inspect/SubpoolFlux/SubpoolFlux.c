@@ -123,6 +123,9 @@ void deleteSubPoolsAlternately
 
 COMPONENT_INIT
 {
+    const char* argDeleteStratPtr;
+    const char* argSleepIntervalNanoPtr;
+    const char* subpoolNumPtr;
     char argDeleteStrat[100];
     long argSleepIntervalNano;
 
@@ -132,9 +135,29 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
-    strcpy(argDeleteStrat, le_arg_GetArg(0));
-    argSleepIntervalNano = strtol(le_arg_GetArg(1), NULL, 0);
-    SubpoolNum = strtol(le_arg_GetArg(2), NULL, 0);
+    argDeleteStratPtr = le_arg_GetArg(0);
+    argSleepIntervalNanoPtr = le_arg_GetArg(1);
+    subpoolNumPtr = le_arg_GetArg(2);
+
+    if (NULL == argDeleteStratPtr)
+    {
+        LE_ERROR("argDeleteStratPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == argSleepIntervalNanoPtr)
+    {
+        LE_ERROR("argSleepIntervalNanoPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == subpoolNumPtr)
+    {
+        LE_ERROR("subpoolNumPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(argDeleteStrat, argDeleteStratPtr);
+    argSleepIntervalNano = strtol(argSleepIntervalNanoPtr, NULL, 0);
+    SubpoolNum = strtol(subpoolNumPtr, NULL, 0);
 
     // Initializing the global arrays
     SubpoolRefArray = malloc(SubpoolNum * sizeof(le_mem_PoolRef_t));

@@ -324,6 +324,10 @@ void queueFuncToAllThreads
 
 COMPONENT_INIT
 {
+    const char* argDeleteStratPtr = le_arg_GetArg(0);
+    const char* sleepIntervalNanoPtr = le_arg_GetArg(1);
+    const char* timerNumPtr = le_arg_GetArg(2);
+    const char* threadNumPtr = le_arg_GetArg(3);
     char argDeleteStrat[100];
 
     if (le_arg_NumArgs() != 4)
@@ -336,11 +340,30 @@ COMPONENT_INIT
 
     MutexRef = le_mutex_CreateNonRecursive("TimerFluxMutex");
     SemaRef = le_sem_Create("TimerFluxSemaphore", 0);
-
-    strcpy(argDeleteStrat, le_arg_GetArg(0));
-    SleepIntervalNano = strtol(le_arg_GetArg(1), NULL, 0);
-    TimerNum = strtol(le_arg_GetArg(2), NULL, 0);
-    ThreadNum = strtol(le_arg_GetArg(3), NULL, 0);
+    if (NULL == argDeleteStratPtr)
+    {
+        LE_ERROR("argDeleteStratPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == sleepIntervalNanoPtr)
+    {
+        LE_ERROR("sleepIntervalNanoPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == timerNumPtr)
+    {
+        LE_ERROR("timerNumPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == threadNumPtr)
+    {
+        LE_ERROR("threadNumPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(argDeleteStrat, argDeleteStratPtr);
+    SleepIntervalNano = strtol(sleepIntervalNanoPtr, NULL, 0);
+    TimerNum = strtol(timerNumPtr, NULL, 0);
+    ThreadNum = strtol(threadNumPtr, NULL, 0);
 
     // Initializing the array storing timer refs.
     TimerRefArray = malloc(TimerNum * sizeof(le_timer_Ref_t));

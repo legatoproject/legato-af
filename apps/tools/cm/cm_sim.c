@@ -641,6 +641,12 @@ void cm_sim_ProcessSimCommand
 )
 {
     SimId = le_sim_GetSelectedCard();
+    const char* pinPtr = le_arg_GetArg(2);
+    if (NULL == pinPtr)
+    {
+        LE_ERROR("pinPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
 
     if (strcmp(command, "help") == 0)
     {
@@ -655,28 +661,34 @@ void cm_sim_ProcessSimCommand
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim enterpin <pin>"))
         {
-            exit(cm_sim_EnterPin(le_arg_GetArg(2)));
+            exit(cm_sim_EnterPin(pinPtr));
         }
     }
     else if (strcmp(command, "changepin") == 0)
     {
         if (cm_cmn_CheckEnoughParams(2, numArgs, "PIN code missing. e.g. cm sim changepin <pin>"))
         {
-            exit(cm_sim_ChangePin(le_arg_GetArg(2), le_arg_GetArg(3)));
+            const char* newPinPtr = le_arg_GetArg(3);
+            if (NULL == newPinPtr)
+            {
+                LE_ERROR("newPinPtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            exit(cm_sim_ChangePin(pinPtr, newPinPtr));
         }
     }
     else if (strcmp(command, "lock") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim lock <pin>"))
         {
-            exit(cm_sim_LockSim(le_arg_GetArg(2)));
+            exit(cm_sim_LockSim(pinPtr));
         }
     }
     else if (strcmp(command, "unlock") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim unlock <pin>"))
         {
-            exit(cm_sim_UnlockSim(le_arg_GetArg(2)));
+            exit(cm_sim_UnlockSim(pinPtr));
         }
     }
     else if (strcmp(command, "unblock") == 0)
@@ -685,14 +697,20 @@ void cm_sim_ProcessSimCommand
                                      numArgs,
                                      "PUK/PIN code missing. e.g. cm sim unblock <puk> <newpin>"))
         {
-            exit(cm_sim_UnblockSim(le_arg_GetArg(2), le_arg_GetArg(3)));
+            const char* newPinPtr = le_arg_GetArg(3);
+            if (NULL == newPinPtr)
+            {
+                LE_ERROR("newPinPtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            exit(cm_sim_UnblockSim(pinPtr, newPinPtr));
         }
     }
     else if (strcmp(command, "storepin") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "PIN code missing. e.g. cm sim storepin <pin>"))
         {
-            exit(cm_sim_StorePin(le_arg_GetArg(2)));
+            exit(cm_sim_StorePin(pinPtr));
         }
     }
     else if (strcmp(command, "info") == 0)
@@ -715,7 +733,7 @@ void cm_sim_ProcessSimCommand
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "SIM type missing. e.g. cm sim select <type>"))
         {
-            exit(cm_sim_Select(le_arg_GetArg(2)));
+            exit(cm_sim_Select(pinPtr));
         }
     }
     else

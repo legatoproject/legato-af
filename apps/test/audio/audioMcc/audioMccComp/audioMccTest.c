@@ -778,6 +778,11 @@ COMPONENT_INIT
         LE_INFO("======== Start Audio implementation Test (audioMccTest) ========");
 
         DestinationNumber = le_arg_GetArg(0);
+        if (NULL == DestinationNumber)
+        {
+            LE_ERROR("DestinationNumber is NULL");
+            exit(EXIT_FAILURE);
+        }
         AudioTestCase = le_arg_GetArg(1);
         LE_INFO("   Phone number.%s", DestinationNumber);
         LE_INFO("   Test case.%s", AudioTestCase);

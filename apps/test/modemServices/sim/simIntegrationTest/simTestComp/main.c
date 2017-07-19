@@ -135,11 +135,22 @@ COMPONENT_INIT
     if (le_arg_NumArgs() >= 1)
     {
         testString = le_arg_GetArg(0);
+        if (NULL == testString)
+        {
+            LE_ERROR("testString is NULL");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (le_arg_NumArgs() > 1)
     {
-        cardId = GetSimId(le_arg_GetArg(1));
+        const char* cardIdPtr = le_arg_GetArg(1);
+        if (NULL == cardIdPtr)
+        {
+            LE_ERROR("cardIdPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        cardId = GetSimId(cardIdPtr);
     }
 
     // Test: state
@@ -151,6 +162,11 @@ COMPONENT_INIT
         if (le_arg_NumArgs() == 3)
         {
             pin = le_arg_GetArg(2);
+            if (NULL == pin)
+            {
+                LE_ERROR("pin is NULL");
+                exit(EXIT_FAILURE);
+            }
         }
         else
         {
@@ -170,6 +186,11 @@ COMPONENT_INIT
         if (le_arg_NumArgs() == 3)
         {
             pin = le_arg_GetArg(2);
+            if (NULL == pin)
+            {
+                LE_ERROR("pin is NULL");
+                exit(EXIT_FAILURE);
+            }
         }
         else
         {
@@ -192,6 +213,16 @@ COMPONENT_INIT
         {
             pin = le_arg_GetArg(2);
             puk = le_arg_GetArg(3);
+            if (NULL == pin)
+            {
+                LE_ERROR("pin is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == puk)
+            {
+                LE_ERROR("puk is NULL");
+                exit(EXIT_FAILURE);
+            }
         }
         else
         {
@@ -223,6 +254,11 @@ COMPONENT_INIT
         if (le_arg_NumArgs() == 3)
         {
             pin = le_arg_GetArg(2);
+            if (NULL == pin)
+            {
+                LE_ERROR("pin is NULL");
+                exit(EXIT_FAILURE);
+            }
         }
         else
         {

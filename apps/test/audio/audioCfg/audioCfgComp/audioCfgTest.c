@@ -408,6 +408,11 @@ COMPONENT_INIT
     if (le_arg_NumArgs() == 1)
     {
         const char* audioProfileStr = le_arg_GetArg(0);
+        if (NULL == audioProfileStr)
+        {
+            LE_ERROR("audioProfileStr is NULL");
+            exit(1);
+        }
         int value = atoi(audioProfileStr);
         if (value < 0)
         {

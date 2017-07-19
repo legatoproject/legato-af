@@ -265,6 +265,11 @@ COMPONENT_INIT
         signal(SIGINT, SigHandler);
 
         const char* testCase = le_arg_GetArg(0);
+        if (NULL == testCase)
+        {
+            LE_ERROR("testCase is NULL");
+            exit(EXIT_FAILURE);
+        }
         LE_INFO("   Test case.%s", testCase);
 
         MyMbx1Ref = le_smsInbox1_Open ();

@@ -1491,6 +1491,11 @@ COMPONENT_INIT
     if (le_arg_NumArgs() == 1)
     {
         const char* phoneNumber = le_arg_GetArg(0);
+        if (NULL == phoneNumber)
+        {
+            LE_ERROR("phoneNumber is NULL");
+            exit(EXIT_FAILURE);
+        }
         strncpy((char*)DEST_TEST_PATTERN, phoneNumber, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
         LE_INFO("Phone number %s", DEST_TEST_PATTERN);
 

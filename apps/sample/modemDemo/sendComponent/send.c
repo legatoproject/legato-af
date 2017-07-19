@@ -32,7 +32,19 @@ COMPONENT_INIT
 {
     if (le_arg_NumArgs() == 2)
     {
-        le_result_t result = send_SendMessage(le_arg_GetArg(0), le_arg_GetArg(1));
+        const char* telPtr     = le_arg_GetArg(0);
+        const char* messagePtr = le_arg_GetArg(1);
+        if (NULL == telPtr)
+        {
+            LE_ERROR("telPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        if (NULL == messagePtr)
+        {
+            LE_ERROR("messagePtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        le_result_t result = send_SendMessage(telPtr, messagePtr);
 
         if (result != LE_OK)
         {

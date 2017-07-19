@@ -218,6 +218,11 @@ static void GetArgs
 
     // Get SIM type
     arg = le_arg_GetArg(0);
+    if (NULL == arg)
+    {
+        LE_ERROR("arg is NULL");
+        exit(EXIT_FAILURE);
+    }
     if( 0 == strncmp(arg, "ext", strlen("ext")))
     {
         LE_INFO("external SIM is selected.");
@@ -287,6 +292,11 @@ COMPONENT_INIT
 
         GetArgs();
         Profile = le_arg_GetArg(2);
+        if (NULL == Profile)
+        {
+            LE_ERROR("Profile is NULL");
+            exit(EXIT_FAILURE);
+        }
         LE_INFO("======== Start SIM local Profile Swap Test with Profile.%s========", Profile);
 
         StkHandlerRef=le_sim_AddSimToolkitEventHandler(TestSimToolkitHandler, NULL);

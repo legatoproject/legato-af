@@ -121,7 +121,12 @@ static void CellNetStateHandler
 )
 {
     static le_cellnet_State_t oldState = LE_CELLNET_REG_UNKNOWN;
-
+    const char* testNoSimPtr = le_arg_GetArg(0);
+    if (NULL == testNoSimPtr)
+    {
+        LE_ERROR("testNoSimPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
     // Get current network state to test GetNetworkState API.
     // Note: received and current state might differ if the state changed
     // between the report sending and its treatment by the test application.
@@ -136,7 +141,7 @@ static void CellNetStateHandler
        )
     {
         if (   (le_arg_NumArgs() >= 2)
-            && (TEST_NO_SIM == atoi(le_arg_GetArg(0)))
+            && (TEST_NO_SIM == atoi(testNoSimPtr))
             && (LE_CELLNET_SIM_ABSENT != oldState)
            )
         {
@@ -166,7 +171,7 @@ static void CellNetStateHandler
     }
 
     if (   (le_arg_NumArgs() >= 2)
-        && (TEST_NO_SIM == atoi(le_arg_GetArg(0)))
+        && (TEST_NO_SIM == atoi(testNoSimPtr))
         && (   (LE_CELLNET_REG_HOME == oldState)
             || (LE_CELLNET_REG_ROAMING == oldState)
            )
@@ -194,8 +199,20 @@ COMPONENT_INIT
         // ---------------------------------------------------------------------
         // Test the Get/Set SIM pin code operation in the secure storage
         // ---------------------------------------------------------------------
-        int testId = atoi(le_arg_GetArg(0));
-        int simId =  atoi(le_arg_GetArg(1));
+        const char* testIdPtr = le_arg_GetArg(0);
+        const char* simIdPtr  = le_arg_GetArg(1);
+        if (NULL == testIdPtr)
+        {
+            LE_ERROR("testIdPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        if (NULL == simIdPtr)
+        {
+            LE_ERROR("simIdPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        int testId = atoi(testIdPtr);
+        int simId =  atoi(simIdPtr);
         le_result_t ret;
 
         if (TEST_GET_PIN == testId)
@@ -211,6 +228,11 @@ COMPONENT_INIT
         else if (TEST_SET_PIN == testId)
         {
             const char* pinPtr = le_arg_GetArg(2);
+            if (NULL == pinPtr)
+            {
+                LE_ERROR("pinPtr is NULL");
+                exit(EXIT_FAILURE);
+            }
             // simId values greater than MAX_SIM_IDENTIFIERS are tracked in the function
             if (simId <= MAX_SIM_IDENTIFIERS)
             {

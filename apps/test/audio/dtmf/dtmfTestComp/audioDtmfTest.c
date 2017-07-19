@@ -545,10 +545,32 @@ COMPONENT_INIT
     if (le_arg_NumArgs() == 7)
     {
         InterfaceString = le_arg_GetArg(1);
+        if (NULL == InterfaceString)
+        {
+            LE_ERROR("InterfaceString is NULL");
+            exit(EXIT_FAILURE);
+        }
         DtmfString = le_arg_GetArg(2);
-        Duration = atoi(le_arg_GetArg(3));
-        Pause = atoi(le_arg_GetArg(4));
+        const char* durationPtr = le_arg_GetArg(3);
+        if (NULL == durationPtr)
+        {
+            LE_ERROR("durationPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        const char* pausePtr = le_arg_GetArg(4);
+        if (NULL == pausePtr)
+        {
+            LE_ERROR("pausePtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        Duration = atoi(durationPtr);
+        Pause = atoi(pausePtr);
         DestinationNumber = le_arg_GetArg(5);
+        if (NULL == DestinationNumber)
+        {
+            LE_ERROR("DestinationNumber is NULL");
+            exit(EXIT_FAILURE);
+        }
         DtmfSendingCase = le_arg_GetArg(6);
         LE_INFO("   Play DTMF on remote");
         LE_INFO("   DTMF to play.\"%s\"", DtmfString);
@@ -560,13 +582,36 @@ COMPONENT_INIT
     }
     else if (le_arg_NumArgs() == 5)
     {
-        if(strncmp(le_arg_GetArg(0), "loc", strlen("loc"))==0)
+        const char* locPtr = le_arg_GetArg(0);
+        if (NULL == locPtr)
+        {
+            LE_ERROR("locPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        if(strncmp(locPtr, "loc", strlen("loc"))==0)
         {
             LE_INFO("   Play DTMF on local interface");
             InterfaceString = le_arg_GetArg(1);
+            if (NULL == InterfaceString)
+            {
+                LE_ERROR("InterfaceString is NULL");
+                exit(EXIT_FAILURE);
+            }
             DtmfString = le_arg_GetArg(2);
-            Duration = atoi(le_arg_GetArg(3));
-            Pause = atoi(le_arg_GetArg(4));
+            const char* durationPtr = le_arg_GetArg(3);
+            if (NULL == durationPtr)
+            {
+                LE_ERROR("durationPtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            Duration = atoi(durationPtr);
+            const char* pausePtr = le_arg_GetArg(4);
+            if (NULL == pausePtr)
+            {
+                LE_ERROR("pausePtr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            Pause = atoi(pausePtr);
             LE_INFO("   DTMF to play.\"%s\"", DtmfString);
             LE_INFO("   Duration.%dms", Duration);
             LE_INFO("   Pause.%dms", Pause);
@@ -612,6 +657,11 @@ COMPONENT_INIT
     }
     else
     {
+        if (NULL == InterfaceString)
+        {
+            LE_ERROR("InterfaceString is NULL");
+            exit(EXIT_FAILURE);
+        }
         PlayLocalDtmf(InterfaceString);
     }
 }

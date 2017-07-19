@@ -88,6 +88,9 @@ void deleteThreadsFrom1ToN
 COMPONENT_INIT
 {
     char argDeleteStrat[100];
+    const char* argDeleteStratPtr;
+    const char* argSleepIntervalNanoPtr;
+    const char* threadNumPtr;
     long argSleepIntervalNano;
 
     if (le_arg_NumArgs() != 3)
@@ -95,10 +98,28 @@ COMPONENT_INIT
         LE_ERROR("Usage: ThreadFlux [1toN | None] [delete interval] [number of threads created]");
         exit(EXIT_FAILURE);
     }
+    argDeleteStratPtr = le_arg_GetArg(0);
+    argSleepIntervalNanoPtr = le_arg_GetArg(1);
+    threadNumPtr = le_arg_GetArg(2);
+    if (NULL == argDeleteStratPtr)
+    {
+        LE_ERROR("argDeleteStratPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == argSleepIntervalNanoPtr)
+    {
+        LE_ERROR("argSleepIntervalNanoPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == threadNumPtr)
+    {
+        LE_ERROR("threadNumPtr is NULL");
+        exit(EXIT_FAILURE);
+    }
 
-    strcpy(argDeleteStrat, le_arg_GetArg(0));
-    argSleepIntervalNano = strtol(le_arg_GetArg(1), NULL, 0);
-    ThreadNum = strtol(le_arg_GetArg(2), NULL, 0);
+    strcpy(argDeleteStrat, argDeleteStratPtr);
+    argSleepIntervalNano = strtol(argSleepIntervalNanoPtr, NULL, 0);
+    ThreadNum = strtol(threadNumPtr, NULL, 0);
 
     // Initializing the array storing thread refs.
     ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));

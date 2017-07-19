@@ -129,7 +129,17 @@ COMPONENT_INIT
         if ( le_arg_NumArgs() == 4 )
         {
             const char*         apnArg = le_arg_GetArg(1);
+            if (NULL == apnArg)
+            {
+                LE_ERROR("apnArg is NULL");
+                exit(EXIT_FAILURE);
+            }
             const char*         userNameArg = le_arg_GetArg(2);
+            if (NULL == userNameArg)
+            {
+                LE_ERROR("userNameArg is NULL");
+                exit(EXIT_FAILURE);
+            }
             const char*         pwdArg = le_arg_GetArg(3);
             le_mdc_ProfileRef_t profileRef;
             uint32_t            defaultIndex;
@@ -149,6 +159,11 @@ COMPONENT_INIT
         }
 
         AcceptCmdArg = le_arg_GetArg(0);
+        if (NULL == AcceptCmdArg)
+        {
+            LE_ERROR("AcceptCmdArg is NULL");
+            exit(EXIT_FAILURE);
+        }
         if( strncmp(AcceptCmdArg, "accept", strlen("accept")) == 0 )
         {
             LE_INFO("SIM Toolkit Test will accept all SIM Toolkit commands.");

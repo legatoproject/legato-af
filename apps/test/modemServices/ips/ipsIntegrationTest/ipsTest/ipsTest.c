@@ -497,6 +497,11 @@ COMPONENT_INIT
     if ( nbarg  == 1 )
     {
         testNumberStr = le_arg_GetArg(0);
+        if (NULL == testNumberStr)
+        {
+            LE_ERROR("testNumberStr is NULL");
+            exit(EXIT_FAILURE);
+        }
         if(strcmp(testNumberStr, "ALL") == 0)
         {
             Testle_ips_GetInputVoltage();
@@ -533,6 +538,26 @@ COMPONENT_INIT
             const char *  hiCritStr = le_arg_GetArg(4);
             uint16_t critical, warning, normal, hiCritical;
 
+            if (NULL == critStr)
+            {
+                LE_ERROR("critStr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == warnStr)
+            {
+                LE_ERROR("warnStr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == normStr)
+            {
+                LE_ERROR("normStr is NULL");
+                exit(EXIT_FAILURE);
+            }
+            if (NULL == hiCritStr)
+            {
+                LE_ERROR("hiCritStr is NULL");
+                exit(EXIT_FAILURE);
+            }
             critical = atoi(critStr);
             warning = atoi(warnStr);
             normal = atoi(normStr);

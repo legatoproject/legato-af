@@ -32,7 +32,13 @@ COMPONENT_INIT
     // Get the max size list
     if (le_arg_NumArgs() >= 1)
     {
-        maxListSize = atoi(le_arg_GetArg(1));
+        const char* maxListSizePtr = le_arg_GetArg(1);
+        if (NULL == maxListSizePtr)
+        {
+            LE_ERROR("maxListSizePtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        maxListSize = atoi(maxListSizePtr);
     }
 
     if (maxListSize <= 0)
