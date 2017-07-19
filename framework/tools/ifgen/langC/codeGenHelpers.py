@@ -105,7 +105,9 @@ def FormatParameterPtr(parameter):
 def FormatParameter(parameter, forceInput=False):
     if isinstance(parameter, interfaceIR.StringParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
-                FormatType(parameter.apiType) + " " + parameter.name)
+                FormatType(parameter.apiType) +
+                (u" LE_NONNULL " if parameter.direction == interfaceIR.DIR_IN else u" ") +
+                parameter.name)
     elif isinstance(parameter, interfaceIR.ArrayParameter):
         return ((u"const " if forceInput or parameter.direction == interfaceIR.DIR_IN else u"") +
                 FormatType(parameter.apiType) + "* " + parameter.name + "Ptr")
@@ -241,12 +243,6 @@ def IterCAPIParameters(function):
     # Handlers have an extra context pointer added on at the end.
     if isinstance(function, interfaceIR.HandlerType):
         yield interfaceIR.Parameter(_CONTEXT_TYPE, 'contextPtr')
-
-def IterNonNullParameters(function):
-    for index, parameter in enumerate(IterCAPIParameters(function), start=1):
-        if (parameter.direction & interfaceIR.DIR_IN) == interfaceIR.DIR_IN and \
-           isinstance(parameter, interfaceIR.StringParameter):
-            yield index
 
 class Labeler(object):
     def __init__(self, label):

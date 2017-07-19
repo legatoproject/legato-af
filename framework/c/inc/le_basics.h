@@ -240,4 +240,28 @@ le_onoff_t;
 #define LE_SHARED __attribute__((visibility ("default")))
 
 
+#ifdef __clang__
+
+// Nullability information is not complete.  Normally clang will warn in that case.
+#if defined(__has_warning) && __has_warning("-Wnullability-completeness")
+#  pragma clang diagnostic ignored "-Wnullability-completeness"
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a parameter or return value as never NULL.
+ */
+//--------------------------------------------------------------------------------------------------
+#  define LE_NONNULL _Nonnull
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark a parameter or return value as potentially NULL.
+ */
+//--------------------------------------------------------------------------------------------------
+#  define LE_NULLABLE _Nullable
+#else
+#  define LE_NONNULL
+#endif
+
 #endif // LEGATO_BASICS_INCLUDE_GUARD
