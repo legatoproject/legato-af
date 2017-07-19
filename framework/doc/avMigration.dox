@@ -1,6 +1,6 @@
-/** @page avMigration AirVantage Migration
+/** @page avMigration AirVantage 1.0 to 2.0 Migration Notes
 
-AirVantage Version 2 changes the way that the Legato AF connects to the AirVantage Cloud service.
+AirVantage Connector 2.0 changes the way that the Legato AF connects to the AirVantage Cloud service.
 
 @section avMigration_Comparison Comparison of Changes
 
@@ -30,15 +30,16 @@ must be restarted (@c legato @c restart)
 # config set system:/apps/avcService/config/imported false bool
 @endverbatim
 
-@section avMigration_AssetData Asset Data
+@section avMigration_AssetData Asset Data Models
 
 AirVantage 2.0 now supports dynamic asset data models, meaning that you no longer need to set the
-model in your control apps @c .cdef at build time.  Now you are able to define and update the model
-dynamically at compile time.  You can now create get or set jobs for your assets from the server.
+model in your control app's @c .cdef at build time.  Now you are able to define and update the model
+dynamically at compile time.  You can now create get or set jobs for your assets from the AirVantage
+server.
 
 In AVC 2.0 system data (assets) are dynamically created/assigned on the fly and are identified by
-their unique resource paths (e.g., /myApp/Room/Kitchen/Temperature).  Calling the
-@c le_avdata_CreateResource(/myApp/Room/Kitchen/Temperature) will create a new asset.
+their unique resource paths (e.g., /myApp/Room/Kitchen/Temperature). (e.g., Calling the
+@c le_avdata_CreateResource(/myApp/Room/Kitchen/Temperature) will create a new asset.)
 
 @note the assets section in the .cdef file has been removed and assets can no longer be defined
 through the .cdef.  To add asset data to the app model, the manifest.app must be hand edited.

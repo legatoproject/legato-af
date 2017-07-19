@@ -1,70 +1,97 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_avdata AirVantage Data
+ * @page c_le_avdata AirVantage Data API
  *
  * @ref le_avdata_interface.h "Type/Function Reference" <br>
  * @ref avData "How To Manage Data"
  *
- * <HR>
- *
- * This API provides a data service to allow apps to manage app-specific
- * data on the AirVantage server.
- *
- * Data is setup as @b assets &mdash;  a collection of fields that can be managed by the AirVantage
+ * This API provides a data service to allow Apps to manage App-specific data on the AirVantage
  * server.
  *
- * An asset field is a single piece of information that can be managed by the AirVantage server.
+ * @section le_data_binding IPC Interfaces Binding
+ *
+ * All the functions of this API are provided by the @b avcService platform service.
+ *
+ * Code sample for binding to avcService:
+ * @verbatim
+ * bindings:
+ * {
+ *    clientExe.clientComponent.le_avdata -> avcService.le_avdata
+ * }
+ * @endverbatim
+ *
+ *
+ * @section le_data_overview AirVantage Data Overview
+ *
+ * Data is setup as @b Assets &mdash;  a collection of fields that can be managed by the AirVantage
+ * server.
+ *
+ * An @b asset @b field is a single data point taken from a sensor that can be managed by the
+ * AirVantage server.
  *
  * A field can be:
- * - @c variable allowing an app to read/write the value, and can be read from the AV server.
- * - @c setting allowing the AV server to read/write the value, and can be read by an app.
- * - @c command allowing the AV server to invoke a function in the app.
+ * - @b variable allowing an App to read/write the value, and can be read from the AV server.
+ * - @b setting allowing the AirVantage server to read/write the value, and can be read by an App.
+ * - @b command allowing the AirVantage server to invoke a function in the App.
  *
- * A field is referred to by a path, much like a path in Unix-like OSes. So a path is separated by
- * slashes ("/"), a parent path cannot contain a field, and a parent path cannot contain a parent
+ * A field is referred to by a path, much like a path in Unix-like OSes. A path is separated by a
+ * slash ("/"), a parent path @b cannot contain a field, and a parent path cannot contain a parent
  * path and a child path of the same name.
  *
- * Variable and setting fields also have types. The field types are:
+ * Variable and setting fields also have types. The available field types are:
  * - string
  * - integer
  * - float
  * - boolean
  *
- * variable and setting fileds have no default values. When they are first created with the
- * CreateResource API, they contain "null" values. They can also be set to "null" values with the
- * SetNull API. A field does not have a fixed data type, so any of the SetInt/Float/Bool/String can
+ * Variable and setting fields have no default values. When they are first created with the
+ * le_avdata_CreateResource() , all values are "null". They can also be set to "null" values with
+ * the le_avdata_SetNull() .
+ *
+ * Fields do not have a fixed data type, so any of the SetInt/Float/Bool/String can
  * be called for a certain field to change its value and its type. However, A
  * GetInt/Float/Bool/String API must be called on a field with the matching type. In other words,
  * a Get API does not perform type-casting.
  *
+ * @note If a user enters a value 0 for float data type, an error will be returned (LE_NOT_FOUND),
+ * as the system infers 0 as an integer value and the data type doesn't match.  0.0 needs to be set
+ * for the float data type to be zero.
  *
  * @section le_avdata_field Field Values and Activity
  *
- * Set functions are available to set field values (including null). Get functions are
+ * Set functions are available to set field values (including "null"). Get functions are
  * available to get field values.
  *
- * An app can register a handler so that it can be called when an activity occurs on a field.
- * This is optional for variable and setting fields, but is required for command fields. Registered
- * handlers are called only when activities from AV server occurs. Client activites do not trigger
- * handlers.
+ * An App can register a handler so that it can be called when an activity occurs on a field.
+ * This is optional for variable and setting fields, but is @b required for command fields.
+ * Registered handlers are called only when activities from AV server occurs. Client activities do
+ * not trigger handlers.
  *
  * A handler registered with a command field is invoked with an optional argument list sent from the
- * AV server. The APIs GetInt/Float/Bool/StringArg and GetStringArgLength are available to extract
- * the arguments in the handler definition. AV server does not send argument lists for handlers
- * registered with variable and setting fields.
+ * AirVantage server. The APIs GetInt/Float/Bool/StringArg and le_avdata_GetStringArgLength() are
+ * available to extract the arguments in the handler definition. AV server does not send argument
+ * lists for handlers registered with variable and setting fields.
  *
- * A handler registered with a command field must call the ReplyExecResult API at the end of its
- * definition, in order to reply the command execution result to the AV server.
+ * A handler registered with a command field must call the le_avdata_ReplyExecResult() at the end of
+ * its definition, in order to reply the command execution result to the AV server.
  *
  *
  * @section le_avdata_timeseries Time Series
  *
- * This feature enables user apps to collect data when the device is offline. A time series
- * record can be initialized using le_avdata_CreateRecord() and data can be accumulated using
- * le_avdata_RecordInt(), le_avdata_RecordFloat(), le_avdata_RecordBool and le_avdata_RecordString
- * with a specified time stamp (milliseconds elapsed since epoch). User apps can then open an
- * @c avms session, and push the collected history data using le_avdata_PushRecord(). The callback
- * used when calling le_avdata_PushRecord() will indicate whether the push has been successful or not.
+ * This feature enables user Apps to collect and keep in memory data when the device is off-line and
+ * send the data to the AirVantage Server when the device is on-line.
+ *
+ * Time series records can be initialized using le_avdata_CreateRecord().
+ * Data can be accumulated using the following data types along with a specified time stamp
+ * (milliseconds elapsed since epoch).
+ * - le_avdata_RecordInt()
+ * - le_avdata_RecordFloat()
+ * - le_avdata_RecordBool
+ * - le_avdata_RecordString
+ *
+ * User apps can then open an @c avms session, and push the collected history data using
+ * le_avdata_PushRecord(). The callback used when calling le_avdata_PushRecord() will indicate
+ * whether the push has been successful or not.
  *
  * This code sample shows how to collect data and send to the server (assuming session is opened)
  *
@@ -103,21 +130,19 @@
  * }
  * @endcode
  *
- * @section le_avdata_session User app session management
+ * @section le_avdata_session User App Session Management
  *
- * An app can request to open avms session and register a handler to get notified of avms session
+ * An App can request to open a session and register a handler to get notified of a session
  * events. le_avdata_RequestSession() and le_avdata_ReleaseSession() can be used to
- * open an avms session and close an avms session respectively. If the session was initiated by an
- * user app, avms session will be closed when all apps release their session reference.
+ * open a session and close a session respectively. If the session was initiated by an
+ * user app, the session will be closed when all apps release their session reference.
  * le_avdata_AddSessionStateHandler() and le_avdata_RemoveSessionStateHandler() can be used to add
  * and remove notification handlers.
  *
  * @section le_avdata_fatal Fatal Behavior
  *
  * An invalid asset name or field name is treated as a fatal error (i.e. non-recoverable)
- * and will result in the client app being terminated.
- *
- * <HR>
+ * and will result in the client App being terminated.
  *
  * Copyright (C) Sierra Wireless Inc.
  */

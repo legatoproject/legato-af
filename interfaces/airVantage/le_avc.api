@@ -1,57 +1,69 @@
 //--------------------------------------------------------------------------------------------------
 /**
- * @page c_le_avc AirVantage Connector
+ * @page c_le_avc AirVantage Connector API
  *
  * @ref le_avc_interface.h "Type/Function Reference" <br>
- * @ref legatoServicesAirVantage "Air Vantage Platform Service"
+ * @ref legatoServicesAirVantage "AirVantage Connector Platform Service"
  *
- * <HR>
  *
- * The AirVantage connector service provides an API to communicate with the AirVantage server.
+ * The AirVantage connector service provides an API to communicate with the AirVantage Server to
+ * download and install updates.
  *
- * @section c_le_avc_update Firmware/Application Update
+ * @section c_le_avc_update Firmware/Application Updates
  *
  * The API for firmware/application update is divided into two parts:
- *  - Allow an app to contact the server for pending updates. If available,
+ *  - Allow an App to contact the server for pending updates. If available,
  *    can select to download or install the update.
- *    <br>
- *  - Allow an app to block an update from being installed. An app may need this if it's
+ *  - Allow an App to block an update from being installed. An App may need this if it's
  *    performing a critical operation that can't be interrupted (e.g., eCall). This is necessary
- *    as installing an update will cause the app to restart (either the app itself needs to restart
+ *    as installing an update will cause the App to restart (either the App itself needs to restart
  *    or a firmware change causes the modem to reset).
  *
  * @subsection c_le_avc_update_control Update Control
  *
- * Any app can start a session with an AirVantage server to determine if there
- * is a pending update. This is done with le_avc_StartSession(). The current session can be
- * stopped using le_avc_StopSession(). This cancels any query for pending update, or suspends a
- * download in progress; however, it <b>won't stop</b> an install in progress.
+ * Any App can start a session with an AirVantage server to determine if there
+ * is a pending update. This is done with le_avc_StartSession().
  *
- * The status of a pending update is sent to all apps registered for receiving a notification.
- * An app can use le_avc_AddStatusEventHandler() to register a handler function to
- * receive this notification. The notification will be received after a session is started using
- * le_avc_StartSession(). Sometimes, avcService may decide to start a session with the AirVantage
- * server; for instance if a call to le_avc_AcceptDownload() when the session is stopped, avcService
- * will open a session to proceed with the download. In this case, a session started
+ * The current session can be stopped using le_avc_StopSession(). This cancels any query for pending
+ * update, or suspends a download in progress; however, it <b>won't stop</b> an install in progress.
+ *
+ * The status of a pending update is sent to all Apps registered for receiving a notification.
+ * An App can use le_avc_AddStatusEventHandler() to register a handler function to
+ * receive this notification. The notification will be received after a session is started.
+ *
+ * Example of registering an AVC handler and starting a session with fault checking:
+ * @code
+    // Start AVC Session
+    LE_INFO("AirVantage Connection Controller started.");
+    le_avc_AddStatusEventHandler(avcStatusHandler, NULL);    //register a AVC handler
+
+    //Start AVC session. Note: AVC handler must be registered prior starting a session
+    le_result_t result = le_avc_StartSession();
+    if (LE_FAULT == result)
+    {
+        le_avc_StopSession();
+        le_avc_StartSession();
+    }
+ * @endcode
+ *
+ * Sometimes, @c avcService may decide to start a session with the AirVantage
+ * server; for instance if a call to le_avc_AcceptDownload() when the session is stopped,
+ * @c avcService will open a session to proceed with the download. In this case, a session started
  * notification could also be received, even if le_avc_StartSession() is not called explicitly.
  *
- * There can only be one pending update.  To query the type of update, use le_avc_GetUpdateType().
- * If it's an app update, then le_avc_GetAppUpdateName() can be used to get the name of
- * the app.
+ * @subsubsection c_le_avc_updateControl_pending Pending Updates
+ *
+ * There can only be one pending update at a time.  To query the type of update, use
+ * le_avc_GetUpdateType().  App updates can call le_avc_GetAppUpdateName() to retrieve the App name.
  *
  * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be
  * downloaded. If this API is called while no AirVantage session is active, calling this API will
  * initiate an AirVantage session. To defer the decision, le_avc_DeferDownload() can be used
  * to defer the download for the specified number of minutes. After the defer time has elapsed,
- * the pending download notification will be re-sent again to all registered apps.
+ * the pending download notification will be re-sent again to all registered Apps.
  *
  * Once an update has been downloaded, a new notification will be received to indicate that an
  * install is pending. Apps can then use le_avc_AcceptInstall() to allow the install to proceed.
- * Note that even if an app calls le_avc_AcceptInstall(), the install may still be blocked by another
- * app using the @ref c_le_avc_update_app functions. To defer the decision, an app can use
- * le_avc_DeferInstall() to defer the install for the specified number of minutes. After the defer
- * time has elapsed, the pending install notification will be re-sent to allow apps to make a new
- * decision, or again defer.
  *
  * If an uninstall is pending, then le_avc_AcceptUninstall() can be used to allow the uninstall to
  * proceed. To defer the decision, le_avc_DeferUninstall() can be used to defer the uninstall for
@@ -61,69 +73,147 @@
  * accept the uninstall of the existing version followed by accepting the download and install of
  * the new version.
  *
- * Accepting an app install or uninstall will not initiate an AirVantage session if no session
- * is active.  An app should start an AirVantage session before accepting an app install/uninstall,
+ * @code
+   switch (updateStatus)
+        {
+            case LE_AVC_DOWNLOAD_PENDING:
+                LE_INFO("Accepting %s update.", GetUpdateType());
+                res = le_avc_AcceptDownload();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept download from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            case LE_AVC_INSTALL_PENDING:
+                LE_INFO("Accepting %s installation.", GetUpdateType());
+                res = le_avc_AcceptInstall();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept install from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            case LE_AVC_UNINSTALL_PENDING:
+                LE_INFO("Accepting %s uninstall.", GetUpdateType());
+                res = le_avc_AcceptUninstall();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept uninstall from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            case LE_AVC_REBOOT_PENDING:
+                LE_INFO("Accepting device reboot.");
+                res = le_avc_AcceptReboot();
+                if (res != LE_OK)
+                {
+                    LE_ERROR("Failed to accept reboot from AirVantage (%s)", LE_RESULT_TXT(res));
+                }
+                break;
+
+            default:
+                // No action required
+                break;
+        }
+ * @endcode
+ *
+ * @note that even if an App calls le_avc_AcceptInstall(), the install may still be blocked by another
+ * App using the @ref c_le_avc_update_app functions. To defer the decision, an App can use
+ * le_avc_DeferInstall() to defer the install for the specified number of minutes. After the defer
+ * time has elapsed, the pending install notification will be re-sent to allow Apps to make a new
+ * decision, or again defer.
+ *
+ *
+ * @subsubsection c_le_avc_updateControl_accepting Accepting Installs/Uninstalls
+ *
+ * Accepting an App install or uninstall will not initiate an AirVantage session if no session
+ * is active.  An App should start an AirVantage session before accepting an App install/uninstall,
  * to ensure the process is completed, and the server is updated.
  *
  * If no app has registered for notifications using le_avc_AddStatusEventHandler(),
  * then any pending downloads and installs will happen automatically, subject to any restrictions
  * imposed by app using the @ref c_le_avc_update_app functions.
  *
- * There is no restriction on the number of apps registering for notifications.
+ * There is no restriction on the number of Apps registering for notifications.
  *
- * In case of any error incurred during app download/install, an error code will be set which can be
+ * In case of any error incurred during App download/install, an error code will be set which can be
  * retrieved by calling le_avc_GetErrorCode().
  *
- * @subsection c_le_avc_update_app Application Blocking
+ * @subsection c_le_avc_update_app Application Installation Blocking
  *
- * When an app is about to perform a critical operation, it can block the installation of
+ * When an App is about to perform a critical operation, it can block the installation of
  * an update with le_avc_BlockInstall(), and after it's finished with the critical operation, it
  * can unblock the install with le_avc_UnblockInstall().
  *
- * What constitutes a critical operation depends on the app.  An eCall app might
- * block installs for the duration that it runs.  A data collection app that wakes up
+ * What constitutes a critical operation depends on the App.  An eCall App might
+ * block installs for the duration that it runs.  A data collection App that wakes up
  * once an hour might block installs while it collects and stores and/or transmits a new data
  * sample, and then unblock installs just before it goes to sleep again.
  *
  * If an install can't be applied because it's blocked, another attempt to apply the install
  * will be made at a later time.
  *
- * An app can add a session control handler using le_avc_AddSessionRequestEventHandler(). Requests
- * by user apps to open or close session will be forwarded to the session control handler. If no app
- * has registered a session request handler, avc session can be opened or closed anytime by
- * user apps.
+ * An App can add a session control handler using le_avc_AddSessionRequestEventHandler(). Requests
+ * by user Apps to open or close session will be forwarded to the session control handler. If no App
+ * has registered a session request handler, AVC session can be opened or closed anytime by
+ * user Apps.
  *
- * @section c_le_avc_GetPollingTimer Polling Timer
+ * @section c_le_avc_Timers Timers
  *
- * The embedded module will periodically initiate a connection to the Device Services server
- * according to the polling timer. The device initates the connection periodically, so that it can
- * poll the server if there are any pending jobs. Writing 0 to the polling timer disables polling
- * mode. Polling timer values range from 0 to 525600 minutes. The polling timer value is persistent.
- * le_avc_GetPollingTimer() reads the polling timer and le_avc_SetPollingTimer() writes the polling
- * timer.
+ * Poling timers sets the time that the Target will communicate with the AirVantage Server to check
+ * for new jobs.  Retry timers will try and re-establish a connection to the AirVantage Server in
+ * accordance with the times that are declared.
  *
- * @section c_le_avc_GetRetryTimers Retry Timers
- * @warning This API should not be used for new applications and will be removed in the future
+ * @subsection c_le_avc_PollingTimer Polling Timer
+ *
+ * The target will periodically initiate a connection to the AirVantage Server according to the
+ * settings for the polling timer to check if there are any pending jobs.
+ *
+ * If you need to disable the poling timer call le_avc_SetPollingTimer() and set the value to 0.
+ *
+ * The polling timer accepts ranges from 0 to 525600 minutes and is persistent across reboots and
+ * upgrades.
+ *
+ * To read the polling timer call: le_avc_GetPollingTimer()
+ *
+ * To write a new value to the polling timer call: le_avc_SetPollingTimer()
+ *
+ * @subsection c_le_avc_RetryTimers Retry Timers
  *
  * If an error occurs during a connection to the Device Services server (WWAN DATA establishment
- * failed, http error code received), the embedded module will initiate a new connection according
- * to the values defined in the retry timers. The timers are tried in sequence until a connection is
- * established, or all enabled retry timers are exhausted. After all the enabled timers are
- * exhausted, a connection will be initiated only on a command from user (le_avc_startSession() )
- * or at the expiry of the polling timer. The retry timer values are persistent. Writing 0
- * to one of the retry timers will disable it. Retry timer values range from 0 to 20160 minutes.
- * The api le_avc_GetRetryTimers() reads the polling timers in an array and the api
- * le_avc_SetRetryTimers() writes the polling timers. When writing to the retry timers, values of
+ * failed and an http error code is received) the embedded module will initiate a new connection
+ * according to the values defined in the retry timers.
+ *
+ * The timers are tried in sequence until a connection is established, or all enabled retry timers
+ * are exhausted. After all the enabled timers are exhausted, a new session must be initiated again
+ * by calling le_avc_startSession() after the expiry of the retry timer.
+ *
+ * The retry timer values are persistent (reboots and updates do not effect the retry timers).
+ * If you wish to disable a retry timer set the timer value
+ * to 0.  You must always pass in at least 8 values to the retry timers.
+ *
+ * Retry timer values range from 0 to 20160 minutes.
+ * The function le_avc_GetRetryTimers() reads the retry timers in an array and the function
+ * le_avc_SetRetryTimers() writes the retry timers. When writing to the retry timers, values of
  * all the 8 timers have to be defined.
  *
- * @section c_le_avc_reboot Device reboot
- * The AirVantage server can request to reboot the device: in this case a notification is sent to
- * registered apps, which can either accept the reboot with le_avc_AcceptReboot() or defer it for
- * the specified number of minutes with le_avc_DeferReboot(). After the defer time has elapsed, the
- * pending reboot notification will be re-sent, to allow the registered app to make a new decision
- * or defer again.
+ * Example of calling retry timers, the session will be retried after 15 minutes, 1 hour, 4 hours,
+ * 8 hours, 1 day and 2 days, the last two retries are disabled:
+ * @code
+ * uint16_t RetryTimers[LE_AVC_NUM_RETRY_TIMERS] = {15, 60, 240, 480, 1440, 2880, 0, 0};
+ * le_avc_SetRetryTimers(RetryTimers, LE_AVC_NUM_RETRY_TIMERS);
+ * @endcode
  *
- * If no app has registered for notifications using le_avc_AddStatusEventHandler(), then
+ * @section c_le_avc_reboot Device reboot
+ *
+ * The AirVantage server can request to reboot the device. If a reboot is requested a notification
+ * is sent to the registered Apps. The App can either accept the reboot with @c le_avc_AcceptReboot()
+ * or defer it for a specified number of minutes with @c le_avc_DeferReboot(). After the defer time
+ * has elapsed, the pending reboot notification will be re-sent. This allows the registered app to
+ * make a new decision or defer the reboot again.
+ *
+ * If no App has registered for notifications using le_avc_AddStatusEventHandler(), then
  * any pending reboot will happen automatically.
  *
  * @section c_le_avc_GetCredentialStatus Credential Status
@@ -132,14 +222,14 @@
  * status of credentials provisioned on the device.
  *
  * @section c_le_avc_connection Connection required
+ *
  * The AirVantage agent can request a connection to the AirVantage server, especially when a
- * firmware package was installed (after a platform reboot). In this case a notification is sent to
- * the control app, which can start the connection with le_avc_StartSession().
+ * firmware package is installed (after a platform reboot). In this case a notification is sent to
+ * the control App, which can start the connection with le_avc_StartSession().
  *
  * @section le_avcService_configdb Service Configuration Tree
  * @copydoc le_avcService_configdbPage_Hide
  *
- * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -149,25 +239,25 @@
  *
  * The configuration database path for the modemActivityTimeout is:
  * @verbatim
-   /
-       apps/
-           avcService/
-                    modemActivityTimeout
-   @endverbatim
+ * /
+ *     apps/
+ *         avcService/
+ *                  modemActivityTimeout
+ * @endverbatim
  *
  *
  * After an AirVantage session is started, if there's no activity from the modem within the timer
  * interval, then LE_AVC_NO_UPDATE state will be returned to the app. However, this modem activity
- * timeout can be overridden by setting an integer value at /apps/avcService/modemActivityTimeout.
- * The modem activity timer is initialized only when the avcService starts. If a valid entry >0 is
- * found, then it will be used instead of the default value of 20 seconds. The following steps
+ * timeout can be overridden by setting an integer value for /apps/avcService/modemActivityTimeout.
+ * The modem activity timer is initialized only when the @c avcService starts. If a valid entry >0
+ * is found, then it will be used instead of the default value of 20 seconds. The following steps
  * should be used to set the modemActivtyTimeout.
  *
  *
  * @verbatim
-   config set /apps/avcService/modemActivityTimeout xx
-   app restart avcService
-   @endverbatim
+ * config set /apps/avcService/modemActivityTimeout xx
+ * app restart avcService
+ * @endverbatim
  *
  * @note
  * Everytime a new value is written to modemActivityTimeout, the avcService needs to be

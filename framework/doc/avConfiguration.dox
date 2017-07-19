@@ -1,0 +1,252 @@
+/** @page avConfigure Configuration Tips for AirVantage
+
+We've included some configuration tips to help when connecting to AirVantage, if you haven't
+registered your device yet follow the steps in @ref avRegister and
+[AirVantage Getting Started](https://source.sierrawireless.com/airvantage/av/howto/hardware/legato_getting_started/).
+
+@section avConfigure_Apps Check Running Services
+
+The AirVantage Connector (avcService) relies on the data connection services
+(dataConnectionService) for network connectivity. The data connection service is in turn relies
+on the modem service (modemService) and the cellnet service (cellNetService). Before you can
+connect to AirVantage, check that the @c avcService, @c dataConnectionService, @c modemService and
+@c cellNetService are running.
+
+<b>Command: @ref toolsTarget_app "app status"</b>
+
+Example:
+@verbatim
+# app status
+
+[running] atAirVantage
+[running] atQmiLinker
+[running] atService
+[running] audioService
+[running] avcCompat
+[running] avcService
+[running] cellNetService
+[running] dataConnectionService
+[running] fwupdateService
+[running] gpioService
+[running] modemService
+[running] positioningService
+[running] powerMgr
+[running] secStore
+[stopped] smsInboxService
+[stopped] spiService
+[stopped] tools
+[stopped] voiceCallService
+[stopped] wifi
+[stopped] wifiApTest
+[stopped] wifiClientTest
+[running] wifiService
+[stopped] wifiWebAp
+@endverbatim
+
+If you are running into errors, check what IPC bindings are needed for the avcService use the
+@ref toolsTarget_sdir tool.
+
+@verbatim
+# sdir list         #  list of all the IPC services known by the Service Directory
+@endverbatim
+
+@section avConfigure_Data Check the Data Connection
+
+The @c dataConnectionService can be used to connect to WiFi or the Cellular network. If all WIFI
+related services are stopped the @c dataConnectionService will default to the Cellular Network.  To
+connect to cellular network we need to make sure that the SIM is registered to the network and the
+signal strength is good.
+
+<b>Command: @ref toolsTarget_cm "cm radio"</b>
+
+Example:
+@verbatim
+cm radio
+
+Power: ON
+Current Network Operator: BLOGS
+RAT: UMTS network (LE_MRC_RAT_UMTS)
+Status: Registered, home network (LE_MRC_REG_HOME)
+Signal: Strong signal strength (4)
+PS: Packet Switched Registered, home network (LE_MRC_REG_HOME)
+@endverbatim
+The SIM is registered and has a strong signal strength on the UMTS network.
+
+To make sure there is an Access Point Name (APN) set up for data connectivity:
+
+<b>Command: @ref toolsTarget_cm "cm data"</b>
+
+Example:
+@verbatim
+# cm data
+
+Index: 1
+APN: sp.blogs.com
+PDP Type: IPV4
+Connected: no
+@endverbatim
+
+AirVantage server only supports IPV4 for PDP. If your PDP connection is not using IPV4 you can
+change it with the following:
+
+<b>Command: @ref toolsTarget_cm "cm data pdp IPV4"</b>
+
+@section avConfigure_IP Check the IP Address
+
+To establish a data connection, make sure the data connection is established, and an IP address can
+be obtained.
+
+<b>Command: @ref toolsTarget_cm "cm data connect"</b>
+
+Example:
+
+@verbatim
+# cm data connect
+
+Setting up profile 1
+Setting access point name ... ok
+Setting packet data protocol ... ok
+Setting Authentication ... ok
+Connecting ... ok
+Checking if device is up ... ok
+Routing ... ok
+Updating /etc/resolv.conf ... ok
+Updating /etc/resolv.conf ... ok
+Testing connection ... ok
+@endverbatim
+
+From the above output the device is currently using profile 1 which is the APN (sp.blogs.com) and
+that the routing table is ok.
+Verify the IP address with the following command.
+
+<b>Command: @ref toolsTarget_cm "cm data"</b>
+
+Example:
+@verbatim
+# cm data
+
+Index: 1
+APN: sp.blogs.com
+PDP Type: IPV4
+Connected: yes
+Interface: rmnet0
+Family: inet
+IP: 123.345.567.789
+Gateway: 123.1.1.1
+Dns1: 123.123.123.123
+Dns2: 123.123.123.321
+@endverbatim
+
+@section avConfigure_Ping Check Network Connections
+
+You should now be able to ping the outside world.
+
+Example:
+@verbatim
+# ping google.com
+PING google.com (216.58.193.78) 56(84) bytes of data.
+64 bytes from sea15s07-in-f14.1e100.net (216.58.193.78): icmp_seq=1 ttl=54 time=6.19 ms
+64 bytes from sea15s07-in-f14.1e100.net (216.58.193.78): icmp_seq=2 ttl=54 time=9.55 ms
+64 bytes from sea15s07-in-f14.1e100.net (216.58.193.78): icmp_seq=3 ttl=54 time=6.07 ms
+64 bytes from sea15s07-in-f14.1e100.net (216.58.193.78): icmp_seq=4 ttl=54 time=5.73 ms
+64 bytes from sea15s07-in-f14.1e100.net (216.58.193.78): icmp_seq=5 ttl=54 time=19.3 ms
+64 bytes from sea15s07-in-f14.1e100.net (216.58.193.78): icmp_seq=6 ttl=54 time=5.80 ms
+@endverbatim
+
+Ping the AirVantage bootstrap server.
+@verbatim
+# ping bs.airvantage.net
+PING bs.airvantage.net (52.24.215.63): 56 data bytes
+64 bytes from 52.24.215.63: seq=0 ttl=234 time=269.007 ms
+64 bytes from 52.24.215.63: seq=1 ttl=234 time=258.111 ms
+64 bytes from 52.24.215.63: seq=2 ttl=234 time=707.798 ms
+64 bytes from 52.24.215.63: seq=3 ttl=234 time=237.510 ms
+64 bytes from 52.24.215.63: seq=4 ttl=234 time=246.483 ms
+@endverbatim
+
+@section avConfigure_Connect Connect to the AirVantage Server
+
+At this point the target is ready to be connected to the AirVantage Server. Use the api
+le_avc_StartSession() to start a session or use the @c at command to connect the device to
+AirVantage.
+
+Steps to connect to the AirVanatage Server AT commands:
+ - @c ssh to device: @c ssh @c 192.168.2.2
+ - open an AT connection: <c>microcom -E /dev/ttyAT</c>
+ - enable all notification: @c at+wdsi=8191
+ - connect to the AirVantage Server: @c at+wdss=1,1
+
+Example for WPX5XX/WP76XX/FX30 Customers:
+@verbatim
+# microcom -E /dev/ttyAT
+at+wdsi=8191
+OK
+at+wdss=1,1
+OK
++WDSI: 6
++WDSI: 23,1
+@endverbatim
+
+For information on AT Commands download the AT Command Reference from your module provider.
+
+[AirPrime WPX5XX/WP76XX AT Command Reference](https://source.sierrawireless.com/resources/airprime/software/airprime_wpx5xx_wp76xx_at_command_reference_r3/)
+
+If you check on the AirVantage Web Admin Console you will see that the "Comm. Status"
+should be green and the Last Seen should indicate very recent.
+
+@section avConfigure_Frequency Configure Frequency of Connections
+
+Within your
+Polling Timer, Hearbeat and Lifetime are all set the same and indicate how frequently the device
+connects to the AirVantage server.
+
+The Polling Timer can be enabled by setting it to a non-zero value either with
+le_avc_SetPollingTimer(), or with the @ref toolsTarget_config tool and restart Legato.
+
+To display current Polling Timer setting use the following command:
+@verbatim
+# config get /apps/avcService/config/pollingTimer
+4320
+@endverbatim
+
+The output is an Integer value in minutes indicating the frequency that the target connects to the
+AirVantage server.
+
+Retry timers are built into the AVC API to build resiliency into the system.
+
+Example Scenario: Let's say we set the polling timer to connect to the server every 24 hours. What
+if the mobile device is in an area where there is a network issue that happens everyday that prevents
+the target from connecting? What if that happens every day? The device will never be able to
+establish a connection to the AirVantage Server in this case as it is trying to connect to server
+only when there is no network.  To accommodate this Retry timers should be set at a variety of times
+so that there is a greater chance of network connection.
+
+Retry Timers can be initiated by using either le_avc_StartSession() or by setting the polling timer.
+If the session fails, the retry timers can use up to 8 attempts to connect back to the AirVantage
+server.
+
+To display the configuration of the retry timers:
+@verbatim
+# config get /apps/avcService/config/retryTimers
+retryTimers/
+0<int> == 15
+1<int> == 60
+2<int> == 240
+3<int> == 480
+4<int> == 1440
+5<int> == 2880
+6<int> == 0
+7<int> == 0
+@endverbatim
+
+Above output indicates that a retry will be attempted retried after 15 minutes, 1 hour, 4 hours,
+8 hours, 1 day and 2 days, the last two retries are disabled.
+The retry timer can be set using le_avc_SetRetryTimers() or @ref toolsTarget_config "config set".
+
+@verbatim
+# config set /apps/avcService/config/retryTimers/0 30 int
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
