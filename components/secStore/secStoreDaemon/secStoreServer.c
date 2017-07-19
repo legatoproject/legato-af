@@ -549,9 +549,10 @@ static EntryIter_t* GetEntryIterPtr
 {
     EntryIter_t* iterPtr = le_ref_Lookup(EntryIterMap, iterRef);
 
-    if (iterPtr == NULL)
+    if (NULL == iterPtr)
     {
         LE_KILL_CLIENT("Iterator reference, <%p> is invalid.", iterRef);
+        return NULL;
     }
 
     // Ensure that the reference indeed belongs to this client.

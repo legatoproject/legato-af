@@ -1274,6 +1274,7 @@ void le_pos_RemoveMovementHandler
  * @return LE_FAULT         Function failed to find the positionSample.
  * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1298,6 +1299,11 @@ le_result_t le_pos_sample_Get2DLocation
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1353,6 +1359,7 @@ le_result_t le_pos_sample_Get2DLocation
  * @return LE_FAULT         Function failed to get the time.
  * @return LE_OUT_OF_RANGE  The retrieved time is invalid (all fields are set to 0).
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1367,6 +1374,11 @@ le_result_t le_pos_sample_GetTime
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1426,6 +1438,7 @@ le_result_t le_pos_sample_GetTime
  * @return LE_FAULT         Function failed to get the date.
  * @return LE_OUT_OF_RANGE  The retrieved date is invalid (all fields are set to 0).
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1439,6 +1452,11 @@ le_result_t le_pos_sample_GetDate
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1489,6 +1507,7 @@ le_result_t le_pos_sample_GetDate
  * @return LE_FAULT         Function failed to find the positionSample.
  * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1510,6 +1529,11 @@ le_result_t le_pos_sample_GetAltitude
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1554,6 +1578,7 @@ le_result_t le_pos_sample_GetAltitude
  * @return LE_OUT_OF_RANGE  One of the retrieved parameter is invalid
  *                          (set to INT32_MAX, UINT32_MAX).
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1575,6 +1600,11 @@ le_result_t le_pos_sample_GetHorizontalSpeed
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1617,6 +1647,7 @@ le_result_t le_pos_sample_GetHorizontalSpeed
  * @return LE_FAULT         The function failed to find the positionSample.
  * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to INT32_MAX).
  * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1633,6 +1664,11 @@ le_result_t le_pos_sample_GetVerticalSpeed
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1676,6 +1712,7 @@ le_result_t le_pos_sample_GetVerticalSpeed
  * @return LE_FAULT         The function failed to find the positionSample.
  * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to UINT32_MAX).
  * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note Heading is given in degrees.
  *       Heading ranges from 0 to 359 degrees, where 0 is True North.
@@ -1696,6 +1733,11 @@ le_result_t le_pos_sample_GetHeading
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1738,6 +1780,7 @@ le_result_t le_pos_sample_GetHeading
  * @return LE_FAULT         The function failed to find the positionSample.
  * @return LE_OUT_OF_RANGE  One of the retrieved parameter is not valid (set to UINT32_MAX).
  * @return LE_OK            The function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note Direction is given in degrees.
  *       Direction ranges from 0 to 359 degrees, where 0 is True North.
@@ -1758,6 +1801,11 @@ le_result_t le_pos_sample_GetDirection
 {
     le_result_t result = LE_OK;
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1801,6 +1849,7 @@ le_result_t le_pos_sample_GetDirection
  *
  * @return LE_FAULT         Function failed to get the position sample's fix state.
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing an invalid Position reference into this function,
  *       it is a fatal error, the function will not return.
@@ -1813,6 +1862,11 @@ le_result_t le_pos_sample_GetFixState
 )
 {
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap,positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {
@@ -1848,6 +1902,11 @@ void le_pos_sample_Release
         return;
     }
     PosSampleRequest_t* posSampleRequestPtr = le_ref_Lookup(PosSampleMap, positionSampleRef);
+    if (NULL == posSampleRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", positionSampleRef);
+        return;
+    }
 
     if (posSampleRequestPtr->posSampleNodePtr == NULL)
     {

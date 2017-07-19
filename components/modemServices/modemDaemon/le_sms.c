@@ -1539,6 +1539,7 @@ static void AsynSmsTimerHandler
  *  - LE_FAULT         The function failed to send the message.
  *  - LE_OK            The function succeeded.
  *  - LE_FORMAT_ERROR  The message content is invalid.
+ *  - LE_BAD_PARAMETER Invalid reference provided.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1551,6 +1552,11 @@ static le_result_t SendAsyncSMS
 {
     le_result_t   result = LE_FAULT;
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+    if (NULL == msgPtr)
+    {
+        LE_ERROR("Invalid reference (%p) provided!", msgRef);
+        return LE_BAD_PARAMETER;
+    }
 
     result = CheckAndEncodeMessage(msgPtr);
 
@@ -1741,7 +1747,7 @@ static void* SmsSenderThread
 
     // Register for SMS command events
     le_event_AddHandler("ProcessSmsSendingCommandHandler", SmsCommandEventId,
-                        ProcessSmsSendingCommandHandler);
+        ProcessSmsSendingCommandHandler);
 
     le_sem_Post(SmsSem);
 
@@ -2063,7 +2069,9 @@ le_sms_Format_t le_sms_GetFormat
 /**
  * Get the message type.
  *
- * @return Message type.
+ * @return
+ *  - Message type.
+ *  - LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -2078,9 +2086,10 @@ le_sms_Type_t le_sms_GetType
 {
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
 
-    if (msgPtr == NULL)
+    if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_BAD_PARAMETER;
     }
 
     return (msgPtr->type);
@@ -3342,7 +3351,9 @@ le_result_t le_sms_SendAsync
 /**
  * Get the error code when a 3GPP2 message sending has Failed.
  *
- * @return The error code
+ * @return
+ *  - The error code
+ *  - LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -3360,9 +3371,10 @@ le_sms_ErrorCode3GPP2_t le_sms_Get3GPP2ErrorCode
 {
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
 
-    if (msgPtr == NULL)
+    if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_BAD_PARAMETER;
     }
 
     return msgPtr->pdu.errorCode.code3GPP2;
@@ -3396,20 +3408,28 @@ void le_sms_GetErrorCode
 )
 {
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
+    if (NULL == msgPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return;
+    }
 
     if (msgPtr == msgRef)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return;
     }
 
-    if (rpCausePtr == NULL)
+    if (NULL == rpCausePtr)
     {
         LE_KILL_CLIENT("rpCausePtr is NULL");
+        return;
     }
 
-    if (tpCausePtr == NULL)
+    if (NULL == tpCausePtr)
     {
         LE_KILL_CLIENT("tpCausePtr is NULL");
+        return;
     }
 
     *rpCausePtr = msgPtr->pdu.errorCode.rp;
@@ -3420,7 +3440,9 @@ void le_sms_GetErrorCode
 /**
  * Called to get the platform specific error code.
  *
- * @return The platform specific error code.
+ * @return
+ *  - The platform specific error code.
+ *  - LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -3435,9 +3457,10 @@ int32_t le_sms_GetPlatformSpecificErrorCode
 {
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
 
-    if (msgPtr == NULL)
+    if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
+        return LE_BAD_PARAMETER;
     }
 
     return msgPtr->pdu.errorCode.platformSpecific;

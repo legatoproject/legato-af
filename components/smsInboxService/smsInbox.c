@@ -1795,6 +1795,11 @@ void SmsInbox_Close
     }
 
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return;
+    }
 
     le_mem_Release(clientRequestPtr->mboxSessionPtr);
     le_mem_Release(clientRequestPtr);
@@ -1823,6 +1828,11 @@ SmsInbox_RxMessageHandlerRef_t SmsInbox_AddRxMessageHandler
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return NULL;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -1898,6 +1908,11 @@ void SmsInbox_DeleteMsg
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -1964,6 +1979,11 @@ le_result_t SmsInbox_GetImsi
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2026,6 +2046,11 @@ le_sms_Format_t SmsInbox_GetFormat
 {
     // Get the message box session context
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return 0;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2086,6 +2111,11 @@ le_result_t SmsInbox_GetSenderTel
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2151,6 +2181,11 @@ le_result_t SmsInbox_GetTimeStamp
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2188,6 +2223,7 @@ le_result_t SmsInbox_GetTimeStamp
  *
  * @return Number of characters for text messages, or the length of the data in bytes for raw
  *         binary and PDU messages.
+ *  - LE_BAD_PARAMETER The message reference is invalid.
  */
 //--------------------------------------------------------------------------------------------------
 size_t SmsInbox_GetMsgLen
@@ -2202,6 +2238,11 @@ size_t SmsInbox_GetMsgLen
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2269,6 +2310,11 @@ le_result_t SmsInbox_GetText
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2345,6 +2391,11 @@ le_result_t SmsInbox_GetBinary
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2429,6 +2480,11 @@ le_result_t SmsInbox_GetPdu
 {
     // Get the mbox session context
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2486,6 +2542,7 @@ le_result_t SmsInbox_GetPdu
  * @return
  *  - 0 No message found (message box parsing is over).
  *  - Message identifier.
+ *  - LE_BAD_PARAMETER The message reference is invalid.
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t SmsInbox_GetFirst
@@ -2497,6 +2554,11 @@ uint32_t SmsInbox_GetFirst
 {
     // Get the message box session context
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2582,6 +2644,7 @@ uint32_t SmsInbox_GetFirst
  * @return
  *  - 0 No message found (message box parsing is over).
  *  - Message identifier.
+ *  - LE_BAD_PARAMETER The message reference is invalid.
  */
 //--------------------------------------------------------------------------------------------------
 uint32_t SmsInbox_GetNext
@@ -2593,6 +2656,11 @@ uint32_t SmsInbox_GetNext
 {
     // Get the message box session context
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     while(clientRequestPtr->mboxSessionPtr->browseCtx.maxIndex !=
           clientRequestPtr->mboxSessionPtr->browseCtx.currentMessageIndex)
@@ -2653,7 +2721,9 @@ uint32_t SmsInbox_GetNext
  * allow to know whether the message has been read or not. The message status is tied to the client
  * app.
  *
- * @return True if the message is unread, false otherwise.
+ * @return
+ *  - True if the message is unread, false otherwise.
+ *  - LE_BAD_PARAMETER Invalid reference provided.
  *
  * @note If the caller is passing a bad message reference into this function, it is a fatal error,
  *        the function will not return.
@@ -2671,6 +2741,11 @@ bool SmsInbox_IsUnread
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return LE_BAD_PARAMETER;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2721,6 +2796,11 @@ void SmsInbox_MarkRead
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {
@@ -2766,6 +2846,11 @@ void SmsInbox_MarkUnread
 )
 {
     ClientRequest_t* clientRequestPtr = le_ref_Lookup(ActivationRequestRefMap, sessionRef);
+    if (NULL == clientRequestPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", sessionRef);
+        return;
+    }
 
     if (clientRequestPtr->mboxSessionPtr == NULL)
     {

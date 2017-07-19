@@ -1209,6 +1209,11 @@ static void CloseSessionEventHandler
     {
         le_audio_ConnectorRef_t connectorRef = (le_audio_ConnectorRef_t) le_ref_GetSafeRef(iterRef);
         le_audio_Connector_t* connectorPtr = le_ref_Lookup(AudioConnectorRefMap, connectorRef);
+        if (NULL == connectorPtr)
+        {
+            LE_ERROR("Invalid reference (%p) provided!", connectorRef);
+            return;
+        }
 
         // Get the next value in the reference maps (before releasing the node)
         result = le_ref_NextNode(iterRef);

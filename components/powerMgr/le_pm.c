@@ -115,8 +115,11 @@ PowerManager = {-1, -1, NULL, NULL, NULL, NULL, NULL};
 static inline WakeupSource_t *ToWakeupSource(le_pm_WakeupSourceRef_t w)
 {
     WakeupSource_t *ws = (WakeupSource_t *)le_ref_Lookup(PowerManager.refs, w);
-    if (!ws)
+    if (NULL == ws)
+    {
         LE_KILL_CLIENT("Error: bad wakeup source reference %p.", w);
+        return NULL;
+    }
 
 #ifdef DEBUG
     if (PM_WAKEUP_SOURCE_COOKIE != ws->cookie || ws->wsref != w)

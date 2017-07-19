@@ -862,6 +862,11 @@ static void CloseSessionEventHandler
                                                       link);
 
             le_mcc_Call_t* callPtr = le_ref_Lookup(MccCallRefMap, CallRefPtr->callRef);
+            if (NULL == callPtr)
+            {
+                LE_ERROR("Invalid reference (%p) provided!", CallRefPtr->callRef);
+                return;
+            }
 
             le_ref_DeleteRef(MccCallRefMap, CallRefPtr->callRef);
             le_mem_Release(CallRefPtr);

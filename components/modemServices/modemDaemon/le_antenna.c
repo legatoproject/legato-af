@@ -133,6 +133,7 @@ le_antenna_ObjRef_t le_antenna_Request
  * @return
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_GetType
@@ -146,15 +147,19 @@ le_result_t le_antenna_GetType
         ///< allocated antenna type
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference %p", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     // Get the antenna type
     *antennaTypePtr = antennaCtxPtr->antennaType;
@@ -170,6 +175,7 @@ le_result_t le_antenna_GetType
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_SetShortLimit
@@ -183,18 +189,22 @@ le_result_t le_antenna_SetShortLimit
         ///< The ADC value used to detect a short circuit
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference %p", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     // Set the short limit in the PA
-    return pa_antenna_SetShortLimit( antennaCtxPtr->antennaType, shortLimit );
+    return pa_antenna_SetShortLimit(antennaCtxPtr->antennaType, shortLimit);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -205,6 +215,7 @@ le_result_t le_antenna_SetShortLimit
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_GetShortLimit
@@ -218,18 +229,22 @@ le_result_t le_antenna_GetShortLimit
         ///< The ADC value used to detect a short circuit
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference %p", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     // Get the short limit
-    return pa_antenna_GetShortLimit( antennaCtxPtr->antennaType, shortLimitPtr );
+    return pa_antenna_GetShortLimit(antennaCtxPtr->antennaType, shortLimitPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -240,6 +255,7 @@ le_result_t le_antenna_GetShortLimit
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_SetOpenLimit
@@ -253,18 +269,22 @@ le_result_t le_antenna_SetOpenLimit
         ///< The ADC value used to detect an open circuit
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference %p", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     // Set the open limit
-    return pa_antenna_SetOpenLimit( antennaCtxPtr->antennaType, openLimit );
+    return pa_antenna_SetOpenLimit(antennaCtxPtr->antennaType, openLimit);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -275,6 +295,7 @@ le_result_t le_antenna_SetOpenLimit
  *      - LE_OK on success
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_GetOpenLimit
@@ -288,18 +309,22 @@ le_result_t le_antenna_GetOpenLimit
         ///< The ADC value used to detect an open circuit
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference %p", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     // Get the open limit
-    return pa_antenna_GetOpenLimit( antennaCtxPtr->antennaType, openLimitPtr );
+    return pa_antenna_GetOpenLimit(antennaCtxPtr->antennaType, openLimitPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -401,6 +426,7 @@ void le_antenna_RemoveStatusEventHandler
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_UNSUPPORTED if the Antenna detection is not supported
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -415,15 +441,19 @@ le_result_t le_antenna_GetStatus
         ///< antenna status
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference %p", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     // Get the open limit
     return pa_antenna_GetStatus( antennaCtxPtr->antennaType, statusPtr );
@@ -438,6 +468,7 @@ le_result_t le_antenna_GetStatus
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_UNSUPPORTED request not supported
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_SetExternalAdc
@@ -446,14 +477,19 @@ le_result_t le_antenna_SetExternalAdc
     int8_t                 adcId        ///< The external ADC used to monitor the requested antenna
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     return pa_antenna_SetExternalAdc(antennaCtxPtr->antennaType, adcId);
 }
@@ -467,6 +503,7 @@ le_result_t le_antenna_SetExternalAdc
  *      - LE_NOT_FOUND if the antenna reference is unknown
  *      - LE_UNSUPPORTED request not supported
  *      - LE_FAULT on other failure
+ *      - LE_BAD_PARAMETER Invalid reference provided.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_antenna_GetExternalAdc
@@ -475,15 +512,19 @@ le_result_t le_antenna_GetExternalAdc
     int8_t*                adcIdPtr     ///< The external ADC used to monitor the requested antenna
 )
 {
-    if ( antennaRef == NULL )
+    if (NULL == antennaRef)
     {
         LE_ERROR("Invalid reference %p", antennaRef);
-
         return LE_NOT_FOUND;
     }
 
     // Get the context from the reference
-    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup( AntennaRefMap, antennaRef );
+    AntennaCtx_t*  antennaCtxPtr = le_ref_Lookup(AntennaRefMap, antennaRef);
+    if (NULL == antennaCtxPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", antennaRef);
+        return LE_BAD_PARAMETER;
+    }
 
     return pa_antenna_GetExternalAdc(antennaCtxPtr->antennaType, adcIdPtr);
 }
