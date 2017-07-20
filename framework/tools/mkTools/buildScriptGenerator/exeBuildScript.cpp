@@ -25,10 +25,9 @@ namespace ninja
  * Generate comment header for a build script.
  */
 //--------------------------------------------------------------------------------------------------
-static void GenerateCommentHeader
+void ExeBuildScriptGenerator_t::GenerateCommentHeader
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Exe_t* exePtr
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -46,9 +45,9 @@ static void GenerateCommentHeader
  * @return String containing the name of the rule.
  **/
 //--------------------------------------------------------------------------------------------------
-static std::string GetLinkRule
+std::string ExeBuildScriptGenerator_t::GetLinkRule
 (
-    const model::Exe_t* exePtr
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -69,10 +68,9 @@ static std::string GetLinkRule
  * with libraries that a given executable depends on.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GetDependentLibLdFlags
+void ExeBuildScriptGenerator_t::GetDependentLibLdFlags
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Exe_t* exePtr
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -105,15 +103,14 @@ static void GetDependentLibLdFlags
  * Write to a given script a build statement for a given executable.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateBuildStatement
+void ExeBuildScriptGenerator_t::GenerateBuildStatement
 (
-    std::ofstream& script,
-    const model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
     auto exePath = exePtr->path;
+
     if (!path::IsAbsolute(exePath))
     {
         exePath = "$builddir/" + exePath;
@@ -169,7 +166,7 @@ static void GenerateBuildStatement
 
     // Set the DT_RUNPATH variable inside the executable's ELF headers to include the expected
     // on-target runtime locations of the libraries needed.
-    GenerateRunPathLdFlags(script, buildParams.target);
+    componentGeneratorPtr->GenerateRunPathLdFlags();
 
     // Link with all the static libraries that the components need.
     for (const auto& lib : staticLibs)
@@ -181,7 +178,7 @@ static void GenerateBuildStatement
     script << " -L" << buildParams.libOutputDir;
 
     // Include a list of -l directives for all the libraries the executable needs.
-    GetDependentLibLdFlags(script, exePtr);
+    GetDependentLibLdFlags(exePtr);
 
     // Link again with all the static libraries that the components need, in case there are
     // dynamic libraries that need symbols from them, or in case there are interdependencies
@@ -192,7 +189,7 @@ static void GenerateBuildStatement
     }
 
     // Include another list of -l directives for all the libraries the executable needs.
-    GetDependentLibLdFlags(script, exePtr);
+    GetDependentLibLdFlags(exePtr);
 
     // Link with the standard runtime libs.
     script << " \"-L$$LEGATO_BUILD/framework/lib\" -llegato -lpthread -lrt -ldl -lm";
@@ -209,11 +206,9 @@ static void GenerateBuildStatement
  * header files, source code files, and object files needed by a given executable.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateIpcBuildStatements
+void ExeBuildScriptGenerator_t::GenerateIpcBuildStatements
 (
-    std::ofstream& script,
-    const model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -226,7 +221,7 @@ static void GenerateIpcBuildStatements
 
     for (auto instancePtr : exePtr->componentInstances)
     {
-        GenerateIpcBuildStatements(script, instancePtr->componentPtr, buildParams, generatedSet);
+        componentGeneratorPtr->GenerateIpcBuildStatements(instancePtr->componentPtr);
     }
 }
 
@@ -237,11 +232,9 @@ static void GenerateIpcBuildStatements
  * definitions for a given executable's .o file build statements.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateCandCxxFlags
+void ExeBuildScriptGenerator_t::GenerateCandCxxFlags
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -263,11 +256,9 @@ static void GenerateCandCxxFlags
  * Print to a given build script the build statements related to a given executable.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateBuildStatements
+void ExeBuildScriptGenerator_t::GenerateBuildStatements
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -279,7 +270,7 @@ void GenerateBuildStatements
             script << "build $builddir/" << objFilePtr->path << ":"
                       " CompileC " << objFilePtr->sourceFilePath << "\n"
                       "  cFlags = $cFlags ";
-            GenerateCandCxxFlags(script, exePtr, buildParams);
+            GenerateCandCxxFlags(exePtr);
             script << "\n\n";
         }
         for (auto objFilePtr : exePtr->cxxObjectFiles)
@@ -287,7 +278,7 @@ void GenerateBuildStatements
             script << "build $builddir/" << objFilePtr->path << ":"
                       " CompileCxx " << objFilePtr->sourceFilePath << "\n"
                       "  cxxFlags = $cxxFlags ";
-            GenerateCandCxxFlags(script, exePtr, buildParams);
+            GenerateCandCxxFlags(exePtr);
             script << "\n\n";
         }
 
@@ -305,7 +296,7 @@ void GenerateBuildStatements
                   "\n\n";
 
         // Add a build statement for the executable file.
-        GenerateBuildStatement(script, exePtr, buildParams);
+        GenerateBuildStatement(exePtr);
     }
     else if (exePtr->hasJavaCode)
     {
@@ -342,12 +333,11 @@ void GenerateBuildStatements
             }
         }
 
-        GenerateJavaBuildCommand(script,
-                                 path::Combine("$builddir/", exePtr->path),
-                                 classDestPath,
-                                 { mainObjectFile.sourceFilePath },
-                                 classPath,
-                                 dependencies);
+        componentGeneratorPtr->GenerateJavaBuildCommand(path::Combine("$builddir/", exePtr->path),
+                                                        classDestPath,
+                                                        { mainObjectFile.sourceFilePath },
+                                                        classPath,
+                                                        dependencies);
     }
 }
 
@@ -357,17 +347,12 @@ void GenerateBuildStatements
  * Write to a given build script the build statements for the build script itself.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateNinjaScriptBuildStatement
+void ExeBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
 (
-    std::ofstream& script,
-    const model::Exe_t* exePtr,
-    const std::string& filePath     ///< Path to the build.ninja file.
+    model::Exe_t* exePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Generate a build statement for the build.ninja.
-    script << "build " << filePath << ": RegenNinjaScript |";
-
     // The build.ninja depends on the .cdef files of all component instances, and all
     // the .api files they use.
     // Create a set of dependencies.
@@ -406,14 +391,71 @@ static void GenerateNinjaScriptBuildStatement
     // It also depends on changes to the mk tools.
     dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/mk"));
 
-    // Write the dependencies to the script.
-    for (auto dep : dependencies)
-    {
-        script << " " << dep;
-    }
-    script << "\n\n";
+    baseGeneratorPtr->GenerateNinjaScriptBuildStatement(dependencies);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate all build rules required to build an executable.
+ */
+//--------------------------------------------------------------------------------------------------
+void ExeBuildScriptGenerator_t::GenerateBuildRules
+(
+    void
+)
+{
+    componentGeneratorPtr->GenerateBuildRules();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a build script for an executable and associated component and IPC interface
+ * libraries.
+ *
+ * @note This is only used by mkexe.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ExeBuildScriptGenerator_t::Generate
+(
+    model::Exe_t* exePtr
+)
+{
+    // Start the script with a comment, the file-level variable definitions, and
+    // a set of generic rules.
+    GenerateCommentHeader(exePtr);
+    std::string includes;
+    includes = " -I " + buildParams.workingDir;
+    for (const auto& dir : buildParams.interfaceDirs)
+    {
+        includes += " -I" + dir;
+    }
+    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
+    script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
+    script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
+    script << "ldFlags = " << buildParams.ldFlags << "\n\n";
+    script << "target = " << buildParams.target << "\n\n";
+    GenerateBuildRules();
+
+    if (!buildParams.codeGenOnly)
+    {
+        // Add build statements for the executable and .o files included in it.
+        GenerateBuildStatements(exePtr);
+
+        // Add build statements for all the components included in this executable.
+        for (auto componentInstancePtr : exePtr->componentInstances)
+        {
+            componentGeneratorPtr->GenerateBuildStatementsRecursive(
+                componentInstancePtr->componentPtr);
+        }
+    }
+
+    // Add build statements for all the IPC interfaces' generated files.
+    GenerateIpcBuildStatements(exePtr);
+
+    // Add a build statement for the build.ninja file itself.
+    GenerateNinjaScriptBuildStatement(exePtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -432,45 +474,9 @@ void Generate
 {
     std::string filePath = path::Minimize(buildParams.workingDir + "/build.ninja");
 
-    std::ofstream script;
-    OpenFile(script, filePath, buildParams.beVerbose);
+    ExeBuildScriptGenerator_t scriptGenerator(filePath, buildParams);
 
-    // Start the script with a comment, the file-level variable definitions, and
-    // a set of generic rules.
-    GenerateCommentHeader(script, exePtr);
-    std::string includes;
-    includes = " -I " + buildParams.workingDir;
-    for (const auto& dir : buildParams.interfaceDirs)
-    {
-        includes += " -I" + dir;
-    }
-    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
-    script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
-    script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
-    script << "ldFlags = " << buildParams.ldFlags << "\n\n";
-    script << "target = " << buildParams.target << "\n\n";
-    GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-    GenerateBuildRules(script, buildParams);
-
-    if (!buildParams.codeGenOnly)
-    {
-        // Add build statements for the executable and .o files included in it.
-        GenerateBuildStatements(script, exePtr, buildParams);
-
-        // Add build statements for all the components included in this executable.
-        for (auto componentInstancePtr : exePtr->componentInstances)
-        {
-            GenerateBuildStatements(script, componentInstancePtr->componentPtr, buildParams);
-        }
-    }
-
-    // Add build statements for all the IPC interfaces' generated files.
-    GenerateIpcBuildStatements(script, exePtr, buildParams);
-
-    // Add a build statement for the build.ninja file itself.
-    GenerateNinjaScriptBuildStatement(script, exePtr, filePath);
-
-    CloseFile(script);
+    scriptGenerator.Generate(exePtr);
 }
 
 

@@ -29,10 +29,9 @@ namespace ninja
  * Generate comment header for an app build script.
  */
 //--------------------------------------------------------------------------------------------------
-static void GenerateCommentHeader
+void AppBuildScriptGenerator_t::GenerateCommentHeader
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::App_t* appPtr
+    model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -48,9 +47,9 @@ static void GenerateCommentHeader
  * Generate app build rules.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateAppBuildRules
+void AppBuildScriptGenerator_t::GenerateAppBuildRules
 (
-    std::ofstream& script   ///< Ninja script to write rules to.
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -118,17 +117,15 @@ void GenerateAppBuildRules
  * Generates build statements for all the executables in a given app.
  */
 //--------------------------------------------------------------------------------------------------
-void GenerateExeBuildStatements
+void AppBuildScriptGenerator_t::GenerateExeBuildStatements
 (
-    std::ofstream& script,      ///< Ninja script to write rules to.
-    const model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams
+    model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
     for (auto mapItem : appPtr->executables)
     {
-        GenerateBuildStatements(script, mapItem.second, buildParams);
+        exeGeneratorPtr->GenerateBuildStatements(mapItem.second);
     }
 }
 
@@ -186,9 +183,8 @@ static std::string PermissionsToModeFlags
  * Adds the absolute destination file path to the bundledFiles set.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateFileBundleBuildStatement
+void AppBuildScriptGenerator_t::GenerateFileBundleBuildStatement
 (
-    std::ofstream& script,
     const model::FileSystemObject_t& fileObject,  ///< File object to generate
     model::FileSystemObjectSet_t& bundledFiles    ///< Set to fill with bundled file paths.
 )
@@ -232,9 +228,8 @@ static void GenerateFileBundleBuildStatement
  * the staging area.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateDirBundleBuildStatements
+void AppBuildScriptGenerator_t::GenerateDirBundleBuildStatements
 (
-    std::ofstream& script,
     const model::FileSystemObject_t& fileObject, ///< File system object to bundle
     model::FileSystemObjectSet_t& bundledFiles   ///< Set to fill with bundled file paths.
 )
@@ -297,8 +292,7 @@ static void GenerateDirBundleBuildStatements
             // If this is a directory, then recursively descend into it.
             if (file::DirectoryExists(entrySrcPath))
             {
-                GenerateDirBundleBuildStatements(script,
-                                                 model::FileSystemObject_t(entrySrcPath,
+                GenerateDirBundleBuildStatements(model::FileSystemObject_t(entrySrcPath,
                                                                            entryDestPath,
                                                                            fileObject.permissions,
                                                                            &fileObject),
@@ -307,8 +301,7 @@ static void GenerateDirBundleBuildStatements
             // If this is a file, create a build statement for it.
             else if (file::FileExists(entrySrcPath))
             {
-                GenerateFileBundleBuildStatement(script,
-                                                 model::FileSystemObject_t(entrySrcPath,
+                GenerateFileBundleBuildStatement(model::FileSystemObject_t(entrySrcPath,
                                                                            entryDestPath,
                                                                            fileObject.permissions,
                                                                            &fileObject),
@@ -335,13 +328,11 @@ static void GenerateDirBundleBuildStatements
  * the staging area.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateFileBundleBuildStatement
+void AppBuildScriptGenerator_t::GenerateFileBundleBuildStatement
 (
-    std::ofstream& script,
     model::FileSystemObjectSet_t& bundledFiles, ///< Set to fill with bundled file paths.
-    const model::App_t* appPtr, ///< App to bundle the file into.
-    const model::FileSystemObject_t* fileSystemObjPtr,  ///< File bundling info.
-    const mk::BuildParams_t& buildParams
+    model::App_t* appPtr, ///< App to bundle the file into.
+    const model::FileSystemObject_t* fileSystemObjPtr  ///< File bundling info.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -362,8 +353,7 @@ static void GenerateFileBundleBuildStatement
 
     destPath += fileSystemObjPtr->destPath;
 
-    GenerateFileBundleBuildStatement(script,
-                                     model::FileSystemObject_t(fileSystemObjPtr->srcPath,
+    GenerateFileBundleBuildStatement(model::FileSystemObject_t(fileSystemObjPtr->srcPath,
                                                                destPath.str,
                                                                fileSystemObjPtr->permissions,
                                                                fileSystemObjPtr),
@@ -377,13 +367,11 @@ static void GenerateFileBundleBuildStatement
  * the staging area.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateDirBundleBuildStatements
+void AppBuildScriptGenerator_t::GenerateDirBundleBuildStatements
 (
-    std::ofstream& script,
     model::FileSystemObjectSet_t& bundledFiles, ///< Set to fill with bundled file paths.
-    const model::App_t* appPtr, ///< App to bundle the directory into.
-    const model::FileSystemObject_t* fileSystemObjPtr,  ///< Directory bundling info.
-    const mk::BuildParams_t& buildParams
+    model::App_t* appPtr, ///< App to bundle the directory into.
+    const model::FileSystemObject_t* fileSystemObjPtr  ///< Directory bundling info.
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -405,8 +393,7 @@ static void GenerateDirBundleBuildStatements
 
     destPath += fileSystemObjPtr->destPath;
 
-    GenerateDirBundleBuildStatements(script,
-                                     model::FileSystemObject_t(fileSystemObjPtr->srcPath,
+    GenerateDirBundleBuildStatements(model::FileSystemObject_t(fileSystemObjPtr->srcPath,
                                                                destPath.str,
                                                                fileSystemObjPtr->permissions,
                                                                fileSystemObjPtr),
@@ -425,11 +412,9 @@ static void GenerateDirBundleBuildStatements
  *       bundle's dependency list.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateStagingBundleBuildStatements
+void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
 (
-    std::ofstream& script,
-    model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams
+    model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -440,27 +425,21 @@ void GenerateStagingBundleBuildStatements
     // NOTE: Source paths for bundled items are always absolute.
     for (auto fileSystemObjPtr : appPtr->bundledFiles)
     {
-        GenerateFileBundleBuildStatement(script,
-                                         allBundledFiles,
+        GenerateFileBundleBuildStatement(allBundledFiles,
                                          appPtr,
-                                         fileSystemObjPtr.get(),
-                                         buildParams);
+                                         fileSystemObjPtr.get());
     }
     for (auto fileSystemObjPtr : appPtr->bundledDirs)
     {
-        GenerateDirBundleBuildStatements(script,
-                                         allBundledFiles,
+        GenerateDirBundleBuildStatements(allBundledFiles,
                                          appPtr,
-                                         fileSystemObjPtr.get(),
-                                         buildParams);
+                                         fileSystemObjPtr.get());
     }
     for (auto fileSystemObjPtr : appPtr->bundledBinaries)
     {
-        GenerateFileBundleBuildStatement(script,
-                                         allBundledFiles,
+        GenerateFileBundleBuildStatement(allBundledFiles,
                                          appPtr,
-                                         fileSystemObjPtr.get(),
-                                         buildParams);
+                                         fileSystemObjPtr.get());
     }
 
     // Now do the same for each component in the app, and also generate statements for bundling
@@ -469,19 +448,15 @@ void GenerateStagingBundleBuildStatements
     {
         for (auto fileSystemObjPtr : componentPtr->bundledFiles)
         {
-            GenerateFileBundleBuildStatement(script,
-                                             allBundledFiles,
+            GenerateFileBundleBuildStatement(allBundledFiles,
                                              appPtr,
-                                             fileSystemObjPtr.get(),
-                                             buildParams);
+                                             fileSystemObjPtr.get());
         }
         for (auto fileSystemObjPtr : componentPtr->bundledDirs)
         {
-            GenerateDirBundleBuildStatements(script,
-                                             allBundledFiles,
+            GenerateDirBundleBuildStatements(allBundledFiles,
                                              appPtr,
-                                             fileSystemObjPtr.get(),
-                                             buildParams);
+                                             fileSystemObjPtr.get());
         }
 
         // Generate a statement for bundling a component library into an application, if it has
@@ -516,11 +491,9 @@ void GenerateStagingBundleBuildStatements
  * bundle.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateAppBundleBuildStatement
+void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
 (
-    std::ofstream& script,
     model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams,
     const std::string& outputDir    ///< Path to the directory into which the built app will be put.
 )
 //--------------------------------------------------------------------------------------------------
@@ -529,9 +502,7 @@ void GenerateAppBundleBuildStatement
     appPtr->setTargetInfo(new target::FileSystemAppInfo_t());
 
     // Generate build statements for bundling files into the staging area.
-    GenerateStagingBundleBuildStatements(script,
-                                         appPtr,
-                                         buildParams);
+    GenerateStagingBundleBuildStatements(appPtr);
 
     // Compute the staging directory path.
     auto stagingDir = "$builddir/" + path::Combine(appPtr->workingDir, "staging");
@@ -622,17 +593,12 @@ void GenerateAppBundleBuildStatement
  * Write to a given build script the build statements for the build script itself.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateNinjaScriptBuildStatement
+void AppBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
 (
-    std::ofstream& script,
-    const model::App_t* appPtr,
-    const std::string& filePath     ///< Path to the build.ninja file.
+    model::App_t* appPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Generate a build statement for the build.ninja.
-    script << "build " << filePath << ": RegenNinjaScript | " << appPtr->defFilePtr->path;
-
     // In addition to the .adef file, the build.ninja depends on the .cdef files of all components
     // and all the .api files they use.
     // Create a set of dependencies.
@@ -667,12 +633,70 @@ static void GenerateNinjaScriptBuildStatement
         }
     }
 
-    // Write the dependencies to the script.
-    for (auto dep : dependencies)
+    baseGeneratorPtr->GenerateNinjaScriptBuildStatement(dependencies);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate all build rules required for building an application.
+ */
+//--------------------------------------------------------------------------------------------------
+void AppBuildScriptGenerator_t::GenerateBuildRules
+(
+    void
+)
+{
+    exeGeneratorPtr->GenerateBuildRules();
+    GenerateAppBuildRules();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a build script for an application.
+ */
+//--------------------------------------------------------------------------------------------------
+void AppBuildScriptGenerator_t::Generate
+(
+    model::App_t* appPtr
+)
+{
+    // Start the script with a comment, the file-level variable definitions, and
+    // a set of generic rules.
+    GenerateCommentHeader(appPtr);
+    std::string includes;
+    includes = " -I " + buildParams.workingDir;
+    for (const auto& dir : buildParams.interfaceDirs)
     {
-        script << " " << dep;
+        includes += " -I" + dir;
     }
-    script << "\n\n";
+    script << "builddir =" << buildParams.workingDir << "\n\n";
+    script << "cFlags =" << buildParams.cFlags << includes << "\n\n";
+    script << "cxxFlags =" << buildParams.cxxFlags << includes << "\n\n";
+    script << "ldFlags =" << buildParams.ldFlags << "\n\n";
+    script << "target = " << buildParams.target << "\n\n";
+    GenerateBuildRules();
+
+    // If we are not just generating code,
+    if (!buildParams.codeGenOnly)
+    {
+        // For each component included in executables in this application.
+        for (auto componentPtr : appPtr->components)
+        {
+            componentGeneratorPtr->GenerateBuildStatementsRecursive(componentPtr);
+            componentGeneratorPtr->GenerateIpcBuildStatements(componentPtr);
+        }
+
+        // For each executable built by the mk tools for this application,
+        GenerateExeBuildStatements(appPtr);
+
+        // Generate build statement for packing everything into an application bundle.
+        GenerateAppBundleBuildStatement(appPtr, buildParams.outputDir);
+    }
+
+    // Add a build statement for the build.ninja file itself.
+    GenerateNinjaScriptBuildStatement(appPtr);
 }
 
 
@@ -690,50 +714,9 @@ void Generate
 {
     std::string filePath = path::Minimize(buildParams.workingDir + "/build.ninja");
 
-    std::ofstream script;
-    OpenFile(script, filePath, buildParams.beVerbose);
+    AppBuildScriptGenerator_t appGenerator(filePath, buildParams);
 
-    // Start the script with a comment, the file-level variable definitions, and
-    // a set of generic rules.
-    GenerateCommentHeader(script, appPtr);
-    std::string includes;
-    includes = " -I " + buildParams.workingDir;
-    for (const auto& dir : buildParams.interfaceDirs)
-    {
-        includes += " -I" + dir;
-    }
-    script << "builddir =" << buildParams.workingDir << "\n\n";
-    script << "cFlags =" << buildParams.cFlags << includes << "\n\n";
-    script << "cxxFlags =" << buildParams.cxxFlags << includes << "\n\n";
-    script << "ldFlags =" << buildParams.ldFlags << "\n\n";
-    script << "target = " << buildParams.target << "\n\n";
-    GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-    GenerateBuildRules(script, buildParams);
-    GenerateAppBuildRules(script);
-
-    // If we are not just generating code,
-    if (!buildParams.codeGenOnly)
-    {
-        // For each component included in executables in this application.
-        for (auto componentPtr : appPtr->components)
-        {
-            GenerateBuildStatements(script, componentPtr, buildParams);
-        }
-
-        // For each executable built by the mk tools for this application,
-        GenerateExeBuildStatements(script, appPtr, buildParams);
-
-        // Generate build statement for packing everything into an application bundle.
-        GenerateAppBundleBuildStatement(script, appPtr, buildParams, buildParams.outputDir);
-    }
-
-    // Add build statements for all the IPC interfaces' generated files.
-    GenerateIpcBuildStatements(script, buildParams);
-
-    // Add a build statement for the build.ninja file itself.
-    GenerateNinjaScriptBuildStatement(script, appPtr, filePath);
-
-    CloseFile(script);
+    appGenerator.Generate(appPtr);
 }
 
 

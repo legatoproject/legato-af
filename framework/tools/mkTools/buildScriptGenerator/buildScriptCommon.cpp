@@ -97,20 +97,48 @@ std::string EscapeString
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create a build script file
+ */
+//--------------------------------------------------------------------------------------------------
+BuildScriptGenerator_t::BuildScriptGenerator_t
+(
+    const std::string scriptPath,
+    const mk::BuildParams_t& buildParams
+)
+:
+buildParams(buildParams),
+scriptPath(scriptPath)
+{
+    OpenFile(script, scriptPath, buildParams.beVerbose);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close the build script file after generator is finished.
+ */
+//--------------------------------------------------------------------------------------------------
+BuildScriptGenerator_t::~BuildScriptGenerator_t
+(
+)
+{
+    CloseFile(script);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print to a given build script the ifgenFlags variable definition.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateIfgenFlagsDef
+void BuildScriptGenerator_t::GenerateIfgenFlagsDef
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const std::list<std::string>& interfaceDirs ///< List of directories to search for .api files.
+    void
 )
 //--------------------------------------------------------------------------------------------------
 {
     script << "ifgenFlags = ";
 
     // Add the interface search directories to ifgen's command-line.
-    for (const auto& dir : interfaceDirs)
+    for (const auto& dir : buildParams.interfaceDirs)
     {
         script << " --import-dir " << dir;
     }
@@ -124,10 +152,8 @@ void GenerateIfgenFlagsDef
  * Generate generic build rules.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateBuildRules
+void BuildScriptGenerator_t::GenerateBuildRules
 (
-    std::ofstream& script,      ///< Ninja script to write rules to.
-    const mk::BuildParams_t& buildParams ///< Build parameters
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -325,597 +351,25 @@ void GenerateBuildRules
               "\n";
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Stream out (to a given ninja script) the compiler command line arguments required
- * to Set the DT_RUNPATH variable inside the executable's ELF headers to include the expected
- * on-target runtime locations of the libraries needed.
+ * Write to a given build script the build statements for the build script itself.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateRunPathLdFlags
+void BuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
 (
-    std::ofstream& script,
-    const std::string& target
+    const std::set<std::string>& dependencies
 )
-//--------------------------------------------------------------------------------------------------
 {
-    // DT_RUNPATH is set using linker parameters --enable-new-dtags and -rpath.
-    // $ORIGIN is a way of referring to the location of the executable (or shared library) file
-    // when it is loaded by the dynamic linker/loader at runtime.
-    script << " -Wl,--enable-new-dtags,-rpath=\"\\$$ORIGIN/../lib";
+    script << "build " << scriptPath << ": RegenNinjaScript |";
 
-    // When building for execution on the build host, add the localhost bin/lib directory.
-    if (target == "localhost")
-    {
-        script << ":$$LEGATO_BUILD/framework/lib";
-    }
-
-    script << "\"";
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write out to a given script file a space-separated list of paths to all the .api files needed
- * by a given .api file (specified through USETYPES statements in the .api files).
- **/
-//--------------------------------------------------------------------------------------------------
-static void GetIncludedApis
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiFile_t* apiFilePtr
-)
-//--------------------------------------------------------------------------------------------------
-{
-    for (auto includedApiPtr : apiFilePtr->includes)
-    {
-        script << " " << includedApiPtr->path;
-
-        // Recurse.
-        GetIncludedApis(script, includedApiPtr);
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given script a build statement for building the interface header file for a given
- * .api file that has been referred to by a USETYPES statement in another .api file used by
- * a client-side interface.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateClientUsetypesHFileBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiFile_t* apiFilePtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string headerFile = apiFilePtr->GetClientInterfaceFile(apiFilePtr->defaultPrefix);
-
-    if (generatedSet.find(headerFile) == generatedSet.end())
-    {
-        generatedSet.insert(headerFile);
-
-        script << "build $builddir/" << headerFile <<
-                  ": GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(script, apiFilePtr);
-        script << "\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(headerFile) << "\n"
-                  "  ifgenFlags = --gen-interface $ifgenFlags\n"
-                  "\n";
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given script a build statement for building the interface header file for a given
- * .api file that has been referred to by a USETYPES statement in another .api file used by
- * a server-side interface.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateServerUsetypesHFileBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiFile_t* apiFilePtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string headerFile = apiFilePtr->GetServerInterfaceFile(apiFilePtr->defaultPrefix);
-
-    if (generatedSet.find(headerFile) == generatedSet.end())
-    {
-        generatedSet.insert(headerFile);
-
-        script << "build $builddir/" << headerFile <<
-                  ": GenInterfaceCode " << apiFilePtr->path << " |";
-        GetIncludedApis(script, apiFilePtr);
-        script << "\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(headerFile) << "\n"
-                  "  ifgenFlags = --gen-server-interface $ifgenFlags\n"
-                  "\n";
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given script a build statement for building the header file for a given types-only
- * included API interface.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiTypesOnlyInterface_t* ifPtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    model::InterfaceCFiles_t cFiles;
-    ifPtr->GetInterfaceFiles(cFiles);
-
-    if (generatedSet.find(cFiles.interfaceFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.interfaceFile);
-
-        script << "build $builddir/" << cFiles.interfaceFile << ":"
-                  " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(script, ifPtr->apiFilePtr);
-        script << "\n"
-                  "  ifgenFlags = --gen-interface"
-                  " --name-prefix " << ifPtr->internalName <<
-                  " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.interfaceFile) << "\n"
-                  "\n";
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given script a build statement for building the object file for a given client-side
- * API interface.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiClientInterface_t* ifPtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    model::InterfaceCFiles_t cFiles;
-    ifPtr->GetInterfaceFiles(cFiles);
-
-    if (   (!buildParams.codeGenOnly)
-        && (generatedSet.find(cFiles.objectFile) == generatedSet.end())  )
-    {
-        generatedSet.insert(cFiles.objectFile);
-
-        // .o file
-        script << "build $builddir/" << cFiles.objectFile << ":"
-                  " CompileC $builddir/" << cFiles.sourceFile;
-
-        // Add dependencies on the generated .h files for this interface so we make sure
-        // those get built first.
-        script << " | $builddir/" << cFiles.internalHFile << " $builddir/" << cFiles.interfaceFile;
-
-        // Build a set containing all the .h files that will be included by the .h file generated
-        // for this .api file.
-        std::set<std::string> apiHeaders;
-        ifPtr->apiFilePtr->GetClientUsetypesApiHeaders(apiHeaders);
-
-        // If there are some, add them as order-only dependencies.
-        for (auto hFilePath : apiHeaders)
-        {
-            script << " $builddir/" << hFilePath;
-        }
-
-        // Define a cFlags variable that tells the compiler where to look for the interface
-        // headers needed due to USETYPES statements.
-        script << "\n"
-                  "  cFlags = $cFlags";
-        std::set<std::string> includeDirs;
-        for (auto hFilePath : apiHeaders)
-        {
-            auto dirPath = path::GetContainingDir(hFilePath);
-            if (includeDirs.find(dirPath) == includeDirs.end())
-            {
-                includeDirs.insert(dirPath);
-                script << " -I$builddir/" << dirPath;
-            }
-        }
-        script << "\n\n";
-    }
-
-    // .c file and .h files
-    std::string generatedFiles;
-    std::string ifgenFlags;
-    if (generatedSet.find(cFiles.sourceFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.sourceFile);
-        generatedFiles += " $builddir/" + cFiles.sourceFile;
-        ifgenFlags += " --gen-client";
-    }
-    if (generatedSet.find(cFiles.interfaceFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.interfaceFile);
-        generatedFiles += " $builddir/" + cFiles.interfaceFile;
-        ifgenFlags += " --gen-interface";
-    }
-    if (generatedSet.find(cFiles.internalHFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.internalHFile);
-        generatedFiles += " $builddir/" + cFiles.internalHFile;
-        ifgenFlags += " --gen-local";
-    }
-    if (!generatedFiles.empty())
-    {
-        ifgenFlags += " --name-prefix " + ifPtr->internalName;
-        script << "build" << generatedFiles <<
-                  ": GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(script, ifPtr->apiFilePtr);
-        script << "\n"
-                  "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n\n";
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the Java ifgen build statement for the client/server side of an API.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateJavaBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::InterfaceJavaFiles_t& javaFiles,
-    const model::Component_t* componentPtr,
-    const model::ApiFile_t* apiFilePtr,
-    const std::string& internalName,
-    const std::string& workDir,
-    bool isClient,
-    std::set<std::string>& generatedSet
-)
-//--------------------------------------------------------------------------------------------------
-{
-    std::string apiFlag = isClient ? "--gen-client" : "--gen-server";
-
-    script << "build " << path::Combine(workDir, javaFiles.interfaceSourceFile) << " $\n"
-              "      " << path::Combine(workDir, javaFiles.implementationSourceFile) << " : $\n"
-              "      GenInterfaceCode " << apiFilePtr->path << " | ";
-
-    GetIncludedApis(script, apiFilePtr);
-
-    script << "\n"
-              "  ifgenFlags = --lang Java --gen-interface " << apiFlag << " --name-prefix "
-           << internalName << " $ifgenFlags\n"
-              "  outputDir = " << path::Combine(workDir,
-                                                path::Combine(componentPtr->workingDir, "src"))
-           << "\n\n";
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the Java ifgen build statement for the client side of an API.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateJavaBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiClientInterface_t* ifPtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    model::InterfaceJavaFiles_t javaFiles;
-    ifPtr->GetInterfaceFiles(javaFiles);
-
-    GenerateJavaBuildStatement(script,
-                               javaFiles,
-                               ifPtr->componentPtr,
-                               ifPtr->apiFilePtr,
-                               ifPtr->internalName,
-                               buildParams.workingDir,
-                               true, // isClient
-                               generatedSet);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given script a build statement for building the object file for a given server-side
- * API interface.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiServerInterface_t* ifPtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    model::InterfaceCFiles_t cFiles;
-    ifPtr->GetInterfaceFiles(cFiles);
-
-    if (   (!buildParams.codeGenOnly)
-        && (generatedSet.find(cFiles.objectFile) == generatedSet.end())  )
-    {
-        generatedSet.insert(cFiles.objectFile);
-
-        // .o file
-        script << "build $builddir/" << cFiles.objectFile << ":"
-                  " CompileC $builddir/" << cFiles.sourceFile;
-
-        // Add order-only dependencies on the generated .h files for this interface so we make sure
-        // those get built first.
-        script << " | $builddir/" << cFiles.internalHFile << " $builddir/" << cFiles.interfaceFile;
-
-        // Build a set containing all the .h files that will be included (via USETYPES statements)
-        // by the .h file generated for this .api file.
-        std::set<std::string> apiHeaders;
-        ifPtr->apiFilePtr->GetServerUsetypesApiHeaders(apiHeaders);
-
-        // If there are some, add them as order-only dependencies.
-        for (auto hFilePath : apiHeaders)
-        {
-            script << " $builddir/" << hFilePath;
-        }
-
-        // Define a cFlags variable that tells the compiler where to look for the interface
-        // headers needed due to USETYPES statements.
-        script << "\n"
-                  "  cFlags = $cFlags";
-        std::set<std::string> includeDirs;
-        for (auto hFilePath : apiHeaders)
-        {
-            auto dirPath = path::GetContainingDir(hFilePath);
-            if (includeDirs.find(dirPath) == includeDirs.end())
-            {
-                includeDirs.insert(dirPath);
-                script << " -I$builddir/" << dirPath;
-            }
-        }
-        script << "\n\n";
-    }
-
-    // .c file and .h files
-    std::string generatedFiles;
-    std::string ifgenFlags;
-    if (generatedSet.find(cFiles.sourceFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.sourceFile);
-        generatedFiles += " $builddir/" + cFiles.sourceFile;
-        ifgenFlags += " --gen-server";
-    }
-    if (generatedSet.find(cFiles.interfaceFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.interfaceFile);
-        generatedFiles += " $builddir/" + cFiles.interfaceFile;
-        ifgenFlags += " --gen-server-interface";
-    }
-    if (generatedSet.find(cFiles.internalHFile) == generatedSet.end())
-    {
-        generatedSet.insert(cFiles.internalHFile);
-        generatedFiles += " $builddir/" + cFiles.internalHFile;
-        ifgenFlags += " --gen-local";
-    }
-    if (!generatedFiles.empty())
-    {
-        if (ifPtr->async)
-        {
-            ifgenFlags += " --async-server";
-        }
-        ifgenFlags += " --name-prefix " + ifPtr->internalName;
-        script << "build" << generatedFiles << ":"
-                  " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
-        GetIncludedApis(script, ifPtr->apiFilePtr);
-        script << "\n"
-                  "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n"
-                  "\n";
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the Java ifgen build statement for the server side of an API.
- **/
-//--------------------------------------------------------------------------------------------------
-static void GenerateJavaBuildStatement
-(
-    std::ofstream& script,  ///< Build script to write to.
-    const model::ApiServerInterface_t* ifPtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    model::InterfaceJavaFiles_t javaFiles;
-    ifPtr->GetInterfaceFiles(javaFiles);
-
-    GenerateJavaBuildStatement(script,
-                               javaFiles,
-                               ifPtr->componentPtr,
-                               ifPtr->apiFilePtr,
-                               ifPtr->internalName,
-                               buildParams.workingDir,
-                               false,  // isClient
-                               generatedSet);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write to a given build script the build statements for all the IPC client and server
- * header files, source code files, and object files needed by a given component.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateIpcBuildStatements
-(
-    std::ofstream& script,
-    const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    std::set<std::string>& generatedSet ///< Paths to files that already have build statements.
-)
-//--------------------------------------------------------------------------------------------------
-{
-    bool isJava = componentPtr->HasJavaCode();
-
-    for (auto typesOnlyApi : componentPtr->typesOnlyApis)
-    {
-        GenerateBuildStatement(script, typesOnlyApi, buildParams, generatedSet);
-    }
-
-    for (auto apiFilePtr : componentPtr->clientUsetypesApis)
-    {
-        GenerateClientUsetypesHFileBuildStatement(script, apiFilePtr, buildParams, generatedSet);
-    }
-
-    for (auto apiFilePtr : componentPtr->serverUsetypesApis)
-    {
-        GenerateServerUsetypesHFileBuildStatement(script, apiFilePtr, buildParams, generatedSet);
-    }
-
-    for (auto clientApi : componentPtr->clientApis)
-    {
-        if (isJava)
-        {
-            GenerateJavaBuildStatement(script, clientApi, buildParams, generatedSet);
-        }
-        else
-        {
-            GenerateBuildStatement(script, clientApi, buildParams, generatedSet);
-        }
-    }
-
-    for (auto serverApi : componentPtr->serverApis)
-    {
-        if (isJava)
-        {
-            GenerateJavaBuildStatement(script, serverApi, buildParams, generatedSet);
-        }
-        else
-        {
-            GenerateBuildStatement(script, serverApi, buildParams, generatedSet);
-        }
-    }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write to a given build script the build statements for all the IPC client and server
- * header files, source code files, and object files needed by all components in the model.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateIpcBuildStatements
-(
-    std::ofstream& script,
-    const mk::BuildParams_t& buildParams
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // It's possible that multiple components in the same system will share the same interface.
-    // To prevent the generation of multiple build statements (which would cause ninja to fail),
-    // we use a set containing the output file paths to keep track of what build statements we've
-    // already generated.
-
-    std::set<std::string> generatedSet;
-
-    for (auto& mapEntry : model::Component_t::GetComponentMap())
-    {
-        GenerateIpcBuildStatements(script, mapEntry.second, buildParams, generatedSet);
-    }
-}
-
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate the build commands necessary to compile java code and create a Jar file to contain the
- * generated .class files.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateJavaBuildCommand
-(
-    std::ofstream& script,
-    const std::string& outputJar,
-    const std::string& classDestPath,
-    const std::list<std::string>& sources,
-    const std::list<std::string>& classPath,
-    const std::list<std::string>& dependencies
-)
-//--------------------------------------------------------------------------------------------------
-{
-    // Generate the rule to compile the Java code into .class files, and to package them up into a
-    // .jar file.
-    script << "build " << path::Combine(classDestPath, "build.stamp") << " $\n"
-              "  : CompileJava";
-
-    for (auto& source : sources)
-    {
-        script << " " << source;
-    }
-
-    script << " $\n  |";
-
-    for (auto& dep : dependencies)
+    // Write the dependencies to the script.
+    for (auto dep : dependencies)
     {
         script << " " << dep;
     }
-
-    script << "\n"
-              "  classPath = ";
-
-    for (auto iter = classPath.begin(); iter != classPath.end(); ++iter)
-    {
-        if (iter != classPath.begin())
-        {
-            script << ":";
-        }
-
-        script << *iter;
-    }
-
-    script << "\n\n";
-
-    script << "build " << outputJar << " $\n"
-              "  : MakeJar " << path::Combine(classDestPath, "build.stamp") << "\n"
-              "  classPath = ";
-
-    for (auto iter = classPath.begin(); iter != classPath.end(); ++iter)
-    {
-        if (iter != classPath.begin())
-        {
-            script << ":";
-        }
-
-        script << *iter;
-    }
-
     script << "\n\n";
 }
-
-
-
-
 
 
 } // namespace ninja

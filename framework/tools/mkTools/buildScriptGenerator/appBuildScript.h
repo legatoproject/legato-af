@@ -14,64 +14,72 @@
 namespace ninja
 {
 
+class AppBuildScriptGenerator_t : protected RequireExeGenerator_t
+{
+    friend struct RequireBaseGenerator_t;
+    friend struct RequireAppGenerator_t;
 
-//--------------------------------------------------------------------------------------------------
+    protected:
+        virtual void GenerateCommentHeader(model::App_t* appPtr);
+        virtual void GenerateFileBundleBuildStatement(const model::FileSystemObject_t& fileObject,
+                                                      model::FileSystemObjectSet_t& bundledFiles);
+        virtual void GenerateDirBundleBuildStatements(const model::FileSystemObject_t& fileObject,
+                                                      model::FileSystemObjectSet_t& bundledFiles);
+        virtual void GenerateFileBundleBuildStatement(
+            model::FileSystemObjectSet_t& bundledFiles,
+            model::App_t* appPtr,
+            const model::FileSystemObject_t* fileSystemObjPtr);
+        virtual void GenerateDirBundleBuildStatements(
+            model::FileSystemObjectSet_t& bundledFiles,
+            model::App_t* appPtr,
+            const model::FileSystemObject_t* fileSystemObjPtr);
+
+    protected:
+        virtual void GenerateAppBuildRules(void);
+        virtual void GenerateStagingBundleBuildStatements(model::App_t* appPtr);
+        virtual void GenerateNinjaScriptBuildStatement(model::App_t* appPtr);
+
+        explicit AppBuildScriptGenerator_t(std::shared_ptr<ExeBuildScriptGenerator_t>
+                                           exeGeneratorPtr)
+        : RequireBaseGenerator_t(exeGeneratorPtr.get()),
+          RequireExeGenerator_t(exeGeneratorPtr) {}
+
+    public:
+        explicit AppBuildScriptGenerator_t(std::shared_ptr<BuildScriptGenerator_t>
+                                           baseGeneratorPtr)
+        : RequireBaseGenerator_t(baseGeneratorPtr),
+          RequireExeGenerator_t(std::make_shared<ExeBuildScriptGenerator_t>(baseGeneratorPtr)) {}
+
+        AppBuildScriptGenerator_t(const std::string scriptPath,
+                                  const mk::BuildParams_t& buildParams)
+        : RequireBaseGenerator_t(std::make_shared<BuildScriptGenerator_t>(scriptPath, buildParams)),
+          RequireExeGenerator_t(std::make_shared<ExeBuildScriptGenerator_t>(baseGeneratorPtr)) {}
+
+        virtual void GenerateBuildRules(void);
+        virtual void GenerateExeBuildStatements(model::App_t* appPtr);
+        virtual void GenerateAppBundleBuildStatement(model::App_t* appPtr,
+                                                     const std::string& outputDir);
+        virtual void Generate(model::App_t* appPtr);
+
+        virtual ~AppBuildScriptGenerator_t() {}
+};
+
+
 /**
- * Generate app build rules.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateAppBuildRules
-(
-    std::ofstream& script   ///< Ninja script to write rules to.
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Generates build statements for all the executables in a given app.
+ * Derive from this class for generators which need access to a app generator
  */
-//--------------------------------------------------------------------------------------------------
-void GenerateExeBuildStatements
-(
-    std::ofstream& script,      ///< Ninja script to write rules to.
-    const model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams
-);
+struct RequireAppGenerator_t : public RequireExeGenerator_t
+{
+    std::shared_ptr<AppBuildScriptGenerator_t> appGeneratorPtr;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write to a given build script the build statements for bundling a given app's files into the
- * app's staging area.
- *
- * @note Uses a set to track the bundled objects (destination paths) that have been included so far.
- *       This allows us to avoid bundling two files into the same location in the staging area.
- *       The set can also be used later by the calling function to add these staged files to the
- *       bundle's dependency list.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateStagingBundleBuildStatements
-(
-    std::ofstream& script,
-    model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write to a given script the build statements for packing up everything into an application
- * bundle.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateAppBundleBuildStatement
-(
-    std::ofstream& script,
-    model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams,
-    const std::string& outputDir    ///< Path to the directory into which the built app will be put.
-);
-
+    explicit RequireAppGenerator_t
+    (
+        std::shared_ptr<AppBuildScriptGenerator_t> appGeneratorPtr
+    )
+    : RequireBaseGenerator_t(appGeneratorPtr.get()),
+      RequireExeGenerator_t(appGeneratorPtr->exeGeneratorPtr),
+      appGeneratorPtr(appGeneratorPtr) {}
+};
 
 
 } // namespace ninja

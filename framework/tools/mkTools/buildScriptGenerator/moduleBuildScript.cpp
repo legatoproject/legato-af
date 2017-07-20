@@ -24,10 +24,9 @@ namespace ninja
  * Generate comment header for a build script.
  */
 //--------------------------------------------------------------------------------------------------
-static void GenerateCommentHeader
+void ModuleBuildScriptGenerator_t::GenerateCommentHeader
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Module_t* modulePtr
+    model::Module_t* modulePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -44,11 +43,9 @@ static void GenerateCommentHeader
  * If it's a pre-built module, just copy it. Otherwise generate a module Makefile and build it.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateBuildStatements
+void ModuleBuildScriptGenerator_t::GenerateBuildStatements
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Module_t* modulePtr,
-    const mk::BuildParams_t& buildParams
+    model::Module_t* modulePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -57,7 +54,7 @@ void GenerateBuildStatements
     if (modulePtr->path.empty() || !file::FileExists(modulePtr->path))
     {
         // No pre-built module: generate and invoke a Makefile
-        GenerateMakefile(modulePtr, buildParams);
+        GenerateMakefile(modulePtr);
         script << "MakeKernelModule " << "$builddir/"
                << path::GetContainingDir(modulePtr->koFilePtr->path) << "\n";
     }
@@ -76,17 +73,12 @@ void GenerateBuildStatements
  * Write to a given build script the build statements for the build script itself.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateNinjaScriptBuildStatement
+void ModuleBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
 (
-    std::ofstream& script,
-    const model::Module_t* modulePtr,
-    const std::string& filePath     ///< Path to the build.ninja file.
+    model::Module_t* modulePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
-    // Generate a build statement for the build.ninja.
-    script << "build " << filePath << ": RegenNinjaScript |";
-
     // The build.ninja depends on module .mdef and .ko files
     // Create a set of dependencies.
     std::set<std::string> dependencies;
@@ -95,12 +87,7 @@ static void GenerateNinjaScriptBuildStatement
     // It also depends on changes to the mk tools.
     dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/mk"));
 
-    // Write the dependencies to the script.
-    for (auto dep : dependencies)
-    {
-        script << " " << dep;
-    }
-    script << "\n\n";
+    baseGeneratorPtr->GenerateNinjaScriptBuildStatement(dependencies);
 }
 
 
@@ -109,10 +96,9 @@ static void GenerateNinjaScriptBuildStatement
  * Generate a Makefile for a kernel module.
  **/
 //--------------------------------------------------------------------------------------------------
-void GenerateMakefile
+void ModuleBuildScriptGenerator_t::GenerateMakefile
 (
-    const model::Module_t* modulePtr,
-    const mk::BuildParams_t& buildParams
+    model::Module_t* modulePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -181,6 +167,34 @@ void GenerateMakefile
 //--------------------------------------------------------------------------------------------------
 /**
  * Generate a build script for a pre-built kernel module.
+ */
+//--------------------------------------------------------------------------------------------------
+void ModuleBuildScriptGenerator_t::Generate
+(
+    model::Module_t* modulePtr
+)
+{
+    // Start the script with a comment, the file-level variable definitions, and
+    // a set of generic rules.
+    GenerateCommentHeader(modulePtr);
+    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
+    script << "target = " << buildParams.target << "\n\n";
+    baseGeneratorPtr->GenerateIfgenFlagsDef();
+    baseGeneratorPtr->GenerateBuildRules();
+
+    if (!buildParams.codeGenOnly)
+    {
+        // Add build statements for the module.
+        GenerateBuildStatements(modulePtr);
+    }
+
+    // Add a build statement for the build.ninja file itself.
+    GenerateNinjaScriptBuildStatement(modulePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate a build script for a pre-built kernel module.
  **/
 //--------------------------------------------------------------------------------------------------
 void Generate
@@ -192,27 +206,8 @@ void Generate
 {
     std::string filePath = path::Minimize(buildParams.workingDir + "/build.ninja");
 
-    std::ofstream script;
-    OpenFile(script, filePath, buildParams.beVerbose);
-
-    // Start the script with a comment, the file-level variable definitions, and
-    // a set of generic rules.
-    GenerateCommentHeader(script, modulePtr);
-    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
-    script << "target = " << buildParams.target << "\n\n";
-    GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-    GenerateBuildRules(script, buildParams);
-
-    if (!buildParams.codeGenOnly)
-    {
-        // Add build statements for the module.
-        GenerateBuildStatements(script, modulePtr, buildParams);
-    }
-
-    // Add a build statement for the build.ninja file itself.
-    GenerateNinjaScriptBuildStatement(script, modulePtr, filePath);
-
-    CloseFile(script);
+    ModuleBuildScriptGenerator_t scriptGenerator(filePath, buildParams);
+    scriptGenerator.Generate(modulePtr);
 }
 
 

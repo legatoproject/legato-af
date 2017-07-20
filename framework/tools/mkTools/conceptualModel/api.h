@@ -34,6 +34,7 @@ struct ApiFile_t
     std::string GetClientInterfaceFile (const std::string& internalName) const;
     std::string GetServerInterfaceFile(const std::string& internalName) const;
     std::string GetAsyncServerInterfaceFile(const std::string& internalName) const;
+    std::string GetJavaInterfaceFile(const std::string& internalName) const;
 
     /// Get a pre-existing API file object for the .api file at a given path.
     /// @return Pointer to the object or NULL if not found.

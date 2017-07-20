@@ -16,6 +16,7 @@
 #include "appBuildScript.h"
 #include "moduleBuildScript.h"
 #include "componentBuildScript.h"
+#include "systemBuildScript.h"
 
 namespace ninja
 {
@@ -27,10 +28,9 @@ namespace ninja
  * Generate comment header for a system build script.
  */
 //--------------------------------------------------------------------------------------------------
-static void GenerateCommentHeader
+void SystemBuildScriptGenerator_t::GenerateCommentHeader
 (
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::System_t* systemPtr
+    model::System_t* systemPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -46,10 +46,9 @@ static void GenerateCommentHeader
  * Generate system-specific build rules.
  */
 //--------------------------------------------------------------------------------------------------
-static void GenerateSystemBuildRules
+void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
 (
-    std::ofstream& script,
-    const model::System_t* systemPtr
+    model::System_t* systemPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -175,11 +174,9 @@ static void GenerateSystemBuildRules
  * Write to a given script the build statements for packing up everything into a system udpate pack.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateSystemPackBuildStatement
+void SystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
 (
-    std::ofstream& script,
-    const model::System_t* systemPtr,
-    const mk::BuildParams_t& buildParams
+    model::System_t* systemPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -240,11 +237,9 @@ static void GenerateSystemPackBuildStatement
  * Write to a given build script the build statements for the build script itself.
  **/
 //--------------------------------------------------------------------------------------------------
-static void GenerateNinjaScriptBuildStatement
+void SystemBuildScriptGenerator_t::GenerateNinjaScriptBuildStatement
 (
-    std::ofstream& script,
-    const model::System_t* systemPtr,
-    const std::string& filePath     ///< Path to the build.ninja file.
+    model::System_t* systemPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -301,15 +296,89 @@ static void GenerateNinjaScriptBuildStatement
     // It also depends on changes to the mk tools.
     dependencies.insert(path::Combine(envVars::Get("LEGATO_ROOT"), "build/tools/mk"));
 
-    // Generate a build statement for the build.ninja.
-    script << "build " << filePath << ": RegenNinjaScript | ";
-    for (auto dep : dependencies)
-    {
-        script << " " << dep;
-    }
-    script << "\n\n";
+    baseGeneratorPtr->GenerateNinjaScriptBuildStatement(dependencies);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate build rules required for a system
+ */
+//--------------------------------------------------------------------------------------------------
+void SystemBuildScriptGenerator_t::GenerateBuildRules
+(
+    model::System_t* systemPtr
+)
+{
+    appGeneratorPtr->GenerateBuildRules();
+    GenerateSystemBuildRules(systemPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate build script for system
+ */
+//--------------------------------------------------------------------------------------------------
+void SystemBuildScriptGenerator_t::Generate
+(
+    model::System_t* systemPtr
+)
+{
+    // Start the script with a comment
+    GenerateCommentHeader(systemPtr);
+
+    // Add file-level variable definitions.
+    std::string includes;
+    includes = " -I " + buildParams.workingDir;
+    for (const auto& dir : buildParams.interfaceDirs)
+    {
+        includes += " -I" + dir;
+    }
+    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
+    script << "stagingDir = " << path::Combine(buildParams.workingDir, "staging") << "\n\n";
+    script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
+    script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
+    script << "ldFlags = " << buildParams.ldFlags << "\n\n";
+    script << "target = " << buildParams.target << "\n\n";
+    GenerateBuildRules(systemPtr);
+
+    // If we are not just generating code,
+    if (!buildParams.codeGenOnly)
+    {
+        // For each module in .sdef file
+        for (auto& mapEntry : systemPtr->modules)
+        {
+            auto modulePtr = mapEntry.second;
+
+            moduleGeneratorPtr->GenerateBuildStatements(modulePtr);
+        }
+
+        // For each app built by the mk tools for this system,
+        for (auto& mapEntry : systemPtr->apps)
+        {
+            auto appPtr = mapEntry.second;
+
+            // Generate build statements for the app's executables.
+            appGeneratorPtr->GenerateExeBuildStatements(appPtr);
+
+            // Generate build statements for bundling files into the app's staging area.
+            auto appWorkingDir = "$builddir/" + appPtr->workingDir;
+            appGeneratorPtr->GenerateAppBundleBuildStatement(appPtr, appWorkingDir);
+        }
+
+        // For each component in the system.
+        for (auto& mapEntry : model::Component_t::GetComponentMap())
+        {
+            componentGeneratorPtr->GenerateBuildStatements(mapEntry.second);
+            componentGeneratorPtr->GenerateIpcBuildStatements(mapEntry.second);
+        }
+
+        // Generate build statement for packing everything into a system update pack.
+        GenerateSystemPackBuildStatement(systemPtr);
+    }
+
+    // Add a build statement for the build.ninja file itself.
+    GenerateNinjaScriptBuildStatement(systemPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -325,73 +394,9 @@ void Generate
 {
     std::string filePath = path::Minimize(buildParams.workingDir + "/build.ninja");
 
-    std::ofstream script;
-    OpenFile(script, filePath, buildParams.beVerbose);
+    SystemBuildScriptGenerator_t systemGenerator(filePath, buildParams);
 
-    // Start the script with a comment
-    GenerateCommentHeader(script, systemPtr);
-
-    // Add file-level variable definitions.
-    std::string includes;
-    includes = " -I " + buildParams.workingDir;
-    for (const auto& dir : buildParams.interfaceDirs)
-    {
-        includes += " -I" + dir;
-    }
-    script << "builddir = " << path::MakeAbsolute(buildParams.workingDir) << "\n\n";
-    script << "stagingDir = " << path::Combine(buildParams.workingDir, "staging") << "\n\n";
-    script << "cFlags = " << buildParams.cFlags << includes << "\n\n";
-    script << "cxxFlags = " << buildParams.cxxFlags << includes << "\n\n";
-    script << "ldFlags = " << buildParams.ldFlags << "\n\n";
-    script << "target = " << buildParams.target << "\n\n";
-    GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-
-    // Add a set of generic rules.
-    GenerateBuildRules(script, buildParams);
-    GenerateAppBuildRules(script);
-    GenerateSystemBuildRules(script, systemPtr);
-
-    // If we are not just generating code,
-    if (!buildParams.codeGenOnly)
-    {
-        // For each module in .sdef file
-        for (auto& mapEntry : systemPtr->modules)
-        {
-            auto modulePtr = mapEntry.second;
-
-            GenerateBuildStatements(script, modulePtr, buildParams);
-        }
-
-        // For each app built by the mk tools for this system,
-        for (auto& mapEntry : systemPtr->apps)
-        {
-            auto appPtr = mapEntry.second;
-
-            // Generate build statements for the app's executables.
-            GenerateExeBuildStatements(script, appPtr, buildParams);
-
-            // Generate build statements for bundling files into the app's staging area.
-            auto appWorkingDir = "$builddir/" + appPtr->workingDir;
-            GenerateAppBundleBuildStatement(script, appPtr, buildParams, appWorkingDir);
-        }
-
-        // For each component in the system.
-        for (auto& mapEntry : model::Component_t::GetComponentMap())
-        {
-            GenerateBuildStatements(script, mapEntry.second, buildParams);
-        }
-
-        // Generate build statement for packing everything into a system update pack.
-        GenerateSystemPackBuildStatement(script, systemPtr, buildParams);
-    }
-
-    // Add build statements for all the IPC interfaces' generated files.
-    GenerateIpcBuildStatements(script, buildParams);
-
-    // Add a build statement for the build.ninja file itself.
-    GenerateNinjaScriptBuildStatement(script, systemPtr, filePath);
-
-    CloseFile(script);
+    systemGenerator.Generate(systemPtr);
 }
 
 

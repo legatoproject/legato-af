@@ -62,6 +62,23 @@ const
     return path::Combine(codeGenDir, "server/") + internalName + "_server.h";
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the set of paths for the generated Java files of an interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+std::string ApiFile_t::GetJavaInterfaceFile
+(
+    const std::string& internalName
+)
+const
+//--------------------------------------------------------------------------------------------------
+{
+    std::string srcDir = path::Combine(codeGenDir, "src/io/legato/api/");
+
+    return srcDir + internalName + ".java";
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

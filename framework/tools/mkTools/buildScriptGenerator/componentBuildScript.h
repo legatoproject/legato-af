@@ -15,19 +15,101 @@
 namespace ninja
 {
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Generate a build statements for a component library that is shareable between multiple
- * executables.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateBuildStatements
-(
-    std::ofstream& script,  ///< Script to write the build statements to.
-    const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams
-);
+class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
+{
+    friend struct RequireBaseGenerator_t;
+    friend struct RequireComponentGenerator_t;
 
+    protected:
+        std::set<std::string> generatedComponents;
+        std::set<std::string> generatedIPC;
+    protected:
+        virtual void GetImplicitDependencies(model::Component_t* componentPtr);
+        virtual void GetExternalDependencies(model::Component_t* componentPtr);
+
+        virtual void GetCInterfaceHeaders(std::list<std::string>& result,
+                                          model::Component_t* componentPtr);
+        virtual void GetJavaInterfaceFiles(std::list<std::string>& result,
+                                           model::Component_t* componentPtr);
+
+        virtual void GetIncludedApis(const model::ApiFile_t* apiFilePtr);
+
+        virtual void GenerateTypesOnlyBuildStatement(const model::ApiTypesOnlyInterface_t* ifPtr);
+        virtual void GenerateClientUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
+        virtual void GenerateServerUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
+        virtual void GenerateCBuildStatement(const model::ApiClientInterface_t* ifPtr);
+        virtual void GenerateCBuildStatement(const model::ApiServerInterface_t* ifPtr);
+
+        virtual void GenerateJavaBuildStatement(const model::InterfaceJavaFiles_t& javaFiles,
+                                                const model::Component_t* componentPtr,
+                                                const model::ApiFile_t* apiFilePtr,
+                                                const std::string& internalName,
+                                                bool isClient);
+        virtual void GenerateJavaBuildStatement(const model::ApiClientInterface_t* ifPtr);
+        virtual void GenerateJavaBuildStatement(const model::ApiServerInterface_t* ifPtr);
+
+        virtual void GenerateCommonCAndCxxFlags(model::Component_t* componentPtr);
+
+        virtual void GenerateLdFlagsDef(model::Component_t* componentPtr);
+        virtual void GetDependentLibLdFlags(model::Component_t* componentPtr);
+        virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr);
+
+        virtual void GenerateCommentHeader(model::Component_t* componentPtr);
+
+        virtual void GenerateNinjaScriptBuildStatement(model::Component_t* componentPtr);
+
+        virtual void AddNinjaDependencies(model::Component_t* componentPtr,
+                                          std::set<std::string>& dependencies);
+
+    public:
+        virtual void GenerateCSourceBuildStatement(model::Component_t* componentPtr,
+                                                   const model::ObjectFile_t* objFilePtr,
+                                                   const std::list<std::string>& apiHeaders);
+        virtual void GenerateCxxSourceBuildStatement(model::Component_t* componentPtr,
+                                                     const model::ObjectFile_t* objFilePtr,
+                                                     const std::list<std::string>& apiHeaders);
+        virtual void GenerateJavaBuildCommand(const std::string& outputJar,
+                                              const std::string& classDestPath,
+                                              const std::list<std::string>& sources,
+                                              const std::list<std::string>& classPath,
+                                              const std::list<std::string>& dependencies);
+        virtual void GenerateRunPathLdFlags(void);
+
+    public:
+        explicit ComponentBuildScriptGenerator_t(
+            std::shared_ptr<BuildScriptGenerator_t> baseGeneratorPtr)
+        : RequireBaseGenerator_t(baseGeneratorPtr) {}
+
+        ComponentBuildScriptGenerator_t(const std::string scriptPath,
+                                        const mk::BuildParams_t& buildParams)
+        : RequireBaseGenerator_t(
+            std::make_shared<BuildScriptGenerator_t>(scriptPath, buildParams)) {}
+
+        virtual void Generate(model::Component_t* componentPtr);
+        virtual void GenerateBuildRules(void);
+
+        virtual void GenerateBuildStatements(model::Component_t* componentPtr);
+        virtual void GenerateBuildStatementsRecursive(model::Component_t* componentPtr);
+        virtual void GenerateIpcBuildStatements(model::Component_t* componentPtr);
+
+        virtual ~ComponentBuildScriptGenerator_t() {}
+};
+
+
+/**
+ * Derive from this class for generators which need access to a component generator
+ */
+struct RequireComponentGenerator_t : public virtual RequireBaseGenerator_t
+{
+    std::shared_ptr<ComponentBuildScriptGenerator_t> componentGeneratorPtr;
+
+    explicit RequireComponentGenerator_t
+    (
+        std::shared_ptr<ComponentBuildScriptGenerator_t> componentGeneratorPtr
+    )
+    : RequireBaseGenerator_t(componentGeneratorPtr->baseGeneratorPtr),
+      componentGeneratorPtr(componentGeneratorPtr) {}
+};
 
 } // namespace ninja
 

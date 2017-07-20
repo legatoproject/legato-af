@@ -14,30 +14,47 @@
 namespace ninja
 {
 
+class ModuleBuildScriptGenerator_t : protected RequireBaseGenerator_t
+{
+    friend struct RequireBaseGenerator_t;
+    friend struct RequireModuleGenerator_t;
 
-//--------------------------------------------------------------------------------------------------
+    protected:
+        virtual void GenerateCommentHeader(model::Module_t* modulePtr);
+        virtual void GenerateMakefile(model::Module_t* modulePtr);
+
+        virtual void GenerateNinjaScriptBuildStatement(model::Module_t* modulePtr);
+
+    public:
+        ModuleBuildScriptGenerator_t(std::shared_ptr<BuildScriptGenerator_t> baseGeneratorPtr)
+        : RequireBaseGenerator_t(baseGeneratorPtr) {}
+
+        ModuleBuildScriptGenerator_t(const std::string scriptPath,
+                                     const mk::BuildParams_t& buildParams)
+        : RequireBaseGenerator_t(std::make_shared<BuildScriptGenerator_t>(scriptPath, buildParams))
+        {}
+
+        virtual void GenerateBuildStatements(model::Module_t* modulePtr);
+        virtual void Generate(model::Module_t* modulePtr);
+
+        virtual ~ModuleBuildScriptGenerator_t() {}
+};
+
+
 /**
- * Create Makefile for a given module.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateMakefile
-(
-    const model::Module_t* modulePtr,
-    const mk::BuildParams_t& buildParams
-);
+ * Derive from this class for generators which need access to a module generator
+ */
+struct RequireModuleGenerator_t : public virtual RequireBaseGenerator_t
+{
+    std::shared_ptr<ModuleBuildScriptGenerator_t> moduleGeneratorPtr;
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Print to a given build script the build statements related to a given module.
- **/
-//--------------------------------------------------------------------------------------------------
-void GenerateBuildStatements
-(
-    std::ofstream& script,  ///< Build script to write the variable definition to.
-    const model::Module_t* modulePtr,
-    const mk::BuildParams_t& buildParams
-);
+    explicit RequireModuleGenerator_t
+    (
+        std::shared_ptr<ModuleBuildScriptGenerator_t> moduleGeneratorPtr
+    )
+    : RequireBaseGenerator_t(moduleGeneratorPtr->baseGeneratorPtr),
+      moduleGeneratorPtr(moduleGeneratorPtr) {}
+};
 
 
 } // namespace ninja
