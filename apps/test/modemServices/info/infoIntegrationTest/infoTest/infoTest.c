@@ -381,52 +381,39 @@ static void PriIdTest
     void
 )
 {
-    le_result_t result;
     char priIdPn[LE_INFO_MAX_PRIID_PN_BYTES];
     char priIdRev[LE_INFO_MAX_PRIID_REV_BYTES];
+    le_result_t result;
 
-    LE_INFO("======== PriidTest ========");
+    LE_INFO("======== PriIdTest ========");
 
+    // test LE_OK or LE_FAULT if PRI+RV not present
     result = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES,
                               priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
-    if (result == LE_OK)
-    {
-        LE_INFO("le_info_GetPriId get priIdPn => %s", priIdPn);
-        LE_INFO("le_info_GetPriId get priIdRev => %s", priIdRev);
-    }
-    else
-    {
-        /* Other return values possibilities */
-        LE_ERROR("le_info_GetPriId return code %d",result);
-        LE_ERROR("======== PriidTest FAILED ========");
-        return;
-    }
+    LE_ASSERT((LE_OK == result) || (LE_FAULT == result));
 
+    LE_INFO("priIdPn => %s", priIdPn);
+    LE_INFO("priIdRev => %s", priIdRev);
+
+    // test LE_OVERFLOW
+    LE_ASSERT(LE_OVERFLOW == le_info_GetPriId(priIdPn,
+                              LE_INFO_MAX_PRIID_PN_BYTES + 1,
+                              priIdRev,
+                              LE_INFO_MAX_PRIID_REV_BYTES));
+
+    // test LE_OVERFLOW
+    LE_ASSERT(LE_OVERFLOW == le_info_GetPriId(priIdPn,
+                              LE_INFO_MAX_PRIID_PN_BYTES,
+                              priIdRev,
+                              LE_INFO_MAX_PRIID_REV_BYTES+1));
+
+    // test LE_OVERFLOW or LE_FAULT if PRI+RV not present
     result = le_info_GetPriId(priIdPn, 1, priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
-    if (result == LE_OVERFLOW)
-    {
-        LE_INFO("le_info_GetPriId return LE_OVERFLOW");
-    }
-    else
-    {
-        /* Other return values possibilities */
-        LE_ERROR("le_info_GetPriId return code %d",result);
-        LE_ERROR("======== PriidTest FAILED ========");
-        return;
-    }
+    LE_ASSERT((LE_OVERFLOW == result) || (LE_FAULT == result));
 
+    // test LE_OVERFLOW or LE_FAULT if PRI+RV not present
     result = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev, 1);
-    if (result == LE_OVERFLOW)
-    {
-        LE_INFO("le_info_GetPriId return LE_OVERFLOW");
-        LE_INFO("======== PriidTest PASSED ========");
-    }
-    else
-    {
-        /* Other return values possibilities */
-        LE_ERROR("le_info_GetPriId return code %d",result);
-        LE_ERROR("======== PriidTest FAILED ========");
-    }
+    LE_ASSERT((LE_OVERFLOW == result) || (LE_FAULT == result));
 }
 
 
@@ -443,12 +430,22 @@ static void SkuIdTest
 {
     char skuId[LE_INFO_MAX_SKU_BYTES] = {0};
     char skuIdBadBuffer[2] = {0};
+    le_result_t result;
 
     LE_INFO("======== SkuId test ========");
 
-    LE_ASSERT(le_info_GetSku(skuId, 1) == LE_OVERFLOW);
-    LE_ASSERT(le_info_GetSku(skuIdBadBuffer, LE_INFO_MAX_SKU_BYTES) == LE_OVERFLOW);
-    LE_ASSERT(le_info_GetSku(skuId, LE_INFO_MAX_SKU_BYTES) == LE_OK);
+    // test LE_OVERFLOW or LE_FAULT if SKU not present
+    result = le_info_GetSku(skuId, 1);
+    LE_ASSERT((LE_OVERFLOW == result) || (LE_FAULT == result));
+
+    // test LE_OVERFLOW or LE_FAULT if SKU not present
+    result = le_info_GetSku(skuIdBadBuffer, LE_INFO_MAX_SKU_BYTES);
+    LE_ASSERT((LE_OVERFLOW == result) || (LE_FAULT == result));
+
+    // test LE_OK or LE_FAULT if SKU not present
+    result = le_info_GetSku(skuId, LE_INFO_MAX_SKU_BYTES);
+    LE_ASSERT((LE_OK == result) || (LE_FAULT == result));
+
 }
 
 
