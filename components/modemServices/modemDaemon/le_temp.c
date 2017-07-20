@@ -153,7 +153,7 @@ static void FirstLayerTemperatureChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * PA Temperature Change handler function.
+ * PA Temperature change handler function.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -161,10 +161,16 @@ static void PaTemperatureThresholdHandler
 (
     le_temp_Handle_t leHandle,      ///< [IN] Handle of the temperature sensor.
     const char*      thresholdPtr,  ///< [IN] Name of the threshold.
-    void*            contextPtr
+    void*            contextPtr     ///< [IN] Context pointer.
 )
 {
     SensorCtx_t* sensorCtxPtr = (SensorCtx_t*)leHandle;
+
+    if (NULL == sensorCtxPtr)
+    {
+        LE_ERROR("Temperature sensor handle has not been set");
+        return;
+    }
 
     ThresholdReport_t* tempEventPtr = le_mem_ForceAlloc(ThresholdReportPool);
 
