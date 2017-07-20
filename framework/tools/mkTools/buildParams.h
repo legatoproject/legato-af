@@ -25,6 +25,7 @@ struct BuildParams_t
     std::list<std::string>  interfaceDirs;      ///< Interface search directory paths.
     std::list<std::string>  sourceDirs;         ///< Source search directory paths.
     std::string             libOutputDir;       ///< Dir path for built libraries ("" if not set).
+    std::string             outputDir;          ///< Dir path for built products ("" if not set).
     std::string             workingDir;         ///< Dir path for intermediate build products.
     std::string             debugDir;           ///< Dir path for debug symbol files.
                                                 ///< If unset no debug symbols are generated.
@@ -32,7 +33,11 @@ struct BuildParams_t
     std::string             cxxFlags;           ///< Flags to be passed to the C++ compiler.
     std::string             ldFlags;            ///< Flags to be passed to the linker.
     bool                    codeGenOnly;        ///< true = only generate code, don't compile, etc.
+    bool                    isStandAloneComp;   ///< true = generate stand-alone component
     bool                    binPack;            ///< true = generate a binary package for redist.
+
+    int                     argc;               ///< Number of arguments (argc to main)
+    const char**            argv;               ///< Argument list (argv to main)
 
     // File system paths to tool chain executables
     std::string             cCompilerPath;      ///< C compiler

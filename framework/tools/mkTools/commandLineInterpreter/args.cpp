@@ -778,9 +778,7 @@ static std::string GetSaveFilePath
 //--------------------------------------------------------------------------------------------------
 void Save
 (
-    const mk::BuildParams_t& buildParams,
-    int argc,
-    const char** argv
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -799,11 +797,11 @@ void Save
     }
 
     // Write each arg as a line in the file.
-    for (int i = 0; i < argc; i++)
+    for (int i = 0; i < buildParams.argc; i++)
     {
-        if (strcmp(argv[i], "--dont-run-ninja") != 0) // But skip '--dont-run-ninja'.
+        if (strcmp(buildParams.argv[i], "--dont-run-ninja") != 0) // But skip '--dont-run-ninja'.
         {
-            argsFile << argv[i] << '\n';
+            argsFile << buildParams.argv[i] << '\n';
         }
 
         if (argsFile.fail())
@@ -835,9 +833,7 @@ void Save
 //--------------------------------------------------------------------------------------------------
 bool MatchesSaved
 (
-    const mk::BuildParams_t& buildParams,
-    int argc,
-    const char** argv
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -865,7 +861,7 @@ bool MatchesSaved
     int i;
     char lineBuff[1024];
 
-    for (i = 0; i < argc; i++)
+    for (i = 0; i < buildParams.argc; i++)
     {
         // Read a line from the file (discarding '\n') and check for EOF or error.
         argsFile.getline(lineBuff, sizeof(lineBuff));
@@ -881,7 +877,7 @@ bool MatchesSaved
         }
 
         // Compare the line from the file with the argument.
-        if (strcmp(argv[i], lineBuff) != 0)
+        if (strcmp(buildParams.argv[i], lineBuff) != 0)
         {
             goto different;
         }
@@ -915,9 +911,9 @@ different:
             std::cout << lineBuff << " ";
         }
         std::cout << std::endl << LE_I18N("-- This time --") << std::endl;
-        for (i = 0; i < argc; i++)
+        for (i = 0; i < buildParams.argc; i++)
         {
-            std::cout << argv[i] << " ";
+            std::cout << buildParams.argv[i] << " ";
         }
         std::cout << std::endl;
     }

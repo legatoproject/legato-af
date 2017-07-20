@@ -30,14 +30,17 @@ std::string ComponentPath;
 /// Full path of the library file to be generated. "" = use default file name.
 std::string BuildOutputPath = "";
 
-/// true if interface instance libraries should be built and linked with the component library
-/// so that the component library can be linked to and used in more traditional ways, without
-/// the use of mkexe or mkapp.
-static bool IsStandAlone = false;
-
 // true if the build.ninja file should be ignored and everything should be regenerated, including
 // a new build.ninja.
 static bool DontRunNinja = false;
+
+static generator::ComponentGenerator_t LinuxSteps[] =
+{
+    code::GenerateInterfacesHeader,
+    code::GenerateComponentMainFile,
+    ninja::Generate,
+    NULL
+};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -181,7 +184,7 @@ static void GetCommandLineArgs
                                     "executables."),
                             ldFlagsPush);
 
-    args::AddOptionalFlag(&IsStandAlone,
+    args::AddOptionalFlag(&BuildParams.isStandAloneComp,
                           'a',
                           "stand-alone",
                           LE_I18N("Build the component library and all its sub-components'"
@@ -246,6 +249,9 @@ void MakeComponent
 {
     GetCommandLineArgs(argc, argv);
 
+    BuildParams.argc = argc;
+    BuildParams.argv = argv;
+
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)
     FindToolChain(BuildParams);
@@ -257,7 +263,7 @@ void MakeComponent
     // arguments and environment variables we were given are the same as last time, just run ninja.
     if (!DontRunNinja)
     {
-        if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
+        if (args::MatchesSaved(BuildParams) && envVars::MatchesSaved(BuildParams))
         {
             RunNinja(BuildParams);
             // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
@@ -271,7 +277,7 @@ void MakeComponent
         else
         {
             // Save the command line arguments.
-            args::Save(BuildParams, argc, argv);
+            args::Save(BuildParams);
 
             // Save the environment variables.
             // Note: we must do this before we parse the definition file, because parsing the file
@@ -301,15 +307,8 @@ void MakeComponent
         componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib = BuildOutputPath;
     }
 
-
-    // Generate a custom "interfaces.h" file for this component.
-    code::GenerateInterfacesHeader(componentPtr, BuildParams);
-
-    // Generate a custom "_componentMain.c" file for this component.
-    code::GenerateComponentMainFile(componentPtr, BuildParams, IsStandAlone);
-
-    // Generate the ninja build script.
-    ninja::Generate(componentPtr, BuildParams, argc, argv);
+    // Run all steps to generate a Linux component
+    generator::RunAllGenerators(LinuxSteps, componentPtr, BuildParams);
 
     // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)

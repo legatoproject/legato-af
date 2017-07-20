@@ -63,8 +63,7 @@ namespace code
 void GenerateCLangComponentMainFile
 (
     const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    bool isStandAlone   ///< true = fully resolve all interface name variables.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -118,7 +117,7 @@ void GenerateCLangComponentMainFile
     // For each of the component's client-side interfaces,
     for (auto interfacePtr : componentPtr->clientApis)
     {
-        DefineServiceNameVars(fileStream, interfacePtr, isStandAlone);
+        DefineServiceNameVars(fileStream, interfacePtr, buildParams.isStandAloneComp);
 
         // Declare the client-side interface initialization function.
         fileStream << "void " << interfacePtr->internalName << "_ConnectService(void);\n";
@@ -127,7 +126,7 @@ void GenerateCLangComponentMainFile
     // For each of the component's server-side interfaces,
     for (auto interfacePtr : componentPtr->serverApis)
     {
-        DefineServiceNameVars(fileStream, interfacePtr, isStandAlone);
+        DefineServiceNameVars(fileStream, interfacePtr, buildParams.isStandAloneComp);
 
         // Declare the server-side interface initialization function.
         fileStream << "void " << interfacePtr->internalName << "_AdvertiseService(void);\n";

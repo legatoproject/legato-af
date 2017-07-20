@@ -676,10 +676,7 @@ static void GenerateNinjaScriptBuildStatement
 void Generate
 (
     model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams,
-    const std::string& outputDir,   ///< Path to the directory into which the built app will be put.
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -703,7 +700,7 @@ void Generate
     script << "ldFlags =" << buildParams.ldFlags << "\n\n";
     script << "target = " << buildParams.target << "\n\n";
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-    GenerateBuildRules(script, buildParams, argc, argv);
+    GenerateBuildRules(script, buildParams);
     GenerateAppBuildRules(script);
 
     // If we are not just generating code,
@@ -719,7 +716,7 @@ void Generate
         GenerateExeBuildStatements(script, appPtr, buildParams);
 
         // Generate build statement for packing everything into an application bundle.
-        GenerateAppBundleBuildStatement(script, appPtr, buildParams, outputDir);
+        GenerateAppBundleBuildStatement(script, appPtr, buildParams, buildParams.outputDir);
     }
 
     // Add build statements for all the IPC interfaces' generated files.

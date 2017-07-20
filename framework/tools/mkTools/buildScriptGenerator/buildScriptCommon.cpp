@@ -127,9 +127,7 @@ void GenerateIfgenFlagsDef
 void GenerateBuildRules
 (
     std::ofstream& script,      ///< Ninja script to write rules to.
-    const mk::BuildParams_t& buildParams, ///< Build parameters
-    int argc,                   ///< Count of the number of command line parameters.
-    const char** argv            ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams ///< Build parameters
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -315,12 +313,12 @@ void GenerateBuildRules
     script << "rule RegenNinjaScript\n"
               "  description = Regenerating build script\n"
               "  generator = 1\n"
-              "  command = " << argv[0] << " --dont-run-ninja";
-    for (int i = 1; i < argc; i++)
+              "  command = " << buildParams.argv[0] << " --dont-run-ninja";
+    for (int i = 1; i < buildParams.argc; i++)
     {
-        if (strcmp(argv[i], "--dont-run-ninja") != 0)
+        if (strcmp(buildParams.argv[i], "--dont-run-ninja") != 0)
         {
-            script << " \"" << argv[i] << '"';
+            script << " \"" << buildParams.argv[i] << '"';
         }
     }
     script << "\n"

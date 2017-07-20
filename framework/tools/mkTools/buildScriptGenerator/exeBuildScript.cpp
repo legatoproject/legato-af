@@ -426,9 +426,7 @@ static void GenerateNinjaScriptBuildStatement
 void Generate
 (
     model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams,
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -452,7 +450,7 @@ void Generate
     script << "ldFlags = " << buildParams.ldFlags << "\n\n";
     script << "target = " << buildParams.target << "\n\n";
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
-    GenerateBuildRules(script, buildParams, argc, argv);
+    GenerateBuildRules(script, buildParams);
 
     if (!buildParams.codeGenOnly)
     {

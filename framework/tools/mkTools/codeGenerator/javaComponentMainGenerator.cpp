@@ -21,8 +21,7 @@ namespace code
 void GenerateJavaComponentMainFile
 (
     const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    bool isStandAlone   ///< true = fully resolve all interface name variables.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {

@@ -46,9 +46,7 @@ namespace ninja
 void Generate
 (
     model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -61,9 +59,7 @@ void Generate
 void Generate
 (
     model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams,
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -75,10 +71,7 @@ void Generate
 void Generate
 (
     model::App_t* appPtr,
-    const mk::BuildParams_t& buildParams,
-    const std::string& outputDir,   ///< Path to the directory into which the built app will be put.
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -90,9 +83,7 @@ void Generate
 void Generate
 (
     model::Module_t* modulePtr,
-    const mk::BuildParams_t& buildParams,
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -104,10 +95,7 @@ void Generate
 void Generate
 (
     model::System_t* systemPtr,
-    const mk::BuildParams_t& buildParams,
-    const std::string& outputDir,   ///< Path to the directory where the built system will be put.
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to an array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 );
 
 

@@ -235,9 +235,7 @@ void AddMultipleString
 //--------------------------------------------------------------------------------------------------
 void Save
 (
-    const mk::BuildParams_t& buildParams,
-    int argc,
-    const char** argv
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -251,9 +249,7 @@ void Save
 //--------------------------------------------------------------------------------------------------
 bool MatchesSaved
 (
-    const mk::BuildParams_t& buildParams,
-    int argc,
-    const char** argv
+    const mk::BuildParams_t& buildParams
 );
 
 

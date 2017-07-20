@@ -37,6 +37,16 @@ static model::Exe_t* ExePtr = NULL;
 static bool DontRunNinja = false;
 
 
+/// Steps to run to generate a Linux executable
+static const generator::ExeGenerator_t LinuxSteps[] =
+{
+    generator::ForAllComponents<GenerateCode>,
+    code::GenerateExeMain,
+    ninja::Generate,
+    NULL
+};
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Parse the command-line arguments and update the static operating parameters variables.
@@ -424,6 +434,9 @@ void MakeExecutable
 {
     GetCommandLineArgs(argc, argv);
 
+    BuildParams.argc = argc;
+    BuildParams.argv = argv;
+
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)
     FindToolChain(BuildParams);
@@ -435,7 +448,7 @@ void MakeExecutable
     // arguments and environment variables we were given are the same as last time, just run ninja.
     if (!DontRunNinja)
     {
-        if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
+        if (args::MatchesSaved(BuildParams) && envVars::MatchesSaved(BuildParams))
         {
             RunNinja(BuildParams);
             // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
@@ -449,7 +462,7 @@ void MakeExecutable
         else
         {
             // Save the command line arguments.
-            args::Save(BuildParams, argc, argv);
+            args::Save(BuildParams);
 
             // Save the environment variables.
             // Note: we must do this before we parse the definition file, because parsing the file
@@ -460,27 +473,8 @@ void MakeExecutable
 
     ConstructObjectModel();
 
-    // For each component in the executable.
-    for (auto componentInstancePtr : ExePtr->componentInstances)
-    {
-        auto componentPtr = componentInstancePtr->componentPtr;
-
-        // Create a working directory to build the component in.
-        file::MakeDir(path::Combine(BuildParams.workingDir, componentPtr->workingDir));
-
-        // Generate a custom "interfaces.h" file for this component.
-        code::GenerateInterfacesHeader(componentPtr, BuildParams);
-
-        // Generate a custom "_componentMain.c" file for this component.
-        code::GenerateComponentMainFile(componentPtr, BuildParams, false);
-    }
-
-    // Generate _main.c.  Requires all components to be generated first as lib names are
-    // generated there.
-    code::GenerateExeMain(ExePtr, BuildParams);
-
-    // Generate a build.ninja for the executable.
-    ninja::Generate(ExePtr, BuildParams, argc, argv);
+    // Run appropriate generator
+    generator::RunAllGenerators(LinuxSteps, ExePtr, BuildParams);
 
     // If we haven't been asked not to, run ninja.
     if (!DontRunNinja)

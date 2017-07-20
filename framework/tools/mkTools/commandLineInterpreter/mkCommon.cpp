@@ -332,7 +332,7 @@ void GenerateCode
     code::GenerateInterfacesHeader(componentPtr, buildParams);
 
     // Generate a custom "_componentMain.c" file for this component.
-    code::GenerateComponentMainFile(componentPtr, buildParams, false);
+    code::GenerateComponentMainFile(componentPtr, buildParams);
 }
 
 

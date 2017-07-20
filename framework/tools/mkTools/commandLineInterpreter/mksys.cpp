@@ -29,9 +29,6 @@ namespace cli
 /// Object that stores build parameters that we gather.
 static mk::BuildParams_t BuildParams;
 
-/// Path to the directory into which the final, built system file should be placed.
-static std::string OutputDir;
-
 /// The root object for this system's object model.
 static std::string SdefFilePath;
 
@@ -41,6 +38,19 @@ static std::string SystemName;
 /// true if the build.ninja file should be ignored and everything should be regenerated, including
 /// a new build.ninja.
 static bool DontRunNinja = false;
+
+/// Steps to run to generate a Linux system
+static const generator::SystemGenerator_t LinuxSteps[] =
+{
+    [](model::System_t* systemPtr, const mk::BuildParams_t& buildParams)
+    {
+        GenerateCode(model::Component_t::GetComponentMap(), buildParams);
+    },
+    generator::ForAllApps<GenerateCode>,
+    config::Generate,
+    ninja::Generate,
+    NULL
+};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -107,7 +117,7 @@ static void GetCommandLineArgs
                 SdefFilePath = param;
             };
 
-    args::AddOptionalString(&OutputDir,
+    args::AddOptionalString(&BuildParams.outputDir,
                            ".",
                             'o',
                             "output-dir",
@@ -237,6 +247,9 @@ void MakeSystem
 {
     GetCommandLineArgs(argc, argv);
 
+    BuildParams.argc = argc;
+    BuildParams.argv = argv;
+
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)
     FindToolChain(BuildParams);
@@ -255,7 +268,7 @@ void MakeSystem
     }
     // If we have not been asked to ignore any already existing build.ninja, and the command-line
     // arguments and environment variables we were given are the same as last time, just run ninja.
-    else if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
+    else if (args::MatchesSaved(BuildParams) && envVars::MatchesSaved(BuildParams))
     {
         RunNinja(BuildParams);
         // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
@@ -269,7 +282,7 @@ void MakeSystem
     else
     {
         // Save the command line arguments.
-        args::Save(BuildParams, argc, argv);
+        args::Save(BuildParams);
 
         // Save the environment variables.
         // Note: we must do this before we parse the definition file, because parsing the file
@@ -290,20 +303,7 @@ void MakeSystem
     // Create the working directory and the staging directory, if they don't already exist.
     file::MakeDir(stagingDir);
 
-    // Generate code for all the components in the system.
-    GenerateCode(model::Component_t::GetComponentMap(), BuildParams);
-
-    // Generate code and configuration files for all the apps in the system.
-    for (auto appMapEntry : systemPtr->apps)
-    {
-        GenerateCode(appMapEntry.second, BuildParams);
-    }
-
-    // Generate the configuration files for the system.
-    config::Generate(systemPtr, BuildParams);
-
-    // Generate the build script for the system.
-    ninja::Generate(systemPtr, BuildParams, OutputDir, argc, argv);
+    generator::RunAllGenerators(LinuxSteps, systemPtr, BuildParams);
 
     // Now delete the appPtr
     delete systemPtr;

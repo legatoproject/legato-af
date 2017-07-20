@@ -23,8 +23,7 @@ void GenerateCLangInterfacesHeader
 void GenerateCLangComponentMainFile
 (
     const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    bool isStandAlone   ///< true = fully resolve all interface name variables.
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -39,8 +38,7 @@ void GenerateCLangExeMain
 void GenerateJavaComponentMainFile
 (
     const model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    bool isStandAlone   ///< true = fully resolve all interface name variables.
+    const mk::BuildParams_t& buildParams
 );
 
 
@@ -60,7 +58,7 @@ void GenerateJavaExeMain
 //--------------------------------------------------------------------------------------------------
 void GenerateInterfacesHeader
 (
-    const model::Component_t* componentPtr,
+    model::Component_t* componentPtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
@@ -83,8 +81,7 @@ void GenerateInterfacesHeader
 void GenerateComponentMainFile
 (
     model::Component_t* componentPtr,
-    const mk::BuildParams_t& buildParams,
-    bool isStandAlone   ///< true = fully resolve all interface name variables.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -94,11 +91,11 @@ void GenerateComponentMainFile
 
     if (componentPtr->HasCOrCppCode())
     {
-        GenerateCLangComponentMainFile(componentPtr, buildParams, isStandAlone);
+        GenerateCLangComponentMainFile(componentPtr, buildParams);
     }
     else if (componentPtr->HasJavaCode())
     {
-        GenerateJavaComponentMainFile(componentPtr, buildParams, isStandAlone);
+        GenerateJavaComponentMainFile(componentPtr, buildParams);
     }
 }
 
@@ -110,7 +107,7 @@ void GenerateComponentMainFile
 //--------------------------------------------------------------------------------------------------
 void GenerateExeMain
 (
-    const model::Exe_t* exePtr,
+    model::Exe_t* exePtr,
     const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------

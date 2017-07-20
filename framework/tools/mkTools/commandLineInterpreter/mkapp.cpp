@@ -29,9 +29,6 @@ namespace cli
 /// Object that stores build parameters that we gather.
 static mk::BuildParams_t BuildParams;
 
-/// Path to the directory into which the final, built application file should be placed.
-static std::string OutputDir;
-
 /// Suffix to append to the application version.
 static std::string VersionSuffix;
 
@@ -45,6 +42,21 @@ static std::string AppName;
 /// a new build.ninja.
 static bool DontRunNinja = false;
 
+/// Steps to run to generate a Linux app
+static const generator::AppGenerator_t LinuxSteps[] =
+{
+    generator::ForAllComponents<GenerateCode>,
+    GenerateCode,
+    ninja::Generate,
+    [](model::App_t* appPtr, const mk::BuildParams_t& buildParams)
+    {
+        if (buildParams.binPack)
+        {
+            adefGen::GenerateExportedAdef(appPtr, buildParams);
+        }
+    },
+    NULL
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -126,7 +138,7 @@ static void GetCommandLineArgs
                                     " a single string."),
                             versionPush);
 
-    args::AddOptionalString(&OutputDir,
+    args::AddOptionalString(&BuildParams.outputDir,
                             ".",
                             'o',
                             "output-dir",
@@ -277,6 +289,9 @@ void MakeApp
 {
     GetCommandLineArgs(argc, argv);
 
+    BuildParams.argc = argc;
+    BuildParams.argv = argv;
+
     // Get tool chain info from environment variables.
     // (Must be done after command-line args parsing and before setting target-specific env vars.)
     FindToolChain(BuildParams);
@@ -292,7 +307,7 @@ void MakeApp
     }
     // If we have not been asked to ignore any already existing build.ninja, and the command-line
     // arguments and environment variables we were given are the same as last time, just run ninja.
-    else if (args::MatchesSaved(BuildParams, argc, argv) && envVars::MatchesSaved(BuildParams))
+    else if (args::MatchesSaved(BuildParams) && envVars::MatchesSaved(BuildParams))
     {
         RunNinja(BuildParams);
         // NOTE: If build.ninja exists, RunNinja() will not return.  If it doesn't it will.
@@ -306,7 +321,7 @@ void MakeApp
     else
     {
         // Save the command line arguments.
-        args::Save(BuildParams, argc, argv);
+        args::Save(BuildParams);
 
         // Save the environment variables.
         // Note: we must do this before we parse the definition file, because parsing the file
@@ -338,21 +353,8 @@ void MakeApp
         modeller::PrintSummary(appPtr);
     }
 
-    // Generate code for all the components in the app.
-    GenerateCode(appPtr->components, BuildParams);
-
-    // Generate app-specific code and configuration files.
-    GenerateCode(appPtr, BuildParams);
-
-    // Generate the build script for the application.
-    ninja::Generate(appPtr, BuildParams, OutputDir, argc, argv);
-
-    // If we're building for binary distribution, then generate the redistributable .adef file to
-    // go with the app.
-    if (BuildParams.binPack)
-    {
-        adefGen::GenerateExportedAdef(appPtr, BuildParams);
-    }
+    // Run appropriate generator
+    generator::RunAllGenerators(LinuxSteps, appPtr, BuildParams);
 
     // Now delete the appPtr
     delete appPtr;

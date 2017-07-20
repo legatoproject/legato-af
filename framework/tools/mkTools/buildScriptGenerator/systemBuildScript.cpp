@@ -179,15 +179,14 @@ static void GenerateSystemPackBuildStatement
 (
     std::ofstream& script,
     const model::System_t* systemPtr,
-    const mk::BuildParams_t& buildParams,
-    const std::string& outputDir    ///< Path to the directory into which the bundle will be put.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
     // Generate build statement for zipping up the staging area into a system bundle.
     // This depends on the system's info.properties file, which is the last thing to be added to
     // the system's staging area.
-    auto outputFile = path::MakeAbsolute(path::Combine(outputDir,
+    auto outputFile = path::MakeAbsolute(path::Combine(buildParams.outputDir,
                                                        systemPtr->name + ".$target.update"));
     script << "build " << outputFile << ": PackSystem";
 
@@ -320,10 +319,7 @@ static void GenerateNinjaScriptBuildStatement
 void Generate
 (
     model::System_t* systemPtr,
-    const mk::BuildParams_t& buildParams,
-    const std::string& outputDir,   ///< Path to the directory where the built system will be put.
-    int argc,           ///< Count of the number of command line parameters.
-    const char** argv   ///< Pointer to array of pointers to command line argument strings.
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -351,7 +347,7 @@ void Generate
     GenerateIfgenFlagsDef(script, buildParams.interfaceDirs);
 
     // Add a set of generic rules.
-    GenerateBuildRules(script, buildParams, argc, argv);
+    GenerateBuildRules(script, buildParams);
     GenerateAppBuildRules(script);
     GenerateSystemBuildRules(script, systemPtr);
 
@@ -386,7 +382,7 @@ void Generate
         }
 
         // Generate build statement for packing everything into a system update pack.
-        GenerateSystemPackBuildStatement(script, systemPtr, buildParams, outputDir);
+        GenerateSystemPackBuildStatement(script, systemPtr, buildParams);
     }
 
     // Add build statements for all the IPC interfaces' generated files.
