@@ -239,13 +239,21 @@ le_onoff_t;
 //--------------------------------------------------------------------------------------------------
 #define LE_SHARED __attribute__((visibility ("default")))
 
+// CLang feature check macros -- define to return sensible defaults if macro is not available.
+#ifndef __is_identifier
+#  define __is_identifier(x) 1
+#endif
 
-#ifdef __clang__
+#ifndef __has_warning
+#  define  __has_warning(x) 0
+#endif
+
+#if !__is_identifier(_Nonnull)
 
 // Nullability information is not complete.  Normally clang will warn in that case.
-#if defined(__has_warning) && __has_warning("-Wnullability-completeness")
-#  pragma clang diagnostic ignored "-Wnullability-completeness"
-#endif
+#  if __has_warning("-Wnullability-completeness")
+#    pragma clang diagnostic ignored "-Wnullability-completeness"
+#  endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -262,6 +270,7 @@ le_onoff_t;
 #  define LE_NULLABLE _Nullable
 #else
 #  define LE_NONNULL
+#  define LE_NULLABLE
 #endif
 
 #endif // LEGATO_BASICS_INCLUDE_GUARD
