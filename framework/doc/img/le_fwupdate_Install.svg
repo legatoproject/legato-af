@@ -441,7 +441,7 @@
 		</g>
 		<g id="shape337-127" v:mID="337" v:groupContext="shape" transform="translate(780.966,614.571) rotate(180)">
 			<title>Flèche simple.337</title>
-			<desc>le_fwupdate_DualSysSwap</desc>
+			<desc>le_fwupdate_Install</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				<v:ud v:nameU="ArrowType" v:prompt="" v:val="VT0(2):26"/>
@@ -450,7 +450,7 @@
 			<v:textRect cx="126.177" cy="397.771" width="252.36" height="0" transform="rotate(180)"/>
 			<path d="M0 397.77 L54 343.77 L54 370.77 L252.35 370.77 L252.35 397.77 L252.35 424.77 L54 424.77 L54 451.77 L0 397.77
 						 Z" class="st1"/>
-			<text x="-248.35" y="-393.57" transform="rotate(180)" class="st15" v:langID="1036"><v:paragraph/><v:tabList/>le_fwupdate_DualSysSwap</text>		</g>
+			<text x="-248.35" y="-393.57" transform="rotate(180)" class="st15" v:langID="1036"><v:paragraph/><v:tabList/>le_fwupdate_Install</text>		</g>
 		<g id="group338-130" transform="translate(1166.6,-343.396)" v:mID="338" v:groupContext="group">
 			<title>Feuille.338</title>
 			<g id="shape339-131" v:mID="339" v:groupContext="shape">

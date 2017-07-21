@@ -17,36 +17,37 @@ the two systems (mainly data).
 @image html le_fwupdate_DualSys_Summary.svg
 </center>
 
-There are 3 operations to manage the <b>dual system</b>: \b SYNC, \b SWAP and \b SWAP&SYNC.
+There are 3 operations to manage the <b>dual system</b>: \b MARKGOOD, \b INSTALL and
+ \b INSTALL&MARKGOOD.
 
-- \b SWAP operation consists in a reboot, followed by a switch between ACTIVE & UPDATE systems.
+- \b INSTALL operation consists in a reboot, followed by a switch between ACTIVE & UPDATE systems.
 Legato will mark the ACTIVE system as UPDATE one, the UPDATE system as ACTIVE one and then it
 will load the ACTIVE system.
 
 <center>
-@image html le_fwupdate_DualSysSwap.svg
+@image html le_fwupdate_Install.svg
 </center>
 
-- \b SYNC operation consists in a copy of ACTIVE system into UPDATE one by APPS.
-No new downloads are possible without a successful SYNC issued previously. So it means
+- \b MARKGOOD operation consists in a copy of ACTIVE system into UPDATE one by APPS.
+No new downloads are possible without a successful MARKGOOD issued previously. So it means
 that in a stable situation, both systems are identical (same version N).
 
 <center>
-@image html le_fwupdate_DualSysSync.svg
+@image html le_fwupdate_MarkGood.svg
 </center>
 
-- \b SWAP&SYNC operation consists in a reboot, followed by a switch between ACTIVE & UPDATE
+- \b INSTALL&MARKGOOD operation consists in a reboot, followed by a switch between ACTIVE & UPDATE
 systems in Legato, followed immediately by a copy of ACTIVE system into UPDATE system.
 
 <center>
-@image html le_fwupdate_DualSysSwapAndSync.svg
+@image html le_fwupdate_InstallAndMarkGood.svg
 </center>
 
 
 @section fwupdateConstrain_SystemUpdate System update
 The user is able to update a whole system by downloading a package and accepting the update.
 Using this mechanism, the user can update the UPDATE system. Then, by calling
-le_fwupdate_DualSysSwap(), the user can request to swap to the new downloaded system.
+le_fwupdate_Install(), the user can request to swap to the new downloaded system.
 
 @section fwupdateConstrain_PackageDownload Package download
 
@@ -57,34 +58,34 @@ When the package download is over and succeeds, this API returns LE_OK.
 be required at next startup.
 If any issue occurs during the le_fwupdate_Download() API treatment, this API returns
 LE_FAULT and the application will need to synchronize partitions by calling
-le_fwupdate_DualSysSync() API which occurs a device reboot.
+le_fwupdate_MarkGood() API which occurs a device reboot.
 Synchronizing partitions is necessary before calling again the le_fwupdate_Download() API.
-To know if both systems are synchronized, the le_fwupdate_DualSysSyncState() API can be called.
+To know if both systems are synchronized, the le_fwupdate_IsSystemMarkedGood() API can be called.
 
 @section fwupdateConstrain_UpdateReq Update request
 
 Once the package download is over (meaning that le_fwupdate_Download() API returns
 LE_OK), the user is able to accept or cancel the FW update.
-To do that, the le_fwupdate_DualSysSwap() (accept the upate) or the le_fwupdate_DualSysSync()
+To do that, the le_fwupdate_Install() (accept the update) or the le_fwupdate_MarkGood()
 (refuse the update) API can be used.
 @warning If any Legato reset happens before accepting the FW update, a new download will
 be required at next startup.
-Accepting a FW update (le_fwupdate_DualSysSwap()) will initiate a device reboot without returning
+Accepting a FW update (le_fwupdate_Install()) will initiate a device reboot without returning
 any result.
 Rejecting a FW update will initiate a synchronization without any device reboot.
 
 @section fwupdateConstrain_PartitionSync Partition synchronization
 
 The user can check if the ACTIVE and UPDATE partition are synchronized by calling the
-le_fwupdate_DualSysSyncState() API.
+le_fwupdate_IsSystemMarkedGood() API.
 This API can be used before calling le_fwupdate_Download() in order to check that the
 download can be treated.
-The user can request a SYNC operation by calling le_fwupdate_DualSysSync().
+The user can request an INSTALL operation by calling le_fwupdate_Install().
 
 @section fwupdateConstrain_Reset Reset APIs
 
-The user can use a reset API to initiate a partition swap or a swap and synchronization.
-See le_fwupdate_DualSysSwap() and le_fwupdate_DualSysSwapAndSync().
+The user can use a reset API to initiate an installation or an installation and mark good.
+See le_fwupdate_Install() and le_fwupdate_InstallAndMarkGood().
 
 @section fwupdateConstrain_GetUpdateStatus GetUpdateStatus APIs
 

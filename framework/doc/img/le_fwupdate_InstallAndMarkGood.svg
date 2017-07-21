@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<!-- Généré par Microsoft Visio, SVG Export le_fwupdate_DualSysSync.svg Page 1 -->
+<!-- Généré par Microsoft Visio, SVG Export le_fwupdate_DualSysSwapAndSync.svg Page 1 -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
 		xmlns:v="http://schemas.microsoft.com/visio/2003/SVGExtensions/" height="11.664cm"
-		viewBox="0 0 1308.71 397.771" xml:space="preserve" color-interpolation-filters="sRGB" class="st15">
+		viewBox="0 0 1308.71 397.771" xml:space="preserve" color-interpolation-filters="sRGB" class="st16">
 	<v:documentProperties v:langID="1036" v:metric="true" v:viewMarkup="false">
 		<v:userDefs>
 			<v:ud v:nameU="msvConvertTheme"/>
@@ -25,8 +25,9 @@
 		.st11 {fill:#f9c499;stroke:#ff0000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2.25}
 		.st12 {fill:#d2d200;stroke:#ff0000;stroke-linecap:round;stroke-linejoin:round;stroke-width:2.25}
 		.st13 {fill:#000000;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.24}
-		.st14 {fill:#000000;font-family:Courier New;font-size:1.16666em}
-		.st15 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+		.st14 {font-size:1em;font-weight:bold}
+		.st15 {fill:#000000;font-family:Courier New;font-size:1.16666em}
+		.st16 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
 	]]>
 	</style>
 
@@ -34,52 +35,52 @@
 		<title>Page 1</title>
 		<v:pageProperties v:drawingScale="1" v:pageScale="1" v:drawingUnits="19" v:shadowOffsetX="8.50394"
 				v:shadowOffsetY="-8.50394"/>
-		<g id="shape227-1" v:mID="227" v:groupContext="shape" transform="translate(0.374999,-0.12)">
-			<title>Rectangle.227</title>
+		<g id="shape340-1" v:mID="340" v:groupContext="shape" transform="translate(0.374999,-0.12)">
+			<title>Rectangle.340</title>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<rect x="0" y="0.920211" width="141.732" height="396.85" class="st1"/>
 		</g>
-		<g id="shape228-3" v:mID="228" v:groupContext="shape" transform="translate(368.879,-0.12)">
-			<title>Rectangle.228</title>
+		<g id="shape341-3" v:mID="341" v:groupContext="shape" transform="translate(368.879,-0.12)">
+			<title>Rectangle.341</title>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<rect x="0" y="0.920211" width="141.732" height="396.85" class="st1"/>
 		</g>
-		<g id="shape229-5" v:mID="229" v:groupContext="shape" transform="translate(170.454,-0.12)">
-			<title>Rectangle.229</title>
+		<g id="shape342-5" v:mID="342" v:groupContext="shape" transform="translate(170.454,-0.12)">
+			<title>Rectangle.342</title>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<rect x="0" y="0.920211" width="170.079" height="396.85" class="st1"/>
 		</g>
-		<g id="shape230-7" v:mID="230" v:groupContext="shape" transform="translate(0.375,-342.97)">
-			<title>Feuille.230</title>
+		<g id="shape343-7" v:mID="343" v:groupContext="shape" transform="translate(0.375,-342.97)">
+			<title>Feuille.343</title>
 			<desc>System 1 ACTIVE</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="70.8661" cy="370.771" width="141.74" height="54"/>
 			<rect x="0" y="343.771" width="141.732" height="54" class="st2"/>
 			<text x="37.86" y="365.37" class="st3" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>System 1<v:newlineChar/><tspan
 						x="44.71" dy="1.2em" class="st4">ACTIVE</tspan></text>		</g>
-		<g id="shape231-11" v:mID="231" v:groupContext="shape" transform="translate(368.879,-342.97)">
-			<title>Feuille.231</title>
+		<g id="shape344-11" v:mID="344" v:groupContext="shape" transform="translate(368.879,-342.97)">
+			<title>Feuille.344</title>
 			<desc>System 2 UPDATE</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="70.8661" cy="370.771" width="141.74" height="54"/>
 			<rect x="0" y="343.771" width="141.732" height="54" class="st2"/>
 			<text x="37.86" y="365.37" class="st3" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>System 2<v:newlineChar/><tspan
 						x="40.92" dy="1.2em" class="st4">UPDATE</tspan></text>		</g>
-		<g id="shape232-15" v:mID="232" v:groupContext="shape" transform="translate(170.454,-354.451)">
-			<title>Feuille.232</title>
+		<g id="shape345-15" v:mID="345" v:groupContext="shape" transform="translate(170.454,-354.451)">
+			<title>Feuille.345</title>
 			<desc>Sharing</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="85.0394" cy="376.511" width="170.08" height="42.5197"/>
 			<rect x="0" y="355.251" width="170.079" height="42.5197" class="st2"/>
 			<text x="57.7" y="381.91" class="st3" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Sharing</text>		</g>
-		<g id="shape233-18" v:mID="233" v:groupContext="shape" transform="translate(198.8,-304.844)">
-			<title>Rectangle.233</title>
+		<g id="shape346-18" v:mID="346" v:groupContext="shape" transform="translate(198.8,-304.844)">
+			<title>Rectangle.346</title>
 			<desc>Bootlader</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -88,8 +89,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st1"/>
 			<text x="28.6" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Bootlader</text>		</g>
-		<g id="shape234-21" v:mID="234" v:groupContext="shape" transform="translate(198.8,-255.238)">
-			<title>Rectangle.234</title>
+		<g id="shape347-21" v:mID="347" v:groupContext="shape" transform="translate(198.8,-255.238)">
+			<title>Rectangle.347</title>
 			<desc>Partition table</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -98,8 +99,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st1"/>
 			<text x="15.96" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition table</text>		</g>
-		<g id="shape235-24" v:mID="235" v:groupContext="shape" transform="translate(14.5482,-205.632)">
-			<title>Rectangle.235</title>
+		<g id="shape348-24" v:mID="348" v:groupContext="shape" transform="translate(14.5482,-205.632)">
+			<title>Rectangle.348</title>
 			<desc>Partition A (1)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -108,8 +109,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st6"/>
 			<text x="17" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition A (1)</text>		</g>
-		<g id="shape236-27" v:mID="236" v:groupContext="shape" transform="translate(383.052,-205.632)">
-			<title>Rectangle.236</title>
+		<g id="shape349-27" v:mID="349" v:groupContext="shape" transform="translate(383.052,-205.632)">
+			<title>Rectangle.349</title>
 			<desc>Partition A (2)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -118,8 +119,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st8"/>
 			<text x="17" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition A (2)</text>		</g>
-		<g id="shape237-30" v:mID="237" v:groupContext="shape" transform="translate(14.5482,-156.026)">
-			<title>Rectangle.237</title>
+		<g id="shape350-30" v:mID="350" v:groupContext="shape" transform="translate(14.5482,-156.026)">
+			<title>Rectangle.350</title>
 			<desc>Partition B (1)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -128,8 +129,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st9"/>
 			<text x="17.25" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition B (1)</text>		</g>
-		<g id="shape238-33" v:mID="238" v:groupContext="shape" transform="translate(383.052,-156.026)">
-			<title>Rectangle.238</title>
+		<g id="shape351-33" v:mID="351" v:groupContext="shape" transform="translate(383.052,-156.026)">
+			<title>Rectangle.351</title>
 			<desc>Partition B (2)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -138,8 +139,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st10"/>
 			<text x="17.25" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition B (2)</text>		</g>
-		<g id="shape239-36" v:mID="239" v:groupContext="shape" transform="translate(198.8,-106.419)">
-			<title>Rectangle.239</title>
+		<g id="shape352-36" v:mID="352" v:groupContext="shape" transform="translate(198.8,-106.419)">
+			<title>Rectangle.352</title>
 			<desc>Partition C</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -148,8 +149,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st1"/>
 			<text x="26.7" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition C</text>		</g>
-		<g id="shape240-39" v:mID="240" v:groupContext="shape" transform="translate(14.5482,-56.8129)">
-			<title>Rectangle.240</title>
+		<g id="shape353-39" v:mID="353" v:groupContext="shape" transform="translate(14.5482,-56.8129)">
+			<title>Rectangle.353</title>
 			<desc>Partition D (1)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -158,8 +159,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st11"/>
 			<text x="16.75" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition D (1)</text>		</g>
-		<g id="shape241-42" v:mID="241" v:groupContext="shape" transform="translate(383.052,-56.8129)">
-			<title>Rectangle.241</title>
+		<g id="shape354-42" v:mID="354" v:groupContext="shape" transform="translate(383.052,-56.8129)">
+			<title>Rectangle.354</title>
 			<desc>Partition D (2)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -168,23 +169,23 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st12"/>
 			<text x="16.75" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition D (2)</text>		</g>
-		<g id="group242-45" transform="translate(68.2573,-14.2932)" v:mID="242" v:groupContext="group">
-			<title>Feuille.242</title>
-			<g id="shape243-46" v:mID="243" v:groupContext="shape" transform="translate(0,-22.3788)">
+		<g id="group355-45" transform="translate(68.2573,-14.2932)" v:mID="355" v:groupContext="group">
+			<title>Feuille.355</title>
+			<g id="shape356-46" v:mID="356" v:groupContext="shape" transform="translate(0,-22.3788)">
 				<title>Carré</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape244-48" v:mID="244" v:groupContext="shape" transform="translate(0,-11.1894)">
+			<g id="shape357-48" v:mID="357" v:groupContext="shape" transform="translate(0,-11.1894)">
 				<title>Carré.18</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape245-50" v:mID="245" v:groupContext="shape">
+			<g id="shape358-50" v:mID="358" v:groupContext="shape">
 				<title>Carré.20</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -192,23 +193,23 @@
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
 		</g>
-		<g id="group246-52" transform="translate(252.509,-14.2932)" v:mID="246" v:groupContext="group">
-			<title>Feuille.246</title>
-			<g id="shape247-53" v:mID="247" v:groupContext="shape" transform="translate(0,-22.3788)">
+		<g id="group359-52" transform="translate(252.509,-14.2932)" v:mID="359" v:groupContext="group">
+			<title>Feuille.359</title>
+			<g id="shape360-53" v:mID="360" v:groupContext="shape" transform="translate(0,-22.3788)">
 				<title>Carré</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape248-55" v:mID="248" v:groupContext="shape" transform="translate(0,-11.1894)">
+			<g id="shape361-55" v:mID="361" v:groupContext="shape" transform="translate(0,-11.1894)">
 				<title>Carré.19</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape249-57" v:mID="249" v:groupContext="shape">
+			<g id="shape362-57" v:mID="362" v:groupContext="shape">
 				<title>Carré.20</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -216,23 +217,23 @@
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
 		</g>
-		<g id="group250-59" transform="translate(436.761,-14.2932)" v:mID="250" v:groupContext="group">
-			<title>Feuille.250</title>
-			<g id="shape251-60" v:mID="251" v:groupContext="shape" transform="translate(0,-22.3788)">
+		<g id="group363-59" transform="translate(436.761,-14.2932)" v:mID="363" v:groupContext="group">
+			<title>Feuille.363</title>
+			<g id="shape364-60" v:mID="364" v:groupContext="shape" transform="translate(0,-22.3788)">
 				<title>Carré</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape252-62" v:mID="252" v:groupContext="shape" transform="translate(0,-11.1894)">
+			<g id="shape365-62" v:mID="365" v:groupContext="shape" transform="translate(0,-11.1894)">
 				<title>Carré.19</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape253-64" v:mID="253" v:groupContext="shape">
+			<g id="shape366-64" v:mID="366" v:groupContext="shape">
 				<title>Carré.20</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -240,52 +241,52 @@
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
 		</g>
-		<g id="shape255-66" v:mID="255" v:groupContext="shape" transform="translate(798.097,-0.545202)">
-			<title>Rectangle.255</title>
+		<g id="shape368-66" v:mID="368" v:groupContext="shape" transform="translate(798.097,-0.545202)">
+			<title>Rectangle.368</title>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<rect x="0" y="0.920211" width="141.732" height="396.85" class="st1"/>
 		</g>
-		<g id="shape256-68" v:mID="256" v:groupContext="shape" transform="translate(1166.6,-0.545202)">
-			<title>Rectangle.256</title>
+		<g id="shape369-68" v:mID="369" v:groupContext="shape" transform="translate(1166.6,-0.545202)">
+			<title>Rectangle.369</title>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<rect x="0" y="0.920211" width="141.732" height="396.85" class="st1"/>
 		</g>
-		<g id="shape257-70" v:mID="257" v:groupContext="shape" transform="translate(968.176,-0.545202)">
-			<title>Rectangle.257</title>
+		<g id="shape370-70" v:mID="370" v:groupContext="shape" transform="translate(968.176,-0.545202)">
+			<title>Rectangle.370</title>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<rect x="0" y="0.920211" width="170.079" height="396.85" class="st1"/>
 		</g>
-		<g id="shape258-72" v:mID="258" v:groupContext="shape" transform="translate(798.097,-343.396)">
-			<title>Feuille.258</title>
-			<desc>System 1 ACTIVE</desc>
+		<g id="shape371-72" v:mID="371" v:groupContext="shape" transform="translate(798.097,-343.396)">
+			<title>Feuille.371</title>
+			<desc>System 1 UPDATE</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="70.8661" cy="370.771" width="141.74" height="54"/>
 			<rect x="0" y="343.771" width="141.732" height="54" class="st2"/>
 			<text x="37.86" y="365.37" class="st3" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>System 1<v:newlineChar/><tspan
-						x="44.71" dy="1.2em" class="st4">ACTIVE</tspan></text>		</g>
-		<g id="shape259-76" v:mID="259" v:groupContext="shape" transform="translate(1166.6,-343.396)">
-			<title>Feuille.259</title>
-			<desc>System 2 UPDATE</desc>
+						x="40.23" dy="1.2em" class="st14">UPDATE</tspan></text>		</g>
+		<g id="shape372-76" v:mID="372" v:groupContext="shape" transform="translate(1166.6,-343.396)">
+			<title>Feuille.372</title>
+			<desc>System 2 ACTIVE</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="70.8661" cy="370.771" width="141.74" height="54"/>
 			<rect x="0" y="343.771" width="141.732" height="54" class="st2"/>
 			<text x="37.86" y="365.37" class="st3" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>System 2<v:newlineChar/><tspan
-						x="40.92" dy="1.2em" class="st4">UPDATE</tspan></text>		</g>
-		<g id="shape260-80" v:mID="260" v:groupContext="shape" transform="translate(968.176,-354.876)">
-			<title>Feuille.260</title>
+						x="44.08" dy="1.2em" class="st14">ACTIVE</tspan></text>		</g>
+		<g id="shape373-80" v:mID="373" v:groupContext="shape" transform="translate(968.176,-354.876)">
+			<title>Feuille.373</title>
 			<desc>Sharing</desc>
 			<v:textBlock v:margins="rect(4,4,4,4)"/>
 			<v:textRect cx="85.0394" cy="376.511" width="170.08" height="42.5197"/>
 			<rect x="0" y="355.251" width="170.079" height="42.5197" class="st2"/>
 			<text x="57.7" y="381.91" class="st3" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Sharing</text>		</g>
-		<g id="shape261-83" v:mID="261" v:groupContext="shape" transform="translate(996.523,-305.27)">
-			<title>Rectangle.261</title>
+		<g id="shape374-83" v:mID="374" v:groupContext="shape" transform="translate(996.523,-305.27)">
+			<title>Rectangle.374</title>
 			<desc>Bootlader</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -294,8 +295,8 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st1"/>
 			<text x="28.6" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Bootlader</text>		</g>
-		<g id="shape262-86" v:mID="262" v:groupContext="shape" transform="translate(996.523,-255.663)">
-			<title>Rectangle.262</title>
+		<g id="shape375-86" v:mID="375" v:groupContext="shape" transform="translate(996.523,-255.663)">
+			<title>Rectangle.375</title>
 			<desc>Partition table</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -304,48 +305,48 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st1"/>
 			<text x="15.96" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition table</text>		</g>
-		<g id="shape263-89" v:mID="263" v:groupContext="shape" transform="translate(812.271,-206.057)">
-			<title>Rectangle.263</title>
+		<g id="shape376-89" v:mID="376" v:groupContext="shape" transform="translate(812.271,-206.057)">
+			<title>Rectangle.376</title>
 			<desc>Partition A (1)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
-			<v:textBlock v:margins="rect(4,4,4,4)"/>
+			<v:textBlock v:margins="rect(4,4,4,4)" v:tabSpace="42.5197"/>
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
-			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st6"/>
+			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st8"/>
 			<text x="17" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition A (1)</text>		</g>
-		<g id="shape264-92" v:mID="264" v:groupContext="shape" transform="translate(1180.77,-206.057)">
-			<title>Rectangle.264</title>
+		<g id="shape377-92" v:mID="377" v:groupContext="shape" transform="translate(1180.77,-206.057)">
+			<title>Rectangle.377</title>
 			<desc>Partition A (2)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
-			<v:textBlock v:margins="rect(4,4,4,4)"/>
+			<v:textBlock v:margins="rect(4,4,4,4)" v:tabSpace="42.5197"/>
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
-			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st6"/>
+			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st8"/>
 			<text x="17" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition A (2)</text>		</g>
-		<g id="shape265-95" v:mID="265" v:groupContext="shape" transform="translate(812.271,-156.451)">
-			<title>Rectangle.265</title>
+		<g id="shape378-95" v:mID="378" v:groupContext="shape" transform="translate(812.271,-156.451)">
+			<title>Rectangle.378</title>
 			<desc>Partition B (1)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<v:textBlock v:margins="rect(4,4,4,4)" v:tabSpace="42.5197"/>
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
-			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st9"/>
-			<text x="17.25" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition B (1)</text>		</g>
-		<g id="shape266-98" v:mID="266" v:groupContext="shape" transform="translate(1180.77,-156.451)">
-			<title>Rectangle.266</title>
+			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st10"/>
+			<text x="17.25" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition B (1)</text>		</g>
+		<g id="shape379-98" v:mID="379" v:groupContext="shape" transform="translate(1180.77,-156.451)">
+			<title>Rectangle.379</title>
 			<desc>Partition B (2)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<v:textBlock v:margins="rect(4,4,4,4)" v:tabSpace="42.5197"/>
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
-			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st9"/>
-			<text x="17.25" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition B (2)</text>		</g>
-		<g id="shape267-101" v:mID="267" v:groupContext="shape" transform="translate(996.523,-106.844)">
-			<title>Rectangle.267</title>
+			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st10"/>
+			<text x="17.25" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition B (2)</text>		</g>
+		<g id="shape380-101" v:mID="380" v:groupContext="shape" transform="translate(996.523,-106.844)">
+			<title>Rectangle.380</title>
 			<desc>Partition C</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -354,43 +355,43 @@
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
 			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st1"/>
 			<text x="26.7" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition C</text>		</g>
-		<g id="shape268-104" v:mID="268" v:groupContext="shape" transform="translate(812.271,-57.2381)">
-			<title>Rectangle.268</title>
+		<g id="shape381-104" v:mID="381" v:groupContext="shape" transform="translate(812.271,-57.2381)">
+			<title>Rectangle.381</title>
 			<desc>Partition D (1)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<v:textBlock v:margins="rect(4,4,4,4)" v:tabSpace="42.5197"/>
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
-			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st11"/>
-			<text x="16.75" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition D (1)</text>		</g>
-		<g id="shape269-107" v:mID="269" v:groupContext="shape" transform="translate(1180.77,-57.2381)">
-			<title>Rectangle.269</title>
+			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st12"/>
+			<text x="16.75" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition D (1)</text>		</g>
+		<g id="shape382-107" v:mID="382" v:groupContext="shape" transform="translate(1180.77,-57.2381)">
+			<title>Rectangle.382</title>
 			<desc>Partition D (2)</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 			</v:userDefs>
 			<v:textBlock v:margins="rect(4,4,4,4)" v:tabSpace="42.5197"/>
 			<v:textRect cx="56.6929" cy="376.511" width="113.39" height="42.5197"/>
-			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st11"/>
-			<text x="16.75" y="380.71" class="st7" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition D (2)</text>		</g>
-		<g id="group270-110" transform="translate(865.98,-14.7184)" v:mID="270" v:groupContext="group">
-			<title>Feuille.270</title>
-			<g id="shape271-111" v:mID="271" v:groupContext="shape" transform="translate(0,-22.3788)">
+			<rect x="0" y="355.251" width="113.386" height="42.5197" class="st12"/>
+			<text x="16.75" y="380.71" class="st5" v:langID="1036"><v:paragraph v:horizAlign="1"/><v:tabList/>Partition D (2)</text>		</g>
+		<g id="group383-110" transform="translate(865.98,-14.7184)" v:mID="383" v:groupContext="group">
+			<title>Feuille.383</title>
+			<g id="shape384-111" v:mID="384" v:groupContext="shape" transform="translate(0,-22.3788)">
 				<title>Carré</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape272-113" v:mID="272" v:groupContext="shape" transform="translate(0,-11.1894)">
+			<g id="shape385-113" v:mID="385" v:groupContext="shape" transform="translate(0,-11.1894)">
 				<title>Carré.18</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape273-115" v:mID="273" v:groupContext="shape">
+			<g id="shape386-115" v:mID="386" v:groupContext="shape">
 				<title>Carré.20</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -398,23 +399,23 @@
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
 		</g>
-		<g id="group274-117" transform="translate(1050.23,-14.7184)" v:mID="274" v:groupContext="group">
-			<title>Feuille.274</title>
-			<g id="shape275-118" v:mID="275" v:groupContext="shape" transform="translate(0,-22.3788)">
+		<g id="group387-117" transform="translate(1050.23,-14.7184)" v:mID="387" v:groupContext="group">
+			<title>Feuille.387</title>
+			<g id="shape388-118" v:mID="388" v:groupContext="shape" transform="translate(0,-22.3788)">
 				<title>Carré</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape276-120" v:mID="276" v:groupContext="shape" transform="translate(0,-11.1894)">
+			<g id="shape389-120" v:mID="389" v:groupContext="shape" transform="translate(0,-11.1894)">
 				<title>Carré.19</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape277-122" v:mID="277" v:groupContext="shape">
+			<g id="shape390-122" v:mID="390" v:groupContext="shape">
 				<title>Carré.20</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -422,23 +423,23 @@
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
 		</g>
-		<g id="group278-124" transform="translate(1234.48,-14.7184)" v:mID="278" v:groupContext="group">
-			<title>Feuille.278</title>
-			<g id="shape279-125" v:mID="279" v:groupContext="shape" transform="translate(0,-22.3788)">
+		<g id="group391-124" transform="translate(1234.48,-14.7184)" v:mID="391" v:groupContext="group">
+			<title>Feuille.391</title>
+			<g id="shape392-125" v:mID="392" v:groupContext="shape" transform="translate(0,-22.3788)">
 				<title>Carré</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape280-127" v:mID="280" v:groupContext="shape" transform="translate(0,-11.1894)">
+			<g id="shape393-127" v:mID="393" v:groupContext="shape" transform="translate(0,-11.1894)">
 				<title>Carré.19</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				</v:userDefs>
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
-			<g id="shape281-129" v:mID="281" v:groupContext="shape">
+			<g id="shape394-129" v:mID="394" v:groupContext="shape">
 				<title>Carré.20</title>
 				<v:userDefs>
 					<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
@@ -446,9 +447,9 @@
 				<rect x="0" y="391.803" width="5.96768" height="5.96768" class="st13"/>
 			</g>
 		</g>
-		<g id="shape282-131" v:mID="282" v:groupContext="shape" transform="translate(780.966,614.571) rotate(180)">
-			<title>Flèche simple.282</title>
-			<desc>le_fwupdate_DualSysSync</desc>
+		<g id="shape395-131" v:mID="395" v:groupContext="shape" transform="translate(780.966,615.421) rotate(180)">
+			<title>Flèche simple.395</title>
+			<desc>le_fwupdate_InstallAndMarkGood</desc>
 			<v:userDefs>
 				<v:ud v:nameU="visVersion" v:val="VT0(15):26"/>
 				<v:ud v:nameU="ArrowType" v:prompt="" v:val="VT0(2):26"/>
@@ -457,6 +458,6 @@
 			<v:textRect cx="126.177" cy="397.771" width="252.36" height="0" transform="rotate(180)"/>
 			<path d="M0 397.77 L54 343.77 L54 370.77 L252.35 370.77 L252.35 397.77 L252.35 424.77 L54 424.77 L54 451.77 L0 397.77
 						 Z" class="st1"/>
-			<text x="-248.35" y="-393.57" transform="rotate(180)" class="st14" v:langID="1036"><v:paragraph/><v:tabList/>le_fwupdate_DualSysSync</text>		</g>
+			<text x="-248.35" y="-393.57" transform="rotate(180)" class="st15" v:langID="1036"><v:paragraph/><v:tabList/>le_fwupdate_InstallAndMarkGood</text>		</g>
 	</g>
 </svg>
