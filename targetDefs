@@ -27,10 +27,10 @@ ifeq ($(TARGET),virt)
 endif
 
 ifeq ($(TARGET),localhost)
-    ifeq ($(USE_CLANG),1)
-        export TOOLCHAIN_DIR := $(dir $(shell which clang))
-    else
+    # If the toolchain directory is not specified, assume the directory that GCC is installed in.
+    ifeq ($(TOOLCHAIN_DIR),)
         export TOOLCHAIN_DIR := $(dir $(shell which gcc))
+        export TOOLCHAIN_PREFIX :=
     endif
 
     SDEF_TO_USE ?= localhost.sdef
@@ -46,12 +46,30 @@ else
     export TOOLCHAIN_PREFIX := $($(TARGET_CAPS)_TOOLCHAIN_PREFIX)
 endif
 
+
+## Set the STRIP, OBJCOPY, and READELF variables for use by the Legato framework build, if
+## they are not set yet.
+
 ifneq ($(TOOLCHAIN_DIR),)
     TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_DIR)/$(TOOLCHAIN_PREFIX)
 else
     TOOLCHAIN_PATH_PREFIX := $(TOOLCHAIN_PREFIX)
 endif
 
-export STRIP := $(TOOLCHAIN_PATH_PREFIX)strip
-export OBJCOPY := $(TOOLCHAIN_PATH_PREFIX)objcopy
-export READELF := $(TOOLCHAIN_PATH_PREFIX)readelf
+ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)strip),)
+    export STRIP := strip
+else
+    export STRIP := $(TOOLCHAIN_PATH_PREFIX)strip
+endif
+
+ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)objcopy),)
+    export OBJCOPY := objcopy
+else
+    export OBJCOPY := $(TOOLCHAIN_PATH_PREFIX)objcopy
+endif
+
+ifeq ($(wildcard $(TOOLCHAIN_PATH_PREFIX)readelf),)
+    export READELF := readelf
+else
+    export READELF := $(TOOLCHAIN_PATH_PREFIX)readelf
+endif
