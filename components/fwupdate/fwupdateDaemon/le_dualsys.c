@@ -27,6 +27,8 @@
  *       into a unworkable state. THIS IS THE RESPONSABILITY OF THE CALLER TO KNOW WHAT IMAGES
  *       ARE ALREADY FLASHED INTO THE UPDATE SYSTEM.
  *
+ * @note Fuction must be called after each target reboot or updateDaemon restart
+ *
  * @return
  *      - LE_OK              On success
  *      - LE_UNSUPPORTED     The feature is not supported
