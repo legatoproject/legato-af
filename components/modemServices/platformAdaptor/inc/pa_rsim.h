@@ -246,8 +246,9 @@ LE_SHARED le_result_t pa_rsim_TransferApduRespError
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_rsim_TransferAtrResp
 (
-    const uint8_t* atrPtr,      ///< [IN] ATR buffer
-    uint16_t       atrLen       ///< [IN] ATR length in bytes
+    pa_rsim_SimStatus_t simStatus,  ///< [IN] SIM status change
+    const uint8_t* atrPtr,          ///< [IN] ATR buffer
+    uint16_t       atrLen           ///< [IN] ATR length in bytes
 );
 
 //--------------------------------------------------------------------------------------------------

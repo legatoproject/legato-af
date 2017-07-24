@@ -66,7 +66,8 @@ typedef enum
     SAP_SESSION_CONNECTED_IDLE = 0,     ///< Connected and idle
     SAP_SESSION_CONNECTED_APDU,         ///< Processing an APDU request
     SAP_SESSION_CONNECTED_RESET,        ///< Processing a SIM reset request
-    SAP_SESSION_CONNECTED_ATR,          ///< Processing an ATR request
+    SAP_SESSION_CONNECTED_ATR_RESET,    ///< Processing an ATR request for a SIM reset
+    SAP_SESSION_CONNECTED_ATR_INSERT,   ///< Processing an ATR request for a SIM insertion
     SAP_SESSION_CONNECTED_POWER_OFF,    ///< Processing a SIM power off request
     SAP_SESSION_CONNECTED_POWER_ON,     ///< Processing a SIM power on request
     SAP_SESSION_CONNECTED_DISCONNECT    ///< Processing a SIM disconnection request
@@ -188,7 +189,7 @@ static void NotifySimStatus
 //--------------------------------------------------------------------------------------------------
 static void SendSapTransferAtrReq
 (
-    void
+    SapSessionSubState_t sapSubState    ///< New SAP sub-state
 )
 {
     // Create TRANSFER_ATR_REQ message to transmit
@@ -205,7 +206,7 @@ static void SendSapTransferAtrReq
     RsimMessage.messageSize = 4;
 
     // Update SAP session sub-state
-    RsimObject.sapSubState = SAP_SESSION_CONNECTED_ATR;
+    RsimObject.sapSubState = sapSubState;
 
     // Send TRANSFER_ATR_REQ message by notifying it to the remote SIM server
     LE_DEBUG("Send TRANSFER_ATR_REQ message:");
@@ -772,7 +773,7 @@ static le_result_t ProcessSapStatusInd
 
         case SAP_STATUSCHANGE_CARD_RESET:       // Card reset
             // Launch ATR request procedure and update SAP session sub-state
-            SendSapTransferAtrReq();
+            SendSapTransferAtrReq(SAP_SESSION_CONNECTED_ATR_RESET);
         break;
 
         case SAP_STATUSCHANGE_CARD_NOK:         // Card not accessible
@@ -793,7 +794,7 @@ static le_result_t ProcessSapStatusInd
             LE_DEBUG("StatusChange: 'Card inserted'");
 
             // Launch ATR request procedure and update SAP session sub-state
-            SendSapTransferAtrReq();
+            SendSapTransferAtrReq(SAP_SESSION_CONNECTED_ATR_INSERT);
         break;
 
         case SAP_STATUSCHANGE_CARD_RECOVERED:   // Card recovered
@@ -830,7 +831,9 @@ static le_result_t ProcessSapTransferAtrResp
 {
     // Check if state is coherent
     if (   (SAP_SESSION_CONNECTED != RsimObject.sapState)
-        || (SAP_SESSION_CONNECTED_ATR != RsimObject.sapSubState)
+        || (   (SAP_SESSION_CONNECTED_ATR_RESET != RsimObject.sapSubState)
+            && (SAP_SESSION_CONNECTED_ATR_INSERT != RsimObject.sapSubState)
+           )
        )
     {
         LE_ERROR("TRANSFER_ATR_RESP received in incoherent state %d / sub-state %d",
@@ -855,9 +858,6 @@ static le_result_t ProcessSapTransferAtrResp
     uint8_t resultCode = messagePtr[8];
     LE_DEBUG("TRANSFER_ATR_RESP received: ResultCode=%d", resultCode);
 
-    // Update SAP session sub-state
-    RsimObject.sapSubState = SAP_SESSION_CONNECTED_IDLE;
-
     // ResultCode is described in SIM Access Profile specification section 5.2.4
     switch (resultCode)
     {
@@ -876,8 +876,28 @@ static le_result_t ProcessSapTransferAtrResp
                 uint16_t atrLength = (uint16_t) (((uint16_t)(messagePtr[atrLenByte1] << MSB_SHIFT))
                                                  | messagePtr[atrLenByte2]);
 
+                // Retrieve the SIM status change leading to the ATR
+                pa_rsim_SimStatus_t simStatus;
+                switch (RsimObject.sapSubState)
+                {
+                    case SAP_SESSION_CONNECTED_ATR_RESET:
+                        simStatus = PA_RSIM_STATUS_RESET;
+                    break;
+
+                    case SAP_SESSION_CONNECTED_ATR_INSERT:
+                        simStatus = PA_RSIM_STATUS_INSERTED;
+                    break;
+
+                    default:
+                        simStatus = PA_RSIM_STATUS_UNKNOWN_ERROR;
+                        LE_ERROR("Incoherent sub-state %d", RsimObject.sapSubState);
+                    break;
+                }
+
                 // Transmit the ATR response to the modem
-                if (LE_OK != pa_rsim_TransferAtrResp(&messagePtr[atrFirstByte], atrLength))
+                if (LE_OK != pa_rsim_TransferAtrResp(simStatus,
+                                                     &messagePtr[atrFirstByte],
+                                                     atrLength))
                 {
                     LE_ERROR("Error when transmitting ATR response");
                     result = LE_FAULT;
@@ -911,6 +931,9 @@ static le_result_t ProcessSapTransferAtrResp
             result = LE_FAULT;
         break;
     }
+
+    // Update SAP session sub-state
+    RsimObject.sapSubState = SAP_SESSION_CONNECTED_IDLE;
 
     return result;
 }
@@ -1260,7 +1283,7 @@ static le_result_t ProcessSapPowerSimOnResp
             LE_DEBUG("ResultCode: 'OK, request processed correctly'");
 
             // Launch ATR request procedure and update SAP session sub-state
-            SendSapTransferAtrReq();
+            SendSapTransferAtrReq(SAP_SESSION_CONNECTED_ATR_RESET);
         break;
 
         case SAP_RESULTCODE_ERROR_NO_REASON:    // Error, no reason defined
@@ -1344,7 +1367,7 @@ static le_result_t ProcessSapResetSimResp
             LE_DEBUG("ResultCode: 'OK, request processed correctly'");
 
             // Launch ATR request procedure and update SAP session sub-state
-            SendSapTransferAtrReq();
+            SendSapTransferAtrReq(SAP_SESSION_CONNECTED_ATR_RESET);
         break;
 
         case SAP_RESULTCODE_ERROR_NO_REASON:    // Error, no reason defined
