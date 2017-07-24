@@ -1281,6 +1281,12 @@ static le_result_t EncodeMsgEntry
     // Write json file in the file system
     char* jsondumpStr = json_dumps( (const json_t *) jsonRootPtr,
                                     JSON_INDENT(1) | JSON_PRESERVE_ORDER);
+    if (!jsondumpStr)
+    {
+        LE_ERROR("jsondumpStr is NULL");
+        return LE_FAULT;
+    }
+
     char* restJsondumpStr = jsondumpStr;
     ssize_t writeSize = strlen(jsondumpStr);
     ssize_t writtenSize;

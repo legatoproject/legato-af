@@ -83,9 +83,11 @@ void TestIntHashMap(le_hashmap_Ref_t map)
     LE_INFO("*** Running int/int hashmap tests ***");
 
     void* rval = insertRetrieve(map, &ikey1, &ival1);
+    LE_ASSERT(NULL != rval);
     LE_TEST (*((uint32_t*) rval) == ival1);
 
     rval = insertRetrieve(map, &ikey1, &ival2);
+    LE_ASSERT(NULL != rval);
     LE_TEST((*((uint32_t*) rval) == ival2) && (le_hashmap_Size(map) == 1));
 
     le_hashmap_RemoveAll(map);
@@ -165,6 +167,7 @@ void TestHashFns(void)
 
     // Need an equivalent string (but not the same one!)
     char* skey3 = malloc(sizeof(char) * 6);
+    LE_ASSERT(NULL != skey3);
     skey3[0]='s';
     skey3[1]='k';
     skey3[2]='e';
@@ -196,12 +199,15 @@ void TestStringHashMap(le_hashmap_Ref_t map)
     const char* val2 = "val2";
 
     void* rval = insertRetrieve(map, key1, val1);
+    LE_ASSERT(NULL != rval);
     LE_TEST (((const char*) rval) == val1);
 
     rval = insertRetrieve(map, key2, val2);
+    LE_ASSERT(NULL != rval);
     LE_TEST ((((const char*) rval) == val2) && (le_hashmap_Size(map) == 2));
 
     rval = insertRetrieve(map, key1, val2);
+    LE_ASSERT(NULL != rval);
     LE_TEST ((((const char*) rval) == val2) && (le_hashmap_Size(map) == 2));
 
     int i = 0;
@@ -245,13 +251,16 @@ void TestCustomHashMap(le_hashmap_Ref_t map)
     // but the pointers are different so our callback will be called
     le_hashmap_Put(map, &key1, sval1);
     void *rval = le_hashmap_Get(map, &key3);
+    LE_ASSERT(NULL != rval);
     LE_INFO("rval came back as %s", ((const char*) rval));
     LE_TEST (((const char*) rval) == sval1);
 
     rval = insertRetrieve(map, &key2, sval2);
+    LE_ASSERT(NULL != rval);
     LE_TEST ((((const char*) rval) == sval2) && (le_hashmap_Size(map) == 2));
 
     rval = insertRetrieve(map, &key1, sval2);
+    LE_ASSERT(NULL != rval);
     LE_TEST ((((const char*) rval) == sval2) && (le_hashmap_Size(map) == 2));
 
     le_hashmap_RemoveAll(map);
@@ -290,7 +299,8 @@ bool le_hashmap_EqualsCustom(const void* firstPtr, const void* secondPtr)
 void TestNewIter()
 {
     LE_INFO("Creating int/int map for iter tests");
-    le_hashmap_Ref_t map10 = le_hashmap_Create("Map10", 13, &le_hashmap_HashUInt32, &le_hashmap_EqualsUInt32);
+    le_hashmap_Ref_t map10 = le_hashmap_Create("Map10", 13, &le_hashmap_HashUInt32,
+                                               &le_hashmap_EqualsUInt32);
 
     uint32_t index = 0;
     uint32_t *iPtr = &index;
@@ -324,10 +334,12 @@ void TestNewIter()
     LE_TEST(le_hashmap_GetFirstNode(map10, NULL, (void **)&vPtr) == LE_BAD_PARAMETER);
 
     // Get the node after a non-existent one
-    LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)&badKey, (void **)&iPtr, (void **)&vPtr) == LE_BAD_PARAMETER);
+    LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)&badKey, (void **)&iPtr,
+                                    (void **)&vPtr) == LE_BAD_PARAMETER);
 
     // Get the node after a good one
-    LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)&okKey, (void **)&iPtr, (void **)&vPtr) != LE_BAD_PARAMETER);
+    LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)&okKey, (void **)&iPtr,
+                                    (void **)&vPtr) != LE_BAD_PARAMETER);
     LE_INFO("Key is %d, value is %d", *iPtr, *vPtr);
 
     // Try and iterate over the whole map
@@ -337,11 +349,13 @@ void TestNewIter()
     for (j=0; j<9; j++)
     {
         // Get the node after a good one
-        LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)iterKeyPtr, (void **)&iterKeyPtr, (void **)&vPtr) == LE_OK);
+        LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)iterKeyPtr,
+                                        (void **)&iterKeyPtr, (void **)&vPtr) == LE_OK);
         LE_INFO("Next key is %d", *iterKeyPtr);
     }
     // Run over the end
-    LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)iterKeyPtr, (void **)&iterKeyPtr, (void **)&vPtr) == LE_NOT_FOUND);
+    LE_TEST(le_hashmap_GetNodeAfter(map10, (void *)iterKeyPtr, (void **)&iterKeyPtr,
+                                    (void **)&vPtr) == LE_NOT_FOUND);
 }
 
 void TestPointerMap(le_hashmap_Ref_t map){
@@ -352,12 +366,15 @@ void TestPointerMap(le_hashmap_Ref_t map){
     const char* val2 = "val2";
 
     void* rval = insertRetrieve(map, key1, val1);
+    LE_ASSERT(NULL != rval);
     LE_TEST (((const char*) rval) == val1);
 
     rval = insertRetrieve(map, key2, val2);
+    LE_ASSERT(NULL != rval);
     LE_TEST ((((const char*) rval) == val2) && (le_hashmap_Size(map) == 2));
 
     rval = insertRetrieve(map, key1, val2);
+    LE_ASSERT(NULL != rval);
     LE_TEST ((((const char*) rval) == val2) && (le_hashmap_Size(map) == 2));
 
     int i = 0;
@@ -395,9 +412,11 @@ void TestTinyMap(le_hashmap_Ref_t map)
     LE_INFO("*** Running tiny hashmap tests ***");
 
     void* rval = insertRetrieve(map, &ikey1, &ival1);
+    LE_ASSERT(NULL != rval);
     LE_TEST (*((uint32_t*) rval) == ival1);
 
     rval = insertRetrieve(map, &ikey2, &ival2);
+    LE_ASSERT(NULL != rval);
     LE_TEST (*((uint32_t*) rval) == ival2);
 }
 
@@ -444,9 +463,11 @@ void TestLongIntHashMap(le_hashmap_Ref_t map)
     LE_INFO("*** Running long int/int hashmap tests ***");
 
     void* rval = insertRetrieve(map, &ikey1, &ival1);
+    LE_ASSERT(NULL != rval);
     LE_TEST (*((uint64_t*) rval) == ival1);
 
     rval = insertRetrieve(map, &ikey1, &ival2);
+    LE_ASSERT(NULL != rval);
     LE_TEST((*((uint64_t*) rval) == ival2) && (le_hashmap_Size(map) == 1));
 
     le_hashmap_RemoveAll(map);

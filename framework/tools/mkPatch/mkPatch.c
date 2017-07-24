@@ -954,6 +954,12 @@ int main
                 exit(1);
             }
             envPtr = getenv( "PATH" );
+            if (!envPtr)
+            {
+               fprintf(stderr,
+                        "Variable 'PATH' is not set for target %s\n",
+                        targetPtr);
+            }
             toolchainEnvPtr = getenv( toolchainPtr );
             if( toolchainEnvPtr )
             {

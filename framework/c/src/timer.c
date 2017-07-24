@@ -458,6 +458,8 @@ static void TimerFdHandler
 
     // Pop off the first timer from the active list, and make sure it is the expected timer.
     firstTimerPtr = PopFromTimerList(&threadRecPtr->activeTimerList);
+    LE_ASSERT( NULL != firstTimerPtr);
+
     LE_ASSERT( threadRecPtr->firstTimerPtr == firstTimerPtr );
 
     // Need to reset the expected timer, in case processing the current timer will cause the same
@@ -689,7 +691,7 @@ void le_timer_Delete
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     // If the timer is running, stop it first.
     if ( timerPtr->isActive )
@@ -722,7 +724,7 @@ le_result_t le_timer_SetHandler
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -756,7 +758,7 @@ le_result_t le_timer_SetInterval
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -790,7 +792,7 @@ le_result_t le_timer_SetMsInterval
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -827,7 +829,7 @@ le_result_t le_timer_SetRepeat
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -861,7 +863,7 @@ le_result_t le_timer_SetContextPtr
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -893,7 +895,7 @@ void* le_timer_GetContextPtr
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return timerPtr->contextPtr;
 }
@@ -919,7 +921,7 @@ uint32_t le_timer_GetExpiryCount
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return timerPtr->expiryCount;
 }
@@ -945,7 +947,7 @@ le_result_t le_timer_Start
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( timerPtr->isActive )
     {
@@ -996,7 +998,7 @@ le_result_t le_timer_Start
     // Get the first timer from the active list. This is needed to determine whether the timerFD
     // needs to be restarted, in case the new timer was put at the beginning of the list.
     firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
-
+    LE_FATAL_IF(NULL == firstTimerPtr, "Invalid firstTimerPtr reference %p.", firstTimerPtr);
     // If the timerFD is not running, or it is running a timer that is no longer at the beginning
     // of the active list, then (re)start the timerFD.
     if ( threadRecPtr->firstTimerPtr != firstTimerPtr )
@@ -1028,7 +1030,7 @@ le_result_t le_timer_Stop
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     if ( ! timerPtr->isActive )
     {
@@ -1085,7 +1087,7 @@ void le_timer_Restart
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     // Ignore the error if the timer is not currently running
     (void)le_timer_Stop(timerRef);
@@ -1109,7 +1111,7 @@ bool le_timer_IsRunning
 )
 {
     Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
-    LE_FATAL_IF(timerPtr == NULL, "Invalid timer reference %p.", timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
 
     return timerPtr->isActive;
 }

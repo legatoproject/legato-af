@@ -38,7 +38,8 @@ void _HexDump
     for (i = 0; i < dataSize; i += 16)
     {
         _le_log_Send(LE_LOG_INFO, NULL, LE_LOG_SESSION, filenamePtr, functionNamePtr, lineNumber,
-                     "%02x %02x %02x %02x %02x %02x %02x %02x -- %02x %02x %02x %02x %02x %02x %02x %02x",
+                     "%02x %02x %02x %02x %02x %02x %02x %02x -- %02x %02x %02x %02x %02x %02x"
+                     " %02x %02x",
                      ptr[i +  0], ptr[i +  1], ptr[i +  2], ptr[i +  3],
                      ptr[i +  4], ptr[i +  5], ptr[i +  6], ptr[i +  7],
                      ptr[i +  8], ptr[i +  9], ptr[i + 10], ptr[i + 11],
@@ -1717,6 +1718,10 @@ JNIEXPORT jobject JNICALL Java_io_legato_LegatoJni_GetMessageString
     {
         // TODO: Check for realistic size.
         char* charBuffer = malloc(strSize + 1);
+        if (!charBuffer)
+        {
+           return 0;
+        }
 
         memcpy(charBuffer, msgBufferPtr, strSize);
         charBuffer[strSize] = 0;

@@ -63,7 +63,8 @@ static int CountStringfd(int fd)
         }
         else
         {
-            LE_FATAL("Test failed. String mismatch. WriteStr: '%s', ReadStr: '%s', len: %zd, readBytes: %zd",
+            LE_FATAL("Test failed. String mismatch. WriteStr: '%s', ReadStr: '%s', len: %zd,"
+                     " readBytes: %zd",
                      WriteStr,
                      readStr,
                      len,
@@ -727,6 +728,7 @@ static void CheckFlags
                                            LE_FLOCK_REPLACE_IF_EXIST,
                                            S_IRWXU,
                                            NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == O_RDONLY);
@@ -738,6 +740,7 @@ static void CheckFlags
                                      LE_FLOCK_REPLACE_IF_EXIST,
                                      S_IRWXU,
                                      NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == O_WRONLY);
@@ -748,6 +751,7 @@ static void CheckFlags
                                      LE_FLOCK_REPLACE_IF_EXIST,
                                      S_IRWXU,
                                      NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == (O_WRONLY|O_APPEND));
@@ -758,6 +762,7 @@ static void CheckFlags
                                      LE_FLOCK_REPLACE_IF_EXIST,
                                      S_IRWXU,
                                      NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == O_RDWR);
@@ -768,6 +773,7 @@ static void CheckFlags
                                      LE_FLOCK_REPLACE_IF_EXIST,
                                      S_IRWXU,
                                      NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == (O_RDWR|O_APPEND));
@@ -775,30 +781,35 @@ static void CheckFlags
 
     // Test Open Stream function.
     filePtr = le_atomFile_OpenStream(filePath, LE_FLOCK_READ, NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == O_RDONLY);
     le_atomFile_CloseStream(filePtr);
 
     filePtr = le_atomFile_OpenStream(filePath, LE_FLOCK_WRITE, NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == O_WRONLY);
     le_atomFile_CloseStream(filePtr);
 
     filePtr = le_atomFile_OpenStream(filePath, LE_FLOCK_APPEND, NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == (O_WRONLY|O_APPEND));
     le_atomFile_CloseStream(filePtr);
 
     filePtr = le_atomFile_OpenStream(filePath, LE_FLOCK_READ_AND_WRITE, NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == O_RDWR);
     le_atomFile_CloseStream(filePtr);
 
     filePtr = le_atomFile_OpenStream(filePath, LE_FLOCK_READ_AND_APPEND, NULL);
+    LE_ASSERT(NULL != filePtr);
     fd = fileno(filePtr);
     LE_ASSERT(fd > 0);
     LE_ASSERT(fcntl(fd, F_GETFL) == (O_RDWR|O_APPEND));
@@ -820,7 +831,8 @@ void TestMultiProcessAccess
     {
         // sleep for a while to make sure that parent process can put a write lock to the file
         sleep(5);
-        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST,
+                                         S_IRWXU);
         LE_INFO("the lock is released!!!!!!!++++++++++++++");
         LE_INFO("Child is writing");
         while (true)
@@ -832,7 +844,8 @@ void TestMultiProcessAccess
     else if (childPID > 0)
     {
 
-        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_REPLACE_IF_EXIST,
+                                          S_IRWXU);
         WriteString(parentFD, NUM_WRITE);
         LE_INFO("Parent Finished writing");
         sleep(5);
@@ -852,12 +865,16 @@ void TestMultiProcessAccess
     if (childPID == 0)
     {
         LE_INFO("Performing create test for LE_FLOCK_READ, file: %s", filePath);
-        int childFD1 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
-        int childFD2 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
+        int childFD1 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST,
+                                          S_IRWXU);
+        int childFD2 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST,
+                                          S_IRWXU);
         LE_INFO("Child opened file: %s with read-only access", filePath);
         LE_INFO("Child is trying to write");
-        LE_ASSERT(fd_WriteSize(childFD1, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
-        LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
+        LE_ASSERT(fd_WriteSize(childFD1, "Unsuccessful write",
+                                          sizeof("Unsuccessful write")) == LE_FAULT);
+        LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write",
+                                          sizeof("Unsuccessful write")) == LE_FAULT);
         LE_INFO("Child canceling file creation");
         le_atomFile_Cancel(childFD1);
         le_atomFile_Cancel(childFD2);
@@ -866,7 +883,8 @@ void TestMultiProcessAccess
         childFD2 = le_atomFile_Create(filePath, LE_FLOCK_READ, LE_FLOCK_REPLACE_IF_EXIST, S_IRWXU);
         LE_INFO("Child opened file: %s with read-only access", filePath);
         LE_INFO("Child is trying to write");
-        LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write", sizeof("Unsuccessful write")) == LE_FAULT);
+        LE_ASSERT(fd_WriteSize(childFD2, "Unsuccessful write",
+                                          sizeof("Unsuccessful write")) == LE_FAULT);
         //Sleep for very long time, and parent will kill it by kill signal
         sleep(2000);
     }
@@ -940,7 +958,8 @@ void TestMultiProcessAccess
     else if (childPID > 0)
     {
 
-        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);;
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST,
+                                          S_IRWXU);
         WriteString(parentFD, NUM_WRITE);
         LE_INFO("Parent Finished writing");
         sleep(5);
@@ -963,7 +982,8 @@ void TestMultiProcessAccess
     {
         // sleep for a while to make sure that parent process can put a write lock to the file
         mode_t old_mode = umask(0);
-        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU | S_IRWXG | S_IRWXO);
+        int childFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST,
+                                         S_IRWXU | S_IRWXG | S_IRWXO);
         WriteString(childFD, NUM_WRITE);
         LE_INFO("Child is write finished, now exiting without committing file changes");
         umask(old_mode);
@@ -974,7 +994,8 @@ void TestMultiProcessAccess
     {
         sleep(5);
         mode_t old_mode = umask(0);
-        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST, S_IRWXU);
+        int parentFD = le_atomFile_Create(filePath, LE_FLOCK_WRITE, LE_FLOCK_OPEN_IF_EXIST,
+                                          S_IRWXU);
         LE_INFO("Parent process unblocked and started writing");
         WriteString(parentFD, NUM_WRITE/2);
         le_atomFile_Close(parentFD);

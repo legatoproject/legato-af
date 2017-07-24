@@ -40,6 +40,8 @@ PathRecord_t;
 
 /// Linked list on which path records are kept.
 static le_dls_List_t PathList = LE_DLS_LIST_INIT;
+/// The memory pool for Path Record objects
+static le_mem_PoolRef_t PathRecordMemoryPool;
 
 /// Pointer to the information printing function to be used.  This pointer is set during
 /// command-line argument parsing, when the command argument is seen.
@@ -136,7 +138,7 @@ static void SetFilePath
     const char* filePath
 )
 {
-    PathRecord_t* recPtr = malloc(sizeof(PathRecord_t));
+    PathRecord_t* recPtr = le_mem_ForceAlloc(PathRecordMemoryPool);
 
     recPtr->link = LE_DLS_LINK_INIT;
     recPtr->pathPtr = filePath;
@@ -408,6 +410,12 @@ static void ExecuteCommand(void)
 
 COMPONENT_INIT
 {
+    // Allocate a pool for the Path Records
+    PathRecordMemoryPool = le_mem_CreatePool("PathRecordMemoryPool", sizeof(PathRecord_t));
+
+    // Request 1 block.
+    le_mem_ExpandPool(PathRecordMemoryPool, 1);
+
     // Set IsExtreme to true if the -x or --extreme appears on the command-line.
     le_arg_SetFlagVar(&IsExtreme, "x", "extreme");
 

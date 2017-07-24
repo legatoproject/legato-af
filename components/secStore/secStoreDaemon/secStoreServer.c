@@ -460,7 +460,8 @@ static void RemoveOldSystems
             // Delete this system from sec store.
             char path[LIMIT_MAX_PATH_BYTES];
 
-            LE_FATAL_IF(snprintf(path, sizeof(path), "%s/%d", SYS_PATH, secIndexPtr->index) >= sizeof(path),
+            LE_FATAL_IF(snprintf(path, sizeof(path), "%s/%d",
+                        SYS_PATH, secIndexPtr->index) >= sizeof(path),
                         "Secure storage path '%s...' is too long.", path);
 
             le_result_t result = pa_secStore_Delete(path);
@@ -682,6 +683,11 @@ static le_result_t CheckClientLimit
 {
     // Get the secure storage limit for the client.
     appCfg_Iter_t iter = appCfg_FindApp(clientNamePtr);
+    if (!iter)
+    {
+       LE_ERROR("iter is NULL");
+       return LE_FAULT;
+    }
     size_t secStoreLimit = appCfg_GetSecStoreLimit(iter);
     appCfg_DeleteIter(iter);
 

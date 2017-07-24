@@ -24,7 +24,8 @@ static le_thread_Ref_t* ThreadRefArray; // array storing references to the threa
  * associates) if it's really useless.
  */
 static le_timer_Ref_t* TimerRefArray; // array storing references to the timers.
-static long TimerCreateIdx = 0; // the index of the TimerRefArray at which the last timer creation has ended at.
+// the index of the TimerRefArray at which the last timer creation has ended at.
+static long TimerCreateIdx = 0;
 
 LE_MUTEX_DECLARE_REF(MutexRef); // The mutex for accessing TimerRefArray.
 le_sem_Ref_t SemaRef; // The semaphore for syncing timer creation and deletion between threads.
@@ -156,6 +157,7 @@ static void* ThreadMain
     TimerRefArray_t tra;
     tra.size = timerCount;
     tra.timerRefArray = malloc(timerCount * sizeof(le_timer_Ref_t));
+    LE_ASSERT(NULL != tra.timerRefArray);
 
     LE_INFO("Thread [%s] has started. Creating %ld timers.", le_thread_GetMyName(), timerCount);
 
@@ -205,7 +207,8 @@ void createAllTimers
         timerPerThread = (threadCnt == (ThreadNum - 1)) ? (quotient + remainder) : quotient;
 
         // Store the thread references in an array
-        ThreadRefArray[threadCnt] = le_thread_Create(threadNameBuffer, ThreadMain, (void*)timerPerThread);
+        ThreadRefArray[threadCnt] = le_thread_Create(threadNameBuffer, ThreadMain,
+                                                     (void*)timerPerThread);
 
         le_thread_Start(ThreadRefArray[threadCnt]);
 
@@ -332,7 +335,8 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() != 4)
     {
-        LE_ERROR("Usage: TimerFlux [1toN-1 | AllTimers1stThread | AllTimersMidThread | 1stThread | MidThread | None] [delete interval] [number of timers] [number of threads]");
+        LE_ERROR("Usage: TimerFlux [1toN-1 | AllTimers1stThread | AllTimersMidThread |"
+                 " 1stThread | MidThread | None] [delete interval] [number of timers] [number of threads]");
         exit(EXIT_FAILURE);
     }
 
@@ -367,9 +371,11 @@ COMPONENT_INIT
 
     // Initializing the array storing timer refs.
     TimerRefArray = malloc(TimerNum * sizeof(le_timer_Ref_t));
+    LE_ASSERT(NULL != TimerRefArray);
 
     // Initializing the array storing thread refs.
     ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
+    LE_ASSERT(NULL != ThreadRefArray);
 
     // Create/Delete timers, according to the defined strategy
     if (strcmp(argDeleteStrat, "1toN-1") == 0)

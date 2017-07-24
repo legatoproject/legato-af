@@ -725,7 +725,7 @@ static void CreateLegatoObjectsForApp
     assetData_InstanceDataRef_t objectRef = NULL;
     appCfg_Iter_t appIterRef = appCfg_FindApp(appName);
 
-    LE_FATAL_IF(appIterRef == NULL, "Configuration for known application was not found.");
+    LE_FATAL_IF(NULL == appIterRef, "Configuration for known application was not found.");
 
     // Delete the app object if it exists.
     DeleteLegatoObjectsForApp(objNameBuffer);
@@ -964,6 +964,8 @@ static void AppInstallHandler
 
     // Update the application's version string.
     appCfg_Iter_t appIterRef = appCfg_FindApp(appName);
+    LE_FATAL_IF(NULL == appIterRef, "Configuration for known application was not found.");
+
     char versionBuffer[MAX_VERSION_STR_BYTES] = "";
 
     if (appCfg_GetVersion(appIterRef, versionBuffer, sizeof(versionBuffer)) == LE_OVERFLOW)
@@ -1076,7 +1078,8 @@ static void UpdateProgressHandler
 
             // Notify registered control app.
             // Consider Unpacking/ Reading from FOTA partition as a part of install process.
-            avcServer_ReportInstallProgress(LE_AVC_INSTALL_IN_PROGRESS, percentDone, LE_AVC_ERR_NONE);
+            avcServer_ReportInstallProgress(LE_AVC_INSTALL_IN_PROGRESS, percentDone,
+                                            LE_AVC_ERR_NONE);
             break;
 
         case LE_UPDATE_STATE_DOWNLOAD_SUCCESS:
@@ -1872,7 +1875,8 @@ static void RestoreAvcAppUpdateState
         else
         {
             LE_DEBUG("Create a new object 9 instance.");
-            LE_ASSERT(assetData_CreateInstanceById(LWM2M_NAME, 9, instanceId, &instanceRef) == LE_OK);
+            LE_ASSERT(assetData_CreateInstanceById(LWM2M_NAME, 9, instanceId,
+                      &instanceRef) == LE_OK);
         }
 
         // Restore the state of Object9

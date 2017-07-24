@@ -178,9 +178,9 @@ typedef struct SessionObjIter
     RemoteHashmapAccess_t interfaceObjMap; ///< Interface object map in the remote process.
     size_t currIndex;
     RemoteListAccess_t interfaceObjList; ///< Interface object list (technically a list of hashmap
-                                         ///< entries containing pointers to interface objects) of the
-                                         ///< current bucket of the interface object map in the remote
-                                         ///< process.
+                                         ///< entries containing pointers to interface objects)
+                                         ///< of the current bucket of the interface object map
+                                         ///< in the remote process.
     Entry_t currEntry;                   ///< Current entry containing the interface obj.
     RemoteListAccess_t sessionList;      ///< Session list of the current interface obj.
     msgSession_Session_t currSessionObj; ///< Current session object.
@@ -568,7 +568,8 @@ static void* CreateThreadMemberObjIter
 
     // Get the address offset of the change counter of the list of thread member objs for the
     // process to inspect.
-    off_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect, getListChgCntRefFunc());
+    off_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+                                                                 getListChgCntRefFunc());
 
     // Create the iterator.
     ThreadMemberObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
@@ -711,8 +712,9 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
     iteratorPtr->interfaceObjMap.bucketCount = map.bucketCount;
 
     // Get the mapChgCntRef for the process-under-inspection.
-    if (fd_ReadFromOffset(FdProcMem, mapChgCntAddrOffset, &(iteratorPtr->interfaceObjMap.mapChgCntRef),
-                             sizeof(iteratorPtr->interfaceObjMap.mapChgCntRef)) != LE_OK)
+    if (fd_ReadFromOffset(FdProcMem, mapChgCntAddrOffset,
+                          &(iteratorPtr->interfaceObjMap.mapChgCntRef),
+                          sizeof(iteratorPtr->interfaceObjMap.mapChgCntRef)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map change counter ref"));
     }
@@ -1380,8 +1382,8 @@ static void* GetNextInterfaceObjPtr
                               &(iterator->interfaceObjList.List),
                               sizeof(iterator->interfaceObjList.List)) != LE_OK)
         {
-            INTERNAL_ERR(REMOTE_READ_ERR("interface obj list of bucket %zu in the interface obj map"),
-                         iterator->currIndex);
+            INTERNAL_ERR(REMOTE_READ_ERR("interface obj list of bucket %zu in the interface"
+                                          "obj map"), iterator->currIndex);
         }
 
         // With the updated interface obj list, also set the head link ptr null.
@@ -1450,7 +1452,8 @@ static msgInterface_Service_t* GetNextServiceObj
 //--------------------------------------------------------------------------------------------------
 static msgInterface_ClientInterface_t* GetNextClientObj
 (
-    ClientObjIter_Ref_t clientObjIterRef ///< [IN] The iterator to get the next client interface obj from.
+    ClientObjIter_Ref_t clientObjIterRef
+                      ///< [IN] The iterator to get the next client interface obj from.
 )
 {
     // Gets the pointer of the next service object.
@@ -1558,10 +1561,14 @@ static void PrintHelp
         "DESCRIPTION:\n"
         "    inspect pools              Prints the memory pools usage for the specified process.\n"
         "    inspect threads            Prints the info of threads for the specified process.\n"
-        "    inspect timers             Prints the info of timers in all threads for the specified process.\n"
-        "    inspect mutexes            Prints the info of mutexes in all threads for the specified process.\n"
-        "    inspect semaphores         Prints the info of semaphores in all threads for the specified process.\n"
-        "    inspect ipc                Prints the info of ipc in all threads for the specified process.\n"
+        "    inspect timers             Prints the info of timers in all threads for the"
+                                        " specified process.\n"
+        "    inspect mutexes            Prints the info of mutexes in all threads for the"
+                                        " specified process.\n"
+        "    inspect semaphores         Prints the info of semaphores in all threads for the"
+                                        " specified process.\n"
+        "    inspect ipc                Prints the info of ipc in all threads for the"
+                                        " specified process.\n"
         "\n"
         "OPTIONS:\n"
         "    -f\n"
@@ -2005,6 +2012,11 @@ static void InitDisplayTable
 
     // allocate and init the line buffer
     TableLineBuffer = (char*)malloc(TableLineBytes);
+    if (!TableLineBuffer)
+    {
+       INTERNAL_ERR("TableLineBuffer is NULL.");
+       return;
+    }
     memset(TableLineBuffer, 0, TableLineBytes);
 }
 
@@ -2731,9 +2743,9 @@ static int PrintMemPoolInfo
 
     if (!IsOutputJson)
     {
-        // NOTE that the order has to correspond to the column orders in the corresponding table. Since
-        // this order is "hardcoded" in a sense, one should avoid having multiple copies of these. The
-        // same applies to other PrintXXXInfo functions.
+        // NOTE that the order has to correspond to the column orders in the corresponding table.
+        // Since this order is "hardcoded" in a sense, one should avoid having multiple
+        // copies of these. The same applies to other PrintXXXInfo functions.
         FillSizeTColField (le_mem_GetObjectCount(memPool),       MemPoolTableInfo,
                                                                  MemPoolTableInfoSize, &index);
         FillSizeTColField (poolStats.numBlocksInUse,             MemPoolTableInfo,
@@ -3153,8 +3165,8 @@ static void GetWaitingListThreadNames
 
         // Get the ptr to the the next node link on the waiting list, by reading the thread record
         // to the local memory first. GetNextLink must operate on a ref to a locally existing link.
-        if (fd_ReadFromOffset(FdProcMem, (ssize_t)currNodePtr, &localThreadRecCopy, threadRecSize) !=
-            LE_OK)
+        if (fd_ReadFromOffset(FdProcMem, (ssize_t)currNodePtr,
+                              &localThreadRecCopy, threadRecSize) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread record with waiting list"));
         }

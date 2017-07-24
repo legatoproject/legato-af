@@ -2117,7 +2117,7 @@ le_result_t le_appInfo_GetName
 
     // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
     // hence not part of any app.
-    if (strlen(token) == 1)
+    if (strlen(token) <= 1)
     {
         return LE_NOT_FOUND;
     }

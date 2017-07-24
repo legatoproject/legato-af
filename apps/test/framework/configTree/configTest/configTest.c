@@ -13,9 +13,10 @@
 
 static char TestRootDir[LE_CFG_STR_LEN_BYTES] = "";
 
-
-#define TEST_PATTERN_LARGE_STRING   "1234567890123456789012345678901234"  // 35 bytes (4 more than the segment size + null)
-#define TEST_PATTERN_SMALL_STRING   "12"                                  // 2 bytes + null ; small string
+// 35 bytes (4 more than the segment size + null)
+#define TEST_PATTERN_LARGE_STRING   "1234567890123456789012345678901234"
+// 2 bytes + null ; small string
+#define TEST_PATTERN_SMALL_STRING   "12"
 
 static const char* NodeTypeStr
 (
@@ -413,6 +414,7 @@ static void CompareFile
 
 
     char* bufferPtr = malloc(size + 1);
+    LE_ASSERT(NULL != bufferPtr);
     memset(bufferPtr, 0, size + 1);
 
     read(fileRef, bufferPtr, size);

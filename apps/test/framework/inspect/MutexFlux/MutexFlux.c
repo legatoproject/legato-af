@@ -63,8 +63,8 @@ static void* LockMutex
 
 
 // This is testing if Mutex_t.waitingList is displayed correctly.
-// Thread1 successfully locks mutexes 1, 2, and 3, and then Thread 2 and 3 tries to lock mutex 1, and
-// Thread 4 and 5 tries to lock mutex 3.
+// Thread1 successfully locks mutexes 1, 2, and 3, and then Thread 2 and 3 tries to lock mutex 1,
+// and Thread 4 and 5 tries to lock mutex 3.
 // Therefore the expected result is that Mutex1's waiting list has Thread2 and 3, Mutex2's waiting
 // list is empty, and Mutex3's waiting list has Thread4 and 5.
 void testWaitingList
@@ -106,7 +106,7 @@ void testWaitingList
     // to hang around for a bit for the mutex refs to be available for the threads.
     le_sem_Wait(SemaRef);
 
-    LE_INFO("++++++++++++++++++  END OF testWaitingList (shouldn't get here) +++++++++++++++++++++");
+    LE_INFO("++++++++++++++++++  END OF testWaitingList (shouldn't get here) +++++++++++++++++++");
 }
 
 
@@ -156,6 +156,11 @@ static void* ThreadCreateMutex
     MutexRefArray_t mra;
     mra.size = mutexCount;
     mra.mutexRefArray = malloc(mutexCount * sizeof(le_mutex_Ref_t));
+    if (!mra.mutexRefArray)
+    {
+       LE_ERROR("mra.mutexRefArray is NULL");
+       return NULL;
+    }
 
     LE_INFO("Thread [%s] has started. Creating %ld mutexes.", le_thread_GetMyName(), mutexCount);
 
@@ -205,7 +210,8 @@ void createAllMutexes
         mutexPerThread = (threadCnt == (ThreadNum - 1)) ? (quotient + remainder) : quotient;
 
         // Store the thread references in an array
-        ThreadRefArray[threadCnt] = le_thread_Create(threadNameBuffer, ThreadCreateMutex, (void*)mutexPerThread);
+        ThreadRefArray[threadCnt] = le_thread_Create(threadNameBuffer, ThreadCreateMutex,
+                                                     (void*)mutexPerThread);
 
         le_thread_Start(ThreadRefArray[threadCnt]);
 
@@ -334,7 +340,8 @@ static void PrintHelp
 )
 {
     LE_ERROR("Usage: MutexFlux [TestWaitingList | TestRecursive]");
-    LE_ERROR("       MutexFlux [1toN-1 | AllMutexes1stThread | AllMutexesMidThread | 1stThread | MidThread | None] [delete interval] [number of mutexes] [number of threads]");
+    LE_ERROR("       MutexFlux [1toN-1 | AllMutexes1stThread | AllMutexesMidThread | 1stThread |"
+              " MidThread | None] [delete interval] [number of mutexes] [number of threads]");
     exit(EXIT_FAILURE);
 }
 

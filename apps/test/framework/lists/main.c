@@ -108,6 +108,12 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
+            if (!newNodePtr)
+            {
+                printf("newNodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
+
             newNodePtr->id = i;
 
             // Initialize the link.
@@ -123,6 +129,12 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
+            if (!newNodePtr)
+            {
+                printf("newNodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
+
             newNodePtr->id = i;
 
             // Initialize the link.
@@ -153,6 +165,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         {
             // Get the node from list 0
             nodePtr = CONTAINER_OF(link0Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -163,6 +180,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
 
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -211,6 +233,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 // Mark this node for removal.
                 linkToRemovePtr = link0Ptr;
+                if (!linkToRemovePtr)
+                {
+                   printf("linkToRemovePtr is NULL: %d", __LINE__);
+                   return LE_FAULT;
+                }
 
                 // Move to the next node.
                 link0Ptr = le_dls_PeekPrev(&list0, link0Ptr);
@@ -233,6 +260,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
             {
                 // Mark this node for removal.
                 linkToRemovePtr = link1Ptr;
+                if (!linkToRemovePtr)
+                {
+                   printf("linkToRemovePtr is NULL: %d", __LINE__);
+                   return LE_FAULT;
+                }
 
                 // Move to the next node.
                 link1Ptr = le_dls_PeekNext(&list1, link1Ptr);
@@ -280,7 +312,8 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         }
 
         // Compare the list count.
-        if ( (numNodesRemoved != maxListSize - le_dls_NumLinks(&list0)) || (le_dls_NumLinks(&list0) == maxListSize) )
+        if ( (numNodesRemoved != maxListSize - le_dls_NumLinks(&list0)) ||
+             (le_dls_NumLinks(&list0) == maxListSize) )
         {
             printf("Node removal incorrect: %d", __LINE__);
             return LE_FAULT;
@@ -345,6 +378,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
                 {
                     // Get the node
                     nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+                    if (!nodePtr)
+                    {
+                       printf("nodePtr is NULL: %d", __LINE__);
+                       return LE_FAULT;
+                    }
 
                     // Find the id that is just before this one.
                     if (nodePtr->id == removedNodePtr->id + 1)
@@ -382,6 +420,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
                 {
                     // Get the node
                     nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+                    if (!nodePtr)
+                    {
+                       printf("nodePtr is NULL: %d", __LINE__);
+                       return LE_FAULT;
+                    }
 
                     // Find the id that is just before this one.
                     if (nodePtr->id == removedNodePtr->id + 1)
@@ -416,6 +459,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         {
             // Get the node from list 0
             nodePtr = CONTAINER_OF(link0Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -426,6 +474,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
 
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -467,7 +520,18 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         for (i = 0; i < (le_dls_NumLinks(&list0) / 2); i++)
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
+
             otherNodePtr = CONTAINER_OF(otherlinkPtr, idRecord_t, link);
+            if (!otherNodePtr)
+            {
+                printf("otherNodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             if (nodePtr->id < otherNodePtr->id)
             {
@@ -494,7 +558,18 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         for (i = 0; i < (le_dls_NumLinks(&list1) / 2); i++)
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
+
             otherNodePtr = CONTAINER_OF(otherlinkPtr, idRecord_t, link);
+            if (!otherNodePtr)
+            {
+                printf("otherNodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             if (nodePtr->id > otherNodePtr->id)
             {
@@ -534,6 +609,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         {
             // Get the node from list 0
             nodePtr = CONTAINER_OF(link0Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -544,6 +624,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
 
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -606,6 +691,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         // For list 0.
         le_dls_Link_t* linkPtr = le_dls_Peek(&list0);
         nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+        if (!nodePtr)
+        {
+           printf("nodePtr is NULL: %d", __LINE__);
+           return LE_FAULT;
+        }
 
         if (nodePtr->id != maxListSize-1)
         {
@@ -625,6 +715,11 @@ static le_result_t TestDoublyLinkLists(size_t maxListSize)
         do
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             if (nodePtr->id != i++)
             {
@@ -731,6 +826,12 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
+            if (!newNodePtr)
+            {
+                printf("newNodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
+
             newNodePtr->id = i;
 
             // Initialize the link.
@@ -756,6 +857,12 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
         {
             // Create the new node
             newNodePtr = (idRecord_t*)malloc(sizeof(idRecord_t));
+            if (!newNodePtr)
+            {
+                printf("newNodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
+
             newNodePtr->id = i;
 
             // Initialize the link.
@@ -786,6 +893,11 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
         {
             // Get the node from list 0
             nodePtr = CONTAINER_OF(link0Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != i)
@@ -796,6 +908,11 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
 
             // Get the node from list 1
             nodePtr = CONTAINER_OF(link1Ptr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             // Check the node.
             if ( nodePtr->id != maxListSize - i - 1)
@@ -845,6 +962,11 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
         do
         {
             nodePtr = CONTAINER_OF(linkPtr, idRecord_t, link);
+            if (!nodePtr)
+            {
+                printf("nodePtr is NULL: %d", __LINE__);
+                return LE_FAULT;
+            }
 
             if (nodePtr->id != i++)
             {
@@ -881,6 +1003,12 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
         // Access one of the links directly.  This should corrupt the list.
         linkPtr = le_sls_Peek(&list0);
         linkPtr = le_sls_PeekNext(&list0, linkPtr);
+        if (!linkPtr)
+        {
+           LE_ERROR("linkPtr is null !!!");
+           return LE_FAULT;
+        }
+
         linkPtr->nextPtr = NULL;
 
         if (!le_sls_IsListCorrupted(&list0))

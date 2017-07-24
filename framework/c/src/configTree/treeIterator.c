@@ -276,6 +276,11 @@ static void FindFileTrees
         if (IsRegularFile(dirEntryPtr))
         {
             char* dotStrPtr = strrchr(dirEntryPtr->d_name, '.');
+            if (NULL == dotStrPtr)
+            {
+               LE_ERROR("dotStrPtr is null.");
+               return;
+            }
 
             if (   (strcmp(dotStrPtr, ".rock") != 0)
                 && (strcmp(dotStrPtr, ".paper") != 0)
