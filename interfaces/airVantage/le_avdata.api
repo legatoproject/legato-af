@@ -215,7 +215,7 @@ HANDLER ResourceHandler
 (
     string path[PATH_NAME_LEN] IN,
     AccessType accessType IN,
-    ArgumentList ArgumentListRef IN
+    ArgumentList argumentListRef IN
 );
 
 
@@ -522,6 +522,7 @@ FUNCTION le_result_t GetStringArgLength
 //--------------------------------------------------------------------------------------------------
 FUNCTION ReplyExecResult
 (
+    ArgumentList argumentListRef IN,
     le_result_t result IN
 );
 

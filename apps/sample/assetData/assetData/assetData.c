@@ -294,7 +294,7 @@ static void ExecFanCtrlCmd
 
     // Reply AV server with the command execution result.
     LE_INFO("command result is: [%s]", LE_RESULT_TXT(cmdExeResult));
-    le_avdata_ReplyExecResult(cmdExeResult);
+    le_avdata_ReplyExecResult(argumentList, cmdExeResult);
 }
 
 

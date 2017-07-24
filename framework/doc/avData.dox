@@ -108,7 +108,7 @@ static void ExecFanCtrlCmd
     le_result_t cmdExeResult = FancyFanControl(isOn, fanSpeed);
 
     // Reply the AirVantage server with the command execution result.
-    le_avdata_ReplyExecResult(cmdExeResult);
+    le_avdata_ReplyExecResult(argumentList, cmdExeResult);
 }
 
 le_avdata_CreateResource("/room1/fanControl", LE_AVDATA_ACCESS_COMMAND);
