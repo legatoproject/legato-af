@@ -636,6 +636,10 @@ le_result_t le_info_GetPlatformSerialNumber
  *      - LE_FAULT function failed to get the RF devices working status
  *      - LE_OVERFLOW the number of statuses exceeds the maximum size
  *        (LE_INFO_RF_DEVICES_STATUS_MAX)
+ *      - LE_BAD_PARAMETER Null pointers provided
+ *
+ * @note If the caller is passing null pointers to this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetRfDeviceStatus
@@ -661,20 +665,19 @@ le_result_t le_info_GetRfDeviceStatus
         ///< [INOUT]
 )
 {
-
     // Check input pointers
     if ((manufacturedIdPtr == NULL) || (manufacturedIdNumElementsPtr == NULL)||
         (productIdPtr == NULL)|| (productIdNumElementsPtr == NULL) ||
         (statusPtr == NULL)|| (statusNumElementsPtr == NULL))
     {
-        LE_KILL_CLIENT("NULL pointer!");
-        return LE_FAULT;
+        LE_KILL_CLIENT("NULL pointers!");
+        return LE_BAD_PARAMETER;
     }
 
     // Check elements size
-    if ((* manufacturedIdNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX) ||
-        (* productIdNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX) ||
-        (* statusNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX))
+    if ((*manufacturedIdNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX) ||
+        (*productIdNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX) ||
+        (*statusNumElementsPtr < LE_INFO_RF_DEVICES_STATUS_MAX))
     {
         LE_ERROR("Buffer size overflow !!");
         return LE_OVERFLOW;

@@ -463,7 +463,7 @@ LE_SHARED le_result_t pa_info_GetPlatformSerialNumber
  *      - LE_UNSUPPORTED request not supported
  *      - LE_FAULT function failed to get the RF devices working status
  *      - LE_OVERFLOW the number of statuses exceeds the maximum size
- *        (LE_INFO_RF_DEVICES_STATUS_MAX)
+ *      - LE_BAD_PARAMETER Null pointers provided
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_info_GetRfDeviceStatus

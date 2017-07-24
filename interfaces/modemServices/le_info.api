@@ -325,7 +325,7 @@ DEFINE MAX_PSN_BYTES = (MAX_PSN_LEN+1);
  * Maximum fields for the RF devices status request.
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE RF_DEVICES_STATUS_MAX = 10;
+DEFINE RF_DEVICES_STATUS_MAX = 16;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -631,6 +631,10 @@ FUNCTION le_result_t GetPlatformSerialNumber
  *      - LE_FAULT function failed to get the RF devices working status
  *      - LE_OVERFLOW the number of statuses exceeds the maximum size
  *        (LE_INFO_RF_DEVICES_STATUS_MAX)
+ *      - LE_BAD_PARAMETER Null pointers provided
+ *
+ * @note If the caller is passing null pointers to this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetRfDeviceStatus
