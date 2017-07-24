@@ -64,4 +64,6 @@ if((LEGATO_TARGET MATCHES "wp85") OR (LEGATO_TARGET MATCHES "wp750x"))
 endif()
 
 # Application showing ultra low power mode entry/exit
-add_subdirectory(textLoc)
+if (NOT (${LEGATO_TARGET} MATCHES "ar759x" OR ${LEGATO_TARGET} MATCHES "ar758x"))
+    add_subdirectory(textLoc)
+endif()
