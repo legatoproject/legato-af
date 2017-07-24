@@ -26,7 +26,7 @@ void cm_cmn_FormatPrint
 {
     char sysInfoColon[30];
     snprintf(sysInfoColon, sizeof(sysInfoColon), "%s:", data);
-    printf("%-11s %s\n", sysInfoColon, desc);
+    printf("%-22s %s\n", sysInfoColon, desc);
 }
 
 

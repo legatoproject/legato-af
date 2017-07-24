@@ -9,6 +9,7 @@
 #include "interfaces.h"
 #include "pa_simu.h"
 #include "pa_info_simu.h"
+#include "sysResets.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

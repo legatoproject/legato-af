@@ -75,6 +75,15 @@
  *
  * A specific reset information is provided by a string for LE_INFO_RESET_UPDATE reset reason.
  *
+ * le_info_GetExpectedResetsCount() returns the number of expected resets
+ *
+ * Expected resets can be due to normal system shutdown/restart or a software update
+ *
+ * le_info_GetUnexpectedResetsCount() return the number of unexpected resets
+ *
+ * Unexpected resets can be due to software crash, a critical voltage level or a critical
+ * temperature level
+ *
  * @note See platform constraints @subpage platformConstraintsInfo
  *
  * <HR>
@@ -720,3 +729,32 @@ FUNCTION le_result_t GetSku
     string skuIdStr[MAX_SKU_LEN] OUT                   ///< Product SKU ID string.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of expected resets
+ *
+ * @return
+ *      - LE_OK             Success
+ *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_FAULT          Failed to get the number if expected resets
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetExpectedResetsCount
+(
+    uint64 resetsCountPtr OUT   ///< Number of expected resets
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of unexpected resets
+ *
+ * @return
+ *      - LE_OK             Success
+ *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_FAULT          Failed to get the number if expected resets
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUnexpectedResetsCount
+(
+    uint64 resetsCountPtr OUT   ///< Number of expected resets
+);

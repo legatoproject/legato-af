@@ -46,6 +46,7 @@ sources:
     le_riPin.c
     le_adc.c
     le_rtc.c
+    sysResets.c
 }
 
 cflags:

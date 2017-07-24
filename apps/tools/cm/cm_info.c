@@ -53,6 +53,8 @@ void cm_info_PrintInfoHelp
             "\tcm info sku\n\n"
             "To print the last reset reason:\n"
             "\tcm info reset\n\n"
+            "To print the number of resets:\n"
+            "\tcm info resetsCount\n\n"
             );
 }
 
@@ -337,6 +339,41 @@ void cm_info_PrintGetSku
     }
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print the number of resets
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_info_PrintResetsCount
+(
+    bool withHeaders
+)
+{
+    char buf[CM_INFO_MAX_STRING_BYTES] = {0};
+    int64_t expected, unexpected;
+
+    if (LE_OK != le_info_GetExpectedResetsCount((uint64_t *)&expected))
+    {
+        expected = -1;
+    }
+
+    if (LE_OK != le_info_GetUnexpectedResetsCount((uint64_t *)&unexpected))
+    {
+        unexpected = -1;
+    }
+
+    snprintf(buf, CM_INFO_MAX_STRING_BYTES, "Expected: %ld\tUnexpected: %ld",
+        (long)expected, (long)unexpected);
+
+    if (withHeaders)
+    {
+        cm_cmn_FormatPrint("RESETS COUNT", buf);
+    }
+    else
+    {
+        printf("%s\n", buf);
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -366,6 +403,7 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintGetSku(true);
         cm_info_PrintMcuVersion(true);
         cm_info_PrintResetReason(true);
+        cm_info_PrintResetsCount(true);
     }
     else if (strcmp(command, "firmware") == 0)
     {
@@ -410,6 +448,10 @@ void cm_info_ProcessInfoCommand
     else if (0 == strcmp(command, "reset"))
     {
         cm_info_PrintResetReason(false);
+    }
+    else if (0 == strcmp(command, "resetsCount"))
+    {
+        cm_info_PrintResetsCount(false);
     }
     else
     {

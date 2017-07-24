@@ -10,7 +10,7 @@
 #include "interfaces.h"
 #include "pa_info.h"
 #include "pa_sim.h"
-
+#include "sysResets.h"
 
 //--------------------------------------------------------------------------------------------------
 //                                       Public declarations
@@ -723,4 +723,74 @@ le_result_t le_info_GetRfDeviceStatus
     return pa_info_GetRfDeviceStatus( manufacturedIdPtr, manufacturedIdNumElementsPtr
                                     , productIdPtr, productIdNumElementsPtr
                                     , statusPtr, statusNumElementsPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of expected resets
+ *
+ * @return
+ *      - LE_OK             Success
+ *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_FAULT          Failed to get the number if expected resets
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetExpectedResetsCount
+(
+    uint64_t* resetsCountPtr    ///< Number of unexpected resets
+)
+{
+    int64_t count;
+
+    if (!resetsCountPtr)
+    {
+        LE_ERROR("Invalid parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    count = sysResets_GetExpectedResetsCount();
+    if (-1 == count)
+    {
+        LE_ERROR("Failed to get expected resets count");
+        return LE_FAULT;
+    }
+
+    *resetsCountPtr = (uint64_t)count;
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of unexpected resets
+ *
+ * @return
+ *      - LE_OK             Success
+ *      - LE_BAD_PARAMETER  Input prameter is a null pointer
+ *      - LE_FAULT          Failed to get the number if expected resets
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetUnexpectedResetsCount
+(
+    uint64_t* resetsCountPtr    ///< Number of unexpected resets
+)
+{
+    int64_t count;
+
+    if (!resetsCountPtr)
+    {
+        LE_ERROR("Invalid parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    count = sysResets_GetUnexpectedResetsCount();
+    if (-1 == count)
+    {
+        LE_ERROR("Failed to get unexpected resets count");
+        return LE_FAULT;
+    }
+
+    *resetsCountPtr = (uint64_t)count;
+
+    return LE_OK;
 }
