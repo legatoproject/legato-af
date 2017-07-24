@@ -231,6 +231,9 @@ static le_result_t GetRAT
         case LE_MRC_RAT_UMTS:
             cm_cmn_FormatPrint("RAT", "UMTS network (LE_MRC_RAT_UMTS)");
             break;
+        case LE_MRC_RAT_TDSCDMA:
+            cm_cmn_FormatPrint("RAT", "TD-SCDMA network (LE_MRC_RAT_TDSCDMA)");
+            break;
         case LE_MRC_RAT_LTE:
             cm_cmn_FormatPrint("RAT", "LTE network (LE_MRC_RAT_LTE)");
             break;

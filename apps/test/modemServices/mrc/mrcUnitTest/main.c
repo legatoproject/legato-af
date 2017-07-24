@@ -139,7 +139,8 @@ void Testle_mrc_RatInUseTest
     size_t i;
 
     le_mrc_Rat_t  ratList[] = { LE_MRC_RAT_CDMA, LE_MRC_RAT_GSM, LE_MRC_RAT_UMTS,
-                                LE_MRC_RAT_LTE, LE_MRC_RAT_CDMA, LE_MRC_RAT_UNKNOWN };
+                                LE_MRC_RAT_LTE, LE_MRC_RAT_CDMA,
+                                LE_MRC_RAT_TDSCDMA, LE_MRC_RAT_UNKNOWN };
 
     pa_mrcSimu_SetRadioAccessTechInUse(LE_MRC_RAT_GSM);
 
@@ -477,6 +478,7 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_CDMA, -80,-70));
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_LTE, -80,-70));
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_UMTS, -80,-70));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_TDSCDMA, -80,-70));
 }
 
 //--------------------------------------------------------------------------------------------------

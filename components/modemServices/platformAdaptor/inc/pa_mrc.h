@@ -143,10 +143,23 @@ pa_mrc_ScanInformation_t;
 typedef struct
 {
     int32_t   ecio; ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
-    int32_t   rscp; ///< Measured RSCP in dBm (only applicable for TD-SCDMA network)
-    int32_t   sinr; ///< Measured SINR in dB (only applicable for TD-SCDMA network)
 }
 pa_mrc_UmtsMetrics_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * TDSCDMA metrics.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int32_t   ecio; ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t   rscp; ///< Measured RSCP in dBm
+    int32_t   sinr; ///< Measured SINR in dB
+}
+pa_mrc_TdscdmaMetrics_t;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -188,9 +201,10 @@ typedef struct
     int32_t                  ss;           ///< Signal strength in dBm
     uint32_t                 er;           ///< Bit/Block/Frame/Packet error rate
     union {                                ///< Additional information for UMTS/LTE/CDMA
-        pa_mrc_UmtsMetrics_t umtsMetrics;
-        pa_mrc_LteMetrics_t  lteMetrics;
-        pa_mrc_CdmaMetrics_t cdmaMetrics;
+        pa_mrc_UmtsMetrics_t    umtsMetrics;
+        pa_mrc_TdscdmaMetrics_t tdscdmaMetrics;
+        pa_mrc_LteMetrics_t     lteMetrics;
+        pa_mrc_CdmaMetrics_t    cdmaMetrics;
     };
 }
 pa_mrc_SignalMetrics_t;

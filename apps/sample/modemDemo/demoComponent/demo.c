@@ -580,6 +580,8 @@ static const char* PrintNetworkName
         return "GSM";
     case LE_MRC_RAT_UMTS:
         return "UMTS";
+    case LE_MRC_RAT_TDSCDMA:
+        return "TD-SCDMA";
     case LE_MRC_RAT_LTE:
         return "LTE";
     case LE_MRC_RAT_CDMA:

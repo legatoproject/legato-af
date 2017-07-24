@@ -405,6 +405,7 @@ static le_ref_MapRef_t MetricsRefMap;
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t GsmSsChangeId;
 static le_event_Id_t UmtsSsChangeId;
+static le_event_Id_t TdscdmaSsChangeId;
 static le_event_Id_t LteSsChangeId;
 static le_event_Id_t CdmaSsChangeId;
 
@@ -696,66 +697,6 @@ static void FirstLayerSsChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer Signal Strength Change Handler for GSM.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerGsmSsChangeHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer Signal Strength Change Handler for UMTS.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerUmtsSsChangeHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer Signal Strength Change Handler for LTE.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerLteSsChangeHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The first-layer Signal Strength Change Handler for CDMA.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void FirstLayerCdmaSsChangeHandler
-(
-    void* reportPtr,
-    void* secondLayerHandlerFunc
-)
-{
-    FirstLayerSsChangeHandler(reportPtr, secondLayerHandlerFunc);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * The Signal Strength Indication Handler.
  *
  */
@@ -776,6 +717,10 @@ static void SignalStrengthIndHandlerFunc
 
         case LE_MRC_RAT_UMTS:
             le_event_ReportWithRefCounting(UmtsSsChangeId, ssIndPtr);
+            break;
+
+        case LE_MRC_RAT_TDSCDMA:
+            le_event_ReportWithRefCounting(TdscdmaSsChangeId, ssIndPtr);
             break;
 
         case LE_MRC_RAT_LTE:
@@ -1319,6 +1264,7 @@ void le_mrc_Init
     // Create an event Id for Signal Strength change notification
     GsmSsChangeId = le_event_CreateIdWithRefCounting("GsmSsChange");
     UmtsSsChangeId = le_event_CreateIdWithRefCounting("UmtsSsChange");
+    TdscdmaSsChangeId = le_event_CreateIdWithRefCounting("TdscdmaSsChange");
     LteSsChangeId = le_event_CreateIdWithRefCounting("LteSsChange");
     CdmaSsChangeId = le_event_CreateIdWithRefCounting("CdmaSsChange");
 
@@ -3664,17 +3610,35 @@ le_result_t le_mrc_GetUmtsSignalMetrics
         return LE_FAULT;
     }
 
+    if ((NULL == ssPtr) || (NULL == blerPtr) || (NULL == ecioPtr)
+        || (NULL == rscpPtr) || (NULL == sinrPtr))
+    {
+        LE_KILL_CLIENT("Invalid pointer provided!");
+        return LE_FAULT;
+    }
+
     if (LE_MRC_RAT_UMTS == signalMetricsPtr->paSignalMetricsPtr->rat)
     {
         *ssPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
         *blerPtr = signalMetricsPtr->paSignalMetricsPtr->er;
         *ecioPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.ecio;
-        *rscpPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.rscp;
-        *sinrPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.sinr;
+        *rscpPtr = INT32_MAX;
+        *sinrPtr = INT32_MAX;
         return LE_OK;
     }
 
-    LE_ERROR("The measured signal is not UMTS (RAT.%d)", signalMetricsPtr->paSignalMetricsPtr->rat);
+    if (LE_MRC_RAT_TDSCDMA == signalMetricsPtr->paSignalMetricsPtr->rat)
+    {
+        *ssPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
+        *blerPtr = signalMetricsPtr->paSignalMetricsPtr->er;
+        *ecioPtr = signalMetricsPtr->paSignalMetricsPtr->tdscdmaMetrics.ecio;
+        *rscpPtr = signalMetricsPtr->paSignalMetricsPtr->tdscdmaMetrics.rscp;
+        *sinrPtr = signalMetricsPtr->paSignalMetricsPtr->tdscdmaMetrics.sinr;
+        return LE_OK;
+    }
+
+    LE_ERROR("The measured signal is not UMTS or TD-SCDMA (RAT.%d)",
+                           signalMetricsPtr->paSignalMetricsPtr->rat);
     return LE_FAULT;
 }
 
@@ -3863,28 +3827,35 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
         case LE_MRC_RAT_GSM:
             handlerRef = le_event_AddLayeredHandler("GsmSsChangeHandler",
                                                     GsmSsChangeId,
-                                                    FirstLayerGsmSsChangeHandler,
+                                                    FirstLayerSsChangeHandler,
                                                     (le_event_HandlerFunc_t)handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_UMTS:
             handlerRef = le_event_AddLayeredHandler("UmtsSsChangeHandler",
                                                     UmtsSsChangeId,
-                                                    FirstLayerUmtsSsChangeHandler,
+                                                    FirstLayerSsChangeHandler,
+                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+            break;
+
+        case LE_MRC_RAT_TDSCDMA:
+            handlerRef = le_event_AddLayeredHandler("TdscdmaSsChangeHandler",
+                                                    TdscdmaSsChangeId,
+                                                    FirstLayerSsChangeHandler,
                                                     (le_event_HandlerFunc_t)handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_LTE:
             handlerRef = le_event_AddLayeredHandler("LteSsChangeHandler",
                                                     LteSsChangeId,
-                                                    FirstLayerLteSsChangeHandler,
+                                                    FirstLayerSsChangeHandler,
                                                     (le_event_HandlerFunc_t)handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_CDMA:
             handlerRef = le_event_AddLayeredHandler("CdmaSsChangeHandler",
                                                     CdmaSsChangeId,
-                                                    FirstLayerCdmaSsChangeHandler,
+                                                    FirstLayerSsChangeHandler,
                                                     (le_event_HandlerFunc_t)handlerFuncPtr);
             break;
         default:

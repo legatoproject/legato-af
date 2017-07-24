@@ -1427,6 +1427,7 @@ static le_result_t CheckAndEncodeMessage
         break;
 
         case LE_MRC_RAT_UMTS:
+        case LE_MRC_RAT_TDSCDMA:
         case LE_MRC_RAT_GSM:
         default :
         {

@@ -136,7 +136,8 @@
  * The Radio Access Technology preferences can be:
  * - CDMA (CDMA2000-1X + CDMA2000-HRPD)
  * - GSM
- * - UMTS (UMTS + TD-SCDMA)
+ * - UMTS (UMTS)
+ * - TDSCDMA (TD-SCDMA)
  * - LTE
  *
  * @note LE_MRC_BITMASK_RAT_ALL value can be used to select the RAT in automatic mode.
@@ -621,7 +622,8 @@ ENUM Rat
 {
     RAT_UNKNOWN,     ///< Unknown
     RAT_GSM,         ///< GSM network
-    RAT_UMTS,        ///< UMTS or TD-SCDMA networks
+    RAT_UMTS,        ///< UMTS networks
+    RAT_TDSCDMA,     ///< TD-SCDMA networks
     RAT_LTE,         ///< LTE network
     RAT_CDMA         ///< CDMA network
 };

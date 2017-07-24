@@ -85,25 +85,31 @@ static void TestRatHandler
 {
     LE_INFO("New RAT: %d", rat);
 
-    if (rat == LE_MRC_RAT_CDMA)
+    switch(rat)
     {
-        LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_CDMA.");
-    }
-    else if (rat == LE_MRC_RAT_GSM)
-    {
-        LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_GSM.");
-    }
-    else if (rat == LE_MRC_RAT_UMTS)
-    {
-        LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_UMTS.");
-    }
-    else if (rat == LE_MRC_RAT_LTE)
-    {
-        LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_LTE.");
-    }
-    else
-    {
-        LE_INFO("Check RatHandler failed, bad RAT.");
+        case LE_MRC_RAT_CDMA:
+            LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_CDMA.");
+            break;
+
+        case LE_MRC_RAT_GSM:
+            LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_GSM.");
+            break;
+
+        case LE_MRC_RAT_UMTS:
+            LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_UMTS.");
+            break;
+
+        case LE_MRC_RAT_TDSCDMA:
+            LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_TDSCDMA.");
+            break;
+
+        case LE_MRC_RAT_LTE:
+            LE_INFO("Check RatHandler passed, RAT is LE_MRC_RAT_LTE.");
+            break;
+
+        default:
+            LE_INFO("Check RatHandler failed, bad RAT.");
+            break;
     }
 }
 
@@ -608,11 +614,12 @@ static void PrintRat
 {
     if(LE_MRC_BITMASK_RAT_ALL != bitMask)
     {
-        LE_INFO("Rat preferences %02X=> CDMA.%c GSM.%c LTE.%c UMTS.%c", bitMask,
+        LE_INFO("Rat preferences %02X=> CDMA.%c GSM.%c LTE.%c UMTS.%c TD-SCDMA.%c", bitMask,
             ((bitMask & LE_MRC_BITMASK_RAT_CDMA) ? 'Y' : 'N'),
             ((bitMask & LE_MRC_BITMASK_RAT_GSM) ? 'Y' : 'N'),
             ((bitMask & LE_MRC_BITMASK_RAT_LTE) ? 'Y' : 'N'),
-            ((bitMask & LE_MRC_BITMASK_RAT_UMTS) ? 'Y' : 'N'));
+            ((bitMask & LE_MRC_BITMASK_RAT_UMTS) ? 'Y' : 'N'),
+            ((bitMask & LE_MRC_BITMASK_RAT_TDSCDMA) ? 'Y' : 'N'));
     }
     else
     {
@@ -1052,10 +1059,11 @@ static void Testle_mrc_GetSignalMetrics()
             break;
 
         case LE_MRC_RAT_UMTS:
+        case LE_MRC_RAT_TDSCDMA:
             res = le_mrc_GetUmtsSignalMetrics(metricsRef, &rxLevel, &er, &ecio, &rscp, &sinr);
             LE_ASSERT(res == LE_OK);
-            LE_INFO("UMTS metrics rxLevel.%ddBm, er.%d, ecio.%010.1fdB, rscp.%ddBm, sinr.%ddB",
-                    rxLevel, er, ((double)ecio/10), rscp, sinr);
+            LE_INFO("UMTS/TD-SCDMA metrics rxLevel.%ddBm, er.%d, ecio.%010.1fdB,"
+                    "rscp.%ddBm, sinr.%ddB", rxLevel, er, ((double)ecio/10), rscp, sinr);
             break;
 
         case LE_MRC_RAT_LTE:
@@ -1345,6 +1353,7 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
             break;
 
         case LE_MRC_RAT_UMTS:
+        case LE_MRC_RAT_TDSCDMA:
             res = le_mrc_GetUmtsSignalMetrics(metrics, &ss, &bler, &ecio, &rscp, &sinr);
             break;
 
@@ -1521,11 +1530,13 @@ static void Testle_mrc_PreferredPLMN()
             }
             else
             {
-                LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X, GSM %c, LTE %c, UMTS %c",
+                LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X,"
+                         "GSM %c, LTE %c, UMTS %c, TD-SCDMA %c",
                     beforeIndex, mccStr, mncStr, ratMask,
                     (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
                     (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
-                    (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
+                    (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N'),
+                    (ratMask & LE_MRC_BITMASK_RAT_TDSCDMA ? 'Y':'N')
                 );
             }
 
@@ -1597,11 +1608,13 @@ static void Testle_mrc_PreferredPLMN()
             &ratMask);
 
         LE_ASSERT(res == LE_OK);
-        LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X,  GSM %c, LTE %c, UMTS %c",
+        LE_INFO("Get_detail Loop(%d) mcc.%s mnc %s, rat.%08X,"
+                 "GSM %c, LTE %c, UMTS %c, TD-SCDMA %c",
             ++afterIndex, mccStr, mncStr, ratMask,
             (ratMask & LE_MRC_BITMASK_RAT_GSM ? 'Y':'N'),
             (ratMask & LE_MRC_BITMASK_RAT_LTE ? 'Y':'N'),
-            (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N')
+            (ratMask & LE_MRC_BITMASK_RAT_UMTS ? 'Y':'N'),
+            (ratMask & LE_MRC_BITMASK_RAT_TDSCDMA ? 'Y':'N')
         );
 
         optRef = le_mrc_GetNextPreferredOperator(prefPlmnList);
