@@ -35,10 +35,10 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    pa_temp_Handle_t        paHandle;
-    le_temp_SensorRef_t     ref;                             ///< sensor reference
+    pa_temp_Handle_t        paHandle;                        ///< Platform adaptor layer handle
+    le_temp_SensorRef_t     ref;                             ///< Sensor reference
     char                    thresholdEvent[LE_TEMP_THRESHOLD_NAME_MAX_BYTES];
-    le_dls_Link_t           link;                            ///< Object node link
+                                                             ///< Threshold event
 } SensorCtx_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -48,9 +48,23 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_temp_SensorRef_t ref;                             ///< sensor reference
-    char                threshold[LE_TEMP_THRESHOLD_NAME_MAX_BYTES];
+    le_temp_SensorRef_t ref;                                         ///< Sensor reference
+    char                threshold[LE_TEMP_THRESHOLD_NAME_MAX_BYTES]; ///< Threshold name
 } ThresholdReport_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SessionRef node structure used for the SessionRefList.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_msg_SessionRef_t sessionRef;           ///< Client sessionRef.
+    le_temp_SensorRef_t ref;                  ///< Sensor reference.
+    le_dls_Link_t       link;                 ///< Link for SessionRefList.
+}
+SessionRefNode_t;
 
 //--------------------------------------------------------------------------------------------------
 //                                       Static declarations
@@ -66,10 +80,10 @@ static le_mem_PoolRef_t   SensorPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * list of sensor context.
+ * List of session reference.
  */
 //--------------------------------------------------------------------------------------------------
-static le_dls_List_t  SensorList;
+static le_dls_List_t  SessionRefList;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -92,6 +106,13 @@ static le_event_Id_t TemperatureThresholdEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t ThresholdReportPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The memory pool for the clients sessionRef objects
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t SessionRefPool;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -146,7 +167,7 @@ static void FirstLayerTemperatureChangeHandler
     // Call the client handler
     clientHandlerFunc(tempPtr->ref,
                       tempPtr->threshold,
-                      le_event_GetContextPtr() );
+                      le_event_GetContextPtr());
 
     le_mem_Release(reportPtr);
 }
@@ -184,6 +205,82 @@ static void PaTemperatureThresholdHandler
     le_event_ReportWithRefCounting(TemperatureThresholdEventId, tempEventPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close session handler for client session.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef, ///< [IN] Message session reference.
+    void* contextPtr                ///< [IN] Context pointer.
+)
+{
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    LE_DEBUG("SessionRef (%p) has been closed", sessionRef);
+
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SessionRefList);
+
+    while (linkPtr)
+    {
+        SessionRefNode_t *sessionRefNodePtr = CONTAINER_OF(linkPtr, SessionRefNode_t, link);
+        linkPtr = le_dls_PeekNext(&SessionRefList, linkPtr);
+
+        if (sessionRefNodePtr->sessionRef == sessionRef)
+        {
+            LE_DEBUG("Release memory for session 0x%p\n", sessionRef);
+
+            SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sessionRefNodePtr->ref);
+
+            // Release temperature sensor handle reference.
+            le_mem_Release(sensorCtxPtr);
+
+            // Remove the link from the session reference list.
+            le_dls_Remove(&SessionRefList, &(sessionRefNodePtr->link));
+
+            // Release session reference node.
+            le_mem_Release(sessionRefNodePtr);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destructor function that runs when a memory reference count of
+ * temperature sensor context pointer reaches 0.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TempSensorDestructor
+(
+    void *objPtr  ///< [IN] Sensor context object pointer.
+)
+{
+    char sensorName[LE_TEMP_SENSOR_NAME_MAX_BYTES];
+    SensorCtx_t* sensorCtxPtr = (SensorCtx_t*)objPtr;
+
+    /* Delete the reference */
+    le_ref_DeleteRef(SensorRefMap, sensorCtxPtr->ref);
+
+    // Get sensor name from paHandle.
+    if (LE_OK != pa_temp_GetSensorName(sensorCtxPtr->paHandle, sensorName,
+                                               LE_TEMP_SENSOR_NAME_MAX_BYTES))
+    {
+        LE_ERROR("Not able to get temperature sensor name");
+        return;
+    }
+
+    // Reset temperature handle at PA side.
+    if (LE_OK != pa_temp_ResetHandle(sensorName))
+    {
+        LE_ERROR("Not able to reset temperature handle");
+    }
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -211,9 +308,21 @@ void le_temp_Init
     SensorPool = le_mem_CreatePool("SensorPool",
                                    sizeof(SensorCtx_t));
 
+    // Create destructor to reset PA handle reference
+    // when memory reference count of sensor context reaches 0.
+    le_mem_SetDestructor(SensorPool, TempSensorDestructor);
+
     SensorRefMap = le_ref_CreateMap("SensorRefMap", MAX_NUM_OF_SENSOR);
 
-    SensorList = LE_DLS_LIST_INIT;
+    // Memory pool to store session reference associated to the temperature sensor.
+    SessionRefPool = le_mem_CreatePool("SessionRefPool", sizeof(SessionRefNode_t));
+    le_mem_ExpandPool(SessionRefPool, MAX_NUM_OF_SENSOR);
+
+    // Session reference list.
+    SessionRefList = LE_DLS_LIST_INIT;
+
+    // Register close session handler.
+    le_msg_AddServiceCloseHandler(le_temp_GetServiceRef(), CloseSessionEventHandler, NULL);
 
     // Register a handler function for new temperature Threshold Event
     pa_temp_AddTempEventHandler(PaTemperatureThresholdHandler, NULL);
@@ -297,7 +406,7 @@ le_temp_SensorRef_t le_temp_Request
 
     LE_DEBUG("call marker.");
 
-    if(strlen(sensorPtr) > (LE_TEMP_SENSOR_NAME_MAX_BYTES-1))
+    if (strlen(sensorPtr) > (LE_TEMP_SENSOR_NAME_MAX_BYTES-1))
     {
         LE_KILL_CLIENT("strlen(sensorPtr) > %d", (LE_TEMP_SENSOR_NAME_MAX_BYTES-1));
         return NULL;
@@ -319,19 +428,32 @@ le_temp_SensorRef_t le_temp_Request
     {
         SensorCtx_t* sensorCtxPtr = le_ref_Lookup(SensorRefMap, sensorRef);
         le_mem_AddRef(sensorCtxPtr);
+
+        // Create session reference list which associate to the sensor reference.
+        SessionRefNode_t* sessionRefNodePtr = le_mem_ForceAlloc(SessionRefPool);
+        sessionRefNodePtr->ref = sensorRef;
+        sessionRefNodePtr->sessionRef = le_temp_GetClientSessionRef();
+        sessionRefNodePtr->link = LE_DLS_LINK_INIT;
+        le_dls_Queue(&SessionRefList, &(sessionRefNodePtr->link));
+
         return sensorRef;
     }
     else
     {
         currentPtr = le_mem_ForceAlloc(SensorPool);
 
-        if (pa_temp_Request(sensorPtr,
+        if (LE_OK == pa_temp_Request(sensorPtr,
                             (le_temp_Handle_t)currentPtr,
-                            &currentPtr->paHandle) == LE_OK)
+                            &currentPtr->paHandle))
         {
             currentPtr->ref = le_ref_CreateRef(SensorRefMap, currentPtr);
-            currentPtr->link = LE_DLS_LINK_INIT;
-            le_dls_Queue(&SensorList, &(currentPtr->link));
+
+            // Create session reference list which associate to the sensor reference.
+            SessionRefNode_t* sessionRefNodePtr = le_mem_ForceAlloc(SessionRefPool);
+            sessionRefNodePtr->ref = currentPtr->ref;
+            sessionRefNodePtr->sessionRef = le_temp_GetClientSessionRef();
+            sessionRefNodePtr->link = LE_DLS_LINK_INIT;
+            le_dls_Queue(&SessionRefList, &sessionRefNodePtr->link);
 
             LE_DEBUG("Create a new sensor reference (%p)", currentPtr->ref);
             return currentPtr->ref;
