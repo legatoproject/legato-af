@@ -5,7 +5,9 @@ all: $(TARGETS)
 
 $(TARGETS):
 	mkapp -v -t $@ \
-		fileInfo.adef
+		externalWdog.adef
+	mkapp -v -t $@ \
+		monitoredService.adef
 
 clean:
 	rm -rf _build_* *.update

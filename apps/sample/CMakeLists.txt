@@ -67,3 +67,7 @@ endif()
 if (NOT (${LEGATO_TARGET} MATCHES "ar759x" OR ${LEGATO_TARGET} MATCHES "ar758x"))
     add_subdirectory(textLoc)
 endif()
+
+# Watchdog
+add_subdirectory(watchdog)
+

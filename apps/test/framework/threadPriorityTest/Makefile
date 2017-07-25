@@ -1,5 +1,4 @@
-
-TARGETS := ar7 ar86 wp85 localhost
+TARGETS := $(MAKECMDGOALS)
 
 .PHONY: all $(TARGETS)
 all: $(TARGETS)
@@ -10,3 +9,4 @@ $(TARGETS):
 
 clean:
 	rm -rf _build_* *.update
+

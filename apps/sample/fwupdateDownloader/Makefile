@@ -5,7 +5,7 @@ all: $(TARGETS)
 
 $(TARGETS):
 	mkapp -v -t $@ \
-		fileInfo.adef
+		fwupdateDownloader.adef
 
 clean:
 	rm -rf _build_* *.update
