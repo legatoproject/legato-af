@@ -6,7 +6,7 @@ BIN_PATH="/legato/systems/current/bin"
 
 # if SSH_PORT is defined add the port option to ssh
 SSH_PORT=${SSH_PORT:=22}
-SSH_OPTS="-p $SSH_PORT"
+SSH_OPTS="-p $SSH_PORT -o ServerAliveInterval=5 -o ServerAliveCountMax=1"
 #because scp uses upper case 'p' for port option!
 SCP_OPTS="-P $SSH_PORT"
 

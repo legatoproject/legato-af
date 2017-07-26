@@ -206,6 +206,8 @@ static le_result_t DownloadFirmware
         return LE_FAULT;
     }
 
+    close(fd);
+
     return LE_OK;
 }
 
