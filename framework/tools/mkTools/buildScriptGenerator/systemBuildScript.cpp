@@ -73,8 +73,8 @@ static void GenerateSystemBuildRules
 
     // Create modules directory and copy kernel modules into it
     "            mkdir -p $stagingDir/modules && $\n"
-    "            if [ -d $$LEGATO_ROOT/build/$target/system/modules ] ; then $\n"
-    "                find $$LEGATO_ROOT/build/$target/system/modules/*/*.ko -print"
+    "            if [ -d $builddir/modules ] ; then $\n"
+    "                find $builddir/modules/*/*.ko -print"
                           "| xargs cp -P -t $stagingDir/modules ; $\n"
     "            fi && $\n"
 
