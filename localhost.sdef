@@ -6,7 +6,7 @@
 
 #include "$LEGATO_ROOT/legatoTargetConfig.sinc"
 
-//#include "$LEGATO_ROOT/apps/platformServices/defaultAirVantage.sinc"
+#include "$LEGATO_ROOT/apps/platformServices/defaultAirVantage.sinc"
 
 apps:
 {

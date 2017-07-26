@@ -1,0 +1,15 @@
+bundles:
+{
+    file:
+    {
+        $LEGATO_BUILD/3rdParty/lib/libtinycbor.so.0 /lib/libtinycbor.so.0
+    }
+}
+
+externalBuild:
+{
+    "mkdir -p ${LEGATO_BUILD}/3rdParty/lib ${LEGATO_BUILD}/3rdParty/inc/tinycbor"
+    "make -f ${LEGATO_ROOT}/3rdParty/tinycbor/Makefile"
+    "cp lib/libtinycbor.* ${LEGATO_BUILD}/3rdParty/lib/"
+    "cd ${LEGATO_ROOT}/3rdParty/tinycbor/src && cp cbor.h ${LEGATO_BUILD}/3rdParty/inc/tinycbor/"
+}
