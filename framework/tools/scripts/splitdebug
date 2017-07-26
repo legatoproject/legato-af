@@ -29,6 +29,7 @@ if [[ $# != 1 ]]; then
     exit 1
 fi
 
+export LANG=C
 BUILD_ID=$(${READELF} -n $1|sed 's/    Build ID: //;t;d')
 if [ $? -ne 0 -o -z "$BUILD_ID" ]
 then
