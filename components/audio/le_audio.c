@@ -1204,6 +1204,30 @@ static void CloseSessionEventHandler
 
     le_result_t result = le_ref_NextNode(iterRef);
 
+    // Close audio streams
+    // This is a two stage process: parse audio stream reference map
+    // once in order to close dsp frontend file play/capture streams
+    // first, then parse it a second time to close remaining streams.
+    iterRef = le_ref_GetIterator(AudioStreamRefMap);
+
+    while (le_ref_NextNode(iterRef) == LE_OK)
+    {
+        le_audio_Stream_t* audioStreamPtr = (le_audio_Stream_t*) le_ref_GetValue(iterRef);
+        if ((audioStreamPtr->audioInterface == LE_AUDIO_IF_DSP_FRONTEND_FILE_PLAY) ||
+            (audioStreamPtr->audioInterface == LE_AUDIO_IF_DSP_FRONTEND_FILE_CAPTURE))
+        {
+            ReleaseAudioStream(audioStreamPtr, sessionRef, true);
+        }
+    }
+    // Reset map iterator and close remaining streams
+    iterRef = le_ref_GetIterator(AudioStreamRefMap);
+
+    while (le_ref_NextNode(iterRef) == LE_OK)
+    {
+        le_audio_Stream_t* audioStreamPtr = (le_audio_Stream_t*) le_ref_GetValue(iterRef);
+        ReleaseAudioStream(audioStreamPtr, sessionRef, true);
+    }
+
     // Close connectors
     while ( result == LE_OK )
     {
@@ -1225,15 +1249,6 @@ static void CloseSessionEventHandler
             LE_DEBUG("Delete connector %p", connectorRef);
             le_audio_DeleteConnector( connectorRef );
         }
-    }
-
-    // Close audio stream
-    iterRef = le_ref_GetIterator(AudioStreamRefMap);
-
-    while (le_ref_NextNode(iterRef) == LE_OK)
-    {
-        le_audio_Stream_t* audioStreamPtr = (le_audio_Stream_t*) le_ref_GetValue(iterRef);
-        ReleaseAudioStream(audioStreamPtr, sessionRef, true);
     }
 }
 
