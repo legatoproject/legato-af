@@ -75,6 +75,61 @@
  * A handler registered with a command field must call the le_avdata_ReplyExecResult() at the end of
  * its definition, in order to reply the command execution result to the AV server.
  *
+ * Sometimes instead of waiting for activity to occur on a field, users may want to have their
+ * application notify the server of their asset data details. Asset data can also be pushed from
+ * the device to the server by using le_avdata_Push().
+ *
+ * This code sample shows how to push asset data to the server (assuming session is opened)
+ *
+ * @code
+ * static void PushCallbackHandler
+ * (
+ *     le_avdata_PushStatus_t status,
+ *     void* contextPtr
+ * )
+ * {
+ *     if (status == LE_AVDATA_PUSH_SUCCESS)
+ *     {
+ *         // data pushed successfully
+ *     }
+ * }
+ *
+ * COMPONENT_INIT
+ * {
+ *       le_result_t result;
+ *       result = le_avdata_CreateResource("/livingRoom/sensor1", LE_AVDATA_ACCESS_VARIABLE);
+ *       if (result != LE_OK)
+ *       {
+ *           LE_FATAL("Error in creating livingRoom resource.");
+ *       }
+ *
+ *       result = le_avdata_SetInt("/livingRoom/sensor1", 5) == LE_OK);
+ *       if (result != LE_OK)
+ *       {
+ *           LE_FATAL("Failed to set value for livingRoom resource.");
+ *       }
+ *
+ *       le_avdata_Push("/livingRoom/sensor1", PushCallbackHandler, NULL);
+ * }
+ * @endcode
+ *
+ * If users simply want to push a data dump to the server without creating resources,
+ * le_avdata_PushStream() is available.
+ * @note The push stream API has a limit of 20K.
+ *
+ * @code
+ * COMPONENT_INIT
+ * {
+ *       int fd = open("data.txt", O_RDONLY);
+ *       if (fd == -1)
+ *       {
+ *          LE_FATAL("Failed to open file.");
+ *       }
+ *
+ *       // The data dump sent to the server will be display under <Path>
+ *       le_avdata_PushStream("<Path>", fd, PushCallbackHandler, NULL);
+ * }
+ * @endcode
  *
  * @section le_avdata_timeseries Time Series
  *
@@ -121,7 +176,7 @@
  *     utcMilliSec = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000; // get current time
  *     result = le_avdata_RecordFloat(recRef, "speed", 0.08, utcMilliSec);
  *
- *     if (result != LE_OK)
+ *     if (result == LE_OK)
  *     {
  *          le_avdata_PushRecord(recRef, PushCallbackHandler, NULL);
  *     }
@@ -559,7 +614,7 @@ FUNCTION ReplyExecResult
  * @return:
  *      - LE_OK on success.
  *      - LE_NOT_FOUND if path doesn't exist.
- *      - LE_BUSY if push is queued and will pushed later
+ *      - LE_BUSY if push is queued and will pushed later automatically
  *      - LE_NOT_POSSIBLE if push queue is full, try again later
  *      - LE_FAULT on any other error
  */
@@ -567,6 +622,24 @@ FUNCTION ReplyExecResult
 FUNCTION le_result_t Push
 (
     string path[PATH_NAME_LEN] IN,
+    CallbackResult handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Push data dump to a specified path on the server.
+ *
+ * @return:
+ *      - LE_OK on success.
+ *      - LE_NOT_POSSIBLE if the service is busy pushing other data, try again later
+ *      - LE_FAULT on any other error
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t PushStream
+(
+    string path[PATH_NAME_LEN] IN,
+    file fd IN,
     CallbackResult handler
 );
 
@@ -692,8 +765,8 @@ FUNCTION le_result_t RecordString
  *
 * @return:
  *      - LE_OK on success.
+ *      - LE_BUSY if push is queued and will pushed later automatically
  *      - LE_NOT_POSSIBLE if push queue is full, try again later
- *      - LE_UNAVAILABLE if no data connection is available
  *      - LE_FAULT on any other error
  *
  * * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
