@@ -2,13 +2,11 @@ requires:
 {
     api:
     {
-        airVantage/le_avc.api
         airVantage/le_avdata.api
     }
 }
 
 sources:
 {
-    assetData.c
+    main.c
 }
-

@@ -1,6 +1,7 @@
+
 executables:
 {
-    assetData = ( assetData )
+    assetData = ( assetDataComponent )
 }
 
 processes:
@@ -15,6 +16,5 @@ start: manual
 
 bindings:
 {
-    assetData.assetData.le_avc -> avcService.le_avc
-    assetData.assetData.le_avdata -> avcService.le_avdata
+    assetData.assetDataComponent.le_avdata -> avcService.le_avdata
 }
