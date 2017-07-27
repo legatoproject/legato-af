@@ -27,14 +27,13 @@ import java.math.BigInteger;
 
 public interface {{apiName}}
 {
-    {#- TODO: Re-add later.  For now omit for compatibility with previous java generator.
     {%- for definition in definitions %}
     {%- if definition.value is number %}
-    public static final long {{definition.name}} = {{definition.value}};
+    public static final long {{definition.name}} = {{definition.value}}L;
     {%- else %}
     public static final String {{definition.name}} = "{{definition.value}}";
     {%- endif %}
-    {%- endfor %} #}
+    {%- endfor %}
 
     {%- for type in types %}
     {#- TODO: Is this exception necessary?  Maybe handler references should have a class as well #}
