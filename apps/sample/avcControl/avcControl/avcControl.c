@@ -190,6 +190,14 @@ static void StatusHandler
             statusPtr = "CONNECTION_REQUIRED";
             break;
 
+        case LE_AVC_AUTH_STARTED:
+            statusPtr = "AUTHENTICATION_STARTED";
+            break;
+
+        case LE_AVC_AUTH_FAILED:
+            statusPtr = "AUTHENTICATION_FAILED";
+            break;
+
         default:
             break;
     }

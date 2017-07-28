@@ -413,7 +413,9 @@ ENUM Status
     SESSION_STARTED,        ///< Session with AV server started
     SESSION_STOPPED,        ///< Session with AV server stopped
     REBOOT_PENDING,         ///< Device reboot is pending
-    CONNECTION_REQUIRED     ///< Connection to the server is required
+    CONNECTION_REQUIRED,    ///< Connection to the server is required
+    AUTH_STARTED,           ///< Authentication with AV server started
+    AUTH_FAILED             ///< Authentication with AV server failed
 };
 
 

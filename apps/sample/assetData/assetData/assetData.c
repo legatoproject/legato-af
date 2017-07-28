@@ -495,6 +495,12 @@ static void StatusHandler
         case LE_AVC_CONNECTION_REQUIRED:
             statusPtr = "CONNECTION_REQUIRED";
             break;
+        case LE_AVC_AUTH_STARTED:
+            statusPtr = "AUTHENTICATION_STARTED";
+            break;
+        case LE_AVC_AUTH_FAILED:
+            statusPtr = "AUTHENTICATION_FAILED";
+            break;
     }
 
     if (statusPtr == NULL)
