@@ -1073,11 +1073,6 @@ void cm_data_ProcessDataCommand
 )
 {
     const char*  dataParam = le_arg_GetArg(2);
-    if (dataParam == NULL)
-    {
-        LE_INFO("dataParam is NULL");
-        exit(EXIT_FAILURE);
-    }
     if (strcmp(command, "help") == 0)
     {
         cm_data_PrintDataHelp();
@@ -1093,6 +1088,11 @@ void cm_data_ProcessDataCommand
                                      numArgs,
                                      "Profile index missing. e.g. cm data profile <index>"))
         {
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
             exit(cm_data_SetProfileInUse(atoi(dataParam)));
         }
     }
@@ -1105,12 +1105,21 @@ void cm_data_ProcessDataCommand
             exit(EXIT_FAILURE);
         }
 
+        if (NULL == dataParam)
+        {
+            LE_INFO("dataParam is NULL");
+        }
         cm_data_StartDataConnection(dataParam);
     }
     else if (strcmp(command, "apn") == 0)
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "APN name missing. e.g. cm data apn <apn name>"))
         {
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
             exit(cm_data_SetApnName(dataParam));
         }
     }
@@ -1120,6 +1129,11 @@ void cm_data_ProcessDataCommand
                                      numArgs,
                                      "PDP type name missing. e.g. cm data pdp <pdp type>"))
         {
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
             exit(cm_data_SetPdpType(dataParam));
         }
     }
@@ -1130,6 +1144,11 @@ void cm_data_ProcessDataCommand
         {
             const char* userNamePtr = le_arg_GetArg(3);
             const char* passwordPtr = le_arg_GetArg(4);
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
             if (NULL == userNamePtr)
             {
                 LE_ERROR("userNamePtr is NULL");
@@ -1145,6 +1164,11 @@ void cm_data_ProcessDataCommand
         // for none option
         else if (numArgs == 3)
         {
+            if (NULL == dataParam)
+            {
+                LE_ERROR("dataParam is NULL");
+                exit(EXIT_FAILURE);
+            }
             exit(cm_data_SetAuthentication(dataParam, "", ""));
         }
         else

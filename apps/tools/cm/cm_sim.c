@@ -642,7 +642,7 @@ void cm_sim_ProcessSimCommand
 {
     SimId = le_sim_GetSelectedCard();
     const char* pinPtr = le_arg_GetArg(2);
-    if (NULL == pinPtr)
+    if ((numArgs > 2) && (NULL == pinPtr))
     {
         LE_ERROR("pinPtr is NULL");
         exit(EXIT_FAILURE);
