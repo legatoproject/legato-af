@@ -40,4 +40,9 @@ public class Ref<RefType>
     {
         value = newValue;
     }
+
+    public boolean isSet()
+    {
+        return value != null;
+    }
 }

@@ -122,17 +122,12 @@ public class {{apiName}}Server implements AutoCloseable
         {%- for parameter in function.parameters if parameter is OutParameter %}
         {%- if parameter is ArrayParameter %}
         Ref<{{parameter.apiType|FormatBoxedType}}[]> _{{parameter.name}} = null;
+        {% else %}
+        Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} = null;
+        {% endif %}
         if ((_requiredOutputs & (1 << {{loop.index0}})) != 0) {
             _{{parameter.name}} = new Ref<>();
         }
-        {%- else %}
-        Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} = null;
-        if ((_requiredOutputs & (1 << {{loop.index0}})) != 0)
-        {
-            _{{parameter.name}} =
-                new Ref<{{parameter.apiType|FormatBoxedType}}>({{parameter.apiType|DefaultValue}});
-        }
-        {%- endif %}
 
         {%- endfor %}
         {% if function.returnType %}{{function.returnType|FormatType}} result = {% endif -%}
@@ -148,6 +143,20 @@ public class {{apiName}}Server implements AutoCloseable
         {%- endif %}
         {%- for parameter in function.parameters if parameter is OutParameter %}
         if (_{{parameter.name}} != null) {
+            if (!_{{parameter.name}}.isSet()) {
+                {%- if parameter is ArrayParameter %}
+                _{{parameter.name}}.setValue(new {{parameter.apiType|FormatBoxedType}}[0]);
+                {%- elif parameter.apiType is EnumType %}
+                _{{parameter.name}}.setValue({{parameter.apiType|FormatBoxedType}}.values()[0]);
+                {%- elif parameter.apiType is BitMaskType %}
+                _{{parameter.name}}.setValue(new {{parameter.apiType|FormatBoxedType}}(BigInteger.ZERO));
+                {%- else %}
+                _{{parameter.name}}.setValue({{parameter.apiType|DefaultValue}});
+                {%- endif %}
+                if (!_{{parameter.name}}.isSet()) {
+                    throw new IllegalStateException("Cannot return null value");
+                }
+            }
             {%- if parameter is ArrayParameter %}
             if ( _{{parameter.name}}.getValue().length > {{parameter.maxCount}}) {
                 throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
