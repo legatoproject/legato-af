@@ -849,24 +849,22 @@ void app_FinishUpdates
 )
 {
     DIR* dirPtr;
-    struct dirent curEntry;
-    struct dirent* curEntryPtr;
+    struct dirent *curEntryPtr;
     static const char* appDirPtr = SYSTEM_PATH "/current/apps";
     bool finishedUpdate = false, updateSuccess = true;
 
     LE_FATAL_IF(NULL == (dirPtr = opendir(appDirPtr)),
                 "Could not open app directory");
 
-    while ((0 == readdir_r(dirPtr, &curEntry, &curEntryPtr)) &&
-           curEntryPtr)
+    while (errno = 0, (curEntryPtr = readdir(dirPtr)) != NULL)
     {
         char appPath[PATH_MAX];
         char appName[PATH_MAX];
         char appMd5[LIMIT_MD5_STR_BYTES];
         int matchLen = 0;
 
-        if ((1 == sscanf(curEntry.d_name, ".new.%s%n", appName, &matchLen)) &&
-            (strlen(curEntry.d_name) == matchLen))
+        if ((1 == sscanf(curEntryPtr->d_name, ".new.%s%n", appName, &matchLen)) &&
+            (strlen(curEntryPtr->d_name) == matchLen))
         {
             // Interrupted install; finish the process.
             if (!finishedUpdate)
@@ -878,7 +876,7 @@ void app_FinishUpdates
                 finishedUpdate = true;
             }
 
-            snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntry.d_name);
+            snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntryPtr->d_name);
             installer_GetAppHashFromSymlink(appPath, appMd5);
 
             if (PerformAppUpgrade(appMd5, appName) != LE_OK)
@@ -889,8 +887,8 @@ void app_FinishUpdates
 
             ExecPostinstallHook(appMd5);
         }
-        else if ((1 == sscanf(curEntry.d_name, ".del.%s%n", appName, &matchLen)) &&
-                 (strlen(curEntry.d_name) == matchLen))
+        else if ((1 == sscanf(curEntryPtr->d_name, ".del.%s%n", appName, &matchLen)) &&
+                 (strlen(curEntryPtr->d_name) == matchLen))
         {
             // Interrupted remove; finish the process.
             if (!finishedUpdate)
@@ -905,7 +903,7 @@ void app_FinishUpdates
                 finishedUpdate = true;
             }
 
-            snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntry.d_name);
+            snprintf(appPath, sizeof(appPath), "%s/%s", appDirPtr, curEntryPtr->d_name);
             installer_GetAppHashFromSymlink(appPath, appMd5);
 
             if (PerformAppDelete(appMd5, appName, NULL) != LE_OK)
