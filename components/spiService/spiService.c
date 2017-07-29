@@ -25,6 +25,7 @@ typedef struct
 
 static bool IsDeviceOwnedByCaller(const Device_t* handle);
 static Device_t const* FindDeviceWithInode(ino_t inode);
+static void CloseDevice(le_spi_DeviceHandleRef_t handle, Device_t* device);
 static void CloseAllHandlesOwnedByClient(le_msg_SessionRef_t owner);
 static void ClientSessionClosedHandler(le_msg_SessionRef_t clientSession, void* context);
 
@@ -149,16 +150,9 @@ void le_spi_Close
         return;
     }
 
-    // Remove the handle from the map so it can't be used again
-    le_ref_DeleteRef(DeviceHandleRefMap, handle);
-
-    int closeResult = close(device->fd);
-    if (closeResult != 0)
-    {
-        LE_WARN("Couldn't close the fd cleanly: (%m)");
-    }
-    le_mem_Release(device);
+    CloseDevice(handle, device);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -384,6 +378,27 @@ static Device_t const* FindDeviceWithInode
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Close the device associated with the handle.
+ *
+ * No check is performed to verify that the device is associated with the handle
+ * because it is assumed that the caller will have already verified this.
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseDevice(le_spi_DeviceHandleRef_t handle, Device_t* device)
+{
+    // Remove the handle from the map so it can't be used again
+    le_ref_DeleteRef(DeviceHandleRefMap, handle);
+
+    int closeResult = close(device->fd);
+    if (closeResult != 0)
+    {
+        LE_WARN("Couldn't close the fd cleanly: (%m)");
+    }
+    le_mem_Release(device);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Closes all of the handles that are owned by a specific client session.  The purpose of this
  * function is to free resources on the server side when it is detected that a client has
  * disconnected.
@@ -400,7 +415,7 @@ static void CloseAllHandlesOwnedByClient
     bool finished = le_ref_NextNode(it) != LE_OK;
     while (!finished)
     {
-        Device_t const* device = le_ref_GetValue(it);
+        Device_t* device = le_ref_GetValue(it);
         LE_ASSERT(device != NULL);
         // In order to prevent invalidating the iterator, we store the reference of the device we
         // want to close and advance the iterator before calling le_spi_Close which will remove the
@@ -410,7 +425,7 @@ static void CloseAllHandlesOwnedByClient
         finished = le_ref_NextNode(it) != LE_OK;
         if (toClose != NULL)
         {
-            le_spi_Close(toClose);
+            CloseDevice(toClose, device);
         }
     }
 }
