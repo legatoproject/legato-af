@@ -8,7 +8,7 @@
 ifneq ($(findstring $(MAKECMDGOALS),docs user_docs implementation_docs),)
     export TARGET := localhost
 else
-        export TARGET := $(lastword $(subst _, ,$(MAKECMDGOALS)))
+    export TARGET := $(lastword $(subst _, ,$(MAKECMDGOALS)))
 endif
 
 TARGET_CAPS := $(shell echo $(TARGET) |tr a-z A-Z)
@@ -29,7 +29,11 @@ endif
 ifeq ($(TARGET),localhost)
     # If the toolchain directory is not specified, assume the directory that GCC is installed in.
     ifeq ($(TOOLCHAIN_DIR),)
-        export TOOLCHAIN_DIR := $(dir $(shell which gcc))
+        ifeq ($(USE_CLANG),1)
+            export TOOLCHAIN_DIR := $(dir $(shell which clang))
+        else
+            export TOOLCHAIN_DIR := $(dir $(shell which gcc))
+        endif
         export TOOLCHAIN_PREFIX :=
     endif
 
