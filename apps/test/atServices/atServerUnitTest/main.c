@@ -197,93 +197,6 @@ le_result_t SendCommandsAndTest
 
 //--------------------------------------------------------------------------------------------------
 /**
- * test data mode
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t TestDataMode
-(
-    int fd,
-    int epollFd
-)
-{
-    char buf[DSIZE];
-    char expectedResponse[DSIZE];
-    struct epoll_event ev;
-    int ret = 0;
-    int offset = 0;
-    ssize_t size = 0;
-
-
-    memset(buf, 0 , DSIZE);
-
-    sprintf(buf,"AT+DATA\r");
-    sprintf(expectedResponse,
-        "\r\nCONNECT\r\n"
-        "testing the data mode"
-        "\r\nNO CARRIER\r\n"
-        "\r\nCONNECTED\r\n"
-        "\r\nCONNECTED\r\n"
-        "\r\nCONNECTED\r\n");
-
-    LE_DEBUG("Command: %s", PrettyPrint(buf));
-
-    if (write(fd, buf, strlen(buf)) == -1)
-    {
-        LE_ERROR("write failed: %s", strerror(errno));
-        return LE_IO_ERROR;
-    }
-
-    memset(buf, 0 , DSIZE);
-
-    while (1)
-    {
-        ret = epoll_wait(epollFd, &ev, 1, SERVER_TIMEOUT);
-        if (ret == -1)
-        {
-            LE_ERROR("epoll wait failed: %s", strerror(errno));
-            return LE_IO_ERROR;
-        }
-
-        if  (!ret)
-        {
-            LE_ERROR("Timed out waiting for server's response");
-            return LE_TIMEOUT;
-        }
-
-        if (ev.data.fd != fd)
-        {
-            LE_ERROR("%s", strerror(EBADF));
-            return LE_IO_ERROR;
-        }
-
-        if (ev.events & EPOLLRDHUP)
-        {
-            LE_ERROR("%s", strerror(ECONNRESET));
-            return LE_TERMINATED;
-        }
-
-        size = read(fd, buf+offset, DSIZE);
-        if (size == -1)
-        {
-            LE_ERROR("read failed: %s", strerror(errno));
-            return LE_IO_ERROR;
-        }
-
-        offset += size;
-
-        LE_DEBUG("Response: %s", PrettyPrint(buf));
-
-        if (!strcmp(buf, expectedResponse))
-        {
-            break;
-        }
-    }
-
-    return LE_OK;
-}
-//--------------------------------------------------------------------------------------------------
-/**
  * host thread function
  *
  */
@@ -440,7 +353,34 @@ static void* AtHost
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+DATA=?",
                 "\r\nOK\r\n"));
 
-    LE_ASSERT_OK(TestDataMode(socketFd, epollFd));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE",
+                "\r\nERROR\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=?",
+                "\r\n+CMEE: (0-2)\r\n"
+                "\r\nOK\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=0",
+                "\r\nOK\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE?",
+                "\r\n+CMEE: 0\r\n"
+                "\r\nOK\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=1",
+                "\r\nOK\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE?",
+                "\r\n+CMEE: 1\r\n"
+                "\r\nOK\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=2",
+                "\r\nOK\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE?",
+                "\r\n+CMEE: 2\r\n"
+                "\r\nOK\r\n"));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+DATA",
+                "\r\nCONNECT\r\n"
+                "testing the data mode"
+                "\r\nNO CARRIER\r\n"
+                "\r\nCONNECTED\r\n"
+                "\r\nCONNECTED\r\n"
+                "\r\nCONNECTED\r\n"));
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CBC",
                 "\r\n+CBC: 1,50,4190\r\n"

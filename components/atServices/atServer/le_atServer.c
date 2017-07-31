@@ -192,6 +192,13 @@ static le_hashmap_Ref_t   CmdHashMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Extended error codes
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ExtendedErrorCodes = false;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * structure used to describe a parameter.
  *
  */
@@ -563,7 +570,7 @@ static void SendFinalRsp
 {
     devPtr->rspState = AT_RSP_FINAL;
 
-    if (devPtr->finalRsp.customStringAvailable)
+    if (devPtr->finalRsp.customStringAvailable && ExtendedErrorCodes)
     {
         SendRspString(devPtr, RSP_TYPE_RESPONSE, devPtr->finalRsp.resp);
     }
@@ -2764,6 +2771,32 @@ le_result_t le_atServer_RemoveDeviceFromBridge
     devPtr->bridgeRef = NULL;
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables extended error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_EnableExtendedErrorCodes
+(
+    void
+)
+{
+    ExtendedErrorCodes = true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables extended error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_DisableExtendedErrorCodes
+(
+    void
+)
+{
+    ExtendedErrorCodes = false;
 }
 
 //--------------------------------------------------------------------------------------------------

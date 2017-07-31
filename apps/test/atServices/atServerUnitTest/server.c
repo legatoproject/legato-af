@@ -9,8 +9,35 @@
 #include "defs.h"
 #include "strerror.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum supported commands
+ */
+//--------------------------------------------------------------------------------------------------
 #define COMMANDS_MAX    50
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum supported parameters
+ */
+//--------------------------------------------------------------------------------------------------
 #define PARAM_MAX       24
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Strtol base 10
+ */
+//--------------------------------------------------------------------------------------------------
+#define BASE10  10
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Extended error codes levels
+ */
+//--------------------------------------------------------------------------------------------------
+#define DISABLE_EXTENDED_ERROR_CODES            0
+#define ENABLE_NUMERIC_EXTENDED_ERROR_CODES     1
+#define ENABLE_STRING_EXTENDED_ERROR_CODES      2
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -64,6 +91,13 @@ static ServerData_t ServerData;
  */
 //--------------------------------------------------------------------------------------------------
 static AtSession_t AtSession;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Extended error code value
+ */
+//--------------------------------------------------------------------------------------------------
+static int ExtendedErrorCode = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -641,6 +675,69 @@ static void AtdCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Cmee command handler
+ *
+ * tests:
+ *  - le_atServer_EnableExtendedErrorCodes()
+ *  - le_atServer_DisableExtendedErrorCodes()
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CmeeCmdHandler
+(
+    le_atServer_CmdRef_t commandRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    le_atServer_FinalRsp_t finalRsp = LE_ATSERVER_OK;
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES] = {0};
+    char rsp[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
+
+    switch (type)
+    {
+        case LE_ATSERVER_TYPE_PARA:
+            LE_ASSERT_OK(le_atServer_GetParameter(commandRef,
+                                                  0,
+                                                  param,
+                                                  LE_ATDEFS_PARAMETER_MAX_BYTES));
+            ExtendedErrorCode = (int)strtol(param, NULL, BASE10);
+            switch (ExtendedErrorCode)
+            {
+                case DISABLE_EXTENDED_ERROR_CODES:
+                    le_atServer_DisableExtendedErrorCodes();
+                    break;
+                case ENABLE_NUMERIC_EXTENDED_ERROR_CODES:
+                case ENABLE_STRING_EXTENDED_ERROR_CODES:
+                    le_atServer_EnableExtendedErrorCodes();
+                    break;
+                default:
+                    finalRsp = LE_ATSERVER_ERROR;
+                    break;
+            }
+            break;
+        case LE_ATSERVER_TYPE_READ:
+            snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "+CMEE: %d", ExtendedErrorCode);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
+            break;
+        case LE_ATSERVER_TYPE_TEST:
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, "+CMEE: (0-2)"));
+            break;
+        case LE_ATSERVER_TYPE_ACT:
+            finalRsp = LE_ATSERVER_ERROR;
+            break;
+
+        default:
+            LE_ASSERT(0);
+            break;
+    }
+
+    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, finalRsp, false, ""));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Cleanup thread function
  *
  */
@@ -767,6 +864,11 @@ void AtServer
             .atCmdPtr = "ATD",
             .cmdRef = NULL,
             .handlerPtr = AtdCmdHandler,
+        },
+        {
+            .atCmdPtr = "AT+CMEE",
+            .cmdRef = NULL,
+            .handlerPtr = CmeeCmdHandler,
         },
     };
 

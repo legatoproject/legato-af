@@ -101,6 +101,11 @@
  * le_atServer_EnableEcho() allows the user to enable echo on a selected device.
  * le_atServer_DisableEcho() allows the user to disable echo on a selected device.
  *
+ * le_atServer_EnableExtendedErrorCodes() allows the user to use extended error
+ * codes on a selected device.
+ * le_atServer_DisableExtendedErrorCodes() allows the user to disable extended
+ * error codes on a selected device.
+ *
  * @section atServer_handler Handler
  *
  * To handle the AT command, the application has to subscribe a handler using
@@ -586,3 +591,20 @@ FUNCTION le_result_t RemoveDeviceFromBridge
     Bridge            bridgeRef       IN  ///< Bridge refence
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables extended error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION EnableExtendedErrorCodes
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables extended error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DisableExtendedErrorCodes
+(
+);
