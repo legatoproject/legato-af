@@ -1,0 +1,49 @@
+/** @page sampleApps_AVAssetData AirVantage AssetData
+
+
+This sample Legato application demonstrates data exchange feature between an embedded Legato
+App and AirVantage server, over the LWM2M protocol. This latter feature requires Legato 17.06.
+Simulated room temperatures are pushed to AirVantage every 10 seconds.
+
+This application has been tested on Sierra Wireless AirPrime WP8548 module hosted on MangOH board.
+
+Asset Data
+----------
+Let’s design a simple home automation scenario to monitor and to control temperature of a Room,
+remotely using AirVantage.
+
+A room has :
+- @c __3 variables__ : *ROOM_NAME_VAR_RES*, *IS_AC_ON_VAR_RES*, *ROOM_TEMP_READING_VAR_RES*.
+ AirVantage only has read-access to these variables
+- @c __1 setting__ : *TARGET_TEMP_SET_RES* that can be changed by AirVantage.
+ User can therefore set the temperature of the room remotely
+- @c __1 command__ : *AC_CMD_TURN_OFF_RES* that can be triggered by AirVantage upon user request.
+
+This collection of data are declared variables by Linux paths.<br>
+
+
+Application Scenario
+--------------------
+AirVantage can perform the following actions, for each instance:
+- Retrieve the name of the room, the current room temperature and the current status of the
+  AC (On or Off)
+- Set the target temperature of the room, the AC is automatically switched On
+- Trigger a command to turn off the AC
+
+
+Get the
+[sample app code](https://github.com/legatoproject/legato-af/tree/master/apps/sample/assetData)
+
+Run this to install the sample app:
+@verbatim
+$ bin/legs
+$ cd $LEGATO_ROOT/apps/sample/assetData
+$ make wp85
+$ update assetDataTutorial.wp85.update <ip address>
+@endverbatim
+
+@ref sampleApps_startApp
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

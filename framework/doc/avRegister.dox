@@ -50,20 +50,16 @@ OK
 - Configure your CF3 module to connect to the AirVantage server, by entering @c at+wdsi @c = @c 8191
 @verbatim
 at+wdsi=8191
-OK          # returing OK means you have configured the connection to the AirVantage server
+OK          # returning OK means you have configured the connection to the AirVantage server
 @endverbatim
 
 - Initiate a connection, authenticate and execute a pending job on the AirVantage server:
 @verbatim
 at+wdss=1,1
-at+wdsi=4
-at+wdsi=6
-at+wdsi=8
-@endverbatim
-
-- Test that a connection can be created to device management server:
-@verbatim
-at+wdsi=23,1
+OK
++WDSI: 4      # displays the current state of authentication notification
++WDSI: 6      # displays that the session has succeeded and has started
++WDSI: 23,1   # displays that the target has successfully connected to the AirVantage Service
 @endverbatim
 
 - @c CTRL+X to leave the AT entry mode and return to the Linux command prompt
@@ -86,7 +82,7 @@ Now that your target is configured and setup for use with AirVantage you can:
 - build your Apps to connect to, update, and send sensor data to the AirVantage Server.
 - act on any actuators from the AirVantage Server.
 
-The AirVantage Platform Service includes two API's to enable all interactions with AirVantage:
+The AirVantage Platform Service includes two API's to enable interactions with AirVantage:
 - @ref c_le_avc
 - @ref c_le_avdata.
 

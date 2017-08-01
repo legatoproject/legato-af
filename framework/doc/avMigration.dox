@@ -1,4 +1,4 @@
-/** @page avMigration AirVantage 1.0 to 2.0 Migration Notes
+/** @page avMigration AirVantage 1.0 to 2.0 Migration
 
 AirVantage Connector 2.0 changes the way that the Legato AF connects to the AirVantage Cloud service.
 

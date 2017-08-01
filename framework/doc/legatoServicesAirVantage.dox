@@ -1,9 +1,10 @@
-/** @page legatoServicesAirVantage AirVantage Connector Service
+/** @page legatoServicesAirVantage AirVantage Connector
 
 Use the AirVantage Connect Platform Service for remote administration of Legato AF.
 
-Legato release 17.05 enables AirVantage Connector Version 2 (AVC 2.0).  See the @ref avMigration
-Guide to compare differences between AVC 1.0 and AVC 2.0.
+Legato release 17.05 enables AirVantage Connector Version 2 (AVC 2.0).
+
+See the @ref avMigration Guide to compare differences between AVC 1.0 and AVC 2.0.
 
 @section legatoServicesAirVantage_docs Documentation
 
@@ -16,23 +17,24 @@ Guide to compare differences between AVC 1.0 and AVC 2.0.
 - TimeSeries enables users to aggregate multiple data points into a single push
 - TimeSeries Observe function has been replaced with a push function
 
-| Section                      | Description                                               |
-| ---------------------------- | ----------------------------------------------------------|
-| @subpage avMigration         | AVC 1.0 vs AVC 2.0 differences                            |
-| @subpage avRegister          | Register a target with AirVantage                         |
-| @subpage avInstallUpload     | Build an App Bundle and deploy using AirVantage           |
-| @subpage avData              | How to use AssetData with AirVantage 2.0                  |
-| @subpage avConfigure         | Troubleshooting and Configuration settings for AirVantage |
+| Section                      | Description                                                  |
+| ---------------------------- | -------------------------------------------------------------|
+| @subpage avMigration         | AVC 1.0 vs AVC 2.0 differences                               |
+| @subpage avRegister          | Register a target with AirVantage                            |
+| @subpage avInstallUpload     | Build an App Bundle and deploy using AirVantage              |
+| @subpage avData              | How to use AssetData with AirVantage 2.0                     |
+| @subpage avExchangeData      | Tutorial on sending/receiving sensor data to/from AirVantage |
+| @subpage avConfigure         | Troubleshooting and Configuration settings for AirVantage    |
 
-@section legatoServicesAirVantage_API Exported APIs
+@section legatoServicesAirVantage_API APIs
 
-The AirVantage Platform Service exposes two APIs that will help with connecting to the AirVantage
-Server and set up any Asset Data with the AirVantage service.
+The AirVantage Platform Service exposes two APIs that will manage connecting to the AirVantage
+Server and setting up any Asset Data with the AirVantage Service.
 
-| API                  | File Name        | Description                                               |
-| ---------------------|----------------- | ----------------------------------------------------------|
-| @subpage c_le_avc    | @c le_avc.api    | API to control and configure upgrade and network settings |
-| @subpage c_le_avdata | @c le_avdata.api | API to send and receive data from the AirVantage Server   |
+| API Guide            | API Reference                  | File Name        | Description                                        |
+| ---------------------|--------------------------------|------------------| ---------------------------------------------------|
+| @subpage c_le_avc    | @subpage le_avc_interface.h    | @c le_avc.api    | Control and configure upgrade and network settings |
+| @subpage c_le_avdata | @subpage le_avdata_interface.h | @c le_avdata.api | Send and receive data from the AirVantage Server   |
 
 @section legatoServicesAirVantage_PS App Implementation
 
@@ -48,8 +50,8 @@ To bind to these APIs customize the following bindings for your App's .adef:
 @code
 bindings:
 {
-    <myExecutable>.<myComponentClient> -> avcService.le_avc
-    <myExecutable>.<myComponentClient> -> avcService.le_avdata
+    <myExecutable>.<myComponentClient>.le_avc -> avcService.le_avc
+    <myExecutable>.<myComponentClient>.le_avdata -> avcService.le_avdata
 }
 @endcode
 
@@ -60,6 +62,11 @@ The @ref sampleApps_AV App provides examples of:
  - Receiving incoming SMS wake up messages
  - Reading and setting a Polling timer
  - Reading and setting Retry timers
+
+The @ref sampleApps_AVAssetData provides a @ref avExchangeData "tutorial" of:
+- Reading and Pushing Data between a Legato App and the AirVantage Server
+- Using a command to trigger a switch change from the AirVantage Server
+- Creating an App that connects to the AirVantage Server
 
 @section legatoServicesAirVantage_ExternalDocs External Documentation
 

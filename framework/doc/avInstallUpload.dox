@@ -52,14 +52,7 @@ $ cat helloWorld.wp85.update | myAppSigner > helloWorld.wp85.signed
 $ av-pack -f helloWorld.wp85.signed abcCo.jsmith.helloWorld _build_helloWorld/wp85
 @endverbatim
 
-@section avInstallUpload Uploading an App Bundle to AirVantage
-
-To upload an App bundle to AirVantage, first create an Installation Job in the
-AirVantage UI, upload the zip file and then set your target to receive the update from the
-Vantage agent.  To receive the update you have to create your own App using the @ref c_le_avc API.
-Once the update is installed you can check the status in AirVantage.
-
-@subsection avInstallUploadCreateInstJob Create App Installation job
+@section avInstallCreateInstJob Create App Installation job
 
 To install your App on a remote target, you must first upload your app to AirVantage and then
 Create an App install job to install the App on the remote target.
@@ -78,10 +71,14 @@ Create the App install job:
 
 AirVantage will then queue the App to be installed on your Target.
 
-@subsection avInstallUploadRcvAgent Receive App on AirVantage Agent
+@section avInstallRcvAgent Receive App on AirVantage Agent
 
-This requires creating an @c avc control App using the LWM2M AVC API that accepts the download and
-installation. See @ref c_le_avc API for details.
+This requires either:
+- creating an @c avc control App using the LWM2M AVC API that accepts the
+download and installation. See @ref c_le_avc API for details.
+- using AT commands to download and install the update.  For information on AT Commands download the
+AT Command Reference from your module provider. (e.g.,
+[AirPrime WPX5XX/WP76XX AT Command Reference](https://source.sierrawireless.com/resources/airprime/software/airprime_wpx5xx_wp76xx_at_command_reference_r3/) ).
 
 @subsection avInstallUploadStatus Check Success Status on AirVantage
 

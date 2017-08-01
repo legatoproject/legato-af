@@ -170,7 +170,7 @@ At this point the target is ready to be connected to the AirVantage Server. Use 
 le_avc_StartSession() to start a session or use the @c at command to connect the device to
 AirVantage.
 
-Steps to connect to the AirVanatage Server AT commands:
+Steps to connect to the AirVantage Server with AT commands:
  - @c ssh to device: @c ssh @c 192.168.2.2
  - open an AT connection: <c>microcom -E /dev/ttyAT</c>
  - enable all notification: @c at+wdsi=8191
@@ -179,12 +179,13 @@ Steps to connect to the AirVanatage Server AT commands:
 Example for WPX5XX/WP76XX/FX30 Customers:
 @verbatim
 # microcom -E /dev/ttyAT
-at+wdsi=8191
+at+wdsi=8191  # activates all AirVantage Server notifications
 OK
-at+wdss=1,1
+at+wdss=1,1   # starts a connection to the AirVantage Server
 OK
-+WDSI: 6
-+WDSI: 23,1
++WDSI: 4      # displays the current state of authentication notification
++WDSI: 6      # displays that the session has succeeded and has started
++WDSI: 23,1   # displays that the target has successfully connected to the AirVantage Service
 @endverbatim
 
 For information on AT Commands download the AT Command Reference from your module provider.

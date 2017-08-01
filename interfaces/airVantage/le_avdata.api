@@ -2,7 +2,7 @@
 /**
  * @page c_le_avdata AirVantage Data API
  *
- * @ref le_avdata_interface.h "Type/Function Reference" <br>
+ * @ref le_avdata_interface.h "API Reference" <br>
  * @ref avData "How To Manage Data"
  *
  * This API provides a data service to allow Apps to manage App-specific data on the AirVantage

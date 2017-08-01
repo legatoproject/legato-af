@@ -1,37 +1,115 @@
 /** @page sampleApps Sample Apps
 
-Legato has these sample apps:
 
-@subpage sampleApps_AV <br>
-@subpage sampleApps_commandLine <br>
-@subpage sampleApps_eCall <br>
-@subpage sampleApps_gpioCf3 <br>
-@subpage sampleApps_helloIpc <br>
-@subpage sampleApps_helloWorld <br>
-@subpage sampleApps_httpGet <br>
-@subpage sampleApps_httpServer <br>
-@subpage sampleApps_karaoke <br>
-@subpage sampleApps_legacy <br>
-@subpage sampleApps_lowPower <br>
-@subpage sampleApps_modemDemo <br>
-@subpage sampleApps_shellPiping <br>
-@subpage sampleApps_sms <br>
-@subpage sampleApps_fwupdateDownloader <br>
+The Legato team has included sample Apps to show examples of concepts and give code examples for you
+to follow to create your own Apps.
 
-All sample apps are located in @c apps/sample/. The built apps are located in
+| App                                    | Description                                             |
+|----------------------------------------|---------------------------------------------------------|
+| @subpage sampleApps_AV                 | App demonstrates using the AirVantage Service           |
+| @subpage sampleApps_AVAssetData        | App demonstrates using Asset Data with AirVantage       |
+| @subpage sampleApps_commandLine        | App demonstrates an example of a sandboxing an App      |
+| @subpage sampleApps_eCall              | App demonstrates testing an eCall session               |
+| @subpage sampleApps_gpioCf3            | App demonstrates using the GPIO service                 |
+| @subpage sampleApps_helloIpc           | App demonstrates host and target communications         |
+| @subpage sampleApps_helloWorld         | App demonstrates starting Legato AF concepts            |
+| @subpage sampleApps_httpGet            | App demonstrates opening an data connection             |
+| @subpage sampleApps_httpServer         | App demonstrates how to create an HTTP server           |
+| @subpage sampleApps_karaoke            | App demonstrates user interactivity                     |
+| @subpage sampleApps_legacy             | App demonstrates steps to port Legacy C code to Legato  |
+| @subpage sampleApps_lowPower           | App demonstrates the Ultra Low Power Service            |
+| @subpage sampleApps_modemDemo          | App demonstrates how to interact with the Modem Service |
+| @subpage sampleApps_shellPiping        | App demonstrates using tools within a sandbox           |
+| @subpage sampleApps_sms                | App demonstrates using the SMS service                  |
+| @subpage sampleApps_fwupdateDownloader | App demonstrates using the fwupdate service             |
+
+All sample apps are located in @c $LEGATO_ROOT/apps/sample/. The built Apps are located in
 <code>build/\<target\>/bin/samples</code>.
 
-@section sampleApps_startApp Start App
+@section sampleApps_startApp Install and Start App
 
-To start an app, run this on the target:
 
+All of our sample Apps have an included make file that will assist in building and installing the
+app on a target.
+
+To build a Sample App make sure that you have fully @ref basicBuild "installed Legato AF" on your
+dev machine.  If you haven't already done it as part of the install process make sure that you have
+built Legato for your target device.
+
+@verbatim
+$ cd $LEGATO_ROOT
+$ make <target>                         # e.g., make wp85
+@endverbatim
+
+Next run @c bin/legs to set environment variables and open up a Legato customized shell.
+
+@verbatim
+$ cd $LEGATO_ROOT
+$ bin/legs                              # legs stands for legato shell
+@endverbatim
+
+Next @cd to the directory of the sample app that you wish to install, most sample Apps are included
+in @c $LEGATO_ROOT/apps/sample/<appName>.  Sample Apps have a make file included with them that will
+configure the install file for your target.  (e.g., Run make wp85 to build the sample app for a
+wp85xx device)
+
+@verbatim
+$ cd $LEGATO_ROOT/apps/sample/<appName>
+$ make <target>                         # e.g., make wp85
+@endverbatim
+
+Once that has successfully completed you will find an install package in the sample app directory
+called @c <appname>.<target>.update (e.g., @c helloWorld.wp85.update).  You can now use the
+@ref toolsHost_update tool to install the sample app on your target.
+
+@verbatim
+$ update <update file> <target ip>       # e.g., update helloWorld.wp85.update 192.168.2.2
+@endverbatim
+
+Now the the App is installed you can start it on your target. SSH to your target device.
+
+@verbatim
+$ ssh <device ip>                       # e.g., ssh root@192.168.2.2
+@endverbatim
+
+Start the App:
+
+@verbatim
+# app start <appName>                   # e.g., app start helloWorld
+@endverbatim
+
+@subsection sampleApps_startApp_Logging Viewing the Logs
+
+If you wish to view the real time logs for the sample App:
+
+Open 2 terminals to the target:
+
+@code ssh root@192.168.2.2 @endcode
+
+In the 1st terminal (to continuously view the logs):
+@verbatim
+# logread -f | grep <appName>
+@endverbatim
+
+In the 2nd terminal (to start the app):
+@verbatim
+# app status                            # check that <appName> is listed
+# app start <appName>                   # e.g., app start helloWorld
+@endverbatim
+
+In the 1st terminal you should see logging statements like:
+@verbatim
+# logread -f | grep "helloWorld"
+<TIME> <target> user.info Legato:  INFO | supervisor[465]/supervisor T=main | app.c CreateTmpFs() 1204 | Mounted tmpfs at /legato/systems/current/appsWriteable/helloWorld/tmp.
+<TIME> <target> user.info Legato:  INFO | supervisor[465]/supervisor T=main | app.c CreateFileLink() 1504 | Created file link '/tmp/legato/serviceDirectoryServer' to '/legato/systems/current/appsWriteable/helloWorld/tmp/legato/serviceDirectoryServer'.
+<TIME> <target> user.info Legato:  INFO | supervisor[465]/supervisor T=main | app.c CreateFileLink() 1504 | Created file link '/tmp/legato/serviceDirectoryClient' to '/legato/systems/current/appsWriteable/helloWorld/tmp/legato/serviceDirectoryClient'.
+<TIME> <target> user.debug Legato:  DBUG | _UNKNOWN_[1518]/<invalid> T=main | _componentMain.c _helloWorldComponent_Init() 26 | Initializing helloWorldComponent component library.
+<TIME> <target> user.info Legato:  INFO | helloWorld[1518]/helloWorldComponent T=main | helloWorldComponent.c _helloWorldComponent_COMPONENT_INIT() 5 | Hello, world.
+@endverbatim
+
+Stop the App (if needed):
 @code
-root@swi-mdm9x15:~# app start <app name>
-@endcode
-
-To stop an app on the target, run:
-@code
-root@swi-mdm9x15:~# app stop <app name>
+# app stop <app name>                   # e.g., app stop helloWorld
 @endcode
 
 Run @c app @c help for options.
