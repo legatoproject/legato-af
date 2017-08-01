@@ -186,8 +186,8 @@ static void StatusHandler
             statusPtr = "REBOOT_PENDING";
             break;
 
-        case LE_AVC_CONNECTION_REQUIRED:
-            statusPtr = "CONNECTION_REQUIRED";
+        case LE_AVC_CONNECTION_PENDING:
+            statusPtr = "CONNECTION_PENDING";
             break;
 
         case LE_AVC_AUTH_STARTED:

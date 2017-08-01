@@ -221,11 +221,12 @@
  * credentials are provisioned by AirVantage Bootstrap Server. This API is used to retrieve the
  * status of credentials provisioned on the device.
  *
- * @section c_le_avc_connection Connection required
+ * @section c_le_avc_connection Connection pending
  *
  * The AirVantage agent can request a connection to the AirVantage server, especially when a
- * firmware package is installed (after a platform reboot). In this case a notification is sent to
- * the control App, which can start the connection with le_avc_StartSession().
+ * firmware package is installed (after a platform reboot) or device reboots in the middle of
+ * software update (after finishing software update on reboot). In this case a notification is sent
+ * to the control App, which can start the connection with le_avc_StartSession().
  *
  * @section c_le_avc_routing Data routing
  *
@@ -421,7 +422,10 @@ ENUM Status
     SESSION_STARTED,        ///< Session with AV server started
     SESSION_STOPPED,        ///< Session with AV server stopped
     REBOOT_PENDING,         ///< Device reboot is pending
-    CONNECTION_REQUIRED,    ///< Connection to the server is required
+    CONNECTION_PENDING,     ///< Connection to the server is required. This is necessary when
+                            ///< firmware package is installed (after a platform reboot). Also
+                            ///< necessary after software update if device reboots(or session stops)
+                            ///< in the middle of software update.
     AUTH_STARTED,           ///< Authentication with AV server started
     AUTH_FAILED             ///< Authentication with AV server failed
 };
