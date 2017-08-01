@@ -212,7 +212,7 @@ static void PositionHandlerFunction
     uint32_t direction;
     uint32_t directionAccuracy;
 
-    if(positionSampleRef == NULL)
+    if (NULL == positionSampleRef)
     {
         LE_ERROR("New Position sample is NULL!");
     }
@@ -222,92 +222,75 @@ static void PositionHandlerFunction
     }
 
     // Get UTC date
-    result = le_gnss_GetDate(positionSampleRef
-                            , &year
-                            , &month
-                            , &day);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    result = le_gnss_GetDate(positionSampleRef, &year, &month, &day);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+
     // Get UTC time
-    result = le_gnss_GetTime(positionSampleRef
-                            , &hours
-                            , &minutes
-                            , &seconds
-                            , &milliseconds);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    result = le_gnss_GetTime(positionSampleRef, &hours, &minutes, &seconds, &milliseconds);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
     // Get Epoch time
-    LE_ASSERT(le_gnss_GetEpochTime(positionSampleRef, &EpochTime) == LE_OK);
+    LE_ASSERT_OK(le_gnss_GetEpochTime(positionSampleRef, &EpochTime));
 
     // Display time/date format 13:45:30 2009-06-15
-    LE_INFO("%02d:%02d:%02d %d-%02d-%02d,"
-            , hours, minutes, seconds
-            , year, month, day);
+    LE_INFO("%02d:%02d:%02d %d-%02d-%02d,", hours, minutes, seconds, year, month, day);
 
     // Display Epoch time
     LE_INFO("epoch time: %llu:", (unsigned long long int) EpochTime);
 
     // Get GPS time
-    result = le_gnss_GetGpsTime(positionSampleRef
-                            , &gpsWeek
-                            , &gpsTimeOfWeek);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    result = le_gnss_GetGpsTime(positionSampleRef, &gpsWeek, &gpsTimeOfWeek);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
-    LE_INFO("GPS time W %02d:ToW %dms"
-            , gpsWeek
-            , gpsTimeOfWeek);
+    LE_INFO("GPS time W %02d:ToW %dms", gpsWeek, gpsTimeOfWeek);
 
     // Get time accuracy
     result = le_gnss_GetTimeAccuracy(positionSampleRef, &TimeAccuracy);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
     LE_INFO("GPS time acc %d", TimeAccuracy);
 
     // Get UTC leap seconds in advance
     result = le_gnss_GetGpsLeapSeconds(positionSampleRef, &leapSeconds);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
     LE_INFO("UTC leap seconds in advance %d", leapSeconds);
 
     // Get position state
-    result = le_gnss_GetPositionState( positionSampleRef, &state);
-    LE_ASSERT((result == LE_OK));
-    LE_DEBUG("Position state: %s", (state == LE_GNSS_STATE_FIX_NO_POS)?"No Fix"
-                                 :(state == LE_GNSS_STATE_FIX_2D)?"2D Fix"
-                                 :(state == LE_GNSS_STATE_FIX_3D)?"3D Fix"
+    result = le_gnss_GetPositionState(positionSampleRef, &state);
+    LE_ASSERT((LE_OK == result));
+    LE_DEBUG("Position state: %s", (LE_GNSS_STATE_FIX_NO_POS == state)?"No Fix"
+                                 :(LE_GNSS_STATE_FIX_2D == state)?"2D Fix"
+                                 :(LE_GNSS_STATE_FIX_3D == state)?"3D Fix"
                                  : "Unknown");
 
     // Get Location
-    result = le_gnss_GetLocation( positionSampleRef
-                                , &latitude
-                                , &longitude
-                                , &hAccuracy);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-    if(result == LE_OK)
+    result = le_gnss_GetLocation(positionSampleRef, &latitude, &longitude, &hAccuracy);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+
+    if (LE_OK == result)
     {
-         LE_INFO("Position lat.%d, long.%d, hAccuracy.%d"
-            , latitude, longitude, hAccuracy/100);
+        LE_INFO("Position lat.%f, long.%f, hAccuracy.%f",
+                (float)latitude/1000000.0,
+                (float)longitude/1000000.0,
+                (float)hAccuracy/100.0);
     }
     else
     {
-        LE_INFO("Position unknown [%d,%d,%d]"
-            , latitude, longitude, hAccuracy);
+        LE_INFO("Position unknown [%d,%d,%d]", latitude, longitude, hAccuracy);
     }
 
     // Get altitude
-    result = le_gnss_GetAltitude( positionSampleRef
-                                , &altitude
-                                , &vAccuracy);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    result = le_gnss_GetAltitude( positionSampleRef, &altitude, &vAccuracy);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
-    if(result == LE_OK)
+    if (LE_OK == result)
     {
-         LE_INFO("Altitude.%d, vAccuracy.%d"
-                , altitude/1000, vAccuracy/10);
+        LE_INFO("Altitude.%f, vAccuracy.%f", (float)altitude/1000.0, (float)vAccuracy/10.0);
     }
     else
     {
-         LE_INFO("Altitude unknown [%d,%d]"
-                , altitude, vAccuracy);
+        LE_INFO("Altitude unknown [%d,%d]", altitude, vAccuracy);
     }
 
     // Get altitude in meters, between WGS-84 earth ellipsoid
@@ -317,77 +300,59 @@ static void PositionHandlerFunction
 
     if (LE_OK == result)
     {
-         LE_INFO("AltitudeOnWgs84.%d", altitudeOnWgs84/1000);
+        LE_INFO("AltitudeOnWgs84.%d", altitudeOnWgs84/1000);
     }
     else
     {
-         LE_INFO("AltitudeOnWgs84 unknown [%d]", altitudeOnWgs84);
+        LE_INFO("AltitudeOnWgs84 unknown [%d]", altitudeOnWgs84);
     }
 
     // Get DOP parameter
-    result = le_gnss_GetDop( positionSampleRef
-                            , &hdop
-                            , &vdop
-                            , &pdop);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-    LE_INFO("DOP [H%.3f,V%.3f,P%.3f]"
-            , (float)(hdop)/1000, (float)(vdop)/1000, (float)(pdop)/1000);
+    result = le_gnss_GetDop(positionSampleRef, &hdop, &vdop, &pdop);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+
+    LE_INFO("DOP [H%.3f,V%.3f,P%.3f]", (float)(hdop)/1000, (float)(vdop)/1000, (float)(pdop)/1000);
 
     // Get horizontal speed
-    result = le_gnss_GetHorizontalSpeed( positionSampleRef
-                            , &hSpeed
-                            , &hSpeedAccuracy);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-
-    if(result == LE_OK)
+    result = le_gnss_GetHorizontalSpeed( positionSampleRef, &hSpeed, &hSpeedAccuracy);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    if (LE_OK == result)
     {
-        LE_INFO("hSpeed %u - Accuracy %u"
-                , hSpeed/100, hSpeedAccuracy/10);
+        LE_INFO("hSpeed %u - Accuracy %u", hSpeed/100, hSpeedAccuracy/10);
     }
     else
     {
-        LE_INFO("hSpeed unknown [%u,%u]"
-                , hSpeed, hSpeedAccuracy);
+        LE_INFO("hSpeed unknown [%u,%u]", hSpeed, hSpeedAccuracy);
     }
 
     // Get vertical speed
-    result = le_gnss_GetVerticalSpeed( positionSampleRef
-                            , &vSpeed
-                            , &vSpeedAccuracy);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-    if(result == LE_OK)
+    result = le_gnss_GetVerticalSpeed( positionSampleRef, &vSpeed, &vSpeedAccuracy);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    if (LE_OK == result)
     {
-        LE_INFO("vSpeed %d - Accuracy %d"
-                , vSpeed/100, vSpeedAccuracy/10);
+        LE_INFO("vSpeed %d - Accuracy %d", vSpeed/100, vSpeedAccuracy/10);
     }
     else
     {
-        LE_INFO("vSpeed unknown [%d,%d]"
-                , vSpeed, vSpeedAccuracy);
+        LE_INFO("vSpeed unknown [%d,%d]", vSpeed, vSpeedAccuracy);
     }
 
     // Get direction
-    result = le_gnss_GetDirection( positionSampleRef
-                            , &direction
-                            , &directionAccuracy);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-    if(result == LE_OK)
+    result = le_gnss_GetDirection( positionSampleRef, &direction, &directionAccuracy);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    if (LE_OK == result)
     {
-        LE_INFO("direction %u - Accuracy %u"
-                , direction/10, directionAccuracy/10);
+        LE_INFO("direction %u - Accuracy %u", direction/10, directionAccuracy/10);
     }
     else
     {
-        LE_INFO("direction unknown [%u,%u]"
-                , direction, directionAccuracy);
+        LE_INFO("direction unknown [%u,%u]", direction, directionAccuracy);
     }
 
     // Get the magnetic deviation
-    result = le_gnss_GetMagneticDeviation( positionSampleRef
-                                         , &magneticDeviation);
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
-
-    if(result == LE_OK)
+    result = le_gnss_GetMagneticDeviation( positionSampleRef, &magneticDeviation);
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
+    if (LE_OK == result)
     {
         LE_INFO("magnetic deviation %d", magneticDeviation/10);
     }
@@ -401,15 +366,17 @@ static void PositionHandlerFunction
     uint8_t satsInViewCount;
     uint8_t satsTrackingCount;
     uint8_t satsUsedCount;
-    result =  le_gnss_GetSatellitesStatus(positionSampleRef
-                                            , &satsInViewCount
-                                            , &satsTrackingCount
-                                            , &satsUsedCount);
+    result =  le_gnss_GetSatellitesStatus(positionSampleRef,
+                                          &satsInViewCount,
+                                          &satsTrackingCount,
+                                          &satsUsedCount);
 
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
-    LE_INFO("satsInView %d - satsTracking %d - satsUsed %d"
-            , satsInViewCount, satsTrackingCount, satsUsedCount);
+    LE_INFO("satsInView %d - satsTracking %d - satsUsed %d",
+            satsInViewCount,
+            satsTrackingCount,
+            satsUsedCount);
 
     /* Satellites information */
     uint16_t satIdPtr[LE_GNSS_SV_INFO_MAX_LEN];
@@ -426,35 +393,35 @@ static void PositionHandlerFunction
     size_t satElevNumElements = sizeof(satElevPtr);
     int i;
 
-    result =  le_gnss_GetSatellitesInfo(positionSampleRef
-                                            , satIdPtr
-                                            , &satIdNumElements
-                                            , satConstPtr
-                                            , &satConstNumElements
-                                            , satUsedPtr
-                                            , &satUsedNumElements
-                                            , satSnrPtr
-                                            , &satSnrNumElements
-                                            , satAzimPtr
-                                            , &satAzimNumElements
-                                            , satElevPtr
-                                            , &satElevNumElements);
+    result =  le_gnss_GetSatellitesInfo(positionSampleRef,
+                                        satIdPtr,
+                                        &satIdNumElements,
+                                        satConstPtr,
+                                        &satConstNumElements,
+                                        satUsedPtr,
+                                        &satUsedNumElements,
+                                        satSnrPtr,
+                                        &satSnrNumElements,
+                                        satAzimPtr,
+                                        &satAzimNumElements,
+                                        satElevPtr,
+                                        &satElevNumElements);
 
-    LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
 
     // Satellite Vehicle information
     for(i=0; i<satIdNumElements; i++)
     {
-        if((satIdPtr[i] != 0)&&(satIdPtr[i] != UINT16_MAX))
+        if ((0 != satIdPtr[i]) && (UINT16_MAX != satIdPtr[i]))
         {
-            LE_INFO("[%02d] SVid %03d - C%01d - U%d - SNR%02d - Azim%03d - Elev%02d"
-                    , i
-                    , satIdPtr[i]
-                    , satConstPtr[i]
-                    , satUsedPtr[i]
-                    , satSnrPtr[i]
-                    , satAzimPtr[i]
-                    , satElevPtr[i]);
+            LE_INFO("[%02d] SVid %03d - C%01d - U%d - SNR%02d - Azim%03d - Elev%02d",
+                    i,
+                    satIdPtr[i],
+                    satConstPtr[i],
+                    satUsedPtr[i],
+                    satSnrPtr[i],
+                    satAzimPtr[i],
+                    satElevPtr[i]);
 
             if (LE_GNSS_SV_CONSTELLATION_SBAS == satConstPtr[i])
             {

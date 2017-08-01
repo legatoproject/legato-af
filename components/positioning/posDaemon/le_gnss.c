@@ -1122,14 +1122,15 @@ le_result_t le_gnss_GetPositionState
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note latitudePtr, longitudePtr,hAccuracyPtr, altitudePtr, vAccuracyPtr can be set to NULL
+ * @note latitudePtr, longitudePtr, hAccuracyPtr, altitudePtr, vAccuracyPtr can be set to NULL
  *       if not needed.
  *
- * @note: The latitude and longitude values are based on the WGS84 standard coordinate system.
+ * @note The latitude and longitude values are based on the WGS84 standard coordinate system.
  *
- * @note The latitude and longitude are given in degrees with 6 decimal places like:
- *    Latitude +48858300 = 48.858300 degrees North
- *    Longitude +2294400 = 2.294400 degrees East
+ * @note The latitude and longitude values are given in degrees with 6 decimal places like:
+ *       Latitude +48858300 = 48.858300 degrees North
+ *       Longitude +2294400 = 2.294400 degrees East
+ *       (The latitude and longitude values are given in degrees, minutes, seconds in NMEA frame)
  *
  * @note If the caller is passing an invalid Position sample reference into this function,
  *       it is a fatal error, the function will not return.
