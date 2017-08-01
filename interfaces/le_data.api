@@ -83,8 +83,8 @@
  * be effective after a Legato restart.
  *
  * A sample code showing how to set the modem default route if it isn't set by the data connection
- * server is presented in the following page:
- * - @subpage c_mdcDefaultRoute
+ * server is presented below:
+ * @snippet "apps/test/dataConnectionService/dataConnectionServiceRouteTest/dcsRouteTestComp/dcsRouteTest.c" DefaultRoute
  *
  * @subsection c_le_data_addRemoveRoute Add or remove a route
  *
@@ -157,12 +157,6 @@
  * managed by the Wi-Fi client. Until its API is modified, the config tree is used to configure
  * the only access point to use for the default data connection.
  *
- */
-
-/**
- * @page c_mdcDefaultRoute Sample code for default route
- *
- * @snippet "apps/test/dataConnectionService/dataConnectionServiceRouteTest/dcsRouteTestComp/dcsRouteTest.c" DefaultRoute
  */
 
 //--------------------------------------------------------------------------------------------------
