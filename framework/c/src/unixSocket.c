@@ -68,20 +68,26 @@ static void ExtractAncillaryData
 //--------------------------------------------------------------------------------------------------
 {
     // If we are trying to receive a file descriptor, set the output param to -1 in case we don't.
-    if (fdPtr != NULL)
+    if (NULL != fdPtr)
     {
         *fdPtr = -1;
     }
 
     // If we are trying to receive process credentials, set the output param's PID to 0 in case we
     // don't.
-    if (credPtr != NULL)
+    if (NULL != credPtr)
     {
         credPtr->pid = 0;
     }
 
     // Get a pointer to the first control message header inside our control message buffer.
     struct cmsghdr* cmsgHeaderPtr = CMSG_FIRSTHDR(msgHeaderPtr);
+
+    if (NULL == cmsgHeaderPtr)
+    {
+        LE_ERROR("Invalid control message header ptr");
+        return;
+    }
 
     // Until there aren't any ancillary data messages left,
     do
@@ -98,7 +104,7 @@ static void ExtractAncillaryData
 
             int fd = ExtractFileDescriptor(cmsgHeaderPtr);
 
-            if (fdPtr == NULL)
+            if (NULL == fdPtr)
             {
                 LE_WARN("Discarding received file descriptor.");
                 fd_Close(fd);
@@ -116,11 +122,11 @@ static void ExtractAncillaryData
         else if (cmsgHeaderPtr->cmsg_type == SCM_CREDENTIALS)
         {
             // We received credentials.
-            if (credPtr == NULL)
+            if (NULL == credPtr)
             {
                 LE_WARN("Discarding received credentials.");
             }
-            else if (credPtr->pid != 0)
+            else if (0 != credPtr->pid)
             {
                 LE_WARN("Discarding duplicate set of credentials.");
             }
@@ -141,7 +147,7 @@ static void ExtractAncillaryData
 
         cmsgHeaderPtr = CMSG_NXTHDR(msgHeaderPtr, cmsgHeaderPtr);
     }
-    while (cmsgHeaderPtr != NULL);
+    while (NULL != cmsgHeaderPtr);
 }
 
 

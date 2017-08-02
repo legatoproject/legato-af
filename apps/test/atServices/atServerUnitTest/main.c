@@ -102,6 +102,7 @@ le_result_t TestResponses
     int count = 0;
     ssize_t size = 0;
 
+    LE_ASSERT(NULL != expectedResponsePtr);
     count = strlen(expectedResponsePtr);
     memset(buf, 0 , DSIZE);
 

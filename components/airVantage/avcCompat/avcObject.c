@@ -396,6 +396,13 @@ static void SetObj9State_
 //--------------------------------------------------------------------------------------------------
 {
     int instanceId;
+
+    if (instanceRef == NULL)
+    {
+        LE_WARN("Setting state on NULL object.");
+        return;
+    }
+
     assetData_GetInstanceId(instanceRef, &instanceId);
     LE_DEBUG("<%s: %zu>: Set object 9 state/result on instance %d: (%d) %s / (%d) %s",
              functionNamePtr,
@@ -405,12 +412,6 @@ static void SetObj9State_
              UpdateStateToStr(state),
              result,
              UpdateResultToStr(result));
-
-    if (instanceRef == NULL)
-    {
-        LE_WARN("Setting state on NULL object.");
-        return;
-    }
 
     LE_ASSERT(assetData_client_SetInt(instanceRef, O9F_UPDATE_STATE, state) == LE_OK);
     LE_ASSERT(assetData_client_SetInt(instanceRef, O9F_UPDATE_RESULT, result) == LE_OK);

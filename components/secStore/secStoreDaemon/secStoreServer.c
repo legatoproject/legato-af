@@ -1473,24 +1473,28 @@ le_result_t secStoreAdmin_GetEntry
     // Get the iterator from the safe reference.
     EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
 
-    if (iterPtr == NULL)
+    if (NULL == iterPtr)
     {
         // Already killed client, just need to return from this function.
         return LE_FAULT;
     }
 
     // Check if there is a current entry.
-    if (iterPtr->currEntryPtr == NULL)
+    if (NULL == iterPtr->currEntryPtr)
     {
         LE_KILL_CLIENT("No current entry in iterator.");
+        return LE_FAULT;
     }
 
     // Get the entry name.
     Entry_t* entryPtr = CONTAINER_OF(iterPtr->currEntryPtr, Entry_t, link);
 
-    *isDir = entryPtr->isDir;
-
-    return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
+    if (entryPtr)
+    {
+        *isDir = entryPtr->isDir;
+        return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
+    }
+    return LE_FAULT;
 }
 
 

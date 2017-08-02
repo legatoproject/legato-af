@@ -635,6 +635,7 @@ static void PerformScan
     int bufferIdx = 0;
 
     le_mrc_ScanInformationListRef_t scanInformationList = NULL;
+    LE_ASSERT(NULL != OutputFilePtr);
     fprintf(OutputFilePtr, "Scan was asked");
     scanInformationList = le_mrc_PerformCellularNetworkScan(LE_MRC_BITMASK_RAT_ALL);
     if (!scanInformationList)

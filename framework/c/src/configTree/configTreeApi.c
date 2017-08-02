@@ -562,8 +562,8 @@ void le_cfg_GetPath
     char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
     le_result_t result = LE_OK;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         result = ni_GetPathForNode(iteratorRef, pathPtr, strBuffer, MaxStr(maxNewPath));
     }
@@ -598,8 +598,8 @@ void le_cfg_GetNodeType
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
     le_cfg_nodeType_t nodeType = LE_CFG_TYPE_DOESNT_EXIST;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         nodeType = ni_GetNodeType(iteratorRef, pathPtr);
     }
@@ -639,8 +639,8 @@ void le_cfg_GetNodeName
     char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
     le_result_t result = LE_OK;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         result = ni_GetNodeName(iteratorRef, pathPtr, strBuffer, MaxStr(maxName));
     }
@@ -753,8 +753,8 @@ void le_cfg_DeleteNode
 
     ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         ni_DeleteNode(iteratorRef, pathPtr);
     }
@@ -794,8 +794,8 @@ void le_cfg_IsEmpty
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
     bool isEmpty = false;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         isEmpty = ni_IsEmpty(iteratorRef, pathPtr);
     }
@@ -830,8 +830,8 @@ void le_cfg_SetEmpty
 
     ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         ni_SetEmpty(iteratorRef, pathPtr);
     }
@@ -866,8 +866,8 @@ void le_cfg_NodeExists
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
     bool exists = false;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         exists = ni_NodeExists(iteratorRef, pathPtr);
     }
@@ -913,8 +913,8 @@ void le_cfg_GetString
     char strBuffer[LE_CFG_STR_LEN_BYTES] = "";
     le_result_t result = LE_OK;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         result = ni_GetNodeValueString(iteratorRef,
                                        pathPtr,
@@ -954,8 +954,8 @@ void le_cfg_SetString
 
     ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         ni_SetNodeValueString(iteratorRef, pathPtr, value);
     }
@@ -996,8 +996,8 @@ void le_cfg_GetInt
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
     int value = 0;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         value = ni_GetNodeValueInt(iteratorRef, pathPtr, defaultValue);
     }
@@ -1033,8 +1033,8 @@ void le_cfg_SetInt
 
     ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         ni_SetNodeValueInt(iteratorRef, pathPtr, value);
     }
@@ -1071,8 +1071,8 @@ void le_cfg_GetFloat
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
     double value = 0.0;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         value = ni_GetNodeValueFloat(iteratorRef, pathPtr, defaultValue);
     }
@@ -1108,8 +1108,8 @@ void le_cfg_SetFloat
 
     ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         ni_SetNodeValueFloat(iteratorRef, pathPtr, value);
     }
@@ -1147,8 +1147,8 @@ void le_cfg_GetBool
     ni_IteratorRef_t iteratorRef = GetIteratorFromRef(externalRef);
     bool value = defaultValue;
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         value = ni_GetNodeValueBool(iteratorRef, pathPtr, defaultValue);
     }
@@ -1185,8 +1185,8 @@ void le_cfg_SetBool
 
     ni_IteratorRef_t iteratorRef = GetWriteIteratorFromRef(externalRef);
 
-    if (   (iteratorRef != NULL)
-        && (CheckPathForSpecifier(pathPtr) == false))
+    if ((NULL != pathPtr) && (NULL != iteratorRef)
+        && (false == CheckPathForSpecifier(pathPtr)))
     {
         ni_SetNodeValueBool(iteratorRef, pathPtr, value);
     }

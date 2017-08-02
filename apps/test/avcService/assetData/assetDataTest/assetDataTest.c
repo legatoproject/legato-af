@@ -183,11 +183,12 @@ void RunTest(void)
     banner("Get Asset Refs before creating instances");
     assetData_AssetDataRef_t lwm2mAssetRef;
 
-    LE_TEST( assetData_GetAssetRefById("lwm2m", 9, &lwm2mAssetRef) == LE_OK );
+    LE_TEST(LE_OK == assetData_GetAssetRefById("lwm2m", 9, &lwm2mAssetRef));
 
 
     banner("Instance creation handlers");
-    LE_TEST( assetData_client_AddAssetActionHandler(lwm2mAssetRef, AssetCreateHandler, "test") != NULL);
+    LE_TEST(NULL != assetData_client_AddAssetActionHandler(lwm2mAssetRef,
+                                               AssetCreateHandler, "test"));
 
 
     banner("Create asset instances");
@@ -198,156 +199,161 @@ void RunTest(void)
     assetData_InstanceDataRef_t lwm2mRefOneB = NULL;
     int instanceId;
 
-    LE_TEST( assetData_CreateInstanceById("testOne", 1000, -1, &testOneRefZero) == LE_OK );
-    LE_TEST( testOneRefZero != NULL );
-    LE_TEST( assetData_GetInstanceId(testOneRefZero, &instanceId) == LE_OK );
-    LE_TEST( instanceId == 0 );
+    LE_TEST(LE_OK == assetData_CreateInstanceById("testOne", 1000, -1, &testOneRefZero));
+    LE_TEST(NULL != testOneRefZero);
+    LE_TEST(LE_OK == assetData_GetInstanceId(testOneRefZero, &instanceId));
+    LE_TEST(0 == instanceId);
 
-    LE_TEST( assetData_CreateInstanceById("testOne", 1000, -1, &testOneRefOne) == LE_OK );
-    LE_TEST( testOneRefOne != NULL );
-    LE_TEST( assetData_GetInstanceId(testOneRefOne, &instanceId) == LE_OK );
-    LE_TEST( instanceId == 1 );
+    LE_TEST(LE_OK == assetData_CreateInstanceById("testOne", 1000, -1, &testOneRefOne));
+    LE_TEST(NULL != testOneRefOne);
+    LE_TEST(LE_OK == assetData_GetInstanceId(testOneRefOne, &instanceId));
+    LE_TEST(1 == instanceId);
 
-    LE_TEST( assetData_CreateInstanceById("lwm2m", 9, 3, &lwm2mRefZero) == LE_OK );
-    LE_TEST( lwm2mRefZero != NULL );
-    LE_TEST( assetData_GetInstanceId(lwm2mRefZero, &instanceId) == LE_OK );
-    LE_TEST( instanceId == 3 );
+    LE_TEST(LE_OK == assetData_CreateInstanceById("lwm2m", 9, 3, &lwm2mRefZero));
+    LE_TEST(NULL != lwm2mRefZero);
+    LE_TEST(LE_OK == assetData_GetInstanceId(lwm2mRefZero, &instanceId));
+    LE_TEST(3 == instanceId);
     le_sem_Wait(SemCreateOne);
 
-    LE_TEST( assetData_CreateInstanceById("lwm2m", 9, -1, &lwm2mRefOne) == LE_OK );
-    LE_TEST( lwm2mRefOne != NULL );
-    LE_TEST( assetData_GetInstanceId(lwm2mRefOne, &instanceId) == LE_OK );
-    LE_TEST( instanceId == 4 );
+    LE_TEST(LE_OK == assetData_CreateInstanceById("lwm2m", 9, -1, &lwm2mRefOne));
+    LE_TEST(NULL != lwm2mRefOne);
+    LE_TEST(LE_OK == assetData_GetInstanceId(lwm2mRefOne, &instanceId));
+    LE_TEST(4 == instanceId);
     le_sem_Wait(SemCreateTwo);
 
     // Try creating the same instance again
-    LE_TEST( assetData_CreateInstanceById("lwm2m", 9, 4, &lwm2mRefOneB) == LE_DUPLICATE );
-    LE_TEST( lwm2mRefOneB == NULL );
+    LE_TEST(LE_DUPLICATE == assetData_CreateInstanceById("lwm2m", 9, 4, &lwm2mRefOneB));
+    LE_TEST(NULL == lwm2mRefOneB);
 
     banner("Get Asset Refs");
     assetData_AssetDataRef_t testOneAssetRef;
 
-    LE_TEST( assetData_GetAssetRefById("testOne", 1000, &testOneAssetRef) == LE_OK );
+    LE_TEST(LE_OK == assetData_GetAssetRefById("testOne", 1000, &testOneAssetRef));
 
 
     banner("Read/Write integer fields");
     int value;
 
-    LE_TEST( assetData_client_GetInt(testOneRefZero, 4, &value) == LE_OK );
-    LE_TEST( value == 18 );
+    LE_TEST(LE_OK == assetData_client_GetInt(testOneRefZero, 4, &value));
+    LE_TEST(18 == value);
 
-    LE_TEST( assetData_client_SetInt(testOneRefZero, 4, 199) == LE_OK );
-    LE_TEST( assetData_client_GetInt(testOneRefZero, 4, &value) == LE_OK );
-    LE_TEST( value == 199 );
+    LE_TEST(LE_OK == assetData_client_SetInt(testOneRefZero, 4, 199));
+    LE_TEST(LE_OK == assetData_client_GetInt(testOneRefZero, 4, &value));
+    LE_TEST(199 == value);
 
-    LE_TEST( assetData_client_GetInt(testOneRefOne, 4, &value) == LE_OK );
-    LE_TEST( value == 18 );
+    LE_TEST(LE_OK == assetData_client_GetInt(testOneRefOne, 4, &value));
+    LE_TEST(18 == value);
 
-    LE_TEST( assetData_client_GetInt(testOneRefZero, 50, &value) == LE_NOT_FOUND );
+    LE_TEST(LE_NOT_FOUND == assetData_client_GetInt(testOneRefZero, 50, &value));
 
 
     banner("Read/Write integer fields as values");
     char valueStr[100];
 
-    LE_TEST( assetData_server_GetValue(NULL, testOneRefZero, 4, valueStr, sizeof(valueStr)) == LE_OK );
-    LE_TEST( strcmp( valueStr, "199" ) == 0 );
+    LE_TEST(LE_OK == assetData_server_GetValue(NULL, testOneRefZero,
+                                               4, valueStr, sizeof(valueStr)));
+    LE_TEST(0 == strcmp( valueStr, "199" ));
 
-    LE_TEST( assetData_server_SetValue(testOneRefZero, 4, "123") == LE_OK );
-    LE_TEST( assetData_client_GetInt(testOneRefZero, 4, &value) == LE_OK );
-    LE_TEST( value == 123 );
+    LE_TEST(LE_OK == assetData_server_SetValue(testOneRefZero, 4, "123"));
+    LE_TEST(LE_OK == assetData_client_GetInt(testOneRefZero, 4, &value));
+    LE_TEST(123 == value);
 
     banner("Read/Write float fields");
     double float_value;
 
-    LE_TEST( assetData_client_GetFloat(testOneRefZero, 12, &float_value) == LE_OK );
+    LE_TEST(LE_OK == assetData_client_GetFloat(testOneRefZero, 12, &float_value));
     LE_PRINT_VALUE("%lf",float_value);
-    LE_TEST( float_value == 123.456 );
+    LE_TEST(123.456 == float_value);
 
-    LE_TEST( assetData_client_SetFloat(testOneRefZero, 12, 789.012) == LE_OK );
-    LE_TEST( assetData_client_GetFloat(testOneRefZero, 12, &float_value) == LE_OK );
-    LE_TEST( float_value == 789.012 );
+    LE_TEST(LE_OK == assetData_client_SetFloat(testOneRefZero, 12, 789.012));
+    LE_TEST(LE_OK == assetData_client_GetFloat(testOneRefZero, 12, &float_value));
+    LE_TEST(789.012 == float_value);
 
-    LE_TEST( assetData_client_GetFloat(testOneRefOne, 12, &float_value) == LE_OK );
-    LE_TEST( float_value == 123.456 );
+    LE_TEST(LE_OK == assetData_client_GetFloat(testOneRefOne, 12, &float_value));
+    LE_TEST(123.456 == float_value);
 
-    LE_TEST( assetData_client_GetFloat(testOneRefZero, 50, &float_value) == LE_NOT_FOUND );
+    LE_TEST(LE_NOT_FOUND == assetData_client_GetFloat(testOneRefZero, 50, &float_value));
 
 
     banner("Read/Write float as values");
 
-    LE_TEST( assetData_server_GetValue(NULL, testOneRefZero, 12, valueStr, sizeof(valueStr)) == LE_OK );
-    LE_TEST( strcmp( valueStr, "789.012000" ) == 0 );
+    LE_TEST(LE_OK == assetData_server_GetValue(NULL, testOneRefZero,
+                                               12, valueStr, sizeof(valueStr)));
+    LE_TEST(0 == strcmp( valueStr, "789.012000" ));
 
-    LE_TEST( assetData_server_SetValue(testOneRefZero, 12, "345.678") == LE_OK );
-    LE_TEST( assetData_client_GetFloat(testOneRefZero, 12, &float_value) == LE_OK );
-    LE_TEST( float_value == 345.678 );
+    LE_TEST(LE_OK == assetData_server_SetValue(testOneRefZero, 12, "345.678"));
+    LE_TEST(LE_OK == assetData_client_GetFloat(testOneRefZero, 12, &float_value));
+    LE_TEST(345.678 == float_value);
 
     banner("Read/Write string fields");
     char strBuf[100];
 
-    LE_TEST( assetData_client_SetString(lwm2mRefZero, 0, "new value") == LE_OK );
-    LE_TEST( assetData_client_GetString(lwm2mRefZero, 0, strBuf, sizeof(strBuf)) == LE_OK );
-    LE_TEST( strcmp(strBuf, "new value") == 0 );
+    LE_TEST(LE_OK == assetData_client_SetString(lwm2mRefZero, 0, "new value"));
+    LE_TEST(LE_OK == assetData_client_GetString(lwm2mRefZero, 0, strBuf, sizeof(strBuf)));
+    LE_TEST(0 == strcmp(strBuf, "new value"));
 
-    LE_TEST( assetData_client_SetString(lwm2mRefZero, 0, "a different value") == LE_OK );
-    LE_TEST( assetData_client_GetString(lwm2mRefZero, 0, strBuf, sizeof(strBuf)) == LE_OK );
-    LE_TEST( strcmp(strBuf, "a different value") == 0 );
+    LE_TEST(LE_OK == assetData_client_SetString(lwm2mRefZero, 0, "a different value"));
+    LE_TEST(LE_OK == assetData_client_GetString(lwm2mRefZero, 0, strBuf, sizeof(strBuf)));
+    LE_TEST(0 == strcmp(strBuf, "a different value"));
 
 
     banner("Read/Write string fields as values");
 
-    LE_TEST( assetData_server_GetValue(NULL, lwm2mRefZero, 0, valueStr, sizeof(valueStr)) == LE_OK );
-    LE_TEST( strcmp( valueStr, "a different value" ) == 0 );
+    LE_TEST(LE_OK == assetData_server_GetValue(NULL, lwm2mRefZero, 0, valueStr, sizeof(valueStr)));
+    LE_TEST(0 == strcmp( valueStr, "a different value" ));
 
-    LE_TEST( assetData_server_SetValue(lwm2mRefZero, 0, "123") == LE_OK );
-    LE_TEST( assetData_client_GetString(lwm2mRefZero, 0, valueStr, sizeof(valueStr)) == LE_OK );
-    LE_TEST( strcmp( valueStr, "123" ) == 0 );
+    LE_TEST(LE_OK == assetData_server_SetValue(lwm2mRefZero, 0, "123"));
+    LE_TEST(LE_OK == assetData_client_GetString(lwm2mRefZero, 0, valueStr, sizeof(valueStr)));
+    LE_TEST(0 == strcmp( valueStr, "123" ));
 
 
     banner("Read/Write incompatible fields");
 
-    LE_TEST( assetData_client_SetInt(lwm2mRefZero, 0, 256) == LE_FAULT );
-    LE_TEST( assetData_client_GetInt(lwm2mRefZero, 0, &value) == LE_FAULT );
+    LE_TEST(LE_FAULT == assetData_client_SetInt(lwm2mRefZero, 0, 256));
+    LE_TEST(LE_FAULT == assetData_client_GetInt(lwm2mRefZero, 0, &value));
 
-    LE_TEST( assetData_client_SetString(testOneRefZero, 4, "new value") == LE_FAULT );
-    LE_TEST( assetData_client_GetString(testOneRefZero, 4, strBuf, sizeof(strBuf)) == LE_FAULT );
+    LE_TEST(LE_FAULT == assetData_client_SetString(testOneRefZero, 4, "new value"));
+    LE_TEST(LE_FAULT == assetData_client_GetString(testOneRefZero, 4, strBuf, sizeof(strBuf)));
 
 
     banner("Field write int handlers");
 
-    LE_TEST( assetData_server_AddFieldActionHandler(testOneAssetRef, 4, FieldWriteIntHandler, SemWriteOne) != NULL);
-    LE_TEST( assetData_server_AddFieldActionHandler(testOneAssetRef, 4, FieldWriteIntHandler, SemWriteTwo) != NULL);
+    LE_TEST(NULL != assetData_server_AddFieldActionHandler(testOneAssetRef, 4,
+                                                   FieldWriteIntHandler, SemWriteOne));
+    LE_TEST(NULL != assetData_server_AddFieldActionHandler(testOneAssetRef, 4,
+                                                   FieldWriteIntHandler, SemWriteTwo));
 
-    LE_TEST( assetData_client_SetInt(testOneRefZero, 4, 399) == LE_OK );
-    LE_TEST( assetData_client_GetInt(testOneRefZero, 4, &value) == LE_OK );
-    LE_TEST( value == 399 );
+    LE_TEST(LE_OK == assetData_client_SetInt(testOneRefZero, 4, 399));
+    LE_TEST(LE_OK == assetData_client_GetInt(testOneRefZero, 4, &value));
+    LE_TEST(399 == value);
     le_sem_Wait(SemWriteOne);
     le_sem_Wait(SemWriteTwo);
 
-    LE_TEST( assetData_client_SetInt(testOneRefOne, 4, 512) == LE_OK );
-    LE_TEST( assetData_client_GetInt(testOneRefOne, 4, &value) == LE_OK );
-    LE_TEST( value == 512 );
+    LE_TEST(LE_OK == assetData_client_SetInt(testOneRefOne, 4, 512));
+    LE_TEST(LE_OK == assetData_client_GetInt(testOneRefOne, 4, &value));
+    LE_TEST(512 == value);
     le_sem_Wait(SemWriteOne);
     le_sem_Wait(SemWriteTwo);
 
 
     banner("Field execute handlers");
 
-    LE_TEST( assetData_client_AddFieldActionHandler(testOneAssetRef, 2, FieldExecHandler, SemExecOne) != NULL);
-    LE_TEST( assetData_server_Execute(testOneRefZero, 2) == LE_OK );
-    LE_TEST( assetData_server_Execute(testOneRefZero, 1) == LE_FAULT );
+    LE_TEST(NULL != assetData_client_AddFieldActionHandler(testOneAssetRef, 2,
+                                                           FieldExecHandler, SemExecOne));
+    LE_TEST(LE_OK == assetData_server_Execute(testOneRefZero, 2));
+    LE_TEST(LE_FAULT == assetData_server_Execute(testOneRefZero, 1));
     le_sem_Wait(SemExecOne);
 
 
     banner("Create Framework object instances");
     assetData_InstanceDataRef_t frameworkRefZero = NULL;
 
-    LE_TEST( assetData_CreateInstanceById("legato", 0, -1, &frameworkRefZero) == LE_OK );
-    LE_TEST( frameworkRefZero != NULL );
-    LE_TEST( assetData_GetInstanceId(frameworkRefZero, &instanceId) == LE_OK );
-    LE_TEST( instanceId == 0 );
-    LE_TEST( assetData_client_GetString(frameworkRefZero, 0, strBuf, sizeof(strBuf)) == LE_OK );
-    LE_TEST( strcmp(strBuf, "1.0") == 0 );
+    LE_TEST(LE_OK == assetData_CreateInstanceById("legato", 0, -1, &frameworkRefZero));
+    LE_TEST(NULL != frameworkRefZero);
+    LE_TEST(LE_OK == assetData_GetInstanceId(frameworkRefZero, &instanceId));
+    LE_TEST(0 == instanceId);
+    LE_TEST(LE_OK == assetData_client_GetString(frameworkRefZero, 0, strBuf, sizeof(strBuf)));
+    LE_TEST(0 == strcmp(strBuf, "1.0"));
 
 
     banner("Write Object to TLV Testing");
@@ -355,10 +361,11 @@ void RunTest(void)
     size_t bytesWritten;
 
     // Set the package names for each instance ...
-    LE_TEST( assetData_client_SetString(lwm2mRefZero, 0, "instance zero") == LE_OK );
-    LE_TEST( assetData_client_SetString(lwm2mRefOne, 0, "instance one") == LE_OK );
+    LE_TEST(LE_OK == assetData_client_SetString(lwm2mRefZero, 0, "instance zero"));
+    LE_TEST(LE_OK == assetData_client_SetString(lwm2mRefOne, 0, "instance one"));
 
-    LE_TEST( assetData_WriteObjectToTLV(lwm2mAssetRef, 0, tlvBuffer, sizeof(tlvBuffer), &bytesWritten) == LE_OK );
+    LE_TEST(LE_OK == assetData_WriteObjectToTLV(lwm2mAssetRef, 0,
+                                                tlvBuffer, sizeof(tlvBuffer), &bytesWritten));
     WriteDataToLog(tlvBuffer, bytesWritten);
 
 
@@ -369,21 +376,24 @@ void RunTest(void)
     size_t bytesWrittenTwo;
 
     // Set some other resource values, such as "Update Result" which is 9.
-    LE_TEST( assetData_client_SetInt(lwm2mRefZero, 9, 0x123456) == LE_OK );
+    LE_TEST(LE_OK == assetData_client_SetInt(lwm2mRefZero, 9, 0x123456));
 
     // Write assetData to TLV
-    LE_TEST( assetData_WriteFieldListToTLV(lwm2mRefZero, tlvBufferOne, sizeof(tlvBufferOne), &bytesWrittenOne) == LE_OK );
+    LE_TEST(LE_OK == assetData_WriteFieldListToTLV(lwm2mRefZero, tlvBufferOne,
+                                                   sizeof(tlvBufferOne), &bytesWrittenOne));
     WriteDataToLog(tlvBufferOne, bytesWrittenOne);
 
     // Read from the TLV and write back to assetData
-    LE_TEST( assetData_ReadFieldListFromTLV(tlvBufferOne, bytesWrittenOne, lwm2mRefZero, false) == LE_OK );
+    LE_TEST(LE_OK == assetData_ReadFieldListFromTLV(tlvBufferOne, bytesWrittenOne,
+                                                    lwm2mRefZero, false));
 
     // Write assetData to different TLV and compare
-    LE_TEST( assetData_WriteFieldListToTLV(lwm2mRefZero, tlvBufferTwo, sizeof(tlvBufferTwo), &bytesWrittenTwo) == LE_OK );
+    LE_TEST(LE_OK == assetData_WriteFieldListToTLV(lwm2mRefZero, tlvBufferTwo,
+                                                   sizeof(tlvBufferTwo), &bytesWrittenTwo));
     WriteDataToLog(tlvBufferTwo, bytesWrittenTwo);
 
     LE_TEST( bytesWrittenOne == bytesWrittenTwo );
-    LE_TEST( memcmp(tlvBufferOne, tlvBufferTwo, bytesWrittenOne) == 0 );
+    LE_TEST(0 == memcmp(tlvBufferOne, tlvBufferTwo, bytesWrittenOne));
 }
 
 

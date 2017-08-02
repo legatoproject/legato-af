@@ -2375,8 +2375,15 @@ le_result_t le_pos_GetHeading
     }
 
     // Heading indication not supported by GNSS feature.
-    *headingPtr = UINT32_MAX;
-    *headingAccuracyPtr = UINT32_MAX;
+    if (headingPtr)
+    {
+        *headingPtr = UINT32_MAX;
+    }
+    if (headingAccuracyPtr)
+    {
+        *headingAccuracyPtr = UINT32_MAX;
+    }
+
     return LE_OUT_OF_RANGE;
 }
 
