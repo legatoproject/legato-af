@@ -7,6 +7,7 @@
 #include "example_server.h"
 #include "le_print.h"
 
+#define BUFFERSIZE 1000
 
 // Need this so we can queue functions to the new thread.
 // This will only be used from the main thread.
@@ -64,13 +65,27 @@ void example_FileTest
 )
 {
     // Read and print out whatever is read from the client fd
-    char buffer[1000];
+    char buffer[BUFFERSIZE];
     ssize_t numRead;
 
     numRead = read(dataFile, buffer, sizeof(buffer));
-    buffer[numRead] = '\0';
-    LE_PRINT_VALUE("%zd", numRead);
-    LE_PRINT_VALUE("%s", buffer);
+    if (-1 == numRead)
+    {
+        LE_INFO("Read error %s", strerror(errno));
+    }
+    else
+    {
+        if (BUFFERSIZE == numRead)
+        {
+            buffer[numRead-1] = '\0';
+        }
+        else
+        {
+            buffer[numRead] = '\0';
+        }
+        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%s", buffer);
+    }
 
     // Open a known file to return back to the client
     *dataOutPtr = open("/usr/include/stdio.h", O_RDONLY);
@@ -78,10 +93,23 @@ void example_FileTest
 
     // Read a bit from the file, to make sure it is okay
     numRead = read(*dataOutPtr, buffer, sizeof(buffer));
-    buffer[numRead] = '\0';
-    LE_PRINT_VALUE("%zd", numRead);
-    LE_PRINT_VALUE("%s", buffer);
-
+    if (-1 == numRead)
+    {
+        LE_INFO("Read error %s", strerror(errno));
+    }
+    else
+    {
+        if (BUFFERSIZE == numRead)
+        {
+            buffer[numRead-1] = '\0';
+        }
+        else
+        {
+            buffer[numRead] = '\0';
+        }
+        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%s", buffer);
+    }
 }
 
 

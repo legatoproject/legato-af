@@ -355,11 +355,13 @@ le_result_t le_fs_Read
     }
     while ((-1 == rc) && (EINTR == errno));
 
-    if (-1 == rc)
+    if (rc < 0)
     {
         return LE_FAULT;
     }
 
+    // Set NULL at the end of the string.
+    bufPtr[rc] = '\0';
     *bufNumElementsPtr = rc;
     return LE_OK;
 }

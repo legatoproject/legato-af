@@ -54,10 +54,8 @@ COMPONENT_INIT
     unsigned int i = 0;
     unsigned int numRelease = 0;
 
-
     printf("\n");
     printf("*** Unit Test for le_mem module. ***\n");
-
 
     //
     // Create multiple pools.
@@ -67,7 +65,6 @@ COMPONENT_INIT
 
     printf("Created two memory pools.\n");
 
-
     //
     // Expand the pools.
     //
@@ -76,12 +73,10 @@ COMPONENT_INIT
 
     printf("Expanded all pools.\n");
 
-
     //
     // Set destructors.
     //
     le_mem_SetDestructor(idPool, IdDestructor);
-
 
     //
     // Spawn child process and perform Assert allocation until failure.
@@ -124,7 +119,7 @@ COMPONENT_INIT
     {
         idsPtr[i] = le_mem_TryAlloc(idPool);
 
-        if (idsPtr[i] == NULL)
+        if (NULL == idsPtr[i])
         {
             printf("Allocation error: %d", __LINE__);
             exit(EXIT_FAILURE);
@@ -137,7 +132,7 @@ COMPONENT_INIT
     {
         coloursPtr[i] = le_mem_TryAlloc(colourPool);
 
-        if (coloursPtr[i] == NULL)
+        if (NULL == coloursPtr[i])
         {
             printf("Allocation error: %d", __LINE__);
             exit(EXIT_FAILURE);
@@ -149,7 +144,6 @@ COMPONENT_INIT
     }
 
     printf("Allocated all objects from all pools.\n");
-
 
     //
     // Check objects
@@ -175,7 +169,6 @@ COMPONENT_INIT
     }
 
     printf("Checked all objects in pools.\n");
-
 
     //
     // Randomly release some objects.
@@ -262,20 +255,20 @@ COMPONENT_INIT
             }
         }
     }
+
     printf("Released objects according to ref counts correctly.\n");
     printf("Checked that destructors were called correctly.\n");
-
 
     //
     // Try allocate until full.
     //
     for (i = 0; i < ID_POOL_SIZE; i++)
     {
-        if (idsPtr[i] == NULL)
+        if (NULL == idsPtr[i])
         {
             idsPtr[i] = le_mem_TryAlloc(idPool);
 
-            if (idsPtr[i] == NULL)
+            if (NULL == idsPtr[i])
             {
                 printf("Allocation error: %d.", __LINE__);
                 exit(EXIT_FAILURE);
@@ -300,14 +293,14 @@ COMPONENT_INIT
     {
         idsPtr[i] = le_mem_ForceAlloc(idPool);
 
-        if (idsPtr[i] == NULL)
+        if (NULL == idsPtr[i])
         {
             printf("Allocation error: %d.", __LINE__);
             exit(EXIT_FAILURE);
         }
     }
-    printf("Forced allocated objects.\n");
 
+    printf("Forced allocated objects.\n");
 
     //
     // Get stats.
@@ -322,8 +315,8 @@ COMPONENT_INIT
         printf("Stats are incorrect: %d", __LINE__);
         exit(EXIT_FAILURE);
     }
-    printf("Stats are correct.\n");
 
+    printf("Stats are correct.\n");
 
     //
     // Get pool size.
@@ -333,8 +326,8 @@ COMPONENT_INIT
         printf("Pool size incorrect: %d", __LINE__);
         exit(EXIT_FAILURE);
     }
-    printf("Checked pool size.\n");
 
+    printf("Checked pool size.\n");
 
     //
     // Get object size.
@@ -344,8 +337,8 @@ COMPONENT_INIT
         printf("Object size incorrect: %d", __LINE__);
         exit(EXIT_FAILURE);
     }
-    printf("Checked object size.\n");
 
+    printf("Checked object size.\n");
 
     //
     // Reset stats.
@@ -364,8 +357,8 @@ COMPONENT_INIT
             exit(EXIT_FAILURE);
         }
     }
-    printf("Reset stats correctly.\n");
 
+    printf("Reset stats correctly.\n");
 
     //
     // Create sub-pool.
@@ -383,10 +376,8 @@ COMPONENT_INIT
         }
     }
 
-
     // Create the sub-pool.
     le_mem_PoolRef_t colourSubPool1 = le_mem_CreateSubPool(colourPool, "Colour sub-pool", numRelease);
-
 
     //
     // Check sub-pools and super-pool.
@@ -398,7 +389,6 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
     printf("Sub-pool created correctly.\n");
-
 
     //
     // Create second sub-pool.
@@ -424,7 +414,6 @@ COMPONENT_INIT
     //
     le_mem_ExpandPool(colourSubPool2, NUM_EXPAND_SUB_POOL);
 
-
     //
     // Allocate from sub-pool.
     //
@@ -432,13 +421,12 @@ COMPONENT_INIT
     {
         coloursPtr[i] = le_mem_TryAlloc(colourSubPool2);
 
-        if (coloursPtr[i] == NULL)
+        if (NULL == coloursPtr[i])
         {
             printf("Error allocating from sub-pool: %d", __LINE__);
             exit(EXIT_FAILURE);
         }
     }
-
 
     //
     // Check pools.
@@ -464,9 +452,9 @@ COMPONENT_INIT
         printf("Error in sub-pool: %d", __LINE__);
         exit(EXIT_FAILURE);
     }
+
     printf("Expanded sub-pool correctly.\n");
     printf("Allocated from sub-pools correctly.\n");
-
 
     // Try Allocating from empty super-pool.
     if (le_mem_TryAlloc(colourPool) != NULL)
@@ -483,9 +471,11 @@ COMPONENT_INIT
     // Allocate from the super-pool.
     for (i = 0; i < NUM_ALLOC_SUPER_POOL; i++)
     {
-        coloursPtr[numRelease] = le_mem_AssertAlloc(colourPool);
+        if (COLOUR_POOL_SIZE > numRelease)
+        {
+            coloursPtr[numRelease] = le_mem_AssertAlloc(colourPool);
+        }
     }
-
 
     //
     // Check pools.
@@ -504,8 +494,8 @@ COMPONENT_INIT
         printf("Error in sub-pool: %d", __LINE__);
         exit(EXIT_FAILURE);
     }
-    printf("Deleted sub-pool correctly.\n");
 
+    printf("Deleted sub-pool correctly.\n");
 
     //
     // Re-create sub-pool causing super pool to expand.
@@ -518,6 +508,7 @@ COMPONENT_INIT
         printf("Error re-creating sub-pool: %d", __LINE__);
         exit(EXIT_FAILURE);
     }
+
     printf("Successfully recreated sub-pool.\n");
 
     // FIXME: Find pool by name is currently suffering from issues
@@ -534,9 +525,7 @@ COMPONENT_INIT
     }
     printf("Successfully searched for pools by name.\n");
 #endif
-
     printf("*** Unit Test for le_mem module passed. ***\n");
     printf("\n");
     exit(EXIT_SUCCESS);
 }
-

@@ -113,13 +113,13 @@ le_result_t TestResponses
         }
         while ((-1 == ret) && (EINTR == errno));
 
-        if (ret == -1)
+        if (-1 == ret)
         {
             LE_ERROR("epoll wait failed: %s", strerror(errno));
             return LE_IO_ERROR;
         }
 
-        if  (!ret)
+        if (!ret)
         {
             LE_ERROR("Timed out waiting for server's response");
             return LE_TIMEOUT;
@@ -146,6 +146,12 @@ le_result_t TestResponses
 
         offset += size;
         count -= size;
+
+        // Set the NULL at the end of the string.
+        if (DSIZE > offset)
+        {
+            buf[offset] = '\0';
+        }
     }
 
     LE_DEBUG("Response: %s", PrettyPrint(buf));

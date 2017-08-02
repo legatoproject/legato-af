@@ -58,6 +58,13 @@ int32_t le_hex_StringToBinary
     uint32_t idxBinary;
     char*    refStrPtr = "0123456789ABCDEF";
 
+    if (stringLength > strlen(stringPtr))
+    {
+        LE_DEBUG("The stringLength (%u) is more than size of stringPtr (%s)",
+                 stringLength, stringPtr);
+        return -1;
+    }
+
     if (stringLength % 2 != 0)
     {
         LE_DEBUG("The input stringLength=%u is not a multiple of 2", stringLength);
@@ -77,7 +84,6 @@ int32_t le_hex_StringToBinary
     {
         char* ch1Ptr;
         char* ch2Ptr;
-
 
         if ( ((ch1Ptr = strchr(refStrPtr, toupper(stringPtr[idxString]))) && *ch1Ptr) &&
              ((ch2Ptr = strchr(refStrPtr, toupper(stringPtr[idxString+1]))) && *ch2Ptr) )

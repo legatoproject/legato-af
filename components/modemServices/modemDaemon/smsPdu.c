@@ -1785,37 +1785,45 @@ static le_result_t DecodeAddressParameter
     bool digitMode = addressParameter->digitMode;
     bool numberMode = addressParameter->numberMode;
 
-    if (numFields>addressSize)
+    if (numFields > addressSize)
     {
-        LE_WARN("Buffer overflow will occur (%d>%zd)",numFields,addressSize);
+        LE_WARN("Buffer overflow will occur (%d>%zd)", numFields, addressSize);
         return LE_OVERFLOW;
     }
 
     for(i = 0; i < numFields; i++)
     {
-        if (digitMode == 0)
+        if (0 == digitMode)
         {
             // DTMF encoding
-            uint8_t addrDigit;
+            uint8_t addrDigit = 0;
             if (i%2)
             {
-                addrDigit = (addressParameter->chari[i/2]&0x0F);
+                if ((CDMAPDU_ADDRESS_MAX_BYTES * 2) > i)
+                {
+                    addrDigit = (addressParameter->chari[i/2] & 0x0F);
+                    address[i] = DtmfChars[addrDigit];
+                }
             }
             else
             {
-                addrDigit = (addressParameter->chari[i/2]&0xF0) >> 4;
+                if ((CDMAPDU_ADDRESS_MAX_BYTES * 2) > i)
+                {
+                    addrDigit = (addressParameter->chari[i/2] & 0xF0) >> 4;
+                    address[i] = DtmfChars[addrDigit];
+                }
             }
-            if (addrDigit==0)
+
+            if (0 == addrDigit)
             {
                 LE_WARN("%d digit code is not possible", addrDigit);
                 return LE_FAULT;
             }
-            address[i] = DtmfChars[addrDigit];
         }
         else
         {
             uint8_t addrDigit = addressParameter->chari[i];
-            if (numberMode == 0)
+            if (0 == numberMode)
             {
                 // ASCII representation with with the most significant bit set set to 0
                 address[i] = addrDigit;

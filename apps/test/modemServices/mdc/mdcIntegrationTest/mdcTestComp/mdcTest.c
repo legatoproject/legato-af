@@ -146,15 +146,14 @@ static void SetConfiguration
     FILE* configFilePtr = fopen("/tmp/config.txt","r");
     Configuration_t configuration;
 
-
     memset(&configuration, 0, sizeof(Configuration_t));
 
     // if configuration file absent, use default settings
-    if (configFilePtr == NULL)
+    if (NULL == configFilePtr)
     {
-        strncpy(configuration.cid, DefaultCid, sizeof(DefaultCid));
-        strncpy(configuration.pdp, PdpIpv4, sizeof(PdpIpv4));
-        strncpy(configuration.apn, automaticApn, sizeof(automaticApn));
+        le_utf8_Copy(configuration.cid, DefaultCid, sizeof(configuration.cid), NULL);
+        le_utf8_Copy(configuration.pdp, PdpIpv4, sizeof(configuration.pdp), NULL);
+        le_utf8_Copy(configuration.apn, automaticApn, sizeof(configuration.apn), NULL);
     }
     else
     {
@@ -176,38 +175,38 @@ static void SetConfiguration
 
         // Get profile number
         char* cidPtr =  strtok_r(cmdLinePtr, " ", &saveParamPtr);
-        LE_ASSERT(cidPtr != NULL);
-        strncpy(configuration.cid, cidPtr, strlen(cidPtr));
+        LE_ASSERT(NULL != cidPtr);
+        le_utf8_Copy(configuration.cid, cidPtr, sizeof(configuration.cid), NULL);
 
         // Get pdp type
         char* pdpPtr = strtok_r(NULL, " ", &saveParamPtr);
-        LE_ASSERT(pdpPtr != NULL);
-        strncpy(configuration.pdp, pdpPtr, strlen(pdpPtr));
+        LE_ASSERT(NULL != pdpPtr);
+        le_utf8_Copy(configuration.pdp, pdpPtr, sizeof(configuration.pdp), NULL);
 
         // Get apn
         char* apnPtr = strtok_r(NULL, " ", &saveParamPtr);
-        LE_ASSERT(apnPtr != NULL);
-        strncpy(configuration.apn, apnPtr, strlen(apnPtr));
+        LE_ASSERT(NULL != apnPtr);
+        le_utf8_Copy(configuration.apn, apnPtr, sizeof(configuration.apn), NULL);
 
         // Get authentification
         char* authPtr = strtok_r(NULL, " ", &saveParamPtr);
-        if (authPtr != NULL)
+        if (NULL != authPtr)
         {
-            strncpy(configuration.auth, authPtr, strlen(authPtr));
+            le_utf8_Copy(configuration.auth, authPtr, sizeof(configuration.auth), NULL);
         }
 
         // Get username
         char* userNamePtr = strtok_r(NULL, " ", &saveParamPtr);
-        if (userNamePtr != NULL)
+        if (NULL != userNamePtr)
         {
-            strncpy(configuration.userName, userNamePtr, strlen(userNamePtr));
+            le_utf8_Copy(configuration.userName, userNamePtr, sizeof(configuration.userName), NULL);
         }
 
         // Get password
         char* passwordPtr = strtok_r(NULL, " ", &saveParamPtr);
-        if(passwordPtr != NULL)
+        if (NULL != passwordPtr)
         {
-            strncpy(configuration.password, passwordPtr, strlen(passwordPtr));
+            le_utf8_Copy(configuration.password, passwordPtr, sizeof(configuration.password), NULL);
         }
 
         // Get optional lines
@@ -218,16 +217,16 @@ static void SetConfiguration
             char* optionPtr = strtok_r(cmdLinePtr, " ", &saveParamPtr);
 
             // Check mapping cid
-            if ( strncmp(optionPtr, Map, strlen(Map)) == 0 )
+            if (strncmp(optionPtr, Map, strlen(Map)) == 0)
             {
                 LE_INFO("mapping cid");
                 char* cidPtr = strtok_r(NULL, " ", &saveParamPtr);
 
-                if ( strncmp(cidPtr, Cid, strlen(Cid)) == 0 )
+                if (strncmp(cidPtr, Cid, strlen(Cid)) == 0)
                 {
                     int cid = strtol((const char*) cidPtr+strlen(Cid), NULL, 10);
 
-                    if (errno != 0)
+                    if (0 != errno)
                     {
                         LE_ERROR("Bad cid %d %m", errno);
                         exit(EXIT_FAILURE);
@@ -237,11 +236,11 @@ static void SetConfiguration
 
                     char* rmnetPtr = strtok_r(NULL, " ", &saveParamPtr);
 
-                    if ( strncmp(rmnetPtr, Rmnet, strlen(Rmnet)) == 0 )
+                    if (0 == strncmp(rmnetPtr, Rmnet, strlen(Rmnet)))
                     {
                         int rmnet = strtol(rmnetPtr+strlen(Rmnet), NULL, 10);
 
-                        if (errno != 0)
+                        if (0 != errno)
                         {
                             LE_ERROR("Bad rmnet %d %m", errno);
                             exit(EXIT_FAILURE);
@@ -282,16 +281,16 @@ static void SetConfiguration
 
     // Get the profile reference
     *profileRefPtr = le_mdc_GetProfile(profile);
-    LE_ASSERT( *profileRefPtr != NULL );
+    LE_ASSERT(NULL != *profileRefPtr);
 
     // Check the current state of the cid
     le_mdc_ConState_t state = LE_MDC_DISCONNECTED;
 
     // Check the state
-    LE_ASSERT( le_mdc_GetSessionState(*profileRefPtr, &state) == LE_OK );
+    LE_ASSERT(LE_OK == le_mdc_GetSessionState(*profileRefPtr, &state));
 
     // If already connected, disconnect the session
-    if ( state == LE_MDC_CONNECTED )
+    if (LE_MDC_CONNECTED == state)
     {
         LE_ASSERT(le_mdc_StopSession(*profileRefPtr) == LE_OK);
     }
@@ -299,56 +298,56 @@ static void SetConfiguration
     // Set pdp type
     le_mdc_Pdp_t pdp = LE_MDC_PDP_UNKNOWN;
 
-    if ( strncmp(configuration.pdp, PdpIpv4, sizeof(PdpIpv4)) == 0 )
+    if (0 == strncmp(configuration.pdp, PdpIpv4, sizeof(PdpIpv4)))
     {
         pdp = LE_MDC_PDP_IPV4;
     }
-    else if ( strncmp(configuration.pdp, PdpIpv6, sizeof(PdpIpv6)) == 0 )
+    else if (0 == strncmp(configuration.pdp, PdpIpv6, sizeof(PdpIpv6)))
     {
         pdp = LE_MDC_PDP_IPV6;
     }
-    else if ( strncmp(configuration.pdp, PdpIpv4v6, sizeof(PdpIpv4v6)) == 0 )
+    else if (0 == strncmp(configuration.pdp, PdpIpv4v6, sizeof(PdpIpv4v6)))
     {
         pdp = LE_MDC_PDP_IPV4V6;
     }
 
-    LE_ASSERT( le_mdc_SetPDP(*profileRefPtr, pdp) == LE_OK );
+    LE_ASSERT(LE_OK == le_mdc_SetPDP(*profileRefPtr, pdp));
 
     // Set APN
-    if ( strncmp(configuration.apn, automaticApn, sizeof(automaticApn)) == 0 )
+    if (0 == strncmp(configuration.apn, automaticApn, sizeof(automaticApn)))
     {
         // Set default APN
-        LE_ASSERT( le_mdc_SetDefaultAPN(*profileRefPtr) == LE_OK );
+        LE_ASSERT(LE_OK == le_mdc_SetDefaultAPN(*profileRefPtr));
     }
     else
     {
-        LE_ASSERT( le_mdc_SetAPN(*profileRefPtr, configuration.apn) == LE_OK );
+        LE_ASSERT(LE_OK == le_mdc_SetAPN(*profileRefPtr, configuration.apn));
     }
 
     le_mdc_Auth_t auth = LE_MDC_AUTH_NONE;
-    if ( configuration.auth[0] != '\0' )
+    if ('\0' != configuration.auth[0])
     {
         // Set the authentification, username and password
-        if ( strncmp(configuration.auth, AuthPapChap, sizeof(AuthPapChap)) == 0 )
+        if (0 == strncmp(configuration.auth, AuthPapChap, sizeof(AuthPapChap)))
         {
             auth = LE_MDC_AUTH_PAP | LE_MDC_AUTH_CHAP;
         }
         // Set the authentification, username and password
-        else if ( strncmp(configuration.auth, AuthPap, sizeof(AuthPap)) == 0 )
+        else if (0 == strncmp(configuration.auth, AuthPap, sizeof(AuthPap)))
         {
             auth = LE_MDC_AUTH_PAP;
         }
-        else if ( strncmp(configuration.auth, AuthChap, sizeof(AuthChap)) == 0 )
+        else if (0 == strncmp(configuration.auth, AuthChap, sizeof(AuthChap)))
         {
             auth = LE_MDC_AUTH_CHAP;
         }
 
-        if (auth != LE_MDC_AUTH_NONE)
+        if (LE_MDC_AUTH_NONE != auth)
         {
-            LE_ASSERT( le_mdc_SetAuthentication( *profileRefPtr,
-                                                 auth,
-                                                 configuration.userName,
-                                                 configuration.password ) == LE_OK );
+            LE_ASSERT(LE_OK == le_mdc_SetAuthentication(*profileRefPtr,
+                                                auth,
+                                                configuration.userName,
+                                                configuration.password));
         }
     }
 

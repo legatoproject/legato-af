@@ -7,6 +7,7 @@
 #include "async_server.h"
 #include "le_print.h"
 
+#define BUFFERSIZE 1000
 
 void async_allParameters
 (
@@ -55,13 +56,28 @@ void async_FileTest
 )
 {
     // Read and print out whatever is read from the client fd
-    char buffer[1000];
+    char buffer[BUFFERSIZE];
     ssize_t numRead;
 
     numRead = read(dataFile, buffer, sizeof(buffer));
-    buffer[numRead] = '\0';
-    LE_PRINT_VALUE("%zd", numRead);
-    LE_PRINT_VALUE("%s", buffer);
+    if (-1 == numRead)
+    {
+        LE_INFO("Read error %m");
+    }
+    else
+    {
+        // Set the NULL at the end of the string.
+        if (BUFFERSIZE == numRead)
+        {
+            buffer[numRead-1] = '\0';
+        }
+        else
+        {
+            buffer[numRead] = '\0';
+        }
+        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%s", buffer);
+    }
 
     // Open a known file to return back to the client
     int dataOut = open("/usr/include/stdio.h", O_RDONLY);
@@ -69,10 +85,24 @@ void async_FileTest
 
     // Read a bit from the file, to make sure it is okay
     numRead = read(dataOut, buffer, sizeof(buffer));
-    buffer[numRead] = '\0';
-    LE_PRINT_VALUE("%zd", numRead);
-    LE_PRINT_VALUE("%s", buffer);
-
+    if (-1 == numRead)
+    {
+        LE_INFO("Read error `%s': %m", strerror(errno));
+    }
+    else
+    {
+        // Set the NULL at the end of the string.
+        if (BUFFERSIZE == numRead)
+        {
+            buffer[numRead-1] = '\0';
+        }
+        else
+        {
+            buffer[numRead] = '\0';
+        }
+        LE_PRINT_VALUE("%zd", numRead);
+        LE_PRINT_VALUE("%s", buffer);
+    }
     // Return the response to the client
     async_FileTestRespond(_cmdRef, dataOut);
 }

@@ -18,6 +18,9 @@ static char TestRootDir[LE_CFG_STR_LEN_BYTES] = "";
 // 2 bytes + null ; small string
 #define TEST_PATTERN_SMALL_STRING   "12"
 
+// TestRootDir array size (512 bytes) + file name size (100 bytes)
+#define NAMETEMPLATESIZE            612
+
 static const char* NodeTypeStr
 (
     le_cfg_IteratorRef_t iterRef
@@ -464,14 +467,15 @@ static void TestImportExport()
     static char pathBuffer[LE_CFG_STR_LEN_BYTES] = "";
     snprintf(pathBuffer, LE_CFG_STR_LEN_BYTES, "/%s/importExport", TestRootDir);
 
-    char nameTemplate[100] = "";
+    // Size of nameTemplate should be 612, as it copies the contents of TestRootDir
+    // and the file name string.
+    char nameTemplate[NAMETEMPLATESIZE] = "";
     sprintf(nameTemplate, "./%s_testImportData.cfg", TestRootDir);
 
     char filePath[PATH_MAX] = "";
     realpath(nameTemplate, filePath);
 
     WriteConfigData(filePath, testData);
-
 
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateWriteTxn("");
 
@@ -480,7 +484,6 @@ static void TestImportExport()
     LE_TEST(le_cfgAdmin_ImportTree(iterRef, filePath, pathBuffer) == LE_OK);
     unlink(filePath);
 
-
     sprintf(nameTemplate, "./%s_testExportData.cfg", TestRootDir);
     realpath(nameTemplate, filePath);
 
@@ -488,13 +491,10 @@ static void TestImportExport()
     LE_INFO("Export: %s", filePath);
     LE_TEST(le_cfgAdmin_ExportTree(iterRef, filePath, pathBuffer) == LE_OK);
 
-
     le_cfg_CommitTxn(iterRef);
-
 
     CompareFile(filePath, testData);
     unlink(filePath);
-
 
     iterRef = le_cfg_CreateReadTxn("");
 

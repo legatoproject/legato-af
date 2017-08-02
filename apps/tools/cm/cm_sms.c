@@ -567,13 +567,13 @@ static void HandleSendBin
         LE_ERROR("number is NULL");
         exit(EXIT_FAILURE);
     }
+
     const char* filePath = le_arg_GetArg(3);
     if (NULL == filePath)
     {
         LE_ERROR("filePath is NULL");
         exit(EXIT_FAILURE);
     }
-
 
     if (numArgs > 4)
     {
@@ -583,6 +583,7 @@ static void HandleSendBin
             LE_ERROR("arg is NULL");
             exit(EXIT_FAILURE);
         }
+
         maxCountSms = atoi(arg);
 
         if (maxCountSms <= 0)
@@ -594,7 +595,7 @@ static void HandleSendBin
         printf("Limiting to %d SMS\n", maxCountSms);
     }
 
-    if (strcmp(filePath, "-") == 0)
+    if (0 == strcmp(filePath, "-"))
     {
         printf("From stdin ...\n");
         filePtr = stdin;
@@ -613,12 +614,12 @@ static void HandleSendBin
     do {
         contentLen = fread(content, sizeof(uint8_t), sizeof(content), filePtr);
 
-        if (contentLen == -1)
+        if ((-1 == contentLen) || (0 == contentLen))
         {
             fprintf(stderr, "Error reading input: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-        else if ( (contentLen < sizeof(content)) && (content[contentLen-1] == 0x0A) )
+        else if ((contentLen < sizeof(content)) && (0x0A == content[contentLen-1]))
         {
             contentLen--;
         }
@@ -642,9 +643,9 @@ static void HandleSendBin
 
         index++;
     }
-    while ( (contentLen > 0) && (index < maxCountSms) );
+    while ((contentLen > 0) && (index < maxCountSms));
 
-    if (strcmp(filePath, "-") != 0)
+    if (0 != strcmp(filePath, "-"))
     {
         fclose(filePtr);
     }

@@ -1160,8 +1160,13 @@ le_result_t proc_Start
 
         // Unblock all signals that might have been blocked.
         sigset_t sigSet;
-        LE_ASSERT(sigfillset(&sigSet) == 0);
-        LE_ASSERT(pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL) == 0);
+        LE_ASSERT(0 == sigfillset(&sigSet));
+        LE_ASSERT(0 == pthread_sigmask(SIG_UNBLOCK, &sigSet, NULL));
+
+        if (LIMIT_MAX_NUM_ENV_VARS < numEnvVars)
+        {
+            LE_ERROR("The environment variable counts: %d are more than maximum limit", numEnvVars);
+        }
 
         SetEnvironmentVariables(envVars, numEnvVars);
 

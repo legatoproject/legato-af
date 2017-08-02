@@ -581,6 +581,17 @@ static le_result_t GetProcessNameFromPid
                 // This shouldn't be longer than LIMIT_MAX_PATH_BYTES.
                 return LE_OVERFLOW;
             }
+
+            // Set NULL at the end of the string
+            if (LIMIT_MAX_PATH_BYTES == result)
+            {
+                procPathStr[result-1] = '\0';
+            }
+            else
+            {
+                procPathStr[result] = '\0';
+            }
+
             // strip the path
             char* procNamePtr = le_path_GetBasenamePtr(procPathStr, "/");
 

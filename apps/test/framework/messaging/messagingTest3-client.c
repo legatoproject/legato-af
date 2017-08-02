@@ -43,6 +43,7 @@ static void ServerSentMeAnotherMessage
     {
         LE_FATAL("Failed to create pipe (%m).");
     }
+
     LE_INFO("Created pipe (%d, %d).", fdList[0], fdList[1]);
 
     // Write something small into the pipe (small enough to fit in the pipe buffer without
@@ -54,7 +55,8 @@ static void ServerSentMeAnotherMessage
     do
     {
         byteCount = write(fdList[1], requestText, sizeof(requestText));
-    } while ((byteCount == -1) && (errno == EINTR));
+    } while ((-1 == byteCount) && (EINTR == errno));
+
     LE_FATAL_IF(byteCount != sizeof(requestText), "write() returned %zd (errno = %m).", byteCount);
 
     // Pass the read end of the pipe to the server and receive back the read end of another pipe.
@@ -62,7 +64,7 @@ static void ServerSentMeAnotherMessage
     msgRef = le_msg_CreateMsg(sessionRef);
     le_msg_SetFd(msgRef, fdList[0]);
     msgRef = le_msg_RequestSyncResponse(msgRef);
-    LE_ASSERT(msgRef != NULL);
+    LE_ASSERT(NULL != msgRef);
     int fdFromServer = le_msg_GetFd(msgRef);
     LE_INFO("Received fd %d from server.", fdFromServer);
     LE_ASSERT(fdFromServer >= 0);
@@ -74,23 +76,26 @@ static void ServerSentMeAnotherMessage
     do
     {
         byteCount = read(fdFromServer, rxBuff, sizeof(rxBuff));
-    } while ((byteCount == -1) && (errno == EINTR));
+    } while ((-1 == byteCount) && (EINTR == errno));
+
     LE_FATAL_IF(byteCount < 0, "read() failed on fd %d (%m)", fdFromServer);
     LE_TEST(byteCount == sizeof(expectedResponseText));
+    // Check whether number of bytes read from fdFromServer file descriptor is 0.
+    LE_FATAL_IF(byteCount == 0, "number of bytes read from fdFromServer is 0");
     LE_TEST(rxBuff[byteCount - 1] == '\0');
     LE_INFO("Received '%s' from server.", rxBuff);
-    LE_TEST(strcmp(rxBuff, expectedResponseText) == 0);
+    LE_TEST(0 == strcmp(rxBuff, expectedResponseText));
 
     // Tell the server I'm evil.
     msgRef = le_msg_CreateMsg(sessionRef);
     char* buffPtr = le_msg_GetPayloadPtr(msgRef);
-    LE_ASSERT(buffPtr != NULL);
+    LE_ASSERT(NULL != buffPtr);
     LE_ASSERT(le_utf8_Copy(buffPtr, "EVIL", le_msg_GetMaxPayloadSize(msgRef), NULL) == LE_OK);
     msgRef = le_msg_RequestSyncResponse(msgRef);
 
     // I expect the server to have tried to kill me by terminating my session.
     // This should result in a NULL response message reference, and my close handler will be called.
-    LE_TEST(msgRef == NULL);
+    LE_TEST(NULL == msgRef);
 }
 
 

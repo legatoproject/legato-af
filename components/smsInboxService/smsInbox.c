@@ -605,7 +605,7 @@ static le_result_t ModifyMsgEntry
 
     json_t* jsonRootPtr = json_load_file(path, 0, &error);
 
-    if ( jsonRootPtr == NULL )
+    if (NULL == jsonRootPtr)
     {
         LE_ERROR("json decoder error %s", error.text);
         return LE_FAULT;
@@ -614,16 +614,24 @@ static le_result_t ModifyMsgEntry
     json_t* jsonValPtr = jsonRootPtr;
     json_t* jsonSubObjPtr = jsonRootPtr;
 
-    while ( ( json_is_object(jsonValPtr) == true ) && ( nbKey > indexKey ) )
+    while ((true == json_is_object(jsonValPtr)) && (nbKey > indexKey))
     {
         indexKey++;
         jsonSubObjPtr = jsonValPtr;
         jsonValPtr = json_object_get(jsonSubObjPtr, keyPtr[indexKey]);
     }
 
-    if ( !jsonValPtr )
+    if (!jsonValPtr)
     {
-        LE_ERROR("Unable to get the object %s", keyPtr[indexKey]);
+        if ((indexKey > -1) && (indexKey < nbKey))
+        {
+            LE_ERROR("Unable to get the object %s", keyPtr[indexKey]);
+        }
+        else
+        {
+            LE_ERROR("indexKey: %d is out of range", indexKey);
+        }
+
         res = LE_FAULT;
     }
     else
@@ -631,10 +639,9 @@ static le_result_t ModifyMsgEntry
         res = ModifyJsonObj(jsonSubObjPtr, jsonValPtr, keyPtr[indexKey], modifPtr);
     }
 
-
-    if ( res == LE_OK )
+    if (LE_OK == res)
     {
-        if ( json_dump_file(jsonRootPtr, path, JSON_INDENT(1) | JSON_PRESERVE_ORDER) < 0 )
+        if (json_dump_file(jsonRootPtr, path, JSON_INDENT(1) | JSON_PRESERVE_ORDER) < 0)
         {
             LE_ERROR("json error");
             res = LE_FAULT;

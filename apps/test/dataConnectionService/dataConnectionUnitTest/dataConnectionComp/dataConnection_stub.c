@@ -776,13 +776,11 @@ le_result_t le_cfg_GetString
 
     if (0 == strncmp(path, CFG_NODE_SSID, strlen(CFG_NODE_SSID)))
     {
-        strncpy(value, WifiSsid, valueNumElements);
-        result = LE_OK;
+        result = le_utf8_Copy(value, WifiSsid, valueNumElements, NULL);
     }
     else if (0 == strncmp(path, CFG_NODE_PASSPHRASE, strlen(CFG_NODE_PASSPHRASE)))
     {
-        strncpy(value, WifiPassphrase, valueNumElements);
-        result = LE_OK;
+        result = le_utf8_Copy(value, WifiPassphrase, valueNumElements, NULL);
     }
 
     return result;

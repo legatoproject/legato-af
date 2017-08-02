@@ -5,6 +5,7 @@
 #include "example_interface.h"
 #include "le_print.h"
 
+#define BUFFERSIZE 1000
 
 void banner(char *testName)
 {
@@ -21,17 +22,24 @@ void banner(char *testName)
 
 void writeFdToLog(int fd)
 {
-    char buffer[1000];
+    char buffer[BUFFERSIZE];
     ssize_t numRead;
 
     numRead = read(fd, buffer, sizeof(buffer));
-    if (numRead == -1)
+    if (-1 == numRead)
     {
         LE_INFO("Read error: %s", strerror(errno));
     }
     else
     {
-        buffer[numRead] = '\0';
+        if (BUFFERSIZE == numRead)
+        {
+            buffer[numRead-1] = '\0';
+        }
+        else
+        {
+            buffer[numRead] = '\0';
+        }
         LE_PRINT_VALUE("%zd", numRead);
         LE_PRINT_VALUE("%s", buffer);
     }

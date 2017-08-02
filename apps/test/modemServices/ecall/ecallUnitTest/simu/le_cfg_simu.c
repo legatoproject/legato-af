@@ -720,48 +720,52 @@ void le_cfgSimu_SetStringNodeValue
 {
     IteratorRefSimu = iteratorRef;
 
-    if ( strncmp(path, CFG_NODE_SYSTEM_STD, strlen(CFG_NODE_SYSTEM_STD)) == 0 )
+    if (0 == strncmp(path, CFG_NODE_SYSTEM_STD, strlen(CFG_NODE_SYSTEM_STD)))
     {
         memset(ECallSys, 0, sizeof(ECallSys));
-        strncpy(ECallSys, value, strlen(value));
+        // Check whether length of source string is higher than length of destination string
+        if (strlen(value) <= sizeof(ECallSys))
+        {
+            strncpy(ECallSys, value, strlen(value));
+        }
     }
-    else if ( strncmp(path, CFG_NODE_VIN, strlen(CFG_NODE_VIN)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_VIN, strlen(CFG_NODE_VIN)))
     {
         memset(ECallVin, 0, sizeof(ECallVin));
         strncpy(ECallVin, value, strlen(value));
     }
-    else if ( strncmp(path, CFG_NODE_VEH, strlen(CFG_NODE_VEH)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_VEH, strlen(CFG_NODE_VEH)))
     {
         memset(ECallVeh, 0, sizeof(ECallVeh));
         strncpy(ECallVeh, value, strlen(value));
     }
-    else if ( strncmp(path, CFG_NODE_PROP, strlen(CFG_NODE_PROP)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_PROP, strlen(CFG_NODE_PROP)))
     {
         memset(ECallProp, 0, sizeof(ECallProp));
         strncpy(ECallProp, value, strlen(value));
     }
-    else if ( strncmp(path, CFG_NODE_0, strlen(CFG_NODE_0)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_0, strlen(CFG_NODE_0)))
     {
         memset(ECallCfg0, 0, sizeof(ECallCfg0));
         strncpy(ECallCfg0, value, strlen(value));
     }
-    else if ( strncmp(path, CFG_NODE_1, strlen(CFG_NODE_1)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_1, strlen(CFG_NODE_1)))
     {
         memset(ECallCfg1, 0, sizeof(ECallCfg1));
         strncpy(ECallCfg1, value, strlen(value));
     }
-    else if ( strncmp(path, CFG_NODE_2, strlen(CFG_NODE_2)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_2, strlen(CFG_NODE_2)))
     {
         memset(ECallCfg2, 0, sizeof(ECallCfg2));
         strncpy(ECallCfg2, value, strlen(value));
     }
-    else if ( strncmp(path, CFG_NODE_3, strlen(CFG_NODE_3)) == 0 )
+    else if (0 == strncmp(path, CFG_NODE_3, strlen(CFG_NODE_3)))
     {
         memset(ECallCfg3, 0, sizeof(ECallCfg3));
         strncpy(ECallCfg3, value, strlen(value));
     }
 
-    return ;
+    return;
 }
 
 //--------------------------------------------------------------------------------------------------
