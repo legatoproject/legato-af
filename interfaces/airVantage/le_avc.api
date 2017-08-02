@@ -259,30 +259,30 @@
  /**
  * @interface le_avcService_configdbPage_Hide
  *
- * The configuration database path for the modemActivityTimeout is:
+ * The configuration database path for the activityTimeout is:
  * @verbatim
  * /
  *     apps/
  *         avcService/
- *                  modemActivityTimeout
+ *                  activityTimeout
  * @endverbatim
  *
  *
- * After an AirVantage session is started, if there's no activity from the modem within the timer
- * interval, then LE_AVC_NO_UPDATE state will be returned to the app. However, this modem activity
- * timeout can be overridden by setting an integer value for /apps/avcService/modemActivityTimeout.
- * The modem activity timer is initialized only when the @c avcService starts. If a valid entry >0
- * is found, then it will be used instead of the default value of 20 seconds. The following steps
- * should be used to set the modemActivtyTimeout.
+ * After an AirVantage session is started, if there's no activity between the device and the server
+ * within the timer interval, then LE_AVC_NO_UPDATE state will be returned to the app. However,
+ * this activity timeout can be overridden by setting an integer value for
+ * /apps/avcService/activityTimeout. The activity timer is initialized only when the @c avcService
+ * starts. If a valid entry >0 is found, then it will be used instead of the default value of 20
+ * seconds. The following steps should be used to set the activityTimeout.
  *
  *
  * @verbatim
- * config set /apps/avcService/modemActivityTimeout xx
+ * config set /apps/avcService/activityTimeout xx
  * app restart avcService
  * @endverbatim
  *
  * @note
- * Everytime a new value is written to modemActivityTimeout, the avcService needs to be
+ * Everytime a new value is written to activityTimeout, the avcService needs to be
  * restarted to read the new value.
  *
  *

@@ -142,12 +142,12 @@
    @endverbatim
  *
  *
- * After an AirVantage session is started, if there's no activity from the modem within the timer interval,
- * then LE_AVC_NO_UPDATE state will be returned to the app. However, this modem activity timeout can
- * be overridden by setting an integer value at /apps/avcService/modemActivityTimeout. The modem
- * activity timer is initialized only when the avcService starts. If a valid entry >0 is found,
- * then it will be used instead of the default value of 20 seconds. The following steps should be
- * used to set the modemActivtyTimeout.
+ * After an AirVantage session is started, if there's no activity from the modem within the timer 
+ * interval,then LE_AVC_NO_UPDATE state will be returned to the app. However, this modem activity 
+ * timeout can be overridden by setting an integer value at /apps/avcService/modemActivityTimeout. 
+ * The modem activity timer is initialized only when the avcService starts. If a valid entry >0 is 
+ * found,then it will be used instead of the default value of 20 seconds. The following steps should
+ * be used to set the modemActivtyTimeout.
  *
  *
  * @verbatim
