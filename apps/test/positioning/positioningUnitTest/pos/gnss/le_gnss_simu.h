@@ -214,11 +214,15 @@ typedef struct le_gnss_PositionSample
     bool            positionLatencyValid; ///< if true, positionLatency is set
     uint32_t        positionLatency;      ///< Position measurement latency in milliseconds
     bool            hdopValid;       ///< if true, horizontal dilution is set
-    uint16_t        hdop;            ///< The horizontal Dilution of Precision (DOP)
-    bool            vdopValid;       ///< if true, vertical dilition is set
-    uint16_t        vdop;            ///< The vertical Dilution of Precision (DOP)
+    uint16_t        hdop;            ///< The horizontal dilution of precision (DOP)
+    bool            vdopValid;       ///< if true, vertical dilution is set
+    uint16_t        vdop;            ///< The vertical dilution of precision (DOP)
     bool            pdopValid;       ///< if true, position dilution is set
     uint16_t        pdop;            ///< The Position dilution of precision (DOP)
+    bool            gdopValid;       ///< if true, geometric dilution is set
+    uint16_t        gdop;            ///< The geometric dilution of precision (DOP)
+    bool            tdopValid;       ///< if true, time dilution is set
+    uint16_t        tdop;            ///< The time dilution of precision (DOP)
     bool            magneticDeviationValid; ///< if true, magnetic deviation is set
     int32_t         magneticDeviation;  ///< The magnetic deviation
     // Satellite Vehicles information

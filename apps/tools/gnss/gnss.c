@@ -146,7 +146,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- direction     --> Direction indication\n"
          "\t\t\t\t\t- satInfo       --> Satellites Vehicle information\n"
          "\t\t\t\t\t- satStat       --> Satellites Vehicle status\n"
-         "\t\t\t\t\t- dop           --> Dilution Of Precision for the fixed position\n"
+         "\t\t\t\t\t- dop           --> Dilution of Precision for the fixed position\n"
          "\t\t\t\t\t- posInfo       --> Get all current position info of the device\n"
          "\t\t\t\t\t- status        --> Get gnss device's current status\n\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
@@ -1539,10 +1539,9 @@ static int GetDirection
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
- * This function gets DOP(Dilution of Precision).
+ * This function gets the DOP (Dilution of Precision).
  *
  * @return
  *     - EXIT_SUCCESS on success.
@@ -1554,36 +1553,45 @@ static int GetDop
     le_gnss_SampleRef_t positionSampleRef    ///< [IN] Position sample reference
 )
 {
-    uint16_t hdop;
-    uint16_t vdop;
-    uint16_t pdop;
+    uint16_t dop;
+    bool err = false;
+    le_result_t result;
+    le_gnss_DopType_t dopType = LE_GNSS_PDOP;
 
-    // Get DOP parameter
-    le_result_t result = le_gnss_GetDop( positionSampleRef,
-                                         &hdop,
-                                         &vdop,
-                                         &pdop);
+    static const char *tabDop[] =
+    {
+        "Position dilution of precision (PDOP)",
+        "Horizontal dilution of precision (HDOP)",
+        "Vertical dilution of precision (VDOP)",
+        "Geometric dilution of precision (GDOP)",
+        "Time dilution of precision (TDOP)"
+    };
 
-    if (result == LE_OK)
+    do
     {
-        printf("DOP [H%.3f,V%.3f,P%.3f]\n",
-               (float)(hdop)/1000,
-               (float)(vdop)/1000,
-               (float)(pdop)/1000);
+        // Get DOP parameter
+        result = le_gnss_GetDilutionOfPrecision(positionSampleRef,
+                                                dopType,
+                                                &dop);
+        if (LE_OK == result)
+        {
+            printf("%s %.3f\n", tabDop[dopType], (float)(dop)/1000);
+        }
+        else if (LE_OUT_OF_RANGE == result)
+        {
+            printf("%s invalid %d\n", tabDop[dopType], dop);
+            err = true;
+        }
+        else
+        {
+            printf("Failed! See log for details!\n");
+            return EXIT_FAILURE;
+        }
+        dopType++;
     }
-    else if (result == LE_OUT_OF_RANGE)
-    {
-        printf("DOP invalid [%d, %d, %d]\n",
-                hdop,
-                vdop,
-                pdop);
-    }
-    else
-    {
-        printf("Failed! See log for details!\n");
-    }
+    while (dopType != LE_GNSS_DOP_LAST);
 
-    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+    return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 

@@ -803,11 +803,13 @@ le_result_t le_gnss_GetSatellitesStatus
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to UINT16_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note If the caller is passing an invalid Position reference into this function,
- *       it is a fatal error, the function will not return.
+ * @deprecated This function is deprecated, le_gnss_GetDilutionOfPrecision() should be used for
+ *             new code.
  *
  * @note The DOP values are given with 3 decimal places like: DOP value 2200 = 2.200
  *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetDop
@@ -832,6 +834,33 @@ le_result_t le_gnss_GetDop
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the DOP parameter (Dilution Of Precision) for the fixed position.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to find the DOP value.
+ *  - LE_OUT_OF_RANGE  The retrieved parameter is invalid (set to INT16_MAX).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note This function replaces the deprecated function le_gnss_GetDop().
+ *
+ * @note The DOP value is given with 3 decimal places like: DOP value 2200 = 2.200
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetDilutionOfPrecision
+(
+    le_gnss_SampleRef_t positionSampleRef,      ///< [IN] Position sample's reference.
+    le_gnss_DopType_t dopType,                  ///< [IN] Dilution of Precision type.
+    uint16_t* dopPtr                            ///< [OUT] Dilution of Precision corresponding to
+                                                ///< the dopType. [resolution 1e-3].
+)
+{
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

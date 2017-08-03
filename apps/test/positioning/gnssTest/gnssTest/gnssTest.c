@@ -199,9 +199,7 @@ static void PositionHandlerFunction
     int32_t     vAccuracy;
     int32_t     magneticDeviation;
     // DOP parameter
-    uint16_t hdop;
-    uint16_t vdop;
-    uint16_t pdop;
+    uint16_t dop;
     // Horizontal speed
     uint32_t hSpeed;
     uint32_t hSpeedAccuracy;
@@ -211,6 +209,16 @@ static void PositionHandlerFunction
     // Direction
     uint32_t direction;
     uint32_t directionAccuracy;
+    le_gnss_DopType_t dopType = LE_GNSS_PDOP;
+
+    static const char *tabDop[] =
+    {
+        "Position dilution of precision (PDOP)",
+        "Horizontal dilution of precision (HDOP)",
+        "Vertical dilution of precision (VDOP)",
+        "Geometric dilution of precision (GDOP)",
+        "Time dilution of precision (TDOP)"
+    };
 
     if (NULL == positionSampleRef)
     {
@@ -308,10 +316,23 @@ static void PositionHandlerFunction
     }
 
     // Get DOP parameter
-    result = le_gnss_GetDop(positionSampleRef, &hdop, &vdop, &pdop);
-    LE_ASSERT((LE_OK == result)||(LE_OUT_OF_RANGE == result));
-
-    LE_INFO("DOP [H%.3f,V%.3f,P%.3f]", (float)(hdop)/1000, (float)(vdop)/1000, (float)(pdop)/1000);
+    do
+    {
+        result = le_gnss_GetDilutionOfPrecision(positionSampleRef,
+                                               dopType,
+                                               &dop);
+        LE_ASSERT((result == LE_OK)||(result == LE_OUT_OF_RANGE));
+        if (LE_OK == result)
+        {
+            printf("%s %.3f\n", tabDop[dopType], (float)(dop)/1000);
+        }
+        else
+        {
+            printf("%s invalid %d\n", tabDop[dopType], dop);
+        }
+        dopType++;
+    }
+    while (dopType != LE_GNSS_DOP_LAST);
 
     // Get horizontal speed
     result = le_gnss_GetHorizontalSpeed( positionSampleRef, &hSpeed, &hSpeedAccuracy);
