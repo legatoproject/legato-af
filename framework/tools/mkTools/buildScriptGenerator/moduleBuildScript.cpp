@@ -64,7 +64,7 @@ void GenerateBuildStatements
     else
     {
         // Pre-built module: add build statement for copying the .ko file
-        script << "CopyF " << modulePtr->path << "\n"
+        script << "CopyFile " << modulePtr->path << "\n"
                << "  modeFlags = u+rw-x,g+r-wx,o+r-wx\n";
     }
     script << "\n";
