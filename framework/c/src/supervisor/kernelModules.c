@@ -80,6 +80,7 @@ typedef struct
     char            path[LIMIT_MAX_PATH_BYTES]; // Path to module's .ko file
     int             argc;                       // insmod/rmmod argc
     char            *argv[KMODULE_MAX_ARGC];    // insmod/rmmod argv
+    le_dls_Link_t   listLink;
 }
 KModuleObj_t;
 
@@ -92,8 +93,8 @@ KModuleObj_t;
 static struct {
     le_mem_PoolRef_t    modulePool;    // memory pool of KModuleObj_t objects
     le_mem_PoolRef_t    stringPool;    // memory pool of strings (for argv)
-    le_hashmap_Ref_t    table;         // table of objects, indexed by name
-} KModuleHandler = {NULL, NULL, NULL};
+    le_dls_List_t       moduleList;    // List of modules stored in order they were inserted
+} KModuleHandler = {NULL, NULL, LE_DLS_LIST_INIT};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -274,12 +275,12 @@ static void ModuleInsert(struct dirent *entry)
     /* Free parameters - they did their job */
     ModuleFreeParams(m);
 
-    /* Trim off the extension from path/name and store module record in table */
+    /* Trim off the extension from path/name and store module record in list */
     ext = le_path_FindTrailing(m->path, KERNEL_MODULE_FILE_EXTENSION);
     LE_ASSERT(ext != NULL);
     *ext = '\0';
-    LE_FATAL_IF(NULL != le_hashmap_Put(KModuleHandler.table, m->name, m),
-                "Module '%s' already present.", m->name);
+    m->listLink = LE_DLS_LINK_INIT;
+    le_dls_Queue(&KModuleHandler.moduleList, &m->listLink);
 
     LE_INFO("New kernel module '%s'", m->name);
 }
@@ -336,15 +337,14 @@ void kernelModules_Insert(void)
 //--------------------------------------------------------------------------------------------------
 void kernelModules_Remove(void)
 {
-    KModuleObj_t *m;
-    le_hashmap_It_Ref_t iter;
-
-    /* Iterate through module table */
-    iter = le_hashmap_GetIterator(KModuleHandler.table);
-    while (LE_OK == le_hashmap_NextNode(iter))
+    /* Iterate through module list */
+    le_dls_Link_t *listLink;
+    for (listLink = le_dls_PopTail(&KModuleHandler.moduleList);
+         listLink != NULL;
+         listLink = le_dls_PopTail(&KModuleHandler.moduleList))
     {
-        m = (KModuleObj_t*)le_hashmap_GetValue(iter);
-        LE_ASSERT(m && KMODULE_OBJECT_COOKIE == m->cookie);
+        KModuleObj_t *m = CONTAINER_OF(listLink, KModuleObj_t, listLink);
+        LE_ASSERT(KMODULE_OBJECT_COOKIE == m->cookie);
 
         /* Populate argv for rmmod */
         m->argv[0] = NULL;     /* Reserved for rmmod command */
@@ -357,8 +357,6 @@ void kernelModules_Remove(void)
         /* Reset exec arguments */
         ModuleFreeParams(m);
 
-        /* Make sure the exact record is removed */
-        LE_ASSERT(m == le_hashmap_Remove(KModuleHandler.table, m->name));
         LE_INFO("Removed module '%s'", m->name);
         le_mem_Release(m);
     }
@@ -382,9 +380,6 @@ void kernelModules_Init(void)
                                                   STRINGS_MAX_BUFFER_SIZE);
     le_mem_ExpandPool(KModuleHandler.stringPool, STRINGS_DEFAULT_POOL_SIZE);
 
-    // Create table of kernel module objects
-    KModuleHandler.table = le_hashmap_Create("KModule Objects",
-                                             31,
-                                             le_hashmap_HashString,
-                                             le_hashmap_EqualsString);
+    // Create list of kernel module objects
+    KModuleHandler.moduleList = LE_DLS_LIST_INIT;
 }
