@@ -62,6 +62,10 @@ static void SysChangeHandler
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    // Remove the bootCount file to avoid false-positive detection of boot loops that can occur if
+    // the developer is repeatedly testing system behaviour after reboots.
+    (void)unlink("/legato/bootCount");
+
     /* Start the tcf-agent daemon */
     // tcf-agent.conf contains target device info necessary for the tcf-agent to send to Dev Studio.
     // If the file exists, or is defined by the user, then it's not generated.

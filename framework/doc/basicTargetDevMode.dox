@@ -9,6 +9,7 @@ Developer Mode (@c devMode) was created to provide helpful features to Developer
   - sets the probation period of apps to 10 seconds, to prevent aggressive roll-back.
   - runs the tcf-agent, so the target is auto discoverable by Developer Studio.
   - holds a wake lock, so the target won't go to sleep when disconnected from USB.
+  - removes the boot count file on startup to disable the boot loop detection feature of Legato.
 
 @section howToDevMode_installDev Installing Developer Mode
 
