@@ -37,12 +37,12 @@ struct Component_t : public HasTargetInfo_t
 
     std::list<Component_t*> subComponents;  ///< List of components this component requires.
 
-    std::list<FileSystemObject_t*> bundledFiles; ///< List of files to be bundled in the app.
-    std::list<FileSystemObject_t*> bundledDirs;  ///< List of directories to be bundled in the app.
+    FileObjectPtrList_t bundledFiles; ///< List of files to be bundled in the app.
+    FileObjectPtrList_t bundledDirs;  ///< List of directories to be bundled in the app.
 
-    std::list<FileSystemObject_t*> requiredFiles; ///< List of files to be imported into the app.
-    std::list<FileSystemObject_t*> requiredDirs;  ///< List of dirs to be imported into the app.
-    std::list<FileSystemObject_t*> requiredDevices;///< List of devices to be imported into the app.
+    FileObjectPtrList_t requiredFiles; ///< List of files to be imported into the app.
+    FileObjectPtrList_t requiredDirs;  ///< List of dirs to be imported into the app.
+    FileObjectPtrList_t requiredDevices;///< List of devices to be imported into the app.
 
     std::list<ApiTypesOnlyInterface_t*> typesOnlyApis;///< List of API files to import types from.
     std::list<ApiServerInterface_t*> serverApis;  ///< List of server-side interfaces implemented.

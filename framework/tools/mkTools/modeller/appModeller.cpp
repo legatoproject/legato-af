@@ -113,7 +113,8 @@ static void AddBundledItems
                 // Make sure that the source path exists and is a file.
                 if (file::FileExists(bundledFilePtr->srcPath))
                 {
-                    appPtr->bundledFiles.push_back(bundledFilePtr);
+                    appPtr->bundledFiles.push_back(
+                        std::shared_ptr<model::FileSystemObject_t>(bundledFilePtr));
                 }
                 else if (file::AnythingExists(bundledFilePtr->srcPath))
                 {
@@ -147,7 +148,8 @@ static void AddBundledItems
                 // Make sure that the source path exists and is a directory.
                 if (file::DirectoryExists(bundledDirPtr->srcPath))
                 {
-                    appPtr->bundledDirs.push_back(bundledDirPtr);
+                    appPtr->bundledDirs.push_back(
+                        std::shared_ptr<model::FileSystemObject_t>(bundledDirPtr));
                 }
                 else if (file::AnythingExists(bundledDirPtr->srcPath))
                 {
@@ -161,6 +163,20 @@ static void AddBundledItems
                         mk::format(LE_I18N("Directory not found: '%s'."), bundledDirPtr->srcPath)
                     );
                 }
+            }
+        }
+        else if (subsectionPtr->Name() == "binary")
+        {
+            for (auto itemPtr : subsectionPtr->Contents())
+            {
+                auto bundledBinaryTokenListPtr = parseTree::ToTokenListPtr(itemPtr);
+                auto bundledBinaryPtr = GetBundledItem(bundledBinaryTokenListPtr);
+
+                // Binary paths are never absolute
+                bundledBinaryPtr->srcPath = path::Combine(appPtr->dir, bundledBinaryPtr->srcPath);
+
+                appPtr->bundledBinaries.push_back(
+                    std::shared_ptr<model::FileSystemObject_t>(bundledBinaryPtr));
             }
         }
         else
@@ -563,7 +579,8 @@ static void AddRequiredItems
             {
                 auto fileSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                appPtr->requiredFiles.push_back(GetRequiredFileOrDir(fileSpecPtr));
+                appPtr->requiredFiles.push_back(
+                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredFileOrDir(fileSpecPtr)));
             }
         }
         else if (subsectionName == "dir")
@@ -572,7 +589,8 @@ static void AddRequiredItems
             {
                 auto dirSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                appPtr->requiredDirs.push_back(GetRequiredFileOrDir(dirSpecPtr));
+                appPtr->requiredDirs.push_back(
+                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredFileOrDir(dirSpecPtr)));
             }
         }
         else if (subsectionName == "device")
@@ -581,7 +599,8 @@ static void AddRequiredItems
             {
                 auto deviceSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                appPtr->requiredDevices.push_back(GetRequiredDevice(deviceSpecPtr));
+                appPtr->requiredDevices.push_back(
+                    std::shared_ptr<model::FileSystemObject_t>(GetRequiredDevice(deviceSpecPtr)));
             }
         }
         else if (subsectionName == "configTree")

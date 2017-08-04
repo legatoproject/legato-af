@@ -401,7 +401,8 @@ parseTree::CompoundItemList_t* ParseBundlesSubsection
 
     // Figure out which type of content item to parse depending on what subsection it is.
     parseTree::Content_t::Type_t itemType;
-    if (nameTokenPtr->text == "file")
+    if (nameTokenPtr->text == "file" ||
+        nameTokenPtr->text == "binary")
     {
         itemType = parseTree::Content_t::BUNDLED_FILE;
     }

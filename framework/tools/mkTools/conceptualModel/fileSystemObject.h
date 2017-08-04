@@ -64,9 +64,30 @@ struct FileSystemObject_t
     };
 };
 
+struct FileObjectPtrHash_t
+{
+    typedef FileSystemObject_t::Hash_t base_hash;
+    typedef std::shared_ptr<base_hash::argument_type> argument_type;
+    typedef base_hash::result_type result_type;
+
+    private:
+        base_hash baseHash;
+
+    public:
+        result_type operator()(const argument_type &arg) const
+        {
+            return baseHash(*arg);
+        }
+};
+
 /// Convenience typedef for constructing unordered sets of file system objects.
 typedef std::unordered_set<model::FileSystemObject_t,
                            model::FileSystemObject_t::Hash_t> FileSystemObjectSet_t;
 
+/// Convenience typedef for constructing unordered sets of file system object pointers.
+typedef std::unordered_set<std::shared_ptr<model::FileSystemObject_t>,
+                 model::FileObjectPtrHash_t> FileObjectPtrSet_t;
+
+typedef std::list<std::shared_ptr<model::FileSystemObject_t>> FileObjectPtrList_t;
 
 #endif // LEGATO_MKTOOLS_MODEL_FILE_SYSTEM_OBJECT_H_INCLUDE_GUARD

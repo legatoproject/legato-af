@@ -243,14 +243,14 @@ static void GenerateFileMappingConfig
         // External files...
         for (auto mappingPtr : componentPtr->requiredFiles)
         {
-            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr.get());
         }
     }
 
     // .adef
     for (auto mappingPtr : appPtr->requiredFiles)
     {
-        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr.get());
     }
 
     cfgStream << "    }" << std::endl << std::endl;
@@ -267,14 +267,14 @@ static void GenerateFileMappingConfig
     {
         for (auto mappingPtr : componentPtr->requiredDirs)
         {
-            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr.get());
         }
     }
 
     // .adef
     for (auto mappingPtr : appPtr->requiredDirs)
     {
-        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr.get());
     }
 
     cfgStream << "    }" << std::endl;
@@ -291,14 +291,14 @@ static void GenerateFileMappingConfig
     {
         for (auto mappingPtr : componentPtr->requiredDevices)
         {
-            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+            GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr.get());
         }
     }
 
     // .adef
     for (auto mappingPtr : appPtr->requiredDevices)
     {
-        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr);
+        GenerateSingleFileMappingConfig(cfgStream, index++, mappingPtr.get());
     }
 
     cfgStream << "    }" << std::endl;
@@ -320,14 +320,14 @@ static void GenerateFileMappingConfig
     {
         for (auto mappingPtr : componentPtr->bundledFiles)
         {
-            GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr);
+            GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr.get());
         }
     }
 
     // .adef
     for (auto mappingPtr : appPtr->bundledFiles)
     {
-        GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr);
+        GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr.get());
     }
 
     cfgStream << "    }" << std::endl << std::endl;
@@ -341,7 +341,7 @@ static void GenerateFileMappingConfig
     // .adef
     for (auto mappingPtr : appPtr->bundledDirs)
     {
-        GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr);
+        GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr.get());
     }
 
     // .cdef
@@ -349,7 +349,7 @@ static void GenerateFileMappingConfig
     {
         for (auto mappingPtr : componentPtr->bundledDirs)
         {
-            GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr);
+            GenerateBundledObjectMappingConfig(cfgStream, index++, mappingPtr.get());
         }
     }
 

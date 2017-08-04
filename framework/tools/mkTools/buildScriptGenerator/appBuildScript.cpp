@@ -443,7 +443,7 @@ void GenerateStagingBundleBuildStatements
         GenerateFileBundleBuildStatement(script,
                                          allBundledFiles,
                                          appPtr,
-                                         fileSystemObjPtr,
+                                         fileSystemObjPtr.get(),
                                          buildParams);
     }
     for (auto fileSystemObjPtr : appPtr->bundledDirs)
@@ -451,7 +451,15 @@ void GenerateStagingBundleBuildStatements
         GenerateDirBundleBuildStatements(script,
                                          allBundledFiles,
                                          appPtr,
-                                         fileSystemObjPtr,
+                                         fileSystemObjPtr.get(),
+                                         buildParams);
+    }
+    for (auto fileSystemObjPtr : appPtr->bundledBinaries)
+    {
+        GenerateFileBundleBuildStatement(script,
+                                         allBundledFiles,
+                                         appPtr,
+                                         fileSystemObjPtr.get(),
                                          buildParams);
     }
 
@@ -464,7 +472,7 @@ void GenerateStagingBundleBuildStatements
             GenerateFileBundleBuildStatement(script,
                                              allBundledFiles,
                                              appPtr,
-                                             fileSystemObjPtr,
+                                             fileSystemObjPtr.get(),
                                              buildParams);
         }
         for (auto fileSystemObjPtr : componentPtr->bundledDirs)
@@ -472,7 +480,7 @@ void GenerateStagingBundleBuildStatements
             GenerateDirBundleBuildStatements(script,
                                              allBundledFiles,
                                              appPtr,
-                                             fileSystemObjPtr,
+                                             fileSystemObjPtr.get(),
                                              buildParams);
         }
 

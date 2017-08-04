@@ -17,7 +17,7 @@ namespace
 
 
 // Type mapping std collections to our types to make referring to them easier.
-typedef std::set<model::FileSystemObject_t*> FsObjectSet_t;
+typedef model::FileObjectPtrSet_t FsObjectSet_t;
 typedef std::list<model::FileSystemObject_t*> FsObjectList_t;
 
 typedef std::list<model::Process_t*> ProcessList_t;
@@ -44,13 +44,13 @@ struct RequiredFsObject_t
 //--------------------------------------------------------------------------------------------------
 /**
  * Structure for recording the FS objects that have been bundled in with the application.
- .
  **/
 //--------------------------------------------------------------------------------------------------
 struct BundledFsObject_t
 {
     FsObjectSet_t files;
     FsObjectSet_t dirs;
+    FsObjectSet_t binaries;
 };
 
 
@@ -347,6 +347,7 @@ static void GenerateBundlesSection
                  "bundles:\n"
                  "{";
 
+    GenerateFsObjectItems(defStream, "binary", bundled.binaries, WritePerm_t::Yes);
     GenerateFsObjectItems(defStream, "file", bundled.files, WritePerm_t::Yes);
     GenerateFsObjectItems(defStream, "dir", bundled.dirs, WritePerm_t::No);
 
@@ -729,6 +730,172 @@ static void GenerateBindings
     defStream << "}\n";
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get staging path for an app
+ */
+static std::string GetStagingPath
+(
+    const model::App_t* appPtr
+)
+{
+    path::Path_t stagingPath = "$builddir";
+    stagingPath += appPtr->workingDir;
+    stagingPath += "staging";
+
+    return stagingPath.str;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Make the source of a file system object the object's location in the staging directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static std::shared_ptr<model::FileSystemObject_t> MakeSourceStaging
+(
+    const std::shared_ptr<model::FileSystemObject_t> originalFilePtr
+)
+{
+    auto dirName = (originalFilePtr->permissions.IsWriteable()?"writeable":"read-only");
+
+    return std::make_shared<model::FileSystemObject_t>(path::Combine(path::Combine(".",dirName),
+                                                                     originalFilePtr->destPath),
+                                                       originalFilePtr->destPath,
+                                                       originalFilePtr->permissions);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gather up the bundled FS objects from the app
+ */
+//--------------------------------------------------------------------------------------------------
+static void GatherBundledFsObjects
+(
+    const model::App_t* appPtr,
+    BundledFsObject_t& bundled
+)
+{
+    std::transform(appPtr->bundledFiles.begin(), appPtr->bundledFiles.end(),
+                   inserter(bundled.files, bundled.files.end()),
+                   MakeSourceStaging);
+    std::transform(appPtr->bundledDirs.begin(), appPtr->bundledDirs.end(),
+                   inserter(bundled.dirs, bundled.dirs.end()),
+                   MakeSourceStaging);
+
+    for (auto componentPtr : appPtr->components)
+    {
+        std::transform(componentPtr->bundledFiles.begin(), componentPtr->bundledFiles.end(),
+                       inserter(bundled.files, bundled.files.end()),
+                       MakeSourceStaging);
+        std::transform(componentPtr->bundledDirs.begin(), componentPtr->bundledDirs.end(),
+                       inserter(bundled.dirs, bundled.dirs.end()),
+                       MakeSourceStaging);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gather a single binary from an application.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GatherBinary
+(
+    std::string binaryPath,
+    std::string stagingPath,
+    BundledFsObject_t& bundled
+)
+{
+    // Binaries are always read-only
+    auto stagingPrefix = stagingPath + "read-only/";
+
+    if (binaryPath.compare(0, stagingPrefix.length(), stagingPrefix) != 0)
+    {
+        // Internal error
+        throw mk::Exception_t(
+            mk::format(LE_I18N("INTERNAL ERROR: Executable file '%s' is outside the"
+                               " staging directory '%s'."),
+                       binaryPath, stagingPrefix)
+        );
+    }
+
+    auto basePath = binaryPath.substr(stagingPrefix.length() - 1);
+    auto newPath = std::string(".") + binaryPath.substr(stagingPath.length() - 1);
+
+    bundled.binaries.insert(
+        std::make_shared<model::FileSystemObject_t>(newPath,
+                                                    basePath,
+                                                    model::Permissions_t(true, /* r */
+                                                                         false, /* !w */
+                                                                         true /* x */)));
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gather up the binaries from an application.
+ *
+ * Although these are included on the target they are never added to the bundled files list.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GatherBinaries
+(
+    const model::App_t* appPtr,
+    BundledFsObject_t& bundled,
+    const mk::BuildParams_t& buildParams
+)
+{
+    auto stagingPath = GetStagingPath(appPtr) + "/";
+
+    for (auto mapItem : appPtr->executables)
+    {
+        auto exePtr = mapItem.second;
+        auto exePath = exePtr->path;
+
+        if (!path::IsAbsolute(exePath))
+        {
+            exePath = "$builddir/" + exePath;
+        }
+
+        GatherBinary(exePath,
+                     stagingPath,
+                     bundled);
+    }
+
+    stagingPath = path::Combine(buildParams.workingDir, "staging") + "/";
+    for (auto componentPtr : appPtr->components)
+    {
+        auto libPath = componentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib;
+        if (!libPath.empty())
+        {
+            GatherBinary(libPath,
+                         stagingPath,
+                         bundled);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gather up the required FS objects from the app
+ */
+//--------------------------------------------------------------------------------------------------
+static void GatherRequiredFsObjects
+(
+    const model::App_t* appPtr,
+    RequiredFsObject_t& required
+)
+{
+    std::copy(appPtr->requiredFiles.begin(), appPtr->requiredFiles.end(),
+              std::inserter(required.files, required.files.end()));
+    std::copy(appPtr->requiredDirs.begin(), appPtr->requiredDirs.end(),
+              std::inserter(required.dirs, required.dirs.end()));
+    std::copy(appPtr->requiredDevices.begin(), appPtr->requiredDevices.end(),
+              std::inserter(required.devices, required.devices.end()));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -739,39 +906,14 @@ static void GatherFsObjects
 (
     const model::App_t* appPtr,
     RequiredFsObject_t& required,
-    BundledFsObject_t& bundled
+    BundledFsObject_t& bundled,
+    const mk::BuildParams_t& buildParams
 )
 //--------------------------------------------------------------------------------------------------
 {
-    path::Path_t stagingPath = "$builddir";
-    stagingPath += appPtr->workingDir;
-    stagingPath += "staging";
-
-    auto stagingPrefix = stagingPath.str + "/";
-
-    auto& allBundledFiles = appPtr->getTargetInfo<target::FileSystemAppInfo_t>()->allBundledFiles;
-
-    for (auto fileObjIter = allBundledFiles.begin();
-         fileObjIter != allBundledFiles.end();
-         ++fileObjIter)
-    {
-        if (fileObjIter->destPath.compare(0, stagingPrefix.length(), stagingPrefix) != 0)
-        {
-            // Internal error
-            throw mk::Exception_t(
-                mk::format(LE_I18N("INTERNAL ERROR: Bundled file '%s' (source '%s') is outside the"
-                                   " staging directory."),
-                           fileObjIter->destPath, fileObjIter->srcPath)
-            );
-        }
-
-        auto basePath = fileObjIter->destPath.substr(stagingPrefix.length() - 1);
-        auto newPath = std::string(".") + basePath;
-
-        bundled.files.insert(new model::FileSystemObject_t(newPath,
-                                                           basePath,
-                                                           fileObjIter->permissions));
-    }
+    GatherBundledFsObjects(appPtr, bundled);
+    GatherRequiredFsObjects(appPtr, required);
+    GatherBinaries(appPtr, bundled, buildParams);
 }
 
 
@@ -805,7 +947,7 @@ void GenerateExportedAdef
     RequiredFsObject_t required;
     BundledFsObject_t bundled;
 
-    GatherFsObjects(appPtr, required, bundled);
+    GatherFsObjects(appPtr, required, bundled, buildParams);
 
     GenerateBasicInfo(defStream, appPtr);
     GenerateRequiresSection(defStream, appPtr, required);
