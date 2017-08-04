@@ -1,6 +1,6 @@
 include common.mk
 
-SUBDIRS := $(wildcard */.)
+SUBDIRS := $(patsubst %/Makefile,%,$(wildcard */Makefile))
 
 all: $(SUBDIRS)
 $(SUBDIRS):

@@ -1,7 +1,7 @@
 
 apps:
 {
-    hello.$LEGATO_TARGET.app
+    ${HELLO_APP}
 }
 
 bindings:
