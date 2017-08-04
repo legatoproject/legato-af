@@ -69,10 +69,11 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         // Don't follow symlinks (-P), and include the directory structure and the contents of
         // symlinks as part of the MD5 hash.
         "            md5=$$( ( cd $workingDir/staging && $\n"
-        "                      find -P | sort && $\n"
-        "                      find -P -type f | sort | xargs cat && $\n"
-        "                      find -P -type l | sort | xargs -r -n 1 readlink $\n"
-        "                    ) | md5sum) && $\n"
+        "                      find -P -print0 |LC_ALL=C sort -z && $\n"
+        "                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $\n"
+        "                      find -P -type l -print0 |LC_ALL=C sort -z"
+                             " |xargs -0 -r -n 1 readlink $\n"
+        "                    ) |tee /proc/self/fd/2 | md5sum) && $\n"
         "            md5=$${md5%% *} && $\n"
         // Generate the app's info.properties file.
         "            ( echo \"app.name=$name\" && $\n"
@@ -86,7 +87,9 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "rule PackApp\n"
         "  description = Packaging app\n"
         // Pack the staging area into a tarball.
-        "  command = tar cjf $workingDir/$name.$target -C $workingDir/staging . && $\n"
+        "  command = (cd $workingDir/staging && find . -print0 | LC_ALL=C sort -z"
+                     " |tar --no-recursion --null -T -"
+                        " -cjf - --mtime=$adefPath) > $workingDir/$name.$target && $\n"
         // Get the size of the tarball.
         "            tarballSize=`stat -c '%s' $workingDir/$name.$target` && $\n"
         // Get the app's MD5 hash from its info.properties file.
@@ -107,7 +110,8 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "  description = Packaging app for distribution.\n"
         "  command = cp -r $stagingDir/* $workingDir/ && $\n"
         "            rm $workingDir/info.properties $workingDir/root.cfg && $\n"
-        "            tar cjf $out -C $workingDir/ .\n"
+        "            (cd $workingDir/ && find . -print0 |LC_ALL=C sort -z"
+                     " |tar --no-recursion --null -T - -cjf - --mtime=$adefPath) > $out\n"
         "\n";
 }
 
@@ -143,15 +147,11 @@ static std::string PermissionsToModeFlags
 //--------------------------------------------------------------------------------------------------
 {
     std::string flags;
+    std::string executableFlag = (permissions.IsExecutable()?"+x":"-x");
 
-    if (permissions.IsExecutable())
-    {
-        flags = "u+rwx,g+rwx,o+x";
-    }
-    else
-    {
-        flags = "u+rw,g+rw,o";
-    }
+    flags = "u+rw" + executableFlag +
+            ",g+r" + executableFlag +
+            ",o" + executableFlag;
 
     if (permissions.IsReadable())
     {
@@ -470,8 +470,11 @@ void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
 
             // Copy the component library into the app's lib directory.
             // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
-            script << "build " << destPath << " : CopyFile "
-                   << lib << "\n\n";
+            script << "build " << destPath << " : BundleFile " << lib << "\n"
+                   << "  modeFlags = " << PermissionsToModeFlags(model::Permissions_t(true,
+                                                                                      false,
+                                                                                      true))
+                   << "\n\n";
 
             // Add the component library to the set of bundled files.
             allBundledFiles.insert(model::FileSystemObject_t(
@@ -481,6 +484,23 @@ void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
                                                             false,
                                                             componentPtr->HasCOrCppCode())));
         }
+    }
+
+    // Finally bundle all executables into the app
+    for (auto& exeMapPtr : appPtr->executables)
+    {
+        auto exePtr = exeMapPtr.second;
+        auto destPath = "$builddir/" + appPtr->workingDir
+            + "/staging/read-only/bin/" + exePtr->name;
+        auto exePath = "$builddir/" + exePtr->path;
+
+        // Copy the component library into the app's lib directory.
+        // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
+        script << "build " << destPath << " : BundleFile " << exePath << "\n"
+               << "  modeFlags = " << PermissionsToModeFlags(model::Permissions_t(true,
+                                                                                  false,
+                                                                                  true))
+               << "\n\n";
     }
 }
 
@@ -520,7 +540,8 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
     }
     for (auto mapItem : appPtr->executables)
     {
-        script << " $builddir/" << mapItem.second->path;
+        script << " $builddir/" << appPtr->workingDir
+               << "/staging/read-only/bin/" << mapItem.second->name;
     }
 
     // It also depends on the generated config file.
@@ -544,6 +565,7 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
     // Tell the build rule what the app's name and version are and where its working directory
     // is.
     script << "  name = " << appPtr->name << "\n"
+        "  adefPath = " << appPtr->defFilePtr->path << "\n"
         "  version = " << appPtr->version << "\n"
         "  workingDir = $builddir/" + appPtr->workingDir << "\n"
         "\n";
@@ -579,6 +601,7 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
         }
 
         script << "\n"
+                  "  adefPath = " << appPtr->defFilePtr->path << "\n"
                   "  stagingDir = $builddir/" << appPtr->workingDir << "/staging" << "\n"
                   "  workingDir = " << appPackDir << "\n"
                   "\n";

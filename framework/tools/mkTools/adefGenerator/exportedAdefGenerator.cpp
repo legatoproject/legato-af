@@ -852,12 +852,7 @@ static void GatherBinaries
     for (auto mapItem : appPtr->executables)
     {
         auto exePtr = mapItem.second;
-        auto exePath = exePtr->path;
-
-        if (!path::IsAbsolute(exePath))
-        {
-            exePath = "$builddir/" + exePath;
-        }
+        auto exePath = "$builddir/" + appPtr->workingDir + "/staging/read-only/bin/" + exePtr->name;
 
         GatherBinary(exePath,
                      stagingPath,

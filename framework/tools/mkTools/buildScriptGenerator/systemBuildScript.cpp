@@ -128,10 +128,10 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     // Don't follow symlinks (-P), and include the directory structure and the contents of symlinks
     // as part of the MD5 hash.
     "            md5=$$( ( cd $stagingDir && $\n"
-    "                      find -P | sort && $\n"
-    "                      find -P -type f | sort | xargs cat && $\n"
-    "                      find -P -type l | sort | xargs -r -n 1 readlink $\n"
-    "                    ) | md5sum) && $\n"
+    "                      find -P -print0 |LC_ALL=C sort -z && $\n"
+    "                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $\n"
+    "                      find -P -type l -print0 |LC_ALL=C sort -z |xargs -0 -r -n 1 readlink $\n"
+    "                    ) |tee /proc/self/fd/2 | md5sum) && $\n"
     "            md5=$${md5%% *} && $\n"
 
     // Get the Legato framework version and append the MD5 sum to it to get the system version.
@@ -147,7 +147,8 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     "            printf '%s\\n' \"$$version\" > $stagingDir/version && $\n"
 
     // Pack the system's staging area into a compressed tarball in the working directory.
-    "            tar cjf $builddir/" << systemPtr->name << ".$target -C $stagingDir . && $\n"
+    "            tar cjf $builddir/" << systemPtr->name << ".$target"
+                 " --mtime=" << systemPtr->defFilePtr->path << " -C $stagingDir . && $\n"
 
     // Get the size of the tarball.
     "            tarballSize=`stat -c '%s' $builddir/" << systemPtr->name << ".$target` && $\n"

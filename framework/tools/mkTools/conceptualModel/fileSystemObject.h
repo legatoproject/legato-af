@@ -51,6 +51,26 @@ struct FileSystemObject_t
         return !(*this == a);
     }
 
+    bool operator<(const FileSystemObject_t& a) const
+    {
+        return destPath < a.destPath;
+    }
+
+    bool operator<=(const FileSystemObject_t& a) const
+    {
+        return !(*this > a);
+    }
+
+    bool operator>(const FileSystemObject_t& a) const
+    {
+        return destPath > a.destPath;
+    }
+
+    bool operator>=(const FileSystemObject_t& a) const
+    {
+        return !(*this < a);
+    }
+
     struct Hash_t
     {
         typedef model::FileSystemObject_t argument_type;
@@ -80,14 +100,22 @@ struct FileObjectPtrHash_t
         }
 };
 
+struct FileObjectPtrLess_t : std::binary_function<std::shared_ptr<const FileSystemObject_t>,
+                                                  std::shared_ptr<const FileSystemObject_t>,
+                                                  bool>
+{
+    inline bool operator()(first_argument_type a, second_argument_type b) const
+    {
+        return (*a) < (*b);
+    }
+};
+
 /// Convenience typedef for constructing unordered sets of file system objects.
-typedef std::unordered_set<model::FileSystemObject_t,
-                           model::FileSystemObject_t::Hash_t> FileSystemObjectSet_t;
+typedef std::set<model::FileSystemObject_t> FileSystemObjectSet_t;
 
 /// Convenience typedef for constructing unordered sets of file system object pointers.
-typedef std::unordered_set<std::shared_ptr<model::FileSystemObject_t>,
-                 model::FileObjectPtrHash_t> FileObjectPtrSet_t;
+typedef std::set<std::shared_ptr<model::FileSystemObject_t>,
+                 model::FileObjectPtrLess_t> FileObjectPtrSet_t;
 
-typedef std::list<std::shared_ptr<model::FileSystemObject_t>> FileObjectPtrList_t;
 
 #endif // LEGATO_MKTOOLS_MODEL_FILE_SYSTEM_OBJECT_H_INCLUDE_GUARD

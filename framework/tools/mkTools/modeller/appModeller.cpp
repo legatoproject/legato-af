@@ -113,7 +113,7 @@ static void AddBundledItems
                 // Make sure that the source path exists and is a file.
                 if (file::FileExists(bundledFilePtr->srcPath))
                 {
-                    appPtr->bundledFiles.push_back(
+                    appPtr->bundledFiles.insert(
                         std::shared_ptr<model::FileSystemObject_t>(bundledFilePtr));
                 }
                 else if (file::AnythingExists(bundledFilePtr->srcPath))
@@ -148,7 +148,7 @@ static void AddBundledItems
                 // Make sure that the source path exists and is a directory.
                 if (file::DirectoryExists(bundledDirPtr->srcPath))
                 {
-                    appPtr->bundledDirs.push_back(
+                    appPtr->bundledDirs.insert(
                         std::shared_ptr<model::FileSystemObject_t>(bundledDirPtr));
                 }
                 else if (file::AnythingExists(bundledDirPtr->srcPath))
@@ -175,7 +175,7 @@ static void AddBundledItems
                 // Binary paths are never absolute
                 bundledBinaryPtr->srcPath = path::Combine(appPtr->dir, bundledBinaryPtr->srcPath);
 
-                appPtr->bundledBinaries.push_back(
+                appPtr->bundledBinaries.insert(
                     std::shared_ptr<model::FileSystemObject_t>(bundledBinaryPtr));
             }
         }
@@ -295,7 +295,7 @@ static void AddExecutables
 
             // Compute the path to the executable, relative to the app's working directory
             // and create an object for this exe.
-            auto exePtr = new model::Exe_t("staging/read-only/bin/" + exeName,
+            auto exePtr = new model::Exe_t("obj/" + exeName + "/" + exeName,
                                            appPtr,
                                            buildParams.workingDir);
             exePtr->exeDefPtr = itemPtr;
@@ -579,7 +579,7 @@ static void AddRequiredItems
             {
                 auto fileSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                appPtr->requiredFiles.push_back(
+                appPtr->requiredFiles.insert(
                     std::shared_ptr<model::FileSystemObject_t>(GetRequiredFileOrDir(fileSpecPtr)));
             }
         }
@@ -589,7 +589,7 @@ static void AddRequiredItems
             {
                 auto dirSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                appPtr->requiredDirs.push_back(
+                appPtr->requiredDirs.insert(
                     std::shared_ptr<model::FileSystemObject_t>(GetRequiredFileOrDir(dirSpecPtr)));
             }
         }
@@ -599,7 +599,7 @@ static void AddRequiredItems
             {
                 auto deviceSpecPtr = parseTree::ToTokenListPtr(itemPtr);
 
-                appPtr->requiredDevices.push_back(
+                appPtr->requiredDevices.insert(
                     std::shared_ptr<model::FileSystemObject_t>(GetRequiredDevice(deviceSpecPtr)));
             }
         }

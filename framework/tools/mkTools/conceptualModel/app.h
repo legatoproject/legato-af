@@ -47,13 +47,13 @@ struct App_t : public HasTargetInfo_t
 
     std::map<std::string, Exe_t*> executables;  ///< Collection of executables defined in this app.
 
-    FileObjectPtrList_t bundledFiles; ///< List of files to be bundled in the app.
-    FileObjectPtrList_t bundledDirs;  ///< List of directories to be bundled in the app.
-    FileObjectPtrList_t bundledBinaries; ///< List of binaries to be bundled in a pre-built app.
+    FileObjectPtrSet_t bundledFiles; ///< List of files to be bundled in the app.
+    FileObjectPtrSet_t bundledDirs;  ///< List of directories to be bundled in the app.
+    FileObjectPtrSet_t bundledBinaries; ///< List of binaries to be bundled in a pre-built app.
 
-    FileObjectPtrList_t requiredFiles; ///< List of files to be imported into the app.
-    FileObjectPtrList_t requiredDirs;  ///< List of dirs to be imported into the app.
-    FileObjectPtrList_t requiredDevices;///< List of devices to be imported into the app.
+    FileObjectPtrSet_t requiredFiles; ///< List of files to be imported into the app.
+    FileObjectPtrSet_t requiredDirs;  ///< List of dirs to be imported into the app.
+    FileObjectPtrSet_t requiredDevices;///< List of devices to be imported into the app.
 
     std::list<ProcessEnv_t*> processEnvs;   ///< Process environments defined in the app.
 
