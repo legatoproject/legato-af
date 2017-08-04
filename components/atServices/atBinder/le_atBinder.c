@@ -99,7 +99,7 @@ static void MonitorSocket
     short events
 )
 {
-    int clientFd = -1;
+    int clientFd;
     le_fdMonitor_Ref_t fdMonitorRef;
     le_atServer_DeviceRef_t atServerRef;
 
@@ -115,20 +115,17 @@ static void MonitorSocket
         if (!atServerRef)
         {
             LE_ERROR("Cannot open the device!");
-            goto exit_close_client;
+            CloseWarn(clientFd);
+            goto exit_close_socket;
         }
         fdMonitorRef = le_fdMonitor_Create("atBinder-client", clientFd, MonitorClient, POLLRDHUP);
         le_fdMonitor_SetContextPtr(fdMonitorRef, atServerRef);
         LE_INFO("atBinder is ready");
         return;
     }
-    else
-    {
-        LE_WARN("events %.8x not handled", events);
-    }
 
-exit_close_client:
-    CloseWarn(clientFd);
+    LE_WARN("events %.8x not handled", events);
+
 exit_close_socket:
     le_fdMonitor_Delete(le_fdMonitor_GetMonitor());
     CloseWarn(sockFd);
