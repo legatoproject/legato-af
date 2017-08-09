@@ -316,8 +316,9 @@ stage_embedded:
 	checkpa $(TARGET) || true
 
 # If set, generate an image with stripped binaries
-ifeq ($(STRIP_STAGING_TREE),1)
+ifneq ($(STRIP_STAGING_TREE),0)
   MKLEGATOIMG_FLAGS += -s
+  MKSYS_FLAGS += -d build/$(TARGET)/debug
 endif
 
 .PHONY: stage_mklegatoimgro
@@ -435,7 +436,6 @@ SYSTEM_TARGETS = $(foreach target,$(TARGETS),system_$(target))
 .PHONY: $(SYSTEM_TARGETS)
 $(SYSTEM_TARGETS):system_%: framework_%
 	mksys -t $(TARGET) -w build/$(TARGET)/system -o build/$(TARGET) $(SDEF_TO_USE) \
-			-d build/$(TARGET)/debug \
 			$(MKSYS_FLAGS)
 	mv build/$(TARGET)/$(notdir $(SDEF_TO_USE:%.sdef=%)).$(TARGET).update \
 	    build/$(TARGET)/system.$(TARGET).update

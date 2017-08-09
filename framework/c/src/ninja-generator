@@ -58,6 +58,11 @@ if [ "$DEBUG" != "yes" ]; then
     NINJA_CFLAGS="$NINJA_CFLAGS -O2"
 fi
 
+if [ "$STRIP_STAGING_TREE" != 0 ]; then
+    NINJA_CFLAGS="$NINJA_CFLAGS -g"
+    NINJA_LDFLAGS="$NINJA_LDFLAGS -g"
+fi
+
 BUILD_DIR=$LEGATO_ROOT/build/$LEGATO_TARGET/framework
 DEBUG_DIR=$LEGATO_ROOT/build/$LEGATO_TARGET/debug
 
@@ -98,7 +103,7 @@ builddir = $BUILD_DIR
 rule Compile
   description = Compiling liblegato source file
   depfile = \$out.d
-  command = $CC -MMD -MF \$out.d -g -c \$in -o \$out -Wall -fPIC -Werror \$flags \$
+  command = $CC -MMD -MF \$out.d -c \$in -o \$out -Wall -fPIC -Werror \$flags \$
             -DLE_COMPONENT_NAME=framework \$
             -I$LEGATO_ROOT/framework/c/inc \$
             -DDISABLE_SMACK=$DISABLE_SMACK \$
@@ -106,10 +111,25 @@ rule Compile
             -DLE_SVCDIR_CLIENT_SOCKET_NAME="\"$LE_SVCDIR_CLIENT_SOCKET_NAME\"" \$
             $EMBEDDED_FLAGS
 
+END-OF-HERE-DOC
+
+if [ "${STRIP_STAGING_TREE}" != 0 ]; then
+
+    cat >>$NINJA_SCRIPT <<EOF
 rule Link
   description = Linking liblegato
-  command = $CC -shared -g -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
+  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
             && $LEGATO_ROOT/framework/tools/scripts/splitdebug -d $DEBUG_DIR \$out
+EOF
+else
+    cat >>$NINJA_SCRIPT <<EOF
+rule Link
+  description = Linking liblegato
+  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
+EOF
+fi
+
+cat >>$NINJA_SCRIPT <<END-OF-HERE-DOC
 
 build $LIBLEGATO : Link $LIBLEGATO_OBJECTS
 
