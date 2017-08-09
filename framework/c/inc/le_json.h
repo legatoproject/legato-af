@@ -74,7 +74,7 @@
  * finishes.  The error handler function is passed parameters that indicate what type of error
  * occurred.
  *
- *  @section c_json_errors Other Functions
+ *  @section c_json_otherFunctions Other Functions
  *
  * For diagnostic purposes, le_json_GetEventName() can be called to get a human-readable
  * string containing the name of a given event.

@@ -7,15 +7,6 @@ images and more flexibles systems.
 
 Also see @ref defFilesMdef
 
-@section howToAddKernelDriver_setBuildEnv Set Build Environment
-
-To overcome a current deficiency in the Yocto kernel-dev package, you need to set the module build
-environment:
-@code
-cd ./y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
-ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make scripts
-@endcode
-
 @section howToAddKernelDriver_installToolchain Install Toolchain to Build Kernel Modules
 
 This process involves changing the make configuration before you build the kernel, to do this it is
@@ -58,6 +49,7 @@ export PATH=$PATH:${PWD}/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-
 
 It's recommended to add the toolchain path to your @c  ~/.profile file so it's available every time
 you log in.
+
 @section howToAddKernelDriver_setBuildEnv Set Build Environment
 
 To overcome a current deficiency in the Yocto kernel-dev package, you need to set the module build

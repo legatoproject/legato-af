@@ -3,9 +3,12 @@
 This topic provides details on how to customize the USB behavior of the Legato
 Yocto distribution when working with the following Sierra Wireless devices:
 - AR755x
-- AR8652
 - WP85xx
 - WP750x
+- AR758x
+- AR759x
+- AR8582
+
 
 The information is based on the USB Driver Developer Guide
 available from the <a href="http://source.sierrawireless.com/">Source</a>.
@@ -31,7 +34,7 @@ This table shows all the possible USB interfaces available on the AR7 family:
 
 @image html USB_interfaces_AR7.png
 
-On AR7 products, these endpoints are grouped into compositions. A fixed set of compositions is
+On AR755x products, these endpoints are grouped into compositions. A fixed set of compositions is
 shown in the table below. You switch between these compositions using the @c AT!UDUSBCOMP command
 with this format:
 
@@ -43,8 +46,8 @@ Where @c <Composition> is one of the composition numbers defined in this table (
 
 @image html USB_endpointCompositions_AR7.png
 
-USB composition on WP75 and WP85 modules is set through the @c AT!USBCOMP command with
-this format:
+USB composition on WP75, WP85, AR758x, AR8582 and AR759x modules is set through the @c AT!USBCOMP
+command with this format:
 @code
 AT!USBCOMP=<Config Index>,<Config Type>,<Interface Bitmask>
 @endcode

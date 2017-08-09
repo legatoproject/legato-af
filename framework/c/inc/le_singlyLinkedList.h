@@ -84,7 +84,7 @@
  *
  * @code
  * // Assuming mylist has been created and initialized and is not empty.
- * le_sls_link_t* linkPtr = le_sls_Peek(&MyList);
+ * le_sls_Link_t* linkPtr = le_sls_Peek(&MyList);
  *
  * // Now we have the link but we want the node so we can access the user data.
  * // We use CONTAINER_OF to get a pointer to the node given the node's link.

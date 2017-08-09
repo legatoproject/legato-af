@@ -136,7 +136,7 @@ for adef information overridden in the sdef, please do not remove.
 </DIV>
 
 
-@subsection defFilesSdef_appsInterfaceSearch interfaceSearch
+@section defFilesSdef_appsInterfaceSearch interfaceSearch
 
 This section is used to specify directories in which @c mksys should look for interface files,
 such as @c .api files and @c .h files, when building components in the system.

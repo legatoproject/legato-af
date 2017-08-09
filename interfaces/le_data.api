@@ -14,7 +14,7 @@
  *
  * @note This interface does not support yet data connection over a fixed link.
  *
- * @section le_data_binding IPC interfaces binding
+ * @section le_data_IPCbinding IPC interfaces binding
  *
  * All the functions of this API are provided by the @b dataConnectionService application service.
  *

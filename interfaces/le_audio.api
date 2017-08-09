@@ -4,7 +4,6 @@
  *
  * @ref le_audio_interface.h "API Reference" <br>
  * @ref platformConstraintsAudio Constraints
- * <HR>
  *
  * The Audio API handles audio interfaces including play and record supported formats.
  *
@@ -131,10 +130,10 @@
  * - le_audio_Mute(): mute an audio stream.
  * - le_audio_Unmute(): unmute an audio stream.
  *
- * @note Multimedia (playback and recording) must be controled separatly from the main audio path
+ * @note Multimedia (playback and recording) must be controlled separately from the main audio path
  * (Microphone/Speaker, I2S, PCM, USB).  Muting/Unmuting a multimedia is done by
  * muting/unmuting the multimedia stream, and not the other connected stream. For example, in case
- * of playback + voice on the speaker, if the user wants to mute all the audio outcoming to the
+ * of playback + voice on the speaker, if the user wants to mute all the audio coming out of the
  * speaker, it must mute both the Speaker stream and the playback stream.
  *
  * @warning Ensure to check the list of supported audio streams for these functions on your
@@ -195,7 +194,7 @@
  * wider speech bandwidth of 50–7000 Hz.
  *
  * - le_audio_PlaySamples(): initiates a playback using an audio flow. A pipe has
- * to be opened first, then the PCM samples are sent throught the opened pipe.
+ * to be opened first, then the PCM samples are sent through the opened pipe.
  * A play can be done only on a connected stream. For instance, the
  * "I2S Tx", "Modem Voice Rx" and "Player" must be previously connected before playing a file.
  * If there are no more PCM samples to be played, the playback must be stopped by calling
@@ -215,8 +214,8 @@
  * - le_audio_SetEncodingFormat(): sets the encoding format. The same formats as the
  * player are supported.
  * - le_audio_GetEncodingFormat(): gets the encoding format.
- * - le_audio_GetSamples(): gets the audio PCM samples.  A pipe has
- * to be opened first, then the PCM samples are sent throught the opened pipe.
+ * - le_audio_GetSamples(): records the audio PCM samples.  A pipe has
+ * to be opened first, then the PCM samples are sent through the opened pipe.
  * Recording can only be done on a connected stream. For example, the
  * "I2S Rx", "Modem Voice Tx" and "Recorder" must be previously connected before recording a file.
  * If there are no more PCM samples to be retrieved, the recording must be stopped by calling
@@ -268,7 +267,7 @@
  * le_audio_RemoveMediaHandler() function removes the player/recorder handler function.
  *
  * @note The @c LE_AUDIO_MEDIA_NO_MORE_SAMPLES event indicates when all samples put into the pipe
- * by the user's app have been sent to the audio driver (see le_audio_PlaySamples()).
+ * by the user's App have been sent to the audio driver (see le_audio_PlaySamples()).
  *
  * A sample code that implements audio playback and capture can be found in \b audioPlaybackRec.c
  * file (please refer to @ref c_audioCapturePlayback page).
@@ -433,14 +432,14 @@ DEFINE NO_FD = (-1);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum gain's name string length.
+ * Maximum gain name string length.
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE GAIN_NAME_MAX_LEN   = (100);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum gain's name string length.
+ * Maximum gain name string length.
  * One extra byte is added for the null character.
  */
 //--------------------------------------------------------------------------------------------------
@@ -473,7 +472,7 @@ FUNCTION Stream OpenMic
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Open the Speakerphone.
+ * Open the Speaker-phone.
  *
  * @return Reference to the output audio stream, NULL if the function fails.
  */
@@ -1354,7 +1353,7 @@ FUNCTION le_result_t GetSamplePcmSamplingResolution
  * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
  * @return LE_BUSY          A DTMF playback is already in progress on the playback stream.
  * @return LE_FAULT         Function failed to play the DTMFs.
- * @return LE_OK            Funtion succeeded.
+ * @return LE_OK            Function succeeded.
  *
  * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
  *       error, the function will not return.
@@ -1377,7 +1376,7 @@ FUNCTION le_result_t PlayDtmf
  * @return LE_FORMAT_ERROR  The DTMF characters are invalid.
  * @return LE_BUSY          A DTMF playback is in progress.
  * @return LE_FAULT         Function failed.
- * @return LE_OK            Funtion succeeded.
+ * @return LE_OK            Function succeeded.
  *
  * @note If the DTMF string is too long (max DTMF_MAX_LEN characters), it is a fatal
  *       error, the function will not return.
@@ -1490,7 +1489,7 @@ FUNCTION le_result_t GetSampleAmrDtx
  * Set the value of a platform specific gain in the audio subsystem.
  *
  * @return LE_FAULT         The function failed.
- * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_NOT_FOUND     The specified gain name is not recognized in your audio subsystem.
  * @return LE_OUT_OF_RANGE  The gain parameter is out of range
  * @return LE_OK            The function succeeded.
  *
@@ -1508,7 +1507,7 @@ FUNCTION le_result_t SetPlatformSpecificGain
  * Get the value of a platform specific gain in the audio subsystem.
  *
  * @return LE_FAULT         The function failed.
- * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_NOT_FOUND     The specified gain name is not recognized in your audio subsystem.
  * @return LE_OK            The function succeeded.
  *
  * @warning Ensure to check the names of supported gains for your specific platform.

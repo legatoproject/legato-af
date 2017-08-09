@@ -21,7 +21,7 @@ the build directory for your target  (e.g., @c build/wp85/system.wp85.update).
 @note If you are having problems successfully running make you may need to remove ccache from your
 host. @verbatim $ sudo apt-get remove ccache @endverbatim
 
-See @ref basicTargetSW for details on how to install your system update pack onto your
+See @ref toolsHost_instlegato tool for details on how to install your system update pack onto your
 target device.
 
 @section basicBuildLegato_UpdateTarget Update a Target

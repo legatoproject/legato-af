@@ -88,7 +88,7 @@
  * LE_ASSERT(le_utf8_Copy(destStr, srcStr, sizeof(destStr), NULL) != LE_OVERFLOW);
  * @endcode
  *
- *  @section utf8_length String Lengths
+ *  @section utf8_stringLength String Lengths
  *
  * String length may mean either the number of characters in the string or the number of bytes in
  * the string.  These two meanings are often used interchangeably because in ASCII-only encodings
@@ -100,7 +100,7 @@
  * @c le_utf8_NumChars() is useful for counting the number of characters in a string (ie. for
  * display purposes).
  *
- *  @section utf8_length Character Lengths
+ *  @section utf8_charLength Character Lengths
  *
  * The function le_utf8_NumBytesInChar() can be used to determine the number of bytes in a character
  * by looking at its first byte.  This is handy when reading a UTF-8 string from an input stream.

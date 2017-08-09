@@ -121,7 +121,7 @@ effective imediately in next GNSS session. The setting is persistent to GNSS fac
 restart, but is not lost after Legato restart:
     le_gnss_SetSuplAssistedMode()
 
-@section References
+@section platformConstraintsGnss_References References
 
 See @ref c_gnss API
 

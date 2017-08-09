@@ -59,13 +59,13 @@ If permissions values are not specified, then read-only ([r]) is the default.
 @note For security reasons, files and directories cannot be both writable and executable.
 
 Directories always have executable permission set so they can be traversed. Setting the
-<c>[x]</c> permission in the @c dir: subsection causes the files under the directory to be made
+@c [x]   permission in the @c dir: subsection causes the files under the directory to be made
 executable.
 
-Setting <c>[w]</c> in the @c dir: subsection causes all files under that directory to be writeable,
-but the directory itself will not be writeable.
+Setting @c [w]   in the @c dir: subsection causes all files under that directory to be writable,
+but the directory itself will not be writable.
 
-@note   Directories in the persistent (flash) file system are never made writeable because the
+@note   Directories in the persistent (flash) file system are never made writable because the
         on-target flash file system does not support usage quotas (yet).
 
 <b>Build system path</b> - file system path on the build PC where the file is located at build time.
@@ -229,7 +229,7 @@ pools:
 @section defFilesCdef_provides provides
 
 Lists things this component provides (exports) to other software either inside or outside of
-the app.
+the App.
 
 The only subsection supported today is the @c api subsection.
 
@@ -241,7 +241,7 @@ Lists IPC services provided by this component to other components.
 Contents use the same syntax as the @c requires: @ref defFilesCdef_requiresApi section, except
 the options are different.
 
-Here's a code sample where <c> greet.api </c> defines a function called @c Send() where the C source
+Here's a code sample where @c greet.api defines a function called @c Send() where the C source
 code for the component (in @c greetServer.c) is implement a function called @c greet_Send().
 
 @code
@@ -264,7 +264,7 @@ sources:
 
 The component must implement the API functions being provided.
 
-In C, the source code must <c>\#include “interfaces.h”</c> to get the auto-generated function prototype
+In C, the source code must @c \#include @c “interfaces.h” to get the auto-generated function prototype
 definitions and type definitions. The function and type names defined in the @c .api files are
 prefixed with the interface name and an underscore (similar to required APIs).
 
@@ -299,7 +299,7 @@ the server returns from the function, the function returns in the client process
 
 Sometimes the server needs to hold onto the client request and do other things
 (like handing requests from other clients in the meantime) before sending a response back.
-This is called asynchronous mode, and is enabled using the <c> [async] </c> keyword on the
+This is called asynchronous mode, and is enabled using the @c [async] keyword on the
 end of the @c api section entry:
 
 @code
@@ -354,7 +354,7 @@ requires:
 @endcode
 
 This creates a client-side IPC interface called @c le_cfg on this component, and it makes the
-functions and data types defined inside <c>le_cfg.api</c> available for use in the component's
+functions and data types defined inside @c le_cfg.api available for use in the component's
 program code.
 
 The name of the @c .api file (minus the @c .api extension) is the name of the interface,
@@ -398,12 +398,12 @@ requires:
 }
 @endcode
 
-If <c> digitalOutput.api </c> defines two functions @c On() @c and Off(),
- the component’s source code would have four functions available to it:
+If @c digitalOutput.api defines two functions @c On()  and @c Off(),
+the component’s source code would have four functions available to it:
 @c heat_On(), @c heat_Off(), @c cool_On(), and @c cool_Off().
 
-C/C++ source code must <c> \#include “interfaces.h”</c> to use the auto-generated function definitions.
-The build tools will automatically generate a version of <c>interfaces.h</c> customized for
+C/C++ source code must @c \#include @c “interfaces.h” to use the auto-generated function definitions.
+The build tools will automatically generate a version of @c interfaces.h customized for
 your component that includes all declarations for all the interfaces the component uses.
 
 The build tools search for the interface definition (.api) file based on the interface search path.
@@ -418,7 +418,7 @@ There are a couple of options that can be used to suppress this behaviour.
 The @b @c [types-only] option tells the build tools the client only wants to use type definitions
 from the API.  This means the client-side IPC code will not be generated for
 this API, but the types defined in the API will still be available to the component (through
-<c>interfaces.h</c> in C/C++).
+@c interfaces.h in C/C++).
 
 The @b @c [manual-start] option tells the build tools not to automatically connect to this API's
 server when the process starts. This means the component can control when
@@ -664,20 +664,20 @@ library is required by any executable that the component is part of.
 
 The required library will be linked with executables that the component is a part of.
 
-Specifying a shared library file's path will result in "<c>-L<c>" and "<c>-l<c>" arguments being
+Specifying a shared library file's path will result in @c "-L" and @c "-l" arguments being
 added to the linker's command line.
 
 This is useful when linking to libraries that are not part of the target's sysroot.
-(If the library is part of the target's sysroot, then the <c>ldflags:</c> section can
+(If the library is part of the target's sysroot, then the @c ldflags: section can
 be used instead.)
 
 On the target device at runtime, the dynamic linker will look for the library, so
 it must be made available inside the app sandbox, somewhere in the dynamic linker's
-library search path. (The dynamic linker will typically look in the <c>/lib</c> and <c>/usr/lib</c>
+library search path. (The dynamic linker will typically look in the @c /lib and @c /usr/lib
 directories for libraries at runtime.)
 
-The library file can be bundled as a part of the app using the <b><c>bundles:</c></b> section
-of the <c>.cdef</c> file.
+The library file can be bundled as a part of the app using the <b>@c bundles:  </b> section
+of the @c .cdef file.
 
 @code
 bundles:
@@ -691,8 +691,8 @@ bundles:
 }
 @endcode
 
-Or, if the library is already present on the target, then the <c>files:</c> or <c>dirs:</c>
-subsection of the <b><c>requires:</c></b> section of either the <c>.cdef</c> or <c>.adef</c> file
+Or, if the library is already present on the target, then the @c files: or @c dirs:
+subsection of the <b>@c requires: </b> section of either the @c .cdef or @c .adef file
 can be used to make the library visible from inside the app sandbox.
 
 @code
@@ -700,7 +700,7 @@ requires:
 {
     file:
     {
-        // Make the "foo" library available inside the app sandbox (in the app's /lib directory).
+        // Make the "foo" library available inside the App sandbox (in the App's /lib directory).
         /usr/local/lib/libfoo.so.3     /lib/
         /usr/local/lib/libfoo.so.3.1.1 /lib/
     }
@@ -708,8 +708,8 @@ requires:
 @endcode
 
 For backward compatibility, it is also possible to specify the library name "xml" without the
-leading "lib" or the trailing ".so".  This will result in "<c>-lxml</c>" being passed to the linker
-when linking any executables that include this component, but will not add a '-L' option.
+leading "lib" or the trailing ".so".  This will result in @c "-lxml" being passed to the linker
+when linking any executables that include this component, but will not add a @c '-L' option.
 
 @code
 requires:
