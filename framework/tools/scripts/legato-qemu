@@ -454,6 +454,16 @@ else
     ARG_SERIAL=
 fi
 
+# AT
+if [ -n "$OPT_ATCMD" ]; then
+    ARG_ATCMD="-chardev serial,id=atcmd,path=${OPT_ATCMD} -device isa-serial,chardev=atcmd"
+fi
+
+# PPP
+if [ -n "$OPT_PPPCMD" ]; then
+    ARG_PPPCMD="-chardev serial,id=pppcmd,path=${OPT_PPPCMD} -device isa-serial,chardev=pppcmd"
+fi
+
 # Net: vlan 0
 if [ "$OPT_NET" == "user" ]; then
     message $COLOR_MSG "Network in user mode"
@@ -550,7 +560,7 @@ message $COLOR_MSG " => $CMDLINE"
 message $COLOR_MSG "QEmu binary ($QEMU_ARCH):"
 message $COLOR_MSG " => $QEMU_BIN ($QEMU_VERSION)"
 
-ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM"
+ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM $ARG_ATCMD $ARG_PPPCMD"
 message $COLOR_MSG "QEmu arguments:"
 message $COLOR_MSG " => $ARGS"
 

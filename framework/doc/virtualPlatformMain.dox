@@ -1,0 +1,27 @@
+/** @page virtualPlatformMain Virtual Platform
+
+@section Overview
+
+The virtual platform is a purely software platform that runs Legato.
+There is multiple purpose for such platform:
+
+- @b Development
+Developers can spawn a new instance on any PC very quickly, without concerns for the acquisition of any particular hardware.
+
+- @b Testing
+Your application likely uses few services such as positioning, SMS or data.
+On the virtual platform, these services are simulated and you can control the values that are being returned and the triggering of events.
+For instance, assuming that you except your app to send a SMS when the position goes outside a certain zone, you can develop another app that would simulate a change in position, and make sure that a SMS has been sent.
+
+- @b Automation
+Because it does not rely on any hardware, it is easy to script the testing of your application as to delegate the tests to continuous integration tools such as Jenkins or Travis.
+
+- @b Licensing
+The virtual platform does not rely on any proprietary technolgies, and is enterily open-source.
+
+@section virtQuickStart Quick Start
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
+
