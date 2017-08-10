@@ -93,6 +93,7 @@ void PrintGnssHelp
          "\t\t\tgnss get <parameter>\n"
          "\t\t\tgnss get posInfo\n"
          "\t\t\tgnss set constellation <ConstellationType>\n"
+         "\t\t\tgnss set constArea <Constellation> <ConstellationArea>\n"
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\tgnss set acqRate <acqRate in milliseconds>\n"
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
@@ -126,6 +127,7 @@ void PrintGnssHelp
          "\t\t\t\t\t- nmeaSentences --> Enabled NMEA sentences (bit mask)\n"
          "\t\t\t\t\t- minElevation  --> Minimum elevation in degrees\n"
          "\t\t\t\t\t- constellation --> GNSS constellation\n"
+         "\t\t\t\t\t- constArea     --> Area for each constellation\n"
          "\t\t\t\t\t- posState      --> Position fix state(no fix, 2D, 3D etc)\n"
          "\t\t\t\t\t- loc2d         --> 2D location (latitude, longitude, horizontal accuracy)\n"
          "\t\t\t\t\t- alt           --> Altitude (Altitude, Vertical accuracy)\n"
@@ -161,6 +163,20 @@ void PrintGnssHelp
          "\t\t\t\t\t- 32 --> QZSS\n"
          "\t\t\t\tPlease use sum of the values to set multiple constellation, e.g.\n"
          "\t\t\t\t3 for GPS+GLONASS, 47 for GPS+GLONASS+BEIDOU+GALILEO+QZSS\n\n"
+         "\t\t\tgnss set constArea <Constellation> <ConstellationArea>\n"
+         "\t\t\t\t- Used to set constellation area. Allowed when device in 'ready' state. May\n"
+         "\t\t\t\t  require platform reboot, please look platform documentation for details.\n"
+         "\t\t\t\t  Constellation can be as follows:\n"
+         "\t\t\t\t\t- 1 ---> GPS\n"
+         "\t\t\t\t\t- 2 ---> Unused\n"
+         "\t\t\t\t\t- 3 ---> GLONASS\n"
+         "\t\t\t\t\t- 4 ---> GALILEO\n"
+         "\t\t\t\t\t- 5 ---> BEIDOU\n"
+         "\t\t\t\t\t- 6 ---> QZSS\n"
+         "\t\t\t\t  ConstellationArea can be as follows:\n"
+         "\t\t\t\t\t- 0 ---> UNSET_AREA\n"
+         "\t\t\t\t\t- 1 ---> WORLDWIDE_AREA\n"
+         "\t\t\t\t\t- 2 ---> OUTSIDE_US_AREA\n"
          "\t\t\tgnss set agpsMode <ModeType>\n"
          "\t\t\t\t- Used to set agps mode. ModeType can be as follows:\n"
          "\t\t\t\t\t- alone -----> Standalone agps mode\n"
@@ -581,9 +597,8 @@ static int SetConstellation
         exit(EXIT_FAILURE);
     }
 
-    le_result_t result = le_gnss_SetConstellation(
-                                                  (le_gnss_ConstellationBitMask_t)constellationMask
-                                                 );
+    le_result_t result =
+       le_gnss_SetConstellation((le_gnss_ConstellationBitMask_t)constellationMask);
 
     switch(result)
     {
@@ -608,6 +623,61 @@ static int SetConstellation
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function sets the area for a given constellation
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int SetConstellationArea
+(
+    const char* constellationPtr,      ///< [IN] GNSS constellation used in solution.
+    const char* constellationAreaPtr   ///< [IN] GNSS constellation area.
+)
+{
+    char *endPtr;
+    errno = 0;
+    int constellation = strtoul(constellationPtr, &endPtr, BASE10);
+    int constArea = strtoul(constellationAreaPtr, &endPtr, BASE10);
+
+    if (('\0' != endPtr[0]) || (0 != errno) || (0 == constellation) || (0 == constArea))
+    {
+        fprintf(stderr, "Bad constellation or area parameter: %s %s\n", constellationPtr,
+                                                                        constellationAreaPtr);
+        exit(EXIT_FAILURE);
+    }
+
+    le_result_t result = le_gnss_SetConstellationArea((le_gnss_Constellation_t)constellation,
+                                                      (le_gnss_ConstellationArea_t) constArea);
+    switch(result)
+    {
+        case LE_OK:
+            printf("Success!\n");
+            break;
+        case LE_UNSUPPORTED:
+            printf("Setting area %d for constellation %d is not supported\n",
+                   constArea, constellation);
+            break;
+        case LE_NOT_PERMITTED:
+            printf("The GNSS device is not initialized, disabled or active. See logs for  \
+                    details\n");
+            break;
+        case LE_FAULT:
+            printf("Failed!\n");
+            break;
+        case LE_BAD_PARAMETER:
+            printf("Invalid area\n");
+            break;
+        default:
+            printf("Bad return value: %d\n", result);
+            break;
+    }
+
+    return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -837,6 +907,57 @@ static int GetConstellation
     return (LE_OK == result) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the area of each constellation of gnss device.
+ *
+ * @return
+ *     - EXIT_SUCCESS on success.
+ *     - EXIT_FAILURE on failure.
+ */
+//-------------------------------------------------------------------------------------------------
+static int GetConstellationArea
+(
+    void
+)
+{
+    le_gnss_ConstellationArea_t constellationArea;
+    le_gnss_Constellation_t constType = LE_GNSS_SV_CONSTELLATION_GPS;
+    le_result_t result;
+    static const char *tabConstellation[] =
+    {
+        "UNDEFINED CONSTELLATION",
+        "GPS CONSTELLATION",
+        "SBAS CONSTELLATION",
+        "GLONASS CONSTELLATION ",
+        "GALILEO CONSTELLATION",
+        "BEIDOU CONSTELLATION",
+        "QZSS CONSTELLATION",
+    };
+
+    do
+    {
+        result = le_gnss_GetConstellationArea(constType, &constellationArea);
+        if (LE_OK == result)
+        {
+            printf("%s area %d\n", tabConstellation[constType], constellationArea);
+        }
+        else if (LE_UNSUPPORTED == result)
+        {
+            printf("%s unsupported area\n", tabConstellation[constType]);
+        }
+        else
+        {
+            printf("Failed! See log for details!\n");
+            return EXIT_FAILURE;
+        }
+        constType++;
+    }
+    while (LE_GNSS_SV_CONSTELLATION_MAX != constType);
+
+    return EXIT_SUCCESS;
+}
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -2029,23 +2150,27 @@ static void GetGnssParams
 )
 {
 
-    if (strcmp(params, "ttff") == 0)
+    if (0 == strcmp(params, "ttff"))
     {
         exit(GetTtff());
     }
-    else if (strcmp(params, "acqRate") == 0)
+    else if (0 == strcmp(params, "acqRate"))
     {
         exit(GetAcquisitionRate());
     }
-    else if (strcmp(params, "agpsMode") == 0)
+    else if (0 == strcmp(params, "agpsMode"))
     {
         exit(GetAgpsMode());
     }
-    else if (strcmp(params, "constellation") == 0)
+    else if (0 == strcmp(params, "constellation"))
     {
         exit(GetConstellation());
     }
-    else if (strcmp(params, "nmeaSentences") == 0)
+    else if (0 == strcmp(params, "constArea"))
+    {
+        exit(GetConstellationArea());
+    }
+    else if (0 == strcmp(params, "nmeaSentences"))
     {
         exit(GetNmeaSentences());
     }
@@ -2100,7 +2225,8 @@ static void GetGnssParams
 static int SetGnssParams
 (
     const char * argNamePtr,    ///< [IN] gnss parameters.
-    const char * argValPtr      ///< [IN] gnss parameters.
+    const char * argValPtr,     ///< [IN] gnss parameters.
+    const char * arg2ValPtr     ///< [IN] gnss parameters.
 )
 {
     int status = EXIT_FAILURE;
@@ -2108,6 +2234,15 @@ static int SetGnssParams
     if (strcmp(argNamePtr, "constellation") == 0)
     {
         status = SetConstellation(argValPtr);
+    }
+    else if (strcmp(argNamePtr, "constArea") == 0)
+    {
+        if (NULL == arg2ValPtr)
+        {
+            LE_ERROR("arg2ValPtr is NULL");
+            exit(EXIT_FAILURE);
+        }
+        status = SetConstellationArea(argValPtr, arg2ValPtr);
     }
     else if (strcmp(argNamePtr, "acqRate") == 0)
     {
@@ -2248,6 +2383,7 @@ COMPONENT_INIT
     {
         const char* argNamePtr = le_arg_GetArg(1);
         const char* argValPtr = le_arg_GetArg(2);
+        const char* arg2ValPtr = le_arg_GetArg(3);
         if (NULL == argNamePtr)
         {
             LE_ERROR("argNamePtr is NULL");
@@ -2261,7 +2397,7 @@ COMPONENT_INIT
         CheckEnoughParams( 2,
                            numArgs,
                            "Missing arguments");
-        exit(SetGnssParams(argNamePtr, argValPtr));
+        exit(SetGnssParams(argNamePtr, argValPtr, arg2ValPtr));
     }
     else if (strcmp(commandPtr, "watch") == 0)
     {

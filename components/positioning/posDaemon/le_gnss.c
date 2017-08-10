@@ -2776,6 +2776,111 @@ le_result_t le_gnss_GetConstellation
     return result;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed.
+ *  - LE_UNSUPPORTED   If the request is not supported.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *  - LE_BAD_PARAMETER Invalid constellation area.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetConstellationArea
+(
+    le_gnss_Constellation_t satConstellation,       ///< [IN] GNSS constellation used in solution.
+    le_gnss_ConstellationArea_t constellationArea   ///< [IN] GNSS constellation area.
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_READY:
+        {
+            // Set GNSS constellation area
+            result = pa_gnss_SetConstellationArea(satConstellation, constellationArea);
+        }
+        break;
+
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            On success
+ *  - LE_FAULT         On failure
+ *  - LE_UNSUPPORTED   Request not supported
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetConstellationArea
+(
+    le_gnss_Constellation_t satConstellation,         ///< [IN] GNSS constellation used in solution.
+    le_gnss_ConstellationArea_t* constellationAreaPtr ///< [OUT] GNSS constellation area.
+)
+{
+    le_result_t result = LE_FAULT;
+
+    if (NULL == constellationAreaPtr)
+    {
+        LE_KILL_CLIENT("Pointer is NULL !");
+        return LE_FAULT;
+    }
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_READY:
+        {
+            // Get GNSS constellation area
+            result = pa_gnss_GetConstellationArea(satConstellation, constellationAreaPtr);
+        }
+        break;
+
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

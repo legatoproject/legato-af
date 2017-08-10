@@ -141,6 +141,9 @@
  * The le_gnss_GetConstellation() function gets the GNSS constellation(s) enabled to be used
  * in solution.
  *
+ * le_gnss_SetConstellationArea sets the area for a GNSS constellation. le_gnss_GetConstellationArea
+ * gets the area for a GNSS constellation.
+ *
  * A sample code can be seen in the following page:
  * - @subpage c_gnssSampleCodeConstellation
  *
@@ -190,6 +193,8 @@
  *| le_gnss_Enable() | LE_NOT_PERMITTED | LE_DUPLICATE | LE_DUPLICATE | LE_OK or error code |
  *| le_gnss_SetConstellation() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_GetConstellation() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_SetConstellationArea() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
+ *| le_gnss_GetConstellationArea() | LE_NOT_PERMITTED |  LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_GetTtff() | LE_NOT_PERMITTED |  LE_OK or error code | LE_OK or error code | LE_NOT_PERMITTED |
  *| le_gnss_SetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
  *| le_gnss_GetAcquisitionRate() | LE_NOT_PERMITTED | LE_OK or error code | LE_NOT_PERMITTED | LE_NOT_PERMITTED |
@@ -530,7 +535,7 @@ ENUM Constellation
 //--------------------------------------------------------------------------------------------------
 ENUM AssistedMode
 {
-    STANDALONE_MODE,         ///< Standalone mode
+    STANDALONE_MODE,         ///< Standalone mode.
     MS_BASED_MODE,           ///< MS-Based mode.
     MS_ASSISTED_MODE         ///< MS-Assisted mode.
 };
@@ -552,6 +557,17 @@ ENUM DopType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * GNSS constellation area type
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM ConstellationArea
+{
+    UNSET_AREA,               ///< Unset area.
+    WORLDWIDE_AREA,           ///< Worldwide area.
+    OUTSIDE_US_AREA           ///< Outside US area.
+};
+//--------------------------------------------------------------------------------------------------
+/**
  * GNSS constellation Bit Mask (8 bits) indicating the GNSS constellation(s)
  * used in solution.
  *
@@ -568,7 +584,7 @@ BITMASK ConstellationBitMask
     CONSTELLATION_GALILEO,                  ///< GALILEO constellation used in solution.
                                             ///< European Union satellite navigation system
     CONSTELLATION_SBAS,                     ///< SBAS constellation used in solution.
-    CONSTELLATION_QZSS                      ///< QZSS constellation used in solution.
+    CONSTELLATION_QZSS                     ///< QZSS constellation used in solution.
                                             ///< Japanese satellite navigation system
 };
 
@@ -632,6 +648,44 @@ FUNCTION le_result_t SetConstellation
 FUNCTION le_result_t GetConstellation
 (
     ConstellationBitMask constellationMask      OUT  ///< GNSS constellation used in solution.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed.
+ *  - LE_UNSUPPORTED   If the request is not supported.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *  - LE_BAD_PARAMETER Invalid constellation area.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetConstellationArea
+(
+    Constellation satConstellation        IN,  ///< GNSS constellation type.
+    ConstellationArea constellationArea   IN   ///< GNSS constellation area.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            On success
+ *  - LE_FAULT         On failure
+ *  - LE_UNSUPPORTED   Request not supported
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetConstellationArea
+(
+    Constellation satConstellation        IN,   ///< GNSS constellation type.
+    ConstellationArea constellationArea   OUT   ///< GNSS constellation area.
 );
 
 //--------------------------------------------------------------------------------------------------

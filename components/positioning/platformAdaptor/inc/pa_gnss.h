@@ -673,4 +673,37 @@ LE_SHARED le_result_t pa_gnss_GetMinElevation
    uint8_t*  minElevationPtr     ///< [OUT] Minimum elevation.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *  - LE_BAD_PARAMETER on invalid constellation area
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_SetConstellationArea
+(
+    le_gnss_Constellation_t satConstellation,        ///< [IN] GNSS constellation used in solution.
+    le_gnss_ConstellationArea_t constellationArea    ///< [IN] GNSS constellation area.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetConstellationArea
+(
+    le_gnss_Constellation_t satConstellation,         ///< [IN] GNSS constellation used in solution.
+    le_gnss_ConstellationArea_t* constellationAreaPtr ///< [OUT] GNSS constellation area.
+);
+
 #endif // LEGATO_PA_GNSS_INCLUDE_GUARD

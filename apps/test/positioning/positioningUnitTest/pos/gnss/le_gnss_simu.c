@@ -982,9 +982,9 @@ le_result_t le_gnss_SetConstellation
 /**
  * Get the GNSS constellation bit mask
  *
-* @return
-*  - LE_OK on success
-*  - LE_FAULT on failure
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_GetConstellation
@@ -996,6 +996,46 @@ le_result_t le_gnss_GetConstellation
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed.
+ *  - LE_UNSUPPORTED   If the request is not supported.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *  - LE_BAD_PARAMETER Invalid constellation area.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetConstellationArea
+(
+    le_gnss_Constellation_t satConstellation,       ///< [IN] GNSS constellation used in solution.
+    le_gnss_ConstellationArea_t constellationArea   ///< [IN] GNSS constellation area.
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            On success
+ *  - LE_FAULT         On failure
+ *  - LE_UNSUPPORTED   Request not supported
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetConstellationArea
+(
+    le_gnss_Constellation_t satConstellation,         ///< [IN] GNSS constellation used in solution.
+    le_gnss_ConstellationArea_t* constellationAreaPtr ///< [OUT] GNSS constellation area.
+)
+{
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

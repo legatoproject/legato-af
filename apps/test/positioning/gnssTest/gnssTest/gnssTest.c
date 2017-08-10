@@ -50,6 +50,7 @@ static void TestLeGnssDevice
 
     le_gnss_ConstellationBitMask_t constellationMask;
     le_gnss_NmeaBitMask_t nmeaMask = 0;
+    le_gnss_ConstellationArea_t constellationArea;
 
     LE_INFO("Start Test Testle_gnss_DeviceTest");
     // GNSS device enabled by default
@@ -69,6 +70,17 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_Stop()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_NOT_PERMITTED);
+
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GPS,
+                                                                LE_GNSS_WORLDWIDE_AREA)));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_GetConstellationArea(LE_GNSS_SV_CONSTELLATION_GPS,
+                                                                &constellationArea)));
+
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GLONASS,
+                                                                LE_GNSS_WORLDWIDE_AREA)));
+    LE_ASSERT(LE_NOT_PERMITTED == (le_gnss_GetConstellationArea(LE_GNSS_SV_CONSTELLATION_GLONASS,
+                                                                &constellationArea)));
+
     LE_ASSERT((le_gnss_GetAcquisitionRate(&acqRate)) == LE_NOT_PERMITTED);
     result = le_gnss_SetAcquisitionRate(acqRate);
     LE_ASSERT((result == LE_NOT_PERMITTED)||(result == LE_OUT_OF_RANGE));
@@ -89,9 +101,25 @@ static void TestLeGnssDevice
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_DISABLED);
     LE_ASSERT((le_gnss_Enable()) == LE_OK);
     LE_ASSERT((le_gnss_GetState()) == LE_GNSS_STATE_READY);
-    LE_ASSERT((le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS)) == LE_OK);
-    LE_ASSERT((le_gnss_GetConstellation(&constellationMask)) == LE_OK);
+    LE_ASSERT_OK(le_gnss_SetConstellation(LE_GNSS_CONSTELLATION_GPS));
+    LE_ASSERT_OK(le_gnss_GetConstellation(&constellationMask));
     LE_ASSERT(constellationMask == LE_GNSS_CONSTELLATION_GPS);
+
+    LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GALILEO,
+                                                                LE_GNSS_UNSET_AREA)));
+
+    LE_ASSERT_OK(le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GALILEO,
+                                              LE_GNSS_OUTSIDE_US_AREA));
+    LE_ASSERT_OK(le_gnss_GetConstellationArea(LE_GNSS_SV_CONSTELLATION_GALILEO,
+                                              &constellationArea));
+    LE_ASSERT(LE_GNSS_OUTSIDE_US_AREA == constellationArea);
+
+    LE_ASSERT_OK(le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GALILEO,
+                                              LE_GNSS_WORLDWIDE_AREA));
+    LE_ASSERT_OK(le_gnss_GetConstellationArea(LE_GNSS_SV_CONSTELLATION_GALILEO,
+                                              &constellationArea));
+    LE_ASSERT(LE_GNSS_WORLDWIDE_AREA == constellationArea);
+
     LE_ASSERT((le_gnss_Stop()) == LE_DUPLICATE);
     LE_ASSERT((le_gnss_ForceHotRestart()) == LE_NOT_PERMITTED);
     LE_ASSERT((le_gnss_ForceWarmRestart()) == LE_NOT_PERMITTED);
@@ -863,6 +891,7 @@ static void TestLeGnssConstellations
 )
 {
     le_gnss_ConstellationBitMask_t constellationMask;
+    le_gnss_ConstellationArea_t constellationArea;
 
     LE_INFO("Start Test TestLeGnssConstellationsTest");
 
@@ -876,6 +905,7 @@ static void TestLeGnssConstellations
     constellationMask = LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS;
     LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
     LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
+
     LE_ASSERT((LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS) == constellationMask);
 
     // GPS constellation is not set and Beidou is unknown for mdm9x15
@@ -885,6 +915,16 @@ static void TestLeGnssConstellations
     LE_ASSERT(le_gnss_GetConstellation(&constellationMask) == LE_OK);
     // test constellationMask has not changed after previous error
     LE_ASSERT((LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS) == constellationMask);
+
+    LE_ASSERT(LE_UNSUPPORTED == (le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GPS,
+                                                              LE_GNSS_OUTSIDE_US_AREA)));
+
+    LE_ASSERT(LE_UNSUPPORTED == (le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_GLONASS,
+                                                              LE_GNSS_OUTSIDE_US_AREA)));
+
+    LE_ASSERT_OK(le_gnss_GetConstellationArea(LE_GNSS_SV_CONSTELLATION_GLONASS,
+                                              &constellationArea));
+    LE_ASSERT(LE_GNSS_WORLDWIDE_AREA == constellationArea);
 
     // next tests have same results as test4 for mdm9x15
 #if defined(SIERRA_MDM9X40) || defined(SIERRA_MDM9X28)
@@ -937,6 +977,12 @@ static void TestLeGnssConstellations
                LE_GNSS_CONSTELLATION_BEIDOU |
                LE_GNSS_CONSTELLATION_GALILEO |
                LE_GNSS_CONSTELLATION_QZSS) == constellationMask);
+
+    LE_ASSERT_OK(le_gnss_SetConstellationArea(LE_GNSS_SV_CONSTELLATION_BEIDOU,
+                                            LE_GNSS_WORLDWIDE_AREA));
+    LE_ASSERT_OK(le_gnss_GetConstellationArea(LE_GNSS_SV_CONSTELLATION_BEIDOU,
+                                            &constellationArea));
+    LE_ASSERT(LE_GNSS_WORLDWIDE_AREA == constellationArea);
 #endif
 }
 
