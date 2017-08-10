@@ -819,7 +819,7 @@ static le_result_t TestSinglyLinkLists(size_t maxListSize)
     //
     {
         idRecord_t* newNodePtr;
-        le_sls_Link_t* prevLinkPtr;
+        le_sls_Link_t* prevLinkPtr = NULL;
 
         // Queue nodes to list0.
         for (i = 0; i < maxListSize; i++)

@@ -1680,7 +1680,7 @@ le_result_t secStoreAdmin_GetSize
     }
 
     // Delete the item from the secure storage.
-    size_t size;
+    size_t size = 0;
     le_result_t result = pa_secStore_GetSize(path, &size);
 
     *sizePtr = size;
@@ -1710,7 +1710,7 @@ le_result_t secStoreAdmin_GetTotalSpace
         ///< Free space, in bytes, in secure storage.
 )
 {
-    size_t totalSize, freeSize;
+    size_t totalSize = 0, freeSize = 0;
     le_result_t result = pa_secStore_GetTotalSpace(&totalSize, &freeSize);
 
     *totalSizePtr = totalSize;

@@ -1169,7 +1169,7 @@ static void NewSmsHandler
     pa_sms_NewMessageIndication_t *newMessageIndicationPtr
 )
 {
-    pa_sms_Pdu_t   messagePdu;
+    pa_sms_Pdu_t   messagePdu = {0};
     le_result_t res = LE_OK;
 
     LE_DEBUG("Handler Function called with message ID %d with protocol %d, Storage %d",

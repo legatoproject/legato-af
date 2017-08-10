@@ -505,7 +505,7 @@ le_result_t Testle_atServer_Bridge
 {
     LE_INFO("======== Test AT server bridge API ========");
     le_result_t ret;
-    le_atServer_BridgeRef_t bridgeRef;
+    le_atServer_BridgeRef_t bridgeRef = NULL;
 
     BridgeSemaphore = le_sem_Create("BridgeSem", 0);
 

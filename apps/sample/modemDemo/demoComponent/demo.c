@@ -228,7 +228,7 @@ static le_result_t SendMessage
 )
 {
     le_sms_MsgRef_t messageRef = NULL;
-    le_result_t result;
+    le_result_t result = LE_FAULT;
 
     uint32_t messageSize = strlen(message);
     uint32_t messagePart;
@@ -724,7 +724,7 @@ static bool ProcessCommand
     const char* requesterPtr  ///< [IN] If not NULL, then any response text is SMSed to this target.
 )
 {
-    char buffer[10240];
+    char buffer[10240] = {0};
 
     // Start looking for a match...
     if (strcmp(textPtr, "Crash") == 0)
