@@ -13,6 +13,15 @@
 #include "cm_ips.h"
 #include "cm_common.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Maximum Number of arguments for the CM tool IPS usage.
+ */
+//--------------------------------------------------------------------------------------------------
+#define  CM_MAX_ARGUMENTS_FOR_IPS_HELP          2
+#define  CM_MAX_ARGUMENTS_FOR_IPS_READ          2
+#define  CM_MAX_ARGUMENTS_FOR_IPS_THRESHOLDS    2
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the IPS help text to stdout.
@@ -144,29 +153,44 @@ void cm_ips_ProcessIpsCommand
     size_t numArgs          ///< [IN] Number of arguments
 )
 {
+    // True if the command contains extra arguments.
+    bool extraArguments = true;
+
     if (strcmp(command, "help") == 0)
     {
-        cm_ips_PrintIpsHelp();
+        if (numArgs <= CM_MAX_ARGUMENTS_FOR_IPS_HELP)
+        {
+            extraArguments = false;
+            cm_ips_PrintIpsHelp();
+        }
     }
     else if (strcmp(command, "read") == 0)
     {
-        if (LE_OK != cm_ips_ReadAndPrintVoltage())
+        if (numArgs <= CM_MAX_ARGUMENTS_FOR_IPS_READ)
         {
-            printf("Voltage read failed.\n");
-            exit(EXIT_FAILURE);
-        }
-        if (LE_OK != cm_ips_ReadAndPrintPowerSourceAndBatteryLevel())
-        {
-            printf("Power source and battery level read failed.\n");
-            exit(EXIT_FAILURE);
+            extraArguments = false;
+            if (LE_OK != cm_ips_ReadAndPrintVoltage())
+            {
+                printf("Voltage read failed.\n");
+                exit(EXIT_FAILURE);
+            }
+            if (LE_OK != cm_ips_ReadAndPrintPowerSourceAndBatteryLevel())
+            {
+                printf("Power source and battery level read failed.\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
     else if (strcmp(command, "thresholds") == 0)
     {
-        if (LE_OK != cm_ips_ReadAndPrintInputVoltageThresholds())
+        if (numArgs <= CM_MAX_ARGUMENTS_FOR_IPS_THRESHOLDS)
         {
-            printf("Read Input Voltage thresholds failed.\n");
-            exit(EXIT_FAILURE);
+            extraArguments = false;
+            if (LE_OK != cm_ips_ReadAndPrintInputVoltageThresholds())
+            {
+               printf("Read Input Voltage thresholds failed.\n");
+               exit(EXIT_FAILURE);
+            }
         }
     }
     else
@@ -175,5 +199,14 @@ void cm_ips_ProcessIpsCommand
         exit(EXIT_FAILURE);
     }
 
-    exit(EXIT_SUCCESS);
+    if (true == extraArguments)
+    {
+        printf("Invalid command for IPS service.\n");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        exit(EXIT_SUCCESS);
+    }
+
 }
