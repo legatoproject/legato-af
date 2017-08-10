@@ -61,7 +61,6 @@ void GenerateCLangExeMain
                   "#include \"legato.h\"\n"
                   "#include \"../src/eventLoop.h\"\n"
                   "#include \"../src/log.h\"\n"
-                  "#include \"../src/args.h\"\n"
                   "#include <dlfcn.h>\n"
                   "\n"
                   "\n";
@@ -135,7 +134,7 @@ void GenerateCLangExeMain
                   "int main(int argc, char* argv[])\n"
                   "{\n"
                   "    // Pass the args to the Command Line Arguments API.\n"
-                  "    arg_SetArgs((size_t)argc, (char**)argv);\n"
+                  "    le_arg_SetArgs((size_t)argc, (char**)argv);\n"
 
     // Make stdout line buffered.
                   "    // Make stdout line buffered so printf shows up in logs without flushing.\n"

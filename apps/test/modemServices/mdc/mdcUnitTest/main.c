@@ -13,7 +13,6 @@
 #include "pa_mdc_simu.h"
 #include "pa_mrc_simu.h"
 #include "pa_sim_simu.h"
-#include "args.h"
 
 #define NB_PROFILE  5
 #define IP_STR_SIZE     16

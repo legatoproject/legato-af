@@ -16,7 +16,6 @@
 #include "pa_ecall.h"
 #include "pa_ecall_simu.h"
 #include "mdmCfgEntries.h"
-#include "args.h"
 
 
 //--------------------------------------------------------------------------------------------------

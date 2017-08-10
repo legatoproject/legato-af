@@ -7,7 +7,6 @@
 
 #include "legato.h"
 
-#include "args.h"
 #include "mem.h"
 #include "hashmap.h"
 #include "safeRef.h"

@@ -16,7 +16,6 @@
 #include "pa_sms_simu.h"
 
 #include "le_sim_local.h"
-#include "args.h"
 #include "main.h"
 #include "le_cfg_simu.h"
 

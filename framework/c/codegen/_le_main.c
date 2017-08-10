@@ -9,7 +9,6 @@
 #include "legato.h"
 
 #include "../src/log.h"
-#include "../src/args.h"
 #include "../src/eventLoop.h"
 
 
@@ -25,7 +24,7 @@ void _le_event_InitializeComponent(void);
 
 int main(int argc, char* argv[])
 {
-    arg_SetArgs((size_t)argc, (char**)argv);
+    le_arg_SetArgs((size_t)argc, (char**)argv);
 
     LE_DEBUG("== Starting Executable '%s' ==", STRINGIZE(LE_EXECUTABLE_NAME));
 

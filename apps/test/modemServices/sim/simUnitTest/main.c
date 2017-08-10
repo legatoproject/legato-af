@@ -9,7 +9,6 @@
 #include "interfaces.h"
 #include "log.h"
 #include "pa_sim_simu.h"
-#include "args.h"
 
 #define NB_CLIENT        2
 #define INITIAL_PIN_TRY  3

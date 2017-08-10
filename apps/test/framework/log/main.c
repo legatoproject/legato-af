@@ -9,7 +9,6 @@
 #include "component2.h"
 #include "component1Helper.h"
 #include "../src/log.h"
-#include "../src/args.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

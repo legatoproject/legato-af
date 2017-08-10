@@ -12,7 +12,6 @@
 #include "pa_fwupdate_simu.h"
 
 #include "log.h"
-#include "args.h"
 
 extern void _fwupdateComp_COMPONENT_INIT(void);
 

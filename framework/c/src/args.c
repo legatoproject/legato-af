@@ -638,7 +638,7 @@ const char* le_arg_GetProgramName
     // WARNING: This function gets called by the logging API, so don't use the logging API.
     //          Otherwise a stack overflow may occur.
 
-    if (Argc == 0) // This will be true if arg_SetArgs() wasn't called or if argc was really 0.
+    if (Argc == 0) // This will be true if le_arg_SetArgs() wasn't called or if argc was really 0.
     {
         return "_UNKNOWN_";
     }
@@ -1117,7 +1117,7 @@ void le_arg_Scan
  * function.
  */
 //--------------------------------------------------------------------------------------------------
-void arg_SetArgs
+void le_arg_SetArgs
 (
     const size_t    argc,   ///< [IN] argc from main.
     char**          argv    ///< [IN] argv from main.
