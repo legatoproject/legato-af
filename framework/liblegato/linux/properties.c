@@ -290,7 +290,7 @@ le_result_t properties_GetValueForKey
     // Get an iterator to the app's info.properties file.
     properties_Iter_Ref_t iter = properties_CreateIter(fileNamePtr);
 
-    if (iter == NULL)
+    if (NULL == iter)
     {
         return LE_FAULT;
     }
@@ -308,13 +308,21 @@ le_result_t properties_GetValueForKey
                 // Get and return the value.
                 le_result_t r = le_utf8_Copy(bufPtr, properties_GetValue(iter), bufSize, NULL);
 
-                properties_DeleteIter(iter);
+                if (NULL != iter)
+                {
+                    properties_DeleteIter(iter);
+                }
+
                 return r;
             }
         }
         else
         {
-            properties_DeleteIter(iter);
+            if (NULL != iter)
+            {
+                properties_DeleteIter(iter);
+            }
+
             return result;
         }
     }
@@ -348,7 +356,7 @@ le_result_t properties_SetValueForKey
     {
         return LE_NO_MEMORY;
     }
-    else if (count == -1)
+    else if (-1 == count)
     {
         return LE_BAD_PARAMETER;
     }
@@ -362,10 +370,15 @@ le_result_t properties_SetValueForKey
     {
         outputFilePtr = fopen(tempFileName, "w");
     }
-    while ( (outputFilePtr == NULL) && (errno == EINTR) );
+    while ( (NULL == outputFilePtr) && (EINTR == errno) );
 
-    if (outputFilePtr == NULL)
+    if (NULL == outputFilePtr)
     {
+        if (NULL != iteratorRef)
+        {
+            properties_DeleteIter(iteratorRef);
+        }
+
         LE_ERROR("File '%s' could not be opened.  %m.", tempFileName);
         return LE_FAULT;
     }
@@ -375,7 +388,7 @@ le_result_t properties_SetValueForKey
     size_t keySize = strlen(keyPtr);
     bool found = false;
 
-    if (iteratorRef != NULL)
+    if (NULL != iteratorRef)
     {
         while (properties_NextNode(iteratorRef) == LE_OK)
         {
@@ -395,12 +408,12 @@ le_result_t properties_SetValueForKey
 
     // If the key in question was never found, then write it and it's new value to the end of the
     // file.
-    if (found == false)
+    if (false == found)
     {
         fprintf(outputFilePtr, "%s=%s\n", keyPtr, valuePtr);
     }
 
-    if (iteratorRef != NULL)
+    if (NULL != iteratorRef)
     {
         properties_DeleteIter(iteratorRef);
     }
@@ -410,7 +423,7 @@ le_result_t properties_SetValueForKey
     // Finally, replace the original file with our new replacement.
     unlink(fileNamePtr);
 
-    if (rename(tempFileName, fileNamePtr) != 0)
+    if (0 != rename(tempFileName, fileNamePtr))
     {
         LE_EMERG("Failed to rename temporary property file '%s' to '%s'.",
                  tempFileName,

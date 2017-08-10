@@ -442,19 +442,28 @@ static void Update
     {
         case LE_BUSY:
             fprintf(stderr, "**ERROR: Another update is currently in progress.\n");
-            exit(EXIT_FAILURE);
+            break;
 
         case LE_UNAVAILABLE:
             fprintf(stderr, "**ERROR: Updates are currently deferred.\n");
-            exit(EXIT_FAILURE);
+            break;
 
         case LE_OK:
             break;
 
         default:
             fprintf(stderr, "**ERROR: Unexpected result code from update server.\n");
-            exit(EXIT_FAILURE);
+            break;
     }
+
+    // Close the fd
+    close(fd);
+
+    if (result != LE_OK)
+    {
+       exit(EXIT_FAILURE);
+    }
+
 }
 
 

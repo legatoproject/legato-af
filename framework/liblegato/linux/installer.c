@@ -511,6 +511,11 @@ le_result_t installer_UpdateAppWriteableFiles
                     if (unlink(entPtr->fts_path) != 0)
                     {
                         LE_ERROR("Failed to delete file '%s'. (%m)", entPtr->fts_path);
+                        if (ftsPtr)
+                        {
+                           fts_close(ftsPtr);
+                        }
+
                         return LE_FAULT;
                     }
                 }
@@ -607,6 +612,11 @@ le_result_t installer_RemoveAppWriteableDeviceFiles
                     if (unlink(entPtr->fts_path) != 0)
                     {
                         LE_ERROR("Failed to delete file '%s'. (%m)", entPtr->fts_path);
+                        if (ftsPtr)
+                        {
+                           fts_close(ftsPtr);
+                        }
+
                         return LE_FAULT;
                     }
                 }

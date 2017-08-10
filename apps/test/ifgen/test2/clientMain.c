@@ -261,6 +261,7 @@ void test1(void)
 
     // Read and print out whatever is read from the server fd
     writeFdToLog(fdFromServer);
+    close(fdToServer);
 }
 
 

@@ -1065,6 +1065,7 @@ le_result_t user_CreateGroup
         }
     }
 
+    le_atomFile_CancelStream(groupFilePtr);
     return result;
 }
 

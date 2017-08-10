@@ -609,7 +609,7 @@ static le_result_t ModifyMsgEntry
 
     json_t* jsonRootPtr = json_load_file(path, 0, &error);
 
-    if (NULL == jsonRootPtr)
+    if ( jsonRootPtr == NULL )
     {
         LE_ERROR("json decoder error %s", error.text);
         return LE_FAULT;
@@ -618,14 +618,14 @@ static le_result_t ModifyMsgEntry
     json_t* jsonValPtr = jsonRootPtr;
     json_t* jsonSubObjPtr = jsonRootPtr;
 
-    while ((true == json_is_object(jsonValPtr)) && (nbKey > indexKey))
+    while ( ( json_is_object(jsonValPtr) == true ) && ( nbKey > indexKey ) )
     {
         indexKey++;
         jsonSubObjPtr = jsonValPtr;
         jsonValPtr = json_object_get(jsonSubObjPtr, keyPtr[indexKey]);
     }
 
-    if (!jsonValPtr)
+    if ( !jsonValPtr )
     {
         if ((indexKey > -1) && (indexKey < nbKey))
         {
@@ -643,7 +643,7 @@ static le_result_t ModifyMsgEntry
         res = ModifyJsonObj(jsonSubObjPtr, jsonValPtr, keyPtr[indexKey], modifPtr);
     }
 
-    if (LE_OK == res)
+    if ( res == LE_OK )
     {
         if (json_dump_file(jsonRootPtr, path, JSON_INDENT(1) | JSON_PRESERVE_ORDER) < 0)
         {
@@ -2707,12 +2707,13 @@ uint32_t SmsInbox_GetNext
                 GetSMSInboxMessagePath(messageId, path, pathLen);
                 int32_t fd = open(path, O_RDWR);
 
-                if (fd > 0)
+                if (fd >= 0)
                 {
                     // message is still existing
                     close(fd);
                     return messageId;
                 }
+
                 // else continue the parsing
             }
             else

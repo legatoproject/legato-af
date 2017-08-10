@@ -482,6 +482,7 @@ static bool LogLock
                 procName = procNameBuffer;
             }
         }
+
     }
 
     LE_WARN(" - %s[%d] has %d probation locks.", procName, obj->ClientPID, obj->LockProbationCount);

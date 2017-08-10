@@ -597,6 +597,8 @@ static le_result_t GetProcessNameFromPid
 
             return le_utf8_Copy(name, procNamePtr, length, NULL);
         }
+
+        fd_Close(fd);
     }
     else
     {

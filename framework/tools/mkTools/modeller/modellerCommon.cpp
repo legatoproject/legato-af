@@ -393,9 +393,15 @@ model::FileSystemObject_t* GetRequiredDevice
     // Execute permissions are not allowed on devices.
     if (permPtr->permissions.IsExecutable())
     {
+        auto srcPath = permPtr->srcPath;
+        if (permPtr)
+        {
+           delete(permPtr);
+        }
+
         throw mk::Exception_t(
             mk::format(LE_I18N("Execute permission is not allowed on devices: '%s'."),
-                       permPtr->srcPath)
+                       srcPath)
         );
     }
 

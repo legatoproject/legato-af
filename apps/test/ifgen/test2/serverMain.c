@@ -236,6 +236,9 @@ static void CallbackTestHandlerQueued
       NUM_ARRAY_MEMBERS(array),
       fdToClient,
       contextPtr);
+
+     // Close the fd
+     close(fdToClient);
 }
 
 

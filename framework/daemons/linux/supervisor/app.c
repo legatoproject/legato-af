@@ -1666,13 +1666,17 @@ static le_result_t RecursivelyCreateLinks
 
     // Close the directory tree.
     int r;
-    do
+    if (NULL != ftsPtr)
     {
-        r = fts_close(ftsPtr);
-    }
-    while ( (r == -1) && (errno == EINTR) );
+        do
+        {
+           r = fts_close(ftsPtr);
 
-    if (lastErrno != 0)
+        }
+        while ( (-1 == r) && (EINTR == errno) );
+    }
+
+    if (0 != lastErrno)
     {
         LE_ERROR("Could not read directory '%s'.  %m", srcDirPtr);
         return LE_FAULT;

@@ -239,5 +239,6 @@ COMPONENT_INIT
     //! [delete]
     LE_ASSERT(le_atClient_Delete(cmdRef) == LE_OK);
     //! [delete]
-
+    // Close the fd
+    close(fd);
 }

@@ -486,6 +486,11 @@ static le_result_t InstallSystemApps
                                                                    sizeof(appMd5Hash));
                     if (result != LE_OK)
                     {
+                        if (ftsPtr)
+                        {
+                           fts_close(ftsPtr);
+                        }
+
                         LE_CRIT("Failed to get 'app.md5' from '%s'", appPropertyPath);
                         return LE_FAULT;
                     }
@@ -496,6 +501,11 @@ static le_result_t InstallSystemApps
                                                        sizeof(appName));
                     if (result != LE_OK)
                     {
+                        if (ftsPtr)
+                        {
+                           fts_close(ftsPtr);
+                        }
+
                         LE_CRIT("Failed to get 'app.name' from '%s'", appPropertyPath);
                         return LE_FAULT;
                     }
@@ -610,6 +620,11 @@ static le_result_t SetupSystemAppsWritable
                 // current system).
                 if (app_SetUpAppWriteables(appMd5Buf, appName) != LE_OK)
                 {
+                    if (ftsPtr)
+                    {
+                       fts_close(ftsPtr);
+                    }
+
                     LE_CRIT("Failed to setup writable for app '%s<%s>'",
                             appName,
                             appMd5Buf);

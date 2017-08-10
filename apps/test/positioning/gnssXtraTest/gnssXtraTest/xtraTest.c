@@ -160,7 +160,12 @@ static void TestGetWrongExtendedEphemeris
     {
         LE_INFO("Test using an unexisting XTRA file");
         // Test with an unexisting XTRA file
-        LE_ASSERT(le_gnss_LoadExtendedEphemerisFile(fd)==LE_FAULT);
+        LE_ASSERT(le_gnss_LoadExtendedEphemerisFile(fd) == LE_FAULT);
+    }
+    else
+    {
+        // Close the fd before opening another resource.
+        close(fd);
     }
 
     // Note: XTRA1 is not supported by LE55. XTRA2 must be used.
@@ -171,7 +176,17 @@ static void TestGetWrongExtendedEphemeris
     LE_INFO("Open file %s with fd.%d",  XTRA1_FILE_PATH, fd);
 
     LE_INFO("Test using an inconsistent XTRA file");
-    LE_ASSERT(le_gnss_LoadExtendedEphemerisFile(fd)==LE_FORMAT_ERROR);
+    if (le_gnss_LoadExtendedEphemerisFile(fd) != LE_FORMAT_ERROR)
+    {
+        LE_FATAL("Assert Failed: le_gnss_LoadExtendedEphemerisFile(fd) == LE_FORMAT_ERROR");
+    }
+    else
+    {
+        LE_DEBUG("Received LE_FORMAT_ERROR");
+    }
+
+    close(fd);
+
 }
 
 

@@ -92,6 +92,7 @@ le_result_t addr_GetLibDataSection
         else if (result == LE_OUT_OF_RANGE)
         {
             // The end of the file is reached.
+            fd_Close(fd);
             return LE_NOT_FOUND;
         }
         else

@@ -187,6 +187,8 @@ int unixSocket_CreateSeqPacketNamed
     result = le_utf8_Copy(socketAddr.sun_path, pathStr, sizeof(socketAddr.sun_path), NULL);
     if (result != LE_OK)
     {
+        // Close the fd
+        fd_Close(fd);
         LE_CRIT("Socket path '%s' too long.", pathStr);
         return LE_FAULT;
     }

@@ -359,7 +359,7 @@ void PrepareHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * generic AT command handler
+ * Generic AT command handler
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -740,7 +740,13 @@ static void AtBridgeHandler
             // Start AT command bridge
             int fdTtyAT = open("/dev/ttyAT", O_RDWR | O_NOCTTY | O_NONBLOCK);
             testCtxPtr->bridgeRef = le_atServer_OpenBridge(fdTtyAT);
-            LE_ASSERT(testCtxPtr->bridgeRef != NULL);
+            if (testCtxPtr->bridgeRef == NULL)
+            {
+               // Close the fd
+               close(fdTtyAT);
+               LE_FATAL("Assert Failed:testCtxPtr->bridgeRef != NULL");
+            }
+
         }
         else
         {
@@ -979,10 +985,12 @@ static void* SocketThread
         return NULL;
     }
 
-    // set socket option
+    // Set socket option
     ret = setsockopt(sockFd, SOL_SOCKET, SO_REUSEADDR, &optVal, sizeof(optVal));
     if (ret)
     {
+        // Close the fd
+        close(sockFd);
         LE_ERROR("error setting socket option %m");
         return NULL;
     }
@@ -998,6 +1006,8 @@ static void* SocketThread
     ret = bind(sockFd,(struct sockaddr_in *)&myAddress,sizeof(myAddress));
     if (ret)
     {
+        // Close the fd
+        close(sockFd);
         LE_ERROR("%m");
         return NULL;
     }
@@ -1009,8 +1019,7 @@ static void* SocketThread
 
     while (1)
     {
-        int connFd;
-
+        int connFd = 0;
         connFd = accept(sockFd, (struct sockaddr *)&clientAddress, &addressLen);
 
         devRef = le_atServer_Open(dup(connFd));
@@ -1027,13 +1036,14 @@ static void* SocketThread
                                        AddMonitoring,
                                        deviceCtxPtr,
                                        NULL);
-
+        // Close the fd
+        close(connFd);
     }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * main of the test
+ * Main of the test
  *
  */
 //--------------------------------------------------------------------------------------------------
