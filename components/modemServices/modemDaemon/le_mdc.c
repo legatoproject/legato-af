@@ -1752,6 +1752,9 @@ le_mdc_Pdp_t le_mdc_GetPDP
  *      - LE_BAD_PARAMETER if an input parameter is not valid
  *      - LE_FAULT if the data session is currently connected for the given profile
  *
+ * @warning The maximum APN length might be limited by the platform.
+ *          Please refer to the platform documentation.
+ *
  * @note
  *      The process exits, if an invalid profile object is given
  */

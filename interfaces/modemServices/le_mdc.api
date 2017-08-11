@@ -58,6 +58,9 @@
  *  - Access Point Name using le_mdc_SetAPN().
  *  - Authentication settings using le_mdc_SetAuthentication().
  *
+ * @warning The maximum APN length might be limited by the platform.
+ *          Please refer to the platform documentation.
+ *
  *  A sample code can be seen in the following page:
  * - @subpage c_mdcDataProfiles
  *
@@ -839,6 +842,10 @@ FUNCTION Pdp GetPDP
  *
  * @note If APN is too long (max APN_NAME_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
+ *
+ * @warning The maximum APN length might be limited by the platform.
+ *          Please refer to the platform documentation.
+ *
  * @note
  *      The process exits, if an invalid profile object is given
  */
