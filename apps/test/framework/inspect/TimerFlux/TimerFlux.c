@@ -13,6 +13,8 @@
 #include "limit.h"
 #include "thread.h"
 
+#define MAX_THREADS 100
+
 static long SleepIntervalNano;
 static long ThreadNum;
 static long TimerNum;
@@ -378,6 +380,16 @@ COMPONENT_INIT
     ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
     memset(&ThreadRefArray, 0, ThreadNum * sizeof(le_thread_Ref_t));
     LE_ASSERT(NULL != ThreadRefArray);
+    if (ThreadNum <= MAX_THREADS)
+    {
+        // Initializing the array storing thread refs.
+        ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
+    }
+    else
+    {
+        LE_ERROR("ThreadNum is greater then MAX_THREADS");
+        exit(EXIT_FAILURE);
+    }
 
     // Create/Delete timers, according to the defined strategy
     if (strcmp(argDeleteStrat, "1toN-1") == 0)

@@ -1466,7 +1466,7 @@ static le_result_t EncodeMsd
                 if ((eCallPtr->msd.msdMsg.optionalData.dataLen =
                     msd_EncodeOptionalDataForEraGlonass(
                         &EraGlonassDataObj, outOptionalDataForEraGlonass))
-                    < 0)
+                    <= 0)
                 {
                     LE_ERROR("Unable to encode optional Data for ERA GLONASS!");
                     return LE_FAULT;

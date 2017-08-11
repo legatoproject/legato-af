@@ -320,10 +320,10 @@ int cm_mrc_SetRadioPower
     {
         switch (currPower)
         {
-            case 0:
+            case LE_OFF:
                 printf("Radio power is already set to OFF.\n");
                 break;
-            case 1:
+            case LE_ON:
                 printf("Radio power is already set to ON.\n");
                 break;
             default:

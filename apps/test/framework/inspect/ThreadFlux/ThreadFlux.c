@@ -8,6 +8,7 @@
 #include "legato.h"
 
 #define ThreadNameBufferSize 50
+#define MAX_THREADS 2000
 
 static long ThreadNum;
 static char ThreadNameBuffer[ThreadNameBufferSize] = {0};
@@ -121,8 +122,16 @@ COMPONENT_INIT
     argSleepIntervalNano = strtol(argSleepIntervalNanoPtr, NULL, 0);
     ThreadNum = strtol(threadNumPtr, NULL, 0);
 
-    // Initializing the array storing thread refs.
-    ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
+    if (ThreadNum <= MAX_THREADS)
+    {
+        // Initializing the array storing thread refs.
+        ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
+    }
+    else
+    {
+        LE_ERROR("====== Invalid ThreadNum ========");
+        exit(EXIT_FAILURE);
+    }
 
     // Create/Delete threads, according to the defined strategy
     if (strcmp(argDeleteStrat, "1toN") == 0)

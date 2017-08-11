@@ -1328,16 +1328,24 @@ static void CreateRequiresSection
         if (fgets(reqFilePath, sizeof(reqFilePath), stdin) != NULL)
         {
             size_t len = strlen(reqFilePath);
-
-            if (len > 1)
+            char resolvedFilePath[MAX_PATH_BYTES];
+            if (realpath(reqFilePath, resolvedFilePath) == NULL)
             {
-                // Strip the newline char from the file path.
-                if (reqFilePath[len-1] == '\n')
+                LE_ERROR("No such path: '%s'",reqFilePath);
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+                if (len > 1)
                 {
-                    reqFilePath[len-1] = '\0';
-                }
+                    // Strip the newline char from the file path.
+                    if (reqFilePath[len-1] == '\n')
+                    {
+                        reqFilePath[len-1] = '\0';
+                    }
 
-                fileToUsePtr = reqFilePath;
+                    fileToUsePtr = reqFilePath;
+                }
             }
         }
     }

@@ -2205,11 +2205,6 @@ COMPONENT_INIT
     else if (strcmp(commandPtr, "restart") == 0)
     {
         const char* restartTypePtr = le_arg_GetArg(1);
-        if (NULL == restartTypePtr)
-        {
-            LE_ERROR("restartTypePtr is NULL");
-            exit(EXIT_FAILURE);
-        }
         // Following function exit on failure, so no need to check return code.
         CheckEnoughParams( 1,
                            numArgs,
@@ -2220,11 +2215,6 @@ COMPONENT_INIT
     else if (strcmp(commandPtr, "fix") == 0)
     {
         const char* fixPeriodPtr = le_arg_GetArg(1);
-        if (NULL == fixPeriodPtr)
-        {
-            LE_ERROR("fixPeriodPtr is NULL");
-            exit(EXIT_FAILURE);
-        }
         uint32_t fixPeriod = DEFAULT_3D_FIX_TIME;
         //Check whether any watch period value is specified.
         if (NULL != fixPeriodPtr)
@@ -2277,11 +2267,6 @@ COMPONENT_INIT
     {
 
         const char* watchPeriodPtr = le_arg_GetArg(1);
-        if (NULL == watchPeriodPtr)
-        {
-            LE_ERROR("watchPeriodPtr is NULL");
-            exit(EXIT_FAILURE);
-        }
         uint32_t watchPeriod = DEFAULT_WATCH_PERIOD;
         //Check whether any watch period value is specified.
         if (NULL != watchPeriodPtr)

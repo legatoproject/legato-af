@@ -800,7 +800,18 @@ le_result_t file_CopyRecursive
                         goto cleanup;
                     }
 
-                    int linkResult = symlink(linkBuffer, newPath);
+                    int linkResult;
+                    char resolvedLinkPath[PATH_MAX] = "";
+                    if (realpath(linkBuffer, resolvedLinkPath) == NULL)
+                    {
+                        LE_CRIT("No such path : '%s'",linkBuffer);
+                        result = LE_IO_ERROR;
+                        goto cleanup;
+                    }
+                    else
+                    {
+                        linkResult = symlink(linkBuffer, newPath);
+                    }
 
                     if (linkResult == -1)
                     {

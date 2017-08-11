@@ -81,7 +81,7 @@ static pthread_key_t SigMonKey;
  * Port to use for start and attach a gdbserver(1) to itself. If 0, no gdbserver(1) is started
  */
 //--------------------------------------------------------------------------------------------------
-static int GdbServerPort = 0;
+static unsigned int GdbServerPort = 0;
 
 
 //--------------------------------------------------------------------------------------------------

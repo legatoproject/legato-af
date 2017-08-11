@@ -1326,7 +1326,7 @@ static char * ReadResolvConf
 {
     int fd;
     char * fileContent = NULL;
-    size_t fileSz;
+    off_t fileSz;
 
     fd = open("/etc/resolv.conf", O_RDONLY);
     if (fd < 0)
@@ -1341,13 +1341,13 @@ static char * ReadResolvConf
     if (0 != fileSz)
     {
 
-        LE_DEBUG("Caching resolv.conf: size[%zu]", fileSz);
+        LE_DEBUG("Caching resolv.conf: size[%lx]", fileSz);
 
         lseek(fd, 0, SEEK_SET);
 
         if (fileSz > (sizeof(ResolvConfBuffer) - 1))
         {
-            LE_ERROR("Buffer is too small (%zu), file will be truncated from %zu",
+            LE_ERROR("Buffer is too small (%zu), file will be truncated from %lx",
                     sizeof(ResolvConfBuffer), fileSz);
             fileSz = sizeof(ResolvConfBuffer) - 1;
         }
@@ -1372,7 +1372,7 @@ static char * ReadResolvConf
     }
 
     LE_FATAL_IF( fileContent && (strlen(fileContent) > fileSz),
-                 "Content size (%zu) and File size (%zu) differ",
+                 "Content size (%zu) and File size (%lx) differ",
                  strlen(fileContent), fileSz );
 
     return fileContent;

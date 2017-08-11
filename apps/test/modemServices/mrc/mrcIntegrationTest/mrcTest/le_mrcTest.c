@@ -1021,7 +1021,7 @@ static void Testle_mrc_GetStateAndQual()
 
     res = le_mrc_GetSignalQual(&quality);
     LE_ASSERT(res == LE_OK);
-    LE_ASSERT((quality>=0) && (quality<=5));
+    LE_ASSERT(quality<=5);
 }
 
 
