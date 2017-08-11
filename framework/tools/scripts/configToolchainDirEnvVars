@@ -25,7 +25,7 @@ set_toolchain_dir ()
     return 0
 }
 
-for t in ar7 ar86 wp85 wp750x wp76xx ar758x ar759x em75xx
+for t in ar7 ar86 wp85 wp750x wp76xx wp77xx ar758x ar759x em75xx
 do
     set_toolchain_dir $t
 done

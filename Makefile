@@ -37,7 +37,7 @@
 
 # List of target devices needed by the release process:
 ifndef RELEASE_TARGETS
-  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x wp76xx em75xx
+  RELEASE_TARGETS := ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx em75xx
 endif
 
 # List of target devices supported:
@@ -366,8 +366,8 @@ stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 $(STAGE_
 .PHONY: stage_9x28
 stage_9x28: stage_shared
 
-.PHONY: stage_ar758x stage_wp76xx
-stage_ar758x stage_wp76xx: stage_embedded stage_9x28 $(STAGE_MKLEGATOIMG) stage_mkavmodel
+.PHONY: stage_ar758x stage_wp76xx stage_wp77xx
+stage_ar758x stage_wp76xx stage_wp77xx: stage_embedded stage_9x28 $(STAGE_MKLEGATOIMG) stage_mkavmodel
 
 # ==== AR759X (9x40-based Sierra Wireless modules) ====
 

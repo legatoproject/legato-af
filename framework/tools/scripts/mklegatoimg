@@ -22,7 +22,7 @@ help_long_description=(
 " - -a: set SMACK attributes if defined in targetDefs files"
 " - -s: strip libraries and binaries"
 ""
-"For ar7/ar86/wp85/wp750x/wp76xx/em75xx targets:"
+"For ar7/ar86/wp85/wp750x/wp76xx/wp77xx/em75xx targets:"
 ""
 "   This creates a partition that you can use with fwupdate or airvantage"
 "   to update the legato within your target."
@@ -440,7 +440,7 @@ CreateImg_mdm9x28() {
         ar758x)
             WITH_DM_VERITY=true
             ;;
-        wp76xx)
+        wp76xx|wp77xx)
             img_indexes+=(1)
             page_size[1]=2048
             pid[0]='Y921'
@@ -561,7 +561,7 @@ case $TARGET in
         CreateImg_mdm9x15 ubi squashfs
         DefaultImg "squashfs.ubi"
         ;;
-    ar758x | wp76xx)
+    ar758x | wp76xx | wp77xx)
         CreateImg_mdm9x28 ubi squashfs
         DefaultImg $IMG_SUFFIX
         ;;

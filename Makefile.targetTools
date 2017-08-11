@@ -29,7 +29,7 @@ BUILD_PRODUCTS = 	config		\
 					scripts \
 					devMode
 
-ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx),)
+ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)
 	# Create list of all proprietay apps, then add them as product to build
 	APPS_PROPRIETARY_SRC_DIR = $(LEGATO_ROOT)/apps/proprietary
 	ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/atAirVantage/src/atAirVantage.adef),)

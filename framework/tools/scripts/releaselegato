@@ -24,7 +24,7 @@ help_long_description=(
 "        for all supported targets."
 )
 
-TARGETS="ar7,ar758x,ar759x,wp85,wp750x,wp76xx"
+TARGETS="ar7,ar758x,ar759x,wp85,wp750x,wp76xx,wp77xx"
 
 CheckForHelp $@
 

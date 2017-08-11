@@ -49,7 +49,7 @@ SelectToolchainDirs() {
         TOOLCHAIN_DIRS+=(/opt/swi/y17-ext-${target}/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
         TOOLCHAIN_DIRS+=(/opt/swi/y17-ext/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)
         ;;
-    ar758x | wp76xx)
+    ar758x | wp76xx | wp77xx)
         AppendYoctoBuildToolchain 'build_src' 'arm-poky-linux-gnueabi'
         AppendYoctoBuildToolchain 'build_bin' 'arm-poky-linux-gnueabi'
         TOOLCHAIN_DIRS+=(/opt/swi/y17-ext-${target}/sysroots/$HOST_ARCH-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi)

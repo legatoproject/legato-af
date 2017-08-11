@@ -106,6 +106,7 @@ Target  |  Description                    | Environment variables
  wp85   | Sierra Wireless WP85xx module   | ```WP85_TOOLCHAIN_DIR```,```WP85_TOOLCHAIN_PREFIX```
  wp750x | Sierra Wireless WP750x module   | ```WP750X_TOOLCHAIN_DIR```,```WP750X_TOOLCHAIN_PREFIX```
  wp76xx | Sierra Wireless WP76xx module   | ```WP76XX_TOOLCHAIN_DIR```,```WP76XX_TOOLCHAIN_PREFIX```
+ wp77xx | Sierra Wireless WP77xx module   | ```WP77XX_TOOLCHAIN_DIR```,```WP77XX_TOOLCHAIN_PREFIX```
  em75xx | Sierra Wireless EM75xx module   | ```EM75XX_TOOLCHAIN_DIR```,```EM75XX_TOOLCHAIN_PREFIX```
  raspi  | Raspberry Pi                    | ```RASPI_TOOLCHAIN_DIR```,```RASPI_TOOLCHAIN_PREFIX```
 
