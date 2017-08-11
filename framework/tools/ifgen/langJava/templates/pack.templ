@@ -6,13 +6,13 @@
 {%- set _getterMap = { "boolean": "buffer.readBool()",
                        "double": "buffer.readDouble()",
                        "String": "buffer.readString()",
-                       "FileDescriptor": "message.getFd()",
+                       "FileDescriptor": "buffer.getFileDescriptor()",
                        "Result": "Result.fromInt(buffer.readInt())",
                        "OnOff": "OnOff.fromInt(buffer.readInt())" } %}
 {%- set _setterMap = { "boolean":  "buffer.writeBool",
                        "double":  "buffer.writeDouble",
                        "BigInteger": "buffer.writeNumber",
-                       "FileDescriptor":  "message.setFd",
+                       "FileDescriptor":  "buffer.setFileDescriptor",
                        "Result":  "buffer.writeInt",
                        "OnOff": "buffer.writeInt" } %}
 {%- macro PackValue(apiType, value) -%}

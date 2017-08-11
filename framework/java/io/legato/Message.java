@@ -161,31 +161,6 @@ public class Message implements AutoCloseable
 
     //----------------------------------------------------------------------------------------------
     /**
-     *  Get the file descriptor that was attached to this message.
-     *
-     *  @return The FD that was transmitted as part of this message.
-     */
-    //----------------------------------------------------------------------------------------------
-    public FileDescriptor getFd()
-    {
-        return LegatoJni.GetMessageFd(messageRef);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    /**
-     *  Write a file descriptor into the message object so that it can be transmitted to a remote
-     *  process.
-     *
-     *  @param fd  A file descriptor object to send to the remote process.
-     */
-    //----------------------------------------------------------------------------------------------
-    public void setFd(FileDescriptor fd)
-    {
-        LegatoJni.SetMessageFd(messageRef, fd);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    /**
      *  Internal method, this is used to get the native reference for the underlying Legato object.
      *
      *  @return A reference to the Legato object.

@@ -10,6 +10,7 @@
 
 package io.legato;
 
+import java.io.FileDescriptor;
 import java.math.BigInteger;
 
 //--------------------------------------------------------------------------------------------------
@@ -127,6 +128,30 @@ public class MessageBuffer implements AutoCloseable
     {
         LegatoJni.SetMessageBool(hostMessage.getRef(), location, newValue);
         location += 1;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    /**
+     *  Read a {@link FileDescriptor} from the buffer.
+     *
+     *  @return The {@link FileDescriptor} read from the buffer.
+     */
+    //----------------------------------------------------------------------------------------------
+    public FileDescriptor getFileDescriptor()
+    {
+        return LegatoJni.GetMessageFd(hostMessage.getRef());
+    }
+
+    //----------------------------------------------------------------------------------------------
+    /**
+     *  Write a {@link FileDescriptor} into the buffer.
+     *
+     *  @param newValue  The value to write at the current buffer location.
+     */
+    //----------------------------------------------------------------------------------------------
+    public void setFileDescriptor(FileDescriptor fd)
+    {
+        LegatoJni.SetMessageFd(hostMessage.getRef(), fd);
     }
 
     //----------------------------------------------------------------------------------------------
