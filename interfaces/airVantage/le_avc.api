@@ -291,7 +291,7 @@
  *
  *
  * @verbatim
- * config set /apps/avcService/activityTimeout xx
+ * config set /apps/avcService/activityTimeout xx int
  * app restart avcService
  * @endverbatim
  *
