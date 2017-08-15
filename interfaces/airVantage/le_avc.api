@@ -249,6 +249,14 @@
  * deactivated, the AirVantage agent will automatically add routes to be able to reach the
  * AirVantage server through the connection used by AirVantage.
  *
+ * @section c_le_avc_timeout Connection / Download timeout
+ *
+ * The AirVantage connector service will abort FOTA/SOTA download, if it takes more than
+ * 300 seconds to establish a connection. Download will also be aborted, if the download speed is
+ * too low (less than 100 bytes /second) for too long (for more than 1000 seconds).
+ * These values are chosen based on experiments on low speed network. There is no configuration
+ * for these timeouts.
+ *
  * @section le_avcService_configdb Service Configuration Tree
  * @copydoc le_avcService_configdbPage_Hide
  *
