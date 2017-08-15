@@ -56,11 +56,13 @@
  * There can only be one pending update at a time.  To query the type of update, use
  * le_avc_GetUpdateType().  App updates can call le_avc_GetAppUpdateName() to retrieve the App name.
  *
- * If a download is pending, then le_avc_AcceptDownload() can be used to allow the update to be
- * downloaded. If this API is called while no AirVantage session is active, calling this API will
- * initiate an AirVantage session. To defer the decision, le_avc_DeferDownload() can be used
- * to defer the download for the specified number of minutes. After the defer time has elapsed,
- * the pending download notification will be re-sent again to all registered Apps.
+ * If a download is pending, le_avc_AcceptDownload() can be used to allow the update to be
+ * downloaded. An AirVantage session will be initiated if this api is called while there is no
+ * active AirVantage session. le_avc_DeferDownload() can be used to defer the download for the
+ * specified number of minutes. After the defer time has elapsed, the pending download notification
+ * will be re-sent again to all registered apps. le_avc_AcceptDownload() can be used to accept the
+ * download even before the defer timer expires. This behaviour is true for deferring install
+ * and uninstall as well.
  *
  * Once an update has been downloaded, a new notification will be received to indicate that an
  * install is pending. Apps can then use le_avc_AcceptInstall() to allow the install to proceed.
