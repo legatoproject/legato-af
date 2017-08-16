@@ -21,6 +21,14 @@ static SharedData_t SharedData;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get text semaphore
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_sem_Ref_t GetTextSemRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * convert \r\n into <>
  * example: at\r => at<
  *          \r\nOK\r\n => <>OK<>
@@ -50,12 +58,66 @@ static char* PrettyPrint
             case '\n':
                 *swapPtr = '>';
             break;
+            case '\x1a':
+            case '\x1b':
+                *swapPtr = '#';
+            break;
           default: break;
         }
         swapPtr++;
     }
 
     return copy;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get text callback
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetTextCallback
+(
+    le_atServer_CmdRef_t    cmdRef,
+    le_result_t             result,
+    char*                   textPtr,
+    uint32_t                len,
+    void*                   ctxPtr
+)
+{
+    LE_INFO("callback [%d:%u:%s]", result, len, textPtr);
+    LE_ASSERT(le_atServer_SendFinalResponse(cmdRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    le_sem_Post(GetTextSemRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * send text and test on an expected result
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SendTextAndTest
+(
+    int fd,
+    int epollFd,
+    const char* textPtr,
+    const char* expectedResponsePtr
+)
+{
+    LE_INFO("Text: %s", PrettyPrint((char *)textPtr));
+
+    GetTextSemRef = le_sem_Create("get-text", 0);
+
+    if (write(fd, textPtr, strlen(textPtr)) == -1)
+    {
+        LE_ERROR("write failed: %s", strerror(errno));
+        return LE_IO_ERROR;
+    }
+
+    le_sem_Wait(GetTextSemRef);
+    le_sem_Delete(GetTextSemRef);
+
+    return TestResponses(fd, epollFd, expectedResponsePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -283,6 +345,12 @@ static void* AtHost
                                     "\r\n>ME1\r\n"
                                     "\r\nOK\r\n"));
 
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+TEXT", "\r\n> "));
+    LE_ASSERT_OK(SendTextAndTest(socketFd, epollFd, "testing\x1b", "\r\nOK\r\n"));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+TEXT", "\r\n> "));
+    LE_ASSERT_OK(SendTextAndTest(socketFd, epollFd, "testing\x1a", "\r\nOK\r\n"));
+
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CLOSE?",
                 "\r\nERROR\r\n"));
 
@@ -295,7 +363,6 @@ static void* AtHost
     exit(0);
 
     return NULL;
-
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -440,14 +507,13 @@ COMPONENT_INIT
 #endif
 
     memset(&SharedData, 0, sizeof(SharedData));
-
     SharedData.devPathPtr = "\0at-dev";
-
     SharedData.semRef = le_sem_Create("AtUnitTestSem", 0);
-
     SharedData.atServerThread = le_thread_GetCurrent();
-    atHostThread = le_thread_Create("atHostThread", AtHost, (void *)&SharedData);
+    SharedData.callback = (le_atServer_GetTextCallbackFunc_t)GetTextCallback;
 
+    atHostThread = le_thread_Create("atHostThread", AtHost, (void *)&SharedData);
     le_thread_Start(atHostThread);
+
     AtServer(&SharedData);
 }

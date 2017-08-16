@@ -18,10 +18,11 @@
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    const char*     devPathPtr;     ///< device path
-    le_sem_Ref_t    semRef;         ///< semaphore
-    le_atServer_DeviceRef_t devRef; ///< device reference
-    le_thread_Ref_t atServerThread; ///< AT Server reference
+    const char*                         devPathPtr;     ///< device path
+    le_sem_Ref_t                        semRef;         ///< semaphore
+    le_atServer_DeviceRef_t             devRef;         ///< device reference
+    le_thread_Ref_t                     atServerThread; ///< AT Server reference
+    le_atServer_GetTextCallbackFunc_t   callback;       ///< Get text callback
 }
 SharedData_t;
 

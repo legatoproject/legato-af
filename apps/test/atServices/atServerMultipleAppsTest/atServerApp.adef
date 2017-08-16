@@ -17,6 +17,7 @@ processes:
 }
 
 start: manual
+sandboxed: false
 
 bindings:
 {

@@ -162,6 +162,31 @@
  * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
  * sends its final response).
  *
+ * @section Text
+ *
+ * le_atServer_GetTextAsync() allows the user to register a le_atServer_GetTextCallback_t callback
+ * to retrieve text and sends a prompt <CR><LF><greater_than><SPACE> on the current command's
+ * device.
+ *
+ * It will receive at max LE_ATSERVER_TEXT_MAX_LEN bytes.
+ * If Esc Key is hit then the command is canceled and an empty buffer is returned with result
+ * set to LE_OK.
+ * If Ctrl+z is hit then the received buffer is returned and the result is set to LE_OK.
+ * In case of a read error, an empty buffer is returned with result set to LE_IO_ERROR;
+ *
+ * Example:
+ *
+ * AT+CMGS="+85291234567"
+ * > <ESC>
+ *
+ * OK
+ *
+ * AT+CMGS="+85291234567"
+ * > It is easy to send text messages. <CTRL-Z>
+ * +CMGS: 5
+ *
+ * OK
+ *
  * @section atServer_bridge Bridge
  *
  * A second file descriptor can be used thanks to le_atServer_OpenBridge() to send
@@ -200,6 +225,14 @@
 
 
 USETYPES le_atDefs;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Maximum text length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_LEN = 4096;
+
 //--------------------------------------------------------------------------------------------------
 /**
  *  Reference type for an AT command.
@@ -607,4 +640,39 @@ FUNCTION EnableExtendedErrorCodes
 //--------------------------------------------------------------------------------------------------
 FUNCTION DisableExtendedErrorCodes
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get text callback
+ *
+ * @return
+ *      - LE_OK: The function succeeded
+ *      - LE_IO_ERROR: An io error happened and the function couldn't read from the device
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER GetTextCallback
+(
+    Cmd         cmdRef              IN, ///< Received AT command reference
+    le_result_t result              IN, ///< Result
+    string      text[TEXT_MAX_LEN]  IN, ///< Received text
+    uint32      len                 IN  ///< Text length
+
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function allows the user to register a le_atServer_GetTextCallback_t callback
+ * to retrieve text and sends a prompt <CR><LF><greater_than><SPACE> on the current command's
+ * device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device or command reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTextAsync
+(
+    Cmd cmdRef                 IN, ///< AT command reference
+    GetTextCallback callback   IN  ///< Get text callback
 );

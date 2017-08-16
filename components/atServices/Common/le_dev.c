@@ -11,6 +11,7 @@
 #include <pwd.h>
 #include <grp.h>
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Default buffer size for device information and error messages
@@ -380,7 +381,7 @@ le_result_t le_dev_AddFdMonitoring
     fdMonitorRef = le_fdMonitor_Create(monitorName,
                                        devicePtr->fd,
                                        handlerFunc,
-                                       POLLIN | POLLRDHUP);
+                                       POLLIN | POLLPRI | POLLRDHUP);
 
     devicePtr->fdMonitor = fdMonitorRef;
 

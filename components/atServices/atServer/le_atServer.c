@@ -142,6 +142,33 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Text prompt definition.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TEXT_PROMPT         "\r\n> "
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Text prompt len.
+ */
+//--------------------------------------------------------------------------------------------------
+#define TEXT_PROMPT_LEN     4
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ASCII substitute control code.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SUBSTITUTE          0x1a
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ASCII escape code.
+ */
+//--------------------------------------------------------------------------------------------------
+#define ESCAPE              0x1b
+//--------------------------------------------------------------------------------------------------
+/**
  * Pool for device context
  */
 //--------------------------------------------------------------------------------------------------
@@ -336,6 +363,23 @@ FinalRsp_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Text structure definition.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    bool                                mode;                           ///< Is text mode
+    size_t                              offset;                         ///< Buffer offset
+    char                                buf[LE_ATSERVER_TEXT_MAX_LEN];  ///< Text buffer
+    le_atServer_GetTextCallbackFunc_t   callback;                       ///< Callback function
+    void*                               ctxPtr;                         ///< Context
+    le_atServer_CmdRef_t                cmdRef;                         ///< Received AT command
+}
+Text_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Device context structure.
  *
  */
@@ -360,7 +404,8 @@ typedef struct
     le_atServer_BridgeRef_t bridgeRef;                            ///< bridge reference
     le_msg_SessionRef_t     sessionRef;                           ///< session reference
     bool                    suspended;                            ///< is device in data mode
-    bool                    echo;                                 /// is echo enabled
+    bool                    echo;                                 ///< is echo enabled
+    Text_t                  text;                                 ///< text data
 }
 DeviceContext_t;
 
@@ -1640,6 +1685,105 @@ static void ParseBuffer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function handles receiving AT commands
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReceiveCmd
+(
+    DeviceContext_t *devPtr
+)
+{
+    ssize_t size;
+    // Read RX data on uart
+    size = le_dev_Read(&devPtr->device,
+                (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
+                (LE_ATDEFS_COMMAND_MAX_LEN - devPtr->indexRead));
+
+    // Echo is activated
+    if (devPtr->echo)
+    {
+        le_dev_Write(&devPtr->device,
+                    (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
+                    size);
+    }
+
+    devPtr->indexRead += size;
+    ParseBuffer(devPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function handles receiving text
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void ReceiveText
+(
+    DeviceContext_t *devPtr
+)
+{
+    size_t size;
+    ssize_t count;
+    Device_t device;
+    Text_t *textPtr;
+    void* ctxPtr;
+
+    size = LE_ATSERVER_TEXT_MAX_LEN;
+    textPtr = &devPtr->text;
+    device = devPtr->device;
+    ctxPtr = NULL;
+
+    if (textPtr->ctxPtr)
+    {
+        ctxPtr = textPtr->ctxPtr;
+    }
+
+    count = le_dev_Read(&device, (uint8_t *)textPtr->buf+textPtr->offset, size-textPtr->offset);
+    if (!count)
+    {
+        LE_ERROR("connection closed");
+        textPtr->buf[0] = '\0';
+        if (textPtr->callback)
+        {
+            textPtr->callback(textPtr->cmdRef, LE_IO_ERROR, "", 0, ctxPtr);
+        }
+        textPtr->mode = false;
+        return;
+    }
+
+    if (devPtr->echo)
+    {
+        le_dev_Write(&devPtr->device, (uint8_t *)textPtr->buf+textPtr->offset, count);
+    }
+
+    textPtr->offset += count;
+
+    if (ESCAPE == textPtr->buf[textPtr->offset-1])
+    {
+        LE_DEBUG("Received a cancel request");
+        textPtr->buf[0] = '\0';
+        if (textPtr->callback)
+        {
+            textPtr->callback(textPtr->cmdRef, LE_OK, "", 0, ctxPtr);
+        }
+        textPtr->mode = false;
+    }
+
+    if (SUBSTITUTE == textPtr->buf[textPtr->offset-1])
+    {
+        LE_DEBUG("Received text %s", textPtr->buf);
+        textPtr->buf[textPtr->offset-1] = '\0';
+        if (textPtr->callback)
+        {
+            textPtr->callback(textPtr->cmdRef, LE_OK, textPtr->buf, textPtr->offset-1, ctxPtr);
+        }
+        textPtr->mode = false;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function is called when data are available to be read on fd
  *
  */
@@ -1658,25 +1802,21 @@ static void RxNewData
     {
         LE_INFO("fd %d: Connection reset by peer", fd);
         le_dev_RemoveFdMonitoring(&devPtr->device);
+        return;
     }
-    else if (events & POLLIN)
+
+    if (events & (POLLIN | POLLPRI))
     {
-        ssize_t size;
-        // Read RX data on uart
-        size = le_dev_Read(&devPtr->device,
-                    (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
-                    (LE_ATDEFS_COMMAND_MAX_LEN - devPtr->indexRead));
-
-        // Echo is activated
-        if (devPtr->echo)
+        if (devPtr->text.mode)
         {
-            le_dev_Write(&devPtr->device,
-                        (uint8_t *)(devPtr->currentCmd + devPtr->indexRead),
-                        size);
+            LE_DEBUG("Receiving text");
+            ReceiveText(devPtr);
         }
-
-        devPtr->indexRead += size;
-        ParseBuffer(devPtr);
+        else
+        {
+            LE_DEBUG("Receiving AT command");
+            ReceiveCmd(devPtr);
+        }
     }
     else
     {
@@ -2797,6 +2937,55 @@ void le_atServer_DisableExtendedErrorCodes
 )
 {
     ExtendedErrorCodes = false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function allows the user to register a le_atServer_GetTextCallback_t callback
+ * to retrieve text and sends a prompt <CR><LF>><SPACE> on the current command's device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device or command reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_GetTextAsync
+(
+    le_atServer_CmdRef_t cmdRef,
+    le_atServer_GetTextCallbackFunc_t callback,
+    void *ctxPtr
+)
+{
+    ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, cmdRef);
+
+    if (!cmdPtr)
+    {
+        LE_ERROR("Bad command reference");
+        return LE_BAD_PARAMETER;
+    }
+
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, cmdPtr->deviceRef);
+
+    if (!devPtr)
+    {
+        LE_ERROR("Bad device reference");
+        return LE_BAD_PARAMETER;
+    }
+
+    devPtr->text.mode = true;
+    devPtr->text.offset = 0;
+    memset(devPtr->text.buf, 0, LE_ATSERVER_TEXT_MAX_LEN);
+    devPtr->text.callback = callback;
+    devPtr->text.ctxPtr = ctxPtr;
+    devPtr->text.cmdRef = cmdRef;
+
+    LE_INFO("%s", devPtr->text.buf);
+
+    le_dev_Write(&devPtr->device, (uint8_t *)TEXT_PROMPT, TEXT_PROMPT_LEN);
+
+    cmdPtr->processing = false;
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

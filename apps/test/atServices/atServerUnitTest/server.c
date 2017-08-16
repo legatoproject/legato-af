@@ -61,6 +61,7 @@ typedef struct
     const char*                      atCmdPtr;
     le_atServer_CmdRef_t             cmdRef;
     le_atServer_CommandHandlerFunc_t handlerPtr;
+    void*                            ctxPtr;
 }
 AtCmd_t;
 
@@ -738,6 +739,52 @@ static void CmeeCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Text command handler
+ *
+ * tests:
+ *  - le_atServer_GetText()
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TextCmdHandler
+(
+    le_atServer_CmdRef_t cmdRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    AtSession_t* atSessionPtr = (AtSession_t *)contextPtr;
+    AtCmd_t atCmd;
+    le_atServer_GetTextCallbackFunc_t callback = NULL;
+    int i;
+
+    for (i = 0; i < COMMANDS_MAX; i++)
+    {
+        if (!strcmp("AT+TEXT", atSessionPtr->atCmds[i].atCmdPtr))
+        {
+            atCmd = atSessionPtr->atCmds[i];
+            callback = (le_atServer_GetTextCallbackFunc_t)atCmd.ctxPtr;
+            break;
+        }
+    }
+
+    switch (type)
+    {
+        case LE_ATSERVER_TYPE_ACT:
+            LE_ASSERT_OK(le_atServer_GetTextAsync(cmdRef, callback, NULL));
+            break;
+        case LE_ATSERVER_TYPE_PARA:
+        case LE_ATSERVER_TYPE_READ:
+        case LE_ATSERVER_TYPE_TEST:
+        default:
+            LE_ASSERT_OK(le_atServer_SendFinalResponse(cmdRef, LE_ATSERVER_ERROR, false, ""));
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Cleanup thread function
  *
  */
@@ -868,6 +915,12 @@ void AtServer
             .atCmdPtr = "AT+CMEE",
             .cmdRef = NULL,
             .handlerPtr = CmeeCmdHandler,
+        },
+        {
+            .atCmdPtr = "AT+TEXT",
+            .cmdRef = NULL,
+            .handlerPtr = TextCmdHandler,
+            .ctxPtr = sharedDataPtr->callback,
         },
     };
 
