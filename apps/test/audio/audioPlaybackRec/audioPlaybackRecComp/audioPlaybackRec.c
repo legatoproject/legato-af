@@ -1343,8 +1343,21 @@ COMPONENT_INIT
             }
             else
             {
-                AmrMode = atoi(le_arg_GetArg(4));
-                DtxActivation = atoi(le_arg_GetArg(5));
+                const char* amrModePtr       = le_arg_GetArg(4);
+                const char* dtxActivationPtr = le_arg_GetArg(5);
+                if (NULL == amrModePtr)
+                {
+                    LE_ERROR("amrModePtr is NULL");
+                    exit(EXIT_FAILURE);
+                }
+                if (NULL == dtxActivationPtr)
+                {
+                    LE_ERROR("dtxActivationPtr is NULL");
+                    exit(EXIT_FAILURE);
+                }
+
+                AmrMode = atoi(amrModePtr);
+                DtxActivation = atoi(dtxActivationPtr);
                 NextOptionArg = 6;
             }
         }

@@ -243,6 +243,11 @@ static void GetArgs
 
     // Get Card manufacturer
     arg = le_arg_GetArg(1);
+    if (NULL == arg)
+    {
+        LE_ERROR("arg is NULL");
+        exit(EXIT_FAILURE);
+    }
     if( 0 == strncmp(arg, "gemalto", strlen("gemalto")))
     {
         LE_INFO("Card manufacturer is Gemalto.");

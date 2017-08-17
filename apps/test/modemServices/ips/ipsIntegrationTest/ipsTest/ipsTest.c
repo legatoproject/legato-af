@@ -494,14 +494,14 @@ COMPONENT_INIT
     nbarg = le_arg_NumArgs();
     LE_INFO(" nbargument %d ", nbarg );
 
+    testNumberStr = le_arg_GetArg(0);
+    if (NULL == testNumberStr)
+    {
+        LE_ERROR("testNumberStr is NULL");
+        exit(EXIT_FAILURE);
+    }
     if ( nbarg  == 1 )
     {
-        testNumberStr = le_arg_GetArg(0);
-        if (NULL == testNumberStr)
-        {
-            LE_ERROR("testNumberStr is NULL");
-            exit(EXIT_FAILURE);
-        }
         if(strcmp(testNumberStr, "ALL") == 0)
         {
             Testle_ips_GetInputVoltage();
@@ -528,8 +528,6 @@ COMPONENT_INIT
     }
     else if ( nbarg  == 5 )
     {
-        testNumberStr = le_arg_GetArg(0);
-
         if(strcmp(testNumberStr, "SET") == 0)
         {
             const char *  critStr = le_arg_GetArg(1);
