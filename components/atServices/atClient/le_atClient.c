@@ -1488,7 +1488,7 @@ le_result_t le_atClient_SetIntermediateResponse
 
     if (strcmp(intermediatePtr, "\0") != 0)
     {
-        char *savePtr;
+        char *savePtr = (char*) intermediatePtr;
         char * interPtr = strtok_r((char*) intermediatePtr,"|", &savePtr);
 
         while(interPtr != NULL)
@@ -1556,7 +1556,7 @@ le_result_t le_atClient_SetFinalResponse
 
     if (strcmp(responsePtr, "\0") != 0)
     {
-        char *savePtr;
+        char *savePtr = (char*) responsePtr;
         char * respPtr = strtok_r((char*) responsePtr,"|", &savePtr);
 
         while(respPtr != NULL)
