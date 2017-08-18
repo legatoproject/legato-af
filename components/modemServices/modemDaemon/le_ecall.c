@@ -1607,6 +1607,16 @@ static void ProcessECallState
                         // End Of Redial Period
                         endOfRedialPeriod = true;
                     }
+                    // For ERA-GL, End of Redial if call drop due to Normal Clear in Pull mode
+                    else if (    (PA_ECALL_ERA_GLONASS == SystemStandard)
+                              && (true == ECallObj.eraGlonass.pullModeSwitch)
+                              && (true == eCallEventDataPtr->terminationReceived)
+                              && (LE_MCC_TERM_REMOTE_ENDED == ECallObj.termination)
+                            )
+                    {
+                        // End Of Redial Period
+                        endOfRedialPeriod = true;
+                    }
                     else
                     {
                         // Start redial period if redial mechanism is not stopped
