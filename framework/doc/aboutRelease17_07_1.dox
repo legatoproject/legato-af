@@ -1,6 +1,6 @@
-/** @page releaseNotes17070 17.07.0 Release Notes
+/** @page releaseNotes17071 17.07.1 Release Notes
 
-Release Date: Aug 17, 2017
+Release Date: Aug 18, 2017
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -32,6 +32,30 @@ Example:
    and so on..
 
 For any questions about the Product Releases please contact your Module Vendor directly.
+
+@section rn107_07_Patches Patches
+
+The following are the list of patches that have been applied to Legato AF 17.07:
+
+@subsection rn107_07_Patches_17.07.1 17.07.1
+
+Version 17.07.1 was introduced to resolve an issue where running @c make with the tarball
+distribution of Legato AF produces an error (the build is still successful, even with the error):
+
+Example of error message:
+@verbatim
+Version (-v) not set
+make: *** [stage_mkavmodel] Error 1
+@endverbatim
+
+@b Resolution: download the new tarball and run @c make @c clean and then @c make for your target:
+[legato-17.07.1.tar.bz2](https://downloads.sierrawireless.com/legato/1707/legato-17.07.1.tar.bz2)
+
+Example:
+@verbatim
+$ make clean
+$ make wp85           # make <target>
+@endverbatim
 
 @section rn17_07_Features New Features
 
