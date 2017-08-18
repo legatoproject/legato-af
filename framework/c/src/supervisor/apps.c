@@ -1743,12 +1743,6 @@ void le_appCtrl_SetDevicePerm
         le_appCtrl_SetDevicePermRespond(cmdRef, LE_BAD_PARAMETER);
         return;
     }
-    else if (strlen(path) >= LIMIT_MAX_PATH_BYTES)
-    {
-        LE_ERROR("Device path '%s' is too long.", path);
-        le_appCtrl_SetDevicePermRespond(cmdRef, LE_BAD_PARAMETER);
-        return;
-    }
 
     // Check that the permissions are valid.
     if ( (strcmp(permissions, "r") != 0) &&
