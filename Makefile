@@ -139,6 +139,16 @@ clean:
 # Version related rules.
 ifndef LEGATO_VERSION
   export LEGATO_VERSION := $(shell git describe --tags 2> /dev/null)
+
+  ifeq ($(LEGATO_VERSION),)
+    export LEGATO_VERSION := $(shell cat version 2> /dev/null)
+
+    # If we still cannot determine the legato version, set it to unknown
+    ifeq ($(LEGATO_VERSION),)
+      $(warning Unable to determine Legato version)
+      export LEGATO_VERSION := "unknown"
+    endif
+  endif
 endif
 
 # Source code directories and files to include in the MD5 sum in the version and package.properties.
