@@ -8,7 +8,7 @@ These topics contain info on how to build, install and remove the Legato Applica
 | @subpage basicBuildLegato_make     | How to install Legato AF on a Target Device                 |
 | @ref basicBuildUninstall           | How to remove Legato from a Linux development machine       |
 | @ref basicTarget                   | How to setup and configure a Target Device                  |
-| [WP Series Software](http://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
+| [WP Module Software](http://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
 
 Copyright (C) Sierra Wireless Inc.
 

@@ -1,4 +1,4 @@
-/** @page basicBuildLegato Install/Remove Legato via Command-Line
+/** @page basicBuildLegato Install/Remove Legato
 
 The following directions will guide you to set up your Linux development machine, download the
 Legato AF and install a build on your Target Device using the command line.
@@ -26,10 +26,12 @@ Optional packages: vim (or any text editor),
 @section buildToolchain Install a Toolchain
 
 If you are building the Legato AF for a SWI WP Series Device you will need to download and install a
-Toolchain which includes GCC and other tools needed to make a build for your Target Device.  If you
-are building Legato AF directly on a Raspberry Pi then no toolchain is needed and you only need to
-install the native GCC.  If you are cross-compiling the Legato AF on a Linux machine for use on a
-Raspberry Pi Device, then you will need to install Raspberry Pi's toolchain.
+Toolchain which includes GCC and other tools needed to make a build for your Target Device.
+
+If you are building Legato AF directly on a Raspberry Pi then no toolchain is needed and you only
+need to install the @b native @b [GCC](https://gcc.gnu.org/install/).  If you are cross-compiling
+the Legato AF on a Linux machine for use on a Raspberry Pi Device, then you will need to install
+Raspberry Pi's toolchain.
 
 @subsection buildToolchainSWI SWI WP Series Device Toolchain
 
@@ -165,6 +167,7 @@ Directory Structure on your Host Machine:
 | @c components     | Platform-independent components that are used in apps.                             |
 | @c framework      | Source code for the Legato framework.                                              |
 | @c targetFiles    | Files needed for installation on target devices.                                   |
+| @c targets        | All the .sinc files that are needs to build modules                                |
 | @c platformAdaptor| Components specific to specific platforms. **covered under other licenses          |
 | @c modules        | Other repositories that extend Legato.                                             |
 | @c 3rdParty       | Third-party code that is integrated with Legato. **covered under other licenses    |
@@ -178,7 +181,7 @@ You are now ready to work with your host and your target device.
 | @ref tools "Tools"                | Tools used for building/configuring/diagnosing your target or host |
 | @ref basicBuildLegato_make "Make" | How to Make a build and Update a Target Device                     |
 | @ref basicTarget                  | How to setup and configure a Target Device                         |
-| [WP Series Software](http://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
+| [WP Module Software](http://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
 
 @note Sierra Wireless WP Series Software includes free development tools for use with the WP Series
 Devices.  These tools will install an Eclipse based IDE with the toolchain, Legato AF pre-built,

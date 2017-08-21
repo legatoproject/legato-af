@@ -4,16 +4,40 @@ This topic explains how to build a Legato update for a Target Device.
 
 @section basicBuildLegato_makeTarget Make an Update for a Target
 
-All supported builds use the @c make tool and have pre-configured makefiles included in the Framework.
+All supported platforms use the @c make tool and have pre-configured makefiles included in the
+Framework.
 
 @note Make sure you have the appropriate @ref buildToolchain "toolchain installed" before you run
 @c make.
 
 Run @c make to build the framework for the target from your Legato Root Directory:
-@verbatim $ make wp85  \\makes an update file for a WP85 series device @endverbatim
+@verbatim
+$ make wp85  # makes an update file for a WP85 series device
+@endverbatim
+
 OR
 
-@verbatim $ make raspi \\makes an update file for a Raspberry Pi device @endverbatim
+@verbatim
+$ make raspi # makes an update file for a Raspberry Pi device
+@endverbatim
+
+List of Supported Platforms (see your module vendor for information and the toolchain required to
+build)
+
+@todo Add links to "Support Platform" info once that is built on Legato.io and add in virt
+
+| Platform             | Description                                                                                                                    |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| localhost            | Test build process, very limited functionality                                                                                 |
+| raspi                | [Raspberry Pi running Raspbian](https://www.raspbian.org/)                                                                     |
+| wp85                 | [Sierra Wireless WP85xx modules](https://source.sierrawireless.com/devices/wp-series/wp8548/)                                  |
+| wp77xx               | [Sierra Wireless WP77xx modules](https://source.sierrawireless.com/)                                                           |
+| wp76xx               | [Sierra Wireless WP76xx modules](https://source.sierrawireless.com/devices/wp-series/wp7601/)                                  |
+| wp750x               | [Sierra Wireless WP750x modules](https://source.sierrawireless.com/devices/wp-series/wp7502/)                                  |
+| ar86                 | [Sierra Wireless AR86xx modules](https://www.sierrawireless.com/products-and-solutions/embedded-solutions/automotive-modules/) |
+| ar759x               | [Sierra Wireless AR759x modules](https://www.sierrawireless.com/products-and-solutions/embedded-solutions/automotive-modules/) |
+| ar758x               | [Sierra Wireless AR758x modules](https://www.sierrawireless.com/products-and-solutions/embedded-solutions/automotive-modules/) |
+| ar7                  | [Sierra Wireless AR7xxx modules](https://www.sierrawireless.com/products-and-solutions/embedded-solutions/automotive-modules/) |
 
 This will build a @ref legatoServicesUpdatePack "system update pack" for the target, located under
 the build directory for your target  (e.g., @c build/wp85/system.wp85.update).
@@ -24,6 +48,34 @@ host. @verbatim $ sudo apt-get remove ccache @endverbatim
 See @ref toolsHost_instlegato tool for details on how to install your system update pack onto your
 target device.
 
+@section basicBuildLegato_ConfigureShell Configure your Shell
+
+You will need to configure your shell so you can use the command line tools included with Legato AF.
+
+@note Running @c make for a supported platform creates the @c bin directory in your local Legato
+repo.  (e.g.; <c>make wp85</c>)
+
+First @c cd into the legato root directory (e.g.; @c ~/legato-repo/legato) and run @c ./bin/legs or
+<c>source bin/configlegatoenv</c>. @c legs (legato shell) will open up a new shell and configure the
+Legato environment variables such as setting $LEGATO_ROOT and adding it to your path. Sourcing
+@c configlegatoenv will do the same thing but will configure your current shell, preserving your
+history.
+
+For the list of tools and further instructions on configuring your shell see @ref tools .
+
+@verbatim
+$ ./bin/legs
+@endverbatim
+
+OR
+
+@verbatim
+$ source bin/configlegatoenv
+@endverbatim
+
+@note You can also add bin/configlegatoenv to your bash profile so that the environment variables
+will automatically be configured each time you log into your Dev Machine.
+
 @section basicBuildLegato_UpdateTarget Update a Target
 
 To @ref toolsHost_update the app and framework binaries on your target use the
@@ -31,6 +83,12 @@ To @ref toolsHost_update the app and framework binaries on your target use the
 
 @verbatim
 $ update build/wp85/system.wp85.update 192.168.2.2
+@endverbatim
+
+OR
+
+@verbatim
+$ update build/raspi/system.raspi.update <target IP>
 @endverbatim
 
 
