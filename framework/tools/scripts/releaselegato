@@ -235,6 +235,7 @@ for alias in $(echo $TARGETS | tr ',' ' '); do
     case $alias in
         ar86)           target=ar7 ;;
         wp750x)         target=wp85 ;;
+        wp77xx)         target=wp76xx ;;
     esac
 
     if [ -n "$target" ]; then
