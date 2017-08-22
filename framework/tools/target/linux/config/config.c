@@ -609,6 +609,7 @@ static int HandleGetJSON
 // -------------------------------------------------------------------------------------------------
 {
     json_t* nodePtr = NULL;
+    char *json_dumps_result;
 
     // Get the node path from our command line arguments.
     if (strcmp("*", nodePathPtr) == 0)
@@ -703,7 +704,17 @@ static int HandleGetJSON
 
     if (filePathPtr == NULL)
     {
-        printf("%s\n", json_dumps(nodePtr, JSON_COMPACT));
+        json_dumps_result = json_dumps(nodePtr, JSON_COMPACT);
+        if (!json_dumps_result)
+        {
+            fprintf(stderr,"json_dumps failed");
+            result = EXIT_FAILURE;
+        }
+        else
+        {
+            printf("%s\n", json_dumps_result);
+            free(json_dumps_result);
+        }
     }
     else if (json_dump_file(nodePtr, filePathPtr, JSON_COMPACT) != 0)
     {

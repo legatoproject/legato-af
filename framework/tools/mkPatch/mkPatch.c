@@ -959,6 +959,7 @@ int main
                fprintf(stderr,
                         "Variable 'PATH' is not set for target %s\n",
                         targetPtr);
+               exit(1);
             }
             toolchainEnvPtr = getenv( toolchainPtr );
             if( toolchainEnvPtr )
@@ -971,6 +972,7 @@ int main
                 fprintf(stderr,
                         "Variable '%s' is not set for target %s\n",
                         toolchainPtr, targetPtr);
+                exit(1);
             }
             CheckForTool( HDRCNV, toolchainPtr );
             ++argvPtr;

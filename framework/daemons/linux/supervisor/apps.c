@@ -2109,6 +2109,12 @@ le_result_t le_appInfo_GetName
     strtok(NULL, delim);
     token = strtok(NULL, delim);
 
+    if (NULL == token)
+    {
+        LE_CRIT("Unexpected format for '%s'", lineBuf);
+        return LE_FAULT;
+    }
+
     // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
     // hence not part of any app.
     if (strlen(token) <= 1)
