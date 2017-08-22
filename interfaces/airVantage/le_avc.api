@@ -19,6 +19,32 @@
  *    as installing an update will cause the App to restart (either the App itself needs to restart
  *    or a firmware change causes the modem to reset).
  *
+ * @subsection c_le_avc_user_agreement User Agreement
+ *
+ * There are 5 events; LE_AVC_CONNECTION_PENDING, LE_AVC_DOWNLOAD_PENDING, LE_AVC_INSTALL_PENDING,
+ * LE_AVC_REBOOT_PENDING and LE_AVC_UNINSTALL_PENDING for which avcService requires user agreement.
+ * An app can respond to these user agreement notification by opening a connection if the
+ * notification is connection pending or by accepting or deferring the operation if the notification
+ * is one of download, install, uninstall or reboot pending.
+ *
+ * Whether avcService should forward these notifications to an app or act on these notifications by
+ * itself is determined by the individual configuration flags that enables or disables user
+ * agreement for these operations. If the user agreement flag is turned off for an operation,
+ * the default action by avcService is to automatically accept that pending operation. An app can
+ * register its handler by calling le_avc_AddStatusEventHandler() described in
+ * c_le_avc_update_control and the configuration flags can be set by le_avc_SetUserAgreement().
+ *
+ * Example of enabling user agreement for LE_AVC_DOWNLOAD_PENDING:
+ * @code
+        le_result_t result;
+        result = le_avc_SetUserAgreement(LE_AVC_USER_AGREEMENT_DOWNLOAD, true);
+
+        if (result != LE_OK)
+        {
+            LE_ERROR("Failed to enable user agreement for download operation");
+        }
+ * @endcode
+ *
  * @subsection c_le_avc_update_control Update Control
  *
  * Any App can start a session with an AirVantage server to determine if there
@@ -168,7 +194,7 @@
  *
  * @section c_le_avc_Timers Timers
  *
- * Poling timers sets the time that the Target will communicate with the AirVantage Server to check
+ * Polling timers sets the time that the Target will communicate with the AirVantage Server to check
  * for new jobs.  Retry timers will try and re-establish a connection to the AirVantage Server in
  * accordance with the times that are declared.
  *
@@ -437,6 +463,19 @@ ENUM Status
     AUTH_FAILED             ///< Authentication with AV server failed
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Operations which require user agreement
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM UserAgreement
+{
+    USER_AGREEMENT_CONNECTION,      ///< User agreement for connection
+    USER_AGREEMENT_DOWNLOAD,        ///< User agreement for download
+    USER_AGREEMENT_INSTALL,         ///< User agreement for install
+    USER_AGREEMENT_UNINSTALL,       ///< User agreement for uninstall
+    USER_AGREEMENT_REBOOT,          ///< User agreement for reboot
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -615,6 +654,19 @@ FUNCTION le_result_t CheckRoute
 (
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Defer the currently pending connection, for the given number of minutes
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeferConnect
+(
+    uint32 deferMinutes IN
+);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -957,3 +1009,41 @@ FUNCTION CredentialStatus GetCredentialStatus
 (
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set user agreements for download, install, reboot, connection and uninstall.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed to configure user agreement.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetUserAgreement
+(
+    UserAgreement updateStatus IN,         ///< Operation for which user agreements has to be set.
+    bool enable IN                         ///< true = enable, false = disable.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get user agreements for download, install, reboot, connection and uninstall.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT if failed to read user agreement state.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetUserAgreement
+(
+    UserAgreement updateStatus IN,         ///< Operation for which user agreements has to be read.
+    bool enable OUT                        ///< true = enable, false = disable.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set default avc configuration.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetDefaultAvcConfig
+(
+);
