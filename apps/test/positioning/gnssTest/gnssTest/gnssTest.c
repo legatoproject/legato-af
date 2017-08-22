@@ -1024,6 +1024,7 @@ static void TestLeGnssNmeaSentences
 //        LE_GNSS_NMEA_MASK_GAVTG,
         LE_GNSS_NMEA_MASK_PSTIS,
         LE_GNSS_NMEA_MASK_PQXFI,
+        LE_GNSS_NMEA_MASK_PTYPE,
         0
     };
 

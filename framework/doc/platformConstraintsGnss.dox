@@ -80,6 +80,8 @@ the Legato API: the @c GPGSV_EXTENDED and @c GPGRS NMEA sentences are not availa
 they are enabled. This concerns the @c GAGGA, @c GAGSA, @c GAGSV, @c GARMC, and @c GAVTG
 NMEA sentences.
 
+@deprecated PQXFI is deprecated. PTYPE mask is used to support all Proprietary Type masks.
+
 @section platformConstraintsGnss_SettingConfiguration Setting configuration
 
 This section summarizes for each GNSS setting API, on Qualcomm-based platform, how the setting is

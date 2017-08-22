@@ -1113,6 +1113,18 @@ static int GetNmeaSentences
             {
                 printf("\tPQXFI (Proprietary Qualcomm eXtended Fix Information) enabled\n");
             }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_PTYPE)
+            {
+                printf("\tPTYPE (Proprietary Type mask) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGRS)
+            {
+                printf("\tGPGRS (GPS Range residuals) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPGLL)
+            {
+                printf("\tGPGLL (GPS Geographic position, latitude / longitude) enabled\n");
+            }
             break;
         case LE_FAULT:
             printf("Failed to get enabled NMEA sentences. See logs for details\n");

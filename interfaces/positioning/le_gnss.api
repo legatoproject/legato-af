@@ -612,6 +612,9 @@ BITMASK ConstellationBitMask
  * documentation for further details.
  *
  * @note The bit mask values should be coherent with @ref LE_GNSS_NMEA_SENTENCES_MAX
+ *
+ * @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE is used to support
+ * all Proprietary Type masks.
  */
 //--------------------------------------------------------------------------------------------------
 BITMASK NmeaBitMask
@@ -630,7 +633,10 @@ BITMASK NmeaBitMask
     NMEA_MASK_GARMC,    ///< GARMC type enabled: Galileo recommended minimum data.
     NMEA_MASK_GAVTG,    ///< GAVTG type enabled: Galileo vector track and speed over the ground.
     NMEA_MASK_PSTIS,    ///< PSTIS type enabled: GPS session start indication.
-    NMEA_MASK_PQXFI     ///< PQXFI type enabled: Proprietary Qualcomm eXtended Fix Information.
+    NMEA_MASK_PQXFI,    ///< PQXFI type enabled: Proprietary Qualcomm eXtended Fix Information.
+    NMEA_MASK_PTYPE,    ///< PTYPE type enabled: Proprietary Type mask.
+    NMEA_MASK_GPGRS,    ///< GPGRS type enabled: GPS Range residuals.
+    NMEA_MASK_GPGLL     ///< GPGLL type enabled: GPS Geographic position, latitude / longitude.
 };
 
 //--------------------------------------------------------------------------------------------------
