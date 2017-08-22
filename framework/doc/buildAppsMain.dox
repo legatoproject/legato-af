@@ -1,30 +1,68 @@
 /** @page buildAppsMain Build Apps
 
-These topics contain info to understand Legato basics, reference API details and available tools:
-| Section                            | Description                                        |
-| ---------------------------------- | -------------------------------------------------- |
-| @subpage buildAppsConcepts | Legato basic concepts |
-| @subpage apiGuidesMain | Service and C Library API reference |
-| @subpage tools | Target, Host, and Build tools' info |
-| @cond EXTERNAL_DOXYGEN_DEFINE @subpage external_proj_mainpage@endcond | WiFi Service plugin |
+Legato Application Framework is designed to <b>simplify embedded IoT development</b> and connect
+your applications to the cloud and network services.  Developers do not need in-depth knowledge of
+embedded systems to be able to develop on IoT devices with Legato.  Legato provides <b>an
+extensive C Runtime Library, a set of management daemons, build and target management tools and
+built-in security</b> enabling you to focus on developing your applications.
 
+@htmlonly
+<iframe width="420" height="315"
+src="https://www.youtube.com/embed/YcC9eGOii74">
+</iframe>
+@endhtmlonly
 
-<h2>Overview</h2>
+<h1> What is the Legato Application Framework? </h1>
 
+The Legato Application Framework allows developers to focus on building applications by <b>providing
+tools and a rich set of APIs</b>. It simplifies the complexity of interfacing with the underlaying
+Operating System and hardware.  It also introduces <b>layers of security</b> that ensure that
+applications only have the permissions and access to the resources that they need. All permissions
+are given explicitly and applications natively run in a isolated environment unless explicitly
+configured not to.
 
-<a href="http://www.legato.io/">Legato</a> is an open source embedded platform built on Linux
-designed to simplify embedded IoT development.
+@image html LegatoAFRuntime.png
 
-Legato has everything you need to connect the IoT fast:
+<b>The Legato AF provides:</b>
+- A @ref c_APIs that provides many APIs to enable low-level routines and commonly used data
+  structures and OS service APIs.
+- @ref basicRuntimeArch "Core Daemons" that provide secure services to run and manage your
+  applications.
+- A set of @ref tools "Command Line Tools" for both your target and your development machine to
+  ease the configuration and administration of deploying applications and configuring your target
+  device.
+- Built-in native security where all applications by default run in isolated Sandboxes and have to
+  be given permissions to interact with applications outside of the Sandbox.
+- The ability to plug in applications/services provided by your Processor Vendor or other
+  developers that you can then take and connect to your applications.
+- The ability to bundle OS drivers within your applications to allow connection to hardware without
+  modifying the underlaying platform.
 
-- Programming language APIs &mdash; dev tools and APIs to easily write software
-components and specify how apps will use them.
-- Target runtime environment &mdash; set of daemon processes cooperatively implement
-execution sandboxes, secure IPC, fault monitoring.
-- Development and build tools &mdash; target, host, and build tools to create apps ready for deployment
-to your devices.
-- Documentation and automated tests &mdash; a raft of docs and automated tests
-ready to use.
+<h1> Why Choose the Legato Application Framework? </h1>
+
+- An Open Source Framework that allows full customization of all components.
+- Provides well defined patterns that allow for the encapsulation of varying hardware and
+  associated applications.
+- Provides a robust set of @ref tools "Command Line Tools" that enable the configuration and
+  administration of devices.
+- Ability to run your applications in @ref basicSecuritySandbox "secure containers" with resource
+  management and monitoring, while still allowing cross application communication.
+- @ref toolsBuild "Developer tools" that help you troubleshoot interprocess communications, package
+  up applications, components, and kernel drivers into a customized system and then deploy the
+  system to your target.
+
+<h1> Legato Application Framework Concepts </h1>
+
+Dig further and discover our development concepts, API Guides for our core daemons and service apps
+(platform services), or our tool box that contains tools to help you configure and run
+the Legato Runtime Environment and the underlaying platform.
+
+| Section                            | Description                                            |
+| ---------------------------------- | ------------------------------------------------------ |
+| @subpage buildAppsConcepts         | Legato basic concepts                                  |
+| @subpage apiGuidesMain             | Service and C Library API reference                    |
+| @subpage tools                     | Target, Host, and Build tools' info                    |
+
 
 Copyright (C) Sierra Wireless Inc.
 

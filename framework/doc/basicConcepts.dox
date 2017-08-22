@@ -1,6 +1,21 @@
 /** @page basicConcepts Overview
 
-These overview topics are available:
+
+@section basicConcepts_install Install the Legato Application Framework
+
+As you read through the concepts we recommend downloading and installing the Legato Application
+Framework on a Linux machine, so you can see examples of how we have applied the same concepts in
+developing the Application Framework.  To install the Legato Application Framework follow the
+@ref basicBuild guide.
+
+@section basicConcepts_dig Legato Application Framework Concepts
+
+Our concepts will help explain the principles that define the Legato Application Framework.  Before
+you start developing read through the concepts to understand how the Legato Application Framework
+will help you easily connect your applications to your hardware platform without getting into the
+depths of embedded programing.
+
+Topics:
 
 @subpage basicRuntimeArch <br>
 @subpage basicSecurity <br>
@@ -15,12 +30,13 @@ These overview topics are available:
 @subpage basicUpdates <br>
 @subpage aboutDocsGlossary
 
-<h2>Overview</h2>
+@section basicConcepts_develop Ready to Start Developing?
 
-Legato is designed to make developing component-based software for embedded devices in the
-Internet-of-things (IoT) easier, faster, and less expensive.
+Walk through our @ref basicApps guide to get you started in creating your first application on the
+Legato AF.
 
-@image html AF_Architecture.png
+If you are looking for applications to test out and try before you develop your own, check out the
+library of @ref sampleApps .
 
 Copyright (C) Sierra Wireless Inc.
 

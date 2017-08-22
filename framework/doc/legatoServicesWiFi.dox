@@ -1,13 +1,44 @@
 /** @page legatoServicesWiFi WiFi
 
-| Service                            | Description                                        | multi-app safe            |
-| ---------------------------------- | -------------------------------------------------- | :-----------------------: |
-| @subpage c_le_wifi_ap              | Create an access point that clients can connect to.|                           |
-| @subpage c_le_wifi_client          | Connect to a WiFi access point.                    |                           |
+@section legatoServicesWifiAPI APIs
 
- <br>
+The WiFi Service exposes two APIs to manage Clients and Access Points.
 
-<HR>
+| API Guide                 | API Reference                      | File Name            |Description                                        | multi-app safe |
+| --------------------------| -----------------------------------| ---------------------| ------------------------------------------------- | :------------: |
+| @subpage c_le_wifi_ap     | @subpage le_wifiAp_interface.h     | @c le_wifiAp.api     |Create an access point that clients can connect to.|                |
+| @subpage c_le_wifi_client | @subpage le_wifiClient_interface.h | @c le_wifiClient.api |Connect to a WiFi access point.                    |                |
+
+@section legatoServicesWifiImplementation App Implementation
+
+The WiFi Service is implemented by the @c wifiService
+
+To bind to these APIs customize the following bindings for your App's .adef:
+
+@code
+bindings:
+{
+    myExecutable.myComponentClient.le_wifiAp -> wifiService.le_wifiAp
+    myExecutable.myComponentClient.le_wifiClient -> wifiService.le_wifiClient
+}
+@endcode
+
+@section legatoServicesWifiTools Tools
+
+The @ref wifi_toolsTarget_wifi can be used to configure and control the client or access point from
+the command line.
+
+@section legatoServicesWifiSampleApps Test Apps
+
+The following WiFi Test Apps are available to test the client or access point and to show an example
+of developing your own wifi client or access point app.
+
+
+| Section                           | Description                             |
+| --------------------------------- | --------------------------------------- |
+| @subpage wifi_wificlient_testapp  | How to use Wifi Client API              |
+| @subpage wifi_wifiap_testapp      | How to use Wifi Access Point API        |
+| @subpage wifi_wifiwebAp_sample    | Setup the Access Point using a webpage  |
 
 Copyright (C) Sierra Wireless Inc.
 
