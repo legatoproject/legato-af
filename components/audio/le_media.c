@@ -90,12 +90,13 @@ typedef struct {
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uint32_t       sampleRate; ///< Sample frequency in Hertz
-    uint32_t       duration;   ///< The DTMF duration in milliseconds.
-    uint32_t       pause;      ///< The pause duration between tones in milliseconds.
-    bool           playPause;  ///< Play the pause
-    char           dtmf[LE_AUDIO_DTMF_MAX_BYTES];    ///< The DTMFs to play.
-    uint32_t       currentDtmf;///< Index of the play dtmf
+    uint32_t sampleRate;         ///< Sample frequency in Hertz
+    uint32_t duration;           ///< The DTMF duration in milliseconds.
+    uint32_t pause;              ///< The pause duration between tones in milliseconds.
+    bool     playPause;          ///< Play the pause
+    char     dtmf[LE_AUDIO_DTMF_MAX_BYTES];    ///< The DTMFs to play.
+    uint32_t currentDtmf;        ///< Index of the play dtmf
+    uint32_t currentSampleCount; ///< Current sample count for the current DTMF
 }
 DtmfParams_t;
 
@@ -410,7 +411,8 @@ static inline int16_t SaturateAdd16
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Play Tone function.
+ *  Play Tone function. This function split into samples of 1s. To play a DTMF or a PAUSE for a
+ *  duration greater than 1s, several calls are mandatory to get the whole duration sample.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -425,77 +427,103 @@ static le_result_t PlayTone
     uint32_t i;
 
     DtmfParams_t*  dtmfParamsPtr = (DtmfParams_t*) mediaCtxPtr->codecParams;
+    // Max samples on the whole duration
     uint32_t samplesCount;
+    // Sample count until the next second
+    uint32_t sampleOneSecond = dtmfParamsPtr->sampleRate + dtmfParamsPtr->currentSampleCount;
     uint32_t freq1;
     uint32_t freq2;
     int32_t  amp1;
     int32_t  amp2;
-    uint16_t* dataPtr = (uint16_t*) bufferOutPtr;
+    int16_t* dataPtr = (int16_t*) bufferOutPtr;
+    // Length of the current sample: max 1 second, i.e, sampleRate
+    uint32_t sampleLength;
+
+    if ( (dtmfParamsPtr->sampleRate * sizeof(int16_t)) > mediaCtxPtr->bufferSize )
+    {
+        LE_ERROR("%s buffer too small, sampleRate %d, bufferSize %d",
+                 dtmfParamsPtr->playPause ? "Pause" : "DTMF",
+                 dtmfParamsPtr->sampleRate, mediaCtxPtr->bufferSize);
+        return LE_FAULT;
+    }
 
     if (dtmfParamsPtr->playPause)
     {
-        samplesCount = dtmfParamsPtr->sampleRate*dtmfParamsPtr->pause/1000;
+        samplesCount = dtmfParamsPtr->sampleRate*dtmfParamsPtr->pause / 1000;
+        // If the remaining duration is greater than sampleRate, produce only 1s sample, else
+        // produce the remaining duration
+        sampleLength =
+            ((samplesCount - dtmfParamsPtr->currentSampleCount) > dtmfParamsPtr->sampleRate)
+                ? dtmfParamsPtr->sampleRate
+                : (samplesCount - dtmfParamsPtr->currentSampleCount);
 
-        if ( (samplesCount*2) > mediaCtxPtr->bufferSize )
+        LE_DEBUG("Play PAUSE sampleOneSecond %u, currentSampleCount %u, sampleLength %u",
+                 sampleOneSecond, dtmfParamsPtr->currentSampleCount, sampleLength);
+
+        memset( dataPtr, 0, sampleLength * sizeof(int16_t) );
+
+        dtmfParamsPtr->currentSampleCount += sampleLength;
+        if (dtmfParamsPtr->currentSampleCount >= samplesCount)
         {
-            LE_ERROR("Pause buffer too small, samplesCount %d, bufferSize %d",
-                        samplesCount, mediaCtxPtr->bufferSize);
-            return LE_FAULT;
+            dtmfParamsPtr->currentSampleCount = 0;
         }
-
-        memset( dataPtr, 0, samplesCount*2 );
-
     }
     else
     {
         if (dtmfParamsPtr->currentDtmf == strlen(dtmfParamsPtr->dtmf))
         {
-            LE_DEBUG("All dtmf played");
+            LE_DEBUG("All DTMF played");
             *bufferLenPtr = 0;
             return LE_UNDERFLOW;
         }
 
-        LE_DEBUG("Play %c", dtmfParamsPtr->dtmf[dtmfParamsPtr->currentDtmf]);
+        samplesCount = dtmfParamsPtr->sampleRate*dtmfParamsPtr->duration / 1000;
+        // If the remaining duration is greater than sampleRate, produce only 1s sample, else
+        // produce the remaining duration
+        sampleLength =
+            ((samplesCount - dtmfParamsPtr->currentSampleCount) > dtmfParamsPtr->sampleRate)
+                ? dtmfParamsPtr->sampleRate
+                : (samplesCount - dtmfParamsPtr->currentSampleCount);
+        LE_DEBUG("Play DtMF '%c' sampleOneSecond %u, currentSampleCount %u, sampleLength %u",
+                 dtmfParamsPtr->dtmf[dtmfParamsPtr->currentDtmf],
+                 sampleOneSecond, dtmfParamsPtr->currentSampleCount, sampleLength);
 
         freq1 = Digit2LowFreq(dtmfParamsPtr->dtmf[dtmfParamsPtr->currentDtmf]);
         freq2 = Digit2HighFreq(dtmfParamsPtr->dtmf[dtmfParamsPtr->currentDtmf]);
         amp1 = DTMF_AMPLITUDE;
         amp2 = DTMF_AMPLITUDE;
-        samplesCount = dtmfParamsPtr->sampleRate*dtmfParamsPtr->duration/1000;
-        dtmfParamsPtr->currentDtmf++;
-
-        if ( (samplesCount*2) > mediaCtxPtr->bufferSize )
-        {
-            LE_ERROR("DTMF buffer too small, samplesCount %d, bufferSize %d",
-                        samplesCount, mediaCtxPtr->bufferSize);
-            return LE_FAULT;
-        }
 
         d1 = 1.0f * freq1 / dtmfParamsPtr->sampleRate;
         d2 = 1.0f * freq2 / dtmfParamsPtr->sampleRate;
 
-        for (i=0; i<samplesCount; i++)
+        for (i = dtmfParamsPtr->currentSampleCount;
+             // Play max sampleRate (1s) of DTMF and continue at next call
+             (i < sampleOneSecond) && (i < samplesCount);
+             i++)
         {
             int16_t s1, s2;
 
             s1 = (int16_t)(SAMPLE_SCALE * amp1 / 100.0f * sin(2 * PI * d1 * i));
             s2 = (int16_t)(SAMPLE_SCALE * amp2 / 100.0f * sin(2 * PI * d2 * i));
-            dataPtr[i] = SaturateAdd16(s1, s2);
+            *(dataPtr++) = SaturateAdd16(s1, s2);
         }
-    }
 
-    *bufferLenPtr = samplesCount*2;
-
-    if (dtmfParamsPtr->playPause)
-    {
-        dtmfParamsPtr->playPause = false;
-    }
-    else
-    {
-        if (dtmfParamsPtr->pause)
+        // Save the current sample count. If the whole DTMF is played, reset to 0
+        dtmfParamsPtr->currentSampleCount = (i == samplesCount ? 0 : i);
+        if (0 == dtmfParamsPtr->currentSampleCount)
         {
-            dtmfParamsPtr->playPause = true;
+            // Update the index of DTMF if the current sample count is reset to 0
+            dtmfParamsPtr->currentDtmf++;
         }
+    }
+
+    *bufferLenPtr = sampleLength * sizeof(int16_t);
+
+    if (0 == dtmfParamsPtr->currentSampleCount)
+    {
+        dtmfParamsPtr->playPause = (dtmfParamsPtr->playPause
+                                       ? false
+                                       : (dtmfParamsPtr->pause ? true : false));
     }
 
     return LE_OK;
@@ -771,11 +799,8 @@ static le_result_t InitPlayDtmf
 {
     DtmfParams_t*  dtmfParamsPtr = (DtmfParams_t*) mediaCtxPtr->codecParams;
 
-
-    uint32_t duration = (dtmfParamsPtr->duration > dtmfParamsPtr->pause) ?
-                        dtmfParamsPtr->duration : dtmfParamsPtr->pause;
-
-    mediaCtxPtr->bufferSize = dtmfParamsPtr->sampleRate*duration*2/1000;
+    // Buffer size to sample of 1s x 16-bits
+    mediaCtxPtr->bufferSize = dtmfParamsPtr->sampleRate * sizeof(int16_t);
 
     return LE_OK;
 }
@@ -1409,8 +1434,6 @@ static le_result_t GetPlaybackFrames
 
     while (size)
     {
-        LE_DEBUG("Waiting %d milliseconds for playback frames on fd %d",
-                 pcmContextPtr->framesFuncTimeout, pcmContextPtr->fd);
         ret = poll(&pfd, nfds, pcmContextPtr->framesFuncTimeout);
 
         switch (ret)
@@ -1636,6 +1659,7 @@ le_result_t le_media_PlayDtmf
     dtmfParamsPtr->duration = duration;
     dtmfParamsPtr->pause = pause;
     dtmfParamsPtr->sampleRate = 16000;
+    dtmfParamsPtr->currentSampleCount = 0;
 
     strncpy(dtmfParamsPtr->dtmf, dtmfPtr, LE_AUDIO_DTMF_MAX_LEN);
     dtmfParamsPtr->dtmf[LE_AUDIO_DTMF_MAX_LEN] = '\0';
