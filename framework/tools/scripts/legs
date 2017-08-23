@@ -23,11 +23,41 @@ then
 fi
 echo "Using legato framework found under '$LEGATO_ROOT'"
 
+# Enable selection of the shell used by legs through
+# the LEGS_SHELL env var.
+# Eventual options can be passed through LEGS_SHELL_OPT.
+#
+# By the default it uses the user shell and fallback to bash
+# if it is not in the compatibility list.
+LEGS_SHELL_OPT=${LEGS_SHELL_OPT:-""}
+if [ -z "$LEGS_SHELL" ]; then
+    LEGS_SHELL=/bin/bash
+    if [ -n "$SHELL" ]; then
+        # Try to use the default shell of the user
+
+        # Eventually resolve a symlink if readlink is available
+        if [ -L "$SHELL" ] && which readlink >/dev/null; then
+            SHELL=$(readlink -f "$SHELL")
+        fi
+
+        case "$SHELL" in
+            *bash)
+                LEGS_SHELL="$SHELL"
+                ;;
+            *zsh)
+                LEGS_SHELL="$SHELL"
+                LEGS_SHELL_OPT="-s"
+                ;;
+            *)
+                ;;
+        esac
+    fi
+fi
+
 # Start a sub-shell and tell it to change to the legato root, source the file that sets up
 # the legato environment, and start interpreting stdin interactively.
-bash -i <<EOF
-export PATH=$LEGATO_ROOT/bin:$PATH:$LEGATO_ROOT/build/localhost/framework/bin
-source $LEGATO_ROOT/framework/tools/scripts/configToolchainDirEnvVars
+$LEGS_SHELL -i $LEGS_SHELL_OPT <<EOF
+source $LEGATO_ROOT/framework/tools/scripts/configlegatoenv
 exec <> /dev/tty
 EOF
 

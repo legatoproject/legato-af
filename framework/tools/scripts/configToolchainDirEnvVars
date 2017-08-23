@@ -4,28 +4,40 @@
 # the appropriate environment variables needed by the build system, so it knows where to find
 # the cross-build tool chain and what prefix is used in the names of the compilers, linkers, etc.
 
+# Disable colors if stdout is not a tty
+if [ -t 1 ]; then
+    COLOR_TITLE="\033[1;94m"
+    COLOR_warn="\033[0;93m"
+    COLOR_pass="\033[0;32m"
+    COLOR_RESET="\033[0m"
+fi
+
 set_toolchain_dir ()
 {
     TARGET=$1
 
-    toolchain_dir_env_name="$(echo $TARGET | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
-    toolchain_prefix_env_name="$(echo $TARGET | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
+    toolchain_dir_env_name="$(echo "$TARGET" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_DIR"
+    toolchain_prefix_env_name="$(echo "$TARGET" | tr '[:lower:]' '[:upper:]')_TOOLCHAIN_PREFIX"
 
-    toolchain_dir=$(findtoolchain $TARGET dir)
+    echo -en "${COLOR_TITLE}[${TARGET}] ${COLOR_warn}"
+
+    toolchain_dir=$(findtoolchain "$TARGET" dir)
     if [ -z "$toolchain_dir" ] || ! [ -e "$toolchain_dir" ]; then
-        echo "Unable to find compatible cross-build toolchain for target '$TARGET'."
+        echo -ne "${COLOR_RESET}"
         return 1
     fi
 
-    toolchain_prefix=$(findtoolchain $TARGET prefix)
+    toolchain_prefix=$(findtoolchain "$TARGET" prefix)
 
     eval "export ${toolchain_dir_env_name}=$toolchain_dir"
     eval "export ${toolchain_prefix_env_name}=$toolchain_prefix"
 
+    echo -e "${COLOR_pass}Toolchain dir[$toolchain_dir] prefix[$toolchain_prefix]${COLOR_RESET}"
+
     return 0
 }
 
-for t in ar7 ar86 wp85 wp750x wp76xx wp77xx ar758x ar759x em75xx
+for t in ar7 ar86 wp85 wp750x wp76xx wp77xx ar758x ar759x em75xx virt
 do
     set_toolchain_dir $t
 done
