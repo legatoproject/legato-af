@@ -438,7 +438,7 @@ COMPONENT_INIT
 
     //Set timer to update temperature on a regular basis
     tempUpdateTimerRef = le_timer_Create("tempUpdateTimer");     //create timer
-    le_clk_Time_t tempUpdateInterval = { 20, 0 };            //update temperature every 5 seconds
+    le_clk_Time_t tempUpdateInterval = { 20, 0 };            //update temperature every 20 seconds
     le_timer_SetInterval(tempUpdateTimerRef, tempUpdateInterval);
     le_timer_SetRepeat(tempUpdateTimerRef, 0);                   //set repeat to always
     //set callback function to handle timer expiration event
@@ -448,7 +448,7 @@ COMPONENT_INIT
 
     //Set timer to update on server on a regular basis
     serverUpdateTimerRef = le_timer_Create("serverUpdateTimer");     //create timer
-    le_clk_Time_t serverUpdateInterval = { 10, 0 };            //update server every 20 seconds
+    le_clk_Time_t serverUpdateInterval = { 10, 0 };            //update server every 10 seconds
     le_timer_SetInterval(serverUpdateTimerRef, serverUpdateInterval);
     le_timer_SetRepeat(serverUpdateTimerRef, 0);                   //set repeat to always
     //set callback function to handle timer expiration event
