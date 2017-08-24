@@ -6,14 +6,12 @@ Legato AF and install a build on your Target Device using the command line.
 @section buildPackages Install Linux Packages
 
 @verbatim
-$ sudo apt-get install build-essential \
-                       python python-jinja2 python-pkg-resources cmake \
-                       git subversion libsdl-dev \
-                       diffstat texinfo gawk chrpath wget cpio \
-                       vim zsh bash ninja-build screen sshpass \
-                       bc python-git unzip libxml2-utils gcovr \
-                       libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
-                       bsdiff libssl-dev autoconf automake
+$ sudo apt-get install -y build-essential \
+                          python python-jinja2 python-pkg-resources python-git \
+                          cmake git libsdl-dev diffstat texinfo gawk chrpath \
+                          wget cpio bash ninja-build bc unzip libxml2-utils gcovr \
+                          libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
+                          bsdiff libssl-dev autoconf automake iputils-ping
 @endverbatim
 
 Optional packages: vim (or any text editor),
@@ -123,7 +121,7 @@ On Ubuntu >= 16.04
 $ sudo apt-get install repo
 @endverbatim
 
-On <= 16.04
+On < 16.04
 
 @verbatim
 $ sudo apt-get install phablet-tools
@@ -141,7 +139,7 @@ Clone a specific release:
 @verbatim
 $ mkdir workspace
 $ cd workspace
-$ repo init -u git://github.com/legatoproject/manifest -m legato/releases/16.10.1.xml
+$ repo init -u git://github.com/legatoproject/manifest -m legato/releases/17.07.1.xml
 $ repo sync
 @endverbatim
 

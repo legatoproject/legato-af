@@ -9,18 +9,15 @@ Welcome to Legato!
   - Install required packages:
 
 ```bash
-$ sudo apt-get install build-essential \
-                       python python-jinja2 python-pkg-resources cmake \
-                       git subversion libsdl-dev \
-                       diffstat texinfo gawk chrpath wget cpio \
-                       vim zsh bash ninja-build screen sshpass \
-                       bc python-git unzip libxml2-utils gcovr \
-                       libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
-                       bsdiff libssl-dev autoconf automake
+$ sudo apt-get install -y build-essential \
+                          python python-jinja2 python-pkg-resources python-git \
+                          cmake git libsdl-dev diffstat texinfo gawk chrpath \
+                          wget cpio bash ninja-build bc unzip libxml2-utils gcovr \
+                          libcurl4-gnutls-dev zlib1g-dev libbz2-dev \
+                          bsdiff libssl-dev autoconf automake iputils-ping
 ```
 
 Optional packages: ```vim``` (or any text editor),
-                   ```zsh``` (command interpreter for shell scripting),
                    ```openjdk-8-jdk``` (for Java support, at least Java 8 is required),
                    ```doxygen graphviz``` (for doc generation)
 
@@ -33,9 +30,14 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
 
 1. Install [repo](https://code.google.com/p/git-repo/):
 
-  (on Ubuntu > 14.04)
+  (on Ubuntu >= 16.04)
   ```bash
-  $ sudo apt-get install phablet-tools
+  $ sudo apt-get install -y repo
+  ```
+  OR
+  (on Ubuntu < 16.04)
+  ```bash
+  $ sudo apt-get install -y phablet-tools
   ```
   OR
   ```bash
