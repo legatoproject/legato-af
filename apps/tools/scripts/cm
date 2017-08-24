@@ -84,10 +84,12 @@ update_route() {
 
 update_dns() {
     if [ "$1" == "connect" ]; then
-        mv $RESOLV_CONF $DEFAULT_RESOLV_CONF
+        if [ -f "$RESOLV_CONF" ]; then
+            mv "$RESOLV_CONF" "$DEFAULT_RESOLV_CONF"
+        fi
     elif [ "$1" == "disconnect" ]; then
         if [ -f "$DEFAULT_RESOLV_CONF" ]; then
-            mv $DEFAULT_RESOLV_CONF $RESOLV_CONF
+            mv "$DEFAULT_RESOLV_CONF" "$RESOLV_CONF"
         fi
     fi
     shift 1
