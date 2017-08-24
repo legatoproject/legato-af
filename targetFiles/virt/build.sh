@@ -55,10 +55,14 @@ cp $(dirname ${SCRIPT_PATH})/Dockerfile.${VIRT_TARGET_ARCH} ${BUILD_DIR}/Dockerf
 cd $BUILD_DIR
 
 docker build . | tee -a docker-build.log
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo "Image build failed"
+    exit 1
+fi
 
 BUILD_ID=$(tail -1 docker-build.log | awk '{print $3}')
-if [ "${#BUILD_ID}" -gt 12 ]; then
-    echo "Image build failed"
+if [ -z "${BUILD_ID}" ] || [ "${#BUILD_ID}" -gt 12 ]; then
+    echo "Invalid image ID"
     exit 1
 fi
 
