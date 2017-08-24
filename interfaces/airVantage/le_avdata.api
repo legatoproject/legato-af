@@ -141,8 +141,8 @@
  * (milliseconds elapsed since epoch).
  * - le_avdata_RecordInt()
  * - le_avdata_RecordFloat()
- * - le_avdata_RecordBool
- * - le_avdata_RecordString
+ * - le_avdata_RecordBool()
+ * - le_avdata_RecordString()
  *
  * User apps can then open an @c avms session, and push the collected history data using
  * le_avdata_PushRecord(). The callback used when calling le_avdata_PushRecord() will indicate
@@ -233,17 +233,17 @@ DEFINE STRING_VALUE_BYTES = (STRING_VALUE_LEN + 1);
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Resource access modes.
- *   Variable: read (server), read/write (client)
- *   Setting: read/write (server), read (client)
- *   Command: execute (server)
+ * Resource access modes:
+ *   - Variable: read (server), read/write (client)
+ *   - Setting: read/write (server), read (client)
+ *   - Command: execute (server)
  */
 //--------------------------------------------------------------------------------------------------
 ENUM AccessMode
 {
-    ACCESS_VARIABLE,
-    ACCESS_SETTING,
-    ACCESS_COMMAND
+    ACCESS_VARIABLE,        ///< read(server) or read/write(client)
+    ACCESS_SETTING,         ///< read/write (server) or read (client)
+    ACCESS_COMMAND          ///< execute (server)
 };
 
 
@@ -254,9 +254,9 @@ ENUM AccessMode
 //--------------------------------------------------------------------------------------------------
 BITMASK AccessType
 {
-    ACCESS_READ,
-    ACCESS_WRITE,
-    ACCESS_EXEC
+    ACCESS_READ,            ///< read access type
+    ACCESS_WRITE,           ///< write access type
+    ACCESS_EXEC             ///< execute access type
 };
 
 
@@ -267,23 +267,24 @@ BITMASK AccessType
 //--------------------------------------------------------------------------------------------------
 ENUM DataType
 {
-    DATA_TYPE_NONE,
-    DATA_TYPE_INT,
-    DATA_TYPE_FLOAT,
-    DATA_TYPE_BOOL,
-    DATA_TYPE_STRING
+    DATA_TYPE_NONE,          ///< Null Data Type
+    DATA_TYPE_INT,           ///< Integer Data Type
+    DATA_TYPE_FLOAT,         ///< Float Data Type
+    DATA_TYPE_BOOL,          ///< Boolean Data Type
+    DATA_TYPE_STRING         ///< String Data Type
 };
 
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Status of the data push (TODO: Provide additional status to troubleshoot delivery problems)
+ * Status of the data push
+ * @todo Provide additional status to troubleshoot delivery problems
  */
 //--------------------------------------------------------------------------------------------------
 ENUM PushStatus
 {
-    PUSH_SUCCESS,
-    PUSH_FAILED
+    PUSH_SUCCESS,           ///< Push was successful
+    PUSH_FAILED             ///< Push has failed
 };
 
 

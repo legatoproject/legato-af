@@ -1,7 +1,9 @@
 #include "legato.h"
 #include "interfaces.h"
 
+// [DeclareVariables]
 #define APP_RUNNING_DURATION_SEC 600        //run this app for 10min
+// [AssetDataPath]
 //-------------------------------------------------------------------------------------------------
 /**
  * Declare asset data path
@@ -27,7 +29,7 @@
 
 // commands to turn off the air conditioning
 #define AC_CMD_TURN_OFF_RES              "/home1/room1/AC/ACControl"
-
+// [AssetDataPath]
 //-------------------------------------------------------------------------------------------------
 /**
  * AVC related variable and update timer
@@ -64,7 +66,7 @@ static int TargetTempSet = 0;
 static bool IsACOn = false;
 static int OutsideTemp = 30;
 
-
+// [DeclareVariables]
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -72,7 +74,7 @@ static int OutsideTemp = 30;
  */
 //-------------------------------------------------------------------------------------------------
 
-
+// [VariableDataHandler]
 //-------------------------------------------------------------------------------------------------
 /**
  * Variable data handler.
@@ -92,14 +94,15 @@ static void ReadTempVarHandler
     LE_INFO("------------------- Server reads room temperature [%d] times ------------",
             ReadTempVarCounter);
 }
-
-
+// [VariableDataHandler]
+// [DataHandlerFunction]
 //-------------------------------------------------------------------------------------------------
 /**
  * Setting data handler.
  * This function is returned whenever AirVantage performs a read or write on the target temperature
  */
 //-------------------------------------------------------------------------------------------------
+// [TempSettingHandler]
 static void TempSettingHandler
 (
     const char* path,
@@ -107,6 +110,7 @@ static void TempSettingHandler
     le_avdata_ArgumentListRef_t argumentList,
     void* contextPtr
 )
+// TempSettingHandler
 {
     WriteTempSettingCounter++;
 
@@ -148,14 +152,16 @@ static void TempSettingHandler
         LE_INFO("Setting Write turning on AC variable request: %s", "IS_AC_ON_VAR_RES");
     }
 }
+// [DataHandlerFunction]
 
-
+// [FunctionExectACCtrlCmd]
 //-------------------------------------------------------------------------------------------------
 /**
  * Command data handler.
  * This function is returned whenever AirVantage performs an execute on the AC turn off command
  */
 //-------------------------------------------------------------------------------------------------
+// [VariableExectACCtrlCmd]
 static void ExecACCtrlCmd
 (
     const char* path,
@@ -163,6 +169,7 @@ static void ExecACCtrlCmd
     le_avdata_ArgumentListRef_t argumentList,
     void* contextPtr
 )
+// [VariableExectACCtrlCmd]
 {
     ExecACCmd++;
     LE_INFO("------------------- Exec AC Commnad [%d] times ------------",
@@ -197,6 +204,7 @@ double ConvergeTemperature(double currentTemperature, int targetTemperature)
 
     return currentTemperature;
 }
+// [FunctionExectACCtrlCmd]
 
 void UpdateTemperature(le_timer_Ref_t  timerRef)
 {
@@ -228,6 +236,7 @@ void UpdateTemperature(le_timer_Ref_t  timerRef)
  */
 //-------------------------------------------------------------------------------------------------
 
+// [PushCallbackHandler]
 //-------------------------------------------------------------------------------------------------
 /**
  * Push ack callback handler
@@ -288,6 +297,7 @@ void PushResources(le_timer_Ref_t  timerRef)
         }
     }
 }
+// [PushCallbackHandler]
 
 //-------------------------------------------------------------------------------------------------
 /**
@@ -338,7 +348,7 @@ static void timerExpiredHandler(le_timer_Ref_t  timerRef)
     exit(EXIT_SUCCESS);
 }
 
-
+    // [StartAVCSession]
 COMPONENT_INIT
 {
     LE_INFO("Start Legato AssetDataApp");
@@ -358,7 +368,8 @@ COMPONENT_INIT
         sessionRef=sessionRequestRef;
         LE_INFO("AirVantage Connection Controller started.");
     }
-
+    // [StartAVCSession]
+    // [CreateTimer]
     LE_INFO("Started LWM2M session with AirVantage");
     sessionTimer = le_timer_Create("AssetDataAppSessionTimer");
     le_clk_Time_t avcInterval = {APP_RUNNING_DURATION_SEC, 0};
@@ -366,8 +377,8 @@ COMPONENT_INIT
     le_timer_SetRepeat(sessionTimer, 1);
     le_timer_SetHandler(sessionTimer, timerExpiredHandler);
     le_timer_Start(sessionTimer);
-
-    // Create resources
+    // [CreateTimer]
+    // [CreateResources]
     LE_INFO("Create instances AssetData ");
     le_result_t resultCreateRoomName;
     resultCreateRoomName = le_avdata_CreateResource(ROOM_NAME_VAR_RES,LE_AVDATA_ACCESS_VARIABLE);
@@ -400,7 +411,8 @@ COMPONENT_INIT
     {
         LE_ERROR("Error in creating AC_CMD_TURN_OFF_RES");
     }
-
+    // [CreateResources]
+    // [AssignValues]
     //setting the variable initial value
     TargetTempSet = 21;
     RoomTempVar = 30.0;
@@ -425,7 +437,8 @@ COMPONENT_INIT
     {
         LE_ERROR("Error in setting TARGET_TEMP_SET_RES");
     }
-
+    // [AssignValues]
+    // [RegisterHandler]
     //Register handler for Variables, Settings and Commands
     LE_INFO("Register handler of paths");
     le_avdata_AddResourceEventHandler(ROOM_TEMP_READING_VAR_RES, ReadTempVarHandler, NULL);
@@ -434,8 +447,8 @@ COMPONENT_INIT
                                       TempSettingHandler, NULL);
 
     le_avdata_AddResourceEventHandler(AC_CMD_TURN_OFF_RES, ExecACCtrlCmd, NULL);
-
-
+    // [RegisterHandler]
+    // [SetTimer]
     //Set timer to update temperature on a regular basis
     tempUpdateTimerRef = le_timer_Create("tempUpdateTimer");     //create timer
     le_clk_Time_t tempUpdateInterval = { 20, 0 };            //update temperature every 20 seconds
@@ -445,7 +458,8 @@ COMPONENT_INIT
     le_timer_SetHandler(tempUpdateTimerRef, UpdateTemperature);
     //start timer
     le_timer_Start(tempUpdateTimerRef);
-
+    // [SetTimer]
+    // [PushTimer]
     //Set timer to update on server on a regular basis
     serverUpdateTimerRef = le_timer_Create("serverUpdateTimer");     //create timer
     le_clk_Time_t serverUpdateInterval = { 10, 0 };            //update server every 10 seconds
@@ -455,4 +469,5 @@ COMPONENT_INIT
     le_timer_SetHandler(serverUpdateTimerRef, PushResources);
     //start timer
     le_timer_Start(serverUpdateTimerRef);
+    // [PushTimer]
 }
