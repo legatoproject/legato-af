@@ -92,8 +92,8 @@ If your toolchain is installed somewhere other than the default location under `
 ensure that the appropriate environment variables are set to tell the build tools where to find
 your toolchain and what its prefix is.<br/>
 For example, for Sierra Wireless WP85xx devices, ```WP85_TOOLCHAIN_DIR``` must be set to the
-path of the directory that contains the file ```arm-poky-linux-gnuabi-gcc```, and
-```WP85_TOOLCHAIN_PREFIX``` must be set to ```arm-poky-linux-gnuabi-```.
+path of the directory that contains the file ```arm-poky-linux-gnueabi-gcc```, and
+```WP85_TOOLCHAIN_PREFIX``` must be set to ```arm-poky-linux-gnueabi--```.
 
 Following is a list of supported cross-build targets:
 

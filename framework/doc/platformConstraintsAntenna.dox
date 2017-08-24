@@ -1,6 +1,6 @@
 /** @page platformConstraintsAntenna Platform Constraints
 
-The AR758x platform:
+The AR758x and AR759x platforms:
  The platform doesn't support antenna monitoring on GNSS antenna.
  le_antenna_SetExternalAdc() and le_antenna_GetExternalAdc() APIs are not supported.
 
