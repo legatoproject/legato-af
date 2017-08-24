@@ -458,6 +458,20 @@ DEFINE NMEA_SENTENCES_MAX = 0x7FFF;
 //--------------------------------------------------------------------------------------------------
 DEFINE MIN_ELEVATION_MAX_DEGREE = 90;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Satellite Vehicle (SV) ID to PRN offset definitions
+ *
+ * @note SV ID is given both in le_gnss_GetSatellitesInfo() API and NMEA flow. Its corresponding
+ *       PRN code can be computed adding the following offset according to its constellation.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PRN_OFFSET_GPS         = 0;
+DEFINE PRN_OFFSET_SBAS        = 87;
+DEFINE PRN_OFFSET_GLONASS     = -64;
+DEFINE PRN_OFFSET_GALILEO     = -300;
+DEFINE PRN_OFFSET_BEIDOU      = -200;
+DEFINE PRN_OFFSET_QZSS        = 0;
 
 //--------------------------------------------------------------------------------------------------
 /**
