@@ -23,6 +23,7 @@
 #include <ucontext.h>
 #include <syslog.h>
 #include <execinfo.h>
+#include <setjmp.h>
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -76,12 +77,22 @@ static le_mem_PoolRef_t HandlerObjPool;
 static pthread_key_t SigMonKey;
 
 
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stack, signals mask and context environment for sigsetjmp() and siglongjmp()
+ */
+//--------------------------------------------------------------------------------------------------
+static sigjmp_buf SigEnv;
+#endif //LE_SEGV_HANDLER_DISABLE
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Port to use for start and attach a gdbserver(1) to itself. If 0, no gdbserver(1) is started
  */
 //--------------------------------------------------------------------------------------------------
-static unsigned int GdbServerPort = 0;
+static uint32_t GdbServerPort = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -90,6 +101,21 @@ static unsigned int GdbServerPort = 0;
  */
 //--------------------------------------------------------------------------------------------------
 #define SIG_STR     "Sig"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * WRITE macro to discard the return code inside the ShowStackSignalHandler
+ */
+//--------------------------------------------------------------------------------------------------
+#define WRITE(fd, buffer, sz)                    \
+            do {                                 \
+                int _rc;                         \
+                _rc = write((fd),(buffer),(sz)); \
+                if ((_rc >= 0) && (_rc < (sz)))  \
+                {                                \
+                    _rc = write((fd),(buffer) + _rc,(sz) - _rc); \
+                }                                \
+            } while(0)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -178,19 +204,29 @@ static void OurSigHandler
     }
 }
 
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+//--------------------------------------------------------------------------------------------------
+/**
+ * SEGV handler used to handle a SEGV while executing the ShowStackSignalHandler handler. This will
+ * abort the current dump and next dump will be run. This is to prevent the first handler to crash
+ * while dumping a crushed stack and backtrace.
+ * As sigsetjmp() and siglongjmp() are used, a proctection by counter is added to avoid infinite
+ * loop. As two critical parts exists inside the ShowStackSignalHandler, this counter MUST NOT
+ * be greater than 2. At the third call, there will be no recover from SEGV.
+ */
+//--------------------------------------------------------------------------------------------------
+static __attribute__((unused)) void SigSegVHandler( int signum )
+{
+    static uint8_t sigSegVCounter = 0;
 
-// Check return from write and just exit if size is less than expected size.  Write failures
-// and slow writes should not happen here, and if they do it's better to truncate the output
-// than delay restarting.
-#define CHECK_WRITE(fd, buffer, sz)                                     \
-    do {                                                                \
-        size_t expectedSize = (sz);                                     \
-        if (write((fd), (buffer), expectedSize) != expectedSize)        \
-        {                                                               \
-            raise(sigNum);                                              \
-            return;                                                     \
-        }                                                               \
-    } while (0)
+    WRITE(2,"[...]\n", 6);
+    if ((2 > (sigSegVCounter++)))
+    {
+        // Just have 2 tries for calling this handler...
+        siglongjmp(SigEnv, 1);
+    }
+}
+#endif //LE_SEGV_HANDLER_DISABLE
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -204,6 +240,7 @@ static void OurSigHandler
  * @note Some unsafe functions are used:
  *        - snprintf
  *        - backtrace (not on arm)
+ *        - sigsetjmp/siglongjmp
  */
 //--------------------------------------------------------------------------------------------------
 static void ShowStackSignalHandler
@@ -233,12 +270,13 @@ static void ShowStackSignalHandler
 
     // Show process, pid and tid
     snprintf(sigString, sizeof(sigString), "PROCESS: %d ,TID %d\n", getpid(), tid);
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
 
     // Show signal, fault address and fault PC
-    snprintf(sigString, sizeof(sigString), "SIGNAL: %d, ADDR %p, AT %p\n",
-             sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr, pcPtr);
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    snprintf(sigString, sizeof(sigString), "SIGNAL: %d, ADDR %p, AT %p SI_CODE 0x%08x\n",
+             sigNum, (SIGABRT == sigNum) ? NULL : sigInfoPtr->si_addr,
+             pcPtr, sigInfoPtr->si_code);
+    WRITE(2, sigString, strlen(sigString));
 
     // Explain signal
     switch( sigNum )
@@ -271,11 +309,11 @@ static void ShowStackSignalHandler
                              sigNum);
                     break;
     }
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
 
     // Dump the legato version
     snprintf(sigString, sizeof(sigString), "LEGATO VERSION\n");
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
     fd = open("/legato/systems/current/version", O_RDONLY);
     if (-1 != fd)
     {
@@ -285,19 +323,14 @@ static void ShowStackSignalHandler
         close(fd);
         if (0 < rc)
         {
-            CHECK_WRITE(2, sigString, rc);
-            CHECK_WRITE(2, "\n", 1);
+            WRITE(2, sigString, rc);
         }
-        else
-        {
-            snprintf(sigString, sizeof(sigString), "Cannot read legato version\n");
-            CHECK_WRITE(2, sigString, strlen(sigString));
-        }
+        WRITE(2, "\n", 1);
     }
 
     // Dump some process command line
     snprintf(sigString, sizeof(sigString), "PROCESS COMMAND LINE\n");
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
     snprintf(sigString, sizeof(sigString), "/proc/%d/cmdline", getpid());
     fd = open(sigString, O_RDONLY);
     if (-1 != fd)
@@ -317,30 +350,22 @@ static void ShowStackSignalHandler
             }
             if (0 < rc)
             {
-                // Don't use CHECK_WRITE here so we can close the fd.
-                // Not too important as the program is about to crash,
-                // but static code analysis complains.
-                if (write(2, sigString, rc) != rc)
-                {
-                    close(fd);
-                    raise(sigNum);
-                    return;
-                }
+                WRITE(2, sigString, rc);
             }
         }
         while( 0 < rc );
         close(fd);
-        CHECK_WRITE(2, "\n", 1);
+        WRITE(2, "\n", 1);
     }
 
     // Dump the process map. Useful for usage with objdump(1) and gdb(1)
     snprintf(sigString, sizeof(sigString), "PROCESS MAP\n");
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
     snprintf(sigString, sizeof(sigString), "/proc/%d/maps", getpid());
     fd = open(sigString, O_RDONLY);
     if (-1 != fd)
     {
-        int rc = 0, len;
+        int rc, len;
         // We cannot use stdio(3) services. Print line by line
         do
         {
@@ -353,15 +378,7 @@ static void ShowStackSignalHandler
                 }
                 if ('\n' == sigString[len])
                 {
-                    size_t expectedSize = len + 1;
-                    if (expectedSize != write(2, sigString, expectedSize))
-                    {
-                        // Unexpected failure to write?  Close file and reraise exception
-                        // immediately.
-                        close(fd);
-                        raise(sigNum);
-                        return;
-                    }
+                    WRITE(2, sigString, len + 1);
                     break;
                 }
             }
@@ -372,92 +389,153 @@ static void ShowStackSignalHandler
 
     // Dump the back-trace, registers and stack
     snprintf(sigString, sizeof(sigString), "BACKTRACE\n");
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
+
 #if defined(__arm__)
     {
-        int addr;
+        int addr = ctxPtr->arm_pc;
         int* base = (int*)__builtin_frame_address(0);
         int* frame = base;
 
-        for (addr = ctxPtr->arm_pc; ;)
-        {
-            // On arm, current frame points to previous LR. The previous frame is stored into
-            // the word before PC. We have
-            // FP[0] -> LR[1]
-            //          FP[1] -> LR[2]
-            //                   FP[2] -> ...
-            snprintf(sigString, sizeof(sigString), "%s at %08x\n",
-                     (addr == ctxPtr->arm_pc ? "PC" : "LR"), addr);
-            CHECK_WRITE(2, sigString, strlen(sigString));
-            if ((frame > (base + 1024*1024)) || (frame < base))
-            {
-                // Exit if FP[n] == 0, or if FP[n] is less than FP[0] or if FP[0] is outside 1MB
-                break;
-            }
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+        struct sigaction sa, saveSaSegV;
+        int ret;
 
-            if (addr == ctxPtr->arm_pc)
+        sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))SigSegVHandler;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags =  SA_RESETHAND | SA_NODEFER;
+        ret = sigaction( SIGSEGV, &sa, &saveSaSegV);
+        if (ret)
+        {
+            snprintf(sigString, sizeof(sigString), "sigaction returns %d\n", ret);
+            WRITE(2, sigString, strlen(sigString));
+        }
+
+        if (0 == sigsetjmp(SigEnv, 1))
+#endif //LE_SEGV_HANDLER_DISABLE
+        {
+            snprintf(sigString, sizeof(sigString), "PC at %08x\n",
+                     (int)ctxPtr->arm_pc);
+            WRITE(2, sigString, strlen(sigString));
+            snprintf(sigString, sizeof(sigString), "LR at %08x [%p]\n",
+                     (int)ctxPtr->arm_lr , frame);
+            WRITE(2, sigString, strlen(sigString));
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+            if (frame)
+#else
+            if ((frame) && (frame <= (base + 1024*1024)) && (frame >= base))
+#endif //LE_SEGV_HANDLER_DISABLE
             {
-                addr = ctxPtr->arm_lr;
                 frame = (int*)*(frame-1);
             }
-            else
+            for ( ; ; )
             {
-                int* new_frame = (int *)*(frame-1);
-                if (new_frame >= frame)
+                // On arm, current frame points to previous LR. The previous frame is stored into
+                // the word before PC. We have
+                // FP[0] -> LR[1]
+                //          FP[1] -> LR[2]
+                //                   FP[2] -> ...
+                if ((frame < (int*)0x1000) || (frame > (base + 1024*1024)) || (frame < base))
                 {
-                    // Exit if FP[n] is less than FP[n-1]
+                    // Exit if FP == 0 or FP[n] == 0 or if FP[n] is less than FP[0] or
+                    // if FP[0] is outside 1MB
                     break;
                 }
-
-                frame = new_frame;
-                addr = *frame;
+                addr = *(frame);
+                snprintf(sigString, sizeof(sigString), "LR at %08x [%p]\n",
+                         addr, frame);
+                WRITE(2, sigString, strlen(sigString));
+                frame = (int *)*(frame-1);
             }
         }
-        snprintf(sigString, sizeof(sigString),
-                 "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
-                 ctxPtr->arm_r0, ctxPtr->arm_r1, ctxPtr->arm_r2,
-                 ctxPtr->arm_r3, ctxPtr->arm_r4, ctxPtr->arm_r5);
-        CHECK_WRITE(2, sigString, strlen(sigString));
-        snprintf(sigString, sizeof(sigString),
-                 "r6  %08lx r7  %08lx r8  %08lx r9  %08lx r10 %08lx cpsr %08lx\n",
-                 ctxPtr->arm_r6, ctxPtr->arm_r7, ctxPtr->arm_r8,
-                 ctxPtr->arm_r9, ctxPtr->arm_r10, ctxPtr->arm_cpsr);
-        CHECK_WRITE(2, sigString, strlen(sigString));
-        snprintf(sigString, sizeof(sigString),
-                 "fp  %08lx ip  %08lx sp  %08lx lr  %08lx pc  %08lx\n",
-                 ctxPtr->arm_fp, ctxPtr->arm_ip, ctxPtr->arm_sp,
-                 ctxPtr->arm_lr, ctxPtr->arm_pc);
-        CHECK_WRITE(2, sigString, strlen(sigString));
-        snprintf(sigString, sizeof(sigString),
-                 "STACK %08lx, FRAME %08lx\n", ctxPtr->arm_sp, ctxPtr->arm_fp);
-        CHECK_WRITE(2, sigString, strlen(sigString));
-        for (addr = 0, frame = (int*)ctxPtr->arm_sp; addr < 256; addr += 8, frame += 8)
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+        else
+        {
+            snprintf(sigString, sizeof(sigString), "Abort while dumping the backtrace\n");
+            WRITE(2, sigString, strlen(sigString));
+        }
+
+        ret = sigaction( SIGSEGV, &sa, NULL );
+        if (ret)
+        {
+            snprintf(sigString, sizeof(sigString), "sigaction returns %d\n", ret);
+            WRITE(2, sigString, strlen(sigString));
+        }
+
+        if (0 == sigsetjmp(SigEnv, 1))
+#endif //LE_SEGV_HANDLER_DISABLE
         {
             snprintf(sigString, sizeof(sigString),
-                     "%08x: %08x %08x %08x %08x %08x %08x %08x %08x\n",
-                     (int)frame,
-                     frame[0], frame[1], frame[2], frame[3],
-                     frame[4], frame[5], frame[6], frame[7]);
-            CHECK_WRITE(2, sigString, strlen(sigString));
+                     "r0  %08lx r1  %08lx r2  %08lx r3  %08lx r4  %08lx  r5  %08lx\n",
+                     ctxPtr->arm_r0, ctxPtr->arm_r1, ctxPtr->arm_r2,
+                     ctxPtr->arm_r3, ctxPtr->arm_r4, ctxPtr->arm_r5);
+            WRITE(2, sigString, strlen(sigString));
+            snprintf(sigString, sizeof(sigString),
+                     "r6  %08lx r7  %08lx r8  %08lx r9  %08lx r10 %08lx cpsr %08lx\n",
+                     ctxPtr->arm_r6, ctxPtr->arm_r7, ctxPtr->arm_r8,
+                     ctxPtr->arm_r9, ctxPtr->arm_r10, ctxPtr->arm_cpsr);
+            WRITE(2, sigString, strlen(sigString));
+            snprintf(sigString, sizeof(sigString),
+                     "fp  %08lx ip  %08lx sp  %08lx lr  %08lx pc  %08lx\n",
+                     ctxPtr->arm_fp, ctxPtr->arm_ip, ctxPtr->arm_sp,
+                     ctxPtr->arm_lr, ctxPtr->arm_pc);
+            WRITE(2, sigString, strlen(sigString));
+            snprintf(sigString, sizeof(sigString),
+                     "STACK %08lx, FRAME %08lx\n", ctxPtr->arm_sp, ctxPtr->arm_fp);
+            WRITE(2, sigString, strlen(sigString));
+            for (addr = 0, frame = (int*)ctxPtr->arm_sp-32;
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+                 addr < 1024;
+#else
+                 addr < 256;
+#endif //LE_SEGV_HANDLER_DISABLE
+                 addr += 8, frame += 8)
+            {
+                snprintf(sigString, sizeof(sigString),
+                         "%08x: %08x %08x %08x %08x %08x %08x %08x %08x\n",
+                         (int)frame,
+                         frame[0], frame[1], frame[2], frame[3],
+                         frame[4], frame[5], frame[6], frame[7]);
+                WRITE(2, sigString, strlen(sigString));
+            }
         }
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+        else
+        {
+            snprintf(sigString, sizeof(sigString), "Abort while dumping the stack\n");
+            WRITE(2, sigString, strlen(sigString));
+        }
+
+        (void)sigaction( SIGSEGV, &saveSaSegV, NULL );
+#endif //LE_SEGV_HANDLER_DISABLE
     }
 #else
     {
         void *retSp[12];
         size_t nRetSp;
         int n;
-        nRetSp = backtrace( &retSp[0], 12 );
-        // Skip HandleSignal() and <signal handler called> frames
-        for (n = 2; n < nRetSp; n++)
+        if(0 == setjmp(SigEnv))
+        {
+            nRetSp = backtrace( &retSp[0], 12 );
+            // Skip HandleSignal() and <signal handler called> frames
+            for (n = 2; n < nRetSp; n++)
+            {
+                snprintf(sigString, sizeof(sigString),
+                         "#%d : %p\n", n-2, (void*)retSp[n]);
+                WRITE(2, sigString, strlen(sigString));
+            }
+        }
+        else
         {
             snprintf(sigString, sizeof(sigString),
-                     "#%d : %p\n", n-2, (void*)retSp[n]);
-            CHECK_WRITE(2, sigString, strlen(sigString));
+                     "Catching SEGV while dumping the backtrace\n");
+            WRITE(2, sigString, strlen(sigString));
         }
     }
 #endif
+
     snprintf(sigString, sizeof(sigString), "DONE\n");
-    CHECK_WRITE(2, sigString, strlen(sigString));
+    WRITE(2, sigString, strlen(sigString));
 
     // Check if a gdbserver(1) port is set (not zero). If yes, try to launch a
     // gdbserver(1) attached to ourself.
@@ -510,9 +588,13 @@ void le_sig_InstallShowStackHandler
             return;
         }
     }
-    memset(&sa, 0, sizeof(sa));
     sa.sa_sigaction = (void (*)(int, siginfo_t *, void *))ShowStackSignalHandler;
+    sigemptyset(&sa.sa_mask);
+#if (!defined LE_SEGV_HANDLER_DISABLE)
+    sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND | SA_NODEFER;
+#else
     sa.sa_flags = SA_NOCLDSTOP | SA_SIGINFO | SA_RESETHAND;
+#endif //LE_SEGV_HANDLER_DISABLE
     ret = sigaction( SIGSEGV, &sa, NULL );
     if( ret )
     {

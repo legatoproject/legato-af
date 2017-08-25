@@ -18,6 +18,7 @@
 
 double NaN = NAN;
 double z = 0.0;
+uint64_t uz = 0ULL;
 
 /*
  * SEGV case: access to an invalid address
@@ -97,9 +98,13 @@ void fpe
 )
 {
     double f = 123.4567890;
+    uint64_t u = 1234ULL;
     feenableexcept(FE_ALL_EXCEPT);
     f = f / z; //NOSONAR
     f = z / z; //NOSONAR
+    f = NaN / z; //NOSONAR
+    f = NaN / NaN; //NOSONAR
+    f = (double)(u / uz); //NOSONAR
 }
 
 void run_fpe

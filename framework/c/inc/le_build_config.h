@@ -45,6 +45,14 @@
  * - After the target reboots, it should @b not have the file "/legato/SMACK_DISABLED".
  * - Reboot the target again.
  *
+ * @section bld_cfg_disable_SEGV_HANDLER LE_SEGV_HANDLER_DISABLE
+ *
+ * When @c LE_SEGV_HANDLER_DISABLE is disabled, the ShowStackSignalHandler() will not use signal
+ * derivation and sigsetjmp()/siglongjmp() to continue and try to survive to invalid memory access
+ * while decoding the stack or the back-trace. This "2nd-level" handler is an ultimate protection
+ * against SEGV. However this handler relies on undefined behaviour of sigsetjmp(), so is more
+ * risky.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -71,6 +79,11 @@
 
 // Uncomment this define to enable valgrind style memory tracking.
 //#define LE_MEM_VALGRIND
+
+
+
+// Uncomment this define to disable the "2nd SEGV handler" protection in ShowStackSignalHandler().
+//#define LE_SEGV_HANDLER_DISABLE
 
 
 
