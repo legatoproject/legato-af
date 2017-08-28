@@ -212,6 +212,9 @@
  *
  * To write a new value to the polling timer call: le_avc_SetPollingTimer()
  *
+ * Writing to the polling timer stops the current polling timer if it is running and starts a timer
+ * with the new value. The next connection will be initated when the new polling timer expires.
+ *
  * @subsection c_le_avc_RetryTimers Retry Timers
  *
  * If an error occurs during a connection to the Device Services server (WWAN DATA establishment
