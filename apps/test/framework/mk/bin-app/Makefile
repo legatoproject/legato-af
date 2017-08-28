@@ -25,6 +25,9 @@ $(TARGET): source.$(TARGET) binary.$(TARGET)
 	    echo "error: source and binary systems differ" >&2; \
 	    exit 1; \
 	fi
+	# Providing a 'build' symlink as to keep sources at the same place where they have been
+	# built, otherwise klocwork complains about missing files.
+	ln -sf build-source $(BUILD_DIR)/build
 
 source.$(TARGET):
 	rm -rf $(BUILD_DIR)/build
