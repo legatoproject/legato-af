@@ -106,6 +106,13 @@
  * A sample code can be seen in the following page:
  * - @subpage c_mrcRadioConfigurationPreferences
  *
+ * @section le_mrc_NetworkRejectHandler Report Network Reject Indication
+ *
+ * The application can register a handler function to report network reject with MNC/MCC code and
+ * the Radio Access Technology using le_mrc_AddNetworkRejectHandler() API.
+ *
+ * le_mrc_RemoveNetworkRejectHandler() API uninstalls the handler function.
+ *
  * @section le_mrc_capabilities Radio Capabilities
  *
  * le_mrc_GetBandCapabilities() let you get the 2G/3G band capabilities by retrieving a bit mask
@@ -1965,5 +1972,29 @@ FUNCTION le_result_t GetLteBandCapabilities
 FUNCTION le_result_t GetTdScdmaBandCapabilities
 (
     TdScdmaBandBitMask bandMaskPtr OUT ///< Bit mask for TD-SCDMA Band capabilities.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler to report Network Reject indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER NetworkRejectHandler
+(
+    string mcc[MCC_LEN] IN,   ///< Mobile Country Code
+    string mnc[MNC_LEN] IN,   ///< Mobile Network Code
+    Rat    rat IN             ///< Radio Access Technology.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event to report Network Reject indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT NetworkReject
+(
+    NetworkRejectHandler handler
 );
 

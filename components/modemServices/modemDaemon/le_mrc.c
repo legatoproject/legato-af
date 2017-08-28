@@ -4077,3 +4077,33 @@ le_result_t le_mrc_GetTdScdmaBandCapabilities
 
     return pa_mrc_GetTdScdmaBandCapabilities(bandMaskPtr);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add handler function for EVENT 'le_mrc_NetworkReject'
+ *
+ * Event to report Network Reject indication.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
+(
+    le_mrc_NetworkRejectHandlerFunc_t handlerPtr,    ///< [IN] The handler function
+    void* contextPtr                                 ///< [IN] The handler's context
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remove handler function for EVENT 'le_mrc_NetworkReject'
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveNetworkRejectHandler
+(
+    le_mrc_NetworkRejectHandlerRef_t handlerRef     ///< [IN] The handler reference
+)
+{
+    return;
+}

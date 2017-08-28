@@ -210,6 +210,27 @@
  * A sample code can be seen in the following page:
  * - @subpage c_simTestProfileSwitch
  *
+ * @section le_sim_Reset SIM Reset
+ *
+ * The le_sim_Reset() function resets the SIM card.
+ *
+ * @section le_sim_FPLMNList Read / Write FPLMN List from SIM
+ *
+ * The le_sim_CreateFPLMNList() function creates the empty FPLMN list.
+ *
+ * The le_sim_AddFPLMNOperator() function adds the FPLMN network into FPLMN list.
+ *
+ * The le_sim_WriteFPLMNList() function writes FPLMN list into the SIM.
+ *
+ * The le_sim_ReadFPLMNList() function reads the FPLMN list from the SIM card.
+ *
+ * The le_sim_GetFirstFPLMNOperator() function fetches the first FPLMN operator from FPLMN list.
+ *
+ * The le_sim_GetNextFPLMNOperator() function fetches the next FPLMN operator from FPLMN list.
+ *
+ * The le_sim_DeleteFPLMNList() function releases all allocated resources associated with the
+ * List object.
+ *
  * @section le_sim_stk SIM Toolkit
  *
  * The SIM application Toolkit allows the SIM card to initiates commands or asking input from the
@@ -442,6 +463,15 @@ DEFINE  PATH_MAX_LEN  = (100);
  */
 //--------------------------------------------------------------------------------------------------
 DEFINE  PATH_MAX_BYTES  = (PATH_MAX_LEN+1);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for FPLMN list.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE FPLMNList;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1029,4 +1059,125 @@ FUNCTION le_result_t SendCommand
     uint8          sw1 OUT,                                 ///< Status Word 1 received from the SIM
     uint8          sw2 OUT,                                 ///< Status Word 2 received from the SIM
     uint8          response[RESPONSE_MAX_BYTES] OUT           ///< SIM response.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reset the SIM.
+ *
+ * @return
+ *      - LE_FAULT         Function failed.
+ *      - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Reset
+(
+    Id simId IN                          ///< The SIM identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create empty FPLMN list.
+ *
+ * @return
+ *      - Reference to the List object.
+ *      - Null pointer if not able to create list.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION FPLMNList CreateFPLMNList
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add FPLMN network into the newly created FPLMN list.
+ *
+ * @return
+ *      - LE_FAULT         Function failed.
+ *      - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AddFPLMNOperator
+(
+    FPLMNList FPLMNListRef IN,              ///< FPLMN list reference.
+    string    mcc[3] IN,                    ///< Mobile Country Code.
+    string    mnc[3] IN                     ///< Mobile Network Code.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write FPLMN list into the SIM.
+ *
+ * @return
+ *      - LE_FAULT         Function failed.
+ *      - LE_OK            Function succeeded.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t WriteFPLMNList
+(
+    Id        simId IN,                     ///< The SIM identifier.
+    FPLMNList FPLMNListRef IN               ///< FPLMN list reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read FPLMN list from the SIM.
+ *
+ * @return
+ *      - Reference to the List object.
+ *      - Null pointer if there is no FPLMN list entry.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION FPLMNList ReadFPLMNList
+(
+    Id       simId IN                       ///< The SIM identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the first FPLMN network from the list of FPLMN objects
+ * retrieved with le_sim_ReadFPLMNList().
+ *
+ * @return
+ *      - LE_FAULT         Function failed.
+ *      - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetFirstFPLMNOperator
+(
+    FPLMNList FPLMNListRef IN,               ///< FPLMN list reference.
+    string mccPtr[3] OUT,                    ///< Mobile Country Code.
+    string mncPtr[3] OUT                     ///< Mobile Network Code.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the next FPLMN network from the list of FPLMN objects
+ * retrieved with le_sim_ReadFPLMNList().
+ *
+ * @return
+ *      - LE_FAULT         Function failed.
+ *      - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetNextFPLMNOperator
+(
+    FPLMNList FPLMNListRef IN,               ///< FPLMN list reference.
+    string mccPtr[3] OUT,                    ///< Mobile Country Code.
+    string mncPtr[3] OUT                     ///< Mobile Network Code.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Delete the FPLMN list created by le_sim_ReadFPLMNList() or le_sim_CreateFPLMNList().
+ *
+ * @note
+ *      On failure, the process exits, so you don't have to worry about checking the returned
+ *      reference for validity.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DeleteFPLMNList
+(
+    FPLMNList FPLMNListRef IN               ///< FPLMN list reference.
 );
