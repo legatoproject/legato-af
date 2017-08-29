@@ -73,7 +73,7 @@ void AppBuildScriptGenerator_t::GenerateAppBuildRules
         "                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $\n"
         "                      find -P -type l -print0 |LC_ALL=C sort -z"
                              " |xargs -0 -r -n 1 readlink $\n"
-        "                    ) |tee /proc/self/fd/2 | md5sum) && $\n"
+        "                    ) | md5sum) && $\n"
         "            md5=$${md5%% *} && $\n"
         // Generate the app's info.properties file.
         "            ( echo \"app.name=$name\" && $\n"

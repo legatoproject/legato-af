@@ -131,7 +131,7 @@ void SystemBuildScriptGenerator_t::GenerateSystemBuildRules
     "                      find -P -print0 |LC_ALL=C sort -z && $\n"
     "                      find -P -type f -print0 |LC_ALL=C sort -z |xargs -0 md5sum && $\n"
     "                      find -P -type l -print0 |LC_ALL=C sort -z |xargs -0 -r -n 1 readlink $\n"
-    "                    ) |tee /proc/self/fd/2 | md5sum) && $\n"
+    "                    ) | md5sum) && $\n"
     "            md5=$${md5%% *} && $\n"
 
     // Get the Legato framework version and append the MD5 sum to it to get the system version.
