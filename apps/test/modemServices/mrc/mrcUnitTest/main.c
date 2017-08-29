@@ -466,7 +466,6 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
     void
 )
 {
-
     LE_ASSERT(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_UNKNOWN, -80,-70)
             == LE_BAD_PARAMETER);
     LE_ASSERT(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_GSM, -80,-80)
@@ -480,6 +479,37 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_UMTS, -80,-70));
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndThresholds(LE_MRC_RAT_TDSCDMA, -80,-70));
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Set Signal Strength Indication delta
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SetSignalStrengthIndDelta
+(
+    void
+)
+{
+    // test bad parameters
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UNKNOWN,2));
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UNKNOWN,0));
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_GSM,0));
+
+    // test correct parameters.
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_GSM, 1));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_CDMA,10));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_CDMA,62));
+    // There is no max value testing in Legato although the max practical value should be less than
+    // RSSI_MAX - RSSI_MIN.
+    // #define RSSI_MIN        51   /* per 3GPP 27.007  (negative value) */
+    // #define RSSI_MAX        113  /* per 3GPP 27.007  (negative value) */
+    // It is up to user to set a reasonable delta.
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_LTE,63));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UMTS,1000));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,1));
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -557,6 +587,10 @@ COMPONENT_INIT
     LE_INFO("======== le_mrc_SetSignalStrengthIndThresholds Test ========");
     Testle_mrc_SetSignalStrengthIndThresholds();
     LE_INFO("======== le_mrc_SetSignalStrengthIndThresholds Test PASSED ========");
+
+    LE_INFO("======== le_mrc_SetSignalStrengthIndDelta Test ========");
+    Testle_mrc_SetSignalStrengthIndDelta();
+    LE_INFO("======== le_mrc_SetSignalStrengthIndDelta Test PASSED ========");
 
     LE_INFO("======== UnitTest of MRC API ends with SUCCESS ========");
 

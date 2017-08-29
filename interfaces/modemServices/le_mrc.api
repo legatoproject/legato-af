@@ -217,15 +217,18 @@
  * le_mrc_AddSignalStrengthChangeHandler() API installs a signal strength change handler.
  * The RAT, the lower-range and the upper-range thresholds must be passed as input parameters. These
  * parameters are updated each time the function is called, the previous thresholds are replaced by
- * the new ones if the function is called with the same RAT. le_mrc_SetSignalStrengthIndThresholds()
- * API changes or sets new thresholds.
+ * the new ones if the function is called with the same RAT. The event is notified when we cross the
+ * range limits in both direction.
  *
  * @warning The threshold values must be in the allowed platform range and the RAT must be valid,
  *          else, it's a fatal error, le_mrc_AddSignalStrengthChangeHandler API won't return.
  *
- * The event is notified when we cross the range limits in both direction.
- *
  * le_mrc_RemoveSignalStrengthChangeHandler() API uninstalls the handler function.
+ *
+ * le_mrc_SetSignalStrengthIndThresholds() API changes or sets new thresholds.
+ *
+ * le_mrc_SetSignalStrengthIndDelta() API sets a signal strength indication delta value for a
+ * specific RAT. The event is notified when the delta range is crossed in both direction.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mrcQuality
@@ -736,14 +739,14 @@ HANDLER SignalStrengthChangeHandler
 EVENT SignalStrengthChange
 (
     Rat     rat IN,                       ///< Radio Access Technology
-    int32   lowerRangeThreshold IN,       ///<  lower-range Signal strength threshold in dBm
-    int32   upperRangeThreshold IN,       ///<  upper-range Signal strength threshold in dBm
+    int32   lowerRangeThreshold IN,       ///< Lower-range Signal strength threshold in dBm
+    int32   upperRangeThreshold IN,       ///< Upper-range Signal strength threshold in dBm
     SignalStrengthChangeHandler handler
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set signal strength indication thresholds for a specific RAT.
+ * This function sets signal strength indication thresholds for a specific RAT.
  *
  * @return
  *  - LE_OK             Function succeeded.
@@ -756,8 +759,27 @@ EVENT SignalStrengthChange
 FUNCTION le_result_t SetSignalStrengthIndThresholds
 (
     Rat     rat IN,                       ///< Radio Access Technology
-    int32   lowerRangeThreshold IN,       ///<  lower-range Signal strength threshold in dBm
-    int32   upperRangeThreshold IN        ///<  upper-range Signal strength threshold in dBm
+    int32   lowerRangeThreshold IN,       ///< Lower-range Signal strength threshold in dBm
+    int32   upperRangeThreshold IN        ///< Upper-range Signal strength threshold in dBm
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets a signal strength indication delta for a specific RAT.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  Bad parameters.
+ *  - LE_FAULT          Function failed.
+ *
+ * @note The minimum signal delta is one unit of 0.1 dBm
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetSignalStrengthIndDelta
+(
+    Rat     rat IN,      ///< Radio Access Technology
+    uint16  delta IN     ///< Signal delta in units of 0.1 dBm
 );
 
 //--------------------------------------------------------------------------------------------------

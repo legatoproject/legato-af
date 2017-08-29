@@ -1317,7 +1317,6 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
     void
 )
 {
-
     le_mrc_Rat_t rat;
     le_result_t res;
     int32_t ss = 0;
@@ -1387,6 +1386,106 @@ static void Testle_mrc_SetSignalStrengthIndThresholds
     le_thread_Cancel(SignalStrengthChangeThreadRef);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Signal Strength change handling.
+ *
+ * Test API: le_mrc_SetSignalStrengthIndDelta() API test
+ **/
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_SetSignalStrengthIndDelta
+(
+    void
+)
+{
+    le_mrc_Rat_t rat;
+    le_result_t res;
+    int32_t ss = 0;
+    int32_t ecio, rscp, sinr, io;
+    uint32_t ber, bler, er;
+    le_clk_Time_t time1;
+    time1.sec = 150;
+    time1.usec =0;
+
+    // test bad parameters
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UNKNOWN,2));
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UNKNOWN,0));
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_GSM,0));
+
+    // test correct parameters.
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_GSM, 1));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_CDMA,10));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_CDMA,62));
+    // There is no max value testing in Legato although the max practical value should be less than
+    // RSSI_MAX - RSSI_MIN.
+    // #define RSSI_MIN        51   /* per 3GPP 27.007  (negative value) */
+    // #define RSSI_MAX        113  /* per 3GPP 27.007  (negative value) */
+    // It is up to user to set a reasonable delta.
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_LTE,63));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UMTS,1000));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,1));
+
+    LE_ASSERT_OK(le_mrc_GetRadioAccessTechInUse(&rat));
+    LE_ASSERT(LE_MRC_RAT_UNKNOWN != rat);
+
+    // Init the semaphore for asynchronous callback
+    ThreadSemaphore = le_sem_Create("HandlerSignalStrength", 0);
+
+    SignalStrengthChangeThreadRef = le_thread_Create("ThreadStrengthInd", MySignalStrengthThread,
+        (void *) &rat);
+    // Join the thread
+    le_thread_SetJoinable(SignalStrengthChangeThreadRef);
+
+    le_thread_Start(SignalStrengthChangeThreadRef);
+
+    // Wait for complete asynchronous registration
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time1);
+    LE_ASSERT_OK(res);
+
+    le_mrc_MetricsRef_t metrics = le_mrc_MeasureSignalMetrics();
+    LE_ASSERT(metrics);
+
+    switch(rat)
+    {
+        case LE_MRC_RAT_GSM:
+            res = le_mrc_GetGsmSignalMetrics(metrics, &ss, &ber);
+            break;
+
+        case LE_MRC_RAT_UMTS:
+        case LE_MRC_RAT_TDSCDMA:
+            res = le_mrc_GetUmtsSignalMetrics(metrics, &ss, &bler, &ecio, &rscp, &sinr);
+            break;
+
+        case LE_MRC_RAT_LTE:
+            res = le_mrc_GetLteSignalMetrics(metrics, &ss, &bler, &rscp, &rscp, &sinr);
+            break;
+
+        case LE_MRC_RAT_CDMA:
+            res = le_mrc_GetCdmaSignalMetrics(metrics, &ss, &er, &ecio, &sinr, &io);
+            break;
+
+        default:
+            res = LE_FAULT;
+            LE_ERROR("Unknow RAT");
+            break;
+    }
+    le_mrc_DeleteSignalMetrics(metrics);
+
+    LE_ASSERT_OK(res);
+
+    LE_INFO("Signal %d, rat %d", ss, rat);
+
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(rat, 1));
+
+    // Wait for signal event
+    res = le_sem_WaitWithTimeOut(ThreadSemaphore, time1);
+    LE_ASSERT_OK(res);
+
+    le_mrc_RemoveSignalStrengthChangeHandler(SignalHdlrRef);
+
+    LE_ASSERT_OK(le_thread_Cancel(SignalStrengthChangeThreadRef));
+    LE_ASSERT_OK(le_thread_Join(SignalStrengthChangeThreadRef,NULL));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1802,6 +1901,10 @@ COMPONENT_INIT
     LE_INFO("======== Set Signal Strength Thresholds Test ========");
     Testle_mrc_SetSignalStrengthIndThresholds();
     LE_INFO("======== Set Signal Strength Thresholds Test PASSED ========");
+
+    LE_INFO("======== Set Signal Strength delta Test ========");
+    Testle_mrc_SetSignalStrengthIndDelta();
+    LE_INFO("======== Set Signal Strength delta Test PASSED ========");
 
     LE_INFO("======== RatPreferences Test ========");
     Testle_mrc_RatPreferences();

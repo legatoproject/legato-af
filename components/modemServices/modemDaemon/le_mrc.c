@@ -1000,6 +1000,22 @@ static void DeletePreferredOperatorsList
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function test the the Radio Access Technology (RAT) validity
+ *
+ * @return
+ *      - true          valid RAT
+ *      - false         invalid RAT
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsRatInvalid
+(
+    le_mrc_Rat_t rat   ///< [IN] Radio Access Technology
+)
+{
+    return ((rat < LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA));
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -3737,25 +3753,23 @@ le_result_t le_mrc_GetCdmaSignalMetrics
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set signal strength indication thresholds for a specific RAT.
+ * This function sets signal strength indication thresholds for a specific RAT.
  *
  * @return
  *  - LE_OK             Function succeeded.
- *  - LE_BAD_PARAMETER  Bad parameters
+ *  - LE_BAD_PARAMETER  Bad parameters.
  *  - LE_FAULT          Function failed.
  *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetSignalStrengthIndThresholds
 (
-    le_mrc_Rat_t                             rat,                 ///< [IN] Radio Access Technology
-    int32_t                                  lowerRangeThreshold, ///< [IN] lower-range Signal
-                                                                  ///      strength threshold in dBm
-    int32_t                                  upperRangeThreshold  ///< [IN] upper-range Signal
-                                                                  ///      strength threshold in dBm
+    le_mrc_Rat_t rat,                 ///< [IN] Radio Access Technology
+    int32_t      lowerRangeThreshold, ///< [IN] lower-range Signal strength threshold in dBm
+    int32_t      upperRangeThreshold  ///< [IN] upper-range Signal strength threshold in dBm
 )
 {
-    if ((rat < LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA))
+    if (IsRatInvalid (rat))
     {
         LE_ERROR("Bad RAT parameter : %d", rat);
         return LE_BAD_PARAMETER;
@@ -3769,6 +3783,40 @@ le_result_t le_mrc_SetSignalStrengthIndThresholds
     }
 
     return pa_mrc_SetSignalStrengthIndThresholds(rat, lowerRangeThreshold, upperRangeThreshold);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function sets a signal strength indication delta for a specific RAT.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  Bad parameters.
+ *  - LE_FAULT          Function failed.
+ *
+ * @note The minimum signal delta is one unit of 0.1 dBm
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetSignalStrengthIndDelta
+(
+    le_mrc_Rat_t rat,                 ///< [IN] Radio Access Technology
+    uint16_t delta                    ///< [IN] Signal delta in units of 0.1 dBm
+)
+{
+    if (IsRatInvalid (rat))
+    {
+        LE_ERROR("Bad RAT parameter : %d", rat);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!delta)
+    {
+        LE_ERROR("Null delta provided");
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_mrc_SetSignalStrengthIndDelta(rat, delta);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3801,7 +3849,7 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
         return NULL;
     }
 
-    if ((rat < LE_MRC_RAT_GSM) || (rat> LE_MRC_RAT_CDMA))
+    if (IsRatInvalid (rat))
     {
         LE_KILL_CLIENT("Bad RAT parameter : %d", rat);
         return NULL;

@@ -750,7 +750,7 @@ void pa_mrc_RemoveSignalStrengthIndHandler
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SetSignalStrengthIndThresholds
 (
-    le_mrc_Rat_t rat,                 ///< Radio Access Technology
+    le_mrc_Rat_t rat,                 ///< [IN] Radio Access Technology
     int32_t      lowerRangeThreshold, ///< [IN] lower-range threshold in dBm
     int32_t      upperRangeThreshold  ///< [IN] upper-range strength threshold in dBm
 )
@@ -759,6 +759,25 @@ le_result_t pa_mrc_SetSignalStrengthIndThresholds
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to set and activate the delta for signal strength indications.
+ *
+ * @return
+ *  - LE_FAULT  Function failed.
+ *  - LE_OK     Function succeeded.
+ *  - LE_BAD_PARAMETER  Bad parameters.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetSignalStrengthIndDelta
+(
+    le_mrc_Rat_t rat,    ///< [IN] Radio Access Technology
+    uint16_t     delta   ///< [IN] Signal delta in units of 0.1 dB
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
