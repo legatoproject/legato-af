@@ -121,6 +121,22 @@ effective imediately in next GNSS session. The setting is persistent to GNSS fac
 restart, but is not lost after Legato restart:
     le_gnss_SetSuplAssistedMode()
 
+@section platformConstraintsGnss_WarmRestart GNSS WARM restart
+
+Qualcomm-based platform "WARM" restart GNSS session needs an addional 10 sec internal delay
+comparing to "COLD" or "FACTORY" restarts.
+
+"WARM" restart le_gnss_ForceWarmRestart() API stops the current GNSS session then starts it again
+using the available GNSS data. In this case, the Ephemeris are being cleared but not the position
+data (they are cleared in "COLD" or "FACTORY" restarts).
+Reusing them after restarting the GNSS session too soon leads to a wrong time to First Fix (TTFF).
+For this reason a 10 sec delay is added before the restart session.
+
+Note that this additional delay doesn't impact the measurement to get a fix given by
+le_gnss_GetTtff(). This API calculates the TTFF started from a succeed GNSS start session.
+In case of le_gnss_ForceWarmRestart(), the 10 sec delay is added before re-starting the GNSS
+session.
+
 @section platformConstraintsGnss_References References
 
 See @ref c_gnss API

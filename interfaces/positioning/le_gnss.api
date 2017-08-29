@@ -102,6 +102,8 @@
  * The le_gnss_ForceWarmRestart() function performs a "WARM" restart of the GNSS device. The current
  * GNSS session is stopped, then started using the available @ref le_gnss_Data.
  * Please refer to @ref le_gnss_APIcallsRequirements. Also see @ref howToGNSS.
+ * @Note This API has a platform dependent feature. Please refer to
+ * @ref platformConstraintsGnss_WarmRestart for further details.
  *
  * @subsubsection le_gnss_ForceColdRestart Force COLD restart
  * The le_gnss_ForceColdRestart() function performs a "COLD" restart of the GNSS device. The current
@@ -840,6 +842,8 @@ FUNCTION le_result_t ForceHotRestart
  *  - LE_NOT_PERMITTED If the GNSS device is not enabled or not started.
  *  - LE_OK            The function succeeded.
  *
+ * @Note This API has a platform dependent feature. Please refer to
+ * @ref platformConstraintsGnss_WarmRestart for further details.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForceWarmRestart
