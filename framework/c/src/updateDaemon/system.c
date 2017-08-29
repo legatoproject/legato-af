@@ -593,6 +593,37 @@ void system_SymlinkApp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Remove a symlink to a given app's non-writeable files in a given system.
+ **/
+//--------------------------------------------------------------------------------------------------
+void system_UnlinkApp
+(
+    const char* systemNamePtr,  ///< E.g., "current" or "unpack".
+    const char* appNamePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    char linkPath[PATH_MAX];
+
+    int n;
+    n = snprintf(linkPath,
+                 sizeof(linkPath),
+                 "%s/%s/apps/%s",
+                 SystemPath,
+                 systemNamePtr,
+                 appNamePtr);
+    LE_ASSERT(n < sizeof(linkPath));
+
+    // Remove the symlink
+    if (unlink(linkPath) == -1)
+    {
+        LE_WARN("Failed to delete symlink '%s': %m.", linkPath);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Update a given app's writeable files in the "current" system to match what's in the app's install
  * directory (/legato/apps/<hash>).  Deletes from the current system files that are not in the app's
  * install directory.  Adds to the current system files from the apps' install directory that are

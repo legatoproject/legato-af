@@ -824,7 +824,7 @@ le_result_t app_RemoveIndividual
 
     PerformAppDelete(appHash, appNamePtr, i);
 
-    (void)unlink(delAppName);
+    system_UnlinkApp("current", delAppName);
 
     // Reload the bindings configuration
     system("/legato/systems/current/bin/sdir load");

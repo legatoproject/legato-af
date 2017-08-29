@@ -138,6 +138,18 @@ void system_SymlinkApp
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Remove a symlink to a given app's non-writeable files in a given system.
+ **/
+//--------------------------------------------------------------------------------------------------
+void system_UnlinkApp
+(
+    const char* systemNamePtr,  ///< E.g., "current" or "unpack".
+    const char* appNamePtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Update a given app's writeable files in the "current" system to match what's in the app's install
  * directory (/legato/apps/<hash>).  Deletes from the current system files that are not in the app's
  * install directory.  Adds to the current system files from the apps' install directory that are
