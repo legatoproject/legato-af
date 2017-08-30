@@ -4,7 +4,6 @@ These topics contain platform-specific info:
 | Section                            | Description                                        |
 | ---------------------------------- | -------------------------------------------------- |
 | @subpage platformConstraints       | Platform constraints                               |
-| @subpage virtualPlatformMain       | Virtual Platform                                   |
 | @subpage yoctoMain                 | Yocto dist info                                    |
 | @subpage raspbianMain              | Raspbian dist info                                 |
 
