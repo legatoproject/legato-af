@@ -13,10 +13,59 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Name of the file where avc configuration is stored.
+ * Is configuration imported from modem?
  */
 //--------------------------------------------------------------------------------------------------
-#define AVC_IMPORTED_CONFIG_FILE "/avc/config/avcConfigParam"
+#define AVC_CONFIG_IS_IMPORTED "/avc/config/isImported"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write to file using Legato le_fs API
+ *
+ * @return
+ *  - LE_OK             The function succeeded
+ *  - LE_BAD_PARAMETER  Incorrect parameter provided
+ *  - LE_OVERFLOW       The file path is too long
+ *  - LE_FAULT          The function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t WriteFs
+(
+    const char  *pathPtr,   ///< File path
+    uint8_t     *bufPtr,    ///< Data buffer
+    size_t      size        ///< Buffer size
+)
+{
+    le_fs_FileRef_t fileRef;
+    le_result_t result;
+
+    result = le_fs_Open(pathPtr, LE_FS_WRONLY | LE_FS_CREAT, &fileRef);
+    if (LE_OK != result)
+    {
+        LE_ERROR("failed to open %s: %s", pathPtr, LE_RESULT_TXT(result));
+        return result;
+    }
+
+    result = le_fs_Write(fileRef, bufPtr, size);
+    if (LE_OK != result)
+    {
+        LE_ERROR("failed to write %s: %s", pathPtr, LE_RESULT_TXT(result));
+        if (LE_OK != le_fs_Close(fileRef))
+        {
+            LE_ERROR("failed to close %s", pathPtr);
+        }
+        return result;
+    }
+
+    result = le_fs_Close(fileRef);
+    if (LE_OK != result)
+    {
+        LE_ERROR("failed to close %s: %s", pathPtr, LE_RESULT_TXT(result));
+        return result;
+    }
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -34,16 +83,13 @@ void ImportConfig
     le_avc_ConnectService();
 
     // Don't import config from the modem if it was done before.
-    if (le_fs_Exists(AVC_IMPORTED_CONFIG_FILE))
+    if (le_fs_Exists(AVC_CONFIG_IS_IMPORTED))
     {
         LE_INFO("NOT importing AVMS config from modem to Legato since it was done before.");
     }
     else
     {
         LE_INFO("Importing AVMS config from modem to Legato.");
-
-        // Set default avms config
-        le_avc_SetDefaultAvcConfig();
 
         /* Get the PDP profile */
         char apnName[LE_AVC_APN_NAME_MAX_LEN_BYTES] = {0};
@@ -111,5 +157,9 @@ void ImportConfig
         {
             LE_WARN("Failed to get user agreement configuration from the modem.");
         }
+
+        // Save status of import
+        uint8_t isImported = true;
+        WriteFs(AVC_CONFIG_IS_IMPORTED, &isImported, sizeof(int));
     }
 }

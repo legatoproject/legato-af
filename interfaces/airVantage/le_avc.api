@@ -1042,11 +1042,3 @@ FUNCTION le_result_t GetUserAgreement
     bool enable OUT                        ///< true = enable, false = disable.
 );
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Function to set default avc configuration.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION SetDefaultAvcConfig
-(
-);
