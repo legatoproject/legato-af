@@ -5,8 +5,6 @@ executables:
 
 maxFileSystemBytes: 256K
 
-
-
 processes:
 {
     envVars:
@@ -14,16 +12,10 @@ processes:
         LE_LOG_LEVEL = DEBUG
     }
 
-    run:
-    {
-        (audioTest "<tel number>")
-    }
-
     maxFileBytes: 5000K
 }
 
-start:
-    manual
+start: manual
 
 bindings:
 {

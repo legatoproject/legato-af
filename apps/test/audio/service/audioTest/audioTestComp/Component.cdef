@@ -2,6 +2,7 @@ requires:
 {
     api:
     {
+        le_cfg.api
         le_audio.api
         le_mcc.api
     }
