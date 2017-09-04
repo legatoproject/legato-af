@@ -100,7 +100,8 @@ add_subdirectory(dataConnectionService/dataConnectionUnitTest)
 ## Other Services ...
 add_subdirectory(voiceCallService/voiceCallServiceIntegrationTest)
 add_subdirectory(voiceCallService/voiceCallServiceUnitTest)
-add_subdirectory(smsInboxService)
+add_subdirectory(smsInboxService/smsInboxServiceIntegrationTest)
+add_subdirectory(smsInboxService/smsInboxServiceUnitTest)
 
 # AirVantage Service
 add_subdirectory(avcService)

@@ -1,0 +1,14 @@
+{
+ "imsi": "404445900658964",
+ "format": 2,
+ "isUnread": {
+  "le_smsInbox1": false,
+  "le_smsInbox2": true
+ },
+ "isDeleted": {
+  "le_smsInbox1": false,
+  "le_smsInbox2": false
+ },
+ "msgLen": 140,
+ "binary": "0501000A"
+}

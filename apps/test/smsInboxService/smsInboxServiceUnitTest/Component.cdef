@@ -1,0 +1,12 @@
+requires:
+{
+    api:
+    {
+        le_smsInbox1.api              [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+}

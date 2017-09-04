@@ -1,0 +1,21 @@
+requires:
+{
+    api:
+    {
+        le_smsInbox1.api              [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/smsInboxService/smsInbox.c
+    ${LEGATO_ROOT}/components/smsInboxService/le_smsInbox.c
+    sms_stub.c
+    cfg_sim_stub.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+    -I${LEGATO_ROOT}/components/cfgEntries
+}

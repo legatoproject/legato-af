@@ -39,7 +39,11 @@
  * SMSInbox directory path.
  */
 //--------------------------------------------------------------------------------------------------
+#ifdef LEGATO_EMBEDDED
 #define SMSINBOX_PATH "/data/smsInbox/"
+#else
+#define SMSINBOX_PATH "/tmp/smsInbox/"
+#endif
 #define MSG_PATH "msg/"
 #define CONF_PATH "cfg/"
 
@@ -1395,7 +1399,7 @@ static void InitSmsInBoxDirectory
     LE_DEBUG("InitSmsInBoxDirectory");
 
     // create directories
-    if (0 > mkdir( SMSINBOX_PATH, S_IREAD|S_IWRITE ))
+    if (0 > mkdir( SMSINBOX_PATH, S_IRWXU|S_IRWXG ))
     {
         LE_ERROR("Unable to create directory %s: %m", SMSINBOX_PATH);
         return;
@@ -1404,14 +1408,14 @@ static void InitSmsInBoxDirectory
     char path[pathLen];
     memset(path,0,pathLen);
     snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, CONF_PATH);
-    if (0 > mkdir( path, S_IREAD|S_IWRITE ))
+    if (0 > mkdir( path, S_IRWXU|S_IRWXG ))
     {
         LE_ERROR("Unable to create directory %s: %m", path );
         return;
     }
     memset(path,0,pathLen);
     snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, MSG_PATH);
-    if (0 > mkdir( path, S_IREAD|S_IWRITE ))
+    if (0 > mkdir( path, S_IRWXU|S_IRWXG ))
     {
         LE_ERROR("Unable to create directory %s: %m", path );
         return;
