@@ -53,14 +53,24 @@ le_result_t le_fwupdate_Download
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Check whether both systems are synchronized, and launch the synchronization accordingly. Then,
- * the function clears the resume context. So, if the function is called before calling the
- * @c le_fwupdate_Download function, this last one will initiate a full installation instead of
- * performing a resume.
+ * Download initialization:
+ *  - for single and dual systems, it resets resume position,
+ *  - for dual systems, it synchronizes the systems if needed.
+ *
+ * @note
+ *      When invoked, resuming a previous download is not possible, a full update package has to be
+ *      downloaded.
  *
  * @return
- *      - LE_OK    On success
- *      - LE_FAULT On failure
+ *      - LE_OK         On success
+ *      - LE_FAULT      On failure
+ *      - LE_IO_ERROR   Dual systems platforms only -- The synchronization fails due to
+ *                      unrecoverable ECC errors. In this case, the update without synchronization
+ *                      is forced, but the whole system must be updated to ensure that the new
+ *                      update system will be workable
+ *                      ECC stands for Error-Correction-Code: some errors may be corrected. If this
+ *                      correction fails, a unrecoverable error is registered and the data become
+ *                      corrupted.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_fwupdate_InitDownload
@@ -300,6 +310,11 @@ le_result_t le_fwupdate_Install
  *      - LE_UNSUPPORTED   The feature is not supported
  *      - LE_UNAVAILABLE   The flash access is not granted for SW update
  *      - LE_FAULT         On failure
+ *      - LE_IO_ERROR      Dual systems platforms only -- The synchronization fails due to
+ *                         unrecoverable ECC errors
+ *                         ECC stands for Error-Correction-Code: some errors may be corrected. If
+ *                         this correction fails, an unrecoverable error is registered and the data
+ *                         become corrupted.
  *
  */
 //--------------------------------------------------------------------------------------------------
