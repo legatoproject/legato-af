@@ -19,7 +19,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_VOICECALL}
     -i voiceCallServiceComp
     -i ${LEGATO_MODEM_SERVICES}
-    -i ${LEGATO_ROOT}/framework/c/src/
+    -i ${LEGATO_ROOT}/framework/liblegato
     -i ${LEGATO_ROOT}/interfaces/modemServices/
     -i ${LEGATO_ROOT}/interfaces/
     ${CFLAGS}

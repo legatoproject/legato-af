@@ -1,0 +1,67 @@
+# --------------------------------------------------------------------------------------------------
+# Ninja build script configuration for linux
+#
+# Copyright (C) Sierra Wireless Inc.
+# --------------------------------------------------------------------------------------------------
+
+if [ "$LEGATO_TARGET" != "localhost" ]; then
+    NINJA_CFLAGS="$NINJA_CFLAGS -DLEGATO_EMBEDDED"
+fi
+
+if [ ! -z "$TARGET_SYSROOT" ]
+then
+    CC="$CC --sysroot=$TARGET_SYSROOT"
+fi
+
+# Set position-independent code
+NINJA_CFLAGS="$NINJA_CFLAGS -fPIC -I${LEGATO_ROOT}/framework/daemons/linux"
+
+# enable coverage.flags
+if [ "$TEST_COVERAGE" == "1" ]
+then
+    NINJA_CFLAGS="$NINJA_CFLAGS --coverage"
+    NINJA_LDFLAGS="$NINJA_LDFLAGS --coverage"
+
+    if [ "$LEGATO_TARGET" != "localhost" ]
+    then
+        TEST_COVERAGE_DIR=${TEST_COVERAGE_DIR:-"/data/coverage"}
+    fi
+
+    if [ -n "$TEST_COVERAGE_DIR" ]
+    then
+        NINJA_CFLAGS="$NINJA_CFLAGS -fprofile-dir=$TEST_COVERAGE_DIR"
+    fi
+fi
+
+if [ "$STRIP_STAGING_TREE" != 0 ]; then
+    NINJA_CFLAGS="$NINJA_CFLAGS -g"
+    NINJA_LDFLAGS="$NINJA_LDFLAGS -g"
+fi
+
+# Enable optimization flags
+if [ "$DEBUG" != "yes" ]; then
+    NINJA_CFLAGS="$NINJA_CFLAGS -O2"
+fi
+
+LIBLEGATO=$LIB_DIR/liblegato.so
+
+LEGATO_FRAMEWORK_NICE_LEVEL=-19
+LE_RUNTIME_DIR=/tmp/legato
+LE_SVCDIR_SERVER_SOCKET_NAME=$LE_RUNTIME_DIR/serviceDirectoryServer
+LE_SVCDIR_CLIENT_SOCKET_NAME=$LE_RUNTIME_DIR/serviceDirectoryClient
+
+if [ "${STRIP_STAGING_TREE}" != 0 ]; then
+
+    cat >>$NINJA_SCRIPT <<EOF
+rule Link
+  description = Linking liblegato
+  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS \$
+            && $LEGATO_ROOT/framework/tools/scripts/splitdebug -d $DEBUG_DIR \$out
+EOF
+else
+    cat >>$NINJA_SCRIPT <<EOF
+rule Link
+  description = Linking liblegato
+  command = $CC -shared -Wl,--build-id -o \$out \$in -lpthread -lrt -ldl $NINJA_LDFLAGS
+EOF
+fi

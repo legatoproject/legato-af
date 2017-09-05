@@ -4,8 +4,9 @@
 
 mkexe(  smackApiTest
             ../smackAPI
-            -i ${LEGATO_ROOT}/framework/c/src/serviceDirectory
-            -i ${LEGATO_ROOT}/framework/c/src
+            -i ${LEGATO_ROOT}/framework/daemons/linux/serviceDirectory
+            -i ${LEGATO_ROOT}/framework/liblegato
+            -i ${LEGATO_ROOT}/framework/liblegato/linux
             -o ${EXECUTABLE_OUTPUT_PATH}/smackApiTest
         )
 

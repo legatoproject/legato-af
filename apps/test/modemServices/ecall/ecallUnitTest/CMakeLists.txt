@@ -16,7 +16,7 @@ mkexe(${TEST_EXEC}
     .
     -i ${LEGATO_MODEM_SERVICES}/modemDaemon
     -i ${LEGATO_MODEM_SERVICES}/platformAdaptor/inc
-    -i ${LEGATO_ROOT}/framework/c/src
+    -i ${LEGATO_ROOT}/framework/liblegato
     -i ${LEGATO_ROOT}/components/cfgEntries
     -i ${PA_DIR}/simu/components/le_pa
     -i ${SIMU_CONFIG_TREE}

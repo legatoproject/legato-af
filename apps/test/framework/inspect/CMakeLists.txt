@@ -8,15 +8,18 @@ mkapp(SubpoolFlux.adef)
 mkapp(ThreadFlux.adef)
 
 mkapp(TimerFlux.adef
-      -i ${LEGATO_ROOT}/framework/c/src/
-    )
+      -i ${LEGATO_ROOT}/framework/liblegato
+      -i ${LEGATO_ROOT}/framework/liblegato/linux/
+      )
 
 mkapp(MutexFlux.adef
-      -i ${LEGATO_ROOT}/framework/c/src/
-    )
+      -i ${LEGATO_ROOT}/framework/liblegato
+      -i ${LEGATO_ROOT}/framework/liblegato/linux/
+      )
 
 mkapp(SemaphoreFlux.adef
-      -i ${LEGATO_ROOT}/framework/c/src/
+      -i ${LEGATO_ROOT}/framework/liblegato
+      -i ${LEGATO_ROOT}/framework/liblegato/linux/
     )
 
 # This is a C test

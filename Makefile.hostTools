@@ -72,7 +72,7 @@ symlinks: bin
 	ln -sf mk bin/mkapp
 	ln -sf mk bin/mksys
 	ln -sf $(foreach script,$(SCRIPTS),../$(script)) bin/
-	ln -sf ../framework/tools/ifgen/ifgen bin/
+	ln -sf $(LEGATO_ROOT)/framework/tools/ifgen/ifgen bin/
 
 # Rule for creating directories.
 $(BUILD_DIR) bin:

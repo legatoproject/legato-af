@@ -14,7 +14,7 @@ endif()
 mkexe(${TEST_EXEC}
     atServerComp
     .
-    -i ${LEGATO_ROOT}/framework/c/src
+    -i ${LEGATO_ROOT}/framework/liblegato
     -i ${LEGATO_AT_SERVICES}/Common
     ${CFLAGS}
     ${LFLAGS}

@@ -11,7 +11,7 @@ mkexe(${TEST_EXE}
       assetDataTest
       -i ${LEGATO_ROOT}/interfaces
       -i ${LEGATO_ROOT}/components/airVantage/avcDaemon/
-      -i ${LEGATO_ROOT}/framework/c/src
+      -i ${LEGATO_ROOT}/framework/liblegato
       -i ${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
 )
 

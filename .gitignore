@@ -3,6 +3,10 @@
 /toolchains
 /bin
 
+# Configuration
+.config
+.config.mk
+
 /Documentation*
 /releases
 /version

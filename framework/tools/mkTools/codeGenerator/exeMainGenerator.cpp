@@ -59,8 +59,8 @@ void GenerateCLangExeMain
                   "// This is a generated file, do not edit.\n"
                   "\n"
                   "#include \"legato.h\"\n"
-                  "#include \"../src/eventLoop.h\"\n"
-                  "#include \"../src/log.h\"\n"
+                  "#include \"../liblegato/eventLoop.h\"\n"
+                  "#include \"../liblegato/log.h\"\n"
                   "#include <dlfcn.h>\n"
                   "\n"
                   "\n";

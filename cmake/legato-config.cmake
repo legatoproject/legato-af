@@ -13,7 +13,7 @@ if(NOT DEFINED LEGATO_TARGET)
 endif()
 
 # Defines
-set(LEGATO_FRAMEWORK_DIR    "${LEGATO_ROOT}/framework/c")
+set(LEGATO_LIBLEGATO_DIR    "${LEGATO_ROOT}/framework/liblegato")
 set(LEGATO_BUILD            "${LEGATO_ROOT}/build/${LEGATO_TARGET}")
 set(LEGATO_BINARY_DIR       "${LEGATO_BUILD}")  # TODO: Remove this.
 
@@ -26,7 +26,7 @@ set(LEGATO_TOOL_MKSYS       "${LEGATO_ROOT}/bin/mksys")
 set(LEGATO_TOOL_MKDOC       "${LEGATO_ROOT}/bin/mkdoc")
 
 # C Framework
-set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS} ${LEGATO_FRAMEWORK_DIR}/inc)
+set(LEGATO_INCLUDE_DIRS ${LEGATO_INCLUDE_DIRS} ${LEGATO_ROOT}/framework/include)
 set(LEGATO_LIBRARY_PATH ${LEGATO_ROOT}/build/${LEGATO_TARGET}/framework/lib/liblegato.so)
 
 # Low-Level Interfaces
@@ -189,7 +189,7 @@ function(add_legato_executable EXE_TARGET)
 
     # Compile
     add_executable(${EXE_TARGET}
-        ${LEGATO_ROOT}/framework/c/codegen/_le_main.c
+        ${LEGATO_ROOT}/framework/liblegato/codegen/_le_main.c
         ${EXE_SOURCES}
    )
 

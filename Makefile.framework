@@ -57,7 +57,7 @@ VERSION := $(shell cat $(LEGATO_ROOT)/version)
 BUILD_DIR := $(LEGATO_ROOT)/build/$(TARGET)/framework
 BIN_DIR := $(BUILD_DIR)/bin
 LIB_DIR := $(BUILD_DIR)/lib
-SRC_DIR := $(LEGATO_ROOT)/framework/c/src
+SRC_DIR := $(LEGATO_ROOT)/framework/daemons/linux
 
 LIBJANSSON = $(LIB_DIR)/libjansson.so
 
@@ -127,8 +127,8 @@ $(BUILD_DIR)/legatoJni.o: $(BUILD_DIR)/legatoJni.h $(LEGATO_ROOT)/framework/java
 		-DLEGATO_DEBUG \
 		-DLEGATO_EMBEDDED \
 		-fPIC \
-		-I$(LEGATO_ROOT)/framework/c/inc \
-		-I$(LEGATO_ROOT)/framework/c/src \
+		-I$(LEGATO_ROOT)/framework/include \
+		-I$(LEGATO_ROOT)/framework/liblegato \
 		-I$(BUILD_DIR) \
 		-I$(JDK_INCLUDE_DIR) \
 		-I$(JDK_INCLUDE_DIR)/linux \
@@ -160,7 +160,9 @@ daemons: start supervisor serviceDirectory logCtrlDaemon configTree watchdog upd
 start: liblegato $(BIN_DIR)
 	$(TARGET_CC) $(TARGET_CC_SYSROOT) -o $(BIN_DIR)/startSystem $(SRC_DIR)/start/start.c \
 		-Wall -Werror \
-		-I$(LEGATO_ROOT)/framework/c/inc \
+		-I$(LEGATO_ROOT)/framework/include \
+                -I$(LEGATO_ROOT)/framework/liblegato \
+                -I$(LEGATO_ROOT)/framework/liblegato/linux \
 		-DVERSION=\"$(VERSION)\" \
 		-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib" \
@@ -171,7 +173,9 @@ supervisor: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/supervisor \
 		-i $(LEGATO_ROOT)/interfaces/supervisor \
-		-i $(SRC_DIR) \
+		-i $(LEGATO_ROOT)/framework/liblegato \
+		-i $(LEGATO_ROOT)/framework/liblegato/linux \
+		-i $(LEGATO_ROOT)/framework/daemons/linux/start \
 		-s $(SRC_DIR)/supervisor \
 		--cflags=-DDISABLE_SMACK=$(DISABLE_SMACK) \
 		--cflags=-DNO_LOG_CONTROL \
@@ -181,6 +185,8 @@ supervisor: liblegato $(BIN_DIR)
 serviceDirectory: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/serviceDirectory/serviceDirectory.c \
+		--cflags=-I$(LEGATO_ROOT)/framework/liblegato \
+		--cflags=-I$(LEGATO_ROOT)/framework/liblegato/linux \
 		--cflags=-DNO_LOG_CONTROL \
 		--cflags=-DLE_RUNTIME_DIR="$(LE_RUNTIME_DIR)/" \
 		--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
@@ -191,18 +197,23 @@ logCtrlDaemon: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/logDaemon \
 		--cflags=-DNO_LOG_CONTROL \
+		-i $(LEGATO_ROOT)/framework/liblegato \
+		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		-i $(LEGATO_ROOT)/interfaces/supervisor
 
 .PHONY: configTree
 configTree: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/configTree \
-		-i $(SRC_DIR) \
+		-i $(LEGATO_ROOT)/framework/liblegato \
+		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		--cflags=-std=c99
 
 .PHONY: watchdog
 watchdog: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
+		-i $(LEGATO_ROOT)/framework/liblegato \
+		-i $(LEGATO_ROOT)/framework/liblegato/linux \
 		$(SRC_DIR)/watchdog
 
 .PHONY: updateDaemon
@@ -210,15 +221,16 @@ updateDaemon: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		$(SRC_DIR)/updateDaemon \
 		-i $(LEGATO_ROOT)/interfaces/updateDaemon \
-		-i $(SRC_DIR)/appCfg \
-		-i $(SRC_DIR) \
-		-s $(SRC_DIR) \
+		-i $(LEGATO_ROOT)/components/appCfg \
+		-i $(LEGATO_ROOT)/framework/liblegato \
+		-i $(LEGATO_ROOT)/framework/liblegato/linux \
+		-s $(LEGATO_ROOT)/components \
 		-s $(SRC_DIR)/updateDaemon \
 		--ldflags=-L$(LIB_DIR)
 
 # If the ninja script doesn't exist, we generate it using the ninja-generator script.
 $(NINJA_SCRIPT): $(BUILD_DIR)
-	framework/c/src/ninja-generator
+	framework/liblegato/ninja-generator
 
 # Currently, the framework depends on libjansson, which is built using CMake.
 $(LIBJANSSON): $(LIB_DIR)

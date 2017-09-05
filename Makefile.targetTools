@@ -96,15 +96,16 @@ USE_CLANG ?= 0
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
 JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
-TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools
+TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools/target/linux
 APP_TOOLS_SRC_DIR = $(LEGATO_ROOT)/apps/tools
-FRAMEWORK_SRC_DIR = $(LEGATO_ROOT)/framework/c/src
+LIBLEGATO_SRC_DIR = $(LEGATO_ROOT)/framework/liblegato
+DAEMON_SRC_DIR = $(LEGATO_ROOT)/framework/daemons/linux
 LEGATO_INTERFACES_DIR = $(LEGATO_ROOT)/interfaces
 
 config:
 	mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/config \
 			-i $(JANSSON_INC_DIR) \
-			-i $(LEGATO_ROOT)/framework/c/src \
+			-i $(LIBLEGATO_SRC_DIR) \
 			--ldflags=-L$(LIB_DIR) \
 			--ldflags=-ljansson \
 			$(LOCAL_MKEXE_FLAGS)
@@ -112,15 +113,16 @@ config:
 log:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/logTool/logTool.c \
-			-i $(FRAMEWORK_SRC_DIR) \
-			-i $(FRAMEWORK_SRC_DIR)/logDaemon \
+			-i $(LIBLEGATO_SRC_DIR) \
+			-i $(DAEMON_SRC_DIR)/logDaemon \
 			$(LOCAL_MKEXE_FLAGS)
 
 sdir:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/sdirTool \
-			-i $(FRAMEWORK_SRC_DIR) \
-			-i $(FRAMEWORK_SRC_DIR)/serviceDirectory \
+			-i $(LIBLEGATO_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR)/linux \
+			-i $(DAEMON_SRC_DIR)/serviceDirectory \
 			$(LOCAL_MKEXE_FLAGS)
 
 gdbCfg:
@@ -134,27 +136,30 @@ inspect:
 			$(TOOLS_SRC_DIR)/inspect/inspect.c \
 			--cflags=-DLE_SVCDIR_SERVER_SOCKET_NAME="$(LE_SVCDIR_SERVER_SOCKET_NAME)" \
 			--cflags=-DLE_SVCDIR_CLIENT_SOCKET_NAME="$(LE_SVCDIR_CLIENT_SOCKET_NAME)" \
-			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR)/linux \
+			-i $(DAEMON_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 xattr:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/xattr/xattr.c \
-			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 appStopClient:
 	mkexe -o $(BIN_DIR)/_$@ \
 			$(TOOLS_SRC_DIR)/appStopClient/appStopClient.c \
 			--cflags=-DLE_RUNTIME_DIR='"$(LE_RUNTIME_DIR)"' \
-			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 app:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/appCtrl \
 			-i $(LEGATO_INTERFACES_DIR)/supervisor \
-			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR)/linux \
 			$(LOCAL_MKEXE_FLAGS)
 
 update:
@@ -165,15 +170,15 @@ update:
 sbtrace:
 	mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/$@ \
-			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR)/linux \
 			$(LOCAL_MKEXE_FLAGS)
 
 scripts:
-	cp -u -P --preserve=all $(wildcard targetFiles/shared/bin/*) $(BIN_DIR)
+	cp -u -P --preserve=all $(wildcard framework/tools/target/linux/bin/*) $(BIN_DIR)
 
 devMode:
 	mkapp $(APP_TOOLS_SRC_DIR)/$@.adef \
-			-i $(FRAMEWORK_SRC_DIR) \
+			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKAPP_FLAGS)
 
 # Rule to bundle proprietary apps
@@ -181,7 +186,7 @@ ${PROPRIETARY_APPS}: export LEGATO_PROPRIETARY_QCT_DIR=${LEGATO_ROOT}/proprietar
 ${PROPRIETARY_APPS}:
 	mkapp $(APPS_PROPRIETARY_SRC_DIR)/$@/src/$@.adef \
 			-b \
-			-i ${LEGATO_ROOT}/interfaces/modemServices \
+			-i $(LEGATO_ROOT)/interfaces/modemServices \
 			-t $(TARGET) \
 			-o $(LEGATO_ROOT)/build/$(TARGET)/proprietary/$@ \
 			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/proprietary/$@ \

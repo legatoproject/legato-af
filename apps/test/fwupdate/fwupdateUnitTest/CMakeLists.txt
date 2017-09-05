@@ -17,7 +17,7 @@ mkexe(${TEST_EXEC}
     fwupdateComp
     .
     -i ${LEGATO_FWUPDATE}/fwupdateDaemon
-    -i ${LEGATO_ROOT}/framework/c/src
+    -i ${LEGATO_ROOT}/framework/liblegato
     -i ${LEGATO_FWUPDATE}/platformAdaptor/inc
     -i ${LEGATO_ROOT}/platformAdaptor/simu/components/le_pa_fwupdate
     -i ${PA_DIR}/simu/components/le_pa_fwupdate

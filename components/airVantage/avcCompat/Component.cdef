@@ -11,8 +11,8 @@ cflags:
 {
     -I${LEGATO_ROOT}/components/airVantage/platformAdaptor/inc
     -I${LEGATO_ROOT}/components/airVantage/avcDaemon
-    -I$LEGATO_ROOT/framework/c/src
-    -I${LEGATO_ROOT}/framework/c/src/appCfg
+    -I$LEGATO_ROOT/framework/liblegato
+    -I${LEGATO_ROOT}/components/appCfg
 }
 
 requires:
@@ -27,7 +27,7 @@ requires:
 
     component:
     {
-        $LEGATO_ROOT/framework/c/src/appCfg
+        $LEGATO_ROOT/components/appCfg
         $LEGATO_AVC_PA_DEFAULT
         $LEGATO_AVC_PA
     }

@@ -1,0 +1,17 @@
+sources:
+{
+    appCfg.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/framework/liblegato
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+    }
+}

@@ -17,7 +17,7 @@ mkexe(${TEST_EXEC}
     .
     -i ${LEGATO_AUDIO}/
     -i ${LEGATO_AUDIO}/platformAdaptor/inc
-    -i ${LEGATO_ROOT}/framework/c/src
+    -i ${LEGATO_ROOT}/framework/liblegato
     -i ${PA_DIR}/simu/components/le_pa_audio
     -C "-fvisibility=default"
     ${CFLAGS}

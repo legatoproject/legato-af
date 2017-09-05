@@ -17,7 +17,7 @@ requires:
     component:
     {
         $LEGATO_ROOT/components/airVantage/avcDaemon
-        $LEGATO_ROOT/framework/c/src/appCfg
+        $LEGATO_ROOT/components/appCfg
         $LEGATO_AVC_PA
     }
 }
@@ -26,8 +26,8 @@ cflags:
 {
     -std=c99
     -I$CURDIR/../platformAdaptor/inc
-    -I${LEGATO_ROOT}/framework/c/src    // TODO: Remove this encapsulation breakage.
-    -I${LEGATO_ROOT}/framework/c/src/appCfg    // TODO: Remove this encapsulation breakage.
+    -I${LEGATO_ROOT}/framework/liblegato    // TODO: Remove this encapsulation breakage.
+    -I${LEGATO_ROOT}/components/appCfg
 }
 
 sources:

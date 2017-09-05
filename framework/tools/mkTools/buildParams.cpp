@@ -34,7 +34,7 @@ BuildParams_t::BuildParams_t
 
     interfaceDirs.push_back(path::Combine(frameworkRootPath, "interfaces"));
 
-    interfaceDirs.push_back(path::Combine(frameworkRootPath, "framework/c/inc"));
+    interfaceDirs.push_back(path::Combine(frameworkRootPath, "framework/include"));
 }
 
 

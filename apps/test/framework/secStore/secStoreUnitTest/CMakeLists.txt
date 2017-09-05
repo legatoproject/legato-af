@@ -19,8 +19,9 @@ function(add_secstore_test TEST_NAME)
         -i secStoreComp/
         -i ${LEGATO_ROOT}/interfaces/secureStorage/
         -i ${LEGATO_SECSTORE}/platformAdaptor/inc
-        -i ${LEGATO_ROOT}/framework/c/src
-        -i ${LEGATO_ROOT}/framework/c/src/appCfg
+        -i ${LEGATO_ROOT}/framework/liblegato
+        -i ${LEGATO_ROOT}/framework/liblegato/linux
+        -i ${LEGATO_ROOT}/components/appCfg
         -i ${PA_DIR}/simu/components/le_pa_secStore
         -i ${PA_DIR}/simu/components/simuConfig
         -C "-fvisibility=default -g"

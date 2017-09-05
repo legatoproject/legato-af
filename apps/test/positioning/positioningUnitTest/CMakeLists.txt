@@ -3,8 +3,8 @@
 #*******************************************************************************
 
 if ($ENV{TARGET} MATCHES "localhost")
-    set(LEGATO_FRAMEWORK_SRC "${LEGATO_ROOT}/framework/c/src")
-    set(LEGATO_FRAMEWORK_INC "${LEGATO_ROOT}/framework/c/inc")
+    set(LEGATO_FRAMEWORK_SRC "${LEGATO_ROOT}/framework/liblegato")
+    set(LEGATO_FRAMEWORK_INC "${LEGATO_ROOT}/framework/include")
     set(LEGATO_POS_SERVICES "${LEGATO_ROOT}/components/positioning/posDaemon")
     set(LEGATO_POS_PA "${LEGATO_ROOT}/components/positioning/platformAdaptor")
     set(LEGATO_CFG_ENTRIES "${LEGATO_ROOT}/components/cfgEntries")

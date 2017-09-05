@@ -16,7 +16,8 @@ set(TESTLOG_STDERR_FILE_PATH            ${CMAKE_CURRENT_BINARY_DIR}/logStdErr.tx
 set(TESTLOG_LOGTEST_PATH                ${EXECUTABLE_OUTPUT_PATH}/${TEST_EXEC})
 
 add_definitions(-DTESTLOG_LOGTOOL_PATH="${TESTLOG_LOGTOOL_PATH}"
-                -DTESTLOG_STDERR_FILE_PATH="${TESTLOG_STDERR_FILE_PATH}")
+                -DTESTLOG_STDERR_FILE_PATH="${TESTLOG_STDERR_FILE_PATH}"
+                -I${LEGATO_ROOT}/framework/liblegato)
 
 # Executable
 

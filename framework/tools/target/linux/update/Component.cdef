@@ -1,0 +1,19 @@
+requires:
+{
+    api:
+    {
+        le_update.api [manual-start]
+        le_updateCtrl.api [manual-start]
+        le_appRemove.api [manual-start]
+    }
+}
+
+sources:
+{
+    update.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/framework/liblegato
+}

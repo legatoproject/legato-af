@@ -1,0 +1,39 @@
+provides:
+{
+    api:
+    {
+        le_update.api
+        le_appRemove.api
+        le_instStat.api
+        le_updateCtrl.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        le_cfg.api
+        le_cfgAdmin.api
+        le_fwupdate.api  [manual-start]
+        le_appCtrl.api [manual-start]
+        le_framework.api [manual-start]
+    }
+
+    component:
+    {
+        appCfg
+    }
+}
+
+sources:
+{
+    updateDaemon.c
+    updateUnpack.c
+    instStat.c
+    app.c
+    appUser.c
+    system.c
+    updateCtrl.c
+    supCtrl.c
+}

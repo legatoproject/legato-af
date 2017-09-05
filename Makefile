@@ -318,7 +318,6 @@ stage_embedded:
 			echo "  $$appName ($$md5) <-- EXCLUDED FROM .CWE (must be preloaded on target)" ; \
 		fi \
 	done
-	cp -r targetFiles/shared/bin build/$(TARGET)/staging/system/
 	# Print some diagnostic messages.
 	@echo "== built system's info.properties: =="
 	cat build/$(TARGET)/staging/system/info.properties
@@ -361,7 +360,7 @@ stage_localhost:
 
 .PHONY: stage_shared
 stage_shared:
-	install targetFiles/shared/bin/start build/$(TARGET)/staging
+	install framework/tools/target/linux/bin/start build/$(TARGET)/staging
 
 # ==== 9x15-based Sierra Wireless modules ====
 

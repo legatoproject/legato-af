@@ -6,7 +6,7 @@ set(APP_TARGET testFwUsers)
 
 mkexe(  ${APP_TARGET}
             userTest.c
-            -i ${PROJECT_SOURCE_DIR}/framework/c/src
+            -i ${PROJECT_SOURCE_DIR}/framework/liblegato/linux
         )
 
 # This is a C test

@@ -6,7 +6,7 @@ set(TEST_EXEC atClientUnitTest)
 set(TEST_SOURCE "${LEGATO_ROOT}/apps/test/atServices/atClientUnitTest/")
 
 set(LEGATO_AT_SERVICES "${LEGATO_ROOT}/components/atServices")
-set(LEGATO_FRAMEWORK_SRC "${LEGATO_ROOT}/framework/c/src")
+set(LEGATO_FRAMEWORK_SRC "${LEGATO_ROOT}/framework/liblegato")
 
 set(MKEXE_CFLAGS "-fvisibility=default -g $ENV{CFLAGS}")
 
