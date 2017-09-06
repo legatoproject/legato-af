@@ -555,6 +555,7 @@ void* gpioSysfs_SetChangeCallback
 {
     char monFile[128];
     int monFd = -1;
+    le_result_t leResult;
 
     // Only one handler is allowed here
     if (gpioRef->fdMonitor != NULL)
@@ -563,11 +564,25 @@ void* gpioSysfs_SetChangeCallback
         return NULL;
     }
 
-    // Set the edge detection mode
-    if (LE_OK != SetEdgeSense(gpioRef, edge))
+    if ((!gpioRef) || (gpioRef->pinNum == 0))
     {
-        LE_KILL_CLIENT("Unable to set edge detection correctly");
+        LE_KILL_CLIENT("gpioRef is NULL or object not initialized");
         return NULL;
+    }
+
+    leResult = SetEdgeSense(gpioRef, edge);
+    // Set the edge detection mode
+    if (leResult != LE_OK)
+    {
+        if (leResult == LE_BAD_PARAMETER)
+        {
+            LE_ERROR("Path doesn't exist to set edge detection");
+        }
+        else
+        {
+            LE_KILL_CLIENT("Unable to set edge detection correctly");
+            return NULL;
+        }
     }
 
     // Store the callback function and context pointer

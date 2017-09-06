@@ -45,8 +45,11 @@
  * Use the ChangeEvent to register a notification callback function to be called when the
  * state of an input pin changes. Thje type of edge detection can then be modified by calling
  * SetEdgeSense() or DisableEdgeSense()
- * @note Only one handler can be registered per pin. Subsequent attempts to register a handler
- * will result in the client being killed.
+ * @note The client will be killed for below scenarios:
+ * - Only one handler can be registered per pin. Subsequent attempts to register a handler
+ *   will result in the client being killed.
+ * - If the GPIO object reference is NULL or not initialized.
+ * - When unable to set edge detection correctly.
  *
  * The following functions can be used to read the current setting for a GPIO Pin. In a Linux
  * environment these values are read from the sysfs and reflect the actual value at the time
