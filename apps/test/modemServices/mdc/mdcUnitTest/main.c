@@ -67,6 +67,33 @@ le_msg_SessionRef_t le_mrc_GetClientSessionRef
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the server service reference (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_sim_GetServiceRef
+(
+    void
+)
+{
+    return _ServerServiceRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message (STUBBED FUNCTION)
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_sim_GetClientSessionRef
+(
+    void
+)
+{
+    return _ClientSessionRef;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The goal of this test is to:
  * - Allocate profile.
  * - Test the configuration of profiles.

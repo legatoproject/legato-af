@@ -223,6 +223,19 @@ pa_mrc_SignalStrengthIndication_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Network reject indication structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    le_mrc_Rat_t  rat;                   ///< RAT of the measured signal
+    char          mcc[LE_MRC_MCC_BYTES]; ///< MCC: Mobile Country Code
+    char          mnc[LE_MRC_MNC_BYTES]; ///< MNC: Mobile Network Code
+}
+pa_mrc_NetworkRejectIndication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Prototype for handler functions used to report Signal Strength changes.
  *
  * @param ssIndPtr The Signal Strength change indication.
@@ -267,6 +280,18 @@ typedef void (*pa_mrc_RatChangeHdlrFunc_t)
 typedef void (*pa_mrc_ServiceChangeHdlrFunc_t)
 (
     le_mrc_NetRegState_t* servicePtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report network reject.
+ *
+ * @param networkRejectIndPtr The network reject indication.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_mrc_NetworkRejectIndHdlrFunc_t)
+(
+    pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -959,6 +984,33 @@ LE_SHARED le_result_t pa_mrc_GetPacketSwitchedState
     le_mrc_NetRegState_t* statePtr  ///< [OUT] The current Packet switched state.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Network Reject Indication.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_mrc_AddNetworkRejectIndHandler
+(
+    pa_mrc_NetworkRejectIndHdlrFunc_t networkRejectIndHandler, ///< [IN] The handler function to
+                                                               ///  handle network reject
+                                                               ///  indication.
+    void*                              contextPtr              ///< [IN] The context to be given to
+                                                               ///  the handler.
+);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Network Reject Indication handling.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mrc_RemoveNetworkRejectIndHandler
+(
+    le_event_HandlerRef_t handlerRef
+);
 
 #endif // LEGATO_PARC_INCLUDE_GUARD

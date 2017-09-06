@@ -512,3 +512,83 @@ le_result_t pa_sim_SendCommand
     LE_ERROR("Unsupported function called");
     return LE_UNSUPPORTED;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to reset the SIM.
+ *
+ * @return
+ *      - LE_OK          On success.
+ *      - LE_FAULT       On failure.
+ *      - LE_UNSUPPORTED The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_Reset
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to write the FPLMN list into the modem.
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_FAULT          On failure.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_WriteFPLMNList
+(
+    le_dls_List_t *FPLMNListPtr ///< [IN] List of FPLMN operators
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the number of FPLMN operators present in the list.
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_FAULT          On failure.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_CountFPLMNOperators
+(
+    uint32_t*  nbItemPtr     ///< [OUT] number of FPLMN operator found if success.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to read the FPLMN list.
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_NOT_FOUND      If no FPLMN network is available.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_ReadFPLMNOperators
+(
+    pa_sim_FPLMNOperator_t* FPLMNOperatorPtr,   ///< [OUT] FPLMN operators.
+    uint32_t* FPLMNOperatorCountPtr             ///< [IN/OUT] FPLMN operator count.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}

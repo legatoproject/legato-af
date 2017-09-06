@@ -11,5 +11,12 @@ sources:
 {
     main.c
     ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_sim.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_mrc.c
     simu/components/le_pa/pa_sim_simu.c
+    simu/components/le_pa/pa_mrc_simu.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
 }

@@ -1976,7 +1976,7 @@ FUNCTION le_result_t GetTdScdmaBandCapabilities
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler to report Network Reject indication.
+ * Handler to report network reject indication.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1989,7 +1989,7 @@ HANDLER NetworkRejectHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Event to report Network Reject indication.
+ * Event to report network reject indication.
  *
  */
 //--------------------------------------------------------------------------------------------------

@@ -9,7 +9,14 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "pa_sim.h"
+#include "le_mrc_local.h"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Maximum FPLMN list count.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_NUM_FPLMN_LISTS 1
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -63,6 +70,20 @@ typedef struct
     le_sim_States_t  state;   ///< SIM state.
 }
 Sim_Event_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * FPLMN list structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_sim_FPLMNListRef_t FPLMNListRef;      ///< FPLMN List reference.
+    le_msg_SessionRef_t   sessionRef;        ///< Client session reference.
+    le_dls_List_t         list;              ///< Link list to insert new FPLMN operator.
+    le_dls_Link_t*        currentLink;       ///< Link list pointed to current FPLMN operator.
+}
+le_sim_FPLMNList_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -166,6 +187,28 @@ static ApduMsg_t CommercialSwapApduReq[LE_SIM_MANUFACTURER_MAX] =
     // VALID
     { 13 , {0x80, 0xC2, 0x00, 0x00, 0x08, 0xCF, 0x06, 0x19, 0x01, 0x80, 0x58, 0x01, 0x80} }
 };
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Safe Reference Map for FPLMN list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t FPLMNListRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for FPLMN list.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t FPLMNListPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for FPLMN network Operator.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t FPLMNOperatorPool;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -492,6 +535,183 @@ static le_result_t CheckSimValidity
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current FPLMN operator list.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on failure
+ *      - LE_BAD_PARAMETER when bad parameter given into this function
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetFPLMNOperatorsList
+(
+    le_dls_List_t* FPLMNListPtr    ///< [IN/OUT] The FPLMN operators list.
+)
+{
+    uint32_t total = 0;
+    le_result_t res;
+
+    if (NULL == FPLMNListPtr)
+    {
+        LE_ERROR("FPLMNListPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (LE_OK == pa_sim_CountFPLMNOperators(&total))
+    {
+        if (0 == total)
+        {
+            LE_DEBUG("FPLMN list is empty");
+        }
+        else
+        {
+            size_t i;
+            pa_sim_FPLMNOperator_t paFPLMNOperatorPtr[total];
+            memset(paFPLMNOperatorPtr, 0, sizeof(pa_sim_FPLMNOperator_t)*total);
+
+            res = pa_sim_ReadFPLMNOperators(paFPLMNOperatorPtr, &total);
+
+            if (LE_OK == res)
+            {
+                for (i = 0; i < total; i++)
+                {
+                    pa_sim_FPLMNOperator_t* FPLMNOperatorPtr =
+                        (pa_sim_FPLMNOperator_t*)le_mem_ForceAlloc(FPLMNOperatorPool);
+
+                    memcpy(FPLMNOperatorPtr, &paFPLMNOperatorPtr[i],
+                           sizeof(pa_sim_FPLMNOperator_t));
+
+                    FPLMNOperatorPtr->link = LE_DLS_LINK_INIT;
+                    le_dls_Queue(FPLMNListPtr, &(FPLMNOperatorPtr->link));
+
+                    LE_DEBUG("MCC.%s MNC.%s", FPLMNOperatorPtr->mobileCode.mcc,
+                                              FPLMNOperatorPtr->mobileCode.mnc);
+                }
+            }
+        }
+
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get FPLMN operator code (MCC and  MNC) from FPLMN operator link.
+ *
+ * @return
+ *      - LE_FAULT         Function failed.
+ *      - LE_OVERFLOW      MCC/MNC string size is greater than string length parameter which has
+ *                         been given into this function.
+ *      - LE_OK            Function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetFPLMNOperator
+(
+    le_sim_FPLMNList_t* FPLMNListPtr,         ///< [IN] FPLMN list pointer.
+    le_dls_Link_t* FPLMNLinkPtr,              ///< [IN] FPLMN operator link.
+    char* mccPtr,                             ///< [OUT] Mobile Country Code.
+    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code.
+    char* mncPtr,                             ///< [OUT] Mobile Network Code.
+    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code.
+)
+{
+    pa_sim_FPLMNOperator_t* FPLMNOperatorPtr;
+
+    if (NULL != FPLMNLinkPtr)
+    {
+        FPLMNOperatorPtr = CONTAINER_OF(FPLMNLinkPtr, pa_sim_FPLMNOperator_t, link);
+        FPLMNListPtr->currentLink = FPLMNLinkPtr;
+
+        if (LE_OVERFLOW == le_utf8_Copy(mccPtr, FPLMNOperatorPtr->mobileCode.mcc, mccPtrSize, NULL))
+        {
+            LE_ERROR("Mobile Country Code string size is greater than mccPtrSize");
+            return LE_OVERFLOW;
+        }
+
+        if (LE_OVERFLOW == le_utf8_Copy(mncPtr, FPLMNOperatorPtr->mobileCode.mnc, mncPtrSize, NULL))
+        {
+            LE_ERROR("Mobile Network Code string size is greater than mncPtrNumElements");
+            return LE_OVERFLOW;
+        }
+
+        return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to clear the FPLMN list.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_FAULT          for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteFPLMNOperatorsList
+(
+    le_dls_List_t *FPLMNOperatorsListPtr ///< [IN] List of FPLMN operators.
+)
+{
+    pa_sim_FPLMNOperator_t* nodePtr;
+    le_dls_Link_t *linkPtr;
+
+    while ((linkPtr = le_dls_Pop(FPLMNOperatorsListPtr)) != NULL)
+    {
+        nodePtr = CONTAINER_OF(linkPtr, pa_sim_FPLMNOperator_t, link);
+        le_mem_Release(nodePtr);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler function to the close session service.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void CloseSessionEventHandler
+(
+    le_msg_SessionRef_t sessionRef,  ///< [IN] Session reference of client application.
+    void*               contextPtr   ///< [IN] Context pointer of CloseSessionEventHandler.
+)
+{
+    if (!sessionRef)
+    {
+        LE_ERROR("ERROR sessionRef is NULL");
+        return;
+    }
+
+    // Clean session context.
+    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+
+    le_ref_IterRef_t iterRef = le_ref_GetIterator(FPLMNListRefMap);
+    le_result_t result = le_ref_NextNode(iterRef);
+    while (LE_OK == result)
+    {
+        le_sim_FPLMNList_t* FPLMNListPtr = (le_sim_FPLMNList_t*)le_ref_GetValue(iterRef);
+
+        // Check if the session reference saved matchs with the current session reference.
+        if (FPLMNListPtr->sessionRef == sessionRef)
+        {
+            le_sim_FPLMNListRef_t FPLMNListRef = (le_sim_FPLMNListRef_t) le_ref_GetSafeRef(iterRef);
+
+            LE_DEBUG("Release FPLMNList reference 0x%p, sessionRef 0x%p", FPLMNListRef, sessionRef);
+
+            // Release message List.
+            le_sim_DeleteFPLMNList(FPLMNListRef);
+        }
+        // Get the next value in the reference map.
+        result = le_ref_NextNode(iterRef);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
 
@@ -521,6 +741,18 @@ le_result_t le_sim_Init
         SimList[i].Subscription = UNKNOWN_SUBSCRIPTION;
         GetSimCardInformation(&SimList[i], LE_SIM_ABSENT);
     }
+
+    // Create FPLMN list pool
+    FPLMNListPool = le_mem_CreatePool("FPLMNListPool", sizeof(le_sim_FPLMNList_t));
+
+    // Create the Safe Reference Map to use for FPLMN Operator list
+    FPLMNListRefMap = le_ref_CreateMap("FPLMNListRefMap", MAX_NUM_FPLMN_LISTS);
+
+    // Create the FPLMN operator memory pool
+    FPLMNOperatorPool = le_mem_CreatePool("FPLMNOperatorPool", sizeof(pa_sim_FPLMNOperator_t));
+
+    // Add a handler to the close session service.
+    le_msg_AddServiceCloseHandler(le_sim_GetServiceRef(), CloseSessionEventHandler, NULL);
 
     // Create an event Id for new SIM state notifications
     NewSimStateEventId = le_event_CreateId("NewSimStateEventId", sizeof(Sim_Event_t));
@@ -1923,20 +2155,31 @@ le_result_t le_sim_SendCommand
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_Reset
 (
-    le_sim_Id_t simId
-        ///< [IN] The SIM identifier.
+    le_sim_Id_t simId        ///< [IN] The SIM identifier.
 )
 {
-    return LE_FAULT;
+    if (LE_OK != le_sim_SelectCard(simId))
+    {
+        LE_ERROR("Not able to select the SIM");
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_Reset())
+    {
+        LE_ERROR("Not able to reset the SIM");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create empty FPLMN list.
+ * Create empty FPLMN list to insert FPLMN operators.
  *
  * @return
  *      - Reference to the List object.
- *      - Null pointer if not able to create list.
+ *      - Null pointer if not able to create list reference.
  */
 //--------------------------------------------------------------------------------------------------
 le_sim_FPLMNListRef_t le_sim_CreateFPLMNList
@@ -1944,50 +2187,99 @@ le_sim_FPLMNListRef_t le_sim_CreateFPLMNList
     void
 )
 {
-    return NULL;
+    le_sim_FPLMNList_t* FPLMNListPtr = (le_sim_FPLMNList_t*)le_mem_ForceAlloc(FPLMNListPool);
+
+    FPLMNListPtr->list = LE_DLS_LIST_INIT;
+    FPLMNListPtr->currentLink = NULL;
+
+    // Store client session reference.
+    FPLMNListPtr->sessionRef = le_sim_GetClientSessionRef();
+
+    // Create and return a Safe Reference for this List object.
+    FPLMNListPtr->FPLMNListRef = le_ref_CreateRef(FPLMNListRefMap, FPLMNListPtr);
+    return FPLMNListPtr->FPLMNListRef;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Add FPLMN network into the newly created FPLMN list.
+ * If the FPLMNListRef, mcc or mnc is not valid then this function will kill the calling client.
  *
  * @return
  *      - LE_FAULT         Function failed.
  *      - LE_OK            Function succeeded.
+ *      - LE_OVERFLOW      If FPLMN operator can not be inserted into FPLMN list.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_AddFPLMNOperator
 (
-    le_sim_FPLMNListRef_t FPLMNListRef,
-        ///< [IN] FPLMN list reference.
-    const char* mcc,
-        ///< [IN] Mobile Country Code.
-    const char* mnc
-        ///< [IN] Mobile Network Code.
+    le_sim_FPLMNListRef_t FPLMNListRef,    ///< [IN] FPLMN list reference.
+    const char* mcc,                       ///< [IN] Mobile Country Code.
+    const char* mnc                        ///< [IN] Mobile Network Code.
 )
 {
-    return LE_FAULT;
+    pa_sim_FPLMNOperator_t* FPLMNOperatorPtr;
+
+    le_sim_FPLMNList_t *FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
+    if (NULL == FPLMNListPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", FPLMNListRef);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != le_mrc_TestMccMnc(mcc, mnc))
+    {
+        LE_KILL_CLIENT("Invalid mcc or mnc");
+        return LE_FAULT;
+    }
+
+    FPLMNOperatorPtr = le_mem_ForceAlloc(FPLMNOperatorPool);
+
+    le_utf8_Copy(FPLMNOperatorPtr->mobileCode.mcc, mcc, LE_MRC_MCC_BYTES, NULL);
+    le_utf8_Copy(FPLMNOperatorPtr->mobileCode.mnc, mnc, LE_MRC_MNC_BYTES, NULL);
+    FPLMNOperatorPtr->link = LE_DLS_LINK_INIT;
+
+    le_dls_Queue(&(FPLMNListPtr->list), &(FPLMNOperatorPtr->link));
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Write FPLMN list into the SIM.
+ * If the FPLMNListRef is not valid then this function will kill the calling client.
  *
  * @return
  *      - LE_FAULT         Function failed.
  *      - LE_OK            Function succeeded.
- *
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_WriteFPLMNList
 (
-    le_sim_Id_t simId,
-        ///< [IN] The SIM identifier.
-    le_sim_FPLMNListRef_t FPLMNListRef
-        ///< [IN] FPLMN list reference.
+    le_sim_Id_t simId,                    ///< [IN] The SIM identifier.
+    le_sim_FPLMNListRef_t FPLMNListRef    ///< [IN] FPLMN list reference.
 )
 {
-    return LE_FAULT;
+    le_sim_FPLMNList_t *FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
+    if (NULL == FPLMNListPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", FPLMNListRef);
+        return LE_FAULT;
+    }
+
+    if (LE_OK != le_sim_SelectCard(simId))
+    {
+        LE_ERROR("Not able to select the SIM");
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_sim_WriteFPLMNList(&(FPLMNListPtr->list)))
+    {
+        LE_ERROR("Could not write FPLMN list into the SIM");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1996,75 +2288,141 @@ le_result_t le_sim_WriteFPLMNList
  *
  * @return
  *      - Reference to the List object.
- *      - Null pointer if there is no FPLMN list entry.
+ *      - Null pointer if FPLMN list is not able to read from the SIM.
  */
 //--------------------------------------------------------------------------------------------------
 le_sim_FPLMNListRef_t le_sim_ReadFPLMNList
 (
-    le_sim_Id_t simId
-        ///< [IN] The SIM identifier.
+    le_sim_Id_t simId                       ///< [IN] The SIM identifier.
 )
 {
-    return NULL;
+    le_sim_FPLMNList_t* FPLMNListPtr = (le_sim_FPLMNList_t*)le_mem_ForceAlloc(FPLMNListPool);
+
+    FPLMNListPtr->list = LE_DLS_LIST_INIT;
+    FPLMNListPtr->currentLink = NULL;
+
+    le_result_t res = GetFPLMNOperatorsList(&(FPLMNListPtr->list));
+
+    if (LE_OK == res)
+    {
+        // Store client session reference.
+        FPLMNListPtr->sessionRef = le_sim_GetClientSessionRef();
+
+        // Create and return a Safe Reference for this List object.
+        FPLMNListPtr->FPLMNListRef = le_ref_CreateRef(FPLMNListRefMap, FPLMNListPtr);
+        return FPLMNListPtr->FPLMNListRef;
+    }
+    else
+    {
+        LE_ERROR("Not able to read the FPLMN List from the SIM");
+        le_mem_Release(FPLMNListPtr);
+        return NULL;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read the first FPLMN network from the list of FPLMN objects
- * retrieved with le_sim_ReadFPLMNList().
+ * Read the first FPLMN network from the list of FPLMN objects retrieved with
+ * le_sim_ReadFPLMNList().
+ * If the FPLMNListRef, mccPtr or mncPtr is not valid then this function will kill the calling
+ * client.
  *
  * @return
  *      - LE_FAULT         Function failed.
+ *      - LE_OVERFLOW      MCC/MNC string size is greater than string length parameter which has
+ *                         been given into this function.
  *      - LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetFirstFPLMNOperator
 (
-    le_sim_FPLMNListRef_t FPLMNListRef,
-        ///< [IN] FPLMN list reference.
-    char* mccPtr,
-        ///< [OUT] Mobile Country Code.
-    size_t mccPtrSize,
-        ///< [IN]
-    char* mncPtr,
-        ///< [OUT] Mobile Network Code.
-    size_t mncPtrSize
-        ///< [IN]
+    le_sim_FPLMNListRef_t FPLMNListRef,       ///< [IN] FPLMN list reference.
+    char* mccPtr,                             ///< [OUT] Mobile Country Code.
+    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code.
+    char* mncPtr,                             ///< [OUT] Mobile Network Code.
+    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code.
 )
 {
-    return LE_FAULT;
+    le_dls_Link_t*          FPLMNLinkPtr;
+    le_sim_FPLMNList_t*     FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
+
+    if (NULL == FPLMNListPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", FPLMNListRef);
+        return LE_FAULT;
+    }
+
+    if (NULL == mccPtr)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (NULL == mncPtr)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    FPLMNLinkPtr = le_dls_Peek(&(FPLMNListPtr->list));
+
+    // Get MCC/MNC code from FPLMN list.
+    return GetFPLMNOperator(FPLMNListPtr, FPLMNLinkPtr, mccPtr, mccPtrSize, mncPtr, mncPtrSize);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read the next FPLMN network from the list of FPLMN objects
- * retrieved with le_sim_ReadFPLMNList().
+ * Read the next FPLMN network from the list of FPLMN objects retrieved with le_sim_ReadFPLMNList().
+ * If the FPLMNListRef, mccPtr or mncPtr is not valid then this function will kill the calling
+ * client.
  *
  * @return
  *      - LE_FAULT         Function failed.
+ *      - LE_OVERFLOW      MCC/MNC string size is greater than string length parameter which has
+ *                         been given into this function.
  *      - LE_OK            Function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetNextFPLMNOperator
 (
-    le_sim_FPLMNListRef_t FPLMNListRef,
-        ///< [IN] FPLMN list reference.
-    char* mccPtr,
-        ///< [OUT] Mobile Country Code.
-    size_t mccPtrSize,
-        ///< [IN]
-    char* mncPtr,
-        ///< [OUT] Mobile Network Code.
-    size_t mncPtrSize
-        ///< [IN]
+    le_sim_FPLMNListRef_t FPLMNListRef,       ///< [IN] FPLMN list reference.
+    char* mccPtr,                             ///< [OUT] Mobile Country Code.
+    size_t mccPtrSize,                        ///< [IN] Size of Mobile Country Code.
+    char* mncPtr,                             ///< [OUT] Mobile Network Code.
+    size_t mncPtrSize                         ///< [IN] Size of Mobile Network Code.
 )
 {
-    return LE_FAULT;
+    le_dls_Link_t*          FPLMNLinkPtr;
+    le_sim_FPLMNList_t*     FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
+
+    if (NULL == FPLMNListPtr)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", FPLMNListRef);
+        return LE_FAULT;
+    }
+
+    if (NULL == mccPtr)
+    {
+        LE_KILL_CLIENT("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (NULL == mncPtr)
+    {
+        LE_KILL_CLIENT("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    FPLMNLinkPtr = le_dls_PeekNext(&(FPLMNListPtr->list), FPLMNListPtr->currentLink);
+
+    // Get MCC/MNC code from FPLMN list.
+    return GetFPLMNOperator(FPLMNListPtr, FPLMNLinkPtr, mccPtr, mccPtrSize, mncPtr, mncPtrSize);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete the FPLMN list created by le_sim_ReadFPLMNList() or le_sim_CreateFPLMNList().
+ * If the FPLMNListRef is not valid then this function will kill the calling client.
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned
@@ -2073,9 +2431,25 @@ le_result_t le_sim_GetNextFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 void le_sim_DeleteFPLMNList
 (
-    le_sim_FPLMNListRef_t FPLMNListRef
-        ///< [IN] FPLMN list reference.
+    le_sim_FPLMNListRef_t FPLMNListRef               ///< [IN] FPLMN list reference.
 )
 {
-    return;
+    le_sim_FPLMNList_t* FPLMNListPtr = le_ref_Lookup(FPLMNListRefMap, FPLMNListRef);
+
+    if (FPLMNListPtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid reference (%p) provided!", FPLMNListRef);
+        return;
+    }
+
+    FPLMNListPtr->currentLink = NULL;
+
+    // Release FPLMN Operator entries from the list.
+    DeleteFPLMNOperatorsList(&(FPLMNListPtr->list));
+
+    // Invalidate the Safe Reference.
+    le_ref_DeleteRef(FPLMNListRefMap, FPLMNListRef);
+
+    // Release FPLMN list object.
+    le_mem_Release(FPLMNListPtr);
 }

@@ -50,6 +50,89 @@ le_result_t le_sim_Init(void);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Server Service Reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_ServiceRef_t _ServerServiceRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Client Session Reference for the current message received from a client
+ */
+//--------------------------------------------------------------------------------------------------
+static le_msg_SessionRef_t _ClientSessionRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_sim_GetServiceRef
+(
+    void
+)
+{
+    return _ServerServiceRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_sim_GetClientSessionRef
+(
+    void
+)
+{
+    return _ClientSessionRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the server service reference
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_ServiceRef_t le_mrc_GetServiceRef
+(
+    void
+)
+{
+    return _ServerServiceRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the client session reference for the current message
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionRef_t le_mrc_GetClientSessionRef
+(
+    void
+)
+{
+    return _ClientSessionRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Registers a function to be called whenever one of this service's sessions is closed by
+ * the client.  (STUBBED FUNCTION)
+
+ */
+//--------------------------------------------------------------------------------------------------
+le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
+(
+    le_msg_ServiceRef_t             serviceRef, ///< [IN] Reference to the service.
+    le_msg_SessionEventHandler_t    handlerFunc,///< [IN] Handler function.
+    void*                           contextPtr  ///< [IN] Opaque pointer value to pass to handler.
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the pa_simu
  *
  */
@@ -971,6 +1054,78 @@ static void TestSim_SimAccess
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Test Read / write FPLMN list
+ *
+ * API tested:
+ * - le_sim_CreateFPLMNList
+ * - le_sim_AddFPLMNOperator
+ * - le_sim_WriteFPLMNList
+ * - le_sim_ReadFPLMNList
+ * - le_sim_GetFirstFPLMNOperator
+ * - le_sim_GetNextFPLMNOperator
+ *
+ * Exit if failed
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TestSIm_FPLMNList
+(
+    void
+)
+{
+    le_sim_FPLMNListRef_t FPLMNListRef;
+    le_result_t res;
+    char mcc[LE_MRC_MCC_BYTES];
+    char mnc[LE_MRC_MNC_BYTES];
+
+    // Test le_sim_CreateFPLMNList API
+    FPLMNListRef = le_sim_CreateFPLMNList();
+    LE_ASSERT(FPLMNListRef != NULL);
+
+    // Test le_sim_AddFPLMNOperator API
+    LE_ASSERT_OK(le_sim_AddFPLMNOperator(FPLMNListRef, "208", "10"));
+
+    LE_ASSERT_OK(le_sim_AddFPLMNOperator(FPLMNListRef, "311", "070"));
+
+    LE_ASSERT_OK(le_sim_AddFPLMNOperator(FPLMNListRef, "289", "88"));
+
+    LE_ASSERT_OK(le_sim_AddFPLMNOperator(FPLMNListRef, "289", "68"));
+
+    LE_ASSERT_OK(le_sim_AddFPLMNOperator(FPLMNListRef, "289", "67"));
+
+    res = le_sim_AddFPLMNOperator(NULL, "289", "67");
+    LE_ASSERT(LE_FAULT == res);
+
+    res = le_sim_AddFPLMNOperator(FPLMNListRef, "", "67");
+    LE_ASSERT(LE_FAULT == res);
+
+    // Test le_sim_WriteFPLMNList API
+    LE_ASSERT_OK(le_sim_WriteFPLMNList(CurrentSimId, FPLMNListRef));
+
+    res = le_sim_WriteFPLMNList(CurrentSimId, NULL);
+    LE_ASSERT(LE_FAULT == res);
+
+    // Test le_sim_ReadFPLMNList API
+    FPLMNListRef = le_sim_ReadFPLMNList(CurrentSimId);
+    LE_ASSERT(FPLMNListRef != NULL);
+
+    // Test le_sim_GetFirstFPLMNOperator API
+    LE_ASSERT_OK(le_sim_GetFirstFPLMNOperator(FPLMNListRef, mcc, LE_MRC_MCC_BYTES, mnc,
+                 LE_MRC_MNC_BYTES));
+
+    res = le_sim_GetFirstFPLMNOperator(FPLMNListRef, NULL, LE_MRC_MCC_BYTES, mnc, LE_MRC_MNC_BYTES);
+    LE_ASSERT(LE_FAULT == res);
+
+    // Test le_sim_GetNextFPLMNOperator API
+    LE_ASSERT_OK(le_sim_GetNextFPLMNOperator(FPLMNListRef, mcc, LE_MRC_MCC_BYTES, mnc,
+                 LE_MRC_MNC_BYTES));
+
+    res = le_sim_GetNextFPLMNOperator(FPLMNListRef, mcc, LE_MRC_MCC_BYTES, NULL, LE_MRC_MNC_BYTES);
+    LE_ASSERT(res == LE_FAULT);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * main of the test
  *
  */
@@ -1017,6 +1172,9 @@ COMPONENT_INIT
 
     LE_INFO("======== Handlers removal Test  ========");
     TestSim_RemoveHandlers();
+
+    LE_INFO("======== FPLMN list Test  ========");
+    TestSIm_FPLMNList();
 
     LE_INFO("======== UnitTest of SIM API ends with SUCCESS ========");
     exit(0);

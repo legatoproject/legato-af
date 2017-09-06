@@ -23,5 +23,19 @@ void le_mrc_Init
     void
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test mcc and mnc strings
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_TestMccMnc
+(
+    const char*   mccPtr,      ///< [IN] Mobile Country Code
+    const char*   mncPtr       ///< [IN] Mobile Network Code
+);
 
 #endif // LEGATO_MRC_LOCAL_INCLUDE_GUARD

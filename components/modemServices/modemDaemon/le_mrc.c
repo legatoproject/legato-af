@@ -378,6 +378,14 @@ static le_event_Id_t PSChangeId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event IDs for Signal Strength notification.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t NetworkRejectIndId;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Memory Pool for Signal Metrics data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -422,72 +430,6 @@ static le_event_Id_t MrcCommandEventId;
  */
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t PreferredNetworkOperatorPool;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test mcc and mnc strings
- *
- * @return
- *      - LE_OK on success
- *      - LE_FAULT on error
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t TestMccMnc
-(
-    const char*   mccPtr,      ///< [IN] Mobile Country Code
-    const char*   mncPtr       ///< [IN] Mobile Network Code
-)
-{
-    uint16_t mncLength;
-
-    if (mccPtr == NULL)
-    {
-        LE_ERROR("mccPtr is NULL !");
-        return LE_FAULT;
-    }
-    if (mncPtr == NULL)
-    {
-        LE_ERROR("mncPtr is NULL !");
-        return LE_FAULT;
-    }
-
-    // Check mcc length, mcc is encoded on LE_MRC_MCC_LEN digits
-    if (strlen(mccPtr) != LE_MRC_MCC_LEN)
-    {
-        LE_ERROR(" mcc length error != %d", LE_MRC_MCC_LEN);
-        return LE_FAULT;
-    }
-
-    // Check mnc length, mnc can be encoded on LE_MRC_MCC_LEN or LE_MRC_MCC_LEN-1 digits
-    mncLength = strlen(mncPtr);
-    if ((mncLength < (LE_MRC_MNC_LEN-1)) || (mncLength > (LE_MRC_MNC_LEN)))
-    {
-        LE_ERROR(" mnc length error %d", mncLength);
-        return LE_FAULT;
-    }
-
-    // Check mcc and mnc digits
-    const char* mccMncTab[]= {mccPtr, mncPtr, NULL};
-    const char** tmpPtr = mccMncTab;
-
-    while (*tmpPtr)
-    {
-        uint8_t idx=0;
-        do
-        {
-            if (((*tmpPtr)[idx]<'0') || ((*tmpPtr)[idx]>'9'))
-            {
-                LE_ERROR("format error %s", *tmpPtr);
-                return LE_FAULT;
-            }
-            idx++;
-        } while (idx < strlen((*tmpPtr)));
-
-        tmpPtr++;
-    }
-    return LE_OK;
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -737,7 +679,70 @@ static void SignalStrengthIndHandlerFunc
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test mcc and mnc strings
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT on error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_TestMccMnc
+(
+    const char*   mccPtr,      ///< [IN] Mobile Country Code
+    const char*   mncPtr       ///< [IN] Mobile Network Code
+)
+{
+    uint16_t mncLength;
 
+    if (mccPtr == NULL)
+    {
+        LE_ERROR("mccPtr is NULL !");
+        return LE_FAULT;
+    }
+    if (mncPtr == NULL)
+    {
+        LE_ERROR("mncPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    // Check mcc length, mcc is encoded on LE_MRC_MCC_LEN digits
+    if (strlen(mccPtr) != LE_MRC_MCC_LEN)
+    {
+        LE_ERROR(" mcc length error != %d", LE_MRC_MCC_LEN);
+        return LE_FAULT;
+    }
+
+    // Check mnc length, mnc can be encoded on LE_MRC_MCC_LEN or LE_MRC_MCC_LEN-1 digits
+    mncLength = strlen(mncPtr);
+    if ((mncLength < (LE_MRC_MNC_LEN-1)) || (mncLength > (LE_MRC_MNC_LEN)))
+    {
+        LE_ERROR(" mnc length error %d", mncLength);
+        return LE_FAULT;
+    }
+
+    // Check mcc and mnc digits
+    const char* mccMncTab[]= {mccPtr, mncPtr, NULL};
+    const char** tmpPtr = mccMncTab;
+
+    while (*tmpPtr)
+    {
+        uint8_t idx=0;
+        do
+        {
+            if (((*tmpPtr)[idx]<'0') || ((*tmpPtr)[idx]>'9'))
+            {
+                LE_ERROR("format error %s", *tmpPtr);
+                return LE_FAULT;
+            }
+            idx++;
+        } while (idx < strlen((*tmpPtr)));
+
+        tmpPtr++;
+    }
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -763,7 +768,7 @@ static void ProcessMrcCommandEventHandler
 
         LE_DEBUG("Register plmn (%s,%s)", mccStr, mncStr);
 
-        if (LE_OK != TestMccMnc(mccStr, mncStr))
+        if (LE_OK != le_mrc_TestMccMnc(mccStr, mncStr))
         {
             LE_WARN("Invalid mcc or mnc");
             return;
@@ -1083,6 +1088,59 @@ static le_result_t GetPreferredOperatorsList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The first-layer network reject indication handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerNetworkRejectHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    if (NULL == reportPtr)
+    {
+        LE_ERROR("reportPtr is NULL");
+        return;
+    }
+
+    if (NULL == secondLayerHandlerFunc)
+    {
+        LE_ERROR("secondLayerHandlerFunc is NULL");
+        return;
+    }
+
+    pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr =
+                                      (pa_mrc_NetworkRejectIndication_t*)reportPtr;
+
+    le_mrc_NetworkRejectHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(networkRejectIndPtr->mcc, networkRejectIndPtr->mnc, networkRejectIndPtr->rat,
+                      le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The network reject indication handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void NetworkRejectIndHandler
+(
+    pa_mrc_NetworkRejectIndication_t* networkRejectIndPtr
+)
+{
+    LE_INFO("Network Reject Ind Handler called with RAT.%d, mcc.%s and mnc.%s",
+             networkRejectIndPtr->rat, networkRejectIndPtr->mcc, networkRejectIndPtr->mnc);
+
+    le_event_ReportWithRefCounting(NetworkRejectIndId, networkRejectIndPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * handler function to release memory objects of modem radio control service.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1284,6 +1342,12 @@ void le_mrc_Init
     LteSsChangeId = le_event_CreateIdWithRefCounting("LteSsChange");
     CdmaSsChangeId = le_event_CreateIdWithRefCounting("CdmaSsChange");
 
+    // Create an event Id for network reject indication
+    NetworkRejectIndId = le_event_CreateIdWithRefCounting("NetworkRejectInd");
+
+    // Register a handler function for network reject indication
+    pa_mrc_AddNetworkRejectIndHandler(NetworkRejectIndHandler, NULL);
+
     // Register a handler function for new Registration State indication
     pa_mrc_AddNetworkRegHandler(NewRegStateHandler);
 
@@ -1319,6 +1383,7 @@ void le_mrc_Init
         pa_mrc_ConfigureNetworkReg(PA_MRC_ENABLE_REG_NOTIFICATION);
     }
 }
+
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1367,7 +1432,7 @@ le_result_t le_mrc_SetManualRegisterMode
 {
     le_result_t res;
 
-    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
+    if (LE_OK != le_mrc_TestMccMnc(mccPtr, mncPtr))
     {
         LE_KILL_CLIENT("Invalid mcc or mnc");
         return LE_FAULT;
@@ -1418,7 +1483,7 @@ void le_mrc_SetManualRegisterModeAsync
 {
     CmdRequest_t cmd;
 
-    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
+    if (LE_OK != le_mrc_TestMccMnc(mccPtr, mncPtr))
     {
         LE_KILL_CLIENT("Invalid mcc or mnc");
     }
@@ -1818,7 +1883,7 @@ le_result_t le_mrc_AddPreferredOperator
     le_dls_List_t preferredOperatorsList = LE_DLS_LIST_INIT;
     int32_t nbEntries;
 
-    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
+    if (LE_OK != le_mrc_TestMccMnc(mccPtr, mncPtr))
     {
         LE_KILL_CLIENT("Invalid mcc or mnc");
         return LE_FAULT;
@@ -1895,7 +1960,7 @@ le_result_t le_mrc_RemovePreferredOperator
     int32_t nbItem;
     le_result_t res;
 
-    if (LE_OK != TestMccMnc(mccPtr, mncPtr))
+    if (LE_OK != le_mrc_TestMccMnc(mccPtr, mncPtr))
     {
         LE_KILL_CLIENT("Invalid mcc or mnc");
         return LE_FAULT;
@@ -4080,19 +4145,35 @@ le_result_t le_mrc_GetTdScdmaBandCapabilities
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add handler function for EVENT 'le_mrc_NetworkReject'
+ * This function must be called to register a handler for network reject indication.
  *
- * Event to report Network Reject indication.
+ * @return A handler reference, which is only needed for later removal of the handler.
  *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
  */
 //--------------------------------------------------------------------------------------------------
 le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
 (
-    le_mrc_NetworkRejectHandlerFunc_t handlerPtr,    ///< [IN] The handler function
-    void* contextPtr                                 ///< [IN] The handler's context
+    le_mrc_NetworkRejectHandlerFunc_t handlerFuncPtr,      ///< [IN] The handler function
+    void*                             contextPtr           ///< [IN] The handler's context
 )
 {
-    return NULL;
+    le_event_HandlerRef_t handlerRef;
+
+    if (NULL == handlerFuncPtr)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("NetworkRejectHandler",
+                                             NetworkRejectIndId,
+                                             FirstLayerNetworkRejectHandler,
+                                             (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_NetworkRejectHandlerRef_t)(handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -4102,8 +4183,8 @@ le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
 //--------------------------------------------------------------------------------------------------
 void le_mrc_RemoveNetworkRejectHandler
 (
-    le_mrc_NetworkRejectHandlerRef_t handlerRef     ///< [IN] The handler reference
+    le_mrc_NetworkRejectHandlerRef_t handlerRef ///< [IN] The handler reference
 )
 {
-    return;
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }

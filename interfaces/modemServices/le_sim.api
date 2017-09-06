@@ -1077,11 +1077,11 @@ FUNCTION le_result_t Reset
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create empty FPLMN list.
+ * Create empty FPLMN list to insert FPLMN operators.
  *
  * @return
  *      - Reference to the List object.
- *      - Null pointer if not able to create list.
+ *      - Null pointer if not able to create list reference.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION FPLMNList CreateFPLMNList
@@ -1091,10 +1091,12 @@ FUNCTION FPLMNList CreateFPLMNList
 //--------------------------------------------------------------------------------------------------
 /**
  * Add FPLMN network into the newly created FPLMN list.
+ * If the FPLMNListRef, mcc or mnc is not valid then this function will kill the calling client.
  *
  * @return
  *      - LE_FAULT         Function failed.
  *      - LE_OK            Function succeeded.
+ *      - LE_OVERFLOW      If FPLMN operator can not be inserted into FPLMN list.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AddFPLMNOperator
@@ -1107,6 +1109,7 @@ FUNCTION le_result_t AddFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 /**
  * Write FPLMN list into the SIM.
+ * If the FPLMNListRef is not valid then this function will kill the calling client.
  *
  * @return
  *      - LE_FAULT         Function failed.
@@ -1126,7 +1129,7 @@ FUNCTION le_result_t WriteFPLMNList
  *
  * @return
  *      - Reference to the List object.
- *      - Null pointer if there is no FPLMN list entry.
+ *      - Null pointer if FPLMN list is not able to read from the SIM.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION FPLMNList ReadFPLMNList
@@ -1136,12 +1139,16 @@ FUNCTION FPLMNList ReadFPLMNList
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read the first FPLMN network from the list of FPLMN objects
- * retrieved with le_sim_ReadFPLMNList().
+ * Read the first FPLMN network from the list of FPLMN objects retrieved with
+ * le_sim_ReadFPLMNList().
+ * If the FPLMNListRef, mccPtr or mncPtr is not valid then this function will kill the calling
+ * client.
  *
  * @return
  *      - LE_FAULT         Function failed.
  *      - LE_OK            Function succeeded.
+ *      - LE_OVERFLOW      MCC/MNC string size is greater than string length parameter which has
+ *                         been given into this function.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetFirstFPLMNOperator
@@ -1153,12 +1160,15 @@ FUNCTION le_result_t GetFirstFPLMNOperator
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Read the next FPLMN network from the list of FPLMN objects
- * retrieved with le_sim_ReadFPLMNList().
+ * Read the next FPLMN network from the list of FPLMN objects retrieved with le_sim_ReadFPLMNList().
+ * If the FPLMNListRef, mccPtr or mncPtr is not valid then this function will kill the calling
+ * client.
  *
  * @return
  *      - LE_FAULT         Function failed.
  *      - LE_OK            Function succeeded.
+ *      - LE_OVERFLOW      MCC/MNC string size is greater than string length parameter which has
+ *                         been given into this function.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNextFPLMNOperator
@@ -1171,6 +1181,7 @@ FUNCTION le_result_t GetNextFPLMNOperator
 //--------------------------------------------------------------------------------------------------
 /**
  * Delete the FPLMN list created by le_sim_ReadFPLMNList() or le_sim_CreateFPLMNList().
+ * If the FPLMNListRef is not valid then this function will kill the calling client.
  *
  * @note
  *      On failure, the process exits, so you don't have to worry about checking the returned

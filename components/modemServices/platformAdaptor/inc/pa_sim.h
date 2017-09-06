@@ -166,6 +166,32 @@ typedef struct
 pa_sim_StkEvent_t;
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Mobile code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char mcc[LE_MRC_MCC_BYTES]; ///< MCC: Mobile Country Code
+    char mnc[LE_MRC_MNC_BYTES]; ///< MNC: Mobile Network Code
+}
+pa_sim_MobileCode_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * FPLMN operators.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    pa_sim_MobileCode_t mobileCode; ///< Mobile code
+    le_dls_Link_t       link;       ///< link for the FPLMN list
+}
+pa_sim_FPLMNOperator_t;
+
+//--------------------------------------------------------------------------------------------------
 // APIs.
 //--------------------------------------------------------------------------------------------------
 
@@ -591,5 +617,68 @@ LE_SHARED le_result_t pa_sim_SendCommand
     size_t*          responseNumElementsPtr ///< [IN/OUT] Size of response
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to reset UIM.
+ *
+ * @return
+ *      - LE_OK          On success.
+ *      - LE_FAULT       On failure.
+ *      - LE_UNSUPPORTED The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_Reset
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to write the FPLMN list.
+ *
+ * @return
+ *      - LE_OK            On success.
+ *      - LE_FAULT         If FPLMN list is not able to write into device.
+ *      - LE_BAD_PARAMETER A parameter is invalid.
+ *      - LE_UNSUPPORTED   The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_WriteFPLMNList
+(
+    le_dls_List_t *FPLMNListPtr   ///< [IN] FPLMN list.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the number of FPLMN operators present in the list.
+ *
+ * @return
+ *      - LE_OK            On success.
+ *      - LE_FAULT         On failure.
+ *      - LE_BAD_PARAMETER A parameter is invalid.
+ *      - LE_UNSUPPORTED   The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_CountFPLMNOperators
+(
+    uint32_t*  nbItemPtr     ///< [OUT] number of FPLMN operator found if success.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to read the FPLMN list.
+ *
+ * @return
+ *      - LE_OK            On success.
+ *      - LE_NOT_FOUND     If no FPLMN network is available.
+ *      - LE_BAD_PARAMETER A parameter is invalid.
+ *      - LE_UNSUPPORTED   The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_ReadFPLMNOperators
+(
+    pa_sim_FPLMNOperator_t* FPLMNOperatorPtr,   ///< [OUT] FPLMN operators.
+    uint32_t* FPLMNOperatorCountPtr             ///< [IN/OUT] FPLMN operator count.
+);
 
 #endif // LEGATO_PASIM_INCLUDE_GUARD
