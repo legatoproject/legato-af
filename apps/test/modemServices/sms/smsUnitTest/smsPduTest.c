@@ -200,7 +200,7 @@ static const PduAssoc_t PduAssocDb[] =
     },
     /* 2 */
     {
-        .dest = "0617190547",
+        .dest = "+33617190547",
         .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus"
                         ", quis volutpat erat.",
         .type = PA_SMS_SUBMIT,
@@ -1188,6 +1188,196 @@ static const PduReceived_t PduReceivedDb[] =
             },
         },
     },
+
+    /* 11 */
+    /*
+     * 04 0B 91 33 67 50 92 46  F0 00 10 71 90 10 61 14 54 80 05 E8 32 9B FD 06
+     *
+     * PDU LENGTH IS 24 BYTES
+     * NO SMSC ADDRESS PRESENT
+     * MESSAGE HEADER FLAGS
+     * MESSAGE TYPE :  SMS DELIVER
+     * MSGS WAITING IN SC :    NO
+     * LOOP PREVENTION :   NO
+     * SEND STATUS REPORT :    NO
+     * USER DATA HEADER :  NO UDH
+     * REPLY PATH :    NO
+     *
+     * ORIGINATING ADDRESS
+     * NUMBER IS : +33760529640
+     * TYPE OF NR. :   International
+     * NPI :   ISDN/Telephone (E.164/163)
+     *
+     * PROTOCOL IDENTIFIER (0x00)
+     * MESSAGE ENTITIES :  SME-to-SME
+     * PROTOCOL USED : Implicit / SC-specific
+     *
+     * DATA CODING SCHEME  (0x10)
+     * AUTO-DELETION : OFF
+     * COMPRESSION :   OFF
+     * MESSAGE CLASS : 0 (imm. display)
+     * ALPHABET USED : 7bit default
+     *
+     * SMSC TIMESTAMP :    01/09/17 16:41 GMT+2,00
+     * USER DATA PART OF SM
+     * USER DATA LENGTH :  5 septets
+     * USER DATA (TEXT) :  hello
+     */
+    {
+        .checkLength = true,
+        .checkData = true,
+        .proto = PA_SMS_PROTOCOL_GSM,
+        .length = 24,
+        .data =
+        {
+            0x04, 0x0B, 0x91, 0x33, 0x67, 0x50, 0x92, 0x46, 0xF0, 0x00,
+            0x10, 0x71, 0x90, 0x10, 0x61, 0x14, 0x54, 0x80, 0x05, 0xE8,
+            0x32, 0x9B, 0xFD, 0x06,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "+33760529640",
+                    .format = LE_SMS_FORMAT_TEXT,
+                    .scts = "01/09/17,16:41:+04",
+                    .data = "hello",
+                    .dataLen = 5,
+                },
+            },
+        },
+    },
+
+    /* 12 */
+    /*
+     * 04 0B 91 33 67 50 92 46 F0 00 C0 71 90 40 11 93 63 80 00
+     *
+     * PDU LENGTH IS 16 BYTES
+     * NO SMSC ADDRESS PRESENT
+     * MESSAGE HEADER FLAGS
+     * MESSAGE TYPE :  SMS DELIVER
+     * MSGS WAITING IN SC :    NO
+     * LOOP PREVENTION :   NO
+     * SEND STATUS REPORT :    NO
+     * USER DATA HEADER :  NO UDH
+     * REPLY PATH :    NO
+     *
+     * ORIGINATING ADDRESS
+     * NUMBER IS : +33760529640
+     * TYPE OF NR. :   International
+     * NPI :   ISDN/Telephone (E.164/163)
+     *
+     * PROTOCOL IDENTIFIER (0x00)
+     * MESSAGE ENTITIES :  SME-to-SME
+     * PROTOCOL USED : Implicit / SC-specific
+     *
+     * DATA CODING SCHEME  (0xC0)
+     * STORE MESSAGE : MAY
+     * MESSAGE INDICATOR : DEACTIVATE
+     * INDICATOR TYPE :    VOICEMAIL waiting
+     * ALPHABET USED : 7bit default
+     *
+     * SMSC TIMESTAMP :    04/09/17 11:39 GMT
+     * USER DATA PART OF SM
+     * USER DATA LENGTH :  0 septets
+     * USER DATA (TEXT) :  <no data>
+     */
+    {
+        .checkLength = true,
+        .checkData = true,
+        .proto = PA_SMS_PROTOCOL_UNKNOWN,
+        .length = 16,
+        .data =
+        {
+            0x04, 0x0B, 0x91, 0x33, 0x67, 0x50, 0x92, 0x46, 0xF0, 0x00,
+            0xC0, 0x71, 0x90, 0x40, 0x11, 0x93, 0x63, 0x80, 0x00,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "+33760529640",
+                    .format = LE_SMS_FORMAT_PDU,
+                    .scts = "04/09/17,11:39:+04",
+                    .data = "",
+                    .dataLen = 0,
+                },
+            },
+        },
+    },
+
+    /* 13 */
+    /*
+     * 04 0B 91 33 67 50 92 46 F0 00 C8 71 90 40 11 64
+     *
+     * PDU LENGTH IS 16 BYTES
+     * NO SMSC ADDRESS PRESENT
+     * MESSAGE HEADER FLAGS
+     * MESSAGE TYPE :  SMS DELIVER
+     * MSGS WAITING IN SC :    NO
+     * LOOP PREVENTION :   NO
+     * SEND STATUS REPORT :    NO
+     * USER DATA HEADER :  NO UDH
+     * REPLY PATH :    NO
+     *
+     * ORIGINATING ADDRESS
+     * NUMBER IS : +33760529640
+     * TYPE OF NR. :   International
+     * NPI :   ISDN/Telephone (E.164/163)
+     *
+     * PROTOCOL IDENTIFIER (0x00)
+     * MESSAGE ENTITIES :  SME-to-SME
+     * PROTOCOL USED : Implicit / SC-specific
+     *
+     * DATA CODING SCHEME  (0xC8)
+     * STORE MESSAGE : MAY
+     * MESSAGE INDICATOR : ACTIVATE
+     * INDICATOR TYPE :    VOICEMAIL waiting
+     * ALPHABET USED : 7bit default
+     *
+     * SMSC TIMESTAMP :    04/09/17 11:46 GMT
+     * USER DATA PART OF SM
+     * USER DATA LENGTH :  0 septets
+     * USER DATA (TEXT) :  <no data>
+     */
+    {
+        .checkLength = true,
+        .checkData = true,
+        .proto = PA_SMS_PROTOCOL_UNKNOWN,
+        .length = 16,
+        .data =
+        {
+            0x04, 0x0B, 0x91, 0x33, 0x67, 0x50, 0x92, 0x46, 0xF0, 0x00,
+            0xC8, 0x71, 0x90, 0x40, 0x11, 0x64,
+        },
+        .expected =
+        {
+            .result = LE_UNSUPPORTED,
+            .encoding = SMSPDU_7_BITS,
+            .message =
+            {
+                .type = PA_SMS_DELIVER,
+                .smsDeliver =
+                {
+                    .oa = "+33760529640",
+                    .format = LE_SMS_FORMAT_PDU,
+                    .scts = "04/09/17,11:46",
+                    .data = "",
+                    .dataLen = 0,
+                },
+            },
+        },
+    },
 };
 
 
@@ -1211,7 +1401,6 @@ static le_result_t TestDecodePdu
                         receivedPtr->data,
                         receivedPtr->length,
                         &message);
-
         if (res != receivedPtr->expected.result)
         {
             LE_ERROR("smsPdu_Decode() returns %d", res);

@@ -49,6 +49,21 @@ static uint8_t PDU_TEST_PATTERN_7BITS[]=
                             0x11,0xD4,0x32,0x9E,0x0E,0xA2,0x96,0xE7,0x74,0x10,0x3C,0x4C,
                             0xA7,0x97,0xE5,0x6E
                            };
+//Class 0
+static uint8_t PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS[]=
+                           {0x00,0x50,0x92,0x46,0xF0,0x00,0x10,0x71,0x90,0x40,0x71,0x70,
+                            0x90,0x80,0x05,0xE8,0x32,0x9B,0xFD,0x06
+                           };
+//Voice mailbox indicator
+static uint8_t PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS[]=
+                           {0x00,0x50,0x92,0x46,0xF0,0x00,0xC8,0x71,0x90,0x40,0x11,0x64,
+                            0x50,0x80,0x00
+                           };
+//Message waiting indicator
+static uint8_t PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS[]=
+                           {0x00,0x50,0x92,0x46,0xF0,0x00,0xC0,0x71,0x90,0x40,0x11,0x93,
+                            0x63,0x80,0x00
+                           };
 
 static uint8_t PDU_TEST_PATTERN_8BITS[]=
                            {0x00,0x01,0x00,0x0A,0x81,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -137,6 +152,9 @@ typedef enum
     SMS_SEND_TEST_NUMBER_7,
     SMS_SEND_TEST_NUMBER_8,
     SMS_SEND_TEST_NUMBER_9,
+    SMS_SEND_TEST_NUMBER_10,
+    SMS_SEND_TEST_NUMBER_TIMOUT,
+    SMS_SEND_TEST_FAILED
 }SmsSendTest_t;
 
 
@@ -780,17 +798,17 @@ static void CallbackSendTestHandler
 
     le_sms_Delete(msgRef);
 
-    if (contextPtr == (void *)SMS_SEND_TEST_NUMBER_8)
+    if ((void *)SMS_SEND_TEST_NUMBER_TIMOUT == contextPtr)
     {
-        LE_ASSERT(status == LE_SMS_SENDING_TIMEOUT);
+        LE_ASSERT(LE_SMS_SENDING_TIMEOUT == status);
     }
-    else if (contextPtr == (void *)SMS_SEND_TEST_NUMBER_9)
+    else if ((void *)SMS_SEND_TEST_FAILED == contextPtr)
     {
-        LE_ASSERT(status == LE_SMS_SENDING_FAILED);
+        LE_ASSERT(LE_SMS_SENDING_FAILED == status);
     }
     else
     {
-       LE_ASSERT(status == LE_SMS_SENT);
+       LE_ASSERT(LE_SMS_SENT == status);
     }
 
     // Semaphore is used to synchronize the execution of SMS send
@@ -831,7 +849,6 @@ static void Testle_sms_Send
     le_sms_SendPdu(PDU_TEST_PATTERN_7BITS,
                    sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
                    CallbackSendTestHandler, (void*) SMS_SEND_TEST_NUMBER_4);
-
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
 
     le_sms_SendPdu(PDU_TEST_PATTERN_8BITS,
@@ -892,6 +909,36 @@ static void Testle_sms_Send
 
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
 
+    // test le_sms_SetPDU()
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+    LE_ASSERT(le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS,
+                            sizeof(PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS)/
+                            sizeof(PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS[0])) == LE_OK);
+    LE_ASSERT(le_sms_SendAsync(myMsg,CallbackSendTestHandler,
+                               (void*) SMS_SEND_TEST_NUMBER_8) == LE_OK);
+    WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
+
+    // test le_sms_SetPDU()
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+    LE_ASSERT(le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS,
+                            sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS)/
+                            sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS[0])) == LE_OK);
+    LE_ASSERT(le_sms_SendAsync(myMsg,CallbackSendTestHandler,
+                               (void*) SMS_SEND_TEST_NUMBER_9) == LE_OK);
+    WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
+
+    // test le_sms_SetPDU()
+    myMsg = le_sms_Create();
+    LE_ASSERT(myMsg);
+    LE_ASSERT(le_sms_SetPDU(myMsg, PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS,
+                            sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS)/
+                            sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS[0])) == LE_OK);
+    LE_ASSERT(le_sms_SendAsync(myMsg,CallbackSendTestHandler,
+                               (void*) SMS_SEND_TEST_NUMBER_10) == LE_OK);
+    WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
+
     // test error causes
     pa_sms_SetSmsErrCause(LE_TIMEOUT);
     myMsg = le_sms_Create();
@@ -900,7 +947,7 @@ static void Testle_sms_Send
     LE_ASSERT(le_sms_SetBinary(myMsg, BINARY_TEST_PATTERN, sizeof(BINARY_TEST_PATTERN)/
                                sizeof(BINARY_TEST_PATTERN[0])) == LE_OK);
     LE_ASSERT(le_sms_SendAsync(myMsg,CallbackSendTestHandler,
-                               (void*) SMS_SEND_TEST_NUMBER_8) == LE_OK);
+                               (void*) SMS_SEND_TEST_NUMBER_TIMOUT) == LE_OK);
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
 
     pa_sms_SetSmsErrCause(LE_NOT_POSSIBLE);
@@ -910,7 +957,7 @@ static void Testle_sms_Send
     LE_ASSERT(le_sms_SetBinary(myMsg, BINARY_TEST_PATTERN, sizeof(BINARY_TEST_PATTERN)/
                                sizeof(BINARY_TEST_PATTERN[0])) == LE_OK);
     LE_ASSERT(le_sms_SendAsync(myMsg,CallbackSendTestHandler,
-                               (void*)SMS_SEND_TEST_NUMBER_9) == LE_OK);
+                               (void*)SMS_SEND_TEST_FAILED) == LE_OK);
 
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
     pa_sms_SetSmsErrCause(LE_OK);

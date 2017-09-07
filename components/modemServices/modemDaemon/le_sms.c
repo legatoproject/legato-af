@@ -3898,7 +3898,7 @@ int32_t le_sms_GetPlatformSpecificErrorCode
  * message deleting.
  *
  * @return LE_FAULT         The function failed to perform the deletion.
- * @return LE_NO_MEMORY     The message storage is not available.
+ * @return LE_NO_MEMORY     The message is not present in storage area.
  * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
@@ -3913,47 +3913,51 @@ le_result_t le_sms_DeleteFromStorage
     le_result_t   resp = LE_OK;
     le_sms_Msg_t* msgPtr = le_ref_Lookup(MsgRefMap, msgRef);
 
-    if (msgPtr == NULL)
+    if (NULL == msgPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", msgRef);
         return LE_NOT_FOUND;
     }
 
     /* Not available for Cell Broadcast */
-    if(msgPtr->protocol == PA_SMS_PROTOCOL_GW_CB)
+    if (PA_SMS_PROTOCOL_GW_CB == msgPtr->protocol)
     {
         LE_DEBUG("SMS Cell  Broadcast not stored");
+        return LE_NO_MEMORY;
+    }
+
+    /* Not available for non-stored messages */
+    if ((PA_SMS_STORAGE_NONE == msgPtr->storage) || (PA_SMS_STORAGE_UNKNOWN == msgPtr->storage))
+    {
+        LE_DEBUG("Cannot delete non-stored message");
         return LE_NO_MEMORY;
     }
 
     LE_DEBUG("le_sms_DeleteFromStorage obj[%p], ref[%p], cpt = %d", msgPtr, msgRef,
         msgPtr->smsUserCount);
 
-    if (msgPtr->smsUserCount == 1)
+    if (1 == msgPtr->smsUserCount)
     {
         le_sem_Wait(SmsSem);
         resp = pa_sms_DelMsgFromMem(msgPtr->storageIdx, msgPtr->protocol, msgPtr->storage);
         le_sem_Post(SmsSem);
 
-        if ((resp == LE_COMM_ERROR) || (resp == LE_TIMEOUT))
+        if ((LE_COMM_ERROR == resp) || (LE_TIMEOUT == resp))
         {
             return LE_NO_MEMORY;
         }
         else
         {
             msgPtr->delAsked = false;
-            if (resp != LE_OK)
+            if (LE_OK != resp)
             {
                 resp = LE_FAULT;
             }
             return resp;
         }
     }
-    else
-    {
-        msgPtr->delAsked = true;
-        return LE_OK;
-    }
+    msgPtr->delAsked = true;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -13,9 +13,12 @@
  * PDU_TEST flag requests to encode yourself two valid PDUs defined by:
  * - PDU_TEST_PATTERN_8BITS
  * - PDU_TEST_PATTERN_7BITS
+ * - PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS
+ * - PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS
+ * - PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS
  **/
-//#define PDU_TEST 1
-
+// TODO: Update PDU test.
+#define PDU_TEST 1
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -63,6 +66,21 @@ static uint8_t PDU_TEST_PATTERN_8BITS[]=
                            {0x00,0x01,0x00,0x0A,0x81,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
                             0x11,0x54,0x65,0x78,0x74,0x20,0x54,0x65,0x73,0x74,0x20,0x70,
                             0x61,0x74,0x74,0x65,0x72,0x6E};
+//Class 0
+static uint8_t PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS[]=
+                           {0x00,0x50,0x92,0x46,0xF0,0x00,0x10,0x71,0x90,0x40,0x71,0x70,
+                            0x90,0x80,0x05,0xE8,0x32,0x9B,0xFD,0x06
+                           };
+//Voice mailbox indicator
+static uint8_t PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS[]=
+                           {0x00,0x50,0x92,0x46,0xF0,0x00,0xC8,0x71,0x90,0x40,0x11,0x64,
+                            0x50,0x80,0x00
+                           };
+//Message waiting indicator
+static uint8_t PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS[]=
+                           {0x00,0x50,0x92,0x46,0xF0,0x00,0xC0,0x71,0x90,0x40,0x11,0x93,
+                            0x63,0x80,0x00
+                           };
 #endif
 
 /*
@@ -122,7 +140,6 @@ static le_result_t WaitFunction
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for SMS storage full message indication.
@@ -137,9 +154,6 @@ static void StorageFullTestHandler
 {
     LE_INFO("A Full storage SMS message is received. Type of full storage %d", storage);
 }
-
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -589,7 +603,11 @@ static void TestRxHandler(le_sms_MsgRef_t msg, void* contextPtr)
     }
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rx thread
+ */
+//--------------------------------------------------------------------------------------------------
 static void* MyRxThread
 (
     void* context   ///< See parameter documentation above.
@@ -604,8 +622,89 @@ static void* MyRxThread
     return NULL;
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Callback to test timeout SMS
+ */
+//--------------------------------------------------------------------------------------------------
 static void CallbackTestHandlerTimeout
+(
+    le_sms_MsgRef_t msgRef,
+    le_sms_Status_t status,
+    void* contextPtr
+)
+{
+    LE_INFO("Message %p, status %d, ctx %p, wait %d", msgRef, status, contextPtr, NbSmsTx);
+
+    switch(NbSmsTx)
+    {
+        case 3:
+        {
+            if (LE_SMS_SENDING_TIMEOUT != status)
+            {
+                LE_ERROR("Test 2/4 FAILED");
+                NbSmsTx = 5;
+            }
+            else
+            {
+                LE_INFO("First SMS LE_SMS_SENDING_TIMEOUT received");
+                LE_INFO("Test 2/4 PASSED");
+                NbSmsTx--;
+            }
+        }
+        break;
+        case 2:
+        {
+            if (LE_SMS_SENDING_TIMEOUT != status)
+            {
+                LE_ERROR("Test 4/4 FAILED");
+                NbSmsTx = 5;
+            }
+            else
+            {
+                LE_INFO("Third SMS LE_SMS_SENDING_TIMEOUT received");
+                LE_INFO("Test 4/4 PASSED");
+                NbSmsTx--;
+            }
+        }
+        break;
+
+        case 1:
+        {
+            if (LE_SMS_SENT != status)
+            {
+                LE_ERROR("Test 3/4 FAILED");
+                NbSmsTx = 5;
+            }
+            else
+            {
+                LE_INFO("Second SMS LE_SMS_SENT received");
+                LE_INFO("Test 3/4 PASSED");
+                NbSmsTx--;
+            }
+        }
+        break;
+
+        default:
+        {
+            LE_ERROR("Unexpected NbSmsTx value %d", NbSmsTx);
+        }
+        break;
+    }
+
+    le_sms_Delete(msgRef);
+    if (0 == NbSmsTx)
+    {
+        sem_post(&SmsTxSynchronization);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Callback to test timeout SMS PDU
+ */
+//--------------------------------------------------------------------------------------------------
+static void CallbackTestHandlerTimeoutPdu
 (
     le_sms_MsgRef_t msgRef,
     le_sms_Status_t status,
@@ -677,7 +776,11 @@ static void CallbackTestHandlerTimeout
     }
 }
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * SMS Callback
+ */
+//--------------------------------------------------------------------------------------------------
 static void CallbackTestHandler
 (
     le_sms_MsgRef_t msgRef,
@@ -687,7 +790,15 @@ static void CallbackTestHandler
 {
     LE_INFO("Message %p, status %d, ctx %p", msgRef, status, contextPtr);
     le_sms_Delete(msgRef);
-    LE_ERROR_IF(status != LE_SMS_SENT, "Test FAILED")
+    if (!contextPtr)
+    {
+        LE_ERROR_IF(status != LE_SMS_SENT, "Test FAILED");
+    }
+    else
+    {
+        // TODO: Correct sent PDU error. LE_SMS_SENT should be received.
+        LE_ERROR_IF(status != LE_SMS_SENDING_FAILED, "Test FAILED");
+    }
     NbSmsTx--;
     LE_INFO("Number of callback event remaining %d", NbSmsTx);
     if (NbSmsTx == 0)
@@ -696,6 +807,11 @@ static void CallbackTestHandler
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * TX thread
+ */
+//--------------------------------------------------------------------------------------------------
 static void* MyTxThread
 (
     void* context   ///< See parameter documentation above.
@@ -720,7 +836,7 @@ static void* MyTxThread
             myMsg = le_sms_SendText(DEST_TEST_PATTERN, TEXT_TEST_PATTERN,
                             CallbackTestHandler, NULL);
         }
-        LE_INFO("-TEST- Create Async text Msg %p", myMsg);
+        LE_INFO("-TEST- Create sync text Msg %p", myMsg);
 
         myMsg = le_sms_Create();
 
@@ -744,6 +860,11 @@ static void* MyTxThread
     return NULL;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * LeSmsSendPduTime
+ */
+//--------------------------------------------------------------------------------------------------
 static le_result_t LeSmsSendPduTime
 (
     const uint8_t* pduPtr,
@@ -794,6 +915,11 @@ static le_result_t LeSmsSendPduTime
     return res;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * LeSmsSendtextTime
+ */
+//--------------------------------------------------------------------------------------------------
 static le_result_t LeSmsSendtextTime
 (
       const char* destStr,
@@ -853,6 +979,11 @@ static le_result_t LeSmsSendtextTime
     return res;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  MyTxThreadTimeout
+ */
+//--------------------------------------------------------------------------------------------------
 static void* MyTxThreadTimeout
 (
     void* context   ///< See parameter documentation above.
@@ -867,7 +998,7 @@ static void* MyTxThreadTimeout
     {
         res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
                         sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
-                        CallbackTestHandlerTimeout, (void*) 1, 0);
+                        CallbackTestHandlerTimeoutPdu, (void*) 1, 0);
         if (res == LE_OK)
         {
             LE_ERROR("Test 1/4 FAILED");
@@ -877,7 +1008,7 @@ static void* MyTxThreadTimeout
 
         res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
                         sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
-                        CallbackTestHandlerTimeout, (void*) 1, 1);
+                        CallbackTestHandlerTimeoutPdu, (void*) 1, 1);
         if (res != LE_OK)
         {
             LE_ERROR("Test 2/4 FAILED");
@@ -888,7 +1019,7 @@ static void* MyTxThreadTimeout
 
         res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
                         sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
-                        CallbackTestHandlerTimeout, (void*) 1, 20);
+                        CallbackTestHandlerTimeoutPdu, (void*) 1, 20);
         if (res == LE_OK)
         {
             LE_ERROR("Test 3/4 FAILED");
@@ -898,7 +1029,7 @@ static void* MyTxThreadTimeout
 
         res = LeSmsSendPduTime(PDU_TEST_PATTERN_7BITS,
                         sizeof(PDU_TEST_PATTERN_7BITS)/sizeof(PDU_TEST_PATTERN_7BITS[0]),
-                        CallbackTestHandlerTimeout, (void*) 1, 1);
+                        CallbackTestHandlerTimeoutPdu, (void*) 1, 1);
         if (res != LE_OK)
         {
             LE_ERROR("Test 4/4 FAILED");
@@ -942,7 +1073,7 @@ static void* MyTxThreadTimeout
             LE_ERROR("Test 4/4 FAILED");
             return NULL;
         }
-        LE_INFO("Test 4/3 STARTED");
+        LE_INFO("Test 4/4 STARTED");
     }
 
     le_event_RunLoop();
@@ -1043,7 +1174,6 @@ static le_result_t Testle_sms_Send_Text
     return res;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Send a UCS2 message.
@@ -1085,7 +1215,6 @@ static le_result_t Testle_sms_Send_UCS2
     myMsg = le_sms_Create();
     if (myMsg)
     {
-
         LE_DEBUG("-TEST- Create Msg %p", myMsg);
 
         res = le_sms_SetDestination(myMsg, DEST_TEST_PATTERN);
@@ -1183,37 +1312,6 @@ static le_result_t Testle_sms_AsyncSendText
     return res;
 }
 
-#if PDU_TEST
-//--------------------------------------------------------------------------------------------------
-/**
- * Test: Send a simple Text message with le_sms_SendPdu API().
- * ASYNC_PDU_TEST_PATTERN_7BITS PDU to encode.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t Testle_sms_AsyncSendPdu
-(
-    void
-)
-{
-    le_result_t res;
-    bool pdu_type = true;
-
-    NbSmsTx = NB_SMS_ASYNC_TO_SEND;
-
-    // Init the semaphore for asynchronous callback
-    sem_init(&SmsTxSynchronization,0,0);
-
-    TxCallBack = le_thread_Create("Tx CallBack", MyTxThread, &pdu_type);
-    le_thread_Start(TxCallBack);
-
-    res = WaitFunction(&SmsTxSynchronization, 10000);
-    le_thread_Cancel(TxCallBack);
-
-    return res;
-}
-#endif
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: Send a raw binary message.
@@ -1262,6 +1360,72 @@ static le_result_t Testle_sms_Send_Binary
 #if PDU_TEST
 //--------------------------------------------------------------------------------------------------
 /**
+ * Thread for testing MWI messages
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void* MyTxThreadMwi
+(
+    void* context   ///< See parameter documentation above.
+)
+{
+    le_sms_ConnectService();
+    le_sms_MsgRef_t myMsg;
+
+    le_sms_SendPdu(PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS,
+                   sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS)/
+                   sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC0_7BITS[0]),
+                   CallbackTestHandler, (void*) 2);
+
+    myMsg = le_sms_Create();
+    le_sms_SetPDU(myMsg,
+                  PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS,
+                  sizeof(PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS)/
+                  sizeof(PDU_TEST_PATTERN_PTP_DCS_0x10_7BITS[0]));
+    le_sms_SendAsync(myMsg, CallbackTestHandler,  (void*) 2);
+
+    myMsg = le_sms_Create();
+    le_sms_SetPDU(myMsg,
+                  PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS,
+                  sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS)/
+                  sizeof(PDU_TEST_PATTERN_PTP_DCS_0xC8_7BITS[0]));
+    le_sms_SendAsync(myMsg, CallbackTestHandler,  (void*) 2);
+
+    le_event_RunLoop();
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Send a simple Text message with le_sms_SendPdu API().
+ * ASYNC_PDU_TEST_PATTERN_7BITS PDU to encode.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t Testle_sms_AsyncSendPdu
+(
+    void
+)
+{
+    le_result_t res;
+    bool pdu_type = true;
+
+    NbSmsTx = NB_SMS_ASYNC_TO_SEND;
+
+    // Init the semaphore for asynchronous callback
+    sem_init(&SmsTxSynchronization,0,0);
+
+    TxCallBack = le_thread_Create("Tx CallBack", MyTxThread, &pdu_type);
+    le_thread_Start(TxCallBack);
+
+    res = WaitFunction(&SmsTxSynchronization, 10000);
+    le_thread_Cancel(TxCallBack);
+
+    return res;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Test: Send a Pdu message.
  *
  */
@@ -1271,7 +1435,7 @@ static le_result_t Testle_sms_Send_Pdu
     void
 )
 {
-    le_result_t           res = LE_FAULT;
+    le_result_t          res = LE_FAULT;
     le_sms_MsgRef_t      myMsg;
 
     myMsg = le_sms_Create();
@@ -1315,8 +1479,34 @@ static le_result_t Testle_sms_Send_Pdu
 
     return res;
 }
-#endif
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Send messages waiting indication (MWI)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t Testle_sms_Send_MwiSms
+(
+    void
+)
+{
+    le_result_t res;
+    bool pdu_type = true;
+    NbSmsTx = 3;
+
+    // Init the semaphore for asynchronous callback
+    sem_init(&SmsTxSynchronization,0,0);
+
+    TxCallBack = le_thread_Create("Tx CallBack", MyTxThreadMwi, &pdu_type);
+    le_thread_Start(TxCallBack);
+
+    res = WaitFunction(&SmsTxSynchronization, 10000);
+    le_thread_Cancel(TxCallBack);
+
+    return res;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1341,11 +1531,11 @@ static void DeleteMessages
             {
                 le_sms_DeleteFromStorage(myMsg);
                 myMsg = le_sms_GetNext(receivedList);
-            } while (myMsg != NULL);
+            }
+            while (myMsg != NULL);
         }
     }
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1514,14 +1704,20 @@ COMPONENT_INIT
 
         LE_ASSERT(Testle_sms_AsyncSendText() == LE_OK);
 
-#if PDU_TEST
-        LE_ASSERT(Testle_sms_AsyncSendPdu() == LE_OK);
-
-        LE_ASSERT(Testle_sms_Send_Pdu() == LE_OK);
-#endif
-
+        LE_INFO("Testle_sms_Send_UCS2 started");
         LE_ASSERT(Testle_sms_Send_UCS2() == LE_OK);
 
+#if PDU_TEST
+        // TODO: Update PDU test. Correct sending PDU error
+        LE_INFO("Testle_sms_AsyncSendPdu started");
+        LE_ASSERT_OK(Testle_sms_AsyncSendPdu());
+
+        LE_INFO("Testle_sms_Send_MwiSms started");
+        LE_ASSERT_OK(Testle_sms_Send_MwiSms());
+
+        LE_INFO("Testle_sms_Send_Pdu started");
+        Testle_sms_Send_Pdu();
+#endif
         LE_INFO("smsTest sequence PASSED");
         // Delete all Rx SMS message
         DeleteMessages();

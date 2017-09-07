@@ -182,8 +182,8 @@
  * @section le_sms_ops_deleting Deleting a message from the storage area
  *
  * @c le_sms_DeleteFromStorage() deletes the message from the storage area. Message is
- * identified with @c le_sms_MsgRef_t object. The API returns an error if the message is not found
- * in the storage area.
+ * identified with @c le_sms_MsgRef_t object. The API returns an error if the deletion cannot be
+ * performed or if it is a broadcast or a non stored message.
  *
  * @note If several users own the Message object on new reception
  * (e.g., several handler functions registered for SMS message reception), the
@@ -1300,7 +1300,7 @@ FUNCTION size GetPDULen
  * message deleting.
  *
  * @return LE_FAULT         Function failed to perform the deletion.
- * @return LE_NO_MEMORY     Message storage is not available.
+ * @return LE_NO_MEMORY     The message is not present in storage area.
  * @return LE_OK            Function succeeded.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the

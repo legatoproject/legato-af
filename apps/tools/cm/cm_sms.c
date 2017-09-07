@@ -228,6 +228,7 @@ static void PrintMessage
                 cm_cmn_FormatPrint(" Format", "LE_SMS_FORMAT_UNKNOWN");
             }
             contentSz = sizeof(content.pdu);
+
             res = le_sms_GetPDU(msgRef, content.pdu, &contentSz);
             LE_ASSERT(res == LE_OK);
 
@@ -265,7 +266,7 @@ static void PrintMessage
     if (msgContextPtr->shouldDeleteMessages)
     {
         res = le_sms_DeleteFromStorage(msgRef);
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT((LE_OK == res) || (LE_NO_MEMORY == res));
 
         le_sms_Delete(msgRef);
     }
