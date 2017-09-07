@@ -759,7 +759,7 @@ Dependency loops are not allowed: component C can't depend on another component 
 loops and report any error.
 
 
-@subsection defFilesCdef_requiresJavaPackage javaPackage
+@section defFilesCdef_requiresJavaPackage javaPackage
 
 You create a @c javaPackage: section in the @ .cdef listing Java packages to build. It should look
 something like this:
