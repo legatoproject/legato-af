@@ -25,4 +25,55 @@ typedef struct
 }
 SharedData_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test on an expected result
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t TestResponses
+(
+    int fd,
+    int epollFd,
+    const char* expectedResponsePtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * send an AT command and test on an expected result
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SendCommandsAndTest
+(
+    int fd,
+    int epollFd,
+    const char* commandsPtr,
+    const char* expectedResponsePtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * server thread function
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void AtServer
+(
+    SharedData_t* sharedDataPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to test the AT server bridge feature.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t Testle_atServer_Bridge
+(
+    int socketFd,
+    int epollFd,
+    SharedData_t* sharedDataPtr
+);
+
 #endif /* defs.h */

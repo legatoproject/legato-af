@@ -762,9 +762,8 @@ static void CleanUp
 
 //--------------------------------------------------------------------------------------------------
 /**
- * server thread function
+ * server function
  *
- * the main function of the thread
  * start the server
  * initialize/create new commands and register them within the server app
  *

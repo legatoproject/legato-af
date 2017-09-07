@@ -8,7 +8,7 @@
 #include "defs.h"
 #include "strerror.h"
 
-#define DSIZE           512     // default buffer size
+#define DSIZE           1024     // default buffer size
 #define SERVER_TIMEOUT  10000    // server timeout in milliseconds
 
 //--------------------------------------------------------------------------------------------------
@@ -18,30 +18,6 @@
  */
 //--------------------------------------------------------------------------------------------------
 static SharedData_t SharedData;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * server thread function
- *
- */
-//--------------------------------------------------------------------------------------------------
-void* AtServer
-(
-    void* contextPtr
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function must be called to test the AT server bridge feature.
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t Testle_atServer_Bridge
-(
-    int socketFd,
-    int epollFd,
-    SharedData_t* sharedDataPtr
-);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -80,126 +56,6 @@ static char* PrettyPrint
     }
 
     return copy;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Test on an expected result
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t TestResponses
-(
-    int fd,
-    int epollFd,
-    const char* expectedResponsePtr
-)
-{
-    char buf[DSIZE];
-    struct epoll_event ev;
-    int ret = 0;
-    int offset = 0;
-    int count = 0;
-    ssize_t size = 0;
-
-    LE_ASSERT(NULL != expectedResponsePtr);
-    count = strlen(expectedResponsePtr);
-    memset(buf, 0 , DSIZE);
-
-    while (count > 0)
-    {
-        do
-        {
-            ret = epoll_wait(epollFd, &ev, 1, SERVER_TIMEOUT);
-        }
-        while ((-1 == ret) && (EINTR == errno));
-
-        if (-1 == ret)
-        {
-            LE_ERROR("epoll wait failed: %s", strerror(errno));
-            return LE_IO_ERROR;
-        }
-
-        if (!ret)
-        {
-            LE_ERROR("Timed out waiting for server's response");
-            return LE_TIMEOUT;
-        }
-
-        if (ev.data.fd != fd)
-        {
-            LE_ERROR("%s", strerror(EBADF));
-            return LE_IO_ERROR;
-        }
-
-        if (ev.events & EPOLLRDHUP)
-        {
-            LE_ERROR("%s", strerror(ECONNRESET));
-            return LE_TERMINATED;
-        }
-
-        size = read(fd, buf+offset, DSIZE);
-        if (size == -1)
-        {
-            LE_ERROR("read failed: %s", strerror(errno));
-            return LE_IO_ERROR;
-        }
-
-        offset += size;
-        count -= size;
-
-        // Set the NULL at the end of the string.
-        if (DSIZE > offset)
-        {
-            buf[offset] = '\0';
-        }
-    }
-
-    LE_DEBUG("Response: %s", PrettyPrint(buf));
-    LE_DEBUG("Expected: %s", PrettyPrint((char *)expectedResponsePtr));
-
-    if (expectedResponsePtr)
-    {
-        if (strcmp(buf, expectedResponsePtr))
-        {
-            LE_ERROR("response %s", PrettyPrint(buf));
-            LE_ERROR("expected %s", PrettyPrint((char*)expectedResponsePtr));
-            return LE_FAULT;
-        }
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * send an AT command and test on an expected result
- *
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t SendCommandsAndTest
-(
-    int fd,
-    int epollFd,
-    const char* commandsPtr,
-    const char* expectedResponsePtr
-)
-{
-    char buf[DSIZE];
-
-    memset(buf, 0 , DSIZE);
-
-    snprintf(buf, strlen(commandsPtr)+2, "%s\r", commandsPtr);
-
-    LE_INFO("Commands: %s", PrettyPrint(buf));
-
-    if (write(fd, buf, strlen(buf)) == -1)
-    {
-        LE_ERROR("write failed: %s", strerror(errno));
-        return LE_IO_ERROR;
-    }
-
-    return TestResponses(fd, epollFd, expectedResponsePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -354,6 +210,14 @@ static void* AtHost
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+                "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
                 "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
                 "\r\nERROR\r\n"));
 
@@ -432,6 +296,131 @@ static void* AtHost
 
     return NULL;
 
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test on an expected result
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t TestResponses
+(
+    int fd,
+    int epollFd,
+    const char* expectedResponsePtr
+)
+{
+    char buf[DSIZE];
+    struct epoll_event ev;
+    int ret = 0;
+    int offset = 0;
+    int count = 0;
+    ssize_t size = 0;
+
+    if (!expectedResponsePtr)
+    {
+        LE_ERROR("null expected response");
+        return LE_FAULT;
+    }
+
+    count = strlen(expectedResponsePtr);
+    memset(buf, 0 , DSIZE);
+
+    while (count > 0)
+    {
+        do
+        {
+            ret = epoll_wait(epollFd, &ev, 1, SERVER_TIMEOUT);
+        }
+        while ((-1 == ret) && (EINTR == errno));
+
+        if (-1 == ret)
+        {
+            LE_ERROR("epoll wait failed: %s", strerror(errno));
+            return LE_IO_ERROR;
+        }
+
+        if (!ret)
+        {
+            LE_ERROR("Timed out waiting for server's response");
+            return LE_TIMEOUT;
+        }
+
+        if (ev.data.fd != fd)
+        {
+            LE_ERROR("%s", strerror(EBADF));
+            return LE_IO_ERROR;
+        }
+
+        if (ev.events & EPOLLRDHUP)
+        {
+            LE_ERROR("%s", strerror(ECONNRESET));
+            return LE_TERMINATED;
+        }
+
+        size = read(fd, buf+offset, DSIZE);
+        if (size == -1)
+        {
+            LE_ERROR("read failed: %s", strerror(errno));
+            return LE_IO_ERROR;
+        }
+
+        offset += size;
+        count -= size;
+
+    }
+
+    LE_DEBUG("Response: %s", PrettyPrint(buf));
+    LE_DEBUG("Expected: %s", PrettyPrint((char *)expectedResponsePtr));
+
+    if (strcmp(buf, expectedResponsePtr))
+    {
+        LE_ERROR("response %s", PrettyPrint(buf));
+        LE_ERROR("expected %s", PrettyPrint((char*)expectedResponsePtr));
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * send an AT command and test on an expected result
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SendCommandsAndTest
+(
+    int fd,
+    int epollFd,
+    const char* commandsPtr,
+    const char* expectedResponsePtr
+)
+{
+    char buf[DSIZE];
+    int size;
+
+    size = strlen(commandsPtr);
+    if (DSIZE <= size)
+    {
+        LE_ERROR("command is too long: %d", size);
+        return LE_FAULT;
+    }
+
+    memset(buf, 0 , DSIZE);
+
+    snprintf(buf, strlen(commandsPtr)+2, "%s\r", commandsPtr);
+
+    LE_INFO("Commands: %s", PrettyPrint(buf));
+
+    if (write(fd, buf, strlen(buf)) == -1)
+    {
+        LE_ERROR("write failed: %s", strerror(errno));
+        return LE_IO_ERROR;
+    }
+
+    return TestResponses(fd, epollFd, expectedResponsePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
