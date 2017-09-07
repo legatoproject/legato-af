@@ -66,6 +66,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * SMACK ipv6host file location.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SMACK_IPV6HOST_FILE                 SMACK_FS_DIR "/ipv6host"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * A process's own attribute file that stores the SMACK label.
  */
 //--------------------------------------------------------------------------------------------------
@@ -94,7 +102,8 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set SMACK netlabel exception to grant applications permission to communicate with the Internet.
+ * Set SMACK netlabel exception to grant applications permission to communicate with the Internet
+ * via IPv4.
  */
 //--------------------------------------------------------------------------------------------------
 static void SetSmackNetlabelExceptions
@@ -102,42 +111,86 @@ static void SetSmackNetlabelExceptions
     void
 )
 {
-     // Open the calling process's smack file.
-     int fd;
+    // Open the calling process's smack file.
+    int fd;
 
-     do
-     {
-         fd = open(SMACK_NETLABEL_FILE, O_WRONLY);
-     }
-     while ( (fd == -1) && (errno == EINTR) );
+    do
+    {
+        fd = open(SMACK_NETLABEL_FILE, O_WRONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
 
-     LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", SMACK_NETLABEL_FILE);
+    LE_FATAL_IF(fd == -1, "Could not open %s.  %m.\n", SMACK_NETLABEL_FILE);
 
-     // Write netlabel to the file.
-     int result;
-     size_t netlabelExceptionSize;
+    // Write netlabel to the file.
+    int result;
+    size_t netlabelExceptionSize;
 
-     do
-     {
-         netlabelExceptionSize = strlen("127.0.0.1 -CIPSO");
-         result = write(fd, "127.0.0.1 -CIPSO", netlabelExceptionSize);
-     }
-     while ( (result == -1) && (errno == EINTR) );
+    do
+    {
+        netlabelExceptionSize = strlen("127.0.0.1 -CIPSO");
+        result = write(fd, "127.0.0.1 -CIPSO", netlabelExceptionSize);
+    }
+    while ( (result == -1) && (errno == EINTR) );
 
-     LE_FATAL_IF(result != netlabelExceptionSize,
-                 "Could not write to %s.  %m.\n", SMACK_NETLABEL_FILE);
+    LE_FATAL_IF(result != netlabelExceptionSize,
+             "Could not write to %s.  %m.\n", SMACK_NETLABEL_FILE);
 
-     do
-     {
-         netlabelExceptionSize = strlen("0.0.0.0/0 @");
-         result = write(fd, "0.0.0.0/0 @", netlabelExceptionSize);
-     }
-     while ( (result == -1) && (errno == EINTR) );
+    do
+    {
+        netlabelExceptionSize = strlen("0.0.0.0/0 @");
+        result = write(fd, "0.0.0.0/0 @", netlabelExceptionSize);
+    }
+    while ( (result == -1) && (errno == EINTR) );
 
-     LE_FATAL_IF(result != netlabelExceptionSize,
-                 "Could not write to %s.  %m.\n", SMACK_NETLABEL_FILE);
+    LE_FATAL_IF(result != netlabelExceptionSize,
+             "Could not write to %s.  %m.\n", SMACK_NETLABEL_FILE);
 
-     fd_Close(fd);
+    fd_Close(fd);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set SMACK ipv6host exception to grant applications permission to communicate with the Internet.
+ * via IPv6.
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetSmackIPv6HostExceptions
+(
+    void
+)
+{
+    // Open the calling process's smack file.
+    int fd;
+
+    do
+    {
+        fd = open(SMACK_IPV6HOST_FILE, O_WRONLY);
+    }
+    while ( (fd == -1) && (errno == EINTR) );
+
+    if (fd == -1)
+    {
+        LE_WARN("Could not open %s.  %m.\n", SMACK_IPV6HOST_FILE);
+        return;
+    }
+
+    // Write ipv6 to the file.
+    int result;
+    size_t ipv6hostExceptionSize;
+
+    do
+    {
+        ipv6hostExceptionSize = strlen("0:0:0:0:0:0:0:0/0 @");
+        result = write(fd, "0:0:0:0:0:0:0:0/0 @", ipv6hostExceptionSize);
+    }
+    while ( (result == -1) && (errno == EINTR) );
+
+    LE_WARN_IF(result != ipv6hostExceptionSize,
+        "Could not write to %s.  %m.\n", SMACK_IPV6HOST_FILE);
+
+    fd_Close(fd);
 }
 
 
@@ -309,6 +362,7 @@ void smack_Init
 
     // Set smack network exceptions
     SetSmackNetlabelExceptions();
+    SetSmackIPv6HostExceptions();
 }
 
 
