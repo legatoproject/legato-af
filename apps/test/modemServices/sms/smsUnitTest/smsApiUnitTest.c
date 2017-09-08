@@ -101,6 +101,13 @@ static uint8_t PDU_RECEIVE_TEST_PATTERN_BROADCAST_7BITS[]=
             0x20, 0xD0, 0xB0, 0x19, 0x9C, 0x82, 0x72, 0xB0
             };
 
+static uint8_t PDU_RECEIVE_TEST_PATTERN_STATUS_REPORT[] =
+{
+    0x06, 0x0C, 0x0B, 0x91, 0x33, 0x21, 0x43, 0x65, 0x87, 0xF9,
+    0x71, 0x90, 0x60, 0x90, 0x75, 0x00, 0x80, 0x71, 0x90, 0x60,
+    0x90, 0x75, 0x00, 0x80, 0x00
+};
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Task context structure
@@ -170,6 +177,7 @@ static le_sem_Ref_t SmsThreadSemaphore;
 static AppSmsContext_t AppSmsReceiveCtx;
 static le_sem_Ref_t SmsReceiveThreadSemaphore;
 static le_sem_Ref_t SmsSendSemaphore;
+static le_sms_MsgRef_t ReceivedSmsRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -444,69 +452,75 @@ static void Testle_sms_DecodingReceivedList()
     uint16_t                myMessageSerialNumber = 0;
     le_sms_ErrorCode_t      rpCause;
     le_sms_ErrorCode_t      tpCause;
+    uint8_t                 myMessageReference = 0;
+    uint8_t                 myTora = 0;
+    uint8_t                 myStatus = 0;
 
     // List Received messages
-    receivedList = le_sms_CreateRxMsgList();
+    LE_ASSERT(receivedList = le_sms_CreateRxMsgList());
 
-    if (receivedList)
-    {
-        lMsg1 = le_sms_GetFirst(receivedList);
-        LE_ASSERT(lMsg1 != NULL);
-        LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_UNREAD);
+    lMsg1 = le_sms_GetFirst(receivedList);
+    LE_ASSERT(lMsg1 != NULL);
+    LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_UNREAD);
 
-        // test readonly field
-        LE_ASSERT(le_sms_SetTimeout(lMsg1, 0) == LE_FAULT);
-        LE_ASSERT(le_sms_SetDestination(lMsg1, VOID_PATTERN) == LE_NOT_PERMITTED);
-        LE_ASSERT(le_sms_SetText(lMsg1, VOID_PATTERN) == LE_NOT_PERMITTED);
-        LE_ASSERT(le_sms_SetBinary(lMsg1, BINARY_TEST_PATTERN, 0) == LE_NOT_PERMITTED);
-        LE_ASSERT(le_sms_SetPDU(lMsg1, PDU_TEST_PATTERN_7BITS, 0) == LE_NOT_PERMITTED);
-        LE_ASSERT(le_sms_SetUCS2(lMsg1, UCS2_TEST_PATTERN, 0) == LE_NOT_PERMITTED);
-        LE_ASSERT(le_sms_SendAsync(lMsg1, NULL, NULL) == LE_FAULT);
+    // test readonly field
+    LE_ASSERT(le_sms_SetTimeout(lMsg1, 0) == LE_FAULT);
+    LE_ASSERT(le_sms_SetDestination(lMsg1, VOID_PATTERN) == LE_NOT_PERMITTED);
+    LE_ASSERT(le_sms_SetText(lMsg1, VOID_PATTERN) == LE_NOT_PERMITTED);
+    LE_ASSERT(le_sms_SetBinary(lMsg1, BINARY_TEST_PATTERN, 0) == LE_NOT_PERMITTED);
+    LE_ASSERT(le_sms_SetPDU(lMsg1, PDU_TEST_PATTERN_7BITS, 0) == LE_NOT_PERMITTED);
+    LE_ASSERT(le_sms_SetUCS2(lMsg1, UCS2_TEST_PATTERN, 0) == LE_NOT_PERMITTED);
+    LE_ASSERT(le_sms_SendAsync(lMsg1, NULL, NULL) == LE_FAULT);
 
-        LE_ASSERT(le_sms_GetSenderTel(lMsg1, tel, 2) == LE_OVERFLOW);
-        LE_ASSERT(le_sms_GetTimeStamp(lMsg1, timestamp, 1) == LE_OVERFLOW);
+    LE_ASSERT(le_sms_GetSenderTel(lMsg1, tel, 2) == LE_OVERFLOW);
+    LE_ASSERT(le_sms_GetTimeStamp(lMsg1, timestamp, 1) == LE_OVERFLOW);
 
-        LE_ASSERT(le_sms_GetCellBroadcastId(lMsg1, &myMessageId) == LE_FAULT);
-        LE_ASSERT(le_sms_GetCellBroadcastSerialNumber(lMsg1, &myMessageSerialNumber) == LE_FAULT);
+    LE_ASSERT(le_sms_GetCellBroadcastId(lMsg1, &myMessageId) == LE_FAULT);
+    LE_ASSERT(le_sms_GetCellBroadcastSerialNumber(lMsg1, &myMessageSerialNumber) == LE_FAULT);
 
-        length = 1;
-        LE_ASSERT(le_sms_GetPDU(lMsg1, pdu, &length) == LE_OVERFLOW);
+    LE_ASSERT(LE_FAULT == le_sms_GetTpMr(lMsg1, &myMessageReference));
+    LE_ASSERT(LE_FAULT == le_sms_GetTpRa(lMsg1, &myTora, tel, sizeof(tel)));
+    LE_ASSERT(LE_FAULT == le_sms_GetTpScTs(lMsg1, timestamp, sizeof(timestamp)));
+    LE_ASSERT(LE_FAULT == le_sms_GetTpDt(lMsg1, timestamp, sizeof(timestamp)));
+    LE_ASSERT(LE_FAULT == le_sms_GetTpSt(lMsg1, &myStatus));
 
-        // Verify Mark Read functions on Rx message list
-        le_sms_MarkRead(lMsg1);
-        LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_READ);
+    length = 1;
+    LE_ASSERT(le_sms_GetPDU(lMsg1, pdu, &length) == LE_OVERFLOW);
 
-        // Verify Mark Unread functions on Rx message list
-        le_sms_MarkUnread(lMsg1);
-        LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_UNREAD);
-        LE_ASSERT(le_sms_GetType(lMsg1) == LE_SMS_TYPE_RX);
+    // Verify Mark Read functions on Rx message list
+    le_sms_MarkRead(lMsg1);
+    LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_READ);
 
-        le_sms_Get3GPP2ErrorCode(lMsg1);
-        le_sms_GetPlatformSpecificErrorCode(lMsg1);
-        le_sms_GetErrorCode(lMsg1, &rpCause, &tpCause);
-        LE_INFO("rpCause %d, tpCause %d", rpCause, tpCause);
+    // Verify Mark Unread functions on Rx message list
+    le_sms_MarkUnread(lMsg1);
+    LE_ASSERT(le_sms_GetStatus(lMsg1) == LE_SMS_RX_UNREAD);
+    LE_ASSERT(le_sms_GetType(lMsg1) == LE_SMS_TYPE_RX);
 
-        // le_sms_Delete() API kills client if message belongs in a Rx list.
-        LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
-        le_sms_DeleteFromStorage(lMsg1);
+    le_sms_Get3GPP2ErrorCode(lMsg1);
+    le_sms_GetPlatformSpecificErrorCode(lMsg1);
+    le_sms_GetErrorCode(lMsg1, &rpCause, &tpCause);
+    LE_INFO("rpCause %d, tpCause %d", rpCause, tpCause);
 
-        lMsg2 = le_sms_GetNext(receivedList);
-        LE_ASSERT(lMsg2 != NULL);
-        LE_ASSERT(le_sms_GetType(lMsg1) == LE_SMS_TYPE_RX);
+    // le_sms_Delete() API kills client if message belongs in a Rx list.
+    LE_INFO("-TEST- Delete Rx message 1 from storage.%p", lMsg1);
+    le_sms_DeleteFromStorage(lMsg1);
 
-        LE_INFO("-TEST- Delete Rx message 2 from storage.%p", lMsg2);
-        le_sms_DeleteFromStorage(lMsg2);
+    lMsg2 = le_sms_GetNext(receivedList);
+    LE_ASSERT(lMsg2 != NULL);
+    LE_ASSERT(le_sms_GetType(lMsg1) == LE_SMS_TYPE_RX);
 
-        lMsg3 = le_sms_GetNext(receivedList);
-        LE_ASSERT(lMsg3 != NULL);
-        LE_ASSERT(le_sms_GetType(lMsg1) == LE_SMS_TYPE_RX);
+    LE_INFO("-TEST- Delete Rx message 2 from storage.%p", lMsg2);
+    le_sms_DeleteFromStorage(lMsg2);
 
-        LE_INFO("-TEST- Delete Rx message 3 from storage.%p", lMsg3);
-        le_sms_DeleteFromStorage(lMsg3);
+    lMsg3 = le_sms_GetNext(receivedList);
+    LE_ASSERT(lMsg3 != NULL);
+    LE_ASSERT(le_sms_GetType(lMsg1) == LE_SMS_TYPE_RX);
 
-        LE_INFO("-TEST- Delete the ReceivedList");
-        le_sms_DeleteList(receivedList);
-    }
+    LE_INFO("-TEST- Delete Rx message 3 from storage.%p", lMsg3);
+    le_sms_DeleteFromStorage(lMsg3);
+
+    LE_INFO("-TEST- Delete the ReceivedList");
+    le_sms_DeleteList(receivedList);
 }
 
 
@@ -577,6 +591,50 @@ static void RemoveFullStorageHandler
 
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(SmsThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SmsReceiveHandler: this handler is subcribed by test task and is called on new received sms.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SmsReceiveHandler
+(
+    le_sms_MsgRef_t messagePtr,   // [IN] Message object received from the modem.
+    void*           contextPtr    // [IN] The handler's context.
+)
+{
+
+    LE_INFO("Message %p, ctx %p", messagePtr, contextPtr);
+
+    // Store message reference
+    ReceivedSmsRef = messagePtr;
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(SmsReceiveThreadSemaphore);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add sms receive handler
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddSmsHandler
+(
+    void* param1Ptr,
+    void* param2Ptr
+)
+{
+    AppSmsContext_t * appCtxPtr = (AppSmsContext_t*) param1Ptr;
+
+    // Subscribe to SMS full storage indication handler
+    appCtxPtr->rxHdlrRef = le_sms_AddRxMessageHandler(SmsReceiveHandler, param1Ptr);
+    LE_ASSERT(appCtxPtr->rxHdlrRef != NULL);
+
+    // Semaphore is used to synchronize the task execution with the core test
+    le_sem_Post(SmsReceiveThreadSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -968,24 +1026,6 @@ static void Testle_sms_Send
 
 //--------------------------------------------------------------------------------------------------
 /**
- * SmsReceiveHandler: this handler is subcribed by test task and is called on new received sms.
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void SmsReceiveHandler
-(
-    le_sms_MsgRef_t messagePtr,   // [IN] Message object received from the modem.
-    void*           contextPtr    // [IN] The handler's context.
-)
-{
-
-    LE_INFO("Message %p, ctx %p", messagePtr, contextPtr);
-    // Semaphore is used to synchronize the task execution with the core test
-    le_sem_Post(SmsReceiveThreadSemaphore);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Test task: this function handles the task and run an eventLoop
  *
  */
@@ -1193,15 +1233,15 @@ static void Testle_sms_Statistics
     WaitForSem(SmsSendSemaphore, LONG_TIMEOUT, LE_OK);
     expected.tx++;
     GetAndCheckSmsCounters(&count, &expected);
-    le_sem_Delete(SmsSendSemaphore);
+
+    // Add again received SMS handler
+    le_event_QueueFunctionToThread(AppSmsReceiveCtx.appSmsReceiveThread,
+                                   AddSmsHandler,
+                                   &AppSmsReceiveCtx,
+                                   NULL);
+    WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
 
     // Broadcast message received
-    memset(&AppSmsReceiveCtx, 0, sizeof(AppSmsContext_t));
-    AppSmsReceiveCtx.appSmsReceiveThread = le_thread_Create("SmsReceiveThread",
-                                                            AppSmsReceiveHandler,
-                                                            &AppSmsReceiveCtx);
-    le_thread_Start(AppSmsReceiveCtx.appSmsReceiveThread);
-    WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
     msgPtrNew.msgIndex = 0;                         // Message index
     msgPtrNew.protocol = PA_SMS_PROTOCOL_GW_CB;     // protocol used
     msgPtrNew.storage  = PA_SMS_STORAGE_NONE;       // SMS Storage used
@@ -1228,7 +1268,6 @@ static void Testle_sms_Statistics
     WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
     expected.rx++;
     GetAndCheckSmsCounters(&count, &expected);
-    le_sem_Delete(SmsReceiveThreadSemaphore);
 
     // Stop counting
     le_sms_StopCount();
@@ -1267,6 +1306,64 @@ static void Testle_sms_Statistics
     // Check error cases
     LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetCount(LE_SMS_TYPE_BROADCAST_RX + 1, &count.rx));
     LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetCount(LE_SMS_TYPE_BROADCAST_RX, NULL));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Testle_sms_StatusReport: this function tests the SMS Status Report
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_sms_StatusReport
+(
+    void
+)
+{
+    int     i;
+    bool    statusReportEnabled;
+    uint8_t myMessageReference = 0;
+    uint8_t myTora = 0;
+    char    myRa[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
+    char    myTimestamp[LE_SMS_TIMESTAMP_MAX_BYTES];
+    uint8_t myStatus = 0;
+    pa_sms_NewMessageIndication_t msgPtrNew;
+
+    // Test SMS Status Report (de)activation
+    LE_ASSERT_OK(le_sms_EnableStatusReport());
+    LE_ASSERT_OK(le_sms_IsStatusReportEnabled(&statusReportEnabled));
+    LE_ASSERT(true == statusReportEnabled);
+    LE_ASSERT_OK(le_sms_DisableStatusReport());
+    LE_ASSERT_OK(le_sms_IsStatusReportEnabled(&statusReportEnabled));
+    LE_ASSERT(false == statusReportEnabled);
+
+    // Test API error cases
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetTpMr(NULL, &myMessageReference));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetTpRa(NULL, &myTora, myRa, sizeof(myRa)));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetTpScTs(NULL, myTimestamp, sizeof(myTimestamp)));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetTpDt(NULL, myTimestamp, sizeof(myTimestamp)));
+    LE_ASSERT(LE_BAD_PARAMETER == le_sms_GetTpSt(NULL, &myStatus));
+
+    // Simulate reception of a SMS Status Report
+    msgPtrNew.msgIndex = 0;                         // Message index
+    msgPtrNew.protocol = PA_SMS_PROTOCOL_GSM;       // Protocol used
+    msgPtrNew.storage  = PA_SMS_STORAGE_NONE;       // SMS Storage used
+    msgPtrNew.pduLen   = sizeof(PDU_RECEIVE_TEST_PATTERN_STATUS_REPORT);
+    for (i=0; i < msgPtrNew.pduLen; i++)
+    {
+        msgPtrNew.pduCB[i] = PDU_RECEIVE_TEST_PATTERN_STATUS_REPORT[i];
+    }
+    pa_sms_SetSmsInStorage(&msgPtrNew);
+    WaitForSem(SmsReceiveThreadSemaphore, LONG_TIMEOUT, LE_OK);
+
+    // Check APIs and received data
+    LE_ASSERT(ReceivedSmsRef);
+    LE_ASSERT(LE_OVERFLOW == le_sms_GetTpRa(ReceivedSmsRef, &myTora, myRa, 1));
+    LE_ASSERT(LE_OVERFLOW == le_sms_GetTpScTs(ReceivedSmsRef, myTimestamp, 1));
+    LE_ASSERT(LE_OVERFLOW == le_sms_GetTpDt(ReceivedSmsRef, myTimestamp, 1));
+    LE_ASSERT_OK(le_sms_GetTpMr(ReceivedSmsRef, &myMessageReference));
+    LE_ASSERT_OK(le_sms_GetTpRa(ReceivedSmsRef, &myTora, myRa, sizeof(myRa)));
+    LE_ASSERT_OK(le_sms_GetTpScTs(ReceivedSmsRef, myTimestamp, sizeof(myTimestamp)));
+    LE_ASSERT_OK(le_sms_GetTpDt(ReceivedSmsRef, myTimestamp, sizeof(myTimestamp)));
+    LE_ASSERT_OK(le_sms_GetTpSt(ReceivedSmsRef, &myStatus));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1323,6 +1420,9 @@ void testle_sms_SmsApiUnitTest
 
     LE_INFO("Test Testle_sms_Statistics started");
     Testle_sms_Statistics();
+
+    LE_INFO("Test Testle_sms_StatusReport started");
+    Testle_sms_StatusReport();
 
     LE_INFO("smsApiUnitTest sequence PASSED");
 }

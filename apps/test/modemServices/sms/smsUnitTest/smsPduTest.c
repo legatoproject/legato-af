@@ -21,6 +21,7 @@ typedef struct
         const char * dest;
         const char * text;
         pa_sms_MsgType_t type;
+        bool statusReportEnabled;
         struct
         {
                 const size_t length;
@@ -43,6 +44,7 @@ static const PduAssoc_t PduAssocDb[] =
         .dest = "+33661651866",
         .text = "Test sending message",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OK,
@@ -116,6 +118,7 @@ static const PduAssoc_t PduAssocDb[] =
         .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus,"
                         " quis volutpat erat.",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OK,
@@ -200,10 +203,11 @@ static const PduAssoc_t PduAssocDb[] =
     },
     /* 2 */
     {
-        .dest = "+33617190547",
+        .dest = "0617190547",
         .text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi in commodo lectus"
                         ", quis volutpat erat.",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OK,
@@ -293,6 +297,7 @@ static const PduAssoc_t PduAssocDb[] =
         .dest = "+33661651866",
         .text = "Test with special char [ ...",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OK,
@@ -354,6 +359,7 @@ static const PduAssoc_t PduAssocDb[] =
         .dest = "+33661651866",
         .text = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OK,
@@ -433,6 +439,7 @@ static const PduAssoc_t PduAssocDb[] =
                 "3456789012345678901234567890123456789012345678901234567890123456789012345"
                 "67890123456789",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OVERFLOW,
@@ -494,6 +501,7 @@ static const PduAssoc_t PduAssocDb[] =
         .dest = "+33661651866",
         .text = "Test with special char [ ] ^ { } \\ ~ | ...!",
         .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = false,
         .gsm_7bits =
         {
             .conversionResult = LE_OK,
@@ -558,6 +566,88 @@ static const PduAssoc_t PduAssocDb[] =
             .timestampIndex = 68,
         },
     },
+    /* 7 */
+    {
+        .dest = "+33661651866",
+        .text = "Test sending message with Status Report",
+        .type = PA_SMS_SUBMIT,
+        .statusReportEnabled = true,
+        .gsm_7bits =
+        {
+            .conversionResult = LE_OK,
+            .length = 50,
+            .data = {
+                0x00, 0x31, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
+                0xF6, 0x00, 0x00, 0xAD, 0x27, 0xD4, 0xF2, 0x9C, 0x0E, 0x9A,
+                0x97, 0xDD, 0xE4, 0xB4, 0xFB, 0x0C, 0x6A, 0x97, 0xE7, 0xF3,
+                0xF0, 0xB9, 0x0C, 0xBA, 0xA7, 0xE9, 0x68, 0xD0, 0x94, 0x1E,
+                0xA6, 0xD7, 0xE7, 0x20, 0x69, 0x19, 0xFE, 0x96, 0xD3, 0x01
+            },
+        },
+        .gsm_8bits =
+        {
+            .conversionResult = LE_OK,
+            .length = 54,
+            .data =
+            {
+                0x00, 0x31, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
+                0xF6, 0x00, 0x04, 0xAD, 0x27, 0x54, 0x65, 0x73, 0x74, 0x20,
+                0x73, 0x65, 0x6E, 0x64, 0x69, 0x6E, 0x67, 0x20, 0x6D, 0x65,
+                0x73, 0x73, 0x61, 0x67, 0x65, 0x20, 0x77, 0x69, 0x74, 0x68,
+                0x20, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x20, 0x52, 0x65,
+                0x70, 0x6F, 0x72, 0x74
+            },
+        },
+        .gsm_ucs2 =
+        {
+            .conversionResult = LE_OK,
+            .length = 93,
+            .data =
+            {
+                0x00, 0x31, 0x00, 0x0B, 0x91, 0x33, 0x66, 0x61, 0x15, 0x68,
+                0xF6, 0x00, 0x08, 0xAD, 0x4E, 0x00, 0x54, 0x00, 0x65, 0x00,
+                0x73, 0x00, 0x74, 0x00, 0x20, 0x00, 0x73, 0x00, 0x65, 0x00,
+                0x6E, 0x00, 0x64, 0x00, 0x69, 0x00, 0x6E, 0x00, 0x67, 0x00,
+                0x20, 0x00, 0x6D, 0x00, 0x65, 0x00, 0x73, 0x00, 0x73, 0x00,
+                0x61, 0x00, 0x67, 0x00, 0x65, 0x00, 0x20, 0x00, 0x77, 0x00,
+                0x69, 0x00, 0x74, 0x00, 0x68, 0x00, 0x20, 0x00, 0x53, 0x00,
+                0x74, 0x00, 0x61, 0x00, 0x74, 0x00, 0x75, 0x00, 0x73, 0x00,
+                0x20, 0x00, 0x52, 0x00, 0x65, 0x00, 0x70, 0x00, 0x6F, 0x00,
+                0x72, 0x00, 0x74
+            },
+        },
+        .cdma_7bits =
+        {
+            .conversionResult = LE_OK,
+            .length = 70,
+            .data = {
+                0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
+                0x85, 0x94, 0x61, 0x98, 0x08, 0x36, 0x00, 0x03, 0x20, 0x00,
+                0x10, 0x01, 0x24, 0x11, 0x3D, 0x4C, 0xBC, 0xFA, 0x20, 0xE7,
+                0x97, 0x76, 0x4D, 0x3B, 0xB3, 0xA0, 0xDB, 0x97, 0x9F, 0x3C,
+                0x39, 0xF2, 0xA0, 0xEF, 0xA7, 0xA6, 0x84, 0x14, 0xFA, 0x61,
+                0xE9, 0xD7, 0x9A, 0x0A, 0x59, 0x78, 0x6F, 0xE5, 0xD0, 0x03,
+                0x06, 0x17, 0x08, 0x07, 0x18, 0x52, 0x09, 0x08, 0x01, 0x00
+            },
+            .timestampIndex = 59,
+        },
+        .cdma_8bits =
+        {
+            .conversionResult = LE_OK,
+            .length = 75,
+            .data = {
+                0x00, 0x00, 0x02, 0x10, 0x02, 0x04, 0x07, 0x02, 0xCC, 0xD9,
+                0x85, 0x94, 0x61, 0x98, 0x08, 0x3B, 0x00, 0x03, 0x20, 0x00,
+                0x10, 0x01, 0x29, 0x01, 0x3A, 0xA3, 0x2B, 0x9B, 0xA1, 0x03,
+                0x9B, 0x2B, 0x73, 0x23, 0x4B, 0x73, 0x39, 0x03, 0x6B, 0x2B,
+                0x9B, 0x9B, 0x0B, 0x3B, 0x29, 0x03, 0xBB, 0x4B, 0xA3, 0x41,
+                0x02, 0x9B, 0xA3, 0x0B, 0xA3, 0xAB, 0x99, 0x02, 0x93, 0x2B,
+                0x83, 0x7B, 0x93, 0xA0, 0x03, 0x06, 0x17, 0x08, 0x07, 0x18,
+                0x46, 0x35, 0x08, 0x01, 0x00
+            },
+            .timestampIndex = 64,
+        },
+    }
 };
 
 
@@ -1380,8 +1470,6 @@ static const PduReceived_t PduReceivedDb[] =
     },
 };
 
-
-
 static le_result_t TestDecodePdu
 (
     void
@@ -1398,9 +1486,10 @@ static le_result_t TestDecodePdu
         LE_INFO("=> Index %d", i);
 
         res = smsPdu_Decode(receivedPtr->proto,
-                        receivedPtr->data,
-                        receivedPtr->length,
-                        &message);
+                            receivedPtr->data,
+                            receivedPtr->length,
+                            true,
+                            &message);
         if (res != receivedPtr->expected.result)
         {
             LE_ERROR("smsPdu_Decode() returns %d", res);
@@ -1530,28 +1619,40 @@ static le_result_t TestEncodePdu
     pa_sms_Pdu_t pdu;
     pa_sms_Message_t message;
     le_result_t res;
+    smsPdu_DataToEncode_t data;
     int i;
 
-    for( i = 0; i < sizeof(PduAssocDb)/sizeof(PduAssoc_t); i++)
+    for (i = 0; i < sizeof(PduAssocDb)/sizeof(PduAssoc_t); i++)
     {
         const PduAssoc_t * assoc = &PduAssocDb[i];
         size_t messageLength = strlen(assoc->text);
 
-        // LE_INFO("
         LE_INFO("=> Index %d", i);
+        LE_INFO("Text (%zd): (%s)", messageLength, assoc->text);
 
-        LE_INFO("Text (%zd): (%s)",messageLength, assoc->text);
+        // Enable or disable SMS Status Report
+        if (assoc->statusReportEnabled)
+        {
+            le_sms_EnableStatusReport();
+        }
+        else
+        {
+            le_sms_DisableStatusReport();
+        }
 
         /* GSM Encode 8 bits */
         LE_INFO("Encoding in 8 bits GSM");
-        res = smsPdu_Encode(PA_SMS_PROTOCOL_GSM,
-                        (const uint8_t*)assoc->text,
-                        strlen(assoc->text),
-                        assoc->dest,
-                        SMSPDU_8_BITS,
-                        assoc->type,
-                        &pdu);
 
+        memset(&data, 0, sizeof(data));
+        data.protocol = PA_SMS_PROTOCOL_GSM;
+        data.messagePtr = (const uint8_t*)assoc->text;
+        data.length = strlen(assoc->text);
+        data.addressPtr = assoc->dest;
+        data.encoding = SMSPDU_8_BITS;
+        data.messageType = assoc->type;
+        le_sms_IsStatusReportEnabled(&data.statusReport);
+
+        res = smsPdu_Encode(&data, &pdu);
         if (res != assoc->gsm_8bits.conversionResult)
         {
             return LE_FAULT;
@@ -1576,7 +1677,7 @@ static le_result_t TestEncodePdu
             }
 
             /* Decode */
-            res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM,pdu.data,pdu.dataLen,&message);
+            res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM, pdu.data, pdu.dataLen, true, &message);
             if (res != LE_OK)
             {
                 return LE_FAULT;
@@ -1627,15 +1728,10 @@ static le_result_t TestEncodePdu
 
         /* GSM Encode 7 bits */
         LE_INFO("Encoding in 7 bits GSM ");
-        res = smsPdu_Encode(PA_SMS_PROTOCOL_GSM,
-                        (const uint8_t*)assoc->text,
-                        strlen(assoc->text),
-                        assoc->dest,
-                        SMSPDU_7_BITS,
-                        assoc->type,
-                        &pdu);
+        data.encoding = SMSPDU_7_BITS;
 
-        if (res != assoc->gsm_7bits.conversionResult )
+        res = smsPdu_Encode(&data, &pdu);
+        if (res != assoc->gsm_7bits.conversionResult)
         {
             return LE_FAULT;
         }
@@ -1659,7 +1755,7 @@ static le_result_t TestEncodePdu
             }
 
             /* Decode */
-            res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM,pdu.data,pdu.dataLen,&message);
+            res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM, pdu.data, pdu.dataLen, true, &message);
             if (res != LE_OK)
             {
                 return LE_FAULT;
@@ -1692,7 +1788,6 @@ static le_result_t TestEncodePdu
                 {
                     LE_INFO("Format: %u", message.smsSubmit.format);
                     LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
-                    LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
                     if (message.smsSubmit.format != LE_SMS_FORMAT_TEXT)
                     {
                         return LE_FAULT;
@@ -1714,32 +1809,31 @@ static le_result_t TestEncodePdu
 
         if (assoc->gsm_ucs2.length)
         {
+            LE_INFO("------------------");
+
             /* GSM Encode UCS2 bits */
             uint8_t ucs2stringconverted[LE_SMS_UCS2_MAX_BYTES] = { 0 };
             int len = strlen(assoc->text);
+            int j = 0;
 
             if (len > LE_SMS_UCS2_MAX_CHARS)
             {
                 return LE_FAULT;
             }
-            for (i = 0; i < len; i++)
+            for (j = 0; j < len; j++)
             {
-                ucs2stringconverted[i*2] = 0x00;
-                ucs2stringconverted[i*2+1] = assoc->text[i];
+                ucs2stringconverted[j*2] = 0x00;
+                ucs2stringconverted[j*2+1] = assoc->text[j];
             }
             len = len *2;
 
-            LE_INFO("Encoding in UCS2 GSM %d %d", len, i*2);
+            LE_INFO("Encoding in UCS2 GSM");
+            data.messagePtr = (const uint8_t*) ucs2stringconverted;
+            data.length = len;
+            data.encoding = SMSPDU_UCS2_16_BITS;
 
-            res = smsPdu_Encode(PA_SMS_PROTOCOL_GSM,
-                (const uint8_t*) ucs2stringconverted,
-                len,
-                assoc->dest,
-                SMSPDU_UCS2_16_BITS,
-                assoc->type,
-                &pdu);
-
-            if (res != assoc->gsm_ucs2.conversionResult )
+            res = smsPdu_Encode(&data, &pdu);
+            if (res != assoc->gsm_ucs2.conversionResult)
             {
                 return LE_FAULT;
             }
@@ -1763,7 +1857,7 @@ static le_result_t TestEncodePdu
                 }
 
                 /* Decode */
-                res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM,pdu.data,pdu.dataLen,&message);
+                res = smsPdu_Decode(PA_SMS_PROTOCOL_GSM, pdu.data, pdu.dataLen, true, &message);
                 if (res != LE_OK)
                 {
                     return LE_FAULT;
@@ -1796,7 +1890,6 @@ static le_result_t TestEncodePdu
                     {
                         LE_INFO("Format: %u", message.smsSubmit.format);
                         LE_INFO("Data (%u): '%s'", message.smsSubmit.dataLen, message.smsSubmit.data);
-                        LE_INFO("Data (%u): '%s'", message.smsDeliver.dataLen, message.smsDeliver.data);
                         if (message.smsSubmit.format != LE_SMS_FORMAT_UCS2)
                         {
                             return LE_FAULT;
@@ -1817,15 +1910,16 @@ static le_result_t TestEncodePdu
             }
         }
 
+        LE_INFO("------------------");
+
         /* CDMA Encode 8 bits */
         LE_INFO("Encoding in 8 bits CDMA");
-        res = smsPdu_Encode(PA_SMS_PROTOCOL_CDMA,
-                        (const uint8_t*)assoc->text,
-                        strlen(assoc->text),
-                        assoc->dest,
-                        SMSPDU_8_BITS,
-                        assoc->type,
-                        &pdu);
+        data.protocol = PA_SMS_PROTOCOL_CDMA;
+        data.messagePtr = (const uint8_t*)assoc->text;
+        data.length = strlen(assoc->text);
+        data.encoding = SMSPDU_8_BITS;
+
+        res = smsPdu_Encode(&data, &pdu);
         if (res != assoc->cdma_8bits.conversionResult)
         {
             return LE_FAULT;
@@ -1860,7 +1954,7 @@ static le_result_t TestEncodePdu
             }
 
             /* Decode */
-            res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA, pdu.data,pdu.dataLen, &message);
+            res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA, pdu.data, pdu.dataLen, true, &message);
             if (res != LE_OK )
             {
                 return LE_FAULT;
@@ -1911,13 +2005,9 @@ static le_result_t TestEncodePdu
 
         /* CDMA Encode 7 bits */
         LE_INFO("Encoding in 7 bits CDMA ");
-        res = smsPdu_Encode(PA_SMS_PROTOCOL_CDMA,
-                        (const uint8_t*)assoc->text,
-                        strlen(assoc->text),
-                        assoc->dest,
-                        SMSPDU_7_BITS,
-                        assoc->type,
-                        &pdu);
+        data.encoding = SMSPDU_7_BITS;
+
+        res = smsPdu_Encode(&data, &pdu);
         if (res != assoc->cdma_7bits.conversionResult)
         {
             return LE_FAULT;
@@ -1952,7 +2042,7 @@ static le_result_t TestEncodePdu
             }
 
             /* Decode */
-            res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA,pdu.data,pdu.dataLen,&message);
+            res = smsPdu_Decode(PA_SMS_PROTOCOL_CDMA, pdu.data, pdu.dataLen, true, &message);
             if (res != LE_OK)
             {
                 return LE_FAULT;
@@ -2019,10 +2109,10 @@ void testle_sms_SmsPduTest
 )
 {
     LE_INFO("Test EncodePdu started");
-    LE_ASSERT(TestEncodePdu() == LE_OK);
+    LE_ASSERT_OK(TestEncodePdu());
 
-    LE_INFO("Test TestDecodePdu started");
-    LE_ASSERT(TestDecodePdu() == LE_OK);
+    LE_INFO("Test DecodePdu started");
+    LE_ASSERT_OK(TestDecodePdu());
 
     LE_INFO("smsPduTest SUCCESS");
 }

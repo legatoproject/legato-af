@@ -40,5 +40,6 @@
 #define CFG_NODE_RX_COUNT                   "rxCount"
 #define CFG_NODE_TX_COUNT                   "txCount"
 #define CFG_NODE_RX_CB_COUNT                "rxCbCount"
+#define CFG_NODE_STATUS_REPORT              "statusReportEnabled"
 
 #endif // LEGATO_MDMCFGENTRIES_INCLUDE_GUARD

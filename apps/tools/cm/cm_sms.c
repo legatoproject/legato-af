@@ -157,6 +157,7 @@ static void PrintMessage
 {
     PrintMessageContext_t * msgContextPtr = (PrintMessageContext_t *)(contextPtr);
     le_result_t res;
+    le_sms_Type_t smsType;
     le_sms_Format_t format;
     size_t length, contentSz;
     SmsContent_t content;
@@ -172,6 +173,26 @@ static void PrintMessage
 
     printf("--[%2u]---------------------------------------------------------------\n", msgContextPtr->nbSms);
 
+    smsType = le_sms_GetType(msgRef);
+    switch (smsType)
+    {
+        case LE_SMS_TYPE_RX:
+            cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_RX");
+            break;
+
+        case LE_SMS_TYPE_BROADCAST_RX:
+            cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_BROADCAST_RX");
+            break;
+
+        case LE_SMS_TYPE_STATUS_REPORT:
+            cm_cmn_FormatPrint(" Type", "LE_SMS_TYPE_STATUS_REPORT");
+            break;
+
+        default:
+            cm_cmn_FormatPrint(" Type", "Unexpected");
+            break;
+    }
+
     res = le_sms_GetSenderTel(msgRef, content.text, sizeof(content.text));
     if (res == LE_OK)
     {
@@ -185,7 +206,6 @@ static void PrintMessage
     }
 
     format = le_sms_GetFormat(msgRef);
-
     switch (format)
     {
         case LE_SMS_FORMAT_TEXT:

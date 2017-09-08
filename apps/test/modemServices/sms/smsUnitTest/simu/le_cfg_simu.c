@@ -25,6 +25,7 @@ static bool MessageCounting = true;
 static int32_t RxMessageCount = 0;
 static int32_t TxMessageCount = 0;
 static int32_t RxCbMessageCount = 0;
+static bool StatusReportActivation = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -185,6 +186,10 @@ void le_cfgSimu_SetBoolNodeValue
     {
         MessageCounting = value;
     }
+    else if (0 == strncmp(path, CFG_NODE_STATUS_REPORT, strlen(CFG_NODE_STATUS_REPORT)))
+    {
+        StatusReportActivation = value;
+    }
     else
     {
         LE_ERROR("Unsupported path '%s'", path);
@@ -284,6 +289,10 @@ bool le_cfg_GetBool
     if (0 == strncmp(path, CFG_NODE_COUNTING, strlen(CFG_NODE_COUNTING)))
     {
         value = MessageCounting;
+    }
+    else if (0 == strncmp(path, CFG_NODE_STATUS_REPORT, strlen(CFG_NODE_STATUS_REPORT)))
+    {
+        value = StatusReportActivation;
     }
     else
     {

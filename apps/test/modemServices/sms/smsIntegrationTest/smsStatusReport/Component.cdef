@@ -1,0 +1,12 @@
+sources:
+{
+    smsStatusReport.c
+}
+
+requires:
+{
+    api:
+    {
+        le_sms.api
+    }
+}

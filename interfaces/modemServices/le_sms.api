@@ -268,6 +268,29 @@
  *  le_sms_AddCdmaCellBroadcastServices() and le_sms_RemoveCdmaCellBroadcastServices() APIs. All
  * Service categories can be removed with le_sms_ClearCdmaCellBroadcastServices() API.
  *
+ * @section le_sms_ops_statusReport SMS Status Report
+ *
+ * SMS Status Report may be sent by the SMS Center (SMSC) to inform the originating device about the
+ * final outcome of the message delivery.
+ *
+ * SMS Status Report can be activated or deactivated for outgoing messages with
+ * le_sms_EnableStatusReport() and le_sms_DisableStatusReport(). The current activation state can
+ * be retrieved with le_sms_IsStatusReportEnabled().
+ *
+ * The reception of a SMS Status Report is notified by the SMS handler like a SMS message reception,
+ * but the message is neither stored in SIM nor in the modem. So le_sms_DeleteFromStorage()
+ * can't be used, but the message reference shall be delete with le_sms_Delete(). Received SMS
+ * Status Reports are identified by a specific type: @ref LE_SMS_TYPE_STATUS_REPORT.
+ *
+ * The different elements of the SMS Status Report can be retrieved with the following APIs:
+ * - le_sms_GetTpMr() gives the Message Reference, defined in 3GPP TS 23.040 section 9.2.3.6.
+ * - le_sms_GetTpRa() gives the Recipient Address, defined in 3GPP TS 23.040 section 9.2.3.14, and
+ * the Recipient Address Type of Address, defined in 3GPP TS 24.011 section 8.2.5.2.
+ * - le_sms_GetTpScTs() gives the Service Centre Time Stamp, defined in 3GPP TS 23.040
+ * section 9.2.3.11.
+ * - le_sms_GetTpDt() gives the Discharge Time, defined in 3GPP TS 23.040 section 9.2.3.13.
+ * - le_sms_GetTpSt() gives the Status, defined in 3GPP TS 23.040 section 9.2.3.15.
+ *
  * @section le_sms_ops_configuration SMS configuration
  *
  *  Modem SMS Center Address can be set or get with le_sms_SetSmsCenterAddress() and
@@ -442,7 +465,8 @@ ENUM Type
 {
     TYPE_RX,                ///< SMS mobile terminated message.
     TYPE_TX,                ///< SMS mobile originated message.
-    TYPE_BROADCAST_RX       ///< SMS Cell Broadcast message.
+    TYPE_BROADCAST_RX,      ///< SMS Cell Broadcast message.
+    TYPE_STATUS_REPORT      ///< SMS Status Report.
 };
 
 
@@ -1670,4 +1694,137 @@ FUNCTION StopCount
 //--------------------------------------------------------------------------------------------------
 FUNCTION ResetCount
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable SMS Status Report for outgoing messages.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnableStatusReport
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Disable SMS Status Report for outgoing messages.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableStatusReport
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get SMS Status Report activation state.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  Parameter is invalid.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t IsStatusReportEnabled
+(
+    bool enabled    OUT     ///< True when SMS Status Report is enabled, false otherwise.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get TP-Message-Reference of SMS Status Report.
+ * TP-Message-Reference is defined in 3GPP TS 23.040 section 9.2.3.6.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  Parameter is invalid.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTpMr
+(
+    Msg    msgRef,          ///< Reference to the message object.
+    uint8  tpMr     OUT     ///< 3GPP TS 23.040 TP-Message-Reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get TP-Recipient-Address of SMS Status Report.
+ * TP-Recipient-Address is defined in 3GPP TS 23.040 section 9.2.3.14.
+ * TP-Recipient-Address Type-of-Address is defined in 3GPP TS 24.011 section 8.2.5.2.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The Recipient Address length exceeds the length of the provided buffer.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTpRa
+(
+    Msg     msgRef,                                 ///< Reference to the message object.
+    uint8   tora                             OUT,   ///< 3GPP TS 24.011 TP-Recipient-Address
+                                                    ///< Type-of-Address.
+    string  ra[le_mdmDefs.PHONE_NUM_MAX_LEN] OUT    ///< 3GPP TS 23.040 TP-Recipient-Address.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get TP-Service-Centre-Time-Stamp of SMS Status Report.
+ * TP-Service-Centre-Time-Stamp is defined in 3GPP TS 23.040 section 9.2.3.11.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The SC Timestamp length exceeds the length of the provided buffer.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTpScTs
+(
+    Msg     msgRef,                         ///< Reference to the message object.
+    string  scts[TIMESTAMP_MAX_LEN] OUT     ///< 3GPP TS 23.040 TP-Service-Centre-Time-Stamp.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get TP-Discharge-Time of SMS Status Report.
+ * TP-Discharge-Time is defined in 3GPP TS 23.040 section 9.2.3.13.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_OVERFLOW       The Discharge Time length exceeds the length of the provided buffer.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTpDt
+(
+    Msg     msgRef,                     ///< Reference to the message object.
+    string  dt[TIMESTAMP_MAX_LEN] OUT   ///< 3GPP TS 23.040 TP-Discharge-Time.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get TP-Status of SMS Status Report.
+ * TP-Status is defined in 3GPP TS 23.040 section 9.2.3.15.
+ *
+ * @return
+ *  - LE_OK             Function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTpSt
+(
+    Msg    msgRef,      ///< Reference to the message object.
+    uint8  st     OUT   ///< 3GPP TS 23.040 TP-Status.
 );

@@ -42,6 +42,62 @@ static const char *DtmfChars = "D1234567890*#ABC";
  */
 #define HAS_SMSC_INFORMATION
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * First Byte:
+ * 1-0 TP-Message-Type-Indicator (TP-MTI)
+ * 2   TP-More-Messages-to-Send (TP-MMS) in SMS-DELIVER (0 = more messages)
+ * 2   TP-Reject-Duplicates (TP-RD) in SMS-SUBMIT
+ * 3   TP-Loop-Prevention (TP-LP) in SMS-DELIVER and SMS-STATUS-REPORT
+ * 4-3 TP-Validity-Period-Format (TP-VPF) in SMS-SUBMIT (00 = not present)
+ * 5   TP-Status-Report-Indication (TP-SRI) in SMS-DELIVER
+ * 5   TP-Status-Report-Request (TP-SRR) in SMS-SUBMIT and SMS-COMMAND
+ * 5   TP-Status-Report-Qualifier (TP-SRQ) in SMS-STATUS-REPORT
+ * 6   TP-User-Data-Header-Indicator (TP-UDHI)
+ * 7   TP-Reply-Path (TP-RP) in SMS-DELIVER and SMS-SUBMIT
+ */
+//--------------------------------------------------------------------------------------------------
+#define FIRSTBYTE_SHIFT_TP_MTI  0
+#define FIRSTBYTE_SHIFT_TP_MMS  2
+#define FIRSTBYTE_SHIFT_TP_RD   2
+#define FIRSTBYTE_SHIFT_TP_LP   3
+#define FIRSTBYTE_SHIFT_TP_VPF  3
+#define FIRSTBYTE_SHIFT_TP_SRI  5
+#define FIRSTBYTE_SHIFT_TP_SRR  5
+#define FIRSTBYTE_SHIFT_TP_SRQ  5
+#define FIRSTBYTE_SHIFT_TP_UDHI 6
+#define FIRSTBYTE_SHIFT_TP_RP   7
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * TP-MTI 2 bits (cf. 3GPP TS 23.040 section 9.2.3.1)
+ * TP-MTI  direction   message type
+ * 0 0     MS → SC     SMS-DELIVER-REPORT
+ * 0 0     SC → MS     SMS-DELIVER
+ * 0 1     MS → SC     SMS-SUBMIT
+ * 0 1     SC → MS     SMS-SUBMIT-REPORT
+ * 1 0     MS → SC     SMS-COMMAND
+ * 1 0     SC → MS     SMS-STATUS-REPORT
+ * 1 1     any     Reserved
+ */
+//--------------------------------------------------------------------------------------------------
+#define TP_MTI_MASK                 0x03
+#define TP_MTI_SMS_DELIVER          0x00
+#define TP_MTI_SMS_DELIVER_REPORT   0x00
+#define TP_MTI_SMS_SUBMIT           0x01
+#define TP_MTI_SMS_SUBMIT_REPORT    0x01
+#define TP_MTI_SMS_STATUS_REPORT    0x02
+#define TP_MTI_SMS_COMMAND          0x02
+#define TP_MTI_RESERVED             0x03
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Type of address (cf. 3GPP TS 24.008 section 10.5.4.7)
+ */
+//--------------------------------------------------------------------------------------------------
+#define TYPE_OF_ADDRESS_UNKNOWN         0x81
+#define TYPE_OF_ADDRESS_INTERNATIONAL   0x91
+
 /****************************************************************************
  * This lookup table converts from ISO-8859-1 8-bit ASCII to the
  * 7 bit "default alphabet" as defined in ETSI GSM 03.38
@@ -931,7 +987,7 @@ static smsPdu_Encoding_t DetermineEncoding
     else
     {
         LE_DEBUG("this encoding is not supported (tpDcs %u)", tpDcs);
-        return LE_FAULT;
+        return SMSPDU_ENCODING_UNKNOWN;
     }
 
     return encoding;
@@ -939,210 +995,28 @@ static smsPdu_Encoding_t DetermineEncoding
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Decode the content of dataPtr.
+ * Decode a user data field of a PDU (TP-UD)
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t DecodeGsmPdu
+static le_result_t DecodeUserDataField
 (
-    const uint8_t    *dataPtr,  ///< [IN] PDU data to decode
-    pa_sms_Message_t *smsPtr    ///< [OUT] Buffer to store decoded data
+    const uint8_t*    dataPtr,      ///< [IN] PDU data to decode
+    uint8_t*          posPtr,       ///< [INOUT] Position in PDU
+    smsPdu_Encoding_t encoding,     ///< [IN] Encoding
+    uint8_t           tpUdl,        ///< [IN] TP User Data Length
+    uint8_t           tpUdhl,       ///< [IN] TP User Data Header Length
+    pa_sms_Message_t* smsPtr        ///< [OUT] Buffer to store decoded data
 )
 {
-    int pos = 0;
-    uint8_t firstByte;
-    char address[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
-    char timeStamp[LE_SMS_TIMESTAMP_MAX_BYTES] = {0};
-    uint8_t addressLen;
-    uint8_t tpDcs,tpPid;
-    uint8_t tpUdl;
-    smsPdu_Encoding_t encoding;
+    int              messageLen;
+    uint8_t*         destDataPtr;
+    size_t           destDataSize;
+    uint32_t*        destDataLenPtr;
+    le_sms_Format_t* formatPtr;
 
-    memset(smsPtr, 0, sizeof(pa_sms_Message_t));
-
-#ifdef HAS_SMSC_INFORMATION
-    uint8_t smscInfoLen = ReadByte(dataPtr,pos++);
-    pos += smscInfoLen ; // skip SCA address and type of address
-#endif
-
-    firstByte = ReadByte(dataPtr,pos++);
-    if (IS_TRACE_ENABLED)
-    {
-        LE_DEBUG("firstByte 0x%02X", firstByte);
-    }
-
-    /*
-     * TP-MTI 2 bits
-     * TP-MTI  direction   message type
-     * 0 0     MS → SC     SMS-DELIVER-REPORT
-     * 0 0     SC → MS     SMS-DELIVER
-     * 0 1     MS → SC     SMS-SUBMIT
-     * 0 1     SC → MS     SMS-SUBMIT-REPORT
-     * 1 0     MS → SC     SMS-COMMAND
-     * 1 0     SC → MS     SMS-STATUS-REPORT
-     * 1 1     any     Reserved
-     */
-    switch(firstByte & 0x03)
-    {
-        case 0x00:
-            smsPtr->type = PA_SMS_DELIVER;
-            smsPtr->smsDeliver.option = PA_SMS_OPTIONMASK_NO_OPTION;
-            break;
-        case 0x01:
-            smsPtr->type = PA_SMS_SUBMIT;
-            smsPtr->smsSubmit.option = PA_SMS_OPTIONMASK_NO_OPTION;
-            break;
-        default:
-            LE_ERROR("Decoding this message is not supported TP-MTI %d.", firstByte & 0x03);
-            return LE_UNSUPPORTED;
-    }
-
-    if(smsPtr->type == PA_SMS_SUBMIT)
-    {
-        /* TP-MR: Message Reference */
-        pos++; // skip TP-MR
-    }
-
-    /* TP-DA: Destination Address for SMS-SUBMIT
-     * TP-OA: Originating Address for SMS-DELIVER
-     */
-    {
-        uint8_t addressType;
-        addressLen = ReadByte(dataPtr,pos);
-        addressType = ReadByte(dataPtr,pos+1);
-
-        /* Check for Alphanumeric Address 7 BITS format */
-        if ( (addressType & 0xF0) ==  0xD0 )
-        {
-            int addressAlphanumericLen = ((addressLen / 2) * 8 ) / 7;
-            if (IS_TRACE_ENABLED)
-            {
-                LE_DEBUG("Alphanumeric Address 7_BITS addressLen %d, addressAlphanumericLen %d",
-                                addressLen, addressAlphanumericLen);
-            }
-
-            if (addressAlphanumericLen <= 0)
-            {
-                LE_ERROR("Address length %d is <= 0 ", addressAlphanumericLen);
-                return LE_UNSUPPORTED;
-            }
-            /* Alphanumeric Address 7_BITS */
-            pos += 2;
-            Convert7BitsTo8Bits(&dataPtr[pos],
-                            0,
-                            addressAlphanumericLen,
-                            (uint8_t *) address,
-                            LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
-
-            /* Align on the next field if the number of useful semi-octets
-             * within the address value is odd
-             */
-            if (addressLen % 2)
-            {
-                pos += (addressLen/2) + 1;
-            }
-            else
-            {
-                pos += (addressLen/2);
-            }
-        }
-        else
-        {
-            pos += ConvertBinaryIntoPhoneNumber(
-                            &dataPtr[pos],
-                            (addressLen+1)>>1,
-                            address,
-                            LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
-        }
-    }
-    /* Address */
-
-    /* TP-PID: Protocol identifier (1 byte) */
-    tpPid = ReadByte(dataPtr,pos++);
-
-    /* TP-DCS: Data Coding Scheme (1 byte) */
-    tpDcs = ReadByte(dataPtr,pos++);
-
-    /*
-     * check that we have a supported message type ( 7- or 8-bits characters)
-     * tpDcs Field are defined in the 3GPP 03.38
-     */
-    encoding = DetermineEncoding(tpDcs);
-
-    if(smsPtr->type == PA_SMS_DELIVER)
-    {
-        /* TP-SCTS: Service Center Time Stamp (7 bytes) */
-        pos += ConvertBinaryIntoTimestamp(
-                        &dataPtr[pos],
-                        7,
-                        timeStamp,
-                        LE_SMS_TIMESTAMP_MAX_BYTES
-        );
-    }
-
-    if (IS_TRACE_ENABLED)
-    {
-        LE_DEBUG("Address: %s", address);
-        DumpPdu("TP-SCTS", &dataPtr[pos-7], 7);
-        LE_DEBUG("tpPid 0x%02X, tpDcs 0x%02X, encoding %d, timeStamp %s",
-                        tpPid, tpDcs, encoding, timeStamp);
-    }
-
-    switch(encoding)
-    {
-        case SMSPDU_7_BITS:
-        case SMSPDU_8_BITS:
-        case SMSPDU_UCS2_16_BITS:
-            break;
-
-        case SMSPDU_ENCODING_UNKNOWN:
-        default:
-            LE_ERROR("Message format not supported.");
-            return LE_UNSUPPORTED;
-    }
-
-    if(smsPtr->type == PA_SMS_SUBMIT)
-    {
-        /* TP-VP: Validity Period (0, 1 or 7 bytes) */
-        pos++;
-    }
-
-    /* TP-UDL: User Data Length (1 byte) */
-    tpUdl = ReadByte(dataPtr,pos++);
-
-    /* Check if we have a user data header */
-    uint8_t messageLen = 0; // message length in character (7- or 8-bit depending on the encoding)
-    /* GSM 3GPP 03.40  TP-User-Data-Header-Indicator (TP-UDHI) (9.2.3.23) */
-    uint8_t tpUdhi = firstByte & (1<<6);
-    /* GSM 3GPP 03.40  Length of User Data Header in the TP-User-Data (TP-UDHI) (9.2.3.24) */
-    uint8_t tpUdhl = tpUdhi ? ReadByte(dataPtr,pos++) : 0;
-
-    if (IS_TRACE_ENABLED)
-    {
-        LE_DEBUG("tpUdhi %d, tpUdhl %d, tpUdl %d, UserData pos %d",
-                        tpUdhi, tpUdhl, tpUdl, pos);
-        DumpPdu("TP-User Data", &dataPtr[pos], tpUdl);
-    }
-
-    if (tpUdhl)
-    {
-        LE_WARN("Multi part SMS are not available yet");
-        DumpPdu("TP-User Data Header",&dataPtr[pos-1], tpUdhl+1);
-        return LE_UNSUPPORTED;
-    }
-
-    uint8_t * destDataPtr;
-    size_t    destDataSize;
-    uint32_t * destDataLenPtr;
-    le_sms_Format_t * formatPtr;
-
-    switch(smsPtr->type)
+    switch (smsPtr->type)
     {
         case PA_SMS_DELIVER:
-            strncpy(smsPtr->smsDeliver.oa, address, sizeof(smsPtr->smsDeliver.oa));
-            smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_OA;
-            strncpy(smsPtr->smsDeliver.scts, timeStamp, sizeof(smsPtr->smsDeliver.scts));
-            smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
-
             destDataPtr = smsPtr->smsDeliver.data;
             destDataSize = sizeof(smsPtr->smsDeliver.data);
             destDataLenPtr = &(smsPtr->smsDeliver.dataLen);
@@ -1150,9 +1024,6 @@ static le_result_t DecodeGsmPdu
             break;
 
         case PA_SMS_SUBMIT:
-            strncpy(smsPtr->smsSubmit.da, address, sizeof(smsPtr->smsSubmit.da));
-            smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_DA;
-
             destDataPtr = smsPtr->smsSubmit.data;
             destDataSize = sizeof(smsPtr->smsSubmit.data);
             destDataLenPtr = &(smsPtr->smsSubmit.dataLen);
@@ -1160,68 +1031,66 @@ static le_result_t DecodeGsmPdu
             break;
 
         default:
+            LE_ERROR("Unsupported type %d for TP-UD", smsPtr->type);
             return LE_FAULT;
     }
 
-    switch(encoding)
+    switch (encoding)
     {
         case SMSPDU_8_BITS:
-        {
-            messageLen = tpUdl-tpUdhl;
+            messageLen = tpUdl - tpUdhl;
             *formatPtr = LE_SMS_FORMAT_BINARY;
-            if (messageLen<destDataSize)
+            if (messageLen < destDataSize)
             {
-                memcpy(destDataPtr,&dataPtr[pos],messageLen);
+                memcpy(destDataPtr, &dataPtr[*posPtr], messageLen);
                 *destDataLenPtr = messageLen;
             }
             else
             {
                 LE_ERROR("Overflow occurs when converting 8bits to 8bits %d>%zd",
-                    messageLen,destDataSize);
+                         messageLen,destDataSize);
                 return LE_OVERFLOW;
             }
-        }
-        break;
+            break;
 
         case SMSPDU_7_BITS:
-        {
-            messageLen = (tpUdl*7 - tpUdhl*8) /7;
-            if (messageLen <= 0) {
-                LE_ERROR("the message length %d is <0 ",messageLen);
+            messageLen = ((tpUdl * 7) - (tpUdhl * 8)) /7;
+            if (messageLen <= 0)
+            {
+                LE_ERROR("the message length %d is <= 0 ",messageLen);
                 return LE_FAULT;
             }
-            pos -= (tpUdhl*8+6)/7; // translate the pos in 7bits char unit
+            *posPtr -= ((tpUdhl * 8) + 6) / 7; // translate the pos in 7bits char unit
             *formatPtr = LE_SMS_FORMAT_TEXT;
-            int size = Convert7BitsTo8Bits(&dataPtr[pos],
-                0,messageLen,
-                destDataPtr,destDataSize);
+            int size = Convert7BitsTo8Bits(&dataPtr[*posPtr],
+                                           0,
+                                           messageLen,
+                                           destDataPtr,
+                                           destDataSize);
             if (size == LE_OVERFLOW)
             {
                 LE_ERROR("Overflow occurs when converting 7bits to 8bits ");
                 return LE_OVERFLOW;
             }
             *destDataLenPtr = size;
-            LE_INFO(" messageLen %d, pos %d, size %d ", messageLen, pos, size);
-        }
-        break;
+            LE_INFO(" messageLen %d, pos %d, size %d ", messageLen, *posPtr, size);
+            break;
 
         case SMSPDU_UCS2_16_BITS:
-        {
-            messageLen = tpUdl-tpUdhl;
+            messageLen = tpUdl - tpUdhl;
             *formatPtr = LE_SMS_FORMAT_UCS2;
             if (messageLen < destDataSize)
             {
-                memcpy(destDataPtr, &dataPtr[pos], messageLen);
+                memcpy(destDataPtr, &dataPtr[*posPtr], messageLen);
                 *destDataLenPtr = messageLen;
             }
             else
             {
                 LE_ERROR("Overflow occurs when copying UCS2 to UCS2 %d > %zd",
-                    messageLen, destDataSize);
+                         messageLen, destDataSize);
                 return LE_OVERFLOW;
             }
-        }
-        break;
+            break;
 
         default:
             LE_ERROR("Decoding error");
@@ -1233,29 +1102,327 @@ static le_result_t DecodeGsmPdu
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Decode an address field of a PDU (TP-DA, TP-OA, TP-RA)
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodeAddressField
+(
+    const uint8_t* dataPtr,     ///< [IN] PDU data to decode
+    uint8_t*       posPtr,      ///< [INOUT] Position in PDU
+    char*          addressPtr,  ///< [INOUT] Buffer for decoded address
+    size_t         addressSize  ///< [IN] Buffer size
+)
+{
+    uint8_t addressLen;
+    uint8_t addressType;
+
+    addressLen = ReadByte(dataPtr,*posPtr);
+    addressType = ReadByte(dataPtr, *posPtr+1);
+
+    // Check for Alphanumeric Address 7 BITS format
+    if (0xD0 == (addressType & 0xF0))
+    {
+        int addressAlphanumericLen = ((addressLen / 2) * 8 ) / 7;
+        if (IS_TRACE_ENABLED)
+        {
+            LE_DEBUG("Alphanumeric Address 7_BITS addressLen %d, addressAlphanumericLen %d",
+                     addressLen, addressAlphanumericLen);
+        }
+
+        if (addressAlphanumericLen <= 0)
+        {
+            LE_ERROR("Address length %d is <= 0 ", addressAlphanumericLen);
+            return LE_UNSUPPORTED;
+        }
+
+        // Alphanumeric Address 7_BITS
+        *posPtr += 2;
+        Convert7BitsTo8Bits(&dataPtr[*posPtr],
+                            0,
+                            addressAlphanumericLen,
+                            (uint8_t *) addressPtr,
+                            addressSize);
+
+        // Align on the next field if the number of useful semi-octets
+        // within the address value is odd
+        if (addressLen % 2)
+        {
+            *posPtr += (addressLen/2) + 1;
+        }
+        else
+        {
+            *posPtr += (addressLen/2);
+        }
+    }
+    else
+    {
+        *posPtr += ConvertBinaryIntoPhoneNumber(&dataPtr[*posPtr],
+                                                (addressLen+1)>>1,
+                                                addressPtr,
+                                                addressSize);
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode a SMS-DELIVER PDU
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodePduDeliver
+(
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    uint8_t           initPos,  ///< [IN] Initial position in PDU
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    le_result_t result;
+    uint8_t pos = initPos;
+    uint8_t firstByte;
+    uint8_t tpUdhi, tpPid, tpDcs, tpUdl, tpUdhl;
+    smsPdu_Encoding_t encoding;
+
+    // TP User Data Header Indicator
+    firstByte = ReadByte(dataPtr, pos++);
+    tpUdhi = firstByte & (1<<6);
+    LE_DEBUG("TP-UDHI: %d", tpUdhi);
+
+    // TP Originating Address
+    result = DecodeAddressField(dataPtr,
+                                &pos,
+                                smsPtr->smsDeliver.oa,
+                                sizeof(smsPtr->smsDeliver.oa));
+    if (LE_OK != result)
+    {
+        return result;
+    }
+    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_OA;
+    LE_DEBUG("TP-OA: %s", smsPtr->smsDeliver.oa);
+
+    // TP Protocol Identifier
+    tpPid = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-PID: %d", tpPid);
+
+    // TP Data Coding Scheme
+    tpDcs = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-DCS: %d", tpDcs);
+
+    // Check that we have a supported message type (7- or 8-bits characters)
+    // tpDcs fields are defined in the 3GPP 03.38
+    encoding = DetermineEncoding(tpDcs);
+    if (SMSPDU_ENCODING_UNKNOWN == encoding)
+    {
+        LE_ERROR("Message format not supported.");
+        return LE_UNSUPPORTED;
+    }
+
+    // TP Service Centre Time Stamp
+    pos += ConvertBinaryIntoTimestamp(&dataPtr[pos],
+                                      7,
+                                      smsPtr->smsDeliver.scts,
+                                      sizeof(smsPtr->smsDeliver.scts));
+    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
+    LE_DEBUG("TP-SCTS: %s", smsPtr->smsDeliver.scts);
+
+    // TP User Data Length
+    tpUdl = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-UDL: %d", tpUdl);
+
+    // TP User Data Header Length
+    tpUdhl = tpUdhi ? ReadByte(dataPtr, pos++) : 0;
+    LE_DEBUG("TP-UDHL: %d", tpUdhl);
+
+    // TP User Data
+    DumpPdu("TP-UD", &dataPtr[pos], tpUdl);
+
+    if (tpUdhl)
+    {
+        LE_WARN("Multi part SMS are not available yet");
+        DumpPdu("TP-UDH", &dataPtr[pos-1], tpUdhl+1);
+        return LE_UNSUPPORTED;
+    }
+
+    result = DecodeUserDataField(dataPtr, &pos, encoding, tpUdl, tpUdhl, smsPtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode a SMS-SUBMIT PDU
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodePduSubmit
+(
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    uint8_t           initPos,  ///< [IN] Initial position in PDU
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    le_result_t result;
+    uint8_t pos = initPos;
+    uint8_t firstByte;
+    uint8_t tpUdhi, tpPid, tpDcs, tpUdl, tpUdhl;
+    smsPdu_Encoding_t encoding;
+
+    // TP User Data Header Indicator
+    firstByte = ReadByte(dataPtr, pos++);
+    tpUdhi = firstByte & (1<<6);
+    LE_DEBUG("TP-UDHI: %d", tpUdhi);
+
+    // Skip TP Message Reference
+    pos++;
+
+    // TP Destination Address
+    result = DecodeAddressField(dataPtr,
+                                &pos,
+                                smsPtr->smsSubmit.da,
+                                sizeof(smsPtr->smsSubmit.da));
+    if (LE_OK != result)
+    {
+        return result;
+    }
+    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_DA;
+    LE_DEBUG("TP-DA: %s", smsPtr->smsSubmit.da);
+
+    // TP Protocol Identifier
+    tpPid = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-PID: %d", tpPid);
+
+    // TP Data Coding Scheme
+    tpDcs = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-DCS: %d", tpDcs);
+
+    // Check that we have a supported message type (7- or 8-bits characters)
+    // tpDcs fields are defined in the 3GPP 03.38
+    encoding = DetermineEncoding(tpDcs);
+    if (SMSPDU_ENCODING_UNKNOWN == encoding)
+    {
+        LE_ERROR("Message format not supported.");
+        return LE_UNSUPPORTED;
+    }
+
+    // Skip TP Validity Period
+    pos++;
+
+    // TP User Data Length
+    tpUdl = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-UDL: %d", tpUdl);
+
+    // TP User Data Header Length
+    tpUdhl = tpUdhi ? ReadByte(dataPtr, pos++) : 0;
+    LE_DEBUG("TP-UDHL: %d", tpUdhl);
+
+    // TP User Data
+    DumpPdu("TP-UD", &dataPtr[pos], tpUdl);
+
+    if (tpUdhl)
+    {
+        LE_WARN("Multi part SMS are not available yet");
+        DumpPdu("TP-UDH", &dataPtr[pos-1], tpUdhl+1);
+        return LE_UNSUPPORTED;
+    }
+
+    result = DecodeUserDataField(dataPtr, &pos, encoding, tpUdl, tpUdhl, smsPtr);
+    if (LE_OK != result)
+    {
+        return result;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode a SMS-STATUS-REPORT PDU
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t DecodePduStatusReport
+(
+    const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
+    uint8_t           initPos,  ///< [IN] Initial position in PDU
+    pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
+)
+{
+    le_result_t result;
+    uint8_t pos = initPos;
+
+    // Skip first byte
+    pos++;
+
+    // TP Message Reference
+    smsPtr->smsStatusReport.mr = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-MR: %d", smsPtr->smsStatusReport.mr);
+
+    // TP Recipient Address
+    result = DecodeAddressField(dataPtr,
+                                &pos,
+                                smsPtr->smsStatusReport.ra,
+                                sizeof(smsPtr->smsStatusReport.ra));
+    if (LE_OK != result)
+    {
+        return result;
+    }
+    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_RA;
+    LE_DEBUG("TP-RA: %s", smsPtr->smsStatusReport.ra);
+    if ('+' == smsPtr->smsStatusReport.ra[0])
+    {
+        smsPtr->smsStatusReport.tora = TYPE_OF_ADDRESS_INTERNATIONAL;
+    }
+    else
+    {
+        smsPtr->smsStatusReport.tora = TYPE_OF_ADDRESS_UNKNOWN;
+    }
+
+    // TP Service Centre Time Stamp
+    pos += ConvertBinaryIntoTimestamp(&dataPtr[pos],
+                                      7,
+                                      smsPtr->smsStatusReport.scts,
+                                      sizeof(smsPtr->smsStatusReport.scts));
+    smsPtr->smsDeliver.option |= PA_SMS_OPTIONMASK_SCTS;
+    LE_DEBUG("TP-SCTS: %s", smsPtr->smsStatusReport.scts);
+
+    // TP Discharge Time
+    pos += ConvertBinaryIntoTimestamp(&dataPtr[pos],
+                                      7,
+                                      smsPtr->smsStatusReport.dt,
+                                      sizeof(smsPtr->smsStatusReport.dt));
+    LE_DEBUG("TP-DT: %s", smsPtr->smsStatusReport.dt);
+
+    // TP Status
+    smsPtr->smsStatusReport.st = ReadByte(dataPtr, pos++);
+    LE_DEBUG("TP-ST: %d", smsPtr->smsStatusReport.st);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Encode the content of messagePtr in PDU format.
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t EncodeGsmPdu
+static le_result_t EncodeMessageGsm
 (
-    const uint8_t*      messagePtr,   ///< [IN] Data to encode
-    size_t              length,       ///< [IN] Length of data
-    const char*         addressPtr,   ///< [IN] Phone Number
-    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
-    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
-    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
+    smsPdu_DataToEncode_t*  dataPtr,    ///< [IN]  Data to use for encoding the PDU
+    pa_sms_Pdu_t*           pduPtr      ///< [OUT] Buffer for the encoded PDU
 )
 {
     const int maxSmsLength = 160;
     uint8_t tpUdhi = 0;
     uint8_t tpDcs = 0x00;
+    uint8_t tpSrr = 0x01;
     uint8_t firstByte = 0x00;
     uint8_t addressToa;
 
-    if (length > maxSmsLength)
+    if (dataPtr->length > maxSmsLength)
     {
-        LE_DEBUG("Message cannot be encoded, message with length > %d are not supported yet",
-                 maxSmsLength);
+        LE_WARN("Message cannot be encoded, message with length > %d are not supported yet",
+                maxSmsLength);
         return LE_FAULT;
     }
 
@@ -1271,16 +1438,21 @@ static le_result_t EncodeGsmPdu
      * 6   TP-User-Data-Header-Indicator (TP-UDHI)
      * 7   TP-Reply-Path (TP-RP) in SMS-DELIVER and SMS-SUBMIT
      */
-    switch(messageType)
+    switch (dataPtr->messageType)
     {
         case PA_SMS_DELIVER:
             firstByte = 0x00; // MTI (00)
-            firstByte |= tpUdhi << 6;
+            firstByte |= (tpUdhi << FIRSTBYTE_SHIFT_TP_UDHI);
             break;
 
         case PA_SMS_SUBMIT:
             firstByte = 0x11; // MTI (01) | VPF (10)
-            firstByte |= tpUdhi << 6;
+            // Set TP-Status-Report-Request if necessary
+            if (dataPtr->statusReport)
+            {
+                firstByte |= (tpSrr << FIRSTBYTE_SHIFT_TP_SRR);
+            }
+            firstByte |= (tpUdhi << FIRSTBYTE_SHIFT_TP_UDHI);
             break;
 
         default:
@@ -1289,7 +1461,7 @@ static le_result_t EncodeGsmPdu
     }
 
     /* Prepare address */
-    int addressLen = strlen(addressPtr);
+    int addressLen = strlen(dataPtr->addressPtr);
     if (addressLen > LE_MDMDEFS_PHONE_NUM_MAX_BYTES) {
         LE_DEBUG("Address is too long %d. should be at max %d",
                  addressLen, LE_MDMDEFS_PHONE_NUM_MAX_BYTES-1);
@@ -1297,22 +1469,22 @@ static le_result_t EncodeGsmPdu
     }
 
     /* Prepare type of address: EXT, TON (Type of number), NPI (Numbering plan identification) */
-    if (addressPtr[0] == '+')
+    if ('+' == dataPtr->addressPtr[0])
     {
         /* TON International phone number: EXT=0b1 TON=0b001 NPI=0b0001 */
         addressLen--;
-        addressToa = 0x91;
+        addressToa = TYPE_OF_ADDRESS_INTERNATIONAL;
     }
     else
     {
         /* TON Unknown: EXT=0b1 TON=0b000 NPI=0b0001 */
-        addressToa = 0x81;
+        addressToa = TYPE_OF_ADDRESS_UNKNOWN;
     }
 
     /*
      * Prepare DCS
      */
-    switch(encoding)
+    switch (dataPtr->encoding)
     {
         case SMSPDU_7_BITS: // GSM 7 bits encoding (GSM 03.38)
             tpDcs = 0x00;
@@ -1324,7 +1496,7 @@ static le_result_t EncodeGsmPdu
             tpDcs = 0x08;
             break;
         default:
-            LE_ERROR("Invalid encoding %d.", encoding);
+            LE_ERROR("Invalid encoding %d.", dataPtr->encoding);
             return LE_FAULT;
     }
 
@@ -1342,7 +1514,7 @@ static le_result_t EncodeGsmPdu
         /* First Byte */
         WriteByte(pduPtr->data, pos++, firstByte);
 
-        if(messageType == PA_SMS_SUBMIT)
+        if (dataPtr->messageType == PA_SMS_SUBMIT)
         {
             /* TP-MR: Message Reference */
             /* Default value */
@@ -1357,13 +1529,13 @@ static le_result_t EncodeGsmPdu
             /* Type of address */
             WriteByte(pduPtr->data, pos++, addressToa);
             /* Number encoded */
-            pos += (ConvertPhoneNumberIntoBinary(addressPtr,
+            pos += (ConvertPhoneNumberIntoBinary(dataPtr->addressPtr,
                                                  &pduPtr->data[pos],
                                                  LE_SMS_PDU_MAX_BYTES-pos)
                      +1) / 2;
         }
 
-        if(messageType == PA_SMS_DELIVER)
+        if (dataPtr->messageType == PA_SMS_DELIVER)
         {
             int idx;
 
@@ -1380,7 +1552,7 @@ static le_result_t EncodeGsmPdu
         /* TP-DCS: Data Coding Scheme (1 byte) */
         WriteByte(pduPtr->data, pos++, tpDcs);
 
-        if(messageType == PA_SMS_SUBMIT)
+        if (dataPtr->messageType == PA_SMS_SUBMIT)
         {
             /* TP-VP: Validity Period (0, 1 or 7 bytes) */
             /* Set to 7 days */
@@ -1389,7 +1561,7 @@ static le_result_t EncodeGsmPdu
         }
 
         /* TP-UDL: User Data Length (1 byte) */
-        int messageLen = min(length, maxSmsLength);
+        int messageLen = min(dataPtr->length, maxSmsLength);
         WriteByte(pduPtr->data, pos++, messageLen);
 
         if(tpUdhi)
@@ -1398,15 +1570,17 @@ static le_result_t EncodeGsmPdu
         }
 
         /* TP-UD: User Data */
-        switch(encoding)
+        switch (dataPtr->encoding)
         {
             case SMSPDU_7_BITS:
             {
                 uint8_t newMessageLen;
-                int size = Convert8BitsTo7Bits((const uint8_t*)messagePtr,
-                                                0, messageLen,
-                                                &pduPtr->data[pos],LE_SMS_PDU_MAX_PAYLOAD,
-                                                &newMessageLen);
+                int size = Convert8BitsTo7Bits(dataPtr->messagePtr,
+                                               0,
+                                               messageLen,
+                                               &pduPtr->data[pos],
+                                               LE_SMS_PDU_MAX_PAYLOAD,
+                                               &newMessageLen);
                 if (size==LE_OVERFLOW)
                 {
                     LE_ERROR("Overflow occurs when converting 8bits to 7bits");
@@ -1424,7 +1598,7 @@ static le_result_t EncodeGsmPdu
             {
                 if (messageLen <= LE_SMS_PDU_MAX_PAYLOAD)
                 {
-                    memcpy(&pduPtr->data[pos], messagePtr, messageLen);
+                    memcpy(&pduPtr->data[pos], dataPtr->messagePtr, messageLen);
 
                     pos += messageLen;
                 }
@@ -1439,7 +1613,7 @@ static le_result_t EncodeGsmPdu
             {
                 if (messageLen <= LE_SMS_PDU_MAX_PAYLOAD)
                 {
-                    memcpy(&pduPtr->data[pos], messagePtr, messageLen);
+                    memcpy(&pduPtr->data[pos], dataPtr->messagePtr, messageLen);
                     pos += messageLen;
                 }
                 else
@@ -1469,23 +1643,58 @@ static le_result_t DecodeMessageGsm
 (
     const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
     size_t            dataSize, ///< [IN] PDU data size
+    bool              smscInfo, ///< [IN] Indicates if PDU starts with SMSC information
     pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
 )
 {
     le_result_t result;
+    uint8_t pos = 0;
+    uint8_t firstByte;
 
-    result = DecodeGsmPdu(dataPtr,smsPtr);
+    memset(smsPtr, 0, sizeof(pa_sms_Message_t));
 
-    if (result != LE_OK)
+#ifdef HAS_SMSC_INFORMATION
+    if (smscInfo)
     {
-        LE_ERROR("Could not decode GSM PDU message");
-        return result;
+        uint8_t smscInfoLen = ReadByte(dataPtr, pos++);
+        pos += smscInfoLen ; // skip SCA address and type of address
+    }
+#endif
+
+    firstByte = ReadByte(dataPtr, pos);
+    if (IS_TRACE_ENABLED)
+    {
+        LE_DEBUG("firstByte 0x%02X", firstByte);
+    }
+
+    // TP Message Type Indicator
+    switch (firstByte & TP_MTI_MASK)
+    {
+        case TP_MTI_SMS_DELIVER:
+            smsPtr->type = PA_SMS_DELIVER;
+            smsPtr->smsDeliver.option = PA_SMS_OPTIONMASK_NO_OPTION;
+            result = DecodePduDeliver(dataPtr, pos, smsPtr);
+            break;
+
+        case TP_MTI_SMS_SUBMIT:
+            smsPtr->type = PA_SMS_SUBMIT;
+            smsPtr->smsSubmit.option = PA_SMS_OPTIONMASK_NO_OPTION;
+            result = DecodePduSubmit(dataPtr, pos, smsPtr);
+            break;
+
+        case TP_MTI_SMS_STATUS_REPORT:
+            smsPtr->type = PA_SMS_STATUS_REPORT;
+            result= DecodePduStatusReport(dataPtr, pos, smsPtr);
+            break;
+
+        default:
+            LE_ERROR("Decoding this message is not supported TP-MTI %d.", firstByte & TP_MTI_MASK);
+            result = LE_UNSUPPORTED;
+            break;
     }
 
     return result;
 }
-
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1618,35 +1827,6 @@ static le_result_t DecodeMessageGWCB
     }
 
     return LE_OK;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Encode the content of dataPtr.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t EncodeMessageGsm
-(
-    const uint8_t*      messagePtr,   ///< [IN] Data to encode
-    size_t              length,       ///< [IN] Length of data
-    const char*         addressPtr,   ///< [IN] Phone Number
-    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
-    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
-    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
-)
-{
-    le_result_t result;
-
-    result = EncodeGsmPdu(messagePtr,length,addressPtr,encoding,messageType,pduPtr);
-
-    if (result != LE_OK)
-    {
-        LE_ERROR("Could not encode GSM PDU message");
-        return result;
-    }
-
-    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2500,47 +2680,43 @@ static le_result_t DecodeMessageCdma
 //--------------------------------------------------------------------------------------------------
 static le_result_t EncodeMessageCdma
 (
-    const uint8_t*      messagePtr,   ///< [IN] Data to encode
-    size_t              length,       ///< [IN] Length of data
-    const char*         addressPtr,   ///< [IN] Phone Number
-    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
-    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
-    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
+    smsPdu_DataToEncode_t*  dataPtr,    ///< [IN]  Data to use for encoding the PDU
+    pa_sms_Pdu_t*           pduPtr      ///< [OUT] Buffer for the encoded PDU
 )
 {
     le_result_t result = LE_OK;
     cdmaPdu_t message;
 
-    memset(&message,0,sizeof(message));
+    memset(&message, 0, sizeof(message));
 
     // Hard-coded
     message.messageFormat = CDMAPDU_MESSAGEFORMAT_POINTTOPOINT;
 
     // Hard-coded
-    result = SetCdmaMessageTeleserviceId(0x1002,&message);
-    if (result!=LE_OK)
+    result = SetCdmaMessageTeleserviceId(0x1002, &message);
+    if (result != LE_OK)
     {
         LE_ERROR("Could not set Teleservice Id");
         return result;
     }
 
-    result = SetCdmaMessageDA(addressPtr,&message);
-    if (result!=LE_OK)
+    result = SetCdmaMessageDA(dataPtr->addressPtr, &message);
+    if (result != LE_OK)
     {
-        LE_ERROR("Could not set Destination Adress");
+        LE_ERROR("Could not set Destination Address");
         return result;
     }
 
     // Hard-coded
-    result = SetCdmaMessageId(CDMAPDU_MESSAGETYPE_SUBMIT,1,&message);
-    if (result!=LE_OK)
+    result = SetCdmaMessageId(CDMAPDU_MESSAGETYPE_SUBMIT, 1, &message);
+    if (result != LE_OK)
     {
         LE_ERROR("Could not set data");
         return result;
     }
 
-    result = SetCdmaMessageData(messagePtr,length,encoding,&message);
-    if (result!=LE_OK)
+    result = SetCdmaMessageData(dataPtr->messagePtr, dataPtr->length, dataPtr->encoding, &message);
+    if (result != LE_OK)
     {
         LE_ERROR("Could not set data");
         return result;
@@ -2548,15 +2724,15 @@ static le_result_t EncodeMessageCdma
 
     // Hard-coded
     result = SetCdmaMessageTimeStamp(&message);
-    if (result!=LE_OK)
+    if (result != LE_OK)
     {
         LE_ERROR("Could not set data");
         return result;
     }
 
     // Hard-coded
-    result = SetCdmaMessagePriority(CDMAPDU_PRIORITY_NORMAL,&message);
-    if (result!=LE_OK)
+    result = SetCdmaMessagePriority(CDMAPDU_PRIORITY_NORMAL, &message);
+    if (result != LE_OK)
     {
         LE_ERROR("Could not set data");
         return result;
@@ -2607,6 +2783,7 @@ le_result_t smsPdu_Decode
     pa_sms_Protocol_t protocol, ///< [IN] decoding protocol
     const uint8_t*    dataPtr,  ///< [IN] PDU data to decode
     size_t            dataSize, ///< [IN] PDU data size
+    bool              smscInfo, ///< [IN] indicates if PDU starts with SMSC information
     pa_sms_Message_t* smsPtr    ///< [OUT] Buffer to store decoded data
 )
 {
@@ -2614,21 +2791,21 @@ le_result_t smsPdu_Decode
 
     if (IS_TRACE_ENABLED)
     {
-        DumpPdu("PDU to decode",dataPtr,dataSize);
+        DumpPdu("PDU to decode",dataPtr, dataSize);
         LE_DEBUG("Protocol to decode %d", protocol);
     }
 
     if (protocol == PA_SMS_PROTOCOL_GSM)
     {
-        result = DecodeMessageGsm(dataPtr,dataSize,smsPtr);
+        result = DecodeMessageGsm(dataPtr, dataSize, smscInfo, smsPtr);
     }
     else if (protocol == PA_SMS_PROTOCOL_GW_CB)
     {
-        result = DecodeMessageGWCB(dataPtr,dataSize,smsPtr);
+        result = DecodeMessageGWCB(dataPtr, dataSize, smsPtr);
     }
     else if ( protocol == PA_SMS_PROTOCOL_CDMA)
     {
-        result = DecodeMessageCdma(dataPtr,dataSize,smsPtr);
+        result = DecodeMessageCdma(dataPtr, dataSize, smsPtr);
     }
     else
     {
@@ -2655,34 +2832,31 @@ le_result_t smsPdu_Decode
 //--------------------------------------------------------------------------------------------------
 le_result_t smsPdu_Encode
 (
-    pa_sms_Protocol_t   protocol,     ///< [IN] Encoding protocol
-    const uint8_t*      messagePtr,   ///< [IN] Data to encode
-    size_t              length,       ///< [IN] Length of data
-    const char*         addressPtr,   ///< [IN] Phone Number
-    smsPdu_Encoding_t   encoding,     ///< [IN] Type of encoding to be used
-    pa_sms_MsgType_t    messageType,  ///< [IN] Message Type
-    pa_sms_Pdu_t*       pduPtr        ///< [OUT] Buffer for the encoded PDU
+    smsPdu_DataToEncode_t*  dataPtr,    ///< [IN]  Data to use for encoding the PDU
+    pa_sms_Pdu_t*           pduPtr      ///< [OUT] Buffer for the encoded PDU
 )
 {
-    le_result_t result = LE_OK;
+    le_result_t result;
 
-    if (protocol == PA_SMS_PROTOCOL_GSM)
+    switch (dataPtr->protocol)
     {
-        result = EncodeMessageGsm(messagePtr,length,addressPtr,encoding,messageType,pduPtr);
-    }
-    else if ( protocol == PA_SMS_PROTOCOL_CDMA)
-    {
-        result = EncodeMessageCdma(messagePtr,length,addressPtr,encoding,messageType,pduPtr);
-    }
-    else
-    {
-        LE_WARN("Protocol %d not supported", protocol);
-        result = LE_UNSUPPORTED;
+        case PA_SMS_PROTOCOL_GSM:
+            result = EncodeMessageGsm(dataPtr, pduPtr);
+            break;
+
+        case PA_SMS_PROTOCOL_CDMA:
+            result = EncodeMessageCdma(dataPtr, pduPtr);
+            break;
+
+        default:
+            LE_WARN("Protocol %d not supported", dataPtr->protocol);
+            result = LE_UNSUPPORTED;
+            break;
     }
 
     if (IS_TRACE_ENABLED)
     {
-        DumpPdu("PDU Encoded",pduPtr->data,pduPtr->dataLen);
+        DumpPdu("Encoded PDU", pduPtr->data, pduPtr->dataLen);
     }
 
     return result;

@@ -106,7 +106,7 @@ void DumpPdu
         uint32_t i = 0;
         char output[DUMPSIZE] = {0};
 
-        LE_DEBUG("%s:",labelStr);
+        LE_INFO("%s:",labelStr);
         for (i=0; i<bufferSize; i++)
         {
             index += sprintf(&output[index],"%02X",bufferPtr[i]);
@@ -116,7 +116,7 @@ void DumpPdu
                 index = 0;
             }
         }
-        LE_DEBUG("%s",output);
+        LE_INFO("%s",output);
 }
 
 //--------------------------------------------------------------------------------------------------
