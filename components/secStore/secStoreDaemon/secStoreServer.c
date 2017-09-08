@@ -1489,12 +1489,8 @@ le_result_t secStoreAdmin_GetEntry
     // Get the entry name.
     Entry_t* entryPtr = CONTAINER_OF(iterPtr->currEntryPtr, Entry_t, link);
 
-    if (entryPtr)
-    {
-        *isDir = entryPtr->isDir;
-        return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
-    }
-    return LE_FAULT;
+    *isDir = entryPtr->isDir;
+    return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
 }
 
 
