@@ -10,6 +10,84 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event for new MCC call state
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t MccCallEventId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MCC termination reason
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mcc_TerminationReason_t TermReason = LE_MCC_TERM_UNDEFINED;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Remote Telephone number
+ */
+//--------------------------------------------------------------------------------------------------
+static char RemotePhoneNum[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MCC Voice call context profile.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_mcc_CallRef_t callRef;
+    le_mcc_Event_t   callEvent;
+} MccContext_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Dummy MCC profile
+ */
+//--------------------------------------------------------------------------------------------------
+static MccContext_t MccCtx =
+{
+    (le_mcc_CallRef_t) 0x10000004,
+    LE_MCC_EVENT_TERMINATED
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulate a new MCC call event
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mccTest_SimulateState
+(
+    le_mcc_Event_t event
+)
+{
+    MccContext_t *mccCtxPtr = &MccCtx;
+    mccCtxPtr->callEvent = event;
+
+    // Check if event is created before using it
+    if (MccCallEventId)
+    {
+        // Notify all the registered client handlers
+        le_event_Report(MccCallEventId, mccCtxPtr, sizeof(MccContext_t));
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulate Termination Reason
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mccTest_SimulateTerminationReason
+(
+    le_mcc_TerminationReason_t termination
+)
+{
+    TermReason = termination;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * le_mcc_GetRemoteTel() stub.
  *
  */
@@ -21,7 +99,11 @@ le_result_t le_mcc_GetRemoteTel
     size_t               len         ///< [IN]  The length of telephone number string.
 )
 {
-    return LE_OK;
+    if (LE_MDMDEFS_PHONE_NUM_MAX_BYTES <= len)
+    {
+        return le_utf8_Copy(telPtr, RemotePhoneNum, LE_MDMDEFS_PHONE_NUM_MAX_BYTES, NULL);
+    }
+    return LE_FAULT;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -35,6 +117,7 @@ le_result_t le_mcc_Start
     le_mcc_CallRef_t callRef   ///< [IN] Reference to the call object.
 )
 {
+    le_mccTest_SimulateState(LE_MCC_EVENT_ALERTING);
     return LE_OK;
 }
 
@@ -49,7 +132,28 @@ le_result_t le_mcc_Answer
     le_mcc_CallRef_t callRef   ///< [IN] The call reference.
 )
 {
+    le_mccTest_SimulateState(LE_MCC_EVENT_CONNECTED);
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer New Session State Change Handler.
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerStateHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    MccContext_t* MccCtxPtr = reportPtr;
+    le_mcc_CallEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
+
+    clientHandlerFunc(  MccCtxPtr->callRef,
+                        MccCtxPtr->callEvent,
+                        le_event_GetContextPtr()
+                     );
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -64,7 +168,28 @@ le_mcc_CallEventHandlerRef_t le_mcc_AddCallEventHandler
     void*                                   contextPtr      ///< [IN] The handlers context.
 )
 {
-    return NULL;
+    le_event_HandlerRef_t        handlerRef;
+
+    if (handlerFuncPtr == NULL)
+    {
+        LE_ERROR("Handler function is NULL !");
+        return NULL;
+    }
+
+    // Create an event Id for new Network Registration State notification if not already done
+    if (!MccCallEventId)
+    {
+        MccCallEventId = le_event_CreateId("MccCallEvent", sizeof(MccContext_t));
+    }
+
+    handlerRef = le_event_AddLayeredHandler("MccCallEventHandler",
+                                         MccCallEventId,
+                                         FirstLayerStateHandler,
+                                         (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mcc_CallEventHandlerRef_t)(handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -78,7 +203,7 @@ le_mcc_TerminationReason_t le_mcc_GetTerminationReason
     le_mcc_CallRef_t callRef   ///< [IN] The call reference to read from.
 )
 {
-   return 0;
+   return TermReason;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -95,7 +220,8 @@ le_mcc_CallRef_t le_mcc_Create
         ///< call.
 )
 {
-    return NULL;
+    le_utf8_Copy(RemotePhoneNum, phoneNumPtr, LE_MDMDEFS_PHONE_NUM_MAX_BYTES, NULL);
+    return MccCtx.callRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -109,7 +235,8 @@ void le_mcc_RemoveCallEventHandler
     le_mcc_CallEventHandlerRef_t handlerRef   ///< [IN] The handler object to remove.
 )
 {
-   return;
+   LE_INFO("Clear Call Event handler %p", handlerRef);
+   le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------

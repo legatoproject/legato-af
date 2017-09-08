@@ -21,7 +21,7 @@ le_msg_ServiceRef_t le_voicecall_GetServiceRef
     void
 )
 {
-    return NULL;
+    return (le_msg_ServiceRef_t) 0x10000006;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ le_msg_SessionRef_t le_voicecall_GetClientSessionRef
     void
 )
 {
-    return NULL;
+    return (le_msg_SessionRef_t) 0x10000005;
 }
 
 //--------------------------------------------------------------------------------------------------

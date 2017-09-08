@@ -20,7 +20,7 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceTx
     void
 )
 {
-    return NULL;
+    return (le_audio_StreamRef_t) 0x100A;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -34,5 +34,5 @@ le_audio_StreamRef_t le_audio_OpenModemVoiceRx
     void
 )
 {
-    return NULL;
+    return (le_audio_StreamRef_t) 0x100B;
 }
