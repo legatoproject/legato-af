@@ -1217,7 +1217,7 @@ static le_result_t GetPropulsionType
     snprintf(configPath, sizeof(configPath), "%s/%s", CFG_MODEMSERVICE_ECALL_PATH, CFG_NODE_PROP);
     le_cfg_IteratorRef_t propCfg = le_cfg_CreateReadTxn(configPath);
 
-    sprintf (cfgNodeLoc, "%d", i);
+    snprintf(cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
 
     // Init propulsion type bitmask
     memset(&vehPropulsionStorageType, 0, sizeof(vehPropulsionStorageType));
@@ -1253,7 +1253,7 @@ static le_result_t GetPropulsionType
         }
 
         i++;
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf(cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
     }
     le_cfg_CancelTxn(propCfg);
 
@@ -4337,7 +4337,7 @@ le_result_t le_ecall_SetPropulsionType
 
     if (LE_ECALL_PROPULSION_TYPE_GASOLINE & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf(cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
 
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Gasoline");
         i++;
@@ -4345,42 +4345,42 @@ le_result_t le_ecall_SetPropulsionType
 
     if (LE_ECALL_PROPULSION_TYPE_DIESEL & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf (cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Diesel");
         i++;
     }
 
     if (LE_ECALL_PROPULSION_TYPE_NATURALGAS & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf (cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "NaturalGas");
         i++;
     }
 
     if (LE_ECALL_PROPULSION_TYPE_PROPANE & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf (cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Propane");
         i++;
     }
 
     if (LE_ECALL_PROPULSION_TYPE_ELECTRIC & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf (cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Electric");
         i++;
     }
 
     if (LE_ECALL_PROPULSION_TYPE_HYDROGEN & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf (cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Hydrogen");
         i++;
     }
 
     if (LE_ECALL_PROPULSION_TYPE_OTHER & propulsionTypeBitMask)
     {
-        sprintf (cfgNodeLoc, "%d", i);
+        snprintf (cfgNodeLoc, sizeof(cfgNodeLoc), "%d", i);
         le_cfg_SetString ( iteratorRef, cfgNodeLoc, "Other");
         i++;
     }

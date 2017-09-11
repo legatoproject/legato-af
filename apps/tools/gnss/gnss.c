@@ -2211,7 +2211,7 @@ static void GetGnssParams
              (0 == strcmp(params, "posInfo")))
     {
         // Copy the param
-        strcpy(ParamsName, params);
+        strncpy(ParamsName, params, sizeof(ParamsName));
 
         PositionHandlerRef = le_gnss_AddPositionHandler(PositionHandlerFunction, NULL);
         LE_ASSERT((PositionHandlerRef != NULL));
@@ -2429,8 +2429,9 @@ COMPONENT_INIT
                 exit(EXIT_FAILURE);
             }
         }
+
         // Copy the command
-        strcpy(ParamsName, commandPtr);
+        strncpy(ParamsName, commandPtr, sizeof(ParamsName));
         exit(WatchGnssInfo(watchPeriod));
     }
     else

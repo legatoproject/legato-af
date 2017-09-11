@@ -190,7 +190,7 @@ static le_result_t GetIPv4Configuration
     if (result)
     {
         HandleResult("Failed to get IP address",result, false);
-        sprintf(netConf->ip, "N/A");
+        snprintf(netConf->ip, sizeof(netConf->ip), "N/A");
     }
 
     result = le_mdc_GetIPv4GatewayAddress(netConf->profile,
@@ -198,7 +198,7 @@ static le_result_t GetIPv4Configuration
     if (result)
     {
         HandleResult("Failed to get Gateway address", result, false);
-        sprintf(netConf->gw, "N/A");
+        snprintf(netConf->gw, sizeof(netConf->gw), "N/A");
     }
 
     result = le_mdc_GetIPv4DNSAddresses(netConf->profile,
@@ -207,18 +207,18 @@ static le_result_t GetIPv4Configuration
     if (result)
     {
         HandleResult("Failed to get DNS addresses", result, false);
-        sprintf(netConf->dns1, "N/A");
-        sprintf(netConf->dns2, "N/A");
+        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
+        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
     }
 
     if (!strcmp(netConf->dns1, "\0"))
     {
-        sprintf(netConf->dns1, "N/A");
+        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
     }
 
     if (!strcmp(netConf->dns2, "\0"))
     {
-        sprintf(netConf->dns2, "N/A");
+        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
     }
 
     return LE_OK;
@@ -247,7 +247,7 @@ static le_result_t GetIPv6Configuration
     if (result)
     {
         HandleResult("Failed to get IP address", result, false);
-        sprintf(netConf->ip, "N/A");
+        snprintf(netConf->ip, sizeof(netConf->ip), "N/A");
     }
 
     result = le_mdc_GetIPv6GatewayAddress(netConf->profile,
@@ -255,7 +255,7 @@ static le_result_t GetIPv6Configuration
     if (result)
     {
         HandleResult("Failed to get Gateway address", result, false);
-        sprintf(netConf->gw, "N/A");
+        snprintf(netConf->gw, sizeof(netConf->gw), "N/A");
     }
 
     result = le_mdc_GetIPv6DNSAddresses(netConf->profile,
@@ -264,18 +264,18 @@ static le_result_t GetIPv6Configuration
     if (result)
     {
         HandleResult("Failed to get DNS addresses", result, false);
-        sprintf(netConf->dns1, "N/A");
-        sprintf(netConf->dns2, "N/A");
+        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
+        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
     }
 
     if (!strcmp(netConf->dns1, "\0"))
     {
-        sprintf(netConf->dns1, "N/A");
+        snprintf(netConf->dns1, sizeof(netConf->dns1), "N/A");
     }
 
     if (!strcmp(netConf->dns2, "\0"))
     {
-        sprintf(netConf->dns2, "N/A");
+        snprintf(netConf->dns2, sizeof(netConf->dns2), "N/A");
     }
 
     return LE_OK;
@@ -316,12 +316,12 @@ static le_result_t GetNetworkConfiguration
     if (result)
     {
         HandleResult("Failed to get interface name", result, false);
-        sprintf(netConf->itfName, "N/A");
+        snprintf(netConf->itfName, sizeof(netConf->itfName), "N/A");
     }
 
     if (le_mdc_IsIPv4(netConf->profile))
     {
-        sprintf(netConf->family, "inet");
+        snprintf(netConf->family, sizeof(netConf->family), "inet");
 
         if (GetIPv4Configuration(netConf))
         {
@@ -332,7 +332,7 @@ static le_result_t GetNetworkConfiguration
 
     if (le_mdc_IsIPv6(netConf->profile))
     {
-        sprintf(netConf->family, "inet6");
+        snprintf(netConf->family, sizeof(netConf->family), "inet6");
 
         if (GetIPv6Configuration(netConf))
         {

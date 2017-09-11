@@ -700,7 +700,7 @@ static le_result_t ReadJsonObj
                 }
                 else
                 {
-                    strcpy(decodePtr->uVal.str.strPtr, strPtr);
+                    strncpy(decodePtr->uVal.str.strPtr, strPtr, decodePtr->uVal.str.lenStr);
                     decodePtr->uVal.str.lenStr = strlen(strPtr);
                 }
             }

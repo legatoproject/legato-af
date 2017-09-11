@@ -492,7 +492,7 @@ static void DumpPdu
         LE_DEBUG("%s:",label);
         for (i=0;i<bufferSize;i++)
         {
-            index += sprintf(&output[index],"%02X",buffer[i]);
+            index += snprintf(&output[index], (sizeof(output) - index), "%02X", buffer[i]);
             if ( !((i+1)%32) )
             {
                 LE_DEBUG("%s",output);

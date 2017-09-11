@@ -1789,8 +1789,7 @@ le_result_t le_mdc_SetAPN
         return LE_FAULT;
     }
 
-    // We already know that the APN will fit, so strcpy() is okay here
-    strcpy(profilePtr->modemData.apn, apnPtr);
+    strncpy(profilePtr->modemData.apn, apnPtr, sizeof(profilePtr->modemData.apn));
 
     return pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
 }
