@@ -618,6 +618,7 @@ static void HandleSendBin
         if ((-1 == contentLen) || (0 == contentLen))
         {
             fprintf(stderr, "Error reading input: %s\n", strerror(errno));
+            fclose(filePtr);
             exit(EXIT_FAILURE);
         }
         else if ((contentLen < sizeof(content)) && (0x0A == content[contentLen-1]))
@@ -628,6 +629,7 @@ static void HandleSendBin
         if (contentLen <= 0)
         {
             fprintf(stderr, "Nothing to send\n");
+            fclose(filePtr);
             exit(EXIT_SUCCESS);
         }
 
@@ -639,6 +641,7 @@ static void HandleSendBin
         if (contentLen < sizeof(content))
         {
             printf("Done\n");
+            fclose(filePtr);
             exit(EXIT_FAILURE);
         }
 
