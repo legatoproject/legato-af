@@ -11,7 +11,7 @@ Yocto distribution when working with the following Sierra Wireless devices:
 
 
 The information is based on the USB Driver Developer Guide
-available from the <a href="http://source.sierrawireless.com/">Source</a>.
+available from the <a href="https://source.sierrawireless.com/">Source</a>.
 
 @section howToCustomizeUSB_enumeration Enumeration Sequence
 

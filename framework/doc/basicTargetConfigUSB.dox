@@ -105,7 +105,7 @@ Cable and bring the interface up and down, or reboot the device.
 
 <b>Developer Studio:</b>
 
-If the Target is not being recognized in [Developer Studio](http://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions):
+If the Target is not being recognized in [Developer Studio](https://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions):
 
 Check to see if @c devMode is running
 
@@ -121,7 +121,7 @@ Start developer mode (restart if needed)
 @endverbatim
 
 For further help with Developer Studio see the Developer Studio Guide within the Help section of
-[Developer Studio](http://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions).
+[Developer Studio](https://source.sierrawireless.com/resources/airprime/software/developer-studio-installinstructions).
 
 Copyright (C) Sierra Wireless Inc.
 

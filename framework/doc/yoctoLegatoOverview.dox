@@ -10,17 +10,26 @@ Legato is compatible with Yocto 1.7.2
 
 @section yoctoLegatoOverview_yoctoDirectories Yocto Linux Directories
 
+Each target maintains it's own Linux Distribution.  Visit
+[source.sierrawireless.com](https://source.sierrawireless.com/) to download the source code for the
+Linux Distribution for your target.
+
+| Module         | Download Site                                                                   |
+| -------------- | ------------------------------------------------------------------------------- |
+| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
+| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
+
 Untar the @b Legato Distribution file to a directory
-(available at <a href="http://source.sierrawireless.com/resources/legato/downloads/">Legato Downloads</a>):
+(available at <a href="https://source.sierrawireless.com/resources/legato/downloads/">Legato Downloads</a>):
 @code
 $ cd <some directory>
 $ tar xvjf [Legato-Dist-Source file]
 @endcode
 
 These file/directories will be extracted:
-- <b>downloads</b>  -  Linux kernel
-- <b>kernel</b> -  Sierra Wireless specific layers
-- <b>meta-swi</b> -  Hardware adaptations
+- <b>downloads</b>  -  3rd party download files
+- <b>kernel</b> -  Linux kernel
+- <b>meta-swi</b> -  Sierra Wireless specific scripts and proprietary code
 - <b>meta-swi-extras</b> -  Build scripts and proprietary code
 
 Yocto uses a layered model for its build system. In Legato, device-specific layers are

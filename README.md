@@ -22,7 +22,7 @@ Optional packages: ```vim``` (or any text editor),
                    ```doxygen graphviz``` (for doc generation)
 
   - Cross-build toolchain(s)<br/>
-    For Sierra Wireless platforms, toolchains are available at http://source.sierrawireless.com/resources/legato/downloads/
+    For Sierra Wireless platforms, toolchains are available at https://source.sierrawireless.com/resources/legato/downloads/
 
 #### Clone from GitHub
 

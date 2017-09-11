@@ -33,8 +33,15 @@ Raspberry Pi's toolchain.
 
 @subsection buildToolchainSWI SWI WP Series Device Toolchain
 
-Sierra Wireless platforms
-[download the toolchain.](http://source.sierrawireless.com/resources/legato/downloads/)
+Each target maintains it's own unique toolchain.  Visit
+[source.sierrawireless.com](https://source.sierrawireless.com/) to download and install the
+toolchain for your target.
+
+| Module         | Download Site                                                                   |
+| -------------- | ------------------------------------------------------------------------------- |
+| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
+| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
+| All AR Modules | See your FAE to download and install the toolchain for your module              |
 
 Once you've downloaded the SWI toolchain installer you may need to grant execute rights before it
 can be run.
@@ -179,7 +186,7 @@ You are now ready to work with your host and your target device.
 | @ref tools "Tools"                | Tools used for building/configuring/diagnosing your target or host |
 | @ref basicBuildLegato_make "Make" | How to Make a build and Update a Target Device                     |
 | @ref basicTarget                  | How to setup and configure a Target Device                         |
-| [WP Module Software](http://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
+| [WP Module Software](https://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
 
 @note Sierra Wireless WP Series Software includes free development tools for use with the WP Series
 Devices.  These tools will install an Eclipse based IDE with the toolchain, Legato AF pre-built,
