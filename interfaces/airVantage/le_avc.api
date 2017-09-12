@@ -21,8 +21,20 @@
  *
  * @subsection c_le_avc_user_agreement User Agreement
  *
- * There are 5 events; LE_AVC_CONNECTION_PENDING, LE_AVC_DOWNLOAD_PENDING, LE_AVC_INSTALL_PENDING,
- * LE_AVC_REBOOT_PENDING and LE_AVC_UNINSTALL_PENDING for which avcService requires user agreement.
+ * When writing a control app for the AirVantage Service it is up to the developer to ensure that
+ * user agreements have been enabled for all actions the control app performs.  By default all
+ * user agreements are enabled and the avcService app will notify the control app and wait for a
+ * response before downloading or installing the update.  If the avcService can't communicate with
+ * the control app it waits for 3 minutes and tries again.  To not have the avcService wait for the
+ * control app to accept the agreement the user agreement must be disabled.
+ *
+ * There are 5 events that require user agreements:
+ * - LE_AVC_CONNECTION_PENDING
+ * - LE_AVC_DOWNLOAD_PENDING
+ * - LE_AVC_INSTALL_PENDING
+ * - LE_AVC_REBOOT_PENDING
+ * - LE_AVC_UNINSTALL_PENDING
+ *
  * An app can respond to these user agreement notification by opening a connection if the
  * notification is connection pending or by accepting or deferring the operation if the notification
  * is one of download, install, uninstall or reboot pending.
