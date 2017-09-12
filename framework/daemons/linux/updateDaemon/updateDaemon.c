@@ -1485,6 +1485,13 @@ static void UpdateUsersAndGroups
     FILE* newGroupFile = fopen(newGroupFilePath, "w");
     LE_FATAL_IF(newGroupFile == NULL, "Failed to create '%s'.", newGroupFilePath);
 
+    // Set correct access permissions: ug=rw,o=r
+    LE_FATAL_IF(chmod(newPasswdFilePath, (S_IWUSR|S_IRUSR|S_IWGRP|S_IRGRP|S_IROTH)),
+                "Failed to set permissions 0664 to '%s'.", newPasswdFilePath);
+    // Set correct access permissions: ug=rw,o=r
+    LE_FATAL_IF(chmod(newGroupFilePath, (S_IWUSR|S_IRUSR|S_IWGRP|S_IRGRP|S_IROTH)),
+                "Failed to set permissions 0664 to '%s'.", newGroupFilePath);
+
     // Copy existing passwd file and group file contents that we need for the current system.
     CopyExistingUserOrGroupLines(newPasswdFile, "/etc/passwd");
     CopyExistingUserOrGroupLines(newGroupFile, "/etc/group");
