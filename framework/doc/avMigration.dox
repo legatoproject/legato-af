@@ -22,12 +22,11 @@ of the new AirVantage 2.0 features see @ref c_le_avc.
 AVC 1.0 configurations are automatically migrated to AVC 2.0 when Legato AF 17.05+ is upgraded on
 your target.
 
-To re-import AVC 1.0 configuration again (if there are any issues) then the
-@c system:/apps/avcService/config/imported System Tree value must be set to @b false and Legato AF
-must be restarted (@c legato @c restart)
+To re-import AVC 1.0 configuration again (if there are any issues) then the re-import can be done
+by removing the file (/data/le_fs/avc/config/isImported).
 
 @verbatim
-# config set system:/apps/avcService/config/imported false bool
+# rm -rf /data/le_fs/avc/config/isImported
 @endverbatim
 
 @section avMigration_AssetData Asset Data Models
