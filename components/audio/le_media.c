@@ -1457,8 +1457,9 @@ static le_result_t GetPlaybackFrames
                 if (!amount)
                 {
                     // no more samples available at this point:
-                    // increase timeout indefinetely
-                    pcmContextPtr->framesFuncTimeout = NO_MORE_SAMPLES_INFINITE_TIMEOUT;
+                    // send silence frames to avoid xrun
+                    memset(bufferPtr, 0, size);
+                    size = 0;
                 }
                 *bufsizePtr = amount;
                 return LE_OK;
