@@ -299,9 +299,33 @@
  *  - le_ecall_SetNadDeregistrationTime()
  *  - le_ecall_GetNadDeregistrationTime()
  *
+ * le_ecall_SetNadDeregistrationTime() API is used to set up timer T9 on PAN-EUROPEAN or
+ * for T10 on ERA-GLONASS.
+ *
+ * 1. PAN-EUROPEAN (EN 16062) defines T9 and T10.
+ * 2. ERA-GLONASS (ENG_GOST_R_54620) defines the NAD_DEREGISTRATION_TIME
+ *    with minimal value to two hours and maximal value to twelve hours.
+ *
+ * PAN-EUROPEAN:
+ *  - T9's value is defined as one hour. This value is used to decide which event to be report
+ *    when "Deregistration Fallback Timer" expires.
+ *  - T10 stands for "Deregistration Fallback Timer" (DFT)'s value. Its minimum range is
+ *    greater than one hour and maximum range is twelve hours, it can be set by users by using
+ *    le_ecall_SetNadDeregistrationTime(value), but the default value is twelve hours.
+ *  - T9=1 hour, if the NAD_DEREGISTRATION_TIME value is set to one hour then
+ *    the LE_ECALL_STATE_TIMEOUT_T9 will be reported.
+ *  - T9=1 hour, if the NAD_DEREGISTRATION_TIME value is higher than one hour and lower than o
+ *    equal to twelve hours then the LE_ECALL_STATE_TIMEOUT_T10 will be reported instead of
+ *    T9 timeout.
+ *
+ * ERA-GLONASS:
+ *  - LE_ECALL_STATE_TIMEOUT_T9 is not reported as it is not defined into ERA-GLONASS.
+ *  - T10 default value two hours (GOST_R 54620 Table A.1), it can be changed
+ *    with le_ecall_SetNadDeregistrationTime() from two to twelve hours.
+ *
  * Time is set in hours where:
- * -  from 1 to 60 minutes -> 1 hour
- * - from 61 to 120 minutes -> 2hours, etc.
+ * - from 1 to 60 minutes -> 1 hour
+ * - from 61 to 120 minutes -> 2 hours, etc.
  *
  * Example: if @c deregTime parameter unit is minutes, the effective time is:
  * @code ECallConfiguration.nad_deregistration_time = (deregTime+59)/60; @endcode
