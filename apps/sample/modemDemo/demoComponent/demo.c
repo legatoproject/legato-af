@@ -890,6 +890,7 @@ static void SmsReceivedHandler
 {
     // First off, make sure this is a message that we can handle.
     LE_DEBUG("smsReceivedHandler called.");
+    le_result_t result;
 
     if (le_sms_GetFormat(messagePtr) != LE_SMS_FORMAT_TEXT)
     {
@@ -902,7 +903,16 @@ static void SmsReceivedHandler
     char text[LE_SMS_TEXT_MAX_BYTES] = { 0 };
 
     le_sms_GetSenderTel(messagePtr, tel, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
-    le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
+    result = le_sms_GetText(messagePtr, text, LE_SMS_TEXT_MAX_BYTES);
+
+    if (LE_OK == result)
+    {
+        LE_INFO("Message content: \"%s\"", text);
+    }
+    else
+    {
+        LE_ERROR("Failed to get the message text. Result: %s", LE_RESULT_TXT(result));
+    }
 
     // We are now reporting to this person
     DestNumValid = true;
