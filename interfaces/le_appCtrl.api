@@ -23,7 +23,7 @@
  *
  * @section legatoServicesSupervisor_start Start App
  *
- * Use le_appCtrl_StartApp() (const char * appName) to start an app.
+ * Use le_appCtrl_Start() (const char * appName) to start an app.
  *
  * The code sample shows how to use the App Control service to start an app:
  *
