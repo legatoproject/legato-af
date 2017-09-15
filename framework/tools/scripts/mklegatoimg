@@ -469,7 +469,7 @@ CreateImg_mdm9x28() {
 
         # For wp76xx, the default is the 4k page image at index 0. For all other targets, the last
         # image is the default.
-        if [[ "$TARGET" == "wp76xx" ]]; then
+        if [[ "$TARGET" == "wp76xx" ]] || [[ "$TARGET" == "wp77xx" ]]; then
             if [[ $i -eq 0 ]]; then
                 export IMG_SUFFIX=$img_suffix
             fi
