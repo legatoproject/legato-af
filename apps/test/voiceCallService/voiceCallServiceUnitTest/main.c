@@ -13,17 +13,10 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Short semaphore timeout in seconds
- */
-//--------------------------------------------------------------------------------------------------
-#define SHORT_TIMEOUT   1
-
-//--------------------------------------------------------------------------------------------------
-/**
  *  Long semaphore timeout in seconds
  */
 //--------------------------------------------------------------------------------------------------
-#define LONG_TIMEOUT    5
+#define LONG_TIMEOUT    20
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -92,6 +85,7 @@ static void VoiceCallStateHandler
     le_voicecall_TerminationReason_t term = LE_VOICECALL_TERM_UNDEFINED;
 
     LE_INFO("New Call event: %d for Call %p", callEvent, reference);
+    LE_INFO("Expected Call event: %d", ExpectedVoiceCallEvent);
 
     switch (callEvent)
     {
@@ -103,8 +97,6 @@ static void VoiceCallStateHandler
         case LE_VOICECALL_EVENT_CONNECTED:
         {
             LE_INFO("Event is LE_VOICECALL_EVENT_CONNECTED.");
-
-            le_sem_Post(AppCtx.appSemaphore);
         }
         break;
         case LE_VOICECALL_EVENT_TERMINATED:
@@ -150,7 +142,6 @@ static void VoiceCallStateHandler
                 }
                 break;
             }
-            le_sem_Post(AppCtx.appSemaphore);
         }
         break;
         case LE_VOICECALL_EVENT_INCOMING:
@@ -159,8 +150,6 @@ static void VoiceCallStateHandler
 
             // Update new call reference
             AppCtx.appRequestRef = reference;
-
-            le_sem_Post(AppCtx.appSemaphore);
         }
         break;
         case LE_VOICECALL_EVENT_CALL_END_FAILED:
@@ -179,6 +168,9 @@ static void VoiceCallStateHandler
         }
         break;
     }
+
+    // Post the semaphore
+    le_sem_Post(AppCtx.appSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -241,9 +233,10 @@ static void Testle_voicecall_Start
 
     appCtxPtr->appRequestRef = le_voicecall_Start(DestinationNumber);
     LE_ASSERT(NULL != appCtxPtr->appRequestRef);
-    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_CONNECTED,
-                                                 LE_VOICECALL_EVENT_CONNECTED);
+
     LE_INFO("Received reference: %p", appCtxPtr->appRequestRef);
+
+    le_sem_Post(appCtxPtr->appSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -263,6 +256,8 @@ static void Testle_voicecall_Answer
     LE_ASSERT(LE_NOT_FOUND == le_voicecall_Answer(NULL));
 
     LE_ASSERT_OK(le_voicecall_Answer(appCtxPtr->appRequestRef));
+
+    le_sem_Post(appCtxPtr->appSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -355,8 +350,7 @@ static void Testle_voicecall_End
     // Simulate termination reason
     le_mccTest_SimulateTerminationReason(LE_MCC_TERM_LOCAL_ENDED);
 
-    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_TERMINATED,
-                                                 LE_VOICECALL_EVENT_TERMINATED);
+    le_sem_Post(appCtxPtr->appSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -426,6 +420,14 @@ static le_result_t StartVoiceCallTest
                                    Testle_voicecall_Start, &AppCtx, NULL);
     SynchronizeTest();
 
+    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_ALERTING,
+                                                 LE_VOICECALL_EVENT_ALERTING);
+    SynchronizeTest();
+
+    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_CONNECTED,
+                                                 LE_VOICECALL_EVENT_CONNECTED);
+    SynchronizeTest();
+
     // Testle_voicecall_GetRxAudioStream
     le_event_QueueFunctionToThread(AppCtx.appThreadRef,
                                    Testle_voicecall_GetRxAudioStream, &AppCtx, NULL);
@@ -439,6 +441,10 @@ static le_result_t StartVoiceCallTest
     // Testle_voicecall_End
     le_event_QueueFunctionToThread(AppCtx.appThreadRef,
                                    Testle_voicecall_End, &AppCtx, NULL);
+    SynchronizeTest();
+
+    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_TERMINATED,
+                                                 LE_VOICECALL_EVENT_TERMINATED);
     SynchronizeTest();
 
     // Testle_voicecall_GetTerminationReason
@@ -460,9 +466,17 @@ static le_result_t StartVoiceCallTest
                                    Testle_voicecall_Answer, &AppCtx, NULL);
     SynchronizeTest();
 
+    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_CONNECTED,
+                                                 LE_VOICECALL_EVENT_CONNECTED);
+    SynchronizeTest();
+
     // Testle_voicecall_End
     le_event_QueueFunctionToThread(AppCtx.appThreadRef,
                                    Testle_voicecall_End, &AppCtx, NULL);
+    SynchronizeTest();
+
+    SimulateMccStateAndSetExpectedVoiceCallEvent(LE_MCC_EVENT_TERMINATED,
+                                                 LE_VOICECALL_EVENT_TERMINATED);
     SynchronizeTest();
 
     // Testle_voicecall_GetTerminationReason
@@ -512,7 +526,6 @@ static void* VoiceCallUnitTestThread
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-
     // To reactivate for all DEBUG logs
     // le_log_SetFilterLevel(LE_LOG_DEBUG);
 

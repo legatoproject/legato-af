@@ -117,7 +117,6 @@ le_result_t le_mcc_Start
     le_mcc_CallRef_t callRef   ///< [IN] Reference to the call object.
 )
 {
-    le_mccTest_SimulateState(LE_MCC_EVENT_ALERTING);
     return LE_OK;
 }
 
@@ -132,7 +131,6 @@ le_result_t le_mcc_Answer
     le_mcc_CallRef_t callRef   ///< [IN] The call reference.
 )
 {
-    le_mccTest_SimulateState(LE_MCC_EVENT_CONNECTED);
     return LE_OK;
 }
 
