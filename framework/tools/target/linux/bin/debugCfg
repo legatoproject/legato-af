@@ -36,11 +36,11 @@ PrintUsage()
 
 
 # Figure out which debug tool to configure.
-if [ "$externalToolName" == "gdbCfg" ]
+if [ "$externalToolName" = "gdbCfg" ]
 then
     debugToolName="`basename $gdbserverPath`"
     debugToolPath="$gdbserverPath"
-elif [ "$externalToolName" == "straceCfg" ]
+elif [ "$externalToolName" = "straceCfg" ]
 then
     debugToolName="`basename $stracePath`"
     debugToolPath="$stracePath"
