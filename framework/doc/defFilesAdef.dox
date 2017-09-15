@@ -142,10 +142,11 @@ Directories always have executable permission set so they can be traversed. Sett
 <c>[x]</c> permission in the @c dir: subsection causes the files under the directory to be made
 executable.
 
-Setting <c>[w]</c> in the @c dir: subsection causes all files under that directory to be writeable,
-but the directory itself will not be writeable.
+Setting <c>[w]</c> in the @c dir: subsection causes all files under that directory to be writable,
+but the directory itself will not be writable.
 
-@note   Directories in the persistent (flash) file system are never made writeable because the
+@note   Check with your module vendor to see if your target supports disk quotas.  If not,
+        directories in the persistent (flash) file system are never made writable because the
         on-target flash file system does not support usage quotas (yet).
 
 <b>Build system path</b> - file system path on the build PC where the file is located at build time.
