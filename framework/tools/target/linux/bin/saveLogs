@@ -51,6 +51,11 @@ UNIX_TIME=`date +%s`
 # Given a list of core files, delete all of them but the first one.
 DeleteAllButFirst()
 {
+    if [ $# -eq 0 ]
+    then
+        return 0
+    fi
+
     # Drop the first core file from our parameter list.
     shift 1
 
