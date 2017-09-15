@@ -93,6 +93,10 @@ ifneq ($(MAKECMDGOALS),clean)
   TOOLS_ARCH ?= $(HOST_ARCH)
   FINDTOOLCHAIN := framework/tools/scripts/findtoolchain
 
+  ifeq ($(TARGET),localhost)
+    export TARGET_ARCH := $(shell uname -m)
+  endif
+
   include targetDefs
 
   ifeq ($(USE_CLANG),1)
@@ -320,10 +324,10 @@ stage_mkavmodel:
 		mkavmodel -t $(TARGET) -o build/$(TARGET) -v $(LEGATO_VERSION) ; \
 	fi
 
-# ==== localhost needs no staging. Just a blank rule ====
+# ==== localhost ====
 
 .PHONY: stage_localhost
-stage_localhost:
+stage_localhost: $(STAGE_SYSTOIMG)
 
 # ==== 9x15-based Sierra Wireless modules ====
 

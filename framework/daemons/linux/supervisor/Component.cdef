@@ -41,17 +41,19 @@ cflags:
     -DLE_SVCDIR_CLIENT_SOCKET_NAME=${LE_SVCDIR_CLIENT_SOCKET_NAME}
     -DLE_RUNTIME_DIR=$LE_RUNTIME_DIR
 
-    #if ${LEGATO_TARGET} = virt
+    #if ${TARGET_ARCH} = i686
+        -DTARGET_IMPORTS_X86
+    #elif ${TARGET_ARCH} = x86_64
+        -DTARGET_IMPORTS_X86_64
+    #elif ${TARGET_ARCH} = armv6
+        -DTARGET_IMPORTS_ARMV6
+    #elif ${TARGET_ARCH} = armv7
+        -DTARGET_IMPORTS_ARMV7
+    #elif ${LEGATO_TARGET} = virt
         #if ${VIRT_TARGET_ARCH} = x86
             -DTARGET_IMPORTS_X86
         #else
             -DTARGET_IMPORTS_ARMV7
-        #endif
-    #elif ${LEGATO_TARGET} = localhost
-        #if ${HOST_ARCH} = i686
-            -DTARGET_IMPORTS_X86
-        #elif ${HOST_ARCH} = x86_64
-            -DTARGET_IMPORTS_X86_64
         #endif
     #elif ${LEGATO_TARGET} = raspi
         #if ${RASPI_TOOLCHAIN_PREFIX} = arm-poky-linux-gnueabi-

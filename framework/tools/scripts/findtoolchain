@@ -91,8 +91,18 @@ SelectToolchainDirs() {
         SelectToolchainDirs "virt_${VIRT_TARGET_ARCH}"
         ;;
     *)
-        echo "****ERROR: Unrecognized target type '$1'." >&2
-        return 1
+        local toolchain_dir_env="${target^^}_TOOLCHAIN_DIR"
+        local toolchain_prefix_env="${target^^}_TOOLCHAIN_PREFIX"
+        if [ -n "${!toolchain_prefix_env}" ]; then
+            if [ -n "${!toolchain_dir_env}" ]; then
+                TOOLCHAIN_DIRS+=("${!toolchain_dir_env}/${!toolchain_prefix_env}")
+            else
+                TOOLCHAIN_DIRS+=("${!toolchain_prefix_env}")
+            fi
+        else
+            echo "****ERROR: Unrecognized target type '$1'." >&2
+            return 1
+        fi
         ;;
 
     esac

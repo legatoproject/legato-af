@@ -74,14 +74,14 @@ std::string GetToolPath
             toolChainPrefix = envVars::Get("TOOLCHAIN_PREFIX");
         }
     }
-    path = path::Combine(toolChainDir, toolChainPrefix);
+    // toolChainPrefix can be blank, but still valid
     if (toolEnvVarName == "CC")
     {
-        path += "gcc";
+        path = path::Combine(toolChainDir, toolChainPrefix+"gcc");
     }
     else if (toolEnvVarName == "CXX")
     {
-        path += "g++";
+        path = path::Combine(toolChainDir, toolChainPrefix+"g++");
     }
     else
     {
