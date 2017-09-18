@@ -245,9 +245,15 @@ void cm_info_PrintGetPriId
 {
     char priIdPn[LE_INFO_MAX_PRIID_PN_BYTES] = {0};
     char priIdRev[LE_INFO_MAX_PRIID_REV_BYTES] = {0};
+    le_result_t  res;
 
-    le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev, LE_INFO_MAX_PRIID_REV_BYTES);
-
+    res = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev,
+                           LE_INFO_MAX_PRIID_REV_BYTES);
+    if (LE_OK != res)
+    {
+        printf("The function failed to get the value.");
+        return;
+    }
     if(withHeaders)
     {
         cm_cmn_FormatPrint("PRI PN", priIdPn);
