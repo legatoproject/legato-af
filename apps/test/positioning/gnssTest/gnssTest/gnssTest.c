@@ -131,6 +131,7 @@ static void TestLeGnssDevice
     acqRate = 1100;
     LE_ASSERT((le_gnss_SetAcquisitionRate(acqRate)) == LE_OK);
     LE_ASSERT((le_gnss_GetNmeaSentences(&nmeaMask)) == LE_OK);
+    LE_INFO("NMEA mask: %x",nmeaMask);
     LE_ASSERT((le_gnss_SetNmeaSentences(nmeaMask)) == LE_OK);
 
     // test le_gnss_Get/SetMinElevation when GNSS device is enabled and the engine is not started.
@@ -273,6 +274,8 @@ static void PositionHandlerFunction
 
     // Display Epoch time
     LE_INFO("epoch time: %llu:", (unsigned long long int) EpochTime);
+
+    LE_ASSERT_OK(le_gnss_InjectUtcTime(EpochTime , 0));
 
     // Get GPS time
     result = le_gnss_GetGpsTime(positionSampleRef, &gpsWeek, &gpsTimeOfWeek);
@@ -549,7 +552,8 @@ static void TestLeGnssPositionHandler
 
     // Last accurate epochTime and timeAccuracy are used
     LE_ASSERT(0 != EpochTime);
-    LE_INFO("TimeAccuracy %d",TimeAccuracy);
+    LE_INFO("TimeAccuracy %d EpochTime %llu",TimeAccuracy, (unsigned long long int)EpochTime);
+
     LE_ASSERT_OK(le_gnss_InjectUtcTime(EpochTime , TimeAccuracy));
 
     // Get TTFF,position fix should be still in progress for the FACTORY start

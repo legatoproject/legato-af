@@ -2983,6 +2983,8 @@ le_result_t le_gnss_GetExtendedEphemerisValidity
  *  - LE_FAULT         The function failed to inject the UTC time.
  *  - LE_TIMEOUT       A time-out occurred.
  *
+ * @note It is mandatory to enable the 'Extended Ephemeris' file injection into the GNSS device with
+ * le_gnss_EnableExtendedEphemerisFile() before injecting time with this API.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_InjectUtcTime

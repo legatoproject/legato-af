@@ -92,6 +92,12 @@
  * @subsubsection le_gnss_InjectUtcTime Inject UTC time
  * The le_gnss_InjectUtcTime() function injects the UTC time into the location engine. Providing an
  * accurate UTC time reduces the time to find the first fix.
+ * @note It is mandatory to enable the 'Extended Ephemeris' file injection into the GNSS device with
+ * le_gnss_EnableExtendedEphemerisFile() before injecting time with le_gnss_InjectUtcTime API.
+ * @warning Your GNSS device may require a restart to take into account the enabling of the
+ * 'Extended Ephemeris' file injection.
+ * Please refer to your platform documentation @ref platformConstraintsGnss_SettingConfiguration for
+ * further details.
  *
  * @subsubsection le_gnss_ForceHotRestart Force HOT restart
  * The le_gnss_ForceHotRestart() function performs a "HOT" restart of the GNSS device. The current
@@ -784,6 +790,8 @@ FUNCTION le_result_t GetExtendedEphemerisValidity
  *  - LE_FAULT         The function failed to inject the UTC time.
  *  - LE_TIMEOUT       A time-out occurred.
  *
+ * @note It is mandatory to enable the 'Extended Ephemeris' file injection into the GNSS device with
+ * le_gnss_EnableExtendedEphemerisFile() before injecting time with this API.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t InjectUtcTime
