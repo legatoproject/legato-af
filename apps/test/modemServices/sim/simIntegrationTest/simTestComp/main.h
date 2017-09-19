@@ -55,6 +55,11 @@ void simTest_SimGetIccid
     le_sim_Id_t simId
 );
 
+void simTest_SimGetEid
+(
+    le_sim_Id_t simId
+);
+
 void simTest_SimAccess
 (
     le_sim_Id_t simId

@@ -790,6 +790,7 @@ static bool ProcessCommand
 
         char iccid[100];
         char imsi[100];
+        char eid[100];
         int pos = 0;
 
         simId = le_sim_GetSelectedCard();
@@ -810,6 +811,12 @@ static bool ProcessCommand
         {
             pos += snprintf(buffer + pos, sizeof(buffer) - pos,
                     " IMSI=%s", imsi);
+        }
+
+        if(le_sim_GetEID(simId, eid, sizeof(eid)) == LE_OK)
+        {
+            pos += snprintf(buffer + pos, sizeof(buffer) - pos,
+                    " EID=%s", eid);
         }
 
     }

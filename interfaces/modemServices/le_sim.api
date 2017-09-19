@@ -10,8 +10,8 @@
  * This file contains prototype definitions for SIM API.
  *
  * A subscriber identity module or subscriber identification module (SIM) is an integrated circuit
- * that securely stores the international mobile subscriber identity (IMSI) and related key used
- * to identify and authenticate subscribers on M2M devices.
+ * that securely stores the international mobile subscriber identity (IMSI) and related key used to
+ * identify and authenticate subscribers on M2M devices.
  *
  * Most SIM cards can store a number of SMS messages and phone book contacts.
  *
@@ -70,6 +70,17 @@
  * digits (European standard) or 3 digits (North American standard). The length of the MNC depends
  * on the value of the MCC. The remaining digits are the mobile subscription identification number
  * (MSIN) within the network's customer base.
+ *
+ * \b EID:
+ * The EID (also called eUICCID) is the unique identifier for the embedded Universal Integrated
+ * Circuit Card (eUICC).
+ * A eUICC is a SIM card with a remote provisioning function, and is designed to not be removed or
+ * changed. It is able to store multiple communication profiles but only one is enabled (recognized
+ * by the device and used for communication). With conventional SIM cards, the ICCID is used as the
+ * unique key to identify the SIM card, but with eUICC, the ICCID is the key used to identify a
+ * profile, and a new identifier is defined, called the eUICCID (EID), which is used as the unique
+ * key for the embedded SIM.
+ * le_sim_GetEID() API reads the EID.
  *
  * \b Home \b Network \b Name:
  * le_sim_GetHomeNetworkOperator() retrieves the Home Network Name.
@@ -464,6 +475,20 @@ DEFINE  PATH_MAX_LEN  = (100);
 //--------------------------------------------------------------------------------------------------
 DEFINE  PATH_MAX_BYTES  = (PATH_MAX_LEN+1);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * eUICC identifier (EID) length
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  EID_LEN    = (32);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * eUICC identifier (EID) length
+ * One extra byte is added for the null character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  EID_BYTES  = (EID_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -626,8 +651,8 @@ FUNCTION le_result_t SelectCard
  *
  * @return LE_OK             ICCID was successfully retrieved.
  * @return LE_OVERFLOW       iccidPtr buffer was too small for the ICCID.
- * @return LE_BAD_PARAMETER if a parameter is invalid
- * @return LE_FAULT         The ICCID could not be retrieved.
+ * @return LE_BAD_PARAMETER  Invalid parameters.
+ * @return LE_FAULT          The ICCID could not be retrieved.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -637,6 +662,26 @@ FUNCTION le_result_t GetICCID
 (
     Id      simId IN,               ///< The SIM identifier.
     string  iccid[ICCID_LEN] OUT    ///< ICCID
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieves the identifier for the embedded Universal Integrated Circuit Card identifier (EID)
+ * (32 digits)
+ *
+ * @return LE_OK             EID was successfully retrieved.
+ * @return LE_OVERFLOW       eidPtr buffer was too small for the EID.
+ * @return LE_BAD_PARAMETER  Invalid parameters.
+ * @return LE_FAULT          The EID could not be retrieved.
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEID
+(
+    Id      simId IN,               ///< The SIM identifier.
+    string  eid[EID_LEN] OUT        ///< EID
 );
 
 //--------------------------------------------------------------------------------------------------

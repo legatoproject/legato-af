@@ -82,6 +82,7 @@ static void PrintUsage
      "SIM select: app runProc simTest --exe=bin/simTest -- select",
      "SIM lock test: app runProc simTest --exe=bin/simTest -- lock <emb/ext1/ext2/rem> <pin>",
      "SIM GetICCID test: app runProc simTest --exe=bin/simTest -- iccid <emb/ext1/ext2/rem>",
+     "SIM GetEID test: app runProc simTest --exe=bin/simTest -- eid <emb/ext1/ext2/rem>",
      "SIM send apdu test: app runProc simTest --exe=bin/simTest -- access <emb/ext1/ext2/rem>",
      "",
     };
@@ -275,6 +276,12 @@ COMPONENT_INIT
     {
         // Call the test function
         simTest_SimGetIccid(cardId);
+    }
+    // Test: SIM Get EID
+    else if (strcmp(testString, "eid") == 0)
+    {
+        // Call the test function
+        simTest_SimGetEid(cardId);
     }
     // Test: send apdu
     else if (strcmp(testString, "access") == 0)

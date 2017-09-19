@@ -34,6 +34,7 @@ static le_clk_Time_t TimeToWait ={ 0, 1000000 };
 static char Iccid[]="89330123164011144830";
 static char PhoneNum[]="+33643537818";
 static char Imsi[]="208011700352758";
+static char Eid[]="69876501010101010101010101050028";
 static char Mcc[]="208";
 static char Mnc[]="01";
 static char Operator[]="orange";
@@ -145,6 +146,7 @@ static void SetSimCardInfo
     pa_simSimu_SetPIN(Pin);
     pa_simSimu_SetPUK(Puk);
     pa_simSimu_SetIMSI(Imsi);
+    pa_simSimu_SetEID(Eid);
     pa_simSimu_SetCardIdentification(Iccid);
     pa_simSimu_SetSubscriberPhoneNumber(PhoneNum);
     pa_simSimu_SetHomeNetworkMccMnc(Mcc, Mnc);
@@ -672,6 +674,7 @@ static void TestSim_LockUnlockChange
  * API tested:
  * - le_sim_GetICCID
  * - le_sim_GetIMSI
+ * - le_sim_GetEID
  * - le_sim_GetSubscriberPhoneNumber
  *
  * Exit if failed
@@ -685,6 +688,7 @@ static void TestSim_SimCardInformation
 {
     char iccid[PA_SIM_CARDID_MAX_LEN+1];
     char imsi[PA_SIM_IMSI_MAX_LEN+1];
+    char eid[PA_SIM_EID_MAX_LEN+1];
     char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
 
     // Start in ABSENT state
@@ -698,12 +702,12 @@ static void TestSim_SimCardInformation
     CheckStateHandlerResult();
 
     // Try to get information: error are expected as there's no SIM
-    LE_ASSERT( le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN) == LE_FAULT );
-    LE_ASSERT( le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN) == LE_FAULT );
-    LE_ASSERT( le_sim_GetSubscriberPhoneNumber( CurrentSimId,
+    LE_ASSERT(LE_FAULT == le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN));
+    LE_ASSERT(LE_FAULT == le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN));
+    LE_ASSERT(LE_FAULT == le_sim_GetEID(CurrentSimId, eid, PA_SIM_EID_MAX_LEN));
+    LE_ASSERT(LE_FAULT == le_sim_GetSubscriberPhoneNumber( CurrentSimId,
                                                 phoneNumber,
-                                                LE_MDMDEFS_PHONE_NUM_MAX_BYTES ) == LE_FAULT );
-
+                                                LE_MDMDEFS_PHONE_NUM_MAX_BYTES));
     // SIM is now ready
     CurrentSimState = LE_SIM_READY;
     pa_simSimu_ReportSIMState(CurrentSimState);
@@ -715,21 +719,24 @@ static void TestSim_SimCardInformation
     CheckStateHandlerResult();
 
     // Try to get informations, check values (OK expected)
-    LE_ASSERT( le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN+1) == LE_OK );
-    LE_ASSERT( strncmp(iccid,Iccid,PA_SIM_CARDID_MAX_LEN) == 0 );
-    LE_ASSERT( le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN+1) == LE_OK );
-    LE_ASSERT( strncmp(imsi,Imsi,PA_SIM_IMSI_MAX_LEN) == 0 );
-    LE_ASSERT( le_sim_GetSubscriberPhoneNumber( CurrentSimId,
+    LE_ASSERT_OK(le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN+1));
+    LE_ASSERT(0 == strncmp(iccid,Iccid,PA_SIM_CARDID_MAX_LEN));
+    LE_ASSERT_OK(le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN+1));
+    LE_ASSERT(0 == strncmp(imsi,Imsi,PA_SIM_IMSI_MAX_LEN));
+    LE_ASSERT_OK(le_sim_GetEID(CurrentSimId, eid, PA_SIM_EID_MAX_LEN+1));
+    LE_ASSERT(0 == strncmp(eid,Eid,PA_SIM_EID_MAX_LEN));
+    LE_ASSERT_OK( le_sim_GetSubscriberPhoneNumber( CurrentSimId,
                                                 phoneNumber,
-                                                LE_MDMDEFS_PHONE_NUM_MAX_BYTES ) == LE_OK );
-    LE_ASSERT( strncmp(phoneNumber,PhoneNum,LE_MDMDEFS_PHONE_NUM_MAX_BYTES) == 0 );
+                                                LE_MDMDEFS_PHONE_NUM_MAX_BYTES ));
+    LE_ASSERT(0 == strncmp(phoneNumber,PhoneNum,LE_MDMDEFS_PHONE_NUM_MAX_BYTES));
 
     // Try to get infomartions with a too small buffer (error expected)
-    LE_ASSERT( le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN) == LE_OVERFLOW );
-    LE_ASSERT( le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN) == LE_OVERFLOW );
+    LE_ASSERT(LE_OVERFLOW == le_sim_GetICCID(CurrentSimId, iccid, PA_SIM_CARDID_MAX_LEN));
+    LE_ASSERT(LE_OVERFLOW == le_sim_GetIMSI(CurrentSimId, imsi, PA_SIM_IMSI_MAX_LEN));
+    LE_ASSERT(LE_OVERFLOW == le_sim_GetEID(CurrentSimId, eid, PA_SIM_EID_MAX_LEN));
 
     // Check that all handlers have been called as expected
-    LE_ASSERT(le_sem_GetValue(ThreadSemaphore) == 0);
+    LE_ASSERT(0 == le_sem_GetValue(ThreadSemaphore));
 }
 
 //--------------------------------------------------------------------------------------------------

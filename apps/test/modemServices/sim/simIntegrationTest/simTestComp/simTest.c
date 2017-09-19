@@ -180,20 +180,21 @@ void simTest_Create
     bool            presence = false;
     char            iccid[LE_SIM_ICCID_BYTES] = {0};
     char            imsi[LE_SIM_IMSI_BYTES] = {0};
-    le_result_t     res;
+    char            eid[LE_SIM_EID_BYTES] = {0};
 
     // Enter PIN code
-    res = le_sim_EnterPIN(simId, pinPtr);
-    LE_ASSERT(res==LE_OK);
+    LE_ASSERT_OK(le_sim_EnterPIN(simId, pinPtr));
 
     // Get ICCID
-    res = le_sim_GetICCID(simId, iccid, sizeof(iccid));
-    LE_ASSERT(res==LE_OK);
+    LE_ASSERT_OK(le_sim_GetICCID(simId, iccid, sizeof(iccid)));
     Print( iccid );
 
+    // Get EID
+    LE_ASSERT_OK(le_sim_GetEID(simId, eid, sizeof(eid)));
+    Print( eid );
+
     // Get IMSI
-    res = le_sim_GetIMSI(simId, imsi, sizeof(imsi));
-    LE_ASSERT(res==LE_OK);
+    LE_ASSERT_OK(le_sim_GetIMSI(simId, imsi, sizeof(imsi)));
     Print( imsi );
 
     // Check if SIM present
@@ -538,6 +539,35 @@ void simTest_SimGetIccid
     LE_ASSERT(res == LE_OK);
 
     sprintf(string, "\nSIM Card ICCID: '%s'\n", iccid);
+    Print(string);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: SIM Get EID.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void simTest_SimGetEid
+(
+    le_sim_Id_t simId
+)
+{
+    le_result_t     res;
+    char            eid[LE_SIM_EID_BYTES];
+    // The string size table is enought to hold "\nSIM Card EID: LE_SIM_EID_BYTES \n"
+    char            string[LE_SIM_EID_BYTES+40];
+
+    memset(eid, 0, LE_SIM_EID_BYTES);
+
+    LE_INFO("SimId %d", simId);
+
+    // Get SIM ICCID
+    res = le_sim_GetEID(simId, eid, sizeof(eid));
+
+    LE_ASSERT(res == LE_OK);
+
+    snprintf(string, sizeof(string),"\nSIM Card EID: '%s'\n", eid);
     Print(string);
 }
 

@@ -105,6 +105,25 @@ le_result_t pa_sim_GetState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function rerieves the identifier for the embedded Universal Integrated Circuit Card (EID)
+ * (16 digits)
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNSUPPORTED   The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_GetCardEID
+(
+   pa_sim_Eid_t eid               ///< [OUT] the EID value
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to register a handler for new SIM state notification handling.
  *
  * @return A handler reference, which is only needed for later removal of the handler.
