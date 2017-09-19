@@ -1,0 +1,58 @@
+provides:
+{
+    api:
+    {
+        streamMedia.api
+    }
+}
+
+sources:
+{
+    streamMedia.c
+}
+
+cflags:
+{
+    -I$CURDIR
+    -I${LEGATO_BUILD}/3rdParty/pjsip/include
+    -DPJ_AUTOCONF=1
+    -O2
+    -DPJ_IS_BIG_ENDIAN=0
+    -DPJ_IS_LITTLE_ENDIAN=1
+}
+
+ldflags:
+{
+    -L${LEGATO_BUILD}/3rdParty/pjsip/lib
+    -lpjsua2
+    -lstdc++
+    -lpjsua
+    -lpjsip-ua
+    -lpjsip-simple
+    -lpjsip
+    -lpjmedia-codec
+    -lpjmedia
+    -lpjmedia-videodev
+    -lpjmedia-audiodev
+    -lpjmedia
+    -lpjnath
+    -lpjlib-util
+    -lsrtp
+    -lpj
+    -lm
+    -lrt
+    -lpthread
+}
+
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/pjsip
+    }
+
+    api:
+    {
+        le_audio.api
+    }
+}

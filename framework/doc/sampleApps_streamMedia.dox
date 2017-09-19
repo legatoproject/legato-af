@@ -1,0 +1,91 @@
+/**  @page sampleApps_streamMedia Stream Media
+
+@warning This sample includes GPLv2 code (PJSIP library). Use of a GPLv2 library results in this
+sample app being GPLv2 also.
+
+@warning This sample app and its interface are experimental and unsupported.
+
+@section streamMedia_App The streamMedia sample
+
+This sample demonstrates an audio streaming over IP app.
+It uses:
+- a 3rd-party library that implements RTP protocol (PJSIP);
+- the audio services with @c .adef bindings and related @c .cdef requires provides, and sources
+  sections.
+
+The streamMedia sample implements an experimental service app exposing the @ref c_streamMedia.
+Moreover, it also implements one additional test app beside the service app: the
+<b>streamMediaTest app</b> that contains two executables that show how to use the
+@ref c_streamMedia.
+As this sample provides two apps, one for the service and another one for the test, you can find
+two .adef files:
+- streamMedia.adef for the service;
+- streamMediaTest.adef for the test app.
+
+The @ref c_streamMedia allows the user to connect the audio streaming over IP interface to other
+audio interfaces via audio connectors. Its usage follows the same rules as the other audio
+interfaces (like Mic, Speaker, MdmTx, ...), please refer to @ref c_audio API and @ref c_streamMedia
+documentation.
+
+Go to the
+<a href="https://github.com/legatoproject/legato-af/tree/master/apps/sample/streamMedia">sample code</a>.
+
+Run this to install the sample app:
+
+@verbatim
+$ cd apps/sample/streamMedia
+$ make wp85
+$ update streamMedia.wp85.update <ip address>
+@endverbatim
+
+where <i>ip address</i> is the address of your target device.
+
+If you're not using a Sierra Wireless WP85xx module, replace @c wp85 with the appropriate
+identifier for your target.
+
+@note The streamMedia application has only been tested on WP85 and AR8652.
+
+@section streamMedia_testApp The streamMediaTest app
+
+The streamMediaTest app contains two executables that show how to use the @ref c_streamMedia.
+
+Note that these applications must be terminated using :
+@code
+    app stop streamMediaTest
+@endcode
+Otherwise the audio interface will not be disconnected and closed properly.
+
+@subsection rtpLoopback
+
+rtpLoopback is a quick demonstration on how to use the @ref c_streamMedia. It creates a local RTP
+session by getting audio from the microphone and sending it through RTP to the speaker.
+
+To run the application, use the following command :
+@code
+    app runProc streamMediaTest --exe=rtpLoopback
+@endcode
+
+@subsection rtpTest
+
+rtpTest implements the use case pictured in @ref c_streamMedia documentation. There are two test
+cases : one for the modem side (MODEM_PEER) and the other for the microphone and speaker side
+(AUDIO_PEER).
+
+To run the application, use the following command :
+@code
+    app runProc streamMediaTest --exe=rtpTest -- <test case> <remote ipv4 addr> <tel number>
+@endcode
+
+For instance, to run an audio peer that will send audio from the microphone to the remote address
+and play the received RTP packets on the speaker :
+@code
+    app runProc streamMediaTest --exe=rtpTest -- AUDIO_PEER 192.168.10.2
+@endcode
+To run the modem peer that sends audio from RTP to a modem call and from this modem call to RTP :
+@code
+    app runProc streamMediaTest --exe=rtpTest -- MODEM_PEER 192.168.2.5 0123456789
+@endcode
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

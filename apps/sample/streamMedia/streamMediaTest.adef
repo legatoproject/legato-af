@@ -1,0 +1,33 @@
+start: manual
+
+executables:
+{
+    rtpLoopback = (rtpLoopbackComp)
+    rtpTest = (rtpTestComp)
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = INFO
+    }
+}
+
+bindings:
+{
+    rtpLoopback.rtpLoopbackComp.le_audio -> audioService.le_audio
+    rtpLoopback.rtpLoopbackComp.streamMedia -> streamMedia.streamMedia
+
+    rtpTest.rtpTestComp.le_audio -> audioService.le_audio
+    rtpTest.rtpTestComp.streamMedia -> streamMedia.streamMedia
+    rtpTest.rtpTestComp.le_mcc -> modemService.le_mcc
+}
+
+requires:
+{
+    file:
+    {
+        /lib/libuuid.so.1 /usr/lib/
+    }
+}

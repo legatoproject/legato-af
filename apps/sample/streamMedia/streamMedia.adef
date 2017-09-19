@@ -1,0 +1,36 @@
+executables:
+{
+    streamMedia = ( streamMediaComp )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = INFO
+    }
+
+    run:
+    {
+        ( streamMedia )
+    }
+}
+
+extern:
+{
+    streamMedia.streamMediaComp.streamMedia
+}
+
+
+bindings:
+{
+    streamMedia.streamMediaComp.le_audio -> audioService.le_audio
+}
+
+requires:
+{
+    file:
+    {
+        /lib/libuuid.so.1 /usr/lib/
+    }
+}

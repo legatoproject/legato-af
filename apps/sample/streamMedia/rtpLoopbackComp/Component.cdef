@@ -1,0 +1,13 @@
+sources:
+{
+    main.c
+}
+
+requires:
+{
+    api:
+    {
+        le_audio.api
+        streamMedia.api
+    }
+}

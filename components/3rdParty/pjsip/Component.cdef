@@ -1,0 +1,39 @@
+bundles:
+{
+    file:
+    {
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjlib-util.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjlib-util.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia-audiodev.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia-audiodev.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia-codec.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia-codec.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia-videodev.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjmedia-videodev.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjnath.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjnath.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsip-simple.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsip-simple.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsip.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsip.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsip-ua.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsip-ua.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpj.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpj.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsua2.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsua2.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsua.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libpjsua.so.2 /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libsrtp.so /usr/lib/
+        ${LEGATO_BUILD}/3rdParty/pjsip/lib/libsrtp.so.2 /usr/lib/
+    }
+}
+
+externalBuild:
+{
+    "mkdir -p $${LEGATO_BUILD}/3rdParty/pjsip"
+    "cp -rf $${LEGATO_ROOT}/3rdParty/pjsip/* $${LEGATO_BUILD}/3rdParty/pjsip"
+    "cd $${LEGATO_BUILD}/3rdParty/pjsip && LD= && ./configure --host=$$($$CC -dumpmachine) --prefix=$${LEGATO_BUILD}/3rdParty/pjsip --disable-libwebrtc --disable-sound --disable-resample --disable-oss --disable-video --disable-small-filter --disable-large-filter --disable-speex-aec --disable-l16-codec --disable-gsm-codec --disable-g722-codec --disable-g7221-codec --disable-speex-codec --disable-ilbc-codec --disable-sdl --disable-ffmpeg --disable-v4l2 --disable-openh264 --disable-opencore-amr --disable-silk --disable-opus --disable-libyuv --enable-shared && make dep && make clean && make && make install"
+}

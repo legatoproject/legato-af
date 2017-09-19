@@ -1,0 +1,14 @@
+sources:
+{
+    main.c
+}
+
+requires:
+{
+    api:
+    {
+        le_audio.api
+        modemServices/le_mcc.api
+        streamMedia.api
+    }
+}

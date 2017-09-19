@@ -22,6 +22,7 @@ to follow to create your own Apps.
 | @subpage sampleApps_shellPiping        | App demonstrates using tools within a sandbox           |
 | @subpage sampleApps_sms                | App demonstrates using the SMS service                  |
 | @subpage sampleApps_fwupdateDownloader | App demonstrates using the fwupdate service             |
+| @subpage sampleApps_streamMedia        | App demonstrates audio streaming over IP interface      |
 
 All sample apps are located in @c $LEGATO_ROOT/apps/sample/. The built Apps are located in
 <code>build/\<target\>/bin/samples</code>.

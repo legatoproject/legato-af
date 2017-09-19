@@ -71,3 +71,5 @@ endif()
 # Watchdog
 add_subdirectory(watchdog)
 
+# Application adding the streamMedia API which allows audio streaming through RTP
+add_subdirectory(streamMedia)
