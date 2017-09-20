@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api              [types-only]
+        positioning/le_gnss.api [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+}

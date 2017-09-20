@@ -72,6 +72,7 @@ endif()
 
 ## Positioning Services
 add_subdirectory(positioning/gnssTest)
+add_subdirectory(positioning/gnssUnitTest)
 add_subdirectory(positioning/gnssXtraTest)
 # To be implemented add_subdirectory(positioning/posDaemonTest)
 add_subdirectory(positioning/positioningTest)

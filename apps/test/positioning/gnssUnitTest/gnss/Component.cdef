@@ -1,0 +1,21 @@
+requires:
+{
+    api:
+    {
+        le_cfg.api               [types-only]
+        positioning/le_gnss.api  [types-only]
+    }
+}
+
+sources:
+{
+    ${LEGATO_ROOT}/components/positioning/posDaemon/le_gnss.c
+    ${LEGATO_ROOT}/platformAdaptor/simu/components/le_pa_gnss/pa_gnss_simu.c
+    stubs.c
+}
+
+cflags:
+{
+    -Dle_msg_AddServiceCloseHandler=MyAddServiceCloseHandler
+    '-DLE_GNSS_NMEA_NODE_PATH="/tmp/nmeaGnssUnitTest"'
+}

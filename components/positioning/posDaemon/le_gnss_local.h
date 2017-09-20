@@ -11,7 +11,6 @@
 
 #include "legato.h"
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to initialize the GNSS
@@ -25,6 +24,4 @@ le_result_t gnss_Init
     void
 );
 
-
 #endif // LEGATO_GNSS_LOCAL_INCLUDE_GUARD
-
