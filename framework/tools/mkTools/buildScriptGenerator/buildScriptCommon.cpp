@@ -313,15 +313,16 @@ void BuildScriptGenerator_t::GenerateBuildRules
     // Generate rules for running external tools
     script << "rule BuildExternal\n"
               "  description = Running external build step\n"
-              "  command = cd $builddir/$workingdir; $\n"
-              "            env CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
+              "  command = cd $builddir/$workingdir && $\n"
+              "            export CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
               "            CXXFLAGS=\"" << sysrootOption << " $cxxFlags\" $\n"
               "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n";
     if (!crossToolPath.empty())
     {
-        script << "            PATH=\"" << crossToolPath << ":$$PATH\" $\n";
+        script << "            PATH=\"" << crossToolPath << ":$$PATH\" && $\n";
     }
-    script << "            sh -c \'$externalCommand\'\n";
+    script << "            $externalCommand\n"
+              "\n";
 
     // Generate a rule for running ifgen.
     script << "rule GenInterfaceCode\n"

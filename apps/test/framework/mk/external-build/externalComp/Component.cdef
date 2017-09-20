@@ -8,5 +8,5 @@ bundles:
 
 externalBuild:
 {
-    "mkdir -p ${LEGATO_BUILD}/external && touch ${LEGATO_BUILD}/external/foo"
+    "mkdir -p ${LEGATO_BUILD}/external && cd ${LEGATO_BUILD}/external && touch foo '$${LEGATO_'"
 }
