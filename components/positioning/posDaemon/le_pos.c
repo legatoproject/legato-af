@@ -1173,7 +1173,11 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
     uint32_t                 rate = 0;
     le_pos_SampleHandler_t*  posSampleHandlerNodePtr=NULL;
 
-    LE_FATAL_IF((handlerPtr == NULL), "handlerPtr pointer is NULL !");
+    if (handlerPtr == NULL)
+    {
+        LE_KILL_CLIENT("handlerPtr pointer is NULL!");
+        return NULL;
+    }
 
     // Create the position sample handler node.
     posSampleHandlerNodePtr = (le_pos_SampleHandler_t*)le_mem_ForceAlloc(PosSampleHandlerPoolRef);
@@ -1185,7 +1189,6 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
 
     posSampleHandlerNodePtr->sessionRef = le_pos_GetClientSessionRef();
     AcqRate = ComputeCommonSmallestRate(posSampleHandlerNodePtr->acquisitionRate);
-
     LE_DEBUG("Computed Acquisistion rate is %d sec for an average speed of %d km/h",
              rate,
              SUPPOSED_AVERAGE_SPEED);

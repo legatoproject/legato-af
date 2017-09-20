@@ -14,6 +14,176 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Time structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t hours;               ///< The Hours.
+    uint16_t minutes;             ///< The Minutes.
+    uint16_t seconds;             ///< The Seconds.
+    uint16_t milliseconds;        ///< The Milliseconds.
+}
+pa_Gnss_Time_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Date structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t year;                ///< The Year.
+    uint16_t month;               ///< The Month.
+    uint16_t day;                 ///< The Day.
+}
+pa_Gnss_Date_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Satellite Vehicle information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t                satId;        ///< Satellite in View ID number.
+    le_gnss_Constellation_t satConst;     ///< GNSS constellation type.
+    bool                    satUsed;      ///< TRUE if satellite in View is used for fix Navigation.
+    bool                    satTracked;   ///< TRUE if satellite in View is tracked for Navigation.
+    uint8_t                 satSnr;       ///< Satellite in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;      ///< Satellite in View Azimuth [degrees].
+                                          ///< Range: 0 to 360
+    uint8_t                 satElev;      ///< Satellite in View Elevation [degrees].
+                                          ///< Range: 0 to 90
+}
+Pa_Gnss_SvInfo_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Satellite Measurement information.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    uint16_t satId;          ///< Satellite in View ID number.
+    int32_t  satLatency;     ///< Satellite latency measurement (age of measurement)
+                             ///< Units: Milliseconds.
+}
+Pa_Gnss_SvMeasurement_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Position structure.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+
+    le_gnss_FixState_t      fixState;       ///< Position Fix state
+
+    bool                    latitudeValid;  ///< if true, latitude is set
+    int32_t                 latitude;       ///< The Latitude in degrees, positive North,
+                                            ///  with 6 decimal places.
+
+    bool                    longitudeValid; ///< if true, longitude is set
+    int32_t                 longitude;      ///< The Longitude in degrees, positive East,
+                                            ///  with 6 decimal places.
+
+    bool                    altitudeValid;  ///< if true, altitude is set
+    int32_t                 altitude;       ///< The Altitude in meters, above Mean Sea Level,
+                                            ///  with 3 decimal places.
+
+    bool                    altitudeOnWgs84Valid; ///< if true, altitudeOnWgs84 is set
+    int32_t                 altitudeOnWgs84;///< The altitudeOnWgs84 in meters, between WGS-84 earth
+                                            ///  ellipsoid and mean sea level with 3 decimal places.
+
+    bool                    hSpeedValid;    ///< if true, horizontal speed is set
+    uint32_t                hSpeed;        ///< The horizontal Speed in m/sec, with 2 decimal places
+                                            ///  (125 = 1.25m/sec).
+
+    bool                    vSpeedValid;    ///< if true, vertical speed is set
+    uint32_t                vSpeed;         ///< The vertical Speed in m/sec, with 2 decimal places
+                                            ///  (125 = 1.25m/sec).
+
+    bool                    directionValid; ///< if true, direction is set
+    uint32_t                direction;      ///< Direction in degrees, where 0 is True North, with 1
+                                            ///  decimal place (308  = 30.8 degrees).
+
+    bool                    headingValid;   ///< if true, heading is set
+    uint32_t                heading;        ///< heading in degrees, where 0 is True North, with 1
+                                            ///  decimal place (308  = 30.8 degrees).
+
+    bool                    hdopValid;      ///< if true, horizontal dilution is set
+    uint16_t                hdop;           ///< The horizontal dilution of precision (DOP)
+
+    bool                    pdopValid;      ///< if true, position dilution is set
+    uint16_t                pdop;           ///< The position dilution of precision (DOP)
+
+    bool                    vdopValid;      ///< if true, vertical dilution is set
+    uint16_t                vdop;           ///< The vertical dilution of precision (DOP)
+
+    bool                    gdopValid;      ///< if true, geometric dilution is set
+    uint16_t                gdop;           ///< The geometric dilution of precision (DOP)
+
+    bool                    tdopValid;      ///< if true, time dilution is set
+    uint16_t                tdop;           ///< The time dilution of precision (DOP)
+
+    bool                    hUncertaintyValid;  ///< if true, horizontal uncertainty is set
+    uint32_t                hUncertainty;       ///< The horizontal uncertainty in meters,
+                                                ///  with 2 decimal places
+
+    bool                    vUncertaintyValid;  ///< if true, vertical uncertainty is set
+    uint32_t                vUncertainty;       ///< The vertical uncertainty in meters,
+                                                ///  with 1 decimal place
+
+    bool                    hSpeedUncertaintyValid;///< if true, horizontal speed uncertainty is set
+    uint32_t                hSpeedUncertainty;      ///< The horizontal speed uncertainty in m/sec,
+                                                    ///  with 1 decimal place
+
+    bool                    vSpeedUncertaintyValid; ///< if true, vertical speed uncertainty is set
+    uint32_t                vSpeedUncertainty;      ///< The vertical speed uncertainty in m/sec,
+                                                    ///  with 1 decimal place
+
+    bool                    magneticDeviationValid; ///< if true, magnetic deviation is set
+    int32_t                 magneticDeviation;      ///< The magnetic deviation in degrees,
+                                                    ///  with 1 decimal place
+
+    bool                    directionUncertaintyValid; ///< if true, direction uncertainty is set
+    uint32_t                directionUncertainty;      ///< The direction uncertainty in degrees,
+                                                       ///  with 1 decimal place
+    // UTC time
+    bool                    timeValid;           ///< if true, time is set
+    pa_Gnss_Time_t          time;                ///< The time of the fix
+    uint64_t                epochTime;           ///< Epoch time in milliseconds since Jan. 1, 1970
+    bool                    dateValid;           ///< if true, date is set
+    pa_Gnss_Date_t          date;                ///< The date of the fix
+
+    // Leap Seconds
+    bool                    leapSecondsValid;    ///< if true, leapSeconds is set
+    uint8_t                 leapSeconds;         ///< UTC leap seconds in advance in seconds
+    // GPS time
+    bool                    gpsTimeValid;        ///< if true, GPS time is set
+    uint32_t                gpsWeek;             ///< GPS week number from midnight, Jan. 6, 1980.
+    uint32_t                gpsTimeOfWeek;     ///< Amount of time in milliseconds into the GPS week.
+    // Time accuracy
+    bool                    timeAccuracyValid;      ///< if true, timeAccuracy is set
+    uint32_t                timeAccuracy;           ///< Estimated Accuracy for time in milliseconds
+    // Position measurement latency
+    bool                    positionLatencyValid;   ///< if true, positionLatency is set
+    uint32_t                positionLatency;       ///< Position measurement latency in milliseconds
+    // Satellite Vehicles information
+    bool                    satsInViewCountValid;   ///< if true, satsInView is set
+    uint8_t                 satsInViewCount;        ///< Satellites in View count.
+    bool                    satsTrackingCountValid; ///< if true, satsTrackingCount is set
+    uint8_t                 satsTrackingCount;      ///< Tracking satellites in View.
+    bool                    satsUsedCountValid;     ///< if true, satsUsedCount is set
+    uint8_t                 satsUsedCount;          ///< Satellites in View used for Navigation.
+    bool                    satInfoValid;           ///< if true, satInfo is set
+    Pa_Gnss_SvInfo_t        satInfo[LE_GNSS_SV_INFO_MAX_LEN];
+                                                    ///< Satellite Vehicle information.
+    bool                    satMeasValid;           ///< if true, satInfo is set
+    Pa_Gnss_SvMeasurement_t satMeas[LE_GNSS_SV_INFO_MAX_LEN];
+                                                    ///< Satellite measurement information.
+}
+pa_Gnss_Position_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maintains simulated location data
  *
  */
@@ -83,6 +253,34 @@ static gnssSimuPositionState_t GnssSimuPositionSate;
  */
 //--------------------------------------------------------------------------------------------------
 static le_gnss_SampleRef_t Sample;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory pool for call event data.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t PositionSamplePoolRef;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event for new Pos state
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t PosEventId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The computed position Sample data.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_gnss_PositionSample_t PositionSampleData;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The computed position data.
+ */
+//--------------------------------------------------------------------------------------------------
+static pa_Gnss_Position_t PositionData;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -212,8 +410,214 @@ void le_gnssSimu_SetPositionState
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Initialize the GNSS position information.
+ */
+//--------------------------------------------------------------------------------------------------
+static void InitializeValidGnssPosition
+(
+    pa_Gnss_Position_t* posDataPtr                   ///< [IN/OUT] Pointer to the position data.
+)
+{
+    posDataPtr->fixState = LE_GNSS_STATE_FIX_NO_POS;
+
+    posDataPtr->latitudeValid = true;
+    posDataPtr->latitude=48823091;
+
+    posDataPtr->longitudeValid = true;
+    posDataPtr->longitude=2249324;
+
+    posDataPtr->altitudeValid = true;
+    posDataPtr->altitude=32000;
+
+    posDataPtr->altitudeOnWgs84Valid = true;
+    posDataPtr->altitudeOnWgs84=32;
+
+    posDataPtr->hSpeedValid=true;
+    posDataPtr->hSpeed=3600;
+
+    posDataPtr->vSpeedValid=true;
+    posDataPtr->vSpeed=300;
+
+    posDataPtr->directionValid = true;
+    posDataPtr->direction=100;
+
+    posDataPtr->headingValid = false;
+
+    posDataPtr->hdopValid = false;
+
+    posDataPtr->vdopValid = false;
+
+    posDataPtr->gdopValid = false;
+
+    posDataPtr->tdopValid = false;
+
+    posDataPtr->hUncertaintyValid = false;
+
+    posDataPtr->vUncertaintyValid = false;
+
+    posDataPtr->hSpeedUncertaintyValid = false;
+
+    posDataPtr->vSpeedUncertaintyValid = false;
+
+    posDataPtr->magneticDeviationValid = false;
+
+    posDataPtr->directionUncertaintyValid = false;
+
+    // Date
+    posDataPtr->dateValid = true;
+    posDataPtr->date.year = 2016;
+    posDataPtr->date.month = 12;
+    posDataPtr->date.day = 12;
+
+    // Time
+    posDataPtr->timeValid = true;
+    posDataPtr->time.hours = 120;
+    posDataPtr->time.minutes = 15;
+    posDataPtr->time.seconds = 54;
+    posDataPtr->time.milliseconds = 1245;
+
+    // Leap Seconds
+    posDataPtr->leapSecondsValid = false;
+
+    // Epoch time
+    posDataPtr->epochTime = false;
+
+    // GPS time
+    posDataPtr->gpsTimeValid = false;
+
+    // Time accuracy
+    posDataPtr->timeAccuracyValid = false;
+
+    // Position measurement latency
+    posDataPtr->positionLatencyValid = false;
+
+    // Satellites information
+    posDataPtr->satsInViewCountValid = false;
+    posDataPtr->satsTrackingCountValid = false;
+    posDataPtr->satsUsedCountValid = false;
+    posDataPtr->satInfoValid = false;
+
+    // Satellite latency measurement
+    posDataPtr->satMeasValid = false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the position sample information from GNSS position information.
+ */
+//--------------------------------------------------------------------------------------------------
+
+static void GetPosSampleData
+(
+    le_gnss_PositionSample_t* posSampleDataPtr,  ///< [OUT] Pointer to the position sample report.
+    pa_Gnss_Position_t* paPosDataPtr             ///< [IN] The PA position data report.
+)
+{
+    uint8_t i;
+
+    // Position information
+    posSampleDataPtr->fixState = paPosDataPtr->fixState;
+    posSampleDataPtr->latitudeValid = paPosDataPtr->latitudeValid;
+    posSampleDataPtr->latitude = paPosDataPtr->latitude;
+    posSampleDataPtr->longitudeValid = paPosDataPtr->longitudeValid;
+    posSampleDataPtr->longitude = paPosDataPtr->longitude;
+    posSampleDataPtr->hAccuracyValid = paPosDataPtr->hUncertaintyValid;
+    posSampleDataPtr->hAccuracy = paPosDataPtr->hUncertainty;
+    posSampleDataPtr->altitudeValid = paPosDataPtr->altitudeValid;
+    posSampleDataPtr->altitude = paPosDataPtr->altitude;
+    posSampleDataPtr->altitudeOnWgs84Valid = paPosDataPtr->altitudeOnWgs84Valid;
+    posSampleDataPtr->altitudeOnWgs84 = paPosDataPtr->altitudeOnWgs84;
+    posSampleDataPtr->vAccuracyValid = paPosDataPtr->vUncertaintyValid;
+    posSampleDataPtr->vAccuracy = paPosDataPtr->vUncertainty;
+    posSampleDataPtr->hSpeedValid = paPosDataPtr->hSpeedValid;
+    posSampleDataPtr->hSpeed = paPosDataPtr->hSpeed;
+    posSampleDataPtr->hSpeedAccuracyValid = paPosDataPtr->hSpeedUncertaintyValid;
+    posSampleDataPtr->hSpeedAccuracy = paPosDataPtr->hSpeedUncertainty;
+    posSampleDataPtr->vSpeedValid = paPosDataPtr->vSpeedValid;
+    posSampleDataPtr->vSpeed = paPosDataPtr->vSpeed;
+    posSampleDataPtr->vSpeedAccuracyValid = paPosDataPtr->vSpeedUncertaintyValid;
+    posSampleDataPtr->vSpeedAccuracy = paPosDataPtr->vSpeedUncertainty;
+    posSampleDataPtr->directionValid = paPosDataPtr->directionValid;
+    posSampleDataPtr->direction = paPosDataPtr->direction;
+    posSampleDataPtr->directionAccuracyValid = paPosDataPtr->directionUncertaintyValid;
+    posSampleDataPtr->directionAccuracy = paPosDataPtr->directionUncertainty;
+    posSampleDataPtr->magneticDeviationValid = paPosDataPtr->magneticDeviationValid;
+    posSampleDataPtr->magneticDeviation = paPosDataPtr->magneticDeviation;
+    // Date
+    posSampleDataPtr->dateValid = paPosDataPtr->dateValid;
+    posSampleDataPtr->year = paPosDataPtr->date.year;
+    posSampleDataPtr->month = paPosDataPtr->date.month;
+    posSampleDataPtr->day = paPosDataPtr->date.day;
+    // UTC time
+    posSampleDataPtr->timeValid = paPosDataPtr->timeValid;
+    posSampleDataPtr->hours = paPosDataPtr->time.hours;
+    posSampleDataPtr->minutes = paPosDataPtr->time.minutes;
+    posSampleDataPtr->seconds = paPosDataPtr->time.seconds;
+    posSampleDataPtr->milliseconds = paPosDataPtr->time.milliseconds;
+    // Leap Seconds
+    posSampleDataPtr->leapSecondsValid = paPosDataPtr->leapSecondsValid;
+    posSampleDataPtr->leapSeconds = paPosDataPtr->leapSeconds;
+    // Epoch time
+    posSampleDataPtr->epochTime = paPosDataPtr->epochTime;
+    // GPS time
+    posSampleDataPtr->gpsTimeValid = paPosDataPtr->gpsTimeValid;
+    posSampleDataPtr->gpsWeek = paPosDataPtr->gpsWeek;
+    posSampleDataPtr->gpsTimeOfWeek = paPosDataPtr->gpsTimeOfWeek;
+    // Time accuracy
+    posSampleDataPtr->timeAccuracyValid = paPosDataPtr->timeAccuracyValid;
+    posSampleDataPtr->timeAccuracy = paPosDataPtr->timeAccuracy;
+    // Position measurement latency
+    posSampleDataPtr->positionLatencyValid = paPosDataPtr->positionLatencyValid;
+    posSampleDataPtr->positionLatency = paPosDataPtr->positionLatency;
+    // DOP parameters
+    posSampleDataPtr->hdopValid = paPosDataPtr->hdopValid;
+    posSampleDataPtr->hdop = paPosDataPtr->hdop;
+    posSampleDataPtr->vdopValid = paPosDataPtr->vdopValid;
+    posSampleDataPtr->vdop = paPosDataPtr->vdop;
+    posSampleDataPtr->pdopValid = paPosDataPtr->pdopValid;
+    posSampleDataPtr->pdop = paPosDataPtr->pdop;
+    posSampleDataPtr->gdopValid = paPosDataPtr->gdopValid;
+    posSampleDataPtr->gdop = paPosDataPtr->gdop;
+    posSampleDataPtr->tdopValid = paPosDataPtr->tdopValid;
+    posSampleDataPtr->tdop = paPosDataPtr->tdop;
+
+    // Satellites information
+    posSampleDataPtr->satsInViewCountValid = paPosDataPtr->satsInViewCountValid;
+    posSampleDataPtr->satsInViewCount = paPosDataPtr->satsInViewCount;
+    posSampleDataPtr->satsTrackingCountValid = paPosDataPtr->satsTrackingCountValid;
+    posSampleDataPtr->satsTrackingCount = paPosDataPtr->satsTrackingCount;
+    posSampleDataPtr->satsUsedCountValid = paPosDataPtr->satsUsedCountValid;
+    posSampleDataPtr->satsUsedCount = paPosDataPtr->satsUsedCount;
+    posSampleDataPtr->satInfoValid = paPosDataPtr->satInfoValid;
+    for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
+    {
+        posSampleDataPtr->satInfo[i].satId = paPosDataPtr->satInfo[i].satId;
+        posSampleDataPtr->satInfo[i].satConst = paPosDataPtr->satInfo[i].satConst;
+        posSampleDataPtr->satInfo[i].satUsed = paPosDataPtr->satInfo[i].satUsed;
+        posSampleDataPtr->satInfo[i].satTracked = paPosDataPtr->satInfo[i].satTracked;
+        posSampleDataPtr->satInfo[i].satSnr = paPosDataPtr->satInfo[i].satSnr;
+        posSampleDataPtr->satInfo[i].satAzim = paPosDataPtr->satInfo[i].satAzim;
+        posSampleDataPtr->satInfo[i].satElev = paPosDataPtr->satInfo[i].satElev;
+    }
+
+    // Satellite latency measurement
+    posSampleDataPtr->satMeasValid = paPosDataPtr->satMeasValid;
+    for(i=0; i<LE_GNSS_SV_INFO_MAX_LEN; i++)
+    {
+        posSampleDataPtr->satMeas[i].satId = paPosDataPtr->satMeas[i].satId;
+        posSampleDataPtr->satMeas[i].satLatency = paPosDataPtr->satMeas[i].satLatency;
+    }
+
+    // Node Link
+    posSampleDataPtr->link = LE_DLS_LINK_INIT;
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the GNSS
  *
+ * @return
  *  - LE_FAULT  The function failed.
  *  - LE_NOT_PERMITTED If the GNSS device is already initialized.
  *  - LE_OK     The function succeed.
@@ -224,6 +628,11 @@ le_result_t gnss_Init
     void
 )
 {
+    InitializeValidGnssPosition(&PositionData);
+    GetPosSampleData(&PositionSampleData, &PositionData);
+    PosEventId = le_event_CreateIdWithRefCounting("PosEventId");
+    PositionSamplePoolRef = le_mem_CreatePool("PositionSamplePoolRef",
+                            sizeof(le_gnss_PositionSample_t));
     return LE_OK;
 }
 
@@ -239,10 +648,22 @@ le_result_t gnss_Init
 le_gnss_PositionHandlerRef_t le_gnss_AddPositionHandler
 (
     le_gnss_PositionHandlerFunc_t handlerPtr,          ///< [IN] The handler function.
-    void*                        contextPtr           ///< [IN] The context pointer
+    void*                         contextPtr           ///< [IN] The context pointer
 )
 {
-    return NULL;
+    le_event_HandlerRef_t        handlerRef;
+
+    // Create an event Id for new Network Registration State notification if not already done
+    if (handlerPtr == NULL)
+    {
+        LE_ERROR("Handler function is NULL!");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddHandler("PosEventHandler", PosEventId,
+                 (le_event_HandlerFunc_t)handlerPtr);
+
+    return (le_gnss_PositionHandlerRef_t)handlerRef;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -257,6 +678,24 @@ void le_gnss_RemovePositionHandler
     le_gnss_PositionHandlerRef_t    handlerRef ///< [IN] The handler reference.
 )
 {
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * To report the event for handler.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_gnssSimu_ReportEvent
+(
+    void
+)
+{
+
+    // Build the data for the user's event handler.
+    le_gnss_PositionSample_t* posSampleDataPtr = (le_gnss_PositionSample_t*)
+                                                 le_mem_ForceAlloc(PositionSamplePoolRef);
+    memcpy(posSampleDataPtr, &PositionSampleData, sizeof(le_gnss_PositionSample_t));
+    le_event_ReportWithRefCounting(PosEventId, posSampleDataPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

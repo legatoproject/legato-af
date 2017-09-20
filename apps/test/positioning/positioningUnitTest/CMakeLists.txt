@@ -20,18 +20,17 @@ if ($ENV{TARGET} MATCHES "localhost")
         set(LFLAGS "--ldflags=\"--coverage\"")
     endif()
 
-    mkexe(
-        ${TEST_BIN}
-        ${TEST_SOURCE}
-        ${TEST_SOURCE}/pos
+    mkexe(${TEST_BIN}
+        pos
+        .
+        -i pos
+        -i pos/gnss
         -i ${LEGATO_FRAMEWORK_SRC}
         -i ${LEGATO_FRAMEWORK_INC}
         -i ${LEGATO_CFG_TREE}
         -i ${LEGATO_POS_SERVICES}
         -i ${LEGATO_POS_PA}/inc
         -i ${LEGATO_CFG_ENTRIES}
-        -i ${TEST_SOURCE}
-        -i ${TEST_SOURCE}/pos/gnss
         ${CFLAGS}
         ${LFLAGS}
         -C ${MKEXE_CFLAGS}

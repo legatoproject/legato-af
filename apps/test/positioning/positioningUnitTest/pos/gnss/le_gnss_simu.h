@@ -134,6 +134,7 @@ void le_gnssSimu_SetVSpeed(gnssSimuVSpeed_t gnssVSpeed);
 void le_gnssSimu_SetTime(gnssSimuTime_t gnssTime);
 void le_gnssSimu_SetSampleRef(le_gnss_SampleRef_t sample);
 void le_gnssSimu_SetPositionState(gnssSimuPositionState_t state);
+void le_gnssSimu_ReportEvent(void);         ///to report the event for handler
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -141,14 +142,15 @@ void le_gnssSimu_SetPositionState(gnssSimuPositionState_t state);
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct {
-    uint16_t                satId;          ///< Satellite in View ID number [PRN].
-    le_gnss_Constellation_t satConst;       ///< GNSS constellation type.
-    bool                    satUsed;        ///< TRUE if satellite in View Used for Navigation.
-    uint8_t                 satSnr;         ///< Satellite in View Signal To Noise Ratio [dBHz].
-    uint16_t                satAzim;        ///< Satellite in View Azimuth [degrees].
-                                            ///< Range: 0 to 360
-    uint8_t                 satElev;        ///< Satellite in View Elevation [degrees].
-                                            ///< Range: 0 to 90
+    uint16_t                satId;         ///< Satellite in View ID number [PRN].
+    le_gnss_Constellation_t satConst;      ///< GNSS constellation type.
+    bool                    satUsed;       ///< TRUE if satellite in View Used for Navigation.
+    bool                    satTracked;    ///< TRUE if satellite in View is tracked for Navigation.
+    uint8_t                 satSnr;        ///< Satellite in View Signal To Noise Ratio [dBHz].
+    uint16_t                satAzim;       ///< Satellite in View Azimuth [degrees].
+                                           ///< Range: 0 to 360
+    uint8_t                 satElev;       ///< Satellite in View Elevation [degrees].
+                                           ///< Range: 0 to 90
 }
 le_gnss_SvInfo_t;
 
@@ -172,72 +174,80 @@ le_gnss_SvMeas_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct le_gnss_PositionSample
 {
-    le_gnss_FixState_t fixState;     ///< Position Fix state
-    bool            latitudeValid;   ///< if true, latitude is set
-    int32_t         latitude;        ///< altitude
-    bool            longitudeValid;  ///< if true, longitude is set
-    int32_t         longitude;       ///< longitude
-    bool            hAccuracyValid;  ///< if true, horizontal accuracy is set
-    int32_t         hAccuracy;       ///< horizontal accuracy
-    bool            altitudeValid;   ///< if true, altitude is set
-    int32_t         altitude;        ///< altitude
-    bool            altitudeOnWgs84Valid; ///< if true, altitude with respect to the WGS-84 is set
-    int32_t         altitudeOnWgs84;      ///< altitude with respect to the WGS-84 ellipsoid
-    bool            vAccuracyValid;  ///< if true, vertical accuracy is set
-    int32_t         vAccuracy;       ///< vertical accuracy
-    bool            hSpeedValid;     ///< if true, horizontal speed is set
-    uint32_t        hSpeed;          ///< horizontal speed
-    bool            hSpeedAccuracyValid; ///< if true, horizontal speed accuracy is set
-    int32_t         hSpeedAccuracy;  ///< horizontal speed accuracy
-    bool            vSpeedValid;     ///< if true, vertical speed is set
-    int32_t         vSpeed;          ///< vertical speed
-    bool            vSpeedAccuracyValid; ///< if true, vertical speed accuracy is set
-    int32_t         vSpeedAccuracy;  ///< vertical speed accuracy
-    bool            directionValid;  ///< if true, direction is set
-    uint32_t        direction;       ///< direction
-    bool            directionAccuracyValid; ///< if true, direction accuracy is set
-    uint32_t        directionAccuracy; ///< direction accuracy
-    bool            dateValid;       ///< if true, date is set
-    uint16_t        year;            ///< UTC Year A.D. [e.g. 2014].
-    uint16_t        month;           ///< UTC Month into the year [range 1...12].
-    uint16_t        day;             ///< UTC Days into the month [range 1...31].
-    bool            timeValid;       ///< if true, time is set
-    uint16_t        hours;           ///< UTC Hours into the day [range 0..23].
-    uint16_t        minutes;         ///< UTC Minutes into the hour [range 0..59].
-    uint16_t        seconds;         ///< UTC Seconds into the minute [range 0..59].
-    uint16_t        milliseconds;    ///< UTC Milliseconds into the second [range 0..999].
-    bool            gpsTimeValid;    ///< if true, GPS time is set
-    uint32_t        gpsWeek;         ///< GPS week number from midnight, Jan. 6, 1980.
-    uint32_t        gpsTimeOfWeek;   ///< Amount of time in milliseconds into the GPS week.
-    bool            timeAccuracyValid; ///< if true, timeAccuracy is set
-    uint32_t        timeAccuracy;      ///< Estimated Accuracy for time in milliseconds
-    bool            positionLatencyValid; ///< if true, positionLatency is set
-    uint32_t        positionLatency;      ///< Position measurement latency in milliseconds
-    bool            hdopValid;       ///< if true, horizontal dilution is set
-    uint16_t        hdop;            ///< The horizontal dilution of precision (DOP)
-    bool            vdopValid;       ///< if true, vertical dilution is set
-    uint16_t        vdop;            ///< The vertical dilution of precision (DOP)
-    bool            pdopValid;       ///< if true, position dilution is set
-    uint16_t        pdop;            ///< The Position dilution of precision (DOP)
-    bool            gdopValid;       ///< if true, geometric dilution is set
-    uint16_t        gdop;            ///< The geometric dilution of precision (DOP)
-    bool            tdopValid;       ///< if true, time dilution is set
-    uint16_t        tdop;            ///< The time dilution of precision (DOP)
-    bool            magneticDeviationValid; ///< if true, magnetic deviation is set
-    int32_t         magneticDeviation;  ///< The magnetic deviation
+    le_gnss_FixState_t fixState;        ///< Position Fix state
+    bool               latitudeValid;   ///< if true, latitude is set
+    int32_t            latitude;        ///< altitude
+    bool               longitudeValid;  ///< if true, longitude is set
+    int32_t            longitude;       ///< longitude
+    bool               hAccuracyValid;  ///< if true, horizontal accuracy is set
+    int32_t            hAccuracy;       ///< horizontal accuracy
+    bool               altitudeValid;   ///< if true, altitude is set
+    int32_t            altitude;        ///< altitude
+    bool               altitudeOnWgs84Valid;///< if true, altitude with respect to the WGS-84 is set
+    int32_t            altitudeOnWgs84;      ///< altitude with respect to the WGS-84 ellipsoid
+    bool               vAccuracyValid;  ///< if true, vertical accuracy is set
+    int32_t            vAccuracy;       ///< vertical accuracy
+    bool               hSpeedValid;     ///< if true, horizontal speed is set
+    uint32_t           hSpeed;          ///< horizontal speed
+    bool               hSpeedAccuracyValid; ///< if true, horizontal speed accuracy is set
+    int32_t            hSpeedAccuracy;  ///< horizontal speed accuracy
+    bool               vSpeedValid;     ///< if true, vertical speed is set
+    int32_t            vSpeed;          ///< vertical speed
+    bool               vSpeedAccuracyValid; ///< if true, vertical speed accuracy is set
+    int32_t            vSpeedAccuracy;  ///< vertical speed accuracy
+    bool               directionValid;  ///< if true, direction is set
+    uint32_t           direction;       ///< direction
+    bool               directionAccuracyValid; ///< if true, direction accuracy is set
+    uint32_t           directionAccuracy; ///< direction accuracy
+    bool               dateValid;       ///< if true, date is set
+    uint16_t           year;            ///< UTC Year A.D. [e.g. 2014].
+    uint16_t           month;           ///< UTC Month into the year [range 1...12].
+    uint16_t           day;             ///< UTC Days into the month [range 1...31].
+    bool               timeValid;       ///< if true, time is set
+    uint16_t           hours;           ///< UTC Hours into the day [range 0..23].
+    uint16_t           minutes;         ///< UTC Minutes into the hour [range 0..59].
+    uint16_t           seconds;         ///< UTC Seconds into the minute [range 0..59].
+    uint16_t           milliseconds;    ///< UTC Milliseconds into the second [range 0..999].
+    bool               gpsTimeValid;    ///< if true, GPS time is set
+    uint32_t           gpsWeek;         ///< GPS week number from midnight, Jan. 6, 1980.
+    uint32_t           gpsTimeOfWeek;   ///< Amount of time in milliseconds into the GPS week.
+    bool               timeAccuracyValid; ///< if true, timeAccuracy is set
+    uint32_t           timeAccuracy;      ///< Estimated Accuracy for time in milliseconds
+    bool               positionLatencyValid; ///< if true, positionLatency is set
+    uint32_t           positionLatency;      ///< Position measurement latency in milliseconds
+    bool               hdopValid;       ///< if true, horizontal dilution is set
+    uint16_t           hdop;            ///< The horizontal dilution of precision (DOP)
+    bool               vdopValid;       ///< if true, vertical dilution is set
+    uint16_t           vdop;            ///< The vertical dilution of precision (DOP)
+    bool               pdopValid;       ///< if true, position dilution is set
+    uint16_t           pdop;            ///< The Position dilution of precision (DOP)
+    bool               gdopValid;       ///< if true, geometric dilution is set
+    uint16_t           gdop;            ///< The geometric dilution of precision (DOP)
+    bool               tdopValid;       ///< if true, time dilution is set
+    uint16_t           tdop;            ///< The time dilution of precision (DOP)
+    bool               magneticDeviationValid; ///< if true, magnetic deviation is set
+    int32_t            magneticDeviation;  ///< The magnetic deviation
+
+    // Leap Seconds
+    bool               leapSecondsValid;
+    uint16_t           leapSeconds;
+
+    // Epoch time
+    uint16_t           epochTime;
+
     // Satellite Vehicles information
-    bool             satsInViewCountValid;   ///< if true, satsInViewCount is set
-    uint8_t          satsInViewCount;        ///< Satellites in View count.
-    bool             satsTrackingCountValid; ///< if true, satsTrackingCount is set
-    uint8_t          satsTrackingCount;      ///< Tracking satellites in View count.
-    bool             satsUsedCountValid;     ///< if true, satsUsedCount is set
-    uint8_t          satsUsedCount;          ///< Satellites in View used for Navigation.
-    bool             satInfoValid;           ///< if true, satInfo is set
-    le_gnss_SvInfo_t satInfo[LE_GNSS_SV_INFO_MAX_LEN];
-    bool             satMeasValid;           ///< if true, satMeas is set
-    le_gnss_SvMeas_t satMeas[LE_GNSS_SV_INFO_MAX_LEN];
-                                             ///< Satellite Vehicle measurement information.
-    le_dls_Link_t   link;                    ///< Object node link
+    bool               satsInViewCountValid;   ///< if true, satsInViewCount is set
+    uint8_t            satsInViewCount;        ///< Satellites in View count.
+    bool               satsTrackingCountValid; ///< if true, satsTrackingCount is set
+    uint8_t            satsTrackingCount;      ///< Tracking satellites in View count.
+    bool               satsUsedCountValid;     ///< if true, satsUsedCount is set
+    uint8_t            satsUsedCount;          ///< Satellites in View used for Navigation.
+    bool               satInfoValid;           ///< if true, satInfo is set
+    le_gnss_SvInfo_t   satInfo[LE_GNSS_SV_INFO_MAX_LEN];
+    bool               satMeasValid;           ///< if true, satMeas is set
+    le_gnss_SvMeas_t   satMeas[LE_GNSS_SV_INFO_MAX_LEN];
+                                               ///< Satellite Vehicle measurement information.
+    le_dls_Link_t      link;                   ///< Object node link
 }
 le_gnss_PositionSample_t;
 
@@ -251,6 +261,7 @@ typedef struct le_gnss_PositionHandler
 {
     le_gnss_PositionHandlerFunc_t handlerFuncPtr;      ///< The handler function address.
     void*                         handlerContextPtr;   ///< The handler function context.
+    le_msg_SessionRef_t           sessionRef;          ///< Store message session reference.
     le_dls_Link_t                 link;                ///< Object node link
 }
 le_gnss_PositionHandler_t;

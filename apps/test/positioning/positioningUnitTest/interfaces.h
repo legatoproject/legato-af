@@ -3,6 +3,7 @@
 
 #include "le_gnss_simu.h"
 #include "le_pos_interface.h"
+#include "le_gnss_interface.h"
 #include "le_posCtrl_interface.h"
 #include "le_cfg_interface.h"
 
