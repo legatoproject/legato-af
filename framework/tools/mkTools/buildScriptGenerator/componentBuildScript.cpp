@@ -834,6 +834,39 @@ void ComponentBuildScriptGenerator_t::GenerateTypesOnlyBuildStatement
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Print to a given script a build statement for building the java file for a given types-only
+ * included API interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateJavaTypesOnlyBuildStatement
+(
+    const model::ApiTypesOnlyInterface_t* ifPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    model::InterfaceJavaFiles_t javaFiles;
+    ifPtr->GetInterfaceFiles(javaFiles);
+
+    if (generatedIPC.find(javaFiles.interfaceSourceFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(javaFiles.interfaceSourceFile);
+
+        script << "build " <<
+                  path::Combine(buildParams.workingDir, javaFiles.interfaceSourceFile) << ":"
+                  " GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
+        GetIncludedApis(ifPtr->apiFilePtr);
+        script << "\n"
+                  "  ifgenFlags = --gen-interface --lang Java"
+                  " --name-prefix " << ifPtr->internalName << " $ifgenFlags\n"
+                  "  outputDir = $builddir/" <<
+                  path::Combine(ifPtr->componentPtr->workingDir, "src") << "\n"
+                  "\n";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Print to a given script a build statement for building the interface header file for a given
  * .api file that has been referred to by a USETYPES statement in another .api file used by
  * a client-side interface.
@@ -887,6 +920,36 @@ void ComponentBuildScriptGenerator_t::GenerateServerUsetypesBuildStatement
         script << "\n"
                   "  outputDir = $builddir/" << path::GetContainingDir(headerFile) << "\n"
                   "  ifgenFlags = --gen-server-interface $ifgenFlags\n"
+                  "\n";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print to a given script a build statement for building the java interface file for a given
+ * .api file that has been referred to by a USETYPES statement in another .api file used by
+ * a client/server-side interface.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateJavaUsetypesBuildStatement
+(
+    const model::ApiFile_t* apiFilePtr
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string interfaceFile = apiFilePtr->GetJavaInterfaceFile(apiFilePtr->defaultPrefix);
+
+    if (generatedIPC.find(interfaceFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(interfaceFile);
+        script << "build " << path::Combine(buildParams.workingDir, interfaceFile) <<
+                  ": GenInterfaceCode " << apiFilePtr->path << " |";
+        GetIncludedApis(apiFilePtr);
+        script << "\n"
+                  "  outputDir = $builddir/" <<
+                  path::Combine(apiFilePtr->codeGenDir, "src") << "\n"
+                  "  ifgenFlags = --gen-interface --lang Java $ifgenFlags\n"
                   "\n";
     }
 }
@@ -1189,17 +1252,38 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
 
     for (auto typesOnlyApi : componentPtr->typesOnlyApis)
     {
-        GenerateTypesOnlyBuildStatement(typesOnlyApi);
+        if (isJava)
+        {
+            GenerateJavaTypesOnlyBuildStatement(typesOnlyApi);
+        }
+        else
+        {
+            GenerateTypesOnlyBuildStatement(typesOnlyApi);
+        }
     }
 
     for (auto apiFilePtr : componentPtr->clientUsetypesApis)
     {
-        GenerateClientUsetypesBuildStatement(apiFilePtr);
+        if (isJava)
+        {
+            GenerateJavaUsetypesBuildStatement(apiFilePtr);
+        }
+        else
+        {
+            GenerateClientUsetypesBuildStatement(apiFilePtr);
+        }
     }
 
     for (auto apiFilePtr : componentPtr->serverUsetypesApis)
     {
-        GenerateServerUsetypesBuildStatement(apiFilePtr);
+        if (isJava)
+        {
+            GenerateJavaUsetypesBuildStatement(apiFilePtr);
+        }
+        else
+        {
+            GenerateServerUsetypesBuildStatement(apiFilePtr);
+        }
     }
 
     for (auto clientApi : componentPtr->clientApis)
