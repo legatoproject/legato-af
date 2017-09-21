@@ -16,9 +16,17 @@
 #include "legato.h"
 #include "fenv.h"
 
-double NaN = NAN;
-double z = 0.0;
+double NaN = NAN, nNaN = NAN;
+double z = 0.0, zz = 0.0;
 uint64_t uz = 0ULL;
+struct fpedouble_t
+{
+    double f;
+    double z;
+    double nan1;
+    double nan2;
+    double u;
+};
 
 /*
  * SEGV case: access to an invalid address
@@ -85,8 +93,8 @@ void run_ill
 {
     int (*q)(void) = (int(*)(void))(ill + 0);
     fprintf(stderr, "DO ILL %p q %p\n", ill, q);
-    int j=q(); //NOSONAR
-    j++; //NOSONAR
+    int j=q();
+    j++;
 }
 
 /*
@@ -94,17 +102,19 @@ void run_ill
  */
 void fpe
 (
-    void
+    struct fpedouble_t *fdoublePtr
 )
 {
     double f = 123.4567890;
     uint64_t u = 1234ULL;
     feenableexcept(FE_ALL_EXCEPT);
-    f = f / z; //NOSONAR
-    f = z / z; //NOSONAR
-    f = NaN / z; //NOSONAR
-    f = NaN / NaN; //NOSONAR
-    f = (double)(u / uz); //NOSONAR
+    // Some bad operations to trigger the SIGFPE. Depending on the platform, the
+    // SIGFPE will be raise by one of these ops.
+    fdoublePtr->f = f / z;
+    fdoublePtr->z = zz / z;
+    fdoublePtr->nan1 = NaN / z;
+    fdoublePtr->nan2 = nNaN / NaN;
+    fdoublePtr->u = (double)(u / uz);
 }
 
 void run_fpe
@@ -112,21 +122,22 @@ void run_fpe
     void
 )
 {
+    struct fpedouble_t fdouble;
     fprintf(stderr, "DO FPE\n");
-    fpe();
+    fpe(&fdouble);
 }
 
 /*
  * BUS case: bus error or alignment exception
  */
-void bus
+double bus
 (
     void
 )
 {
     double f = 123.4567890;
     char *p = ((char*)&f)+19;
-    f = *(double*)p / z; //NOSONAR
+    return *(double*)p / z;
 }
 
 void run_bus
@@ -134,10 +145,12 @@ void run_bus
     void
 )
 {
+    double f;
     fprintf(stderr, "DO BUS\n");
     fprintf(stderr, "First: echo 4 >/proc/cpu/alignment\n");
     system("echo 4 >/proc/cpu/alignment");
-    bus();
+    f = bus();
+    fprintf(stderr, "f = %f\n", f);
 }
 
 /*
@@ -148,10 +161,11 @@ char *abrt
     void
 )
 {
-    char *ptr = malloc(1); //NOSONAR
+    // Use malloc(3) as malloc(3)/free(3) as LIBC will trig a SIGABRT on misusage
+    char *ptr = malloc(1);
 
     fprintf(stderr, "ptr allocated at %p", ptr);
-    free(ptr); //NOSONAR
+    free(ptr);
     return ptr;
 }
 
@@ -163,7 +177,8 @@ void run_abrt
     char *abrtPtr;
     fprintf(stderr, "DO ABRT\n");
     abrtPtr = abrt();
-    free(abrtPtr); //NOSONAR
+    // Free the pointer again. Double call to free(3) trig a SIGABRT
+    free(abrtPtr);
 }
 
 COMPONENT_INIT
