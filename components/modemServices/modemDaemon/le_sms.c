@@ -1836,6 +1836,64 @@ static void StorageIndicationHandler
     LE_DEBUG("All the registered client's handlers notified");
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Gets the transport layer protocol
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetProtocol
+(
+    pa_sms_Protocol_t* protocolPtr
+)
+{
+    le_mrc_Rat_t rat;
+    if (LE_OK != le_mrc_GetRadioAccessTechInUse(&rat))
+    {
+        LE_ERROR("Could not retrieve the Radio Access Technology");
+        return LE_FAULT;
+    }
+
+    if (LE_MRC_RAT_CDMA == rat)
+    {
+        *protocolPtr = PA_SMS_PROTOCOL_CDMA;
+    }
+    else
+    {
+        if (LE_MRC_RAT_LTE == rat)
+        {
+            /* TODO:
+             * It is a workaround for LTE Sprint network (temporary solution).
+             * LTE Sprint Network "310 120" SMS service center doesn't support 3GPP SMS pdu
+             * format. So Home PLMN needs to be checked.
+             */
+            char mcc[LE_MRC_MCC_BYTES];
+            char mnc[LE_MRC_MNC_BYTES];
+
+            if (LE_OK == pa_sim_GetHomeNetworkMccMnc(mcc,
+                                             LE_MRC_MCC_BYTES,
+                                             mnc,
+                                             LE_MRC_MNC_BYTES))
+            {
+                if ((0 == strncmp(mcc, "310", strlen("310"))) &&
+                    (0 == strncmp(mnc, "120", strlen("120"))))
+                {
+                    *protocolPtr = PA_SMS_PROTOCOL_CDMA;
+                }
+            }
+            else
+            {
+                LE_ERROR("Could not retrieve MCC/MNC");
+            }
+            *protocolPtr = PA_SMS_PROTOCOL_GSM;
+        }
+        else
+        {
+            *protocolPtr = PA_SMS_PROTOCOL_GSM;
+        }
+    }
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1895,52 +1953,9 @@ static le_result_t CheckAndEncodeMessage
     }
 
     // Get transport layer protocol
-    le_mrc_Rat_t rat;
-    if (LE_OK != le_mrc_GetRadioAccessTechInUse(&rat))
+    if (LE_OK != GetProtocol(&msgPtr->protocol))
     {
-        LE_ERROR("Could not retrieve the Radio Access Technology");
         return LE_FAULT;
-    }
-
-    switch (rat)
-    {
-        case LE_MRC_RAT_CDMA:
-            msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
-            break;
-
-        case LE_MRC_RAT_LTE:
-        {
-            char mcc[LE_MRC_MCC_BYTES];
-            char mnc[LE_MRC_MCC_BYTES];
-
-            if (LE_OK != pa_sim_GetHomeNetworkMccMnc(mcc, LE_MRC_MCC_BYTES, mnc, LE_MRC_MCC_BYTES))
-            {
-                LE_ERROR("Could not retrieve MCC/MNC");
-            }
-
-            /* LTE Sprint Network "310 120" SMS service center doesn't support 3GPP SMS pdu
-             * format. So Home PLMN needs to be checked.
-             * TODO:
-             * It is a special workaround for LTE Sprint network, it's a temporary solution
-             * */
-            if(   (0 == strncmp(mcc, "310", strlen("310")))
-               && (0 == strncmp(mnc, "120", strlen("120"))))
-            {
-                msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
-            }
-            else
-            {
-                msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
-            }
-        }
-        break;
-
-        case LE_MRC_RAT_UMTS:
-        case LE_MRC_RAT_TDSCDMA:
-        case LE_MRC_RAT_GSM:
-        default:
-            msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
-            break;
     }
 
     // Encode data
@@ -3657,18 +3672,9 @@ le_result_t le_sms_GetPDU
                     && (!msgPtr->pduReady))
     {
         /* Get transport layer protocol */
-        le_mrc_Rat_t rat;
-        if (le_mrc_GetRadioAccessTechInUse(&rat) != LE_OK)
+        if (LE_OK != GetProtocol(&msgPtr->protocol))
         {
-            LE_ERROR("Could not retreive the Radio Access Technology");
             return LE_FAULT;
-        }
-
-        msgPtr->protocol = PA_SMS_PROTOCOL_GSM;
-
-        if (rat&LE_MRC_RAT_CDMA)
-        {
-            msgPtr->protocol = PA_SMS_PROTOCOL_CDMA;
         }
         EncodeMessageToPdu(msgPtr);
     }
