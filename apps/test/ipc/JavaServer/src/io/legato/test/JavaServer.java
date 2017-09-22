@@ -11,7 +11,7 @@ import io.legato.Ref;
 import io.legato.Component;
 import io.legato.api.ipcTest;
 
-public class JavaServer implements ipcTest, Component
+public class JavaServer extends Component implements ipcTest
 {
     @Override
     public void EchoSimple
@@ -112,11 +112,6 @@ public class JavaServer implements ipcTest, Component
 
     @Override
     public void componentInit()
-    {
-    }
-
-    @Override
-    public void setLogger(Logger logger)
     {
     }
 }

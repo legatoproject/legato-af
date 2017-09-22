@@ -84,7 +84,8 @@ void GenerateJavaComponentMainFile
         std::string className = clientApi->internalName + "Client";
         std::string varName = "instance" + clientApi->internalName;
 
-        apiImports += "import io.legato.api.implementation." + className + ";\n";
+        apiImports += "import io.legato.api.implementation." + className + ";\n" +
+                "import io.legato.api." + clientApi->internalName + ";\n";
         clientInits += "        " + className + " " + varName + " = new " + className + "();\n";
 
         instanceNames += "    public static String " + clientApi->internalName + "ServiceInstanceName;\n";
@@ -95,8 +96,8 @@ void GenerateJavaComponentMainFile
                                                 clientApi->internalName + "ServiceInstanceName);\n";
         }
 
-        clientInits += "        component.set" + clientApi->internalName +
-                       "(instance" + clientApi->internalName + ");\n";
+        clientInits += "        component.registerService(" + clientApi->internalName + ".class, " +
+                       "instance" + clientApi->internalName + ");\n";
     }
 
     if (instanceNames.empty() == false)
