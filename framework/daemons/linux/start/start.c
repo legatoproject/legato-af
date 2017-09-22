@@ -674,17 +674,23 @@ static void UpdateLdSoCache
     const char* systemPath
 )
 {
+    int rc;
     const char* text;
     // create marker file to say we are doing ldconfig
     text = "start_ldconfig";
     // If this fails, try to limp along anyway.
     (void)WriteToFile(LdconfigNotDoneMarkerFile, text, strlen(text));
-    // write /legato/systems/current/lib to /etc/ld.so.conf
-    text = "/legato/systems/current/lib\n";
+    // append /legato/systems/current/lib to /etc/ld.so.conf if it is not present. This path is
+    // added at the end of the file to preserve the current paths set.
+    rc = system("/bin/grep -q '^/legato/systems/current/lib$' /etc/ld.so.conf 2>/dev/null || "
+                "/bin/echo /legato/systems/current/lib >>/etc/ld.so.conf");
+    if (0 != WEXITSTATUS(rc))
+    {
+        LE_ERROR("Add of path /legato/systems/current/lib to /etc/ld.so.conf fails: %d",
+                 WEXITSTATUS(rc));
+    }
     // If this fails, the system probably won't work, but not much we can do but try.
-    // TODO: Do this without blowing away anything else that might be in the ld.so.conf.
-    (void)WriteToFile("/etc/ld.so.conf", text, strlen(text));
-    if (0 == system("ldconfig > /dev/null"))
+    if (0 == system("/sbin/ldconfig > /dev/null"))
     {
         unlink(LdconfigNotDoneMarkerFile);
     }
