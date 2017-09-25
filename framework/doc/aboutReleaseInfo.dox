@@ -2,26 +2,25 @@
 
 Legato Application Framework Release Information
 
-<b>Current Stable Release: 17.08.0</b>
+<b>Current Stable Release: 17.08.1</b>
 
 Legato AF release notes contain information on new features and resolved outstanding issues. To
-download the release either download the tarball or clone the tagged repo from GitHub.  If you
-are upgrading from an earlier version of Legato, you will find essential information in our upgrade
-notes and user docs. The @ref basicBuildLegato "build Legato" page will walk you through
-making a release and uploading it to a target device.
+download the release either download and expand the tarball or clone the tagged repo from GitHub.
+The @ref basicBuildLegato "build Legato" page walks through building a release for specific targets
+and then updating the target device.
 
-| Version      | Date         | Notes       | GitHub   | Tarball  | User Docs |
-|--------------|--------------|-------------|----------|----------|-----------|
-| 17.08.0      | Sep 25, 2017 | @subpage releaseNotes17080 | [17.08.0 tag](https://github.com/legatoproject/legato-af/tree/17.08.0) | [legato-17.08.0.tar.bz2](https://downloads.sierrawireless.com/legato/1708/legato-17.08.0.tar.bz2) | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html) |
-| 17.07.2      | Sep 8, 2017  | @subpage releaseNotes17072 | [17.07.2 tag](https://github.com/legatoproject/legato-af/tree/17.07.2) | [legato-17.07.2.tar.bz2](https://downloads.sierrawireless.com/legato/1707/legato-17.07.2.tar.bz2) | [17.07.2 legato.io](http://legato.io/legato-docs/17_07/buildAppsMain.html) |
-| 17.06.0      | July 7, 2017 | @subpage releaseNotes17060 | [17.06.0 tag](https://github.com/legatoproject/legato-af/tree/17.06.0) | [legato-17.06.0.tar.bz2](https://downloads.sierrawireless.com/legato/1706/legato-17.06.0.tar.bz2) | [17.06.0 legato.io](http://legato.io/legato-docs/17_06/buildAppsMain.html) |
-| 17.05.0      | Jun 23, 2017 | @subpage releaseNotes17050 | [17.05.0 tag](https://github.com/legatoproject/legato-af/tree/17.05.0) | [legato-17.05.0.tar.bz2](https://downloads.sierrawireless.com/legato/1705/legato-17.05.0.tar.bz2) | [17.05.0 legato.io](http://legato.io/legato-docs/17_05/buildAppsMain.html) |
-| 16.10.3      | Apr 28, 2017 | @subpage releaseNotes16_10_3 | [16.10.3 tag](https://github.com/legatoproject/legato-af/tree/16.10.3) | [legato-16.10.3.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.3.tar.bz2) | [16.10.3 legato.io](http://legato.io/legato-docs/16_10_3/buildAppsMain.html) |
-| 16.10.1      | Dec 23, 2016 | [16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf) | [16.10.1 tag](https://github.com/legatoproject/legato-af/tree/16.10.1) | [legato-16.10.1.tar.bz2](https://downloads.sierrawireless.com/legato/16101/legato-16.10.1.tar.bz2) | [16.10.1 legato.io](http://legato.io/legato-docs/16_10/buildAppsMain.html) |
-| 16.07.0      | Aug 18, 2016 | [16.07.0 Release Notes](http://legato.io/legato-docs/16_07/Legato_16_07_ReleaseNotes.pdf)   | [16.07.0 tag](https://github.com/legatoproject/legato-af/tree/16.07.0) | [legato-16.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1607/legato-16.07.0.tar.bz2) | [16.07.0 legato.io](http://legato.io/legato-docs/16_07/buildAppsMain.html)  |
-| 16.04.0      | Jun 9, 2016  | [16.04.0 Release Notes](http://legato.io/legato-docs/16_04/Legato_16_04_ReleaseNotes.pdf)   | [16.04.0 tag](https://github.com/legatoproject/legato-af/tree/16.04.1) | [legato-16.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1604/legato-16.04.0.tar.bz2) | [16.04.0 legato.io](http://legato.io/legato-docs/16_04/buildAppsMain.html)  |
+| Version      | Date          | Release Notes              | GitHub                                                                 | Tarball                                                                                            | User Docs                                                                    |
+|--------------|---------------|----------------------------|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| 17.08.1      | Sept 29, 2017 | @subpage releaseNotes17081 | [17.08.1 tag](https://github.com/legatoproject/legato-af/tree/17.08.1) | [legato-17.08.1.tar.bz2](https://downloads.sierrawireless.com/legato/1708/legato-17.08.1.tar.bz2)  | [latest legato.io](http://legato.io/legato-docs/latest/buildAppsMain.html)   |
+| 17.07.2      | Sept 8, 2017  | @subpage releaseNotes17072 | [17.07.2 tag](https://github.com/legatoproject/legato-af/tree/17.07.2) | [legato-17.07.2.tar.bz2](https://downloads.sierrawireless.com/legato/1707/legato-17.07.2.tar.bz2)  | [17.07.2 legato.io](http://legato.io/legato-docs/17_07/buildAppsMain.html)   |
+| 17.06.0      | July 7, 2017  | @subpage releaseNotes17060 | [17.06.0 tag](https://github.com/legatoproject/legato-af/tree/17.06.0) | [legato-17.06.0.tar.bz2](https://downloads.sierrawireless.com/legato/1706/legato-17.06.0.tar.bz2)  | [17.06.0 legato.io](http://legato.io/legato-docs/17_06/buildAppsMain.html)   |
+| 17.05.0      | Jun 23, 2017  | @subpage releaseNotes17050 | [17.05.0 tag](https://github.com/legatoproject/legato-af/tree/17.05.0) | [legato-17.05.0.tar.bz2](https://downloads.sierrawireless.com/legato/1705/legato-17.05.0.tar.bz2)  | [17.05.0 legato.io](http://legato.io/legato-docs/17_05/buildAppsMain.html)   |
+| 16.10.3      | Apr 28, 2017  | @subpage releaseNotes16103 | [16.10.3 tag](https://github.com/legatoproject/legato-af/tree/16.10.3) | [legato-16.10.3.tar.bz2](https://downloads.sierrawireless.com/legato/16103/legato-16.10.3.tar.bz2) | [16.10.3 legato.io](http://legato.io/legato-docs/16_10_3/buildAppsMain.html) |
+| 16.10.1      | Dec 23, 2016  | [16.10.1 Release Notes](http://legato.io/legato-docs/16_10/Legato_16_10_1_ReleaseNotes.pdf) | [16.10.1 tag](https://github.com/legatoproject/legato-af/tree/16.10.1) | [legato-16.10.1.tar.bz2](https://downloads.sierrawireless.com/legato/16101/legato-16.10.1.tar.bz2) | [16.10.1 legato.io](http://legato.io/legato-docs/16_10/buildAppsMain.html) |
+| 16.07.0      | Aug 18, 2016  | [16.07.0 Release Notes](http://legato.io/legato-docs/16_07/Legato_16_07_ReleaseNotes.pdf)   | [16.07.0 tag](https://github.com/legatoproject/legato-af/tree/16.07.0) | [legato-16.07.0.tar.bz2](https://downloads.sierrawireless.com/legato/1607/legato-16.07.0.tar.bz2) | [16.07.0 legato.io](http://legato.io/legato-docs/16_07/buildAppsMain.html)  |
+| 16.04.0      | Jun 9, 2016   | [16.04.0 Release Notes](http://legato.io/legato-docs/16_04/Legato_16_04_ReleaseNotes.pdf)   | [16.04.0 tag](https://github.com/legatoproject/legato-af/tree/16.04.1) | [legato-16.04.0.tar.bz2](https://downloads.sierrawireless.com/legato/1604/legato-16.04.0.tar.bz2) | [16.04.0 legato.io](http://legato.io/legato-docs/16_04/buildAppsMain.html)  |
 
-For the latest (in progress) version of the Legato Application Framework clone it directly from
+For the @b latest (in progress) version of the Legato Application Framework clone it directly from
 [GitHub.](https://github.com/legatoproject/legato-af#welcome-to-legato)
 
 The Legato Application Framework is licensed under the @ref aboutLicenses "MPLv2".
@@ -30,27 +29,27 @@ The Legato team welcomes @ref aboutLegatoContributing "contributions" to the pro
 
 @section releaseInfo_LegatoAFReleases Legato Application Framework Release Process
 
-Legato AF releases are not tied to any specific module product release.  Once we have released
-Legato AF, module vendors (like Sierra Wireless) will take the Legato AF and integrate it into their
-own product release.
+Legato AF releases are not tied to any specific processor product release.  Once we have released
+Legato AF, processor vendors (like Sierra Wireless) will take the Legato AF and integrate it into
+their own product release.
 
-<b> Legato AF Release Schedule VS Module Vendor Release Schedule </b>
+<b> Legato AF Release Schedule VS Processor Vendor Release Schedule </b>
 
 @image html LegatoReleaseVSModuleVendorRelease.png
 
 Example:
  - Legato AF Team posts release 17.07
- - Module Vendor takes release 17.07 and builds an associated Linux Distro to create a "Legato
+ - Processor Vendor takes release 17.07 and builds an associated Linux Distro to create a "Legato
    Platform"
- - Module Vendor tests and releases a "Legato Platform" with their Modem Firmware as "Product
+ - Processor Vendor tests and releases a "Legato Platform" with their Modem Firmware as "Product
    Release Y"
- - Legato AF Team posts release 17.08, 17.09 and 17.10 without the Module Vendor packaging it into a
-   Product Release.  Releases are able to installed with the vendor's Product Release Y,
-   but <b> may not be officially supported by the Module Vendor. </b>
- - Module Vendor takes release 17.11 and creates a "Legato Platform" and "Product Release Z",
+ - Legato AF Team posts release 17.08, 17.09 and 17.10 without the Processor Vendor packaging it
+   into a Product Release.  Releases are able to installed with the vendor's Product Release Y,
+   but <b> may not be officially supported by the Processor Vendor. </b>
+ - Processor Vendor takes release 17.11 and creates a "Legato Platform" and "Product Release Z",
    and so on..
 
-<b>For any questions about the Product Releases please contact your Module Vendor directly.</b>
+<b>For any questions about the Product Releases please contact your Processor Vendor directly.</b>
 
 Copyright (C) Sierra Wireless Inc.
 
