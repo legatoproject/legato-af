@@ -4,4 +4,7 @@
 // Copyright (C), Sierra Wireless Inc.
 //--------------------------------------------------------------------------------------------------
 
-// No target-specific definitions
+buildVars:
+{
+    LEGATO_DCS_PA = ${PA_DIR}/dcs/linux/components/le_pa_dcs
+}

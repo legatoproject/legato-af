@@ -17,6 +17,9 @@ buildVars:
     LEGATO_QMI_UARTMODE_PA_SRC = ${PA_DIR}/qmi/src/components/le_pa_uartMode
     LEGATO_QMI_UTIL_SRC_FILES = ${PA_DIR}/qmi/src/components/swiQmi
 
+    // There is no src/bin directories, hence for now do just this
+    LEGATO_LINUX_DCS_PA = ${PA_DIR}/dcs/linux/components/le_pa_dcs
+
     //   Pre-built binaries:
     LEGATO_QMI_AUDIO_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa_audio
     LEGATO_QMI_MODEM_PA_BIN = ${PA_DIR}/qmi/bin/${LEGATO_TARGET}/components/le_pa

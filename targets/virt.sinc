@@ -19,4 +19,5 @@ buildVars:
     LEGATO_AVC_PA = ${PA_DIR}/simu/components/le_pa_avc
     LEGATO_SECSTORE_PA = ${PA_DIR}/simu/components/le_pa_secStore
     LEGATO_FWUPDATE_PA = ${PA_DIR}/simu/components/le_pa_fwupdate
+    LEGATO_DCS_PA = ${PA_DIR}/dcs/linux/components/le_pa_dcs
 }

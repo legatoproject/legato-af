@@ -37,6 +37,7 @@
 #include "mdmCfgEntries.h"
 #include "le_print.h"
 #include "pa_mdc.h"
+#include "pa_dcs.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
@@ -64,13 +65,6 @@
 //--------------------------------------------------------------------------------------------------
 #define DCS_TECH_LEN      16
 #define DCS_TECH_BYTES    (DCS_TECH_LEN+1)
-
-//--------------------------------------------------------------------------------------------------
-/**
- * The linux system file to read for default gateway
- */
-//--------------------------------------------------------------------------------------------------
-#define ROUTE_FILE "/proc/net/route"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -117,18 +111,6 @@
 #define REFERENCE_MAP_SIZE          5
 
 //--------------------------------------------------------------------------------------------------
-/**
- * Enumeration for the routing actions
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    ROUTE_ADD,      ///< Add a route
-    ROUTE_DELETE    ///< Delete a route
-}
-RouteAction_t;
-
-//--------------------------------------------------------------------------------------------------
 // Data structures
 //--------------------------------------------------------------------------------------------------
 
@@ -145,20 +127,6 @@ typedef struct
     char interfaceName[LE_DATA_INTERFACE_NAME_MAX_BYTES];
 }
 ConnStateData_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Data associated to retrieve the state before the DCS started managing the default connection
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    char defaultGateway[LE_MDC_IPV6_ADDR_MAX_BYTES];
-    char defaultInterface[20];
-    char newDnsIPv4[2][LE_MDC_IPV4_ADDR_MAX_BYTES];
-    char newDnsIPv6[2][LE_MDC_IPV6_ADDR_MAX_BYTES];
-}
-InterfaceDataBackup_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -294,14 +262,7 @@ static le_ref_MapRef_t RequestRefMap;
  * Structure used to store data allowing to restore a functioning state upon disconnection
  */
 //--------------------------------------------------------------------------------------------------
-static InterfaceDataBackup_t InterfaceDataBackup;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Buffer to store resolv.conf cache
- */
-//--------------------------------------------------------------------------------------------------
-static char ResolvConfBuffer[256];
+static pa_dcs_InterfaceDataBackup_t InterfaceDataBackup;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -582,45 +543,6 @@ static le_data_Technology_t GetNextTech
 
 //--------------------------------------------------------------------------------------------------
 /**
- * IP Handling to be done once the wifi link is established
- *
- * @return
- *      - LE_OK     Function successful
- *      - LE_FAULT  Function failed
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t AskForIpAddress
-(
-    void
-)
-{
-    int16_t systemResult;
-    char tmpString[512];
-
-    // DHCP Client
-    snprintf(tmpString,
-             sizeof(tmpString),
-             "PATH=/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin;"
-             "/sbin/udhcpc -R -b -i %s",
-             WIFI_INTF
-            );
-
-    systemResult = system(tmpString);
-    // Return value of -1 means that the fork() has failed (see man system)
-    if (0 == WEXITSTATUS(systemResult))
-    {
-        LE_INFO("DHCP client successful!");
-        return LE_OK;
-    }
-    else
-    {
-        LE_ERROR("DHCP client failed: command %s, result %d", tmpString, systemResult);
-        return LE_FAULT;
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Event callback for Wifi Client changes
  */
 //--------------------------------------------------------------------------------------------------
@@ -641,7 +563,7 @@ static void WifiClientEventHandler
             // and update connection status
             if ((LE_DATA_WIFI == CurrentTech) && (RequestCount > 0))
             {
-                if (LE_OK == AskForIpAddress())
+                if (LE_OK == pa_dcs_AskForIpAddress(WIFI_INTF))
                 {
                     IsConnected = true;
                 }
@@ -990,225 +912,6 @@ static le_result_t LoadSelectedTechProfile
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Check if a default gateway is set
- *
- * @return
- *      True or False
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsDefaultGatewayPresent
-(
-    void
-)
-{
-    bool result = false;
-    le_result_t openResult;
-    FILE *routeFile;
-    char line[100] , *ifacePtr , *destPtr, *gwPtr, *saveptr;
-
-    routeFile = le_flock_OpenStream(ROUTE_FILE , LE_FLOCK_READ, &openResult);
-
-    if (NULL == routeFile)
-    {
-        LE_WARN("le_flock_OpenStream failed with error %d", openResult);
-        return result;
-    }
-
-    while (fgets(line, sizeof(line), routeFile))
-    {
-        ifacePtr = strtok_r(line, " \t", &saveptr);
-        destPtr  = strtok_r(NULL, " \t", &saveptr);
-        gwPtr    = strtok_r(NULL, " \t", &saveptr);
-
-        if ((NULL != ifacePtr) && (NULL != destPtr))
-        {
-            if (0 == strcmp(destPtr, "00000000"))
-            {
-                if (gwPtr)
-                {
-                    result = true;
-                    break;
-                }
-            }
-        }
-    }
-
-    le_flock_CloseStream(routeFile);
-    return result;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Save the default route
- */
-//--------------------------------------------------------------------------------------------------
-static void SaveDefaultGateway
-(
-    void
-)
-{
-    le_result_t result;
-    FILE *routeFile;
-    char line[100] , *ifacePtr , *destPtr, *gwPtr, *saveptr;
-
-    routeFile = le_flock_OpenStream(ROUTE_FILE, LE_FLOCK_READ, &result);
-
-    if (NULL == routeFile)
-    {
-        LE_ERROR("Could not open file %s", ROUTE_FILE);
-        return;
-    }
-
-    // Initialize default value
-    InterfaceDataBackup.defaultInterface[0] = '\0';
-    InterfaceDataBackup.defaultGateway[0]   = '\0';
-
-    result = LE_NOT_FOUND;
-    while (fgets(line, sizeof(line), routeFile))
-    {
-        ifacePtr = strtok_r(line, " \t", &saveptr);
-        destPtr  = strtok_r(NULL, " \t", &saveptr);
-        gwPtr    = strtok_r(NULL, " \t", &saveptr);
-
-        if ((NULL != ifacePtr) && (NULL != destPtr))
-        {
-            if (0 == strcmp(destPtr , "00000000"))
-            {
-                if (gwPtr)
-                {
-                    char *pEnd;
-                    uint32_t ng=strtoul(gwPtr,&pEnd,16);
-                    struct in_addr addr;
-                    addr.s_addr=ng;
-
-                    result = le_utf8_Copy(InterfaceDataBackup.defaultInterface,
-                                          ifacePtr,
-                                          sizeof(InterfaceDataBackup.defaultInterface),
-                                          NULL);
-                    if (result != LE_OK)
-                    {
-                        LE_WARN("interface buffer is too small");
-                        break;
-                    }
-
-                    result = le_utf8_Copy(InterfaceDataBackup.defaultGateway,
-                                          inet_ntoa(addr),
-                                          sizeof(InterfaceDataBackup.defaultGateway),
-                                          NULL);
-                    if (result != LE_OK)
-                    {
-                        LE_WARN("gateway buffer is too small");
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-    }
-
-    le_flock_CloseStream(routeFile);
-
-    switch (result)
-    {
-        case LE_OK:
-            LE_DEBUG("default gateway is: '%s' on '%s'", InterfaceDataBackup.defaultGateway,
-                                                         InterfaceDataBackup.defaultInterface);
-            break;
-
-        case LE_NOT_FOUND:
-            LE_DEBUG("No default gateway to save");
-            break;
-
-        default:
-            LE_WARN("Could not save the default gateway");
-            break;
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Delete the default gateway in the system, if it is present
- *
- * return
- *      LE_OK           Function succeed
- *      LE_FAULT        Function failed
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t DeleteDefaultGateway
-(
-    void
-)
-{
-    char systemCmd[MAX_SYSTEM_CMD_LENGTH] = {0};
-
-    if (IsDefaultGatewayPresent())
-    {
-        // Remove the last default GW
-        snprintf(systemCmd, sizeof(systemCmd), "/sbin/route del default");
-        LE_DEBUG("Execute '%s'", systemCmd);
-        if (-1 == system(systemCmd))
-        {
-            LE_WARN("system '%s' failed", systemCmd);
-            return LE_FAULT;
-        }
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set the default gateway in the system
- *
- * return
- *      LE_OK           Function succeed
- *      LE_FAULT        Function failed
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t SetDefaultGateway
-(
-    const char *interfacePtr,   ///< [IN] Pointer on the interface name
-    const char *gatewayPtr,     ///< [IN] Pointer on the gateway name
-    bool isIpv6                 ///< [IN] IPv6 or not
-)
-{
-    const char *optionPtr = "";
-    char systemCmd[MAX_SYSTEM_CMD_LENGTH] = {0};
-
-    if ((0 == strcmp(gatewayPtr, "")) || (0 == strcmp(interfacePtr, "")))
-    {
-        LE_WARN("Default gateway or interface is empty");
-        return LE_FAULT;
-    }
-
-    if (LE_OK != DeleteDefaultGateway())
-    {
-        LE_ERROR("Unable to delete default gateway");
-        return LE_FAULT;
-    }
-
-    LE_DEBUG("Try set the gateway '%s' on '%s'", gatewayPtr, interfacePtr);
-
-    if (isIpv6)
-    {
-        optionPtr = "-A inet6";
-    }
-
-    // TODO: use of ioctl instead, should be done when rework the DCS
-    snprintf(systemCmd, sizeof(systemCmd), "/sbin/route %s add default gw %s %s",
-             optionPtr, gatewayPtr, interfacePtr);
-    LE_DEBUG("Execute '%s'", systemCmd);
-    if (-1 == system(systemCmd))
-    {
-        LE_WARN("system '%s' failed", systemCmd);
-        return LE_FAULT;
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Restore the default gateway in the system
  *
  * return
@@ -1222,9 +925,9 @@ static le_result_t RestoreDefaultGateway
 )
 {
     // Restore backed up interface and gateway
-    le_result_t result = SetDefaultGateway(InterfaceDataBackup.defaultInterface,
-                                           InterfaceDataBackup.defaultGateway,
-                                           false);
+    le_result_t result = pa_dcs_SetDefaultGateway(InterfaceDataBackup.defaultInterface,
+                                                  InterfaceDataBackup.defaultGateway,
+                                                  false);
 
     // Delete backed up parameters
     memset(InterfaceDataBackup.defaultInterface, '\0',
@@ -1277,7 +980,7 @@ static le_result_t SetRouteConfiguration
         }
 
         // Set the default ipv6 gateway retrieved from modem
-        if (LE_OK != SetDefaultGateway(interface, ipv6GatewayAddr, isIpv6))
+        if (LE_OK != pa_dcs_SetDefaultGateway(interface, ipv6GatewayAddr, isIpv6))
         {
             LE_ERROR("SetDefaultGateway for ipv6 gateway failed");
             return LE_FAULT;
@@ -1302,327 +1005,11 @@ static le_result_t SetRouteConfiguration
         }
 
         // Set the default ipv4 gateway retrieved from modem
-        if (LE_OK != SetDefaultGateway(interface, ipv4GatewayAddr, !(isIpv6)))
+        if (LE_OK != pa_dcs_SetDefaultGateway(interface, ipv4GatewayAddr, !(isIpv6)))
         {
             LE_ERROR("SetDefaultGateway for ipv4 gateway failed");
             return LE_FAULT;
         }
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Read DNS configuration from /etc/resolv.conf
- *
- * @return File content in a statically allocated string (shouldn't be freed)
- */
-//--------------------------------------------------------------------------------------------------
-static char * ReadResolvConf
-(
-    void
-)
-{
-    int fd;
-    char * fileContent = NULL;
-    off_t fileSz;
-
-    fd = open("/etc/resolv.conf", O_RDONLY);
-    if (fd < 0)
-    {
-        LE_WARN("fopen on /etc/resolv.conf failed");
-        return NULL;
-    }
-
-    fileSz = lseek(fd, 0, SEEK_END);
-    LE_FATAL_IF( (fileSz < 0), "Unable to get resolv.conf size" );
-
-    if (0 != fileSz)
-    {
-
-        LE_DEBUG("Caching resolv.conf: size[%lx]", fileSz);
-
-        lseek(fd, 0, SEEK_SET);
-
-        if (fileSz > (sizeof(ResolvConfBuffer) - 1))
-        {
-            LE_ERROR("Buffer is too small (%zu), file will be truncated from %lx",
-                    sizeof(ResolvConfBuffer), fileSz);
-            fileSz = sizeof(ResolvConfBuffer) - 1;
-        }
-
-        fileContent = ResolvConfBuffer;
-
-        if (0 > read(fd, fileContent, fileSz))
-        {
-            LE_ERROR("Caching resolv.conf failed");
-            fileContent[0] = '\0';
-            fileSz = 0;
-        }
-        else
-        {
-            fileContent[fileSz] = '\0';
-        }
-    }
-
-    if (0 != close(fd))
-    {
-        LE_FATAL("close failed");
-    }
-
-    LE_FATAL_IF( fileContent && (strlen(fileContent) > fileSz),
-                 "Content size (%zu) and File size (%lx) differ",
-                 strlen(fileContent), fileSz );
-
-    return fileContent;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write the DNS configuration into /etc/resolv.conf
- *
- * @return
- *      LE_FAULT        Function failed
- *      LE_OK           Function succeed
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t AddNameserversToResolvConf
-(
-    const char *dns1Ptr,    ///< [IN] Pointer on first DNS address
-    const char *dns2Ptr     ///< [IN] Pointer on second DNS address
-)
-{
-    bool addDns1 = true;
-    bool addDns2 = true;
-
-    LE_INFO("Set DNS '%s' '%s'", dns1Ptr, dns2Ptr);
-
-    addDns1 = ('\0' != dns1Ptr[0]);
-    addDns2 = ('\0' != dns2Ptr[0]);
-
-    // Look for entries to add in the existing file
-    char* resolvConfSourcePtr = ReadResolvConf();
-
-    if (NULL != resolvConfSourcePtr)
-    {
-        char* currentLinePtr = resolvConfSourcePtr;
-        int currentLinePos = 0;
-
-        // For each line in source file
-        while (true)
-        {
-            if (   ('\0' == currentLinePtr[currentLinePos])
-                || ('\n' == currentLinePtr[currentLinePos])
-               )
-            {
-                char sourceLineEnd = currentLinePtr[currentLinePos];
-                currentLinePtr[currentLinePos] = '\0';
-
-                if (NULL != strstr(currentLinePtr, dns1Ptr))
-                {
-                    LE_DEBUG("DNS 1 '%s' found in file", dns1Ptr);
-                    addDns1 = false;
-                }
-                else if (NULL != strstr(currentLinePtr, dns2Ptr))
-                {
-                    LE_DEBUG("DNS 2 '%s' found in file", dns2Ptr);
-                    addDns2 = false;
-                }
-
-                if ('\0' == sourceLineEnd)
-                {
-                    break;
-                }
-                else
-                {
-                    currentLinePtr[currentLinePos] = sourceLineEnd;
-                    currentLinePtr += (currentLinePos+1); // Next line
-                    currentLinePos = 0;
-                }
-            }
-            else
-            {
-                currentLinePos++;
-            }
-        }
-    }
-
-    if (!addDns1 && !addDns2)
-    {
-        // No need to change the file
-        return LE_OK;
-    }
-
-    FILE*  resolvConfPtr;
-    mode_t oldMask;
-
-    // allow fopen to create file with mode=644
-    oldMask = umask(022);
-
-    resolvConfPtr = fopen("/etc/resolv.conf", "w");
-    if (NULL == resolvConfPtr)
-    {
-        // restore old mask
-        umask(oldMask);
-
-        LE_WARN("fopen on /etc/resolv.conf failed");
-        return LE_FAULT;
-    }
-
-    // Set DNS 1 if needed
-    if (addDns1 && (fprintf(resolvConfPtr, "nameserver %s\n", dns1Ptr) < 0))
-    {
-        // restore old mask
-        umask(oldMask);
-
-        LE_WARN("fprintf failed");
-        if (0 != fclose(resolvConfPtr))
-        {
-            LE_WARN("fclose failed");
-        }
-        return LE_FAULT;
-    }
-
-    // Set DNS 2 if needed
-    if (addDns2 && (fprintf(resolvConfPtr, "nameserver %s\n", dns2Ptr) < 0))
-    {
-        // restore old mask
-        umask(oldMask);
-
-        LE_WARN("fprintf failed");
-        if (0 != fclose(resolvConfPtr))
-        {
-            LE_WARN("fclose failed");
-        }
-        return LE_FAULT;
-    }
-
-    // Append rest of the file
-    if (NULL != resolvConfSourcePtr)
-    {
-        size_t writeLen = strlen(resolvConfSourcePtr);
-
-        if (writeLen != fwrite(resolvConfSourcePtr, sizeof(char), writeLen, resolvConfPtr))
-        {
-            // restore old mask
-            umask(oldMask);
-
-            LE_CRIT("Writing resolv.conf failed");
-            if (0 != fclose(resolvConfPtr))
-            {
-                LE_WARN("fclose failed");
-            }
-            return LE_FAULT;
-        }
-    }
-
-    // restore old mask
-    umask(oldMask);
-
-    if (0 != fclose(resolvConfPtr))
-    {
-        LE_WARN("fclose failed");
-        return LE_FAULT;
-    }
-
-    return LE_OK;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Remove the DNS configuration from /etc/resolv.conf
- *
- * @return
- *      LE_FAULT        Function failed
- *      LE_OK           Function succeed
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t RemoveNameserversFromResolvConf
-(
-    const char *dns1Ptr,    ///< [IN] Pointer on first DNS address
-    const char *dns2Ptr     ///< [IN] Pointer on second DNS address
-)
-{
-    char* resolvConfSourcePtr = ReadResolvConf();
-    char* currentLinePtr = resolvConfSourcePtr;
-    int currentLinePos = 0;
-
-    FILE*  resolvConfPtr;
-    mode_t oldMask;
-
-    if (NULL == resolvConfSourcePtr)
-    {
-        // Nothing to remove
-        return LE_OK;
-    }
-
-    // allow fopen to create file with mode=644
-    oldMask = umask(022);
-
-    resolvConfPtr = fopen("/etc/resolv.conf", "w");
-    if (NULL == resolvConfPtr)
-    {
-        // restore old mask
-        umask(oldMask);
-
-        LE_WARN("fopen on /etc/resolv.conf failed");
-        return LE_FAULT;
-    }
-
-    // For each line in source file
-    while (true)
-    {
-        if (   ('\0' == currentLinePtr[currentLinePos])
-            || ('\n' == currentLinePtr[currentLinePos])
-           )
-        {
-            char sourceLineEnd = currentLinePtr[currentLinePos];
-            currentLinePtr[currentLinePos] = '\0';
-
-            // Got to the end of the source file
-            if ('\0' == (sourceLineEnd) && (0 == currentLinePos))
-            {
-                break;
-            }
-
-            // If line doesn't contains an entry to remove,
-            // copy line to new content
-            if (   (NULL == strstr(currentLinePtr, dns1Ptr))
-                && (NULL == strstr(currentLinePtr, dns2Ptr))
-               )
-            {
-                // The original file contents may not have the final line terminated by
-                // a new-line; always terminate with a new-line, since this is what is
-                // usually expected on linux.
-                currentLinePtr[currentLinePos] = '\n';
-                fwrite(currentLinePtr, sizeof(char), (currentLinePos+1), resolvConfPtr);
-            }
-
-            if ('\0' == sourceLineEnd)
-            {
-                // This should only occur if the last line was not terminated by a new-line.
-                break;
-            }
-            else
-            {
-                currentLinePtr += (currentLinePos+1); // Next line
-                currentLinePos = 0;
-            }
-        }
-        else
-        {
-            currentLinePos++;
-        }
-    }
-
-    // restore old mask
-    umask(oldMask);
-
-    if (0 != fclose(resolvConfPtr))
-    {
-        LE_WARN("fclose failed");
-        return LE_FAULT;
     }
 
     return LE_OK;
@@ -1656,7 +1043,7 @@ static le_result_t SetDnsConfiguration
             return LE_FAULT;
         }
 
-        if (LE_OK != AddNameserversToResolvConf(dns1Addr, dns2Addr))
+        if (LE_OK != pa_dcs_SetDnsNameServers(dns1Addr, dns2Addr))
         {
             LE_ERROR("IPv4: Could not write in resolv file");
             return LE_FAULT;
@@ -1694,7 +1081,7 @@ static le_result_t SetDnsConfiguration
             return LE_FAULT;
         }
 
-        if (LE_OK != AddNameserversToResolvConf(dns1Addr, dns2Addr))
+        if (LE_OK != pa_dcs_SetDnsNameServers(dns1Addr, dns2Addr))
         {
             LE_ERROR("IPv6: Could not write in resolv file");
             return LE_FAULT;
@@ -1742,7 +1129,7 @@ static le_result_t SetDefaultRouteAndDns
     // Check if the default route should be set
     if (setDefaultRoute)
     {
-        SaveDefaultGateway();
+        pa_dcs_SaveDefaultGateway(&InterfaceDataBackup);
 
         if (LE_OK != SetRouteConfiguration(MobileProfileRef))
         {
@@ -1921,45 +1308,6 @@ static void TryStartTechSession
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Used the data backup upon connection to remove DNS entries locally added
- */
-//--------------------------------------------------------------------------------------------------
-static void RestoreInitialNameservers
-(
-    void
-)
-{
-    if (   ('\0' != InterfaceDataBackup.newDnsIPv4[0][0])
-        || ('\0' != InterfaceDataBackup.newDnsIPv4[1][0])
-       )
-    {
-        RemoveNameserversFromResolvConf(InterfaceDataBackup.newDnsIPv4[0],
-                                        InterfaceDataBackup.newDnsIPv4[1]);
-
-        // Delete backed up data
-        memset(InterfaceDataBackup.newDnsIPv4[0], '\0',
-               sizeof(InterfaceDataBackup.newDnsIPv4[0]));
-        memset(InterfaceDataBackup.newDnsIPv4[1], '\0',
-               sizeof(InterfaceDataBackup.newDnsIPv4[1]));
-    }
-
-    if (   ('\0' != InterfaceDataBackup.newDnsIPv6[0][0])
-        || ('\0' != InterfaceDataBackup.newDnsIPv6[1][0])
-       )
-    {
-        RemoveNameserversFromResolvConf(InterfaceDataBackup.newDnsIPv6[0],
-                                        InterfaceDataBackup.newDnsIPv6[1]);
-
-        // Delete backed up data
-        memset(InterfaceDataBackup.newDnsIPv6[0], '\0',
-               sizeof(InterfaceDataBackup.newDnsIPv6[0]));
-        memset(InterfaceDataBackup.newDnsIPv6[1], '\0',
-               sizeof(InterfaceDataBackup.newDnsIPv6[1]));
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Try to stop the mobile data session
  */
 //--------------------------------------------------------------------------------------------------
@@ -1985,7 +1333,7 @@ static void TryStopDataSession
         {
             RestoreDefaultGateway();
         }
-        RestoreInitialNameservers();
+        pa_dcs_RestoreInitialDnsNameServers(&InterfaceDataBackup);
     }
     else
     {
@@ -2015,7 +1363,7 @@ static void TryStopDataSession
 
             // Restore backed up parameters
             RestoreDefaultGateway();
-            RestoreInitialNameservers();
+            pa_dcs_RestoreInitialDnsNameServers(&InterfaceDataBackup);
         }
     }
 }
@@ -2365,13 +1713,10 @@ static le_result_t CheckIpAddress
 //--------------------------------------------------------------------------------------------------
 static le_result_t ChangeRoute
 (
-    const char* ipDestAddrStr,    ///< Destination IP address in dotted format
-    RouteAction_t action          ///< Add or remove the route
+    const char*          ipDestAddrStr,  ///< Destination IP address in dotted format
+    pa_dcs_RouteAction_t action          ///< Add or remove the route
 )
 {
-    const char optionPtr[] = "-A inet";
-    char actionStr[MAX_SYSTEM_CMD_LENGTH] = {0};
-    char systemCmd[MAX_SYSTEM_CMD_LENGTH] = {0};
     char interfaceStr[LE_MDC_INTERFACE_NAME_MAX_BYTES] = {0};
 
     // Check if the cellular technology is being used
@@ -2396,31 +1741,9 @@ static le_result_t ChangeRoute
         return LE_FAULT;
     }
 
-    switch (action)
-    {
-        case ROUTE_ADD:
-            snprintf(actionStr, sizeof(actionStr), "add");
-            break;
-
-        case ROUTE_DELETE:
-            snprintf(actionStr, sizeof(actionStr), "del");
-            break;
-
-        default:
-            LE_ERROR("Unknown action %d", action);
-            return LE_FAULT;
-    }
-
-    snprintf(systemCmd, sizeof(systemCmd), "/sbin/route %s %s %s dev %s",
-             optionPtr, actionStr, ipDestAddrStr, interfaceStr);
-    LE_DEBUG("Execute '%s'", systemCmd);
-    if (-1 == system(systemCmd))
-    {
-        LE_WARN("system '%s' failed", systemCmd);
-        return LE_FAULT;
-    }
-
-    return LE_OK;
+    return pa_dcs_ChangeRoute(action,
+                              ipDestAddrStr,
+                              interfaceStr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2914,7 +2237,7 @@ le_result_t le_data_AddRoute
     const char* ipDestAddrStr     ///< [IN] The destination IP address in dotted format
 )
 {
-    return ChangeRoute(ipDestAddrStr, ROUTE_ADD);
+    return ChangeRoute(ipDestAddrStr, PA_DCS_ROUTE_ADD);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2938,7 +2261,7 @@ le_result_t le_data_DelRoute
     const char* ipDestAddrStr     ///< [IN] The destination IP address in dotted format
 )
 {
-    return ChangeRoute(ipDestAddrStr, ROUTE_DELETE);
+    return ChangeRoute(ipDestAddrStr, PA_DCS_ROUTE_DELETE);
 }
 
 //--------------------------------------------------------------------------------------------------

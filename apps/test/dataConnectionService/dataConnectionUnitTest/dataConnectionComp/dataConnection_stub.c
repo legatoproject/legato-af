@@ -7,6 +7,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "pa_dcs.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1357,4 +1358,99 @@ void le_mrcTest_SetRatInUse
     {
         RatInUse = rat;
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ *
+ * @return
+ *      LE_FAULT        Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_dcs_SetDnsNameServers
+(
+    const char* dns1Ptr,    ///< [IN] Pointer on first DNS address
+    const char* dns2Ptr     ///< [IN] Pointer on second DNS address
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ *
+ * @return
+ *      - LE_OK     Function successful
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_dcs_AskForIpAddress
+(
+    const char* interfaceStrPtr
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ *
+ * return
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_dcs_ChangeRoute
+(
+    pa_dcs_RouteAction_t  routeAction,
+    const char*           ipDestAddrStr,
+    const char*           interfaceStr
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ *
+ * return
+ *      LE_OK           Function succeed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_dcs_SetDefaultGateway
+(
+    const char* interfacePtr,   ///< [IN] Pointer on the interface name
+    const char* gatewayPtr,     ///< [IN] Pointer on the gateway name
+    bool        isIpv6          ///< [IN] IPv6 or not
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Save the default route
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_dcs_SaveDefaultGateway
+(
+    pa_dcs_InterfaceDataBackup_t* interfaceDataBackupPtr
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_dcs_RestoreInitialDnsNameServers
+(
+    pa_dcs_InterfaceDataBackup_t* pInterfaceDataBackup
+)
+{
 }

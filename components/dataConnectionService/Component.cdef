@@ -16,6 +16,11 @@ requires:
         le_cfg.api
         ${LEGATO_ROOT}/interfaces/wifi/le_wifiClient.api [optional]
     }
+
+    component:
+    {
+        $LEGATO_DCS_PA
+    }
 }
 
 sources:
@@ -27,5 +32,6 @@ cflags:
 {
     -I$LEGATO_ROOT/components/cfgEntries
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
+    -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
 }
 
