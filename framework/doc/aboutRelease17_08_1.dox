@@ -1,6 +1,6 @@
-/** @page releaseNotes17080 17.08.0 Release Notes
+/** @page releaseNotes17081 17.08.1 Release Notes
 
-Release Date: Sep 25, 2017
+Release Date: Sept 29, 2017
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -9,35 +9,49 @@ The following provides a summary of changes that have been made in the 17.08 Leg
 <b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
 "building Legato AF". </b>
 
-@section rn17_08_ReleaseNotes Legato Application Framework Release Process
+@section rn1708_ReleaseNotes Legato Application Framework Release Process
 
-Legato AF releases are not tied to any specific module product release.  Once we have released
-Legato AF, module vendors (like Sierra Wireless) will take the release and integrate it into their
+Legato AF releases are not tied to any specific  product release.  Once we have released
+Legato AF, processor vendors (like Sierra Wireless) will take the release and integrate it into their
 own <b> product release. </b>
 
-<b> Legato AF Release Schedule VS Module Vendor Release Schedule </b>
+<b> Legato AF Release Schedule VS Processor Vendor Release Schedule </b>
 
 @image html LegatoReleaseVSModuleVendorRelease.png
 
 Example:
  - Legato AF Team posts release 17.07
- - Module Vendor takes release 17.07 and builds an associated Linux Distro to create a "Legato
+ - Processor Vendor takes release 17.07 and builds an associated Linux Distro to create a "Legato
    Platform"
- - Module Vendor tests and releases a "Legato Platform" with their Modem Firmware as "Product
+ - Processor Vendor tests and releases a "Legato Platform" with their Modem Firmware as "Product
    Release Y"
- - Legato AF Team posts release 17.08, 17.09 and 17.10 without the Module Vendor packaging it into
+ - Legato AF Team posts release 17.08, 17.09 and 17.10 without the Processor Vendor packaging it into
    a Product Release.  Releases are able to installed with the vendor's Product Release Y,
-   but <b> may not be officially supported by the Module Vendor. </b>
- - Module Vendor takes release 17.11 and creates a "Legato Platform" and "Product Release Z",
+   but <b> may not be officially supported by the Processor Vendor. </b>
+ - Processor Vendor takes release 17.11 and creates a "Legato Platform" and "Product Release Z",
    and so on..
 
-<b>For any questions about the Product Releases please contact your Module Vendor directly.</b>
+<b>For any questions about the Product Releases please contact your Processor Vendor.
 
-@section rn17_08_Features New Features
+@section rn1708_Patches Patches
+
+The following are the list of patches that have been applied to Legato AF 17.08:
+
+@subsection rn1708_Patches_17081 17.08.1
+
+Version 17.08.1 introduces further stability updates to the AirVantage Connector and underlaying
+Platform Adapters.  The code changes provide stability to over-the-air downloads and installs, and
+improves the reliability of downloads and installs resuming after the device has lost power or
+has been rebooted.
+
+See the list of commits for further details on the changes in
+[Legato AF 17.08.1](https://github.com/legatoproject/legato-af/commits/17.08.1)
+
+@section rn1708_Features New Features
 
 The following are the list of new features that have been added into the 17.08 Release:
 
-@subsection rn17_08_Features_AV  AirVantage Improvements
+@subsection rn1708_Features_AV  AirVantage Improvements
 
 The 17.08 release contains AirVantage Connector Service fixes and improvements to documentation:
 - @ref avExchangeData_avAPI_Read "Asset Data" path delimiter has been changed from a "/" to "."
@@ -65,25 +79,26 @@ Example of enabling user agreement for LE_AVC_DOWNLOAD_PENDING:
      }
 @endcode
 
-@section rn17_08_Fixes Fixed Issues
+@section rn1708_Fixes Fixed Issues
 
-All development work is tagged in GitHub as "17.08.0".  The list of changes and commit messages can
-be found on GitHub.
+All development work is tagged in GitHub as "17.08.0" and "17.08.1".  The list of changes and commit
+messages can be found on GitHub.
 
-[Legato AF 17.08.0 Fixes](https://github.com/legatoproject/legato-af/commits/17.08.0)
+- [Legato AF 17.08.0 Fixes](https://github.com/legatoproject/legato-af/commits/17.08.0)
+- [Legato AF 17.08.1 Fixes](https://github.com/legatoproject/legato-af/commits/17.08.1)
 
-@section rn17_08_KnownIssues Known Issues
+@section rn1708_KnownIssues Known Issues
 
-@subsection rn17_08_Constraints Constraints and Limitations
+@subsection rn1708_Constraints Constraints and Limitations
 
-@subsubsection rn17_08_ContraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn1708_ContraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato AF, a
 [Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
 needed on your dev machine (or running in a virtual box on Windows).  Any release older then Ubuntu
 12.04 is no longer supported by the Legato AF.
 
-@subsubsection rn17_08_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn1708_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer is default installed with Modem Manager version @c 1.4.12-1ubuntu1 which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
@@ -98,7 +113,7 @@ Network Manager to crash on your host and/or your target device to become unavai
 - Downgrade @c modemmanager to version 1.0.0-2ubuntu1
 [Download version 1.0.0-2ubuntu1 of modemmanager](http://packages.ubuntu.com/trusty/modemmanager)
 
-@subsection rn17_08_OpenIssues Open Issues
+@subsection rn1708_OpenIssues Open Issues
 
 The following is the list of known issues that still exist in Legato 17.08.0 and are currently under
 investigation:
