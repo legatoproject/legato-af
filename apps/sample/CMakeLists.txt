@@ -42,7 +42,7 @@ add_subdirectory(modemDemo)
 add_subdirectory(commandLine)
 
 # Application using eCall
-if((INCLUDE_ECALL EQUAL 1) AND ((LEGATO_TARGET MATCHES "ar7") OR (LEGATO_TARGET MATCHES "ar86")))
+if(INCLUDE_ECALL EQUAL 1)
     add_subdirectory(eCallDemo)
 endif()
 
@@ -59,12 +59,12 @@ add_subdirectory(assetData)
 add_subdirectory(avcControl)
 
 # Simple GPIO Cf3 application using GPIO Service
-if((LEGATO_TARGET MATCHES "wp85") OR (LEGATO_TARGET MATCHES "wp750x"))
+if((LEGATO_TARGET STREQUAL "wp85") OR (LEGATO_TARGET STREQUAL "wp750x"))
     add_subdirectory(gpioCf3Demo)
 endif()
 
 # Application showing ultra low power mode entry/exit
-if (NOT (${LEGATO_TARGET} MATCHES "ar759x" OR ${LEGATO_TARGET} MATCHES "ar758x"))
+if (NOT (LEGATO_TARGET MATCHES "ar7"))
     add_subdirectory(textLoc)
 endif()
 
@@ -73,3 +73,8 @@ add_subdirectory(watchdog)
 
 # Application adding the streamMedia API which allows audio streaming through RTP
 add_subdirectory(streamMedia)
+
+# httpGet
+if (NOT (LEGATO_TARGET STREQUAL "ar7" OR LEGATO_TARGET STREQUAL "ar86"))
+    add_subdirectory(httpGet)
+endif()
