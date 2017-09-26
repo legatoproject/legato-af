@@ -13,6 +13,7 @@ requires:
         le_antenna.api  [types-only]
         le_adc.api      [types-only]
         le_rtc.api      [types-only]
+        le_mdmCfg.api   [types-only]
     }
 }
 
@@ -31,6 +32,7 @@ sources:
     pa_adc_default.c
     pa_rtc_default.c
     pa_riPin_default.c
+    pa_mdmCfg_default.c
 }
 
 cflags:

@@ -1,0 +1,54 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_mdmCfg Modem Configuration
+ *
+ * @ref le_mdmCfg_interface.h "API Reference"
+ *
+ * <HR>
+ *
+ * @section le_mdmCfg_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b modemService service.
+ *
+ * Here's a code sample binding to modemService:
+ * @verbatim
+   bindings:
+   {
+      clientExe.clientComponent.le_mdmCfg -> modemService.le_mdmCfg
+   }
+   @endverbatim
+ *
+ * Backup the modem current configuration with le_mdmCfg_StoreCurrentConfiguration().
+ * Restore the modem configuration previously backuped with le_mdmCfg_RestoreSavedConfiguration().
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Store the modem current configuration.
+ *
+ * @return
+ *    - LE_OK on success
+ *    - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StoreCurrentConfiguration
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Restore previously saved the modem configuration.
+ *
+ * @return
+ *    - LE_OK on success
+ *    - LE_FAULT for other failures
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RestoreSavedConfiguration
+(
+);

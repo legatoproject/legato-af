@@ -1,0 +1,52 @@
+/** @page platformConstraintsmdmCfg Modem
+
+Following APIs would be impacted to backup and restore the modem configuration for AR759x and
+AR758x platforms.
+
+ le_antenna_SetShortLimit()
+ le_antenna_SetOpenLimit()
+ le_audio_RecordFile()
+ le_audio_SetGain()
+ le_audio_SetPlatformSpecificGain()
+ le_audio_SetProfile()
+ le_audio_Unmute()
+ le_audio_Mute()
+ le_ecall_SetPsapNumber()
+ le_ecall_UseUSimNumbers()
+ le_ecall_SetNadDeregistrationTime()
+ le_ecall_ForcePersistentOnlyMode()
+ le_gnss_EnableExtendedEphemerisFile()
+ le_gnss_DisableExtendedEphemerisFile()
+ le_gnss_SetConstellation()
+ le_gnss_SetSuplServerUrl()
+ le_gnss_ForceColdRestart()
+ le_gnss_ForceWarmRestart()
+ le_gnss_ForceFactoryRestart()
+ le_gnss_InjectSuplCertificate()
+ le_gnss_DeleteSuplCertificate()
+ le_gnss_LoadExtendedEphemerisFile()
+ le_gnss_SetNmeaSentences()
+ le_gnss_SetMinElevation()
+ le_riPin_TakeRingSignal()
+ le_mcc_SetCallWaitingService()
+ le_mdc_SetAPN()
+ le_mdc_SetAuthentication()
+ le_mdc_SetDefaultAPN()
+ le_mdc_SetPDP()
+ le_gpioPinx_Activate()
+ le_gpioPinx_Deactivate()
+ le_gpioPinx_SetEdgeSense()
+ le_gpioPinx_SetInput()
+ le_gpioPinx_SetPushPullOutput
+ le_gpioPinx_EnablePullUp()
+ le_gpioPinx_EnablePullDown()
+ le_gpioPinx_DisableEdgeSense()
+ le_ips_SetVoltageThresholds()
+ le_secStore_Write()
+ le_secStore_Delete()
+ le_mrc_SetRadioPower()
+
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
