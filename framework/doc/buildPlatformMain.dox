@@ -1,10 +1,97 @@
 /** @page buildPlatformMain Build Platform
 
-These topics contain platform-specific info:
+The Legato Application Framework works with a supporting platform to connect your
+applications to the cloud.  <b> User Applications, Platform Services, Platform Adapters and the
+Application Framework </b> are built into a Runtime Environment that provides a cohesive system to
+run and monitor your applications and send and receive data from external sources.
+
+@image html LegatoOverviewTarget.png
+
+Module Vendors provide the <b> Firmware, OS, Toolchain, Platform Adapters, Platform Services
+and a base Legato Runtime Environment </b> to ease the burden of getting started with your target.
+Developers install the <b> Legato Application Framework (source code, build tools and APIs) </b> and
+the target device's build specific toolchain on a development machine to start developing and
+building user apps.
+
+Your target device comes preloaded with a default Legato Runtime Environment, OS and Firmware
+preloaded.  Check with your target device vendor for updates.
+
+<h1> Firmware </h1>
+
+Each target device needs Firmware specific to its module and is provided by the Vendor.
+Firmware may contain telecom firmware, carrier specific configuration and other software that can't
+be customized or configured by a user.
+
+<h1> OS and Toolchains </h1>
+
+<h2> Operating System </h2>
+
+The Legato AF is designed to run on top of an embedded Linux Distribution.  Each vendor maintains
+it's own customized Linux Distribution that contains a customized kernel and drivers to work within
+the constraints of the target device.
+
+Sierra Wireless modules use an embedded Linux distribution created using the
+[Yocto Project](https://www.yoctoproject.org/).
+
+Raspberry Pi use [Raspbian](https://www.raspberrypi.org/downloads/raspbian/), its own Linux
+Distribution.
+
+<h2> Toolchains </h2>
+
+Toolchains include all the tools and libraries needed to build the runtime environment for a target
+device.  The toolchain is specific to the Linux Distribution and the Module so each module that you
+are building for must have its own toolchain installed.  Toolchains can be downloaded from your
+vendor.
+
+| Module         | Download Site                                                                   |
+| -------------- | ------------------------------------------------------------------------------- |
+| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
+| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
+| Raspberry Pi   | Clone from github: git clone [https://github.com/raspberrypi/tools](https://github.com/raspberrypi/tools)                             |
+| All AR Modules | See your FAE to download and install the toolchain for your module              |
+
+
+<h1> Platform Services and Platform Adapters </h1>
+
+Platform Services are a set of applications that are included with the Legato Application Framework.
+They configure features on the target device and expose APIs that developers can use to bind to
+their applications and use those features.  The Platform Services are generally created by the
+vendors but can be customized or added on to by any developer.
+@ref legatoServices "Platform Services" provide APIs to include services like location sensing,
+audio connections, cellular and data network connections into your applications. To use the API
+within your application your application must be built into a system that includes the Platform
+Service and your application.  Many of the Platform Services are included in the default build for
+each target device.
+
+Platform Adapters are code that is specifically created for a target device that provides
+specific communication functions.  It calls the function needed to perform the operation on the
+target including opening sockets and formatting packets.  Where the Platform Service is designed to
+be generic, the Platform Adapters contain the target specific code.  At build time the Legato AF
+system knows how to build the appropriate Platform Adapter for the target. This enables developers
+to build apps for multiple different types of targets and lets the build system include the Platform
+Adapters needed to build the application for each model of target.
+
+@image html LegatoServicesFlow.png
+
+For example, if a developer wants to use GNSS (Global Positioning System) within their application
+they need to include @c positioningService app in their target's build and then bind to the
+@c le_gnss API within their app.  The @c positionService app knows how to talk to the Platform
+Adapter @c le_pa_gnss which then communicates with the OS and Firmware to provide the
+required information to the developers application.  The developer can use
+the functions in the API without having to know how to communicate directly with the GNSS hardware
+peripherals or it's driver firmware.
+
+@note Not all functions in an API are supported by all Platforms.  Visit our list
+of @subpage platformConstraints to make sure that function you are implementing are
+supported by your target.
+
+<h1> Setup and Configure </h1>
+
+For further information and help on setting up and configuring specific modules:
+
 | Section                            | Description                                        |
 | ---------------------------------- | -------------------------------------------------- |
-| @subpage platformConstraints       | Platform constraints                               |
-| @subpage yoctoMain                 | Yocto dist info                                    |
-| @subpage raspbianMain              | Raspbian dist info                                 |
+| @subpage basicTarget               | Configure Sierra Wireless Targets                  |
+| @subpage raspbianMain              | Configure Raspbian for Legato AF                   |
 
 **/

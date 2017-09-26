@@ -4,7 +4,6 @@ This section contains topics about frequently needed tasks:
 | Section                            | Description                                                              |
 | ---------------------------------- | ------------------------------------------------------------------------ |
 | @subpage howToLoginAuthentication  | Set up secure shell with ssh keys and passwords                          |
-| @subpage howToCustomizeUART        | Customize UART on WP85 or WP75 module                                    |
 | @subpage howToDebug                | Debug - General tips and tricks                                          |
 | @subpage howToDebugGDB             | Debug Apps using GDB                                                     |
 | @subpage howToPowerMgmt            | Manage device power                                                      |
@@ -13,7 +12,6 @@ This section contains topics about frequently needed tasks:
 | @subpage howToSecurity             | Configure sandboxes and SMACK                                            |
 | @subpage howToPortLegacyGen        | Port legacy Apps to Legato                                               |
 | @subpage howToSetUserTimebase      | Set up user timebase                                                     |
-| @subpage howToNMEA                 | Set up NMEA                                                              |
 | @subpage howToLogs                 | Access and use Legato Logs                                               |
 | @subpage howToSoftwareUpdate       | Update Software                                                          |
 

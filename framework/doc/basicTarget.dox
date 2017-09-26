@@ -1,4 +1,4 @@
-/** @page basicTarget Configure SWI WP Series Target
+/** @page basicTarget Configure Sierra Wireless Module
 
 To connect to your device you must use either a USB or Serial cable and connect the device directly
 to your Dev Machine.  All other interfaces are turned off by default for security reasons.
@@ -11,7 +11,7 @@ Install a ssh client on your dev machine:
 $ sudo apt-get install openssh-client
 @endverbatim
 
-The default IP for WP series devices over USB is 192.168.2.2.
+The default IP for Sierra Wireless devices over USB is 192.168.2.2.
 
 @verbatim
 $ ssh root@192.168.2.2

@@ -6,7 +6,6 @@ General concepts about Legato AF and details to get started using the framework 
 | ------------------------ | --------------------------------------------------------------------- |
 | @subpage basicConcepts   | Introduction to the Concepts that make up Legato AF                   |
 | @subpage basicBuild      | Get Source Code, Install Tools, and Build Legato AF                   |
-| @subpage basicTarget     | Configure a SWI Target Device for development                         |
 | @subpage basicApps       | Basic Concepts to get you started developing your own Apps            |
 | @subpage defFiles        | Use Definition Files to build systems, Apps, components and drivers   |
 | @subpage apiFiles        | Work with the API files to develop Apps                               |
