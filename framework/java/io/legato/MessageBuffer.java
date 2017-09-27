@@ -378,6 +378,7 @@ public class MessageBuffer implements AutoCloseable
             return new BigInteger(Integer.toString(Short.toUnsignedInt(readShort())));
         case INT32:
             return new BigInteger(Integer.toString(readInt()));
+        case SIZE:
         case UINT32:
             return new BigInteger(Integer.toUnsignedString(readInt()));
         case INT64:
@@ -412,6 +413,7 @@ public class MessageBuffer implements AutoCloseable
         case UINT16:
             writeShort(number.shortValue());
             break;
+        case SIZE:
         case INT32:
         case UINT32:
             writeInt(number.intValue());

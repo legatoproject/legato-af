@@ -55,7 +55,7 @@ _BasicTypeMapping = {
     interfaceIR.BOOL_TYPE:   "boolean",
     interfaceIR.CHAR_TYPE:   "byte",
     interfaceIR.DOUBLE_TYPE: "double",
-    interfaceIR.SIZE_TYPE:   "long",
+    interfaceIR.SIZE_TYPE:   "BigInteger",
     interfaceIR.STRING_TYPE: "String",
     interfaceIR.FILE_TYPE:   "FileDescriptor",
     interfaceIR.RESULT_TYPE: "Result",

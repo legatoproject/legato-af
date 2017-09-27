@@ -4,6 +4,7 @@ import java.math.BigInteger;
 
 public enum IntType
 {
+    SIZE(4, true),
     UINT8(1, true),
     UINT16(2, true),
     UINT32(4, true),
