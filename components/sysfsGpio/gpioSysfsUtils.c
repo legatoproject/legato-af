@@ -557,16 +557,16 @@ void* gpioSysfs_SetChangeCallback
     int monFd = -1;
     le_result_t leResult;
 
+    if ((!gpioRef) || (gpioRef->pinNum == 0))
+    {
+        LE_KILL_CLIENT("gpioRef is NULL or object not initialized");
+        return NULL;
+    }
+
     // Only one handler is allowed here
     if (gpioRef->fdMonitor != NULL)
     {
         LE_KILL_CLIENT("Only one change handler can be registered");
-        return NULL;
-    }
-
-    if ((!gpioRef) || (gpioRef->pinNum == 0))
-    {
-        LE_KILL_CLIENT("gpioRef is NULL or object not initialized");
         return NULL;
     }
 
