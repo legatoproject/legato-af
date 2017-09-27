@@ -290,7 +290,7 @@ static le_result_t ReadEcHeader
     }
     if( UBI_EC_HDR_SIZE != len )
     {
-        fprintf(stderr, "Read only %d bytes, expected %ld:\n", len, UBI_EC_HDR_SIZE);
+        fprintf(stderr, "Read only %d bytes, expected %u:\n", len, (uint32_t)UBI_EC_HDR_SIZE);
         return LE_FAULT;
     }
 
@@ -304,37 +304,38 @@ static le_result_t ReadEcHeader
     }
     if (UBI_EC_HDR_SIZE == i)
     {
-        fprintf(stderr, "Block %lx is erased\n", physEraseOffset );
+        fprintf(stderr, "Block %x is erased\n", (uint32_t)physEraseOffset );
         return LE_FORMAT_ERROR;
     }
 
     if (be32toh(ecHeaderPtr->magic) != (uint32_t)UBI_EC_HDR_MAGIC)
     {
-        fprintf(stderr, "Bad magic at %lx: Expected %x, received %x\n",
-                  physEraseOffset, UBI_EC_HDR_MAGIC, be32toh(ecHeaderPtr->magic));
+        fprintf(stderr, "Bad magic at %x: Expected %x, received %x\n",
+                (uint32_t)physEraseOffset, (uint32_t)UBI_EC_HDR_MAGIC,
+                be32toh(ecHeaderPtr->magic));
         return LE_FAULT;
     }
 
     if (UBI_VERSION != ecHeaderPtr->version)
     {
-        fprintf(stderr, "Bad version at %lx: Expected %d, received %d\n",
-                  physEraseOffset, UBI_VERSION, ecHeaderPtr->version);
+        fprintf(stderr, "Bad version at %x: Expected %d, received %d\n",
+                (uint32_t)physEraseOffset, UBI_VERSION, ecHeaderPtr->version);
         return LE_FAULT;
     }
 
     crc = le_crc_Crc32((uint8_t*)ecHeaderPtr, UBI_EC_HDR_SIZE_CRC, LE_CRC_START_CRC32);
     if (be32toh(ecHeaderPtr->hdr_crc) != crc)
     {
-        fprintf(stderr, "Bad CRC at %lx: Calculated %x, received %x\n",
-                  physEraseOffset, crc, be32toh(ecHeaderPtr->hdr_crc));
+        fprintf(stderr, "Bad CRC at %x: Calculated %x, received %x\n",
+                (uint32_t)physEraseOffset, crc, be32toh(ecHeaderPtr->hdr_crc));
         return LE_FAULT;
     }
 
     if( IsVerbose )
     {
         fprintf(stderr,
-                "PEB %lx : MAGIC %c%c%c%c, VID %x DATA %x CRC %x\n",
-                physEraseOffset,
+                "PEB %x : MAGIC %c%c%c%c, VID %x DATA %x CRC %x\n",
+                (uint32_t)physEraseOffset,
                 ((char *)&(ecHeaderPtr->magic))[0],
                 ((char *)&(ecHeaderPtr->magic))[1],
                 ((char *)&(ecHeaderPtr->magic))[2],
@@ -382,7 +383,7 @@ static le_result_t ReadVidHeader
     }
     if( UBI_VID_HDR_SIZE != len )
     {
-        fprintf(stderr, "Read only %d bytes, expected %ld:\n", len, UBI_VID_HDR_SIZE);
+        fprintf(stderr, "Read only %d bytes, expected %u:\n", len, (uint32_t)UBI_VID_HDR_SIZE);
         return LE_FAULT;
     }
 
@@ -396,21 +397,22 @@ static le_result_t ReadVidHeader
     }
     if (UBI_VID_HDR_SIZE == i)
     {
-        fprintf(stderr, "Block %lx is erased\n", physEraseOffset );
+        fprintf(stderr, "Block %x is erased\n", (uint32_t)physEraseOffset );
         return LE_FORMAT_ERROR;
     }
 
     if (be32toh(vidHeaderPtr->magic) != (uint32_t)UBI_VID_HDR_MAGIC)
     {
-        fprintf(stderr, "Bad magic at %lx: Expected %x, received %x\n",
-            physEraseOffset, UBI_VID_HDR_MAGIC, be32toh(vidHeaderPtr->magic));
+        fprintf(stderr, "Bad magic at %x: Expected %x, received %x\n",
+                (uint32_t)physEraseOffset, (uint32_t)UBI_VID_HDR_MAGIC,
+                be32toh(vidHeaderPtr->magic));
         return LE_FAULT;
     }
 
     if (UBI_VERSION != vidHeaderPtr->version)
     {
-        fprintf(stderr, "Bad version at %lx: Expected %d, received %d\n",
-            physEraseOffset, UBI_VERSION, vidHeaderPtr->version);
+        fprintf(stderr, "Bad version at %x: Expected %d, received %d\n",
+                (uint32_t)physEraseOffset, UBI_VERSION, vidHeaderPtr->version);
         return LE_FAULT;
     }
 
@@ -418,8 +420,8 @@ static le_result_t ReadVidHeader
     crc = le_crc_Crc32((uint8_t*)vidHeaderPtr, UBI_VID_HDR_SIZE_CRC, crc);
     if (be32toh(vidHeaderPtr->hdr_crc) != crc)
     {
-        fprintf(stderr, "Bad CRC at %lx: Calculated %x, received %x\n",
-            physEraseOffset, crc, be32toh(vidHeaderPtr->hdr_crc));
+        fprintf(stderr, "Bad CRC at %x: Calculated %x, received %x\n",
+                (uint32_t)physEraseOffset, crc, be32toh(vidHeaderPtr->hdr_crc));
         return LE_FAULT;
     }
 
@@ -428,9 +430,9 @@ static le_result_t ReadVidHeader
         if( IsVerbose )
         {
             fprintf(stderr,
-                    "PEB : %lx, MAGIC %c%c%c%c, VER %hhd, VT %hhd CP %hhd CT %hhd VID "
+                    "PEB : %x, MAGIC %c%c%c%c, VER %hhd, VT %hhd CP %hhd CT %hhd VID "
                     "%x LNUM %x DSZ %x EBS %x DPD %x DCRC %x CRC %x\n",
-                    physEraseOffset,
+                    (uint32_t)physEraseOffset,
                     ((char *)&(vidHeaderPtr->magic))[0],
                     ((char *)&(vidHeaderPtr->magic))[1],
                     ((char *)&(vidHeaderPtr->magic))[2],
@@ -486,8 +488,8 @@ static le_result_t ReadVtbl
     }
     if( (UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE) != len )
     {
-        fprintf(stderr, "Read only %d bytes, expected %ld:\n",
-                len, UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE);
+        fprintf(stderr, "Read only %d bytes, expected %u:\n",
+                len, (uint32_t)(UBI_MAX_VOLUMES * UBI_VTBL_RECORD_HDR_SIZE));
         return LE_FAULT;
     }
 
@@ -632,7 +634,7 @@ le_result_t ScanUbi
                 }
                 fprintf(stderr, "\n");
                 fprintf(stderr,
-                        "Volume image size = %lx (%lu)\n",
+                        "Volume image size = %zx (%zu)\n",
                          VtblMap[i].imageSize, VtblMap[i].imageSize);
             }
         }
@@ -732,7 +734,7 @@ static le_result_t ExtractUbiData
     *crc32Ptr = crc32;
     if( IsVerbose )
     {
-        fprintf(stderr, "File '%s', Size %lx CRC %x\n", fileNamePtr, imageSize, crc32);
+        fprintf(stderr, "File '%s', Size %zx CRC %x\n", fileNamePtr, imageSize, crc32);
     }
 
     res = LE_OK;
