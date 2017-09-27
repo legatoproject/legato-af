@@ -2497,8 +2497,8 @@ le_result_t le_gnss_GetDop
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note altitudeOnWgs84 is in meters, between WGS-84 earth ellipsoid and mean sea level
- *       with 3 decimal places (3047 = 3.047 meters).
+ * @note altitudeOnWgs84 is in meters, with respect to the WGS-84 ellipsoid with 3 decimal
+ *       places (3047 = 3.047 meters).
  *
  * @note For a 2D position fix, the altitude with respect to the WGS-84 ellipsoid will be indicated
  *       as invalid and set to INT32_MAX.
