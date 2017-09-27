@@ -1020,15 +1020,12 @@ static void TestLeGnssNmeaSentences
         LE_GNSS_NMEA_MASK_GLGSV,
         LE_GNSS_NMEA_MASK_GNGNS,
         LE_GNSS_NMEA_MASK_GNGSA,
-        // ToDo: Uncomment when FW issue is fixed
-//        LE_GNSS_NMEA_MASK_GAGGA,
-//        LE_GNSS_NMEA_MASK_GAGSA,
-//        LE_GNSS_NMEA_MASK_GAGSV,
-//        LE_GNSS_NMEA_MASK_GARMC,
-//        LE_GNSS_NMEA_MASK_GAVTG,
+        LE_GNSS_NMEA_MASK_GAGGA,
+        LE_GNSS_NMEA_MASK_GAGSA,
+        LE_GNSS_NMEA_MASK_GAGSV,
+        LE_GNSS_NMEA_MASK_GARMC,
+        LE_GNSS_NMEA_MASK_GAVTG,
         LE_GNSS_NMEA_MASK_PSTIS,
-        LE_GNSS_NMEA_MASK_PQXFI,
-        LE_GNSS_NMEA_MASK_PTYPE,
         0
     };
 
@@ -1038,6 +1035,24 @@ static void TestLeGnssNmeaSentences
         LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
         LE_ASSERT(nmeaMask == nmeaSentencesList[i]);
     }
+
+    // @deprecated, PQXFI is deprecated. TODO Remove.
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PQXFI));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
+
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_PTYPE));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
+
+    // TODO Uncomment once the firmware fix is ready
+    // LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGRS));
+    // LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    // LE_ASSERT((LE_GNSS_NMEA_MASK_GPGRS == nmeaMask) || (0 == nmeaMask));
+
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGLL));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT((LE_GNSS_NMEA_MASK_GPGLL == nmeaMask) || (0 == nmeaMask));
 }
 
 //--------------------------------------------------------------------------------------------------

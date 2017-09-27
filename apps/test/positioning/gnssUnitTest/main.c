@@ -727,7 +727,8 @@ static void Testle_gnss_DeviceReadyStateTest
     LE_ASSERT_OK(le_gnss_SetAcquisitionRate(acqRate));
     LE_ASSERT(LE_FAULT == (le_gnss_GetNmeaSentences(NULL)));
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
-    nmeaMask = 32768;
+
+    nmeaMask = LE_GNSS_NMEA_SENTENCES_MAX + 1;
     LE_ASSERT(LE_BAD_PARAMETER == (le_gnss_SetNmeaSentences(nmeaMask)));
     nmeaMask = 1100;
     LE_ASSERT_OK(le_gnss_SetNmeaSentences(nmeaMask));
