@@ -647,14 +647,12 @@ EVENT SessionRequestEvent
 /**
  * Start a session with the AirVantage server
  *
- * This will cause a query to be sent to the server, for pending updates. If a download was
- * previously suspended, then this resumes the download.
+ * This will cause a query to be sent to the server, for pending updates.
  *
  * @return
  *      - LE_OK if connection request has been sent.
  *      - LE_FAULT on failure
  *      - LE_DUPLICATE if already connected.
- *      - LE_BUSY if currently retrying.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t StartSession
