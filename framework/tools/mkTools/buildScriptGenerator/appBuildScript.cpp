@@ -701,6 +701,12 @@ void AppBuildScriptGenerator_t::Generate
     script << "target = " << buildParams.target << "\n\n";
     GenerateBuildRules();
 
+    // For each component included in executables in this application, generate IPC code.
+    for (auto componentPtr : appPtr->components)
+    {
+        componentGeneratorPtr->GenerateIpcBuildStatements(componentPtr);
+    }
+
     // If we are not just generating code,
     if (!buildParams.codeGenOnly)
     {
@@ -708,7 +714,6 @@ void AppBuildScriptGenerator_t::Generate
         for (auto componentPtr : appPtr->components)
         {
             componentGeneratorPtr->GenerateBuildStatementsRecursive(componentPtr);
-            componentGeneratorPtr->GenerateIpcBuildStatements(componentPtr);
         }
 
         // For each executable built by the mk tools for this application,
