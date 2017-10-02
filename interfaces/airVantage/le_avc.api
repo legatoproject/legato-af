@@ -199,8 +199,35 @@
  * has registered a session request handler, AVC session can be opened or closed anytime by
  * user Apps.
  *
- * @note If firmware is updated (via fwupdate tool) or new legato is installed (via instlegato)
- * , all suspend/resume information stored by avcService is erased. So if developer updates firmware
+ * @subsection c_le_avc_suspend_resume Suspend and resume an update
+ *
+ * A firmware/application update can be interrupted or suspended by different events:
+ * - a device reboot
+ * - a network loss
+ * - a manual suspend through a session stop.
+ *
+ * After the update suspension, when the @c avcService is ready to resume the update process:
+ * - If the user agreements are disabled, the update process is automatically restarted.
+ * - If the user agreements are enabled, the previous @c PENDING notification is sent to the App,
+ * as indicated in the table below.
+ *
+ * @note The @c avcService might take a while to suspend the update process (typically a few
+ * minutes), e.g. in some cases of firmware update. The @c PENDING notification will therefore be
+ * sent only when the suspension is over. Trying to resume the update process while the suspension
+ * is not over and the notification is not received has no effect.
+ *
+ * | Last received event            | Event sent to resume                                        | Expected action from App |
+ * |--------------------------------|-------------------------------------------------------------|--------------------------|
+ * | @c LE_AVC_DOWNLOAD_PENDING     | @c LE_AVC_DOWNLOAD_PENDING                                  | Accept download          |
+ * | @c LE_AVC_DOWNLOAD_IN_PROGRESS | @c LE_AVC_DOWNLOAD_PENDING with remaining bytes to download | Accept download          |
+ * | @c LE_AVC_DOWNLOAD_COMPLETE    | @c LE_AVC_DOWNLOAD_PENDING with zero bytes to download      | Accept download          |
+ * | @c LE_AVC_INSTALL_PENDING      | @c LE_AVC_INSTALL_PENDING                                   | Accept install           |
+ * | @c LE_AVC_INSTALL_IN_PROGRESS  | @c LE_AVC_INSTALL_PENDING                                   | Accept install           |
+ * | @c LE_AVC_UNINSTALL_PENDING    | @c LE_AVC_UNINSTALL_PENDING                                 | Accept uninstall         |
+ * | @c LE_AVC_CONNECTION_PENDING   | @c LE_AVC_CONNECTION_PENDING                                | Start session            |
+ *
+ * @note If firmware is updated (via fwupdate tool) or new legato is installed (via instlegato),
+ * all suspend/resume information stored by avcService is erased. So if developer updates firmware
  * or legato (via ethernet or ecm etc.) in the middle of any update initiated by avcService, this
  * need to be cancelled and restarted again from airVantage server.
  *
