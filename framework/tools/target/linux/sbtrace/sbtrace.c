@@ -720,7 +720,7 @@ static void StartAppTrace
 
     if (AppRef == NULL)
     {
-        fprintf(stderr, "Application not installed.\n");
+        fprintf(stderr, "App '%s' could not be started. Check logs for more info.\n", AppNamePtr);
         exit(EXIT_FAILURE);
     }
 
@@ -728,7 +728,13 @@ static void StartAppTrace
     le_appCtrl_AddTraceAttachHandler(AppRef, AttachHandler, NULL);
 
     // Start the app.
-    le_appCtrl_Start(AppNamePtr);
+    result = le_appCtrl_Start(AppNamePtr);
+
+    if (result != LE_OK)
+    {
+        fprintf(stderr, "App '%s' could not be started. Check logs for more info.\n", AppNamePtr);
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -1102,7 +1108,7 @@ static void SetDevicePermissions
 
     if (devFilePtr->permStr[0] != '\0')
     {
-         if (le_appCtrl_SetDevicePerm(AppRef, devFilePtr->path, devFilePtr->permStr) != LE_OK)
+        if (le_appCtrl_SetDevicePerm(AppRef, devFilePtr->path, devFilePtr->permStr) != LE_OK)
         {
             fprintf(stderr, "Could not set permissions to %s for %s.\n",
                     devFilePtr->permStr,

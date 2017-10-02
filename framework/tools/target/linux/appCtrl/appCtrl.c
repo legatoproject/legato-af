@@ -292,28 +292,33 @@ static void PrintHelp
  * @note This function does not return.
  */
 //--------------------------------------------------------------------------------------------------
-static void StartApp
+static void __attribute__((noreturn)) StartApp
 (
     void
 )
 {
+    le_appCtrl_AppRef_t appRef = NULL;
+
     le_appCtrl_ConnectService();
 
-    // Determine if any options are specified. If so, get the app ref and set the options. If not,
-    // simply start the app.
-
-    // Get the app ref by the app name.
-    le_appCtrl_AppRef_t appRef = le_appCtrl_GetRef(AppNamePtr);
-
-    if (appRef == NULL)
-    {
-        fprintf(stderr, "Application '%s' is not installed.\n", AppNamePtr);
-        exit(EXIT_FAILURE);
-    }
-
-    // Set the overrides.
+    // If the --norun= option has been used to suppress the starting of a process,
+    // use le_appCtrl_SetRun() to tell the Supervisor not to start those processes when
+    // le_appCtrl_Start() is called later.
     if (!le_sls_IsEmpty(&ProcNameList)) // for the "norun" option
     {
+        // Get the app ref by the app name.
+        // This will return NULL if the app is not found or the app's sandbox cannot be created.
+        appRef = le_appCtrl_GetRef(AppNamePtr);
+
+        if (appRef == NULL)
+        {
+            fprintf(stderr,
+                    "App '%s' is not installed or its container cannot be created.\n",
+                    AppNamePtr);
+            exit(EXIT_FAILURE);
+        }
+
+        // Set the overrides.
         le_sls_Link_t* procNameLinkPtr = le_sls_Peek(&ProcNameList);
 
         while (procNameLinkPtr != NULL)
@@ -326,16 +331,18 @@ static void StartApp
         }
     }
 
-
     // Start the application.
     le_result_t startAppResult = le_appCtrl_Start(AppNamePtr);
 
+    // Release the app ref, if we have one.
+    if (appRef != NULL)
+    {
+        // NOTE: Doing this has the side effect of resetting all the overrides we set for the
+        //       --norun= option usage.  So, this must be done after le_appCtrl_Start().
+        le_appCtrl_ReleaseRef(appRef);
+    }
 
-    // Release the app ref.
-    le_appCtrl_ReleaseRef(appRef);
-
-
-    // Print msg and exit based on the result of the StartApp request.
+    // Print msg and exit based on the result.
     switch (startAppResult)
     {
         case LE_OK:
@@ -350,7 +357,10 @@ static void StartApp
             exit(EXIT_FAILURE);
 
         default:
-            fprintf(stderr, "There was an error.  Application '%s' could not be started.\n", AppNamePtr);
+            fprintf(stderr,
+                    "There was an error.  Application '%s' could not be started.\n"
+                    "Check the system log for error messages.\n",
+                    AppNamePtr);
             exit(EXIT_FAILURE);
     }
 }

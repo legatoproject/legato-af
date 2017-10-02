@@ -9,17 +9,22 @@
  *
  * @section c_apps_applications Applications
  *
- * An app can be started by either an IPC call or automatically on start-up using the
- * apps_AutoStart() API.
+ * Apps run in containers. The container for an app is created either when someone calls
+ * le_appCtrl_GetRef() or when the app is started, whichever comes first.
+ * An app can be started by either an le_appCtrl_Start() IPC call or automatically on start-up
+ * using the apps_AutoStart() API.
  *
- * When an app is started for the first time a new app container object is created which contains a
- * list link, an app stop handler reference and the app object (which is also instantiated).
+ * When an app's container is created, a new app container object is created which contains a
+ * list link, an app stop handler reference and the app object (which is also instantiated).  After
+ * the app container object is created, it is placed on the list of inactive apps, waiting to be
+ * started.  If there are errors in creating the container, the container will be destroyed and
+ * an error will be reported in the log.
  *
- * Once the app container is created the app is started.  The app container is then placed on a
- * list of active apps.
+ * When an inactive app is started, the app container is moved from the list of inactive apps to
+ * the list of active apps.
  *
  * An app can be stopped by either an IPC call, a shutdown of the framework or when the app
- * terminates either normally or if due to a fault action.
+ * terminates either normally or due to a fault action.
  *
  * The app's stop handler is set by the IPC handler and/or the fault monitor to take appropriate
  * actions when the app stops.  This is done because application stops are generally asynchronous.
@@ -29,7 +34,7 @@
  * be checked within the SIGCHILD handler.  The SIGCHILD handler will then call the app stop handler
  * when the app has actually stopped.
  *
- * When an app has stopped it is popped of the active list and placed onto the inactive list of
+ * When an app has stopped it is popped off the active list and placed onto the inactive list of
  * apps.  When an app is restarted it is moved from the inactive list to the active list.  This
  * means we do not have to recreate app containers each time.  App containers are only cleaned when
  * the app is uninstalled.
@@ -134,13 +139,8 @@ static le_fdMonitor_Ref_t AppStopSvSocketFdMonRef = NULL;
 static apps_ShutdownHandler_t AllAppsShutdownHandler = NULL;
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * app object container reference.  Incomplete type so that we can have the app object container
- * reference the AppStopHandler_t.
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct _appContainerRef* AppContainerRef_t;
+
+struct AppContainer;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -150,7 +150,7 @@ typedef struct _appContainerRef* AppContainerRef_t;
 //--------------------------------------------------------------------------------------------------
 typedef void (*AppStopHandler_t)
 (
-    AppContainerRef_t appContainerRef       ///< [IN] The app that stopped.
+    struct AppContainer* appContainerPtr       ///< [IN] The app that stopped.
 );
 
 
@@ -159,20 +159,20 @@ typedef void (*AppStopHandler_t)
  * App object container.
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct _appContainerRef
+typedef struct AppContainer
 {
-    app_Ref_t               appRef;        // Reference to the app.
-    AppStopHandler_t        stopHandler;   // Handler function that gets called when the app stops.
-    le_appCtrl_ServerCmdRef_t stopCmdRef;  // Stores the reference to the command that requested
-                                           // this app be stopped.  This reference must be sent in
-                                           // the response to the stop app command.
-    le_dls_Link_t           link;          // Link in the list of apps.
-    bool                    isActive;      // true if the app is on the active list.  false if it
-                                           // is on the inactive list.
-    le_msg_SessionRef_t     clientRef;     // Stores the reference to the client that has a
-                                           // reference to this app. NULL means no connected client.
-    le_appCtrl_TraceAttachHandlerFunc_t traceAttachHandler; // Client's trace attach handler.
-    void* traceAttachContextPtr;           // Context for the client's trace attach handler.
+    app_Ref_t               appRef;       ///< Reference to the app.
+    AppStopHandler_t        stopHandler;  ///< Handler function that gets called when the app stops.
+    le_appCtrl_ServerCmdRef_t stopCmdRef; ///< Stores the reference to the command that requested
+                                          ///< this app be stopped.  This reference must be sent in
+                                          ///< the response to the stop app command.
+    le_dls_Link_t           link;         ///< Link in the list of apps.
+    bool                    isActive;     ///< true if the app is on the active list.  false if it
+                                          ///< is on the inactive list.
+    le_msg_SessionRef_t     clientRef;    ///< Reference to the client that has a reference to
+                                          ///< this app. NULL if not connected client.
+    le_appCtrl_TraceAttachHandlerFunc_t traceAttachHandler; ///< Client's trace attach handler.
+    void* traceAttachContextPtr;          ///< Context for the client's trace attach handler.
 }
 AppContainer_t;
 
@@ -340,18 +340,18 @@ static void DeleteApp
 //--------------------------------------------------------------------------------------------------
 static void DeactivateAppContainer
 (
-    AppContainerRef_t appContainerRef           ///< [IN] App to deactivate.
+    AppContainer_t* appContainerPtr           ///< [IN] App to deactivate.
 )
 {
-    le_dls_Remove(&ActiveAppsList, &(appContainerRef->link));
+    le_dls_Remove(&ActiveAppsList, &(appContainerPtr->link));
 
-    LE_INFO("Application '%s' has stopped.", app_GetName(appContainerRef->appRef));
+    LE_INFO("Application '%s' has stopped.", app_GetName(appContainerPtr->appRef));
 
-    appContainerRef->stopHandler = NULL;
+    appContainerPtr->stopHandler = NULL;
 
-    le_dls_Queue(&InactiveAppsList, &(appContainerRef->link));
+    le_dls_Queue(&InactiveAppsList, &(appContainerPtr->link));
 
-    appContainerRef->isActive = false;
+    appContainerPtr->isActive = false;
 }
 
 
@@ -362,23 +362,23 @@ static void DeactivateAppContainer
 //--------------------------------------------------------------------------------------------------
 static void RestartApp
 (
-    AppContainerRef_t appContainerRef           ///< [IN] App to restart.
+    AppContainer_t* appContainerPtr           ///< [IN] App to restart.
 )
 {
     // Always reset the stop handler to so that when a process dies in the app that does not require
     // a restart it will be handled properly.
-    appContainerRef->stopHandler = DeactivateAppContainer;
+    appContainerPtr->stopHandler = DeactivateAppContainer;
 
     // Restart the app.
-    if (app_Start(appContainerRef->appRef) == LE_OK)
+    if (app_Start(appContainerPtr->appRef) == LE_OK)
     {
-        LE_INFO("Application '%s' restarted.", app_GetName(appContainerRef->appRef));
+        LE_INFO("Application '%s' restarted.", app_GetName(appContainerPtr->appRef));
     }
     else
     {
-        LE_CRIT("Could not restart application '%s'.", app_GetName(appContainerRef->appRef));
+        LE_CRIT("Could not restart application '%s'.", app_GetName(appContainerPtr->appRef));
 
-        DeactivateAppContainer(appContainerRef);
+        DeactivateAppContainer(appContainerPtr);
     }
 }
 
@@ -391,13 +391,13 @@ static void RestartApp
 //--------------------------------------------------------------------------------------------------
 static void RespondToStopAppCmd
 (
-    AppContainerRef_t appContainerRef           ///< [IN] App that stopped.
+    AppContainer_t* appContainerPtr           ///< [IN] App that stopped.
 )
 {
     // Save command reference for later use.
-    void* cmdRef = appContainerRef->stopCmdRef;
+    void* cmdRef = appContainerPtr->stopCmdRef;
 
-    DeactivateAppContainer(appContainerRef);
+    DeactivateAppContainer(appContainerPtr);
 
     // Respond to the requesting process.
     le_appCtrl_StopRespond(cmdRef, LE_OK);
@@ -413,14 +413,14 @@ static void RespondToStopAppCmd
 //--------------------------------------------------------------------------------------------------
 static void ShutdownNextApp
 (
-    AppContainerRef_t appContainerRef           ///< [IN] App that just stopped.
+    AppContainer_t* appContainerPtr           ///< [IN] App that just stopped.
 )
 {
-    LE_INFO("Application '%s' has stopped.", app_GetName(appContainerRef->appRef));
+    LE_INFO("Application '%s' has stopped.", app_GetName(appContainerPtr->appRef));
 
-    le_dls_Remove(&ActiveAppsList, &(appContainerRef->link));
+    le_dls_Remove(&ActiveAppsList, &(appContainerPtr->link));
 
-    DeleteApp(appContainerRef);
+    DeleteApp(appContainerPtr);
 
 
     // Continue the shutdown process.
@@ -534,34 +534,31 @@ static AppContainer_t* GetActiveAppWithProc
  * active and inactive lists first, if it can't find it then it creates the app container.
  *
  * @return
- *      A pointer to the app container if successful.
- *      NULL if the app if there was an error. The resultPtr contains the error code.
+ *  - LE_OK if successful.
+ *  - LE_NOT_FOUND if the app is not installed (no container created).
+ *  - LE_FAULT if there was some other error (check logs).
  */
 //--------------------------------------------------------------------------------------------------
-static AppContainer_t* CreateApp
+static le_result_t CreateApp
 (
-    const char* appNamePtr,     ///< [IN] Name of the application to launch.
-    le_result_t* resultPtr      ///< [OUT] Result: LE_OK if successful the app.
-                                ///                LE_NOT_FOUND if the app is not installed.
-                                ///                LE_FAULT if there was some other error.
+    const char* appNamePtr,          ///< [IN] Name of the application to launch.
+    AppContainer_t** containerPtrPtr ///< [OUT] Ptr to the app container, or NULL if not created.
 )
 {
     // Check active list.
-    AppContainer_t* appContainerPtr = GetActiveApp(appNamePtr);
+    *containerPtrPtr = GetActiveApp(appNamePtr);
 
-    if (appContainerPtr != NULL)
+    if (*containerPtrPtr != NULL)
     {
-        *resultPtr = LE_OK;
-        return appContainerPtr;
+        return LE_OK;
     }
 
     // Check the inactive list.
-    appContainerPtr = GetInactiveApp(appNamePtr);
+    *containerPtrPtr = GetInactiveApp(appNamePtr);
 
-    if (appContainerPtr != NULL)
+    if (*containerPtrPtr != NULL)
     {
-        *resultPtr = LE_OK;
-        return appContainerPtr;
+        return LE_OK;
     }
 
     // Get the configuration path for this app.
@@ -573,8 +570,7 @@ static AppContainer_t* CreateApp
         LE_ERROR("App name configuration path '%s/%s' too large for internal buffers!",
                  CFG_NODE_APPS_LIST, appNamePtr);
 
-        *resultPtr = LE_FAULT;
-        return NULL;
+        return LE_FAULT;
     }
 
     // Check that the app has a configuration value.
@@ -583,10 +579,10 @@ static AppContainer_t* CreateApp
     if (le_cfg_IsEmpty(appCfg, ""))
     {
         LE_ERROR("Application '%s' is not installed.", appNamePtr);
+
         le_cfg_CancelTxn(appCfg);
 
-        *resultPtr = LE_NOT_FOUND;
-        return NULL;
+        return LE_NOT_FOUND;
     }
 
     // Create the app object.
@@ -596,28 +592,27 @@ static AppContainer_t* CreateApp
     {
         le_cfg_CancelTxn(appCfg);
 
-        *resultPtr = LE_FAULT;
-        return NULL;
+        return LE_FAULT;
     }
 
     // Create the app container for this app.
-    appContainerPtr = le_mem_ForceAlloc(AppContainerPool);
+    AppContainer_t* containerPtr = le_mem_ForceAlloc(AppContainerPool);
 
-    appContainerPtr->appRef = appRef;
-    appContainerPtr->link = LE_DLS_LINK_INIT;
-    appContainerPtr->stopHandler = NULL;
-    appContainerPtr->clientRef = NULL;
-    appContainerPtr->traceAttachHandler = NULL;
-    appContainerPtr->traceAttachContextPtr = NULL;
+    containerPtr->appRef = appRef;
+    containerPtr->link = LE_DLS_LINK_INIT;
+    containerPtr->stopHandler = NULL;
+    containerPtr->clientRef = NULL;
+    containerPtr->traceAttachHandler = NULL;
+    containerPtr->traceAttachContextPtr = NULL;
 
     // Add this app to the inactive list.
-    le_dls_Queue(&InactiveAppsList, &(appContainerPtr->link));
-    appContainerPtr->isActive = false;
+    le_dls_Queue(&InactiveAppsList, &(containerPtr->link));
+    containerPtr->isActive = false;
 
     le_cfg_CancelTxn(appCfg);
 
-    *resultPtr = LE_OK;
-    return appContainerPtr;
+    *containerPtrPtr = containerPtr;
+    return LE_OK;
 }
 
 
@@ -666,13 +661,10 @@ static le_result_t LaunchApp
 )
 {
     // Create the app.
-    le_result_t result = LE_FAULT;
-
-    AppContainer_t* appContainerPtr = CreateApp(appNamePtr, &result);
-
-    if (appContainerPtr == NULL)
+    AppContainer_t* appContainerPtr;
+    le_result_t result = CreateApp(appNamePtr, &appContainerPtr);
+    if (result != LE_OK)
     {
-        LE_ERROR("Application '%s' cannot run.", appNamePtr);
         return result;
     }
 
@@ -1378,11 +1370,18 @@ void apps_VerifyAppWriteableDeviceFiles
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets a reference to an application.
+ * Gets a reference to an application. Has the side-effect of creating the app's runtime container
+ * if it hasn't already been created.
  *
  * @return
  *      Reference to the named app.
- *      NULL if the app is not installed.
+ *      NULL on error.
+ *
+ * @warning No more than one app can hold a reference at any given time.
+ *
+ * @todo Remove side-effect of creating an app container.  App container creation shouldn't be
+ *       tied to this.  The container isn't needed until the app starts, so it could be done then
+ *       instead.
  */
 //--------------------------------------------------------------------------------------------------
 static void* appCtrl_GetRef
@@ -1392,16 +1391,14 @@ static void* appCtrl_GetRef
 {
     if (!IsAppNameValid(appName))
     {
-        LE_KILL_CLIENT("Invalid app name.");
+        LE_ERROR("Invalid app name.");
         return NULL;
     }
 
-    le_result_t result;
-
     // Get a ref for an app with the app name.
-    AppContainer_t* appContainerPtr = CreateApp(appName, &result);
-
-    if (appContainerPtr == NULL)
+    AppContainer_t* appContainerPtr;
+    le_result_t result = CreateApp(appName, &appContainerPtr);
+    if (result != LE_OK)
     {
         return NULL;
     }
@@ -1409,7 +1406,7 @@ static void* appCtrl_GetRef
     // Check if someone is already holding a reference to this app.
     if (appContainerPtr->clientRef != NULL)
     {
-        LE_KILL_CLIENT("Application %s is already referenced by a client.", appName);
+        LE_ERROR("Application '%s' is already referenced by a client.", appName);
         return NULL;
     }
 
@@ -1885,7 +1882,8 @@ void le_appCtrl_Start
     const char* appName                 ///< [IN] Name of the application to start.
 )
 {
-    le_appCtrl_StartRespond(cmdRef, appCtrl_Start(appName));
+    le_result_t result = appCtrl_Start(appName);
+    le_appCtrl_StartRespond(cmdRef, result);
 }
 
 
@@ -2385,11 +2383,9 @@ le_appProc_RefRef_t le_appProc_Create
     }
 
     // Create the app if it doesn't already exist.
-    le_result_t result;
-
-    AppContainer_t* appContainerPtr = CreateApp(appName, &result);
-
-    if (appContainerPtr == NULL)
+    AppContainer_t* appContainerPtr;
+    le_result_t result = CreateApp(appName, &appContainerPtr);
+    if (result != LE_OK)
     {
         return NULL;
     }
@@ -2970,13 +2966,13 @@ void le_sup_ctrl_StartApp
 //--------------------------------------------------------------------------------------------------
 static void RespondToStopAppCmdDeprecated
 (
-    AppContainerRef_t appContainerRef           ///< [IN] App that stopped.
+    AppContainer_t* appContainerPtr           ///< [IN] App that stopped.
 )
 {
     // Save command reference for later use.
-    void* cmdRef = appContainerRef->stopCmdRef;
+    void* cmdRef = appContainerPtr->stopCmdRef;
 
-    DeactivateAppContainer(appContainerRef);
+    DeactivateAppContainer(appContainerPtr);
 
     // Respond to the requesting process.
     le_sup_ctrl_StopAppRespond(cmdRef, LE_OK);

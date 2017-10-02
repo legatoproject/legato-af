@@ -313,8 +313,8 @@ static const FileLinkObj_t DefaultSystemLinks[] =
 //--------------------------------------------------------------------------------------------------
 static const le_clk_Time_t KillTimeout =
 {
-        .sec = 1,
-        .usec = 0
+    .sec = 1,
+    .usec = 0
 };
 
 
@@ -465,7 +465,9 @@ static le_result_t CreateSupplementaryGroups
         gid_t gid;
         if (user_CreateGroup(groupName, &gid) == LE_FAULT)
         {
-            LE_ERROR("Could not create supplementary group '%s'.", groupName);
+            LE_ERROR("Could not create supplementary group '%s' for app '%s'.",
+                     groupName,
+                     appRef->name);
             le_cfg_CancelTxn(cfgIter);
             return LE_FAULT;
         }
@@ -518,14 +520,16 @@ static le_result_t CreateUserAndGroups
 
         if (user_AppNameToUserName(appRef->name, username, sizeof(username)) != LE_OK)
         {
-            LE_ERROR("The user name '%s' is too long.", username);
+            LE_ERROR("The user name '%s' is too long for app '%s'.", username, appRef->name);
             return LE_FAULT;
         }
 
         // Get the user ID and primary group ID for this app.
         if (user_GetIDs(username, &(appRef->uid), &(appRef->gid)) != LE_OK)
         {
-            LE_ERROR("Could not get uid and gid for user '%s'.", username);
+            LE_ERROR("Could not get uid and gid for user '%s' for app '%s'.",
+                     username,
+                     appRef->name);
             return LE_FAULT;
         }
 
@@ -604,7 +608,7 @@ static le_result_t GetDevSrcPath
 
     if (strlen(srcPath) == 0)
     {
-        LE_ERROR("Empty source file path supplied for app %s.", app_GetName(appRef));
+        LE_ERROR("Empty source file path supplied for app '%s'.", app_GetName(appRef));
         return LE_FAULT;
     }
 
@@ -744,6 +748,10 @@ static le_result_t SetCfgDevicePermissions
 
             if (SetDevicePermissions(appLabel, srcPath, permStr) != LE_OK)
             {
+                LE_ERROR("Failed to set permissions (%s) for app '%s' on device '%s'.",
+                         permStr,
+                         appRef->name,
+                         srcPath);
                 le_cfg_CancelTxn(appCfg);
                 return LE_FAULT;
             }
@@ -1177,12 +1185,15 @@ static le_result_t CreateTmpFs
 
     if (le_path_Concat("/", tmpPath, sizeof(tmpPath), appRef->workingDir, "tmp", NULL) != LE_OK)
     {
-        LE_ERROR("Path '%s...' is too long.", tmpPath);
+        LE_ERROR("Path '%s...' is too long. Can't create tmpfs file system for app '%s'.",
+                 tmpPath,
+                 appRef->name);
         return LE_FAULT;
     }
 
     if (dir_MakeSmack(tmpPath, S_IRWXO, appDirLabelPtr) == LE_FAULT)
     {
+        LE_ERROR("Failed to create directory '%s' for app '%s'.", tmpPath, appRef->name);
         return LE_FAULT;
     }
 
@@ -1192,7 +1203,9 @@ static le_result_t CreateTmpFs
                  APP_TMPFS_SIZE, S_IRWXO, 0, 0,
                  appDirLabelPtr, appDirLabelPtr) >= sizeof(opt))
     {
-        LE_ERROR("Mount options string is too long. '%s'", opt);
+        LE_ERROR("Mount options string is too long (%s). Can't mount tmpfs for app '%s'.'",
+                 opt,
+                 appRef->name);
 
         return LE_FAULT;
     }
@@ -1369,13 +1382,13 @@ static le_result_t CreateDirLink
     if (stat(srcPtr, &srcStat) == -1)
     {
         LE_ERROR("Could not stat file at '%s'. %m", srcPtr);
-        return LE_FAULT;
+        goto failure;
     }
 
     if (!S_ISDIR(srcStat.st_mode))
     {
         LE_ERROR("'%s' is not a directory.", srcPtr);
-        return LE_FAULT;
+        goto failure;
     }
 
     // Get the absolute destination path.
@@ -1384,13 +1397,13 @@ static le_result_t CreateDirLink
     if (GetAbsDestPath(destPtr, srcPtr, appRef->workingDir, destPath, sizeof(destPath)) != LE_OK)
     {
         LE_ERROR("Link destination path '%s' is too long.", destPath);
-        return LE_FAULT;
+        goto failure;
     }
 
     // Create the necessary intermediate directories along the destination path.
     if (CreateIntermediateDirs(destPath, appDirLabelPtr) != LE_OK)
     {
-        return LE_FAULT;
+        goto failure;
     }
 
     // See if the destination already exists.
@@ -1408,14 +1421,14 @@ static le_result_t CreateDirLink
                       S_IRUSR | S_IXUSR | S_IROTH | S_IXOTH,
                       appDirLabelPtr) == LE_FAULT)
         {
-            return LE_FAULT;
+            goto failure;
         }
 
         // Bind mount into the sandbox.
         if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
         {
             LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
-            return LE_FAULT;
+            goto failure;
         }
     }
     else
@@ -1424,13 +1437,17 @@ static le_result_t CreateDirLink
         if (symlink(srcPtr, destPath) != 0)
         {
             LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
-            return LE_FAULT;
+            goto failure;
         }
     }
 
     LE_INFO("Created directory link '%s' to '%s'.", srcPtr, destPath);
 
     return LE_OK;
+
+failure:
+    LE_ERROR("Failed to create link at '%s' in app '%s'.", destPtr, appRef->name);
+    return LE_FAULT;
 }
 
 
@@ -1459,13 +1476,13 @@ static le_result_t CreateFileLink
     if (stat(srcPtr, &srcStat) == -1)
     {
         LE_ERROR("Could not stat file at '%s'. %m", srcPtr);
-        return LE_FAULT;
+        goto failure;
     }
 
     if (S_ISDIR(srcStat.st_mode))
     {
         LE_ERROR("'%s' is a directory.", srcPtr);
-        return LE_FAULT;
+        goto failure;
     }
 
     // Get the absolute destination path.
@@ -1474,13 +1491,13 @@ static le_result_t CreateFileLink
     if (GetAbsDestPath(destPtr, srcPtr, appRef->workingDir, destPath, sizeof(destPath)) != LE_OK)
     {
         LE_ERROR("Link destination path '%s' is too long.", destPath);
-        return LE_FAULT;
+        goto failure;
     }
 
     // Create the necessary intermediate directories along the destination path.
     if (CreateIntermediateDirs(destPath, appDirLabelPtr) != LE_OK)
     {
-        return LE_FAULT;
+        goto failure;
     }
 
     // See if the destination already exists.
@@ -1496,7 +1513,7 @@ static le_result_t CreateFileLink
         if (symlink(srcPtr, destPath) != 0)
         {
             LE_ERROR("Could not create symlink from '%s' to '%s'. %m", srcPtr, destPath);
-            return LE_FAULT;
+            goto failure;
         }
     }
     // For devices, create a new device node for the app
@@ -1510,7 +1527,7 @@ static le_result_t CreateFileLink
         if (result != LE_OK)
         {
             LE_ERROR("Failed to get smack label for device '%s'", srcPtr);
-            return LE_FAULT;
+            goto failure;
         }
 
         if (mknod(destPath,
@@ -1518,20 +1535,20 @@ static le_result_t CreateFileLink
                   srcStat.st_rdev) == -1)
         {
             LE_ERROR("Could not create device '%s'.  %m", destPath);
-            return LE_FAULT;
+            goto failure;
         }
 
         if (smack_SetLabel(destPath, devLabel) != LE_OK)
         {
             LE_ERROR("Failed to set smack label for device '%s'", destPath);
-            return LE_FAULT;
+            goto failure;
         }
 
         // Gift the device to the app.
         if (chown(destPath, appRef->uid, appRef->gid) == -1)
         {
             LE_ERROR("Could not assign device '%s' to app.  %m", destPath);
-            return LE_FAULT;
+            goto failure;
         }
     }
     else
@@ -1543,7 +1560,7 @@ static le_result_t CreateFileLink
         if (fd == -1)
         {
             LE_ERROR("Could not create file '%s'.  %m", destPath);
-            return LE_FAULT;
+            goto failure;
         }
 
         fd_Close(fd);
@@ -1552,13 +1569,17 @@ static le_result_t CreateFileLink
         if (mount(srcPtr, destPath, NULL, MS_BIND, NULL) != 0)
         {
             LE_ERROR("Couldn't bind mount from '%s' to '%s'. %m", srcPtr, destPath);
-            return LE_FAULT;
+            goto failure;
         }
     }
 
     LE_INFO("Created file link '%s' to '%s'.", srcPtr, destPath);
 
     return LE_OK;
+
+failure:
+    LE_ERROR("Failed to create link at '%s' in app '%s'.", destPtr, appRef->name);
+    return LE_FAULT;
 }
 
 
@@ -1622,7 +1643,9 @@ static le_result_t RecursivelyCreateLinks
 
     if (ftsPtr == NULL)
     {
-        LE_ERROR("Could open directory '%s'.  %m.", srcDirPtr);
+        LE_ERROR("Couldn't open directory '%s' (%m) while creating link in app '%s'",
+                 srcDirPtr,
+                 appRef->name);
         return LE_FAULT;
     }
 
@@ -1647,7 +1670,8 @@ static le_result_t RecursivelyCreateLinks
                                    srcEntPtr->fts_path + srcDirLen, NULL) != LE_OK)
                 {
                     fts_close(ftsPtr);
-                    LE_ERROR("Full destination path '%s...' for app %s is too long.", destPath,
+                    LE_ERROR("Full destination path '%s...' for app %s is too long.",
+                             destPath,
                              appRef->name);
                     return LE_FAULT;
                 }
@@ -1678,7 +1702,9 @@ static le_result_t RecursivelyCreateLinks
 
     if (0 != lastErrno)
     {
-        LE_ERROR("Could not read directory '%s'.  %m", srcDirPtr);
+        LE_ERROR("Could not read directory '%s' (%m) while creating link for app '%s'",
+                 srcDirPtr,
+                 appRef->name);
         return LE_FAULT;
     }
 
@@ -3908,7 +3934,17 @@ le_result_t app_SetDevPerm
     char appLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
     smack_GetAppLabel(app_GetName(appRef), appLabel, sizeof(appLabel));
 
-    return SetDevicePermissions(appLabel, pathPtr, permissionPtr);
+    le_result_t result = SetDevicePermissions(appLabel, pathPtr, permissionPtr);
+
+    if (result != LE_OK)
+    {
+        LE_ERROR("Failed to set permissions (%s) for app '%s' on device '%s'.",
+                 permissionPtr,
+                 appRef->name,
+                 pathPtr);
+    }
+
+    return result;
 }
 
 
