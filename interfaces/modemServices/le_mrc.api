@@ -1890,6 +1890,14 @@ FUNCTION le_result_t GetCdmaSignalMetrics
  *
  * @return The Cell Identifier. UINT32_MAX value is returned if the value is not available.
  *
+ * @note When the module is in UMTS network, the API returns the serving UTRAN Cell Identity (UC-Id)
+ * which is used to identify the cell uniquely.
+ * It is composed of the Controlling Radio Network Controller Identifier (CRNC-Id, 12 bits) and the
+ * Cell Identifier (C-Id, 16 bits). (3GPP 25.401, section 6.1.5)
+ * The Cell Identifier is coded in the lower 2 bytes of the 4 bytes UC-Id and the CRNC-Id is coded
+ * in the upper 2 bytes.
+ * Example: the API returns 7807609 -> 0x772279 (CRNC-Id = 0x77 , cell ID = 0x2279)
+ *
  * @note <b>multi-app safe</b>
  */
 //--------------------------------------------------------------------------------------------------
