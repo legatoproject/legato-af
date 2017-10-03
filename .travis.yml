@@ -35,10 +35,15 @@ script:
   - cd ..
   - mkdir workspace
   - cd workspace
-  - repo init -q -u git://github.com/legatoproject/manifest
+  - if [ -n "$TRAVIS_TAG" ]; then
+       repo init -q -u git://github.com/legatoproject/manifest -m legato/releases/$TRAVIS_TAG.xml ;
+    else
+       repo init -q -u git://github.com/legatoproject/manifest -m legato/branches/$TRAVIS_BRANCH.xml ;
+    fi
   - repo sync
   - cd legato
   - git remote add local ../../legato-af
-  - git fetch local
+  - git fetch local HEAD
   - git reset --hard FETCH_HEAD
+  - repo forall -c 'echo -n "$REPO_PATH " && git rev-parse HEAD 2>/dev/null'
   - make localhost
