@@ -59,11 +59,11 @@ mkdir -p $STAGE_DIR
 CopyRepo() {
     local path=$1
 
+    set -e
+
     cd $LEGATO_ROOT/$path
 
     mkdir -p $STAGE_DIR/$path
-
-    set -e
 
     # Copy files managed by git, except the ones that match exclude_pattern
     git ls-tree -r --name-only HEAD | while read LINE; do
@@ -88,7 +88,7 @@ CopyRepo() {
 CopyRepo ""
 
 # Copy other repositories
-for repo in $(repo list | awk '{print $1}' | sed 's^legato/^^g' | grep -Ev "$REPO_EXCLUDE_PATTERN"); do
+for repo in $(repo list | awk '{print $1}' | grep 'legato/' | sed 's^legato/^^g' | grep -Ev "$REPO_EXCLUDE_PATTERN"); do
     CopyRepo $repo
 done
 
