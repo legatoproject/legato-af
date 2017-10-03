@@ -80,8 +80,8 @@ while read comp_name; do
     default_name=$(echo $comp_name | sed 's/.so/_default.so/')
     default_path=$(grep $default_name $PA_PATH_LIST)
     if [ -z "$default_path" ]; then
-        echo "Unable to find default PA for $comp_name"
-        exit 1
+        echo "WARN: Unable to find default PA for $comp_name"
+        continue
     fi
 
     $OBJDUMP -TC $default_path | grep ' pa_' | grep '.text' | awk '{print $7}' | sort > $PA_DIFF_DIR/${comp_name}.default

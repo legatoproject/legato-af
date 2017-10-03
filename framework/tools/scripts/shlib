@@ -148,6 +148,16 @@ ExitWithError()
     exit 1
 }
 
+CheckRet()
+{
+    local retval=$?
+    if [ $retval -ne 0 ]; then
+
+        local message=${1:-"Exit code $retval"}
+        ExitWithError "$message"
+    fi
+}
+
 AddSshOpts()
 {
     SSH_OPTS+=" $@"

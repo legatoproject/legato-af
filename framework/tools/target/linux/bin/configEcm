@@ -120,7 +120,6 @@ get_param()
     echo ${line#*:}
 }
 
-
 # adds the necessary configs to the dhcp server
 config_dhcp()
 {
@@ -139,9 +138,10 @@ unconfig_dhcp()
 restart_ecm()
 {
     /etc/init.d/usb restart
-# we need to clean out the leases database ourselves and it seems we
-# need to delete the file completely!! Just clearing the entry doesn't work and
-# dhcp_release doesn't work.
+
+    # we need to clean out the leases database ourselves and it seems we
+    # need to delete the file completely!! Just clearing the entry doesn't work and
+    # dhcp_release doesn't work.
     /etc/init.d/dnsmasq stop
     rm -f /var/lib/misc/dnsmasq.leases
     /etc/init.d/dnsmasq start
@@ -149,7 +149,7 @@ restart_ecm()
 
 validate_ipV4()
 {
-# simply find out if the address exists in the universal (sub) net
+    # simply find out if the address exists in the universal (sub) net
     and_addr "255.255.255.255" $1
     [ -n "$1" ] && [ "$masked_addr" = "$1" ]
 }
@@ -177,7 +177,7 @@ check_values()
     return 0
 }
 
-# find other ipV4 interfaces and make sure we aren't trying to set something up
+# Find other ipV4 interfaces and make sure we aren't trying to set something up
 # in an overlapping subnet
 check_no_conflicts()
 {
@@ -188,7 +188,7 @@ check_no_conflicts()
     for item in $inet_list; do
         case $item in
             lo:*|usb0:*|ecm0:*|eem0:*)
-                # ignore loopback or ECM interfaces
+                # Ignore loopback or ECM interfaces
                 ;;
             *)
                 iface=${item%%:*}

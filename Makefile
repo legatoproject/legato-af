@@ -113,9 +113,9 @@ READ_ONLY ?= 0
 # Disable SMACK
 export DISABLE_SMACK ?= 0
 
-STAGE_MKLEGATOIMG = stage_mklegatoimg
+STAGE_SYSTOIMG = stage_systoimg
 ifeq ($(READ_ONLY),1)
-  override STAGE_MKLEGATOIMG := stage_mklegatoimgro
+  override STAGE_SYSTOIMG := stage_systoimgro
 endif
 
 # ========== GENERIC BUILD RULES ============
@@ -271,7 +271,6 @@ TESTS_TARGETS = $(foreach target,$(TARGETS),tests_$(target))
 $(TESTS_TARGETS):tests_%: % framework_% build/%/Makefile
 	$(MAKE) -C build/$(TARGET)
 	$(MAKE) -C apps/test/framework/mk
-
 # Rule for invoking CMake to generate the Makefiles inside the build directory.
 # Depends on the build directory being there.
 # NOTE: CMake is only used to build tests and samples.
@@ -292,59 +291,21 @@ $(foreach target,$(TARGETS),build/$(target)/Makefile):
 			-DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) \
 			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake
 
-# Construct the staging directory with common files for embedded targets.
-# Staging directory will become /mnt/legato/ in cwe
-.PHONY: stage_embedded
-stage_embedded:
-	# Make sure the TARGET environment variable is set.
-	if [ -z "$(TARGET)" ]; then exit -1; fi
-	# Prep the staging area to make sure there are no leftover files from last build.
-	rm -rf build/$(TARGET)/staging
-	# Create the directory.
-	mkdir -p build/$(TARGET)/staging/apps
-	outputDir=build/$(TARGET)/staging && \
-	stagingDir="build/$(TARGET)/system/staging" && \
-	echo "Copying system staging directory '$$stagingDir' to '$$outputDir/system'." && \
-	cp -r -P $$stagingDir "$$outputDir/system" && \
-	echo "Adding apps to '$$outputDir'." && \
-	for appName in `ls "$$outputDir/system/apps/"` ; \
-	do \
-		md5=`readlink "$$outputDir/system/apps/$$appName" | sed 's#^/legato/apps/##'` && \
-		if grep -e `printf '"md5":"%s"' $$md5` build/$(TARGET)/system.$(TARGET).update > /dev/null ; \
-		then \
-			echo "  $$appName ($$md5)" && \
-			cp -r -P build/$(TARGET)/system/app/$$appName/staging "$$outputDir"/apps/$$md5 ; \
-		else \
-			echo "  $$appName ($$md5) <-- EXCLUDED FROM .CWE (must be preloaded on target)" ; \
-		fi \
-	done
-	# Print some diagnostic messages.
-	@echo "== built system's info.properties: =="
-	cat build/$(TARGET)/staging/system/info.properties
-	# Check PA libraries.
-	checkpa $(TARGET) || true
-
 # If set, generate an image with stripped binaries
 ifneq ($(STRIP_STAGING_TREE),0)
-  MKLEGATOIMG_FLAGS += -s
+  SYSTOIMG_FLAGS += -s
   MKSYS_FLAGS += -d build/$(TARGET)/debug
 endif
 
-.PHONY: stage_mklegatoimgro
-stage_mklegatoimgro:
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) -S _rw $(MKLEGATOIMG_FLAGS)
-	mklegatotreero $(TARGET) $(DISABLE_SMACK)
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/readOnlyStaging/legato -o build/$(TARGET) -S _ro \
-	            -a $(MKLEGATOIMG_FLAGS)
-	# Link default legato images to R/W images
-	(cd build/$(TARGET); \
-	    for f in legato*_rw.*; do \
-	        ln -sf $$f `echo $$f | sed 's/_rw//'`; \
-	    done)
+.PHONY: stage_systoimg
+stage_systoimg:
+	systoimg $(SYSTOIMG_FLAGS) $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
+	# Check PA libraries.
+	checkpa $(TARGET) || true
 
-.PHONY: stage_mklegatoimg
-stage_mklegatoimg:
-	mklegatoimg -t $(TARGET) -d build/$(TARGET)/staging -o build/$(TARGET) $(MKLEGATOIMG_FLAGS)
+.PHONY: stage_systoimgro
+stage_systoimgro: stage_systoimg
+	systoimg $(SYSTOIMG_FLAGS) -S _ro --read-only $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
 
 .PHONY: stage_mkavmodel
 stage_mkavmodel:
@@ -358,51 +319,47 @@ stage_mkavmodel:
 .PHONY: stage_localhost
 stage_localhost:
 
-.PHONY: stage_shared
-stage_shared:
-	install framework/tools/target/linux/bin/start build/$(TARGET)/staging
-
 # ==== 9x15-based Sierra Wireless modules ====
 
 .PHONY: stage_9x15
-stage_9x15: stage_shared
+stage_9x15:
 
 .PHONY: stage_ar7 stage_ar86 stage_wp85 stage_wp750x
-stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_embedded stage_9x15 $(STAGE_MKLEGATOIMG) stage_mkavmodel
+stage_ar7 stage_ar86 stage_wp85 stage_wp750x: stage_9x15 $(STAGE_SYSTOIMG) stage_mkavmodel
 
 # ==== AR758X (9x28-based Sierra Wireless modules) ====
 
 .PHONY: stage_9x28
-stage_9x28: stage_shared
+stage_9x28:
 
 .PHONY: stage_ar758x stage_wp76xx stage_wp77xx
-stage_ar758x stage_wp76xx stage_wp77xx: stage_embedded stage_9x28 $(STAGE_MKLEGATOIMG) stage_mkavmodel
+stage_ar758x stage_wp76xx stage_wp77xx: stage_9x28 $(STAGE_SYSTOIMG) stage_mkavmodel
 
 # ==== AR759X (9x40-based Sierra Wireless modules) ====
 
 .PHONY: stage_9x40
-stage_9x40: stage_shared
+stage_9x40:
 
 .PHONY: stage_ar759x
-stage_ar759x: stage_embedded stage_9x40 $(STAGE_MKLEGATOIMG)
+stage_ar759x: stage_9x40 $(STAGE_SYSTOIMG) stage_mkavmodel
 
 # ==== EM75XX (9x50-based Sierra Wireless modules) ====
 
 .PHONY: stage_9x50
-stage_9x50: stage_shared
+stage_9x50:
 
 .PHONY: stage_em75xx
-stage_em75xx: stage_embedded stage_9x50 $(STAGE_MKLEGATOIMG)
+stage_em75xx: stage_9x50 $(STAGE_SYSTOIMG) stage_mkavmodel
 
 # ==== Virtual ====
 
 .PHONY: stage_virt
-stage_virt: stage_embedded stage_shared stage_mklegatoimg
+stage_virt: $(STAGE_SYSTOIMG)
 
 # ==== Raspberry Pi ====
 
 .PHONY: stage_raspi
-stage_raspi: stage_embedded stage_shared stage_mklegatoimg
+stage_raspi: $(STAGE_SYSTOIMG)
 
 # ========== RELEASE ============
 

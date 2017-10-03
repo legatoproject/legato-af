@@ -1,0 +1,194 @@
+#!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc.
+"
+
+. "$(dirname "${BASH_SOURCE[0]}")/shlib"
+
+help_short_desc="Create Legato image from legato system file"
+
+help_usage=(
+"TARGET SYSTEM_FILE [OUTPUT_DIR]"
+"-h"
+"--help"
+)
+
+help_long_description=(
+"Generates an image from legato system file."
+""
+"$commandName [OPTIONS] TARGET SYSTEM_FILE [OUTPUT_DIR]"
+"  - Create an image from system update file. Output will be generated in OUTPUT_DIR if specified."
+"    Otherwise, output will be placed in current directory."
+""
+"$commandName -h"
+"$commandName --help"
+"  - Print this help text."
+""
+"   This creates a partition that you can use with fwupdate or AirVantage"
+"   to update the legato within your target."
+""
+"Options:"
+" - --read-only: provide an image meant for read-only usage"
+" - --disable-smack: disable SMACK management in produced image"
+" - -v VERSION, --version=VERSION: provide version exposed by the image"
+" - -s, --strip-staging-tree: strip symbols from image content"
+" - -S SUFFIX, --img-suffix=SUFFIX: set a suffix for image names"
+""
+"Examples:"
+""
+"   # Generate cwe image from system.wp85.update and place output in current directory"
+"   $(basename "$0") wp85 system.wp85.update"
+""
+"   # Generate cwe image from system.wp85.update and place output in build_system"
+"   $(basename "$0") wp85 system.wp85.update build_system"
+""
+"   # Generate cwe image from system.wp85.update with version 1.0.1"
+"   $(basename "$0") --version 1.0.1 wp85 system.wp85.update"
+)
+
+CheckForHelp $@
+
+if ! type mklegatoimg > /dev/null 2>&1; then
+    ExitWithError "Failed to find mklegatoimg."
+fi
+
+if ! type update-util > /dev/null  2>&1; then
+    ExitWithError "Failed to find update-util."
+fi
+
+if [ -z "$LEGATO_ROOT" ]; then
+    ExitWithError "LEGATO_ROOT is not set. Please set it properly."
+fi
+
+TARGET=$1
+SYSTEM_FILE=$2
+OUTPUT_DIR=$3
+READ_ONLY=0
+DISABLE_SMACK=0
+STRIP_STAGING_TREE=0
+VERSION=""
+IMG_SUFFIX=""
+
+while :; do
+    case $1 in
+        --read-only)
+            READ_ONLY=1
+            ;;
+
+        --disable-smack)
+            DISABLE_SMACK=1
+            ;;
+
+        -v|--version)
+            if [ -n "$2" ]; then
+                VERSION=$2
+                shift
+            else
+                echo "--version needs an argument" >&2
+                exit 1
+            fi
+            ;;
+        --version=?*)
+            VERSION=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+
+        -s|--strip-staging-tree)
+            STRIP_STAGING_TREE=1
+            ;;
+
+        -S|--img-suffix)
+            if [ -n "$2" ]; then
+                IMG_SUFFIX=$2
+                shift
+            else
+                echo "--img-suffix needs an argument" >&2
+                exit 1
+            fi
+            ;;
+        --img-suffix=?*)
+            IMG_SUFFIX=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+
+        -?*)
+            echo "Unknown option \"$1\", ignored." >&2
+            ;;
+        *)
+            if [ $# -lt 2 ] || [ $# -gt 3 ]
+            then
+                ExitWithError "Invalid number of arguments: $#."
+            fi
+
+            TARGET=$1
+            SYSTEM_FILE=$2
+            OUTPUT_DIR=$3
+            break
+    esac
+    shift
+done
+
+if [ ! -f "$SYSTEM_FILE" ]
+then
+    ExitWithError "Bad system file $SYSTEM_FILE"
+fi
+
+SYSTEM_NAME="$(basename "$SYSTEM_FILE")"
+
+if [ -z "$OUTPUT_DIR" ]
+then
+    echo "Warning: output directory is not provided. Using '$PWD' as output directory."
+    OUTPUT_DIR="$PWD"
+fi
+
+INTERMEDIATE_DIR="${OUTPUT_DIR}/_staging_${SYSTEM_NAME}"
+mkdir -p "$INTERMEDIATE_DIR"
+
+# Check whether intermediate directory is empty, if not remove everything from it.
+if [ -n "$(ls -A "$INTERMEDIATE_DIR")" ]
+then
+    echo "Removing old content of $INTERMEDIATE_DIR"
+    rm -rf "$INTERMEDIATE_DIR"/*
+    CheckRet "Unable to remove content of '$INTERMEDIATE_DIR'"
+fi
+
+echo "Unpacking $SYSTEM_FILE ..."
+update-util "$SYSTEM_FILE" -x -s -p "$INTERMEDIATE_DIR" > /dev/null
+CheckRet "Failed to unpack $SYSTEM_FILE"
+
+echo "Preparing staging directory $INTERMEDIATE_DIR"
+cp "${LEGATO_ROOT}/framework/tools/target/linux/bin/start" "$INTERMEDIATE_DIR"
+CheckRet "Unable to copy start file"
+
+if [ $READ_ONLY -eq 1 ]; then
+    READONLY_DIR="${OUTPUT_DIR}/_staging_${SYSTEM_NAME}_ro"
+
+    echo "Preparing read-only staging directory $READONLY_DIR"
+    mklegatotreero "$INTERMEDIATE_DIR" "$READONLY_DIR" $DISABLE_SMACK
+    CheckRet "Unable to create read-only tree in '${READONLY_DIR}'"
+
+    STAGING_DIR="$READONLY_DIR"
+else
+    STAGING_DIR="$INTERMEDIATE_DIR"
+fi
+
+MKLEGATOIMG_ARGS=""
+
+if [ -n "$VERSION" ]; then
+    MKLEGATOIMG_ARGS="${MKLEGATOIMG_ARGS} -V ${VERSION}"
+fi
+
+if [ -n "$IMG_SUFFIX" ]; then
+    MKLEGATOIMG_ARGS="${MKLEGATOIMG_ARGS} -S ${IMG_SUFFIX}"
+fi
+
+if [ $STRIP_STAGING_TREE -eq 1 ]; then
+    MKLEGATOIMG_ARGS="${MKLEGATOIMG_ARGS} -s"
+fi
+
+echo "Creating images from directory $STAGING_DIR"
+mklegatoimg -t "$TARGET" \
+            -d "$STAGING_DIR" \
+            -o "$OUTPUT_DIR" \
+            $MKLEGATOIMG_ARGS
+CheckRet "Failed to create images"
+
+exit 0

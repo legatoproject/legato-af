@@ -9,52 +9,69 @@ Copyright (C) Sierra Wireless Inc.
 help_short_desc="create Legato system tree in read-only"
 
 help_usage=(
-"[TARGET]"
+"STAGING_DIR OUTPUT_DIR [DISABLE_SMACK]"
 )
 
 help_long_description=(
-"Create Legato system tree in read-only for a target"
+"Create Legato read-only system tree from a regular system tree"
 )
 
 CheckForHelp $@
 
-target=$1
-test -z "$target" && target=ar759x
+STAGING_DIR=$1
+OUTPUT_DIR=$2
+DISABLE_SMACK=0
 
-disable_smack=$2
-test -z "$disable_smack" && disable_smack=0
+if [ -z "$STAGING_DIR" ]; then
+    echo "Staging directory '$STAGING_DIR' not provided"
+elif [ ! -e "$STAGING_DIR" ]; then
+    # Is the argument provided a target?
+    if [ -e "build/$STAGING_DIR/staging" ]; then
+        echo "DEPRECATED: $0 doesn't take the target as a parameter anymore."
+        TARGET=$STAGING_DIR
+        STAGING_DIR="build/$TARGET/staging"
+        OUTPUT_DIR="build/$TARGET/readOnlyStaging"
+        DISABLE_SMACK=${2:-0}
+    else
+        ExitWithError "Directory '$STAGING_DIR' does not exist."
+    fi
+elif [ -z "$OUTPUT_DIR" ]; then
+    ExitWithError "Output directory not provided."
+else
+    DISABLE_SMACK=${3:-0}
+fi
 
 # Remove older read-only staging tree
-rm -rf build/$target/readOnlyStaging
+rm -rf "$OUTPUT_DIR"
 
 # Handle smack
-mkdir -p build/$target/readOnlyStaging/legato/systems/current
-if [ $disable_smack == 1 ]; then
-   touch build/$target/readOnlyStaging/legato/SMACK_DISABLED
+mkdir -p "${OUTPUT_DIR}/systems/current"
+if [ $DISABLE_SMACK -eq 1 ]; then
+    touch "${OUTPUT_DIR}/SMACK_DISABLED"
 else
-   mkdir -p build/$target/readOnlyStaging/legato/smack
+    mkdir -p "${OUTPUT_DIR}/smack"
 fi
 
 # Add a file 'read-only' to mark the staging tree as read-only
 # This is used in supervisor and config tree to perform some specific
 # actions
-touch build/$target/readOnlyStaging/legato/systems/current/read-only
+touch "${OUTPUT_DIR}/systems/current/read-only"
 
 # Copy the staging tree into the read-only
-cp -a build/$target/staging/system/. build/$target/readOnlyStaging/legato/systems/current/
+cp -a "${STAGING_DIR}/system/." "${OUTPUT_DIR}/systems/current/"
 
 # Mark the system 0 as good
-echo -n "good" >build/$target/readOnlyStaging/legato/systems/current/status
-echo -n "0" >build/$target/readOnlyStaging/legato/systems/current/index
+echo -n "good" >"${OUTPUT_DIR}/systems/current/status"
+echo -n "0" >"${OUTPUT_DIR}/systems/current/index"
 
 # Copy the start script and apps stuff into the read-only tree
-cp -a build/$target/staging/start build/$target/staging/apps/ build/$target/readOnlyStaging/legato/
+cp -a "${STAGING_DIR}/start" "${STAGING_DIR}/apps/" "${OUTPUT_DIR}/"
 
 # Build the final config-tree for
-sysConfigFile=build/$target/readOnlyStaging/legato/systems/current/config/system.scissors
-appsConfigFile=build/$target/readOnlyStaging/legato/systems/current/config/apps.cfg
-usersConfigFile=build/$target/readOnlyStaging/legato/systems/current/config/users.cfg
-modsConfigFile=build/$target/readOnlyStaging/legato/systems/current/config/modules.cfg
+sysConfigFile="${OUTPUT_DIR}/systems/current/config/system.scissors"
+appsConfigFile="${OUTPUT_DIR}/systems/current/config/apps.cfg"
+usersConfigFile="${OUTPUT_DIR}/systems/current/config/users.cfg"
+modsConfigFile="${OUTPUT_DIR}/systems/current/config/modules.cfg"
 
 # Construct the system config tree from the users.cfg and apps.cfg files.
 echo '{ "users" ' > $sysConfigFile
@@ -70,43 +87,45 @@ echo ' }' >> $sysConfigFile
 rm $appsConfigFile $usersConfigFile $modsConfigFile
 
 # Make the directory and deploy the apps
-mkdir build/$target/readOnlyStaging/legato/systems/current/appsWriteable
-cd build/$target/readOnlyStaging/legato/systems/current/appsWriteable
+mkdir "${OUTPUT_DIR}/systems/current/appsWriteable"
+cd "${OUTPUT_DIR}/systems/current/appsWriteable"
 
 # Make the bin and lib directory
-for f in ../apps/*; do mkdir `basename $f` `basename $f`/bin `basename $f`/lib; done
+for f in ../apps/*; do
+    mkdir `basename $f` `basename $f`/bin `basename $f`/lib
+done
 
 # Perform some move of file and make useful links
 for f in *; do ln=`ls -l ../apps/$f | sed 's,^.*/legato/,,'`; echo $f $ln;
    for d in bin lib; do
-      for ff in ../../../../../readOnlyStaging/legato/$ln/read-only/$d/*; do
+      for ff in ../../../$ln/read-only/$d/*; do
          mv $ff `basename $f`/$d/.
          ln -s /legato/systems/current/appsWriteable/`basename $f`/$d/`basename $ff` \
-               ../../../../../readOnlyStaging/legato/$ln/read-only/$d/`basename $ff`
+               ../../../$ln/read-only/$d/`basename $ff`
       done
    done
    # Deploy read-only tree for an apps if it exists
-   if [ -d ../../../../../readOnlyStaging/legato/$ln/read-only/usr ]; then
+   if [ -d ../../../$ln/read-only/usr ]; then
      mkdir -p `basename $f`/usr/
-     for dd in `cd ../../../../../readOnlyStaging/legato/$ln/read-only/usr; find -type d`; do
+     for dd in `cd ../../../$ln/read-only/usr; find -type d`; do
         mkdir -p `basename $f`/usr/$dd
-        for ff in ../../../../../readOnlyStaging/legato/$ln/read-only/usr/$dd/*; do
+        for ff in ../../../$ln/read-only/usr/$dd/*; do
            [ -f $ff ] &&
               mv $ff `basename $f`/usr/$dd/. &&
               ln -s /legato/systems/current/appsWriteable/`basename $f`/usr/$dd/`basename $ff` \
-                    ../../../../../readOnlyStaging/legato/$ln/read-only/usr/$dd/`basename $ff`
+                    ../../../$ln/read-only/usr/$dd/`basename $ff`
         done
      done
    fi
    # Deploy writeable tree for an apps if it exists
-   if [ -d ../../../../../readOnlyStaging/legato/$ln/writeable ]; then
-     for dd in `cd ../../../../../readOnlyStaging/legato/$ln/writeable; find -type d`; do
+   if [ -d ../../../$ln/writeable ]; then
+     for dd in `cd ../../../$ln/writeable; find -type d`; do
         mkdir -p `basename $f`/$dd
-        for ff in ../../../../../readOnlyStaging/legato/$ln/writeable/$dd/*; do
+        for ff in ../../../$ln/writeable/$dd/*; do
            [ -f $ff ] &&
               mv $ff `basename $f`/$dd/. &&
               ln -s /legato/systems/current/appsWriteable/`basename $f`/$dd/`basename $ff` \
-                    ../../../../../readOnlyStaging/legato/$ln/writeable/$dd/`basename $ff`
+                    ../../../$ln/writeable/$dd/`basename $ff`
         done
      done
    fi
