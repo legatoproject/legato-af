@@ -30,11 +30,6 @@ add_legato_executable(${TEST_EXEC}
     component2.c
 )
 
-# Dependencies
-
-add_dependencies(${TEST_EXEC} logDaemon)
-add_dependencies(${TEST_EXEC} log)
-
 # Testing
 
 # FIXME: log tool has evolved and tests have not been updated
