@@ -1789,7 +1789,7 @@ le_result_t le_mdc_SetAPN
         return LE_FAULT;
     }
 
-    strncpy(profilePtr->modemData.apn, apnPtr, sizeof(profilePtr->modemData.apn));
+    le_utf8_Copy(profilePtr->modemData.apn, apnPtr, sizeof(profilePtr->modemData.apn), NULL);
 
     return pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
 }

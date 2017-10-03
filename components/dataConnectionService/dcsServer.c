@@ -1662,11 +1662,11 @@ static le_result_t SetDnsConfiguration
             return LE_FAULT;
         }
 
-        strncpy(InterfaceDataBackup.newDnsIPv4[0], dns1Addr,
-                sizeof(InterfaceDataBackup.newDnsIPv4[0]));
+        le_utf8_Copy(InterfaceDataBackup.newDnsIPv4[0], dns1Addr,
+                     sizeof(InterfaceDataBackup.newDnsIPv4[0]), NULL);
 
-        strncpy(InterfaceDataBackup.newDnsIPv4[1], dns2Addr,
-                sizeof(InterfaceDataBackup.newDnsIPv4[1]));
+        le_utf8_Copy(InterfaceDataBackup.newDnsIPv4[1], dns2Addr,
+                     sizeof(InterfaceDataBackup.newDnsIPv4[1]), NULL);
 
         // Add the DNS routes if necessary
         if (addDnsRoutes)
@@ -1700,11 +1700,11 @@ static le_result_t SetDnsConfiguration
             return LE_FAULT;
         }
 
-        strncpy(InterfaceDataBackup.newDnsIPv6[0], dns1Addr,
-                sizeof(InterfaceDataBackup.newDnsIPv6[0]));
+        le_utf8_Copy(InterfaceDataBackup.newDnsIPv6[0], dns1Addr,
+                     sizeof(InterfaceDataBackup.newDnsIPv6[0]), NULL);
 
-        strncpy(InterfaceDataBackup.newDnsIPv6[1], dns2Addr,
-                sizeof(InterfaceDataBackup.newDnsIPv6[1]));
+        le_utf8_Copy(InterfaceDataBackup.newDnsIPv6[1], dns2Addr,
+                     sizeof(InterfaceDataBackup.newDnsIPv6[1]), NULL);
 
         // Add the DNS routes if necessary
         if (addDnsRoutes)

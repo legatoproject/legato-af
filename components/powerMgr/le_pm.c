@@ -330,7 +330,7 @@ le_pm_WakeupSourceRef_t le_pm_NewWakeupSource(uint32_t opts, const char *tag)
     // Allocate and populate wakeup source record (exits on error)
     ws = (WakeupSource_t*)le_mem_ForceAlloc(PowerManager.lpool);
     ws->cookie = PM_WAKEUP_SOURCE_COOKIE;
-    strncpy(ws->name, name, sizeof(ws->name));
+    le_utf8_Copy(ws->name, name, sizeof(ws->name), NULL);
     ws->taken = 0;
     ws->pid = cl->pid;
     ws->isRef = (opts & LE_PM_REF_COUNT ? true : false);
