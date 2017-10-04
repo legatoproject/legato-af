@@ -75,10 +75,15 @@ void CheckBindingTarget
         auto ifMapIter = appPtr->externServerInterfaces.find(bindingPtr->serverIfName);
         if (ifMapIter == appPtr->externServerInterfaces.end())
         {
-            bindingPtr->parseTreePtr->ThrowException(
-                mk::format(LE_I18N("Binding to non-existent server interface '%s' on app '%s'."),
-                           bindingPtr->serverIfName, bindingPtr->serverAgentName)
-            );
+            ifMapIter = appPtr->preBuiltServerInterfaces.find(bindingPtr->serverIfName);
+
+            if(ifMapIter == appPtr->preBuiltServerInterfaces.end())
+            {
+                bindingPtr->parseTreePtr->ThrowException(
+                    mk::format(LE_I18N("Binding to non-existent server interface '%s' on app '%s'."),
+                               bindingPtr->serverIfName, bindingPtr->serverAgentName)
+                );
+            }
         }
     }
 }

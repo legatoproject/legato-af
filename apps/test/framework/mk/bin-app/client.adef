@@ -1,0 +1,25 @@
+
+version: 1.0
+
+executables:
+{
+    clientExe = ( clientComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( clientExe )
+    }
+}
+
+extern:
+{
+    clientExe.clientComponent.print
+}

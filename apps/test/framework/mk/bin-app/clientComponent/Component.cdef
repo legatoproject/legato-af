@@ -1,0 +1,13 @@
+
+sources:
+{
+    client.c
+}
+
+requires:
+{
+    api:
+    {
+        print = $CURDIR/../interfaces/greet.api
+    }
+}

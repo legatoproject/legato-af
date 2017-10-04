@@ -127,20 +127,29 @@ ApiServerInterfaceInstance_t* App_t::FindServerInterface
     }
     else
     {
-        // Find the component instance specified.
-        auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+        iter = preBuiltServerInterfaces.find(interfaceName);
 
-        // Find the interface in the component instance's list of server interfaces,
-        ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
-
-        if (ifInstancePtr == NULL)
+        if (iter != preBuiltServerInterfaces.end())
         {
-            interfaceTokenPtr->ThrowException(
-                              mk::format(LE_I18N("Server interface '%s' not found in component '%s'"
-                                                 " in executable '%s'."),
-                                         interfaceName,
-                                         componentName,
-                                         exeName));
+            ifInstancePtr = iter->second;
+        }
+        else
+        {
+            // Find the component instance specified.
+            auto componentInstancePtr = FindComponentInstance(exeTokenPtr, componentTokenPtr);
+
+            // Find the interface in the component instance's list of server interfaces,
+            ifInstancePtr = componentInstancePtr->FindServerInterface(interfaceName);
+
+            if (ifInstancePtr == NULL)
+            {
+                interfaceTokenPtr->ThrowException(
+                                  mk::format(LE_I18N("Server interface '%s' not found in component "
+                                                     "'%s' in executable '%s'."),
+                                             interfaceName,
+                                             componentName,
+                                             exeName));
+            }
         }
     }
 

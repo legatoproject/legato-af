@@ -86,10 +86,16 @@ ApiServerInterfaceInstance_t* System_t::FindServerInterface
 
     if (interfaceIter == appPtr->externServerInterfaces.end())
     {
-        interfaceTokenPtr->ThrowException(
-            mk::format(LE_I18N("No such external server-side interface '%s' on app '%s'."),
-                       interfaceName, appName)
-        );
+        // Didn't find in extern server interface, now search in preBuilt interfaces.
+        interfaceIter = appPtr->preBuiltServerInterfaces.find(interfaceName);
+
+        if (interfaceIter == appPtr->preBuiltServerInterfaces.end())
+        {
+            interfaceTokenPtr->ThrowException(
+                    mk::format(LE_I18N("No such external server-side interface '%s' on app '%s'."),
+                        interfaceName, appName)
+            );
+        }
     }
 
     return interfaceIter->second;

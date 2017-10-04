@@ -2,10 +2,12 @@
 apps:
 {
     ${HELLO_APP}
+    client.adef
 }
 
 bindings:
 {
     // Bind to the non-app user to make sure that this works.
     hello.le_info -> <root>.le_info
+    client.print -> hello.greeter
 }
