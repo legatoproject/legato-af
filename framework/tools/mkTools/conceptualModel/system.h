@@ -33,6 +33,8 @@ struct System_t : public HasTargetInfo_t
 
     std::map<std::string, Command_t*> commands; ///< Map of commands (key is command name).
 
+    std::string externalWatchdogKick; /// < External watchdog kick timer
+
     App_t* FindApp(const parseTree::Token_t* appTokenPtr);
 
     ApiServerInterfaceInstance_t* FindServerInterface(const parseTree::Token_t* appTokenPtr,

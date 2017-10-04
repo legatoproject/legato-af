@@ -1329,13 +1329,15 @@ static void FinishSystemUpdate
     const char* usersFilePath = "/legato/systems/current/config/users.cfg";
     const char* appsFilePath = "/legato/systems/current/config/apps.cfg";
     const char* modulesFilePath = "/legato/systems/current/config/modules.cfg";
+    const char* frameworkFilePath = "/legato/systems/current/config/framework.cfg";
 
     // If users.cfg, apps.cfg or modules.cfg exist in the directory containing the configuration data files,
     // import them into the system config tree to finish a previous update operation.
     bool usersFileExists = FileExists(usersFilePath);
     bool appsFileExists = FileExists(appsFilePath);
     bool modulesFileExists = FileExists(modulesFilePath);
-    if (usersFileExists || appsFileExists || modulesFileExists)
+    bool frameworkFileExists = FileExists(frameworkFilePath);
+    if (usersFileExists || appsFileExists || modulesFileExists || frameworkFileExists)
     {
         LE_INFO("Finishing system update...");
 
@@ -1347,6 +1349,7 @@ static void FinishSystemUpdate
         le_cfg_DeleteNode(i, "users");
         le_cfg_DeleteNode(i, "apps");
         le_cfg_DeleteNode(i, "modules");
+        le_cfg_DeleteNode(i, "framework");
         le_cfg_CommitTxn(i);
 
         i = le_cfg_CreateWriteTxn("");
@@ -1369,6 +1372,12 @@ static void FinishSystemUpdate
             ImportFile(i, modulesFilePath, "modules");
         }
 
+        if (frameworkFileExists)
+        {
+            LE_INFO("Importing file '%s' into system:/framework", frameworkFilePath);
+            ImportFile(i, frameworkFilePath, "framework");
+        }
+
         le_cfg_CommitTxn(i);
 
         // Cleanup unnecessary trees copied from old system.
@@ -1383,6 +1392,7 @@ static void FinishSystemUpdate
         DeleteFile(usersFilePath);
         DeleteFile(appsFilePath);
         DeleteFile(modulesFilePath);
+        DeleteFile(frameworkFilePath);
 
         LE_INFO("System update finished.");
     }

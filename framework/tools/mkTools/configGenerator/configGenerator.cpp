@@ -1029,6 +1029,64 @@ static void GenerateAppsConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate the externalWatchdogKick configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateExternalWatchdogKickConfig
+(
+    std::ofstream& cfgStream,
+    const model::System_t* systemPtr
+)
+{
+    if (systemPtr->externalWatchdogKick != "")
+    {
+        cfgStream << "\"externalWatchdogKick\" [" << systemPtr->externalWatchdogKick << "]" << std::endl;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate the framework watchdog configuration settings file "framework.cfg" in the "config"
+ * directory of the system's staging directory.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GenerateFrameworkConfig
+(
+    model::System_t* systemPtr,     ///< The system to generate the configuration for.
+    const mk::BuildParams_t& buildParams
+)
+//--------------------------------------------------------------------------------------------------
+{
+    std::string filePath = path::Combine(buildParams.workingDir, "staging/config/framework.cfg");
+
+    if (buildParams.beVerbose)
+    {
+        std::cout << mk::format(LE_I18N("Generating watchdog configuration data in file '%s'."),
+                                filePath)
+                  << std::endl;
+    }
+
+
+    std::ofstream cfgStream(filePath, std::ofstream::trunc);
+
+    if (cfgStream.is_open() == false)
+    {
+        throw mk::Exception_t(
+            mk::format(LE_I18N("Could not open '%s' for writing."), filePath)
+        );
+    }
+
+    cfgStream << "{" << std::endl;
+
+    GenerateExternalWatchdogKickConfig(cfgStream, systemPtr);
+
+    cfgStream << "}" << std::endl;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate the configuration that the framework needs for a given system.  This is the
  * configuration that will be installed in the system configuration tree by the installer when
  * the system starts for the first time on the target.  It will be output to two files called
@@ -1052,6 +1110,8 @@ void Generate
     GenerateUsersConfig(systemPtr, buildParams);
 
     GenerateAppsConfig(systemPtr, buildParams);
+
+    GenerateFrameworkConfig(systemPtr, buildParams);
 }
 
 

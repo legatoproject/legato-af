@@ -875,6 +875,23 @@ static void GetToolFlags
     }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add external watchdog kick timer to system config
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetExternalWdogKick
+(
+    model::System_t* systemPtr,
+    const parseTree::TokenList_t* sectionPtr
+)
+{
+    auto& value = ToSimpleSectionPtr(sectionPtr)->Text();
+    systemPtr->externalWatchdogKick = value;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Get a conceptual model for a system whose .sdef file can be found at a given path.
@@ -959,6 +976,10 @@ model::System_t* GetSystem
         {
             GetInterfaceSearchDirs(buildParams,
                                    ToTokenListPtr(sectionPtr));
+        }
+        else if (sectionName == "externalWatchdogKick")
+        {
+            GetExternalWdogKick(systemPtr, ToTokenListPtr(sectionPtr));
         }
         else
         {

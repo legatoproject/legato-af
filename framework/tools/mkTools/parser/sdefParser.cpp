@@ -489,6 +489,10 @@ static parseTree::CompoundItem_t* ParseSection
     {
         return ParseTokenListSection(lexer, sectionNameTokenPtr, parseTree::Token_t::FILE_PATH);
     }
+    else if (sectionName == "externalWatchdogKick")
+    {
+        return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
     else
     {
         lexer.ThrowException(
