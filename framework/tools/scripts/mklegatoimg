@@ -20,7 +20,7 @@ help_long_description=(
 " - -o [OUTPUT_DIR]: output directory where the image will be stored"
 " - -S [SUFFIX]: suffix to add to images generated in case of several images"
 " - -a: set SMACK attributes if defined in targetDefs files"
-" - -s: strip libraries and binaries"
+" - -s: strip libraries and binaries but preserve kernel modules"
 ""
 "For ar7/ar86/wp85/wp750x/wp76xx/wp77xx/em75xx targets:"
 ""
@@ -143,7 +143,14 @@ StripExeAndLibs() {
     for file in $(find $STAGING_DIR -type f); do
         if [ -n "$(${NM} ${file} 2>/dev/null)" ]; then
             echo "Stripping $file"
-            ${STRIP} ${file}
+            case "$file" in
+                *.ko)
+                    ${STRIP} --strip-unneeded ${file}
+                    ;;
+                *)
+                    ${STRIP} ${file}
+                    ;;
+            esac
         fi
     done
 }
