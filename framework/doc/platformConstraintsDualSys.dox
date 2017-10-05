@@ -115,10 +115,10 @@ The statusLabel string returns by le_fwupdate_GetUpdateStatus() can be:
     - "boot_2"
     - "system_1"
     - "system_2"
-    - "lefwkro1"
-    - "lefwkro2"
-    - "customer_1"
-    - "customer_2"
+    - "lefwkro_1"
+    - "lefwkro_2"
+    - "customer0"
+    - "customer1"
 
 <HR>
 

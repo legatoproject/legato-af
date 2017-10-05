@@ -10,23 +10,38 @@ details.
 @warning This service is not supported on all platforms.
 
 - The image names for AR759x/AR758x can be:
-    - "sbl"
-    - "tz_1"
-    - "tz_2"
-    - "rpm_1"
-    - "rpm_2"
-    - "modem_1"
-    - "modem_2"
-    - "aboot_1"
-    - "aboot_2"
-    - "boot_1"
-    - "boot_2"
-    - "system_1"
-    - "system_2"
-    - "lefwkro_1"
-    - "lefwkro_2"
-    - "customer_0"
-    - "customer_1"
+
+@note
+    Partitions names strings construction:
+
+    - For duplicates partitions of dual systems, the names follow the syntax:
+      <partitionName>_<systemNumber><br>
+      For instance, modem_1 refers to modem partition of system 1, modem_2 refers to modem partition
+      of system 2
+    - For common partitions, the name string syntax is: <partitionName>
+
+Possible values returned by handler of type le_flash_BadImageDetectionHandlerRef_t:
+<center>
+    | API partition name | mtd name  |
+    |:                  :|:         :|
+    | sbl                | sbl       |
+    | tz_1               | tz        |
+    | tz_2               | tz        |
+    | rpm_1              | rpm       |
+    | rpm_2              | rpm       |
+    | modem_1            | modem     |
+    | modem_2            | modem2    |
+    | aboot_1            | aboot     |
+    | aboot_2            | aboot2    |
+    | boot_1             | boot      |
+    | boot_2             | boot2     |
+    | system_1           | system    |
+    | system_2           | system2   |
+    | lefwkro_1          | lefwkro   |
+    | lefwkro_2          | lefwkro2  |
+    | customer0          | customer0 |
+    | customer1          | customer1 |
+</center>
 
 <HR>
 
