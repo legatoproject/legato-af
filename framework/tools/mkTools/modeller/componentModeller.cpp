@@ -604,6 +604,13 @@ static void AddRequiredLib
         // so this has to be linked with the executable at the last linking stage.
         if (path::HasSuffix(lib, ".a"))
         {
+            // Assume relative paths are build outputs, and should be searched in generated
+            // library search path
+            if (lib.find('/') == std::string::npos)
+            {
+                lib = "-l" + path::GetLibShortName(lib);
+            }
+
             componentPtr->staticLibs.insert(lib);
         }
         // If it's not a .a file,
@@ -625,10 +632,10 @@ static void AddRequiredLib
 
                     // Add a -L ldflag for the directory that the library is in.
                     componentPtr->ldFlags.push_back("-L" + path::GetContainingDir(libPath));
-
-                    // Compute the short name for this library.
-                    lib = path::GetLibShortName(lib);
                 }
+
+                // Compute the short name for this library.
+                lib = path::GetLibShortName(lib);
             }
 
             // Add a -l option to the component's LDFLAGS.

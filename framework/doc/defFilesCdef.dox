@@ -158,6 +158,10 @@ packages based on GNU autotools.  See example below.
 bundles: file: section.  To avoid compiling successfully even though expected files are
 missing, bundles: dir: sections cannot be used.
 
+To use a library built from a component with an externalBuild section, two things need
+to be done.  The component needs to be added to the requires: component: section, and
+the library has to be added to requires: lib: section.
+
 For example, suppose a component requires the libwarpspeed.so library, which is a third-party
 library built using autoconf and make.  First create a Component.cdef for the warpspeed library in
 that library's directory:

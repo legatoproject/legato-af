@@ -54,6 +54,9 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
 
         virtual void GenerateLdFlagsDef(model::Component_t* componentPtr);
         virtual void GetDependentLibLdFlags(model::Component_t* componentPtr);
+        virtual void GetDependentLibLdFlags(model::Component_t* componentPtr,
+                                            std::set<model::Component_t*>& addedComponents,
+                                            std::string& ldFlags);
         virtual void GenerateComponentLinkStatement(model::Component_t* componentPtr);
 
         virtual void GenerateCommentHeader(model::Component_t* componentPtr);

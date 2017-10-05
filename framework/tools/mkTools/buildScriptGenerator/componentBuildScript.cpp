@@ -253,31 +253,64 @@ void ComponentBuildScriptGenerator_t::GetDependentLibLdFlags
 )
 //--------------------------------------------------------------------------------------------------
 {
+    // List of already handled components so we don't add flags for the same component twice
+    std::set<model::Component_t*> addedComponents;
+    std::string ldFlags;
+
+    GetDependentLibLdFlags(componentPtr, addedComponents, ldFlags);
+
+    script << ldFlags;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print to a given build script the ldFlags variable contents needed to tell the linker to link
+ * with libraries that a given Component depends on.
+ *
+ * @note This is recursive if the component depends on any other components.
+ **/
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GetDependentLibLdFlags
+(
+    model::Component_t* componentPtr,
+    std::set<model::Component_t*>& addedComponents,
+    std::string& ldFlags
+)
+//--------------------------------------------------------------------------------------------------
+{
     for (auto subComponentPtr : componentPtr->subComponents)
     {
+        // If code is already generated for this component, skip it.
+        if (addedComponents.find(subComponentPtr) != addedComponents.end())
+        {
+            continue;
+        }
+
+        // Link with whatever this component depends on.
+        GetDependentLibLdFlags(subComponentPtr, addedComponents, ldFlags);
+
         // If the component has itself been built into a library, link with that.
         if (subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib != "")
         {
-            script << " \"-L"
-                   << path::GetContainingDir(
-                       subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
-                      )
-                   << "\"";
-
-            script << " -l"
-                   << path::GetLibShortName(
-                       subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
-                   );
+            ldFlags = std::string(" \"-L")
+                + path::GetContainingDir(
+                    subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+                )
+                + "\""
+                + " -l"
+                + path::GetLibShortName(
+                    subComponentPtr->getTargetInfo<target::LinuxComponentInfo_t>()->lib
+                )
+                + ldFlags;
         }
 
         // If the component has an external build, add the external build's working directory.
         if (subComponentPtr->HasExternalBuild())
         {
-            script << " \"-L$builddir" << subComponentPtr->dir << "\"";
+            ldFlags = " \"-L" + path::Combine(buildParams.workingDir,
+                                              subComponentPtr->workingDir) + "\"" + ldFlags;
         }
-
-        // Link with whatever this component depends on.
-        GetDependentLibLdFlags(subComponentPtr);
     }
 }
 
@@ -490,7 +523,6 @@ void ComponentBuildScriptGenerator_t::GenerateComponentLinkStatement
     // Add implicit dependencies.
     script << " |";
     GetImplicitDependencies(componentPtr);
-    GetExternalDependencies(componentPtr);
     script << "\n";
 
     // Define the ldFlags variable.
@@ -750,11 +782,17 @@ void ComponentBuildScriptGenerator_t::GenerateBuildStatements
         {
             script << "build " << componentPtr->name << "ExternalBuild_line"
                    << lineno
-                   << " : BuildExternal";
+                   << " : BuildExternal | ";
             if (0 != lineno)
             {
-                script << " | " << componentPtr->name << "ExternalBuild_line" << (lineno - 1);
+                script << componentPtr->name << "ExternalBuild_line" << (lineno - 1);
             }
+            else
+            {
+                // First line of an external build depends on the required components.
+                GetImplicitDependencies(componentPtr);
+            }
+
             script << std::endl;
             script << "  workingdir = " << componentPtr->workingDir << std::endl
                    << "  externalCommand = " << EscapeString(*commandPtr) << std::endl;

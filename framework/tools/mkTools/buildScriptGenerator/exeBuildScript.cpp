@@ -89,6 +89,13 @@ void ExeBuildScriptGenerator_t::GetDependentLibLdFlags
             script << " -l" << path::GetLibShortName(lib);
         }
 
+        // If the component has an external build, add the external build's working directory.
+        if (componentPtr->HasExternalBuild())
+        {
+            script << " \"-L" << path::Combine(buildParams.workingDir,
+                                               componentPtr->workingDir) << "\"";
+        }
+
         // If the component has ldFlags defined in its .cdef file, add those too.
         for (auto& arg : componentPtr->ldFlags)
         {
@@ -175,21 +182,27 @@ void ExeBuildScriptGenerator_t::GenerateBuildStatement
     }
 
     // Add the library output directory to the list of places to search for libraries to link with.
-    script << " -L" << buildParams.libOutputDir;
+    if (!buildParams.libOutputDir.empty())
+    {
+        script << " -L" << buildParams.libOutputDir;
+    }
 
     // Include a list of -l directives for all the libraries the executable needs.
     GetDependentLibLdFlags(exePtr);
 
-    // Link again with all the static libraries that the components need, in case there are
-    // dynamic libraries that need symbols from them, or in case there are interdependencies
-    // between them.
-    for (const auto& lib : staticLibs)
+    if (!staticLibs.empty())
     {
-        script << " " << lib;
-    }
+        // Link again with all the static libraries that the components need, in case there are
+        // dynamic libraries that need symbols from them, or in case there are interdependencies
+        // between them.
+        for (const auto& lib : staticLibs)
+        {
+            script << " " << lib;
+        }
 
-    // Include another list of -l directives for all the libraries the executable needs.
-    GetDependentLibLdFlags(exePtr);
+        // Include another list of -l directives for all the libraries the executable needs.
+        GetDependentLibLdFlags(exePtr);
+    }
 
     // Link with the standard runtime libs.
     script << " \"-L$$LEGATO_BUILD/framework/lib\" -llegato -lpthread -lrt -ldl -lm";
