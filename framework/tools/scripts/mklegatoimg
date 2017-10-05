@@ -447,11 +447,20 @@ CreateImg_mdm9x28() {
         ar758x)
             WITH_DM_VERITY=true
             ;;
-        wp76xx|wp77xx)
+        wp76xx)
             img_indexes+=(1)
             page_size[1]=2048
             pid[0]='Y921'
             pid[1]='Y922'
+            oob_size[1]=80
+            peb_size[1]=128KiB
+            ;;
+        wp77xx)
+            PLATFORM='9X06'
+            img_indexes+=(1)
+            page_size[1]=2048
+            pid[0]='Y931'
+            pid[1]='Y932'
             oob_size[1]=80
             peb_size[1]=128KiB
             ;;
