@@ -19,6 +19,7 @@ requires:
 
     component:
     {
+        $LEGATO_DCS_PA_DEFAULT
         $LEGATO_DCS_PA
     }
 }

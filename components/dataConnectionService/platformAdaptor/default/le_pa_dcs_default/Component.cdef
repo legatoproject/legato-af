@@ -1,0 +1,17 @@
+sources:
+{
+    pa_dcs_default.c
+}
+
+cflags:
+{
+    -I$LEGATO_ROOT/components/dataConnectionService/platformAdaptor/inc
+}
+
+requires:
+{
+    api:
+    {
+        le_mdc.api      [types-only]
+    }
+}

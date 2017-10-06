@@ -13,7 +13,7 @@ requires:
 
 sources:
 {
-    ${LEGATO_ROOT}/components/dataConnectionService/dcsServer.c
+    ${LEGATO_ROOT}/components/dataConnectionService/dcsDaemon/dcsServer.c
     dataConnection_stub.c
 }
 

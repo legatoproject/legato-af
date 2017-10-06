@@ -18,6 +18,8 @@ buildVars:
     LEGATO_GNSS_PA = ''
     LEGATO_MODEM_PA = ''
     LEGATO_MODEM_PA_ECALL = ''
+    LEGATO_MODEM_PA_RSIM = ''
+    LEGATO_DCS_PA = ''
     LEGATO_SECSTORE_PA = ''
     LEGATO_FWUPDATE_PA = ''
     LEGATO_UARTMODE_PA = ''
@@ -36,6 +38,8 @@ buildVars:
         ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_default
     LEGATO_MODEM_PA_ECALL_DEFAULT =
         ${LEGATO_ROOT}/components/modemServices/platformAdaptor/default/le_pa_ecall_default
+    LEGATO_DCS_PA_DEFAULT =
+        ${LEGATO_ROOT}/components/dataConnectionService/platformAdaptor/default/le_pa_dcs_default
     LEGATO_SECSTORE_PA_DEFAULT =
         ${LEGATO_ROOT}/components/secStore/platformAdaptor/default/le_pa_secStore_default
     LEGATO_FWUPDATE_PA_DEFAULT =

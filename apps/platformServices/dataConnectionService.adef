@@ -2,7 +2,7 @@ sandboxed: false
 
 executables:
 {
-    dcsDaemon = ( $LEGATO_ROOT/components/dataConnectionService )
+    dcsDaemon = ( $LEGATO_ROOT/components/dataConnectionService/dcsDaemon )
 }
 
 processes:
@@ -17,10 +17,10 @@ processes:
 
 bindings:
 {
-    dcsDaemon.dataConnectionService.le_mdc -> modemService.le_mdc
-    dcsDaemon.dataConnectionService.le_mrc -> modemService.le_mrc
-    dcsDaemon.dataConnectionService.le_cellnet -> cellNetService.le_cellnet
-    dcsDaemon.dataConnectionService.le_wifiClient -> <root>.le_wifiClient
+    dcsDaemon.dcsDaemon.le_mdc -> modemService.le_mdc
+    dcsDaemon.dcsDaemon.le_mrc -> modemService.le_mrc
+    dcsDaemon.dcsDaemon.le_cellnet -> cellNetService.le_cellnet
+    dcsDaemon.dcsDaemon.le_wifiClient -> <root>.le_wifiClient
 }
 
 requires:
@@ -33,5 +33,5 @@ requires:
 
 extern:
 {
-    dcsDaemon.dataConnectionService.le_data
+    dcsDaemon.dcsDaemon.le_data
 }

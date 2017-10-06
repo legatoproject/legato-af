@@ -27,62 +27,8 @@
  * Copyright (C) Sierra Wireless Inc.
  */
 
-
-#ifndef LEGATO_PA_DCS_INCLUDE_GUARD
-#define LEGATO_PA_DCS_INCLUDE_GUARD
-
 #include "legato.h"
-#include "interfaces.h"
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Enumeration for the routing actions
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    PA_DCS_ROUTE_ADD,      ///< Add a route
-    PA_DCS_ROUTE_DELETE    ///< Delete a route
-}
-pa_dcs_RouteAction_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Data associated to retrieve the state before the DCS started managing the default connection
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    char defaultGateway[LE_MDC_IPV6_ADDR_MAX_BYTES];
-    char defaultInterface[20];
-    char newDnsIPv4[2][LE_MDC_IPV4_ADDR_MAX_BYTES];
-    char newDnsIPv6[2][LE_MDC_IPV6_ADDR_MAX_BYTES];
-}
-pa_dcs_InterfaceDataBackup_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Data associated to retrieve the time from a time server
- */
-//--------------------------------------------------------------------------------------------------
-typedef struct
-{
-    int msec;   ///< Milliseconds [0-999]
-    int sec;    ///< Seconds      [0-60]
-    int min;    ///< Minutes      [0-59]
-    int hour;   ///< Hours        [0-23]
-    int day;    ///< Day          [1-31]
-    int mon;    ///< Month        [0-11]
-    int year;   ///< Year
-}
-pa_dcs_TimeStruct_t;
-
-/*********************************************************
- *
- *     APIs
- *
- *********************************************************
- */
+#include "pa_dcs.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -95,10 +41,14 @@ pa_dcs_TimeStruct_t;
  *
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_AskForIpAddress
+le_result_t pa_dcs_AskForIpAddress
 (
     const char* interfaceStrPtr
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -110,22 +60,29 @@ LE_SHARED le_result_t pa_dcs_AskForIpAddress
  *      LE_UNSUPPORTED  Function not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_SetDefaultGateway
+le_result_t pa_dcs_SetDefaultGateway
 (
     const char*  interfacePtr,   ///< [IN] Pointer on the interface name
     const char*  gatewayPtr,     ///< [IN] Pointer on the gateway name
     bool         isIpv6          ///< [IN] IPv6 or not
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Save the default route
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_dcs_SaveDefaultGateway
+void pa_dcs_SaveDefaultGateway
 (
     pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -137,22 +94,29 @@ LE_SHARED void pa_dcs_SaveDefaultGateway
  *      LE_UNSUPPORTED  Function not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_ChangeRoute
+le_result_t pa_dcs_ChangeRoute
 (
     pa_dcs_RouteAction_t   routeAction,
     const char*            ipDestAddrStrPtr,
     const char*            interfaceStrPtr
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Used the data backup upon connection to remove DNS entries locally added
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
+void pa_dcs_RestoreInitialDnsNameServers
 (
     pa_dcs_InterfaceDataBackup_t*  interfaceDataBackupPtr
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -164,11 +128,15 @@ LE_SHARED void pa_dcs_RestoreInitialDnsNameServers
  *      LE_UNSUPPORTED  Function not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_SetDnsNameServers
+le_result_t pa_dcs_SetDnsNameServers
 (
     const char* dns1Ptr,    ///< [IN] Pointer on first DNS address
     const char* dns2Ptr     ///< [IN] Pointer on second DNS address
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -181,11 +149,15 @@ LE_SHARED le_result_t pa_dcs_SetDnsNameServers
  *      - LE_UNSUPPORTED    Function not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_GetTimeWithTimeProtocol
+le_result_t pa_dcs_GetTimeWithTimeProtocol
 (
     const char* serverStrPtr,       ///< [IN]  Time server
     pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -198,10 +170,17 @@ LE_SHARED le_result_t pa_dcs_GetTimeWithTimeProtocol
  *      - LE_UNSUPPORTED    Function not supported by the target
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
+le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
 (
     const char* serverStrPtr,       ///< [IN]  Time server
     pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
-);
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
 
-#endif
+COMPONENT_INIT
+{
+}
+
