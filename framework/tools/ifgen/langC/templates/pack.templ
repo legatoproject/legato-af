@@ -177,7 +177,7 @@
     {%- elif parameter.apiType is BasicType and parameter.apiType.name == 'file' %}
     if ({{parameter|FormatParameterName}})
     {
-        *{{parameter|FormatParameterName}} = le_msg_GetFd(_msgRef);
+        *{{parameter|FormatParameterName}} = le_msg_GetFd(_responseMsgRef);
     }
     {%- else %}
     if ({{parameter|FormatParameterName}} &&
