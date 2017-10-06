@@ -11,6 +11,9 @@ buildVars:
     // Use simu PAs temporarily
     LEGATO_SECSTORE_PA = ${PA_DIR}/simu/components/le_pa_secStore
 
+    // Use Linux PAs
+    LEGATO_DCS_PA = ${LEGATO_LINUX_DCS_PA}
+
     // Comment following lines to disable time series. When time series is enabled,
     // Yocto image has to be updated on device through FOTA to include the libraries
     // needed for time series.
