@@ -77,7 +77,7 @@ ifneq ($(STRIP_STAGING_TREE),0)
 endif
 
 ifneq ($(DEBUG),yes)
-  LOCAL_MKTOOLS_FLAGS += --cflags=-O2
+  LOCAL_MKTOOLS_FLAGS += --cflags=" -O2 -fno-omit-frame-pointer"
 endif
 
 # Do not be verbose by default.

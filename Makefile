@@ -379,7 +379,7 @@ endif
 
 ifneq ($(DEBUG),yes)
   # Optimize release builds
-  MKSYS_FLAGS += --cflags=-O2
+  MKSYS_FLAGS += --cflags="-O2 -fno-omit-frame-pointer"
 endif
 
 ifeq ($(TEST_COVERAGE),1)

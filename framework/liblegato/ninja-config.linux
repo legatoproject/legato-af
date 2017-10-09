@@ -40,7 +40,7 @@ fi
 
 # Enable optimization flags
 if [ "$DEBUG" != "yes" ]; then
-    NINJA_CFLAGS="$NINJA_CFLAGS -O2"
+    NINJA_CFLAGS="$NINJA_CFLAGS -O2 -fno-omit-frame-pointer"
 fi
 
 LIBLEGATO=$LIB_DIR/liblegato.so
