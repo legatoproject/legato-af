@@ -87,6 +87,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of messages for message box.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_MBOX_SIZE     100
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of message box configuration path.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_MBOX_CONFIG_PATH_LEN 100
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum number of Message List objects we expect to have at one time.
  */
 //--------------------------------------------------------------------------------------------------
@@ -2892,4 +2906,117 @@ void SmsInbox_MarkUnread
     {
         LE_ERROR("Error in ModifyMsgEntry");
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the maximum number of messages for message box.
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message box name is invalid.
+ *  - LE_OVERFLOW      Message count exceed the maximum limit.
+ *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SmsInbox_SetMaxMessages
+(
+    const char* mboxNamePtr,
+        ///< [IN]
+        ///< Message box name
+
+    uint32_t maxMessageCount
+        ///< [IN]
+        ///< Maximum number of messages
+)
+{
+    if (NULL == mboxNamePtr)
+    {
+        LE_ERROR("No mbox name");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (maxMessageCount > MAX_MBOX_SIZE)
+    {
+        LE_ERROR("Maximum number of messages is greater than max limit: %d", MAX_MBOX_SIZE);
+        return LE_OVERFLOW;
+    }
+
+    int i;
+
+    for (i = 0; i < MAX_APPS; i++)
+    {
+        if ((Apps[i].namePtr) && (0 == strcmp(Apps[i].namePtr, mboxNamePtr)))
+        {
+            char mboxConfigPath[MAX_MBOX_CONFIG_PATH_LEN];
+
+            memset(mboxConfigPath, 0, MAX_MBOX_CONFIG_PATH_LEN);
+            snprintf(mboxConfigPath, sizeof(mboxConfigPath), "%s/%s/%s",
+                                                             CFG_SMSINBOX_PATH,
+                                                             CFG_NODE_APPS,
+                                                             mboxNamePtr);
+
+            le_cfg_IteratorRef_t appIter = le_cfg_CreateWriteTxn(mboxConfigPath);
+            Apps[i].inboxSize = maxMessageCount;
+            le_cfg_SetInt(appIter, "", Apps[i].inboxSize);
+            le_cfg_CommitTxn(appIter);
+
+            return LE_OK;
+        }
+    }
+
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the maximum number of messages for message box.
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message box name is invalid.
+ *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SmsInbox_GetMaxMessages
+(
+    const char* mboxNamePtr,
+        ///< [IN]
+        ///< Message box name
+
+    uint32_t* maxMessageCountPtr
+        ///< [OUT]
+        ///< Maximum number of messages
+)
+{
+    if (NULL == mboxNamePtr)
+    {
+        LE_ERROR("No mbox name");
+        return LE_BAD_PARAMETER;
+    }
+
+    int i;
+
+    for (i = 0; i < MAX_APPS; i++)
+    {
+        if ((Apps[i].namePtr) && (0 == strcmp(Apps[i].namePtr, mboxNamePtr)))
+        {
+            char mboxConfigPath[MAX_MBOX_CONFIG_PATH_LEN];
+
+            memset(mboxConfigPath, 0, MAX_MBOX_CONFIG_PATH_LEN);
+            snprintf(mboxConfigPath, sizeof(mboxConfigPath), "%s/%s/%s",
+                                                             CFG_SMSINBOX_PATH,
+                                                             CFG_NODE_APPS,
+                                                             mboxNamePtr);
+
+            le_cfg_IteratorRef_t appIter = le_cfg_CreateReadTxn(mboxConfigPath);
+            *maxMessageCountPtr = le_cfg_GetInt(appIter, "", 0);
+            le_cfg_CancelTxn(appIter);
+
+            return LE_OK;
+        }
+    }
+
+    return LE_FAULT;
+
 }

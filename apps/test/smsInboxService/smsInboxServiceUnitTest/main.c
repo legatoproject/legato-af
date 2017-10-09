@@ -26,6 +26,7 @@
 #define MAX_FILE_PATH_LEN       512
 #define MAX_SIMU_PATH_LEN       20
 #define MAX_CMD_ARG             5
+#define MAX_MESSAGE_COUNT       50
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -468,6 +469,38 @@ static void Simulate_smsInbox_msgFileInit
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Simulate smsInbox set Maximum messages supported for message box.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_smsInbox_SetMaxMessages
+(
+    uint32_t maxMessageCount
+)
+{
+    LE_INFO("Set Maximum number of messages for message box");
+    LE_ASSERT_OK(le_smsInbox1_SetMaxMessages(maxMessageCount));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Simulate smsInbox get Maximum messages supported for message box.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_smsInbox_GetMaxMessages
+(
+    void
+)
+{
+    uint32_t maxMessageCount;
+
+    LE_INFO("Get Maximum number of messages for message box");
+    LE_ASSERT_OK(le_smsInbox1_GetMaxMessages(&maxMessageCount));
+
+    LE_ASSERT(maxMessageCount == MAX_MESSAGE_COUNT);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * main of the test
  */
 //--------------------------------------------------------------------------------------------------
@@ -522,6 +555,12 @@ COMPONENT_INIT
 
     LE_INFO("======== smsInbox Open test ========");
     Testle_smsInbox_Open();
+
+    LE_INFO("======== smsInbox SetMaxMessages test ========");
+    Testle_smsInbox_SetMaxMessages(MAX_MESSAGE_COUNT);
+
+    LE_INFO("======== smsInbox GetMaxMessages test ========");
+    Testle_smsInbox_GetMaxMessages();
 
     LE_INFO("======== smsInbox GetFirst Msg test ========");
     Testle_smsInbox_GetFirst();

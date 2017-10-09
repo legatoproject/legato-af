@@ -513,5 +513,47 @@ void SmsInbox_CloseSessionEventHandler
         ///< context pointer.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the maximum number of messages for message box.
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message box name is invalid.
+ *  - LE_OVERFLOW      Message count exceed the maximum limit.
+ *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SmsInbox_SetMaxMessages
+(
+    const char* mboxNamePtr,
+        ///< [IN]
+        ///< Message box name
+
+    uint32_t maxMessageCount
+        ///< [IN]
+        ///< Maximum number of messages
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the maximum number of messages for message box.
+ *
+ * @return
+ *  - LE_BAD_PARAMETER The message box name is invalid.
+ *  - LE_OK            Function succeeded.
+ *  - LE_FAULT         Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SmsInbox_GetMaxMessages
+(
+    const char* mboxNamePtr,
+        ///< [IN]
+        ///< Message box name
+
+    uint32_t* maxMessageCountPtr
+        ///< [OUT]
+        ///< Maximum number of messages
+);
 #endif // SMSINBOX_H_INCLUDE_GUARD
 

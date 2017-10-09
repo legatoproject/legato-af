@@ -27,7 +27,7 @@ requires:
 {
     configTree:
     {
-        [r] .
+        [w] .
     }
 }
 

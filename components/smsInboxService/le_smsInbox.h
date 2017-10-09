@@ -349,5 +349,37 @@ void LE_NAME##_MarkUnread \
 { \
     return SmsInbox_MarkUnread((SmsInbox_SessionRef_t)LE_NAME##Ref, msgId); \
 } \
+\
+/** \
+ * Set the maximum number of messages for message box. \
+ * \
+ * @return \
+ *  - LE_BAD_PARAMETER The message box name is invalid. \
+ *  - LE_OVERFLOW      Message count exceed the maximum limit. \
+ *  - LE_OK            Function succeeded. \
+ *  - LE_FAULT         Function failed. \
+ */ \
+le_result_t LE_NAME##_SetMaxMessages \
+( \
+    uint32_t maxMessageCount \
+) \
+{ \
+    return SmsInbox_SetMaxMessages(#LE_NAME, maxMessageCount); \
+} \
+/** \
+ * Get the maximum number of messages for message box. \
+ * \
+ * @return \
+ *  - LE_BAD_PARAMETER The message box name is invalid. \
+ *  - LE_OK            Function succeeded. \
+ *  - LE_FAULT         Function failed. \
+ */ \
+le_result_t LE_NAME##_GetMaxMessages \
+( \
+    uint32_t* maxMessageCountPtr \
+) \
+{ \
+    return SmsInbox_GetMaxMessages(#LE_NAME, maxMessageCountPtr); \
+} \
 
 #endif

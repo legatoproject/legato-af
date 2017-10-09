@@ -272,4 +272,62 @@ void le_cfg_CancelTxn
     le_cfg_IteratorRef_t iteratorRef
         ///< [IN] Iterator object to close.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write a signed integer value to the config tree. Only valid during a
+ * write transaction.
+ *
+ * If the path is empty, the iterator's current node will be set.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_SetInt
+(
+    le_cfg_IteratorRef_t iteratorRef,
+        ///< [IN]
+        ///< Iterator to use as a basis for the transaction.
+
+    const char* path,
+        ///< [IN]
+        ///< Path to the target node. Can be an absolute path, or
+        ///< a path relative from the iterator's current position.
+
+    int32_t value
+        ///< [IN]
+        ///< Value to write.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close the write iterator and commit the write transaction. This updates the config tree
+ * with all of the writes that occured using the iterator.
+ *
+ * @note This operation will also delete the iterator object.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_cfg_CommitTxn
+(
+    le_cfg_IteratorRef_t iteratorRef
+        ///< [IN]
+        ///< Iterator object to commit.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Create a read transaction and open a new iterator for traversing the config tree.
+ *
+ * @note This action creates a read lock on the given tree, which will start a read-timeout.
+ *        Once the read timeout expires, all active read iterators on that tree will be
+ *        expired and the clients will be killed.
+ *
+ * @note A tree transaction is global to that tree; a long-held read transaction will block other
+ *        user's write transactions from being committed.
+ *
+ * @return This will return a newly created iterator reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_cfg_IteratorRef_t le_cfg_CreateReadTxn
+(
+    const char* basePath    ///< [IN] Path to the location to create the new iterator.
+);
 #endif /* interfaces.h */
