@@ -125,7 +125,9 @@ bool le_clk_GreaterThan
 {
     // Only compare usec if the sec are the same
     if (timeA.sec == timeB.sec)
+    {
         return (timeA.usec > timeB.usec);
+    }
 
     return (timeA.sec > timeB.sec);
 }
@@ -229,7 +231,7 @@ le_clk_Time_t le_clk_Multiply
 static le_result_t FormatBrokenTime
 (
     le_clk_Time_t absoluteTime,    ///< [IN]  Absolute time.
-    struct tm brokenTime,          ///< [IN}  The broken-down time based on the absolute time.
+    struct tm brokenTime,          ///< [IN]  The broken-down time based on the absolute time.
     const char* formatSpecStrPtr,  ///< [IN]  Format specifier string, using conversion
                                    ///        specifiers defined for strftime().
     char*   destStrPtr,            ///< [OUT] Destination for the formatted date/time string
@@ -243,8 +245,8 @@ static le_result_t FormatBrokenTime
     // should fit in destStr, then destSize is a reasonable upper limit for the temp buffer size.
     size_t copySize = destSize;
     char copyFormatSpecStr[copySize];
-    size_t origIdx;
-    size_t copyIdx;
+    size_t origIdx = 0;
+    size_t copyIdx = 0;
     size_t numChars;
     int charsLeft;
     int charsPrinted;
@@ -252,23 +254,24 @@ static le_result_t FormatBrokenTime
     // Set to the default error value of 0.  This will get overwritten in the following code if
     // there are no errors.
     if (numBytesPtr != NULL)
+    {
         *numBytesPtr = 0;
+    }
 
     // Handle extra conversion specifications %J and %K for ms and us, respectively.
-    origIdx = copyIdx = 0;
-    while ( (formatSpecStrPtr[origIdx] != '\0') && (copyIdx < copySize) )
+    while ((formatSpecStrPtr[origIdx] != '\0') && (copyIdx < copySize))
     {
-        if (formatSpecStrPtr[origIdx] == '%')
+        if ('%' == formatSpecStrPtr[origIdx])
         {
             charsLeft = copySize-copyIdx;
 
             // Check if this is a conversion specification that we need to handle
-            switch ( formatSpecStrPtr[origIdx+1] )
+            switch (formatSpecStrPtr[origIdx+1])
             {
                 case 'J':
                     // fill in ms
                     charsPrinted = snprintf(&copyFormatSpecStr[copyIdx],
-                                                charsLeft, "%03li", absoluteTime.usec/1000);
+                                            charsLeft, "%03li", absoluteTime.usec/1000);
 
                     // Check if output was truncated, or some other error occurred.
                     if ( (charsPrinted >= charsLeft) || (charsPrinted < 0) )
@@ -283,10 +286,10 @@ static le_result_t FormatBrokenTime
                 case 'K':
                     // fill in us
                     charsPrinted = snprintf(&copyFormatSpecStr[copyIdx],
-                                                charsLeft, "%06li", absoluteTime.usec);
+                                            charsLeft, "%06li", absoluteTime.usec);
 
                     // Check if output was truncated, or some other error occurred.
-                    if ( (charsPrinted >= charsLeft) || (charsPrinted < 0) )
+                    if ((charsPrinted >= charsLeft) || (charsPrinted < 0))
                     {
                         return LE_OVERFLOW;
                     }
@@ -330,16 +333,17 @@ static le_result_t FormatBrokenTime
     // for strftime(), this may not always be the case. However, it is very unlikely that a format
     // specifier string giving a zero length result will be used here, and so this uncommon case
     // will be ignored.
-    if (numChars == 0)
-        return LE_OVERFLOW;
-    else
+    if (0 == numChars)
     {
-        if (numBytesPtr != NULL)
-            *numBytesPtr = numChars;
-
-        return LE_OK;
+        return LE_OVERFLOW;
     }
 
+    if (numBytesPtr != NULL)
+    {
+        *numBytesPtr = numChars;
+    }
+
+    return LE_OK;
 }
 
 
@@ -412,7 +416,11 @@ le_result_t le_clk_GetLocalDateTimeString
     // Get the time broken down into local year, month, day, and so on.
     absTime = le_clk_GetAbsoluteTime();
 
-    return le_clk_ConvertToLocalTimeString(absTime,formatSpecStrPtr,destStrPtr,destSize,numBytesPtr);
+    return le_clk_ConvertToLocalTimeString(absTime,
+                                           formatSpecStrPtr,
+                                           destStrPtr,
+                                           destSize,
+                                           numBytesPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -454,7 +462,12 @@ le_result_t le_clk_ConvertToUTCString
         LE_FATAL("Cannot convert time into UTC broken down time.");
     }
 
-    result = FormatBrokenTime(time, brokenTime, formatSpecStrPtr, destStrPtr, destSize, numBytesPtr);
+    result = FormatBrokenTime(time,
+                              brokenTime,
+                              formatSpecStrPtr,
+                              destStrPtr,
+                              destSize,
+                              numBytesPtr);
 
     return result;
 }
@@ -500,8 +513,160 @@ le_result_t le_clk_ConvertToLocalTimeString
         LE_FATAL("Cannot convert Absolute time into local broken down time.");
     }
 
-    result = FormatBrokenTime(time, brokenTime, formatSpecStrPtr, destStrPtr, destSize, numBytesPtr);
+    result = FormatBrokenTime(time,
+                              brokenTime,
+                              formatSpecStrPtr,
+                              destStrPtr,
+                              destSize,
+                              numBytesPtr);
 
     return result;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set absolute time since the Epoch, 1970-01-01 00:00:00 +0000 (UTC).
+ *
+ * @note Only unsandboxed application can set the date/time.
+ *
+ * @return
+ *      - LE_OK if the function succeeded
+ *      - LE_BAD_PARAMETER if an invalid parameter is provided
+ *      - LE_NOT_PERMITTED if the operation is not permitted
+ *      - LE_FAULT if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_SetAbsoluteTime
+(
+    le_clk_Time_t absoluteTime  ///< [IN] Absolute time in seconds/microseconds
+)
+{
+    struct timespec systemTime;
+    systemTime.tv_sec = absoluteTime.sec;
+    systemTime.tv_nsec = absoluteTime.usec * 1000;
+
+    if (clock_settime(CLOCK_REALTIME, &systemTime) < 0)
+    {
+        switch (errno)
+        {
+            case EPERM:
+                LE_ERROR("Setting CLOCK_REALTIME for Absolute time is not permitted");
+                return LE_NOT_PERMITTED;
+
+            case EINVAL:
+                LE_ERROR("Invalid parameter to set CLOCK_REALTIME for Absolute time");
+                return LE_BAD_PARAMETER;
+
+            default:
+                LE_ERROR("Unable to set CLOCK_REALTIME for Absolute time (%m)");
+                return LE_FAULT;
+        }
+    }
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate an absolute date/time value as UTC time representation of a given printable string
+ * representation (no timezone offset applied).
+ *
+ * @return
+ *      - LE_OK if the conversion was successful
+ *      - LE_BAD_PARAMETER if an invalid parameter is provided
+ *      - LE_FAULT if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_ConvertToTime
+(
+    const char*    formatSpecStrPtr,    ///< [IN]  Format specifier string, using conversion
+                                        ///        specifiers defined for strptime().
+    const char*    srcStrPtr,           ///< [IN]  Formatted date/time string.
+    le_clk_Time_t* timePtr              ///< [OUT] Converted date/time.
+)
+{
+    struct tm brokenTime = {0};
+
+
+    if (   (!formatSpecStrPtr) || ('\0' == formatSpecStrPtr[0])
+        || (!srcStrPtr) || ('\0' == srcStrPtr[0]))
+    {
+        LE_ERROR("Incorrect input parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!timePtr)
+    {
+        LE_ERROR("Incorrect output parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Convert the string into a broken time structure
+    if (!strptime(srcStrPtr, formatSpecStrPtr, &brokenTime))
+    {
+        LE_ERROR("strptime error");
+        return LE_FAULT;
+    }
+
+    // If date is not set, set it to the Epoch date for mktime()
+    if ((!brokenTime.tm_year) && (!brokenTime.tm_mon) && (!brokenTime.tm_mday))
+    {
+        brokenTime.tm_year = 70;
+        brokenTime.tm_mon  = 1;
+        brokenTime.tm_mday = 1;
+    }
+
+    // Convert to a simple time representation
+    timePtr->sec = mktime(&brokenTime);
+    if (-1 == timePtr->sec)
+    {
+        LE_ERROR("mktime error");
+        return LE_FAULT;
+    }
+    timePtr->usec = 0;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the UTC date/time as a formatted string.
+ *
+ * @note Only unsandboxed application can set the date/time.
+ *
+ * @return
+ *      - LE_OK if the time is correctly set
+ *      - LE_BAD_PARAMETER if an invalid parameter is provided
+ *      - LE_NOT_PERMITTED if the operation is not permitted
+ *      - LE_FAULT if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_SetUTCDateTimeString
+(
+    const char* formatSpecStrPtr,   ///< [IN] Format specifier string, using conversion
+                                    ///       specifiers defined for strptime().
+    const char* srcStrPtr           ///< [IN] Formatted date/time string.
+)
+{
+    le_clk_Time_t newAbsTime;
+
+    if (   (!formatSpecStrPtr) || ('\0' == formatSpecStrPtr[0])
+        || (!srcStrPtr) || ('\0' == srcStrPtr[0]))
+    {
+        LE_ERROR("Incorrect input parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    newAbsTime.sec = 0;
+    newAbsTime.usec = 0;
+
+    if (LE_OK != le_clk_ConvertToTime(formatSpecStrPtr, srcStrPtr, &newAbsTime))
+    {
+        return LE_FAULT;
+    }
+
+    return le_clk_SetAbsoluteTime(newAbsTime);
+}

@@ -40,6 +40,15 @@ static int  WifiSecProtocol = WIFI_SECPROTOCOL_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Simulated time config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_TIME_SERVER_LENGTH  200
+static uint8_t TimeProtocol = 0;
+static char TimeServer[MAX_TIME_SERVER_LENGTH] = {0};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Simulated RAT
  */
 //--------------------------------------------------------------------------------------------------
@@ -193,6 +202,11 @@ void le_cfgTest_SetStringNodeValue
     {
         memset(WifiPassphrase, 0, sizeof(WifiPassphrase));
         strncpy(WifiPassphrase, value, sizeof(WifiPassphrase));
+    }
+    else if (0 == strncmp(path, CFG_NODE_SERVER, strlen(CFG_NODE_SERVER)))
+    {
+        memset(TimeServer, 0, sizeof(TimeServer));
+        strncpy(TimeServer, value, sizeof(TimeServer));
     }
 }
 
@@ -783,6 +797,10 @@ le_result_t le_cfg_GetString
     {
         result = le_utf8_Copy(value, WifiPassphrase, valueNumElements, NULL);
     }
+    else if (0 == strncmp(path, CFG_NODE_SERVER, strlen(CFG_NODE_SERVER)))
+    {
+        result = le_utf8_Copy(value, TimeServer, valueNumElements, NULL);
+    }
 
     return result;
 }
@@ -828,6 +846,10 @@ int32_t le_cfg_GetInt
     {
         value = MdcProfileIndex;
     }
+    else if (0 == strncmp(path, CFG_NODE_PROTOCOL, strlen(CFG_NODE_PROTOCOL)))
+    {
+        value = TimeProtocol;
+    }
 
     return value;
 }
@@ -858,9 +880,13 @@ void le_cfg_SetInt
     {
         WifiSecProtocol = value;
     }
-    else if(0 == strncmp(path, CFG_NODE_PROFILEINDEX, strlen(CFG_NODE_PROFILEINDEX)))
+    else if (0 == strncmp(path, CFG_NODE_PROFILEINDEX, strlen(CFG_NODE_PROFILEINDEX)))
     {
         MdcProfileIndex = value;
+    }
+    else if (0 == strncmp(path, CFG_NODE_PROTOCOL, strlen(CFG_NODE_PROTOCOL)))
+    {
+        TimeProtocol = value;
     }
 }
 
@@ -1453,4 +1479,39 @@ void pa_dcs_RestoreInitialDnsNameServers
     pa_dcs_InterfaceDataBackup_t* pInterfaceDataBackup
 )
 {
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_dcs_GetTimeWithTimeProtocol
+(
+    const char* serverStrPtr,       ///< [IN]  Time server
+    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
+)
+{
+    timePtr->msec = 0;
+    timePtr->sec  = 30;
+    timePtr->min  = 34;
+    timePtr->hour = 15;
+    timePtr->day  = 9;
+    timePtr->mon  = 10;
+    timePtr->year = 2017;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
+(
+    const char* serverStrPtr,       ///< [IN]  Time server
+    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
+)
+{
+    return LE_FAULT;
 }

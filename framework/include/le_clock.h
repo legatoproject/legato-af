@@ -19,8 +19,9 @@
  * run even when the system is suspended).
  *
  * Absolute time is given as time since the Epoch, 1970-01-01 00:00:00 +0000 (UTC) and is provided
- * by @ref le_clk_GetAbsoluteTime().  By definition, it is UTC time. The absolute time may jump
- * forward or backward if a new value is set for the absolute time.
+ * by @ref le_clk_GetAbsoluteTime(). By definition, it is UTC time. The absolute time may jump
+ * forward or backward if a new value is set for the absolute time. Absolute time can be set by
+ * unsandboxed applications using le_clk_SetAbsoluteTime().
  *
  * Relative time is a monotonic time from a fixed but unspecified starting point and is provided
  * by @ref le_clk_GetRelativeTime(). The relative time is independent of the absolute time.  The
@@ -30,9 +31,6 @@
  * For example, at event 1, relative time A is stored, and at some later event 2, relative time B
  * is stored.  The relative time between these two events can always be calculated as B-A, and will
  * always be an accurate measure of the relative time between these two events.
- *
- * @todo
- *  - Add API for setting absolute time.
  *
  *
  * @section clk_values Operations on Time Values
@@ -45,25 +43,32 @@
  *  - @ref le_clk_Multiply
  *
  * The functions use these assumptions:
- *  - All input time values are normalized (i.e., the usec value is less than 1 sec). All time values
- *    returned are normalized.
- *  - All input time values or scale factors are positive; a negative time value will not be returned.
- *  - All input time values or scale factors are expected to have reasonable values (i.e., they will not
- *    be so large as to cause an overflow of the time value structure).
+ *  - All input time values are normalized (i.e., the usec value is less than 1 sec).
+ *    All time values returned are normalized.
+ *  - All input time values or scale factors are positive; a negative time value will not be
+ *    returned.
+ *  - All input time values or scale factors are expected to have reasonable values
+ *    (i.e., they will not be so large as to cause an overflow of the time value structure).
  *
  *
- * @section clk_convert Converting Time to Other Formats
+ * @section clk_convert Converting Time to/from Other Formats
  *
- * The current absolute time can be converted to a formatted string in either UTC time or local time,
- * using @ref le_clk_GetUTCDateTimeString() or @ref le_clk_GetLocalDateTimeString() respectively.
- * These functions use the format specification defined for strftime(), with the following
- * additional conversion specifications:
+ * The current absolute time can be converted to a formatted string in either UTC time or local
+ * time, using @ref le_clk_GetUTCDateTimeString() or @ref le_clk_GetLocalDateTimeString()
+ * respectively. These functions use the format specification defined for strftime(), with the
+ * following additional conversion specifications:
  *  - %%J : milliseconds, as a 3 digit zero-padded string, e.g. "015"
  *  - %%K : microseconds, as a 6 digit zero-padded string, e.g. "001015"
  *
+ * The absolute time can be set with a formatted string in UTC time, using
+ * le_clk_SetUTCDateTimeString().
+ *
+ * @note The additional format specifications %%J and %%K are not supported by
+ * le_clk_SetUTCDateTimeString().
+ *
  * @todo
- *  - Add new formatting object to allow arbitrary time to be converted to a string, potentially with
- *    additional formatting options.
+ *  - Add new formatting object to allow arbitrary time to be converted to a string, potentially
+ *    with additional formatting options.
  *  - Add new objects and/or APIs to allow converting time to other formats, e.g. Linux broken down
  *    time in "struct tm" format.
  *
@@ -340,5 +345,65 @@ le_result_t le_clk_ConvertToLocalTimeString
 
 );
 
-#endif // LEGATO_CLK_INCLUDE_GUARD
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set absolute time since the Epoch, 1970-01-01 00:00:00 +0000 (UTC).
+ *
+ * @note Only unsandboxed application can set the date/time.
+ *
+ * @return
+ *      - LE_OK if the function succeeded
+ *      - LE_BAD_PARAMETER if an invalid parameter is provided
+ *      - LE_NOT_PERMITTED if the operation is not permitted
+ *      - LE_FAULT if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_SetAbsoluteTime
+(
+    le_clk_Time_t absoluteTime  ///< [IN] Absolute time in seconds/microseconds
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate an absolute date/time value as UTC time representation of a given printable string
+ * representation (no timezone offset applied).
+ *
+ * @return
+ *      - LE_OK if the conversion was successful
+ *      - LE_BAD_PARAMETER if an invalid parameter is provided
+ *      - LE_FAULT if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_ConvertToTime
+(
+    const char*    formatSpecStrPtr,    ///< [IN]  Format specifier string, using conversion
+                                        ///        specifiers defined for strptime().
+    const char*    srcStrPtr,           ///< [IN]  Formatted date/time string.
+    le_clk_Time_t* timePtr              ///< [OUT] Converted date/time.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the UTC date/time as a formatted string.
+ *
+ * @note Only unsandboxed application can set the date/time.
+ *
+ * @return
+ *      - LE_OK if the time is correctly set
+ *      - LE_BAD_PARAMETER if an invalid parameter is provided
+ *      - LE_NOT_PERMITTED if the operation is not permitted
+ *      - LE_FAULT if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_clk_SetUTCDateTimeString
+(
+    const char* formatSpecStrPtr,   ///< [IN] Format specifier string, using conversion
+                                    ///       specifiers defined for strptime().
+    const char* srcStrPtr           ///< [IN] Formatted date/time string.
+);
+
+
+#endif // LEGATO_CLK_INCLUDE_GUARD

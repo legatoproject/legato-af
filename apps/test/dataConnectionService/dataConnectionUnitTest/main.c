@@ -367,9 +367,21 @@ static void Testle_data_Service
     int32_t profileIndex;
     le_result_t result;
     uint32_t loop;
+    uint16_t year, month, day, hour, minute, second, millisecond;
 
     // Initialize application contexts
     memset(AppCtx, 0, CLIENTS_NB * sizeof(AppContext_t));
+
+    // Test time APIs
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDate(NULL, &month, &day));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDate(&year, NULL, &day));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetDate(&year, &month, NULL));
+    LE_ASSERT(LE_FAULT == le_data_GetDate(&year, &month, &day));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetTime(NULL, &minute, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetTime(&hour, NULL, &second, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetTime(&hour, &minute, NULL, &millisecond));
+    LE_ASSERT(LE_BAD_PARAMETER == le_data_GetTime(&hour, &minute, &second, NULL));
+    LE_ASSERT(LE_FAULT == le_data_GetTime(&hour, &minute, &second, &millisecond));
 
     LE_ASSERT(le_data_GetDefaultRouteStatus());
 
@@ -478,6 +490,10 @@ static void Testle_data_Service
     LE_ASSERT(LE_BAD_PARAMETER == le_data_DelRoute("216.58.206.45.228"));
     LE_ASSERT_OK(le_data_AddRoute("216.58.206.45"));
     LE_ASSERT_OK(le_data_DelRoute("216.58.206.45"));
+
+    // Test time APIs
+    LE_ASSERT_OK(le_data_GetDate(&year, &month, &day));
+    LE_ASSERT_OK(le_data_GetTime(&hour, &minute, &second, &millisecond));
 
     // Configure Wifi to be able to use it
     le_cfg_IteratorRef_t wifiTestIteratorRef = (le_cfg_IteratorRef_t)0x01234567;

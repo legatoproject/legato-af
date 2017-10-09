@@ -171,6 +171,25 @@ static void DisconnectData
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  This function will get the date and time from a time server
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetDateTime
+(
+    void
+)
+{
+    uint16_t year, month, day, hour, minute, second, millisecond;
+
+    LE_ASSERT_OK(le_data_GetDate(&year, &month, &day));
+    LE_ASSERT_OK(le_data_GetTime(&hour, &minute, &second, &millisecond));
+
+    LE_INFO("Time retrieved from server: %04d-%02d-%02d %02d:%02d:%02d:%03d",
+            year, month, day, hour, minute, second, millisecond);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Event callback for data connection state changes.
  */
 //--------------------------------------------------------------------------------------------------
@@ -193,6 +212,8 @@ static void DcsStateHandler
         {
             LE_INFO("'%s' connected using the technology '%s'!", intfName, techDico[usedTech]);
         }
+
+        GetDateTime();
 
         LE_INFO("Wait for 5 seconds before releasing the data connection.");
         sleep(5);

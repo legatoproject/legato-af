@@ -25,6 +25,9 @@
 #define CU_FAIL_MSG(msg) \
   { CU_assertImplementation(CU_FALSE, __LINE__, msg, STRINGIZE(LE_FILENAME), "", CU_FALSE); }
 
+// Date time formatted string
+#define DATE_TIME_FORMATTED_STRING  "Tue Oct 10 10:00:58 2017"
+
 
 // Is the test program running interactively.
 bool IsInteractive=false;
@@ -35,7 +38,7 @@ void PrintLine(char* delimiter)
     int i;
 
     for (i=0; i<60; i++)
-        puts(delimiter);
+        putchar((int)*delimiter);
     printf("\n");
 }
 
@@ -124,7 +127,6 @@ void TestClockBatch(void)
      */
 
     // General tests
-
     result = le_clk_GetUTCDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, buffer, sizeof(buffer), &numChars);
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT(numChars > 0);
@@ -144,8 +146,22 @@ void TestClockBatch(void)
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT_EQUAL(numChars, 8);
 
-    // Testing %J
+    result = le_clk_SetUTCDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, DATE_TIME_FORMATTED_STRING);
+    CU_ASSERT_EQUAL(result, LE_NOT_PERMITTED);
 
+    result = le_clk_SetUTCDateTimeString(NULL, DATE_TIME_FORMATTED_STRING);
+    CU_ASSERT_EQUAL(result, LE_BAD_PARAMETER);
+
+    result = le_clk_SetUTCDateTimeString("", DATE_TIME_FORMATTED_STRING);
+    CU_ASSERT_EQUAL(result, LE_BAD_PARAMETER);
+
+    result = le_clk_SetUTCDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, NULL);
+    CU_ASSERT_EQUAL(result, LE_BAD_PARAMETER);
+
+    result = le_clk_SetUTCDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, "");
+    CU_ASSERT_EQUAL(result, LE_BAD_PARAMETER);
+
+    // Testing %J
     result = le_clk_GetUTCDateTimeString("%J", buffer, sizeof(buffer), &numChars);
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT_EQUAL(numChars, 3);
@@ -162,8 +178,10 @@ void TestClockBatch(void)
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT_EQUAL(numChars, 3);
 
-    // Testing %K
+    result = le_clk_SetUTCDateTimeString("%J", "015");
+    CU_ASSERT_EQUAL(result, LE_FAULT);
 
+    // Testing %K
     result = le_clk_GetUTCDateTimeString("%K", buffer, sizeof(buffer), &numChars);
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT_EQUAL(numChars, 6);
@@ -180,8 +198,10 @@ void TestClockBatch(void)
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT_EQUAL(numChars, 6);
 
-    // Testing %J and %K
+    result = le_clk_SetUTCDateTimeString("%K", "001015");
+    CU_ASSERT_EQUAL(result, LE_FAULT);
 
+    // Testing %J and %K
     result = le_clk_GetUTCDateTimeString("%J%K", buffer, sizeof(buffer), &numChars);
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT_EQUAL(numChars, 9);
@@ -202,7 +222,6 @@ void TestClockBatch(void)
     /*
      * Local date/time related tests
      */
-
     result = le_clk_GetLocalDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, buffer, sizeof(buffer), &numChars);
     CU_ASSERT_EQUAL(result, LE_OK);
     CU_ASSERT(numChars > 0);
@@ -213,8 +232,6 @@ void TestClockBatch(void)
     result = le_clk_GetLocalDateTimeString(LE_CLK_STRING_FORMAT_DATE_TIME, buffer, 5, &numChars);
     CU_ASSERT_EQUAL(result, LE_OVERFLOW);
     CU_ASSERT_EQUAL(numChars, 0);
-
-
 }
 
 

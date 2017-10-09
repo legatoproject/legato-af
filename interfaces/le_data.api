@@ -124,6 +124,22 @@
  * - le_data_GetFirstUsedTechnology() and le_data_GetNextUsedTechnology() let you retrieve
  * the different technologies of the ordered list to use for the default connection data.
  *
+ * @section c_le_data_time Date and time
+ *
+ * When the data connection service is connected, the date and time can be retrieved from a distant
+ * server using le_data_GetDate() and le_data_GetTime(). The time protocol and time server to use
+ * are configured through the @ref c_le_data_configdb database:
+ * - Time protocol:
+ *      - @ref LE_DATA_TP to use the Time Protocol, defined in
+ *        <a href="https://tools.ietf.org/html/rfc868">RFC 868</a>.
+ *      - @ref LE_DATA_NTP to use the Network Time Protocol, defined in
+ *        <a href="https://tools.ietf.org/html/rfc5905">RFC 5905</a>.
+ * - Time server: address of the time server to connect to. If not set, the default value is
+ * <tt> time.nist.gov </tt> for @ref LE_DATA_TP and to <tt> pool.ntp.org </tt> for @ref LE_DATA_NTP.
+ *
+ * @note The configured time protocol needs to be supported by your platform to be used by the data
+ * connection service.
+ *
  * @section c_le_data_configdb Configuration tree
  * @copydoc c_le_data_configdbPage_Hide
  *
@@ -136,8 +152,13 @@
  /**
  * @interface c_le_data_configdbPage_Hide
  *
- * The configuration of the default routing, the Wi-Fi access point and the cellular profile are
- * stored in the configuration database of the @c dataConnectionService under the following path:
+ * The configuration database of the @c dataConnectionService allows configuring:
+ * - the default routing
+ * - the Wi-Fi access point
+ * - the cellular profile
+ * - the time protocol and server.
+ *
+ * The configuration is stored under the following path:
  * @verbatim
     dataConnectionService:/
         routing/
@@ -148,10 +169,16 @@
             passphrase<string> == Passw0rd
         cellular/
             profileIndex<int> == index
+        time/
+            protocol<int> == 0
+            server<string> == my.time.server.com
    @endverbatim
  *
- * @note The security protocol is one of the supported protocols defined in the
+ * @note
+ * - The security protocol is one of the supported protocols defined in the
  * @ref le_wifiClient_SecurityProtocol_t enumerator.
+ * - The time protocol is one of the supported protocols defined in the
+ * @ref le_data_TimeProtocol_t enumerator.
  *
  * @todo This solution is temporary, as the list of access points to connect to should be
  * managed by the Wi-Fi client. Until its API is modified, the config tree is used to configure
@@ -210,6 +237,17 @@ ENUM Technology
     WIFI,       ///< Wi-Fi
     CELLULAR,   ///< Cellular
     MAX         ///< Unknown state.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Time protocols.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM TimeProtocol
+{
+    TP,     ///< Time Protocol, defined in RFC 868
+    NTP     ///< Network Time Protocol, defined in RFC 5905
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -396,4 +434,43 @@ FUNCTION int32 GetCellularProfileIndex
 FUNCTION le_result_t SetCellularProfileIndex
 (
     int32      profileIndex        IN       ///< Cellular profile index to be used
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the date.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDate
+(
+    uint16 year     OUT,    ///< UTC Year A.D. [e.g. 2017].
+    uint16 month    OUT,    ///< UTC Month into the year [range 1...12].
+    uint16 day      OUT     ///< UTC Days into the month [range 1...31].
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the time.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTime
+(
+    uint16 hours        OUT,    ///< UTC Hours into the day [range 0..23].
+    uint16 minutes      OUT,    ///< UTC Minutes into the hour [range 0..59].
+    uint16 seconds      OUT,    ///< UTC Seconds into the minute [range 0..59].
+    uint16 milliseconds OUT     ///< UTC Milliseconds into the second [range 0..999].
 );

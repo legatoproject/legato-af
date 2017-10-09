@@ -36,7 +36,6 @@
 #include "le_mdc_interface.h"
 
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Enumeration for the routing actions
@@ -54,7 +53,6 @@ pa_dcs_RouteAction_t;
  * Data associated to retrieve the state before the DCS started managing the default connection
  */
 //--------------------------------------------------------------------------------------------------
-
 typedef struct
 {
     char defaultGateway[LE_MDC_IPV6_ADDR_MAX_BYTES];
@@ -64,7 +62,22 @@ typedef struct
 }
 pa_dcs_InterfaceDataBackup_t;
 
-
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data associated to retrieve the time from a time server
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    int msec;   ///< Milliseconds [0-999]
+    int sec;    ///< Seconds      [0-60]
+    int min;    ///< Minutes      [0-59]
+    int hour;   ///< Hours        [0-23]
+    int day;    ///< Day          [1-31]
+    int mon;    ///< Month        [0-11]
+    int year;   ///< Year
+}
+pa_dcs_TimeStruct_t;
 
 
 /*********************************************************
@@ -155,6 +168,38 @@ LE_SHARED le_result_t pa_dcs_SetDnsNameServers
 (
     const char* dns1Ptr,    ///< [IN] Pointer on first DNS address
     const char* dns2Ptr     ///< [IN] Pointer on second DNS address
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve time from a server using the Time Protocol.
+ *
+ * @return
+ *      - LE_OK             Function successful
+ *      - LE_BAD_PARAMETER  A parameter is incorrect
+ *      - LE_FAULT          Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetTimeWithTimeProtocol
+(
+    const char* serverStrPtr,       ///< [IN]  Time server
+    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve time from a server using the Network Time Protocol.
+ *
+ * @return
+ *      - LE_OK             Function successful
+ *      - LE_BAD_PARAMETER  A parameter is incorrect
+ *      - LE_FAULT          Function failed
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_dcs_GetTimeWithNetworkTimeProtocol
+(
+    const char* serverStrPtr,       ///< [IN]  Time server
+    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
 );
 
 #endif

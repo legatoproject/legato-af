@@ -57,6 +57,9 @@
 #define CFG_NODE_PASSPHRASE         "passphrase"
 #define CFG_PATH_CELLULAR           "cellular"
 #define CFG_NODE_PROFILEINDEX       "profileIndex"
+#define CFG_PATH_TIME               "time"
+#define CFG_NODE_PROTOCOL           "protocol"
+#define CFG_NODE_SERVER             "server"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -109,6 +112,27 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define REFERENCE_MAP_SIZE          5
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximal length of a time server address
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_TIME_SERVER_LENGTH      200
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default time server used for Time Protocol
+ */
+//--------------------------------------------------------------------------------------------------
+#define DEFAULT_TIMEPROTOCOL_SERVER     "time.nist.gov"
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default time server used for Network Time Protocol
+ */
+//--------------------------------------------------------------------------------------------------
+#define DEFAULT_NTP_SERVER              "pool.ntp.org"
 
 //--------------------------------------------------------------------------------------------------
 // Data structures
@@ -733,6 +757,70 @@ static bool GetDefaultRouteStatus
     le_cfg_CancelTxn(cfg);
 
     return defaultRouteStatus;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the time protocol to use from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static le_data_TimeProtocol_t GetTimeProtocol
+(
+    void
+)
+{
+    le_data_TimeProtocol_t protocol = LE_DATA_TP;
+
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (le_cfg_NodeExists(cfg, CFG_NODE_PROTOCOL))
+    {
+        protocol = le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
+    }
+    le_cfg_CancelTxn(cfg);
+
+    LE_DEBUG("Use time protocol %d", protocol);
+    return protocol;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Get the time server to use from config tree
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetTimeServer
+(
+    char* serverPtr,                ///< [IN] Time server buffer
+    const size_t serverSize,        ///< [IN] Time server buffer size
+    const char* defaultServerPtr    ///< [IN] Default time server
+)
+{
+    char configPath[LE_CFG_STR_LEN_BYTES];
+    snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_TIME);
+
+    le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
+    if (le_cfg_NodeExists(cfg, CFG_NODE_SERVER))
+    {
+        if (LE_OK != le_cfg_GetString(cfg,
+                                      CFG_NODE_SERVER,
+                                      serverPtr,
+                                      serverSize,
+                                      defaultServerPtr))
+        {
+            LE_ERROR("Unable to retrieve time server");
+            le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
+        }
+    }
+    else
+    {
+        LE_WARN("No server configured, use the default one");
+        le_utf8_Copy(serverPtr, defaultServerPtr, serverSize, NULL);
+    }
+    le_cfg_CancelTxn(cfg);
+
+    LE_DEBUG("Use time server '%s'", serverPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1747,6 +1835,54 @@ static le_result_t ChangeRoute
 }
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve time from a time server with the configuration indicated by the configTree.
+ *
+ * @return
+ *      - LE_OK     The function succeeded
+ *      - LE_FAULT  The function failed
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t RetrieveTimeFromServer
+(
+    pa_dcs_TimeStruct_t* timePtr    ///< [OUT] Time structure
+)
+{
+    le_data_TimeProtocol_t timeProtocol = GetTimeProtocol();
+    char timeServer[MAX_TIME_SERVER_LENGTH] = {0};
+
+    switch (timeProtocol)
+    {
+        case LE_DATA_TP:
+            GetTimeServer(timeServer, sizeof(timeServer), DEFAULT_TIMEPROTOCOL_SERVER);
+            if (LE_OK != pa_dcs_GetTimeWithTimeProtocol(timeServer, timePtr))
+            {
+                LE_ERROR("Unable to retrieve time from server");
+                return LE_FAULT;
+            }
+            break;
+
+        case LE_DATA_NTP:
+            GetTimeServer(timeServer, sizeof(timeServer), DEFAULT_NTP_SERVER);
+            if (LE_OK != pa_dcs_GetTimeWithNetworkTimeProtocol(timeServer, timePtr))
+            {
+                LE_ERROR("Unable to retrieve time from server");
+                return LE_FAULT;
+            }
+            break;
+
+        default:
+            LE_WARN("Unsupported time protocol %d", timeProtocol);
+            return LE_FAULT;
+    }
+
+    LE_DEBUG("Time retrieved from server: %04d-%02d-%02d %02d:%02d:%02d:%03d",
+             timePtr->year, timePtr->mon, timePtr->day,
+             timePtr->hour, timePtr->min, timePtr->sec, timePtr->msec);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
 // APIs
 //--------------------------------------------------------------------------------------------------
 
@@ -2262,6 +2398,98 @@ le_result_t le_data_DelRoute
 )
 {
     return ChangeRoute(ipDestAddrStr, PA_DCS_ROUTE_DELETE);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the date from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the date.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_GetDate
+(
+    uint16_t* yearPtr,      ///< [OUT] UTC Year A.D. [e.g. 2017].
+    uint16_t* monthPtr,     ///< [OUT] UTC Month into the year [range 1...12].
+    uint16_t* dayPtr        ///< [OUT] UTC Days into the month [range 1...31].
+)
+{
+    pa_dcs_TimeStruct_t timeStruct;
+
+    if ((!yearPtr) || (!monthPtr) || (!dayPtr))
+    {
+        LE_ERROR("Incorrect parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!IsConnected)
+    {
+        LE_ERROR("Data Connection Service is not connected");
+        return LE_FAULT;
+    }
+
+    memset(&timeStruct, 0, sizeof(timeStruct));
+    if (LE_OK != RetrieveTimeFromServer(&timeStruct))
+    {
+        return LE_FAULT;
+    }
+
+    *yearPtr  = (uint16_t) timeStruct.year;
+    *monthPtr = (uint16_t) timeStruct.mon;
+    *dayPtr   = (uint16_t) timeStruct.day;
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the time from the configured server using the configured time protocol.
+ *
+ * @warning An active data connection is necessary to retrieve the time.
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_BAD_PARAMETER  if a parameter is incorrect
+ *      - LE_FAULT          if an error occurred
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_data_GetTime
+(
+    uint16_t* hoursPtr,         ///< [OUT] UTC Hours into the day [range 0..23].
+    uint16_t* minutesPtr,       ///< [OUT] UTC Minutes into the hour [range 0..59].
+    uint16_t* secondsPtr,       ///< [OUT] UTC Seconds into the minute [range 0..59].
+    uint16_t* millisecondsPtr   ///< [OUT] UTC Milliseconds into the second [range 0..999].
+)
+{
+    pa_dcs_TimeStruct_t timeStruct;
+
+    if ((!hoursPtr) || (!minutesPtr) || (!secondsPtr) || (!millisecondsPtr))
+    {
+        LE_ERROR("Incorrect parameter");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (!IsConnected)
+    {
+        LE_ERROR("Data Connection Service is not connected");
+        return LE_FAULT;
+    }
+
+    memset(&timeStruct, 0, sizeof(timeStruct));
+    if (LE_OK != RetrieveTimeFromServer(&timeStruct))
+    {
+        return LE_FAULT;
+    }
+
+    *hoursPtr        = (uint16_t) timeStruct.hour;
+    *minutesPtr      = (uint16_t) timeStruct.min;
+    *secondsPtr      = (uint16_t) timeStruct.sec;
+    *millisecondsPtr = (uint16_t) timeStruct.msec;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
