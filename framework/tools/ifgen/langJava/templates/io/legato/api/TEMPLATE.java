@@ -40,9 +40,20 @@ public interface {{apiName}}
     {%- if type is ReferenceType and type is not HandlerReferenceType %}
     public class {{type.name}}Ref
     {
-        private long nativeRef;
+        private final long nativeRef;
 
-        public {{type.name}}Ref(long newRef)
+        public static {{type.name}}Ref fromValue(long ref) {
+            // All references passed through an API must be safe references, so 0-bit will be set.
+            if (ref == 0) {
+                return null;
+            }
+            if (ref % 2 == 1) {
+                return new {{type.name}}Ref(ref);
+            }
+            throw new IllegalStateException("Invalid reference for {{type.name}}Ref: " + ref);
+        }
+
+        private {{type.name}}Ref(long newRef)
         {
             nativeRef = newRef;
         }

@@ -23,9 +23,9 @@ buffer.writeNumber({{value}}.getType(), {{value}}.getValue());
     {%- elif apiType is HandlerReferenceType -%}
 buffer.writeLongRef({{value}});
     {%- elif apiType is ReferenceType -%}
-buffer.writeLongRef({{value}}.getRef());
+buffer.writeLongRef({{value}} == null ? 0 : {{value}}.getRef());
     {%- elif apiType is HandlerType -%}
-long ref{{value}} = (({{value}} == null)?0:handlerMap.newRef(new HandlerMapper({{value}}, true)));
+long ref{{value}} = (({{value}} == null) ? 0 : handlerMap.newRef(new HandlerMapper({{value}}, true)));
 buffer.writeLongRef(ref{{value}});
     {%- elif apiType.name ==  'le_result_t' or apiType.name == 'le_onoff_t' -%}
 {{_setterMap[apiType|FormatType]}}({{value}}.getValue());
@@ -51,7 +51,7 @@ buffer.writeString({{value}}, {{parameter.maxCount}});
     {%- elif valueType is HandlerReferenceType -%}
         buffer.readLongRef()
     {%- elif valueType is ReferenceType -%}
-        new {{valueType|FormatType}}(buffer.readLongRef())
+        {{valueType|FormatType}}.fromValue(buffer.readLongRef())
     {%- elif valueType is HandlerType -%}
     new {{valueType.iface.name}}.{{valueType.name}}()
     {
