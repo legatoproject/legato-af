@@ -1280,6 +1280,9 @@ le_mcc_TerminationReason_t le_mcc_GetTerminationReason
 /**
  * Called to get the platform specific termination code.
  *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * termination code description.
+ *
  * @return The platform specific termination code.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the

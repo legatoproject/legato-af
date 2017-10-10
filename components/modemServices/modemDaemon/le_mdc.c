@@ -2103,6 +2103,9 @@ le_mdc_DisconnectionReason_t le_mdc_GetDisconnectionReason
 /**
  * Called to get the platform specific disconnection code.
  *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * disconnection code description.
+ *
  * @return The platform specific disconnection code.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the

@@ -171,8 +171,9 @@
  *  @c le_mrc_ManualSelectionHandlerFunc_t handler function.
  *
  * When the network registration fails, the platform specific network registration error code can
- * be known by using le_mrc_GetPlatformSpecificRegistrationErrorCode() (refer to your platform
- * documentation for further details).
+ * be known by using le_mrc_GetPlatformSpecificRegistrationErrorCode() API.
+ * Please refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * registration error code description.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mrcNetworkRegistration
@@ -907,6 +908,9 @@ FUNCTION le_result_t GetPacketSwitchedState
 //--------------------------------------------------------------------------------------------------
 /**
  * Get the platform specific network registration error code.
+ *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * registration error code description.
  *
  * @return the platform specific registration error code
  *

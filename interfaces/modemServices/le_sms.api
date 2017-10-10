@@ -73,6 +73,9 @@
  * returned, call le_sms_GetPlatformSpecificErrorCode() to retrieve the platform specific error
  * code.
  *
+ * Please refer to @ref platformConstraintsSpecificErrorCodes for platform
+ * specific error code description.
+ *
  * Please refer to @ref c_smsSampleMO page to get an example of SMS message sending.
  *
  * @section le_sms_ops_async_sending Sending asynchronously a message
@@ -1014,6 +1017,8 @@ FUNCTION GetErrorCode
 //--------------------------------------------------------------------------------------------------
 /**
  * Called to get the platform specific error code.
+ *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific error code description.
  *
  * @return The platform specific error code.
  *

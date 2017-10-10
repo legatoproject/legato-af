@@ -1576,6 +1576,9 @@ le_result_t le_mrc_GetRegisterMode
 /**
  * Get the platform specific network registration error code.
  *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * registration error code description.
+ *
  * @return the platform specific registration error code
  *
  */

@@ -116,14 +116,16 @@
  * The Access Point Name can be retrieved by le_mdc_GetAPN(). The Data bearer
  * Technology can be retrieved by le_mdc_GetDataBearerTechnology().
  *
- * When the data session is stopped, the disconnection reason can be known using
- * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() (refer to
- * your platform documentation for further details).
+ * le_mdc_GetDisconnectionReason() or le_mdc_GetPlatformSpecificDisconnectionCode() let you get
+ * the reason for disconnection of data session by retrieving the call end failure code
+ * from @c le_mdc_ProfileRef_t.
  *
- * When the data session connection fails, the failure reason can be known using
- * le_mdc_GetDisconnectionReason(), le_mdc_GetPlatformSpecificDisconnectionCode() or
- * le_mdc_GetPlatformSpecificFailureConnectionReason() (refer to your platform documentation
- * for further details).
+ * le_mdc_GetPlatformSpecificFailureConnectionReason() let you get the data session connection
+ * failure reason by retrieving the  call connection failure code and type from
+ * @c le_mdc_ProfileRef_t.
+ *
+ * Please refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * disconnection code description.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mdcDataSessions
@@ -992,6 +994,9 @@ FUNCTION DisconnectionReason GetDisconnectionReason
 //--------------------------------------------------------------------------------------------------
 /**
  * Called to get the platform specific disconnection code.
+ *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * disconnection code description.
  *
  * @return The platform specific disconnection code.
  *

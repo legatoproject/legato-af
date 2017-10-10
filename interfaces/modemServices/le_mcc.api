@@ -38,8 +38,11 @@
  *
  * The following APIs can be used to manage incoming or outgoing calls:
  * - le_mcc_GetTerminationReason() - termination reason.
- * - le_mcc_GetPlatformSpecificTerminationCode() - the platform specific termination code (refer
- * to your platform documentation for further details).
+ * - le_mcc_GetPlatformSpecificTerminationCode() - let you get the platform specific
+ *   termination code by retrieving the termination code from @c le_mcc_CallRef_t.
+ * Please refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * termination code description.
+ *
  * - le_mcc_IsConnected() - connection status.
  * - le_mcc_GetRemoteTel() - displays remote party telephone number associated with the call.
  * - le_mcc_HangUp() will disconnect this call.
@@ -327,6 +330,9 @@ FUNCTION TerminationReason GetTerminationReason
 //--------------------------------------------------------------------------------------------------
 /**
  * Called to get the platform specific termination code.
+ *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific
+ * termination code description.
  *
  * @return The platform specific termination code.
  *

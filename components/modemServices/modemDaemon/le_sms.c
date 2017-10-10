@@ -4052,6 +4052,8 @@ void le_sms_GetErrorCode
 /**
  * Called to get the platform specific error code.
  *
+ * Refer to @ref platformConstraintsSpecificErrorCodes for platform specific error code description.
+ *
  * @return
  *  - The platform specific error code.
  *  - LE_BAD_PARAMETER Invalid reference provided.
