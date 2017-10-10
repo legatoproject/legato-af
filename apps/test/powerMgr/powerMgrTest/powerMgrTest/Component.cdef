@@ -1,0 +1,13 @@
+sources:
+{
+    powerMgrTest.c
+}
+
+requires:
+{
+
+    api:
+    {
+        le_pm.api
+    }
+}

@@ -86,12 +86,12 @@ le_msg_SessionEventHandlerRef_t le_msg_AddServiceCloseHandler
  * @note The process exits on failures
  */
 //--------------------------------------------------------------------------------------------------
-void le_pm_StayAwake
+le_result_t le_pm_StayAwake
 (
     le_pm_WakeupSourceRef_t w
 )
 {
-    return;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -101,11 +101,11 @@ void le_pm_StayAwake
  * @note The process exits on failure
  */
 //--------------------------------------------------------------------------------------------------
-void le_pm_Relax(
+le_result_t le_pm_Relax(
     le_pm_WakeupSourceRef_t w
 )
 {
-    return;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

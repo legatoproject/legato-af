@@ -44,8 +44,19 @@
  * Power Manager service will automatically release and delete all wakeup sources held on behalf
  * of an exiting or disconnecting client.
  *
+ * The service le_pm_ForceRelaxAndDestroyAllWakeupSource() will return LE_NOT_PERMITTED until a
+ * call to le_pm_StayAwake() fails with LE_NO_MEMORY. This should be considered as an ultime
+ * defense if no more wakeup sources may be acquired or relased. This service will kill all
+ * clients and release and destroy all wakeup source currently managed.
+ *
+ * At startup, the Power Manager will release all wakeup sources matching the pattern for Legato
+ * apps and will keep the others untouched.
+ *
  * For deterministic behaviour, clients requesting services of Power Manager should have
  * CAP_EPOLLWAKEUP (or CAP_BLOCK_SUSPEND) capability assigned.
+ *
+ * The maximum number of wakeup sources managed at same time is fixed by the kernel configuration
+ * option CONFIG_PM_WAKELOCKS_LIMIT.
  *
  * <HR>
  *
@@ -122,9 +133,17 @@ FUNCTION WakeupSource NewWakeupSource
 /**
  * Acquire a wakeup source
  *
+ * @return
+ *     - LE_OK          if the wakeup source is acquired
+ *     - LE_NO_MEMORY   if the wakeup sources limit is reached
+ *     - LE_FAULT       for other errors
+ *
+ * @note The process exits if an invalid reference is passed
+ * @note The wakeup sources limit is fixed by the kernel CONFIG_PM_WAKELOCKS_LIMIT configuration
+ *       variable
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION StayAwake
+FUNCTION le_result_t StayAwake
 (
     WakeupSource wsRef IN  ///< Reference to a created wakeup source
 );
@@ -134,9 +153,33 @@ FUNCTION StayAwake
 /**
  * Release a previously acquired wakeup source
  *
+ * @return
+ *     - LE_OK          if the wakeup source is acquired
+ *     - LE_NOT_FOUND   if the wakeup source was not currently acquired
+ *     - LE_FAULT       for other errors
+ *
+ * @note The process exits if an invalid reference is passed
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION Relax
+FUNCTION le_result_t Relax
 (
     WakeupSource wsRef IN  ///< Reference to a created wakeup source
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release and destroy all acquired wakeup source, kill all clients
+ *
+ * @return
+ *     - LE_OK              if the wakeup source is acquired
+ *     - LE_NOT_PERMITTED   if the le_pm_StayAwake() has not failed with LE_NO_MEMORY
+ *     - LE_FAULT           for other errors
+ *
+ * @note The service is available only if le_pm_StayAwake() has returned LE_NO_MEMORY. It should be
+ *       used in the way to release and destroy all wakeup sources.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t ForceRelaxAndDestroyAllWakeupSource
+(
 );

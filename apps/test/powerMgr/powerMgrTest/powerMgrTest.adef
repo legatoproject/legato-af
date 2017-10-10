@@ -1,0 +1,22 @@
+executables:
+{
+    powerMgrTest = ( powerMgrTest )
+}
+
+bindings:
+{
+    powerMgrTest.powerMgrTest.le_pm -> powerMgr.le_pm
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( powerMgrTest )
+    }
+}
