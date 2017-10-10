@@ -330,7 +330,7 @@ public class MessageBuffer implements AutoCloseable
     //----------------------------------------------------------------------------------------------
     public long readLongRef()
     {
-        long result = (long)LegatoJni.GetMessageInt(hostMessage.getRef(), location);
+        long result = Integer.toUnsignedLong(LegatoJni.GetMessageInt(hostMessage.getRef(), location));
         location += 4;
 
         return result;
