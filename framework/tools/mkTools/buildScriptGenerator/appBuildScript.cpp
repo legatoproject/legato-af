@@ -493,6 +493,10 @@ void AppBuildScriptGenerator_t::GenerateStagingBundleBuildStatements
         auto destPath = "$builddir/" + appPtr->workingDir
             + "/staging/read-only/bin/" + exePtr->name;
         auto exePath = "$builddir/" + exePtr->path;
+        if (exePtr->hasJavaCode)
+        {
+            destPath += ".jar";
+        }
 
         // Copy the component library into the app's lib directory.
         // Cannot use hard link as this will cause builds to fail occasionally (LE-7383)
@@ -540,8 +544,13 @@ void AppBuildScriptGenerator_t::GenerateAppBundleBuildStatement
     }
     for (auto mapItem : appPtr->executables)
     {
+        auto exeName = mapItem.second->name;
+        if (mapItem.second->hasJavaCode)
+        {
+            exeName += ".jar";
+        }
         script << " $builddir/" << appPtr->workingDir
-               << "/staging/read-only/bin/" << mapItem.second->name;
+               << "/staging/read-only/bin/" << exeName;
     }
 
     // It also depends on the generated config file.
