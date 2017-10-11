@@ -928,4 +928,6 @@ void app_FinishUpdates
     {
         sysStatus_MarkTried();
     }
+
+    closedir(dirPtr);
 }

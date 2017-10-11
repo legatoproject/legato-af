@@ -279,6 +279,7 @@ static void FindFileTrees
             if (NULL == dotStrPtr)
             {
                LE_ERROR("dotStrPtr is null.");
+               closedir(dirPtr);
                return;
             }
 
