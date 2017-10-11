@@ -852,8 +852,12 @@ static void GatherBinaries
     for (auto mapItem : appPtr->executables)
     {
         auto exePtr = mapItem.second;
-        auto exePath = "$builddir/" + appPtr->workingDir + "/staging/read-only/bin/" + exePtr->name;
-
+        auto exeName = exePtr->name;
+        if (exePtr->hasJavaCode)
+        {
+            exeName += ".jar";
+        }
+        auto exePath = "$builddir/" + appPtr->workingDir + "/staging/read-only/bin/" + exeName;
         GatherBinary(exePath,
                      stagingPath,
                      bundled);
