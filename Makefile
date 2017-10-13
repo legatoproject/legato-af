@@ -302,6 +302,11 @@ stage_systoimg:
 	systoimg $(SYSTOIMG_FLAGS) $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
 	# Check PA libraries.
 	checkpa $(TARGET) || true
+	# Link legato R/W images to default legato images
+	(cd build/$(TARGET); \
+	    for f in legato.*; do \
+	        ln -sf $$f `echo $$f | sed 's/legato/legato_rw/'`; \
+	    done)
 
 .PHONY: stage_systoimgro
 stage_systoimgro: stage_systoimg
