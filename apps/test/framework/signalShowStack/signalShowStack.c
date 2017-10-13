@@ -135,8 +135,7 @@ double bus
     void
 )
 {
-    double f = 123.4567890;
-    char *p = ((char*)&f)+19;
+    char *p = ((char*)&NaN)+19;
     return *(double*)p / z;
 }
 
@@ -146,11 +145,18 @@ void run_bus
 )
 {
     double f;
+    int rc;
     fprintf(stderr, "DO BUS\n");
     fprintf(stderr, "First: echo 4 >/proc/cpu/alignment\n");
-    system("echo 4 >/proc/cpu/alignment");
-    f = bus();
-    fprintf(stderr, "f = %f\n", f);
+    rc = system("echo 4 >/proc/cpu/alignment");
+    if (0 == rc)
+    {
+        f = bus();
+        fprintf(stderr, "f = %f\n", f);
+    }
+    // If test above does not succeed to generate a SIGBUS.
+    // This may depends on the target and on the compilation/optimization options
+    raise(SIGBUS);
 }
 
 /*
