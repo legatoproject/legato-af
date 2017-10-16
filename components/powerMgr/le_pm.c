@@ -348,9 +348,11 @@ COMPONENT_INIT
     if (wlFd)
     {
         char wsStr[LEGATO_WS_NAME_LEN * 2];
+        char wsScanFormatStr[10]; // Dynamically build the format string for fscanf
         int rc;
 
-        while (1 == fscanf(wlFd, "%s ", wsStr))
+        snprintf(wsScanFormatStr, sizeof(wsScanFormatStr), "%%%zus ", sizeof(wsStr));
+        while (1 == fscanf(wlFd, wsScanFormatStr, wsStr))
         {
             if (0 == strncmp(wsStr, LEGATO_TAG_PREFIX "_", sizeof(LEGATO_TAG_PREFIX)))
             {
@@ -359,7 +361,8 @@ COMPONENT_INIT
                 (void)rc;
             }
         }
-        if ((1 == fscanf(wlFd, "%s", wsStr)) &&
+        snprintf(wsScanFormatStr, sizeof(wsScanFormatStr), "%%%zus", sizeof(wsStr));
+        if ((1 == fscanf(wlFd, wsScanFormatStr, wsStr)) &&
             (0 == strncmp(wsStr, LEGATO_TAG_PREFIX "_", sizeof(LEGATO_TAG_PREFIX))))
         {
             LE_INFO("Releasing wakeup source '%s'", wsStr);
@@ -502,7 +505,7 @@ le_result_t le_pm_StayAwake
         }
         else
         {
-            LE_CRIT("Error acquiring wakeup source '%s': %m (%d)", entry->name, errno);
+            LE_CRIT("Error acquiring wakeup source '%s': %m", entry->name);
             return LE_FAULT;
         }
     }
