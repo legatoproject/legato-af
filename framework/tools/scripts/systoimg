@@ -32,6 +32,8 @@ help_long_description=(
 " - --disable-smack: disable SMACK management in produced image"
 " - -v VERSION, --version=VERSION: provide version exposed by the image"
 " - -s, --strip-staging-tree: strip symbols from image content"
+" - -a, --add-smack-attr: set SMACK attributes defined by SMACK_ATTR_NAME and SMACK_ATTR_VALUE"
+"   environment variables"
 " - -S SUFFIX, --img-suffix=SUFFIX: set a suffix for image names"
 ""
 "Examples:"
@@ -68,6 +70,7 @@ DISABLE_SMACK=0
 STRIP_STAGING_TREE=0
 VERSION=""
 IMG_SUFFIX=""
+SET_SMACK_ATTR=""
 
 while :; do
     case $1 in
@@ -109,6 +112,9 @@ while :; do
             IMG_SUFFIX=${1#*=} # Delete everything up to "=" and assign the remainder.
             ;;
 
+        -a|--add-smack-attr)
+            SET_SMACK_ATTR=1
+            ;;
         -?*)
             echo "Unknown option \"$1\", ignored." >&2
             ;;
@@ -182,6 +188,10 @@ fi
 
 if [ $STRIP_STAGING_TREE -eq 1 ]; then
     MKLEGATOIMG_ARGS="${MKLEGATOIMG_ARGS} -s"
+fi
+
+if [ $SET_SMACK_ATTR -eq 1 ]; then
+    MKLEGATOIMG_ARGS="${MKLEGATOIMG_ARGS} -a"
 fi
 
 echo "Creating images from directory $STAGING_DIR"
