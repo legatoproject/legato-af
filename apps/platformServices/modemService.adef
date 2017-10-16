@@ -1,5 +1,11 @@
 sandboxed: false
 
+executables:
+{
+    modemDaemon = ($LEGATO_ROOT/components/modemServices/modemDaemon)
+    rSimDaemon  = ($LEGATO_ROOT/components/modemServices/rSimDaemon)
+}
+
 processes:
 {
     run:
@@ -33,7 +39,6 @@ requires:
     }
 }
 
-
 extern:
 {
     modemDaemon.modemDaemon.le_ecall
@@ -49,12 +54,6 @@ extern:
     modemDaemon.modemDaemon.le_riPin
     modemDaemon.modemDaemon.le_adc
     modemDaemon.modemDaemon.le_rtc
+    modemDaemon.modemDaemon.le_mdmCfg
     rSimDaemon.rSimDaemon.le_rsim
 }
-
-executables:
-{
-    modemDaemon = (   $LEGATO_ROOT/components/modemServices/modemDaemon    )
-    rSimDaemon  = (   $LEGATO_ROOT/components/modemServices/rSimDaemon    )
-}
-
