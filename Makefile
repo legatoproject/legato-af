@@ -310,7 +310,8 @@ stage_systoimg:
 
 .PHONY: stage_systoimgro
 stage_systoimgro: stage_systoimg
-	systoimg $(SYSTOIMG_FLAGS) -S _ro --read-only $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
+	systoimg $(SYSTOIMG_FLAGS) -S _ro --read-only -a \
+	    $(TARGET) build/$(TARGET)/system.$(TARGET).update build/$(TARGET)
 
 .PHONY: stage_mkavmodel
 stage_mkavmodel:
