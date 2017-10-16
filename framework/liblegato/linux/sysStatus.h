@@ -147,5 +147,20 @@ bool sysStatus_IsGood
     void
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether legato system is Read-Only or not.
+ *
+ * @return
+ *     true if the system is Read-Only
+ *     false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool sysStatus_IsReadOnly
+(
+    void
+);
+
 #endif // LEGATO_SYSTEM_STATUS_H_INCLUDE_GUARD
 

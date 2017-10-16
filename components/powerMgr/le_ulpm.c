@@ -520,6 +520,8 @@ le_result_t le_ulpm_ShutDown
         return LE_NOT_POSSIBLE;
     }
 
+    le_framework_NotifyExpectedReboot();
+
     // No one holding the wakelock. Now write to sysfs file to enter ultra low power mode.
     le_result_t result = WriteToSysfs(SHUTDOWN_INIT_FILE, ULPM_ENABLE_VAL);
 

@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 /** @file sysPaths.h
  *
- * This file defines several common system paths. Currently they are simply #defined as strings
- * in this header.
+ * This file defines several common system related paths. Currently they are simply #defined as
+ * strings in this header.
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -58,6 +58,23 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define CFG_TREE_PATH               CURRENT_SYSTEM_PATH"/config"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The location of read-only flag.
+ */
+//--------------------------------------------------------------------------------------------------
+#define READ_ONLY_FLAG_PATH        "/mnt/legato/systems/current/read-only"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The location of boot count file. This file is only used to check whether device enter into a
+ * reboot loop.
+ */
+//--------------------------------------------------------------------------------------------------
+#define BOOT_COUNT_PATH            "/legato/bootCount"
 
 
 #endif  // LEGATO_SYSPATHS_INCLUDE_GUARD

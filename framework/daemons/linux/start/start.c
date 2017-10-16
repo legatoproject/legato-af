@@ -34,6 +34,8 @@
 #include "smack.h"
 #include "daemon.h"
 #include "fileSystem.h"
+#include "sysPaths.h"
+#include "sysStatus.h"
 #include <mntent.h>
 #include <linux/limits.h>
 
@@ -79,7 +81,6 @@ static const char OldFwDir[] = "/mnt/flash/opt/legato";
 static const char LdconfigNotDoneMarkerFile[] = "/legato/systems/needs_ldconfig";
 static const char GoldenVersionFile[] = "/mnt/legato/system/version";
 static const char CurrentVersionFile[] = "/legato/systems/current/version";
-static const char BootCountFile[] = "/legato/bootCount";
 
 
 //--------------------------------------------------------------------------------------------------
@@ -98,6 +99,7 @@ static inline bool FileExists
 {
     return file_Exists(path);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1104,7 +1106,7 @@ static int ReadBootCount
 {
     char bootCountBuf[64];
 
-    if (ReadFromFile(BootCountFile,  bootCountBuf, sizeof(bootCountBuf)) < 0)
+    if (ReadFromFile(BOOT_COUNT_PATH,  bootCountBuf, sizeof(bootCountBuf)) < 0)
     {
         // File does not exist means first consecutive boot
         return 0;
@@ -1142,7 +1144,7 @@ static void WriteBootCount
 
     snprintf(bootCountBuf, sizeof(bootCountBuf), "%d", bootCount);
 
-    if (WriteToFile(BootCountFile, bootCountBuf, strlen(bootCountBuf)) < 0)
+    if (WriteToFile(BOOT_COUNT_PATH, bootCountBuf, strlen(bootCountBuf)) < 0)
     {
         exit(EXIT_FAILURE);
     }
@@ -1632,7 +1634,7 @@ static int InstallGolden
     RequestLdSoConfig();
 
     // Remove boot count -- restart from 0 when installing a new golden image.
-    unlink(BootCountFile);
+    unlink(BOOT_COUNT_PATH);
 
     // Flush to disk before marking golden install as complete.
     sync();
@@ -1693,7 +1695,7 @@ static void CheckAndInstallCurrentSystem
             // Note: if a WDT is used which starts on boot, we should add code here to start
             // a program which kicks the watchdog.  A watchdog reset at this point would defeat
             // the purpose of not starting Legato.
-            unlink(BootCountFile);
+            unlink(BOOT_COUNT_PATH);
             LE_FATAL("Golden system entered boot loop -- not starting Legato");
         }
 
@@ -1780,7 +1782,7 @@ int main
     char** argv
 )
 {
-    bool isReadOnly = (access("/mnt/legato/systems/current/read-only", R_OK) ? false : true);
+    bool isReadOnly = sysStatus_IsReadOnly();
 
     if (!isReadOnly)
     {

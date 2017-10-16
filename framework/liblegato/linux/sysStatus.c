@@ -291,3 +291,21 @@ bool sysStatus_IsGood
 {
     return sysStatus_Status() == SYS_GOOD;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether legato system is Read-Only or not.
+ *
+ * @return
+ *     true if the system is Read-Only
+ *     false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+bool sysStatus_IsReadOnly
+(
+    void
+)
+{
+    return (0 == access(READ_ONLY_FLAG_PATH, R_OK));
+}

@@ -1,0 +1,15 @@
+requires:
+{
+    api:
+    {
+        le_ulpm.api
+        le_bootReason.api
+        le_cfg.api
+        le_updateCtrl.api
+    }
+}
+
+sources:
+{
+    rebootTest.c
+}

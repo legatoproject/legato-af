@@ -78,3 +78,22 @@ FUNCTION le_result_t Restart
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION bool IsStopping();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether legato framework is Read-Only or not.
+ *
+ * @return
+ *     true if the framework is Read-Only
+ *     false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsReadOnly();
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark the next reboot as expected. Should be called by short lived app that shutdown platform
+ * after a small wakeup. This prevents system not to rollback on expected reboot.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION NotifyExpectedReboot();

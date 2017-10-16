@@ -45,6 +45,7 @@
 #include "app.h"
 #include "system.h"
 #include "sysStatus.h"
+#include "sysPaths.h"
 #include "supCtrl.h"
 #include "updateCtrl.h"
 #include "installer.h"
@@ -2077,7 +2078,7 @@ COMPONENT_INIT
     // Make sure we can set file permissions properly.
     umask(0);
 
-    IsReadOnly = (0 == access("/mnt/legato/systems/current/read-only", R_OK));
+    IsReadOnly = sysStatus_IsReadOnly();
 
     if (!IsReadOnly)
     {

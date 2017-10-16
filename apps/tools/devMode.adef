@@ -29,4 +29,5 @@ bindings:
     devMode.devMode.le_pm -> powerMgr.le_pm
     devMode.devMode.le_updateCtrl -> <root>.le_updateCtrl
     devMode.devMode.le_instStat -> <root>.le_instStat
+    devMode.devMode.le_framework -> <root>.le_framework
 }

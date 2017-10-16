@@ -198,6 +198,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+
 #include "legato.h"
 #include "interfaces.h"
 #include "limit.h"
@@ -215,6 +216,9 @@
 #include "sysStatus.h"
 #include "fileDescriptor.h"
 #include "start.h"
+#include "sysPaths.h"
+#include "sysStatus.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -223,14 +227,32 @@
 //--------------------------------------------------------------------------------------------------
 #define SUPERVISOR_INSTANCE_FILE            STRINGIZE(LE_RUNTIME_DIR) "supervisorInst"
 
+
 //--------------------------------------------------------------------------------------------------
 /**
- * Minimum allowable time between boots.
- *
- * Less than this and the system is treated as a boot loop.
+ * Boot configuration path
  */
 //--------------------------------------------------------------------------------------------------
-#define BOOT_PERIOD                        60000
+#define BOOT_CFG_PATH "/"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Location in boot configuration path to store user defined value for minimum allowable time (in
+ * milliseconds) between boots. If system restarts less than this time, it is treated as a boot
+ * loop.
+ */
+//--------------------------------------------------------------------------------------------------
+#define BOOT_TIMEOUT_PATH "bootTimeout"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Default value of minimum allowable time between boots. This value is taken if there is no user
+ * defined value.
+ */
+//--------------------------------------------------------------------------------------------------
+#define DEFAULT_BOOT_PERIOD                 60000
 
 
 //--------------------------------------------------------------------------------------------------
@@ -239,6 +261,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 le_timer_Ref_t RebootTimer;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -445,6 +468,47 @@ static void StartFramework
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Deletes the reboot count file
+ */
+//--------------------------------------------------------------------------------------------------
+static void DeleteRebootCount
+(
+   void
+)
+{
+    // Just delete the file.  It should exist here, but if it doesn't there's no problem.
+    (void)unlink(BOOT_COUNT_PATH);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the boot timer period. Should be called after all framework daemons are running.
+ *
+ * @return
+ *     The timer period, in milliseconds.
+ **/
+//--------------------------------------------------------------------------------------------------
+static size_t GetBootExpirePeriod
+(
+    void
+)
+{
+    int period;
+
+    // Read the user defined timeout from config tree
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(BOOT_CFG_PATH);
+    period = le_cfg_GetInt(iterRef, BOOT_TIMEOUT_PATH, DEFAULT_BOOT_PERIOD);
+    le_cfg_CancelTxn(iterRef);
+
+    LE_INFO("Boot timeout period = %d ms (~%d seconds)", period, period/1000);
+
+    return (size_t)period;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handle fast reboot detect timer expiring.
  *
  * Deletes the reboot count file
@@ -455,8 +519,8 @@ static void HandleRebootExpiry
     le_timer_Ref_t timer
 )
 {
-    // Just delete the file.  It should exist here, but if it doesn't there's no problem.
-    (void)unlink("/legato/bootCount");
+    LE_INFO("Expired reboot timer");
+    DeleteRebootCount();
 }
 
 
@@ -795,6 +859,7 @@ void le_framework_Restart
     }
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reports if the Legato framework is stopping.
@@ -819,6 +884,7 @@ bool framework_IsStopping
     }
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Reports if the Legato framework is stopping.
@@ -836,6 +902,43 @@ void le_framework_IsStopping
 )
 {
     le_framework_IsStoppingRespond(_cmdRef, framework_IsStopping());
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks whether legato framework is Read-Only or not.
+ *
+ * @return
+ *     true if the framework is Read-Only
+ *     false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+void le_framework_IsReadOnly
+(
+    le_framework_ServerCmdRef_t _cmdRef
+)
+{
+    le_framework_IsReadOnlyRespond(_cmdRef, sysStatus_IsReadOnly());
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Mark the next reboot as expected. Should be called by short lived app that shutdown platform
+ * after a small wakeup. This prevents system not to rollback on expected reboot.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_framework_NotifyExpectedReboot
+(
+    le_framework_ServerCmdRef_t _cmdRef
+)
+{
+    if (false == sysStatus_IsReadOnly())
+    {
+        DeleteRebootCount();
+    }
+    le_framework_NotifyExpectedRebootRespond(_cmdRef);
 }
 
 
@@ -913,10 +1016,13 @@ COMPONENT_INIT
                     "Couldn't bind mount '%s' unto itself. %m", CURRENT_SYSTEM_PATH);
     }
 
-    // If appsWriteable has no write-access, we are in Read-Only. Mount the overlay
+    bool isReadOnly = sysStatus_IsReadOnly();
+
+    // Check whether we are in Read-Only system. If system is Read-Only, then mount the overlay
     // over appsWriteable to work with Legato
-    if (access(CURRENT_SYSTEM_PATH "/appsWriteable", W_OK))
+    if (isReadOnly)
     {
+        LE_INFO("System is read-only. Configuring 'appsWriteable' directory");
         // Create the directories to deploy the R/W upper layer
         (void)mkdir( "/tmp/appsWriteable", 0755 );
         (void)mkdir( "/tmp/appsWriteable_wk", 0755 );
@@ -934,16 +1040,21 @@ COMPONENT_INIT
             }
         }
     }
-    else
+
+    StartFramework();
+
+    // All the framework daemons are active now. Now set the reboot expiry timer if it is not a
+    // RO system.
+    if (!isReadOnly)
     {
+        LE_INFO("Not a read-only system. Configuring boot expire timer.");
         // If we have a writable system, create and start the quick-reboot timer.
         RebootTimer = le_timer_Create("Reboot");
         le_timer_SetHandler(RebootTimer, HandleRebootExpiry);
-        le_timer_SetMsInterval(RebootTimer, BOOT_PERIOD);
+        le_timer_SetMsInterval(RebootTimer, GetBootExpirePeriod());
         le_timer_Start(RebootTimer);
-    }
 
-    StartFramework();
+    }
 
     // Close stdin (and reopen to /dev/null to be safe).
     // This signals to the parent process that all apps have been started.

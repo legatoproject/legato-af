@@ -28,6 +28,7 @@ requires:
 bindings:
 {
     powerManagerService.watchdogChain.le_wdog -> <root>.le_wdog
+    powerManagerService.powerMgr.le_framework -> <root>.le_framework
 }
 
 extern:

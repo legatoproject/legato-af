@@ -1,0 +1,27 @@
+sandboxed: false
+
+version: 1.0.0
+maxFileSystemBytes: 512K
+
+executables:
+{
+        rebootTest = ( rebootTestComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( rebootTest )
+    }
+    maxCoreDumpFileBytes: 512K
+    maxFileBytes: 512K
+}
+
+bindings:
+{
+    rebootTest.rebootTestComponent.le_ulpm -> powerMgr.le_ulpm
+    rebootTest.rebootTestComponent.le_bootReason -> powerMgr.le_bootReason
+    rebootTest.rebootTestComponent.le_cfg -> <root>.le_cfg
+    rebootTest.rebootTestComponent.le_updateCtrl-><root>.le_updateCtrl
+}
