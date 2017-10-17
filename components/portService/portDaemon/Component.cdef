@@ -1,0 +1,20 @@
+provides:
+{
+    api:
+    {
+        portService/le_port.api
+    }
+}
+
+requires:
+{
+    api:
+    {
+        atServices/le_atServer.api
+    }
+}
+
+sources:
+{
+    le_port.c
+}

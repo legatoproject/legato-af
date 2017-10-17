@@ -1,0 +1,159 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_port Port Service
+ *
+ * @ref le_port_interface.h "API Reference"
+ *
+ * This service manages a list of serial links (physical or emulated). It also manages the
+ * link modes (AT command and data mode).
+ *
+ * @section le_port_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b portService.
+ *
+ * Here's a code sample binding to the port service:
+ * @verbatim
+   bindings:
+   {
+      portTest.portTestComp.le_port -> portService.le_port
+   }
+   @endverbatim
+ *
+ * @section port_request Request Device
+ *
+ * le_port_Request() must be called to open a configured device. If the device was not opened, it
+ * opens the device.
+ *
+ * @section port_SwitchMode Switch Mode
+ *
+ * le_port_SetDataMode() must be called to switch the device into data mode.
+ * le_port_SetCommandMode() must be called to switch the device into command mode.
+ *
+ * @section port_Release Release Device
+ *
+ * le_port_Release() must be called to release the device.
+ *
+ * @section port_config Configuration
+ *
+ * @todo Configuration documentation to be written.
+ *
+ * @section port_GetPortReference Get Port Reference
+ *
+ * le_port_GetPortReference() must be called to get the port object reference regarding to a given
+ * reference coming from the AT server.
+ *
+ * @todo The port service is not implemented yet.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_port_interface.h
+ *
+ * Legato @ref c_port include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Include le_atServer.api for atServer type definitions.
+ */
+//--------------------------------------------------------------------------------------------------
+USETYPES le_atServer.api;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Reference type for referring to the device.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Device;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the device name.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_LEN_DEVICE_NAME = 50;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function requests to open a configured device. If the device was not opened, it opens
+ * the device.
+ *
+ * @return
+ *      - Reference to the device.
+ *      - NULL if the device is not available.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Device Request
+(
+    string deviceName[MAX_LEN_DEVICE_NAME] IN  ///< Device name to be requested.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function switches the device into data mode.
+ *
+ * @return
+ *      - LE_OK    Function succeeded.
+ *      - LE_FAULT Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetDataMode
+(
+    Device devRef IN,   ///< Device reference.
+    int8 fd OUT         ///< File descriptor of the device.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function switches the device into AT command mode.
+ *
+ * @return
+ *      - LE_OK    Function succeeded.
+ *      - LE_FAULT Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCommandMode
+(
+    Device devRef IN    ///< Device reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function closes the device and releases the resources.
+ *
+ * @return
+ *      - LE_OK    Function succeeded.
+ *      - LE_FAULT Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Release
+(
+    Device devRef IN    ///< Device reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the device reference regarding to a given reference coming from the AT server.
+ *
+ * @return
+ *      - LE_OK    Function succeeded.
+ *      - LE_FAULT Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPortReference
+(
+    le_atServer.Device atServerDevRef IN,   ///< Device reference from AT server.
+    Device devRef OUT                       ///< Device reference from port service.
+);

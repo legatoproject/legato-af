@@ -1,0 +1,26 @@
+sandboxed: false
+
+executables:
+{
+    portDaemon = ( $LEGATO_ROOT/components/portService/portDaemon )
+}
+
+processes:
+{
+    run:
+    {
+        (portDaemon)
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    portDaemon.portDaemon.le_atServer -> atService.le_atServer
+}
+
+extern:
+{
+    portDaemon.portDaemon.le_port
+}

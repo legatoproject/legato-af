@@ -25,6 +25,7 @@ apps:
     $LEGATO_ROOT/apps/platformServices/gpioService
     $LEGATO_ROOT/apps/platformServices/atService
     $LEGATO_ROOT/apps/platformServices/spiService
+    $LEGATO_ROOT/apps/platformServices/portService
 
     // Command-line tools.
     $LEGATO_ROOT/apps/tools/tools
@@ -49,4 +50,5 @@ interfaceSearch:
 {
     $LEGATO_ROOT/interfaces/modemServices
     $LEGATO_ROOT/interfaces/positioning
+    $LEGATO_ROOT/interfaces/atServices
 }
