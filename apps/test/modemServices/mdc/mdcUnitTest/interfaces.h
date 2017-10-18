@@ -2,6 +2,7 @@
 #include "le_mdc_interface.h"
 #include "le_mdmDefs_interface.h"
 #include "le_sim_interface.h"
+#include "le_cfg_interface.h"
 
 //--------------------------------------------------------------------------------------------------
 /**

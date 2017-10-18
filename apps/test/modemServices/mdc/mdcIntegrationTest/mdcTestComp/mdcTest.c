@@ -502,6 +502,8 @@ static void* TestThread
 
     // Run the event loop
     le_event_RunLoop();
+
+    return NULL;
 }
 
 
@@ -510,7 +512,6 @@ static void* TestThread
 //--------------------------------------------------------------------------------------------------
 /**
  * Test the connectivity.
- *
  */
 //--------------------------------------------------------------------------------------------------
 void TestConnectivity
@@ -518,25 +519,25 @@ void TestConnectivity
     le_mdc_ProfileRef_t profileRef
 )
 {
-    le_result_t res;
+    int status;
     char systemCmd[200] = {0};
-    char itfName[LE_MDC_INTERFACE_NAME_MAX_BYTES]="\0";
-
+    char itfName[LE_MDC_INTERFACE_NAME_MAX_BYTES] = "\0";
     le_mdc_DataBearerTechnology_t downlinkDataBearerTech;
     le_mdc_DataBearerTechnology_t uplinkDataBearerTech;
+    uint64_t rxBytes = 0, txBytes = 0;
+    uint64_t latestRxBytes = 0, latestTxBytes = 0;
 
-    LE_ASSERT(le_mdc_GetDataBearerTechnology(profileRef,
-                                             &downlinkDataBearerTech,
-                                             &uplinkDataBearerTech) == LE_OK);
+    LE_ASSERT_OK(le_mdc_GetDataBearerTechnology(profileRef,
+                                                &downlinkDataBearerTech,
+                                                &uplinkDataBearerTech));
 
     LE_INFO("downlinkDataBearerTech %d, uplinkDataBearerTech %d",
-                downlinkDataBearerTech, uplinkDataBearerTech);
+            downlinkDataBearerTech, uplinkDataBearerTech);
 
     // Get interface name
-    LE_ASSERT(le_mdc_GetInterfaceName(profileRef, itfName, LE_MDC_INTERFACE_NAME_MAX_BYTES)
-                                                                                          == LE_OK);
+    LE_ASSERT_OK(le_mdc_GetInterfaceName(profileRef, itfName, LE_MDC_INTERFACE_NAME_MAX_BYTES));
 
-    if ( le_mdc_IsIPv4(profileRef) )
+    if (le_mdc_IsIPv4(profileRef))
     {
         snprintf(systemCmd, sizeof(systemCmd), "ping -c 4 www.sierrawireless.com -I %s", itfName);
     }
@@ -547,18 +548,37 @@ void TestConnectivity
         snprintf(systemCmd, sizeof(systemCmd), "ping6 -c 4 www.sierrawireless.com -I %s", itfName);
     }
 
-    res = system(systemCmd);
-    if (res != LE_OK)
+    // Ping to test the connectivity
+    status = system(systemCmd);
+    if (WEXITSTATUS(status))
     {
         le_mdc_StopSession(profileRef);
     }
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT(!WEXITSTATUS(status));
 
     // Get data counters
-    uint64_t rxBytes=0, txBytes=0;
-    LE_ASSERT( le_mdc_GetBytesCounters(&rxBytes, &txBytes) == LE_OK );
+    LE_ASSERT_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes));
+    latestRxBytes = rxBytes;
+    latestTxBytes = txBytes;
+    LE_INFO("rxBytes %"PRIu64", txBytes %"PRIu64, rxBytes, txBytes);
 
-    LE_INFO("rxBytes %ld, txBytes %ld", (long int) rxBytes, (long int) txBytes);
+    // Stop data counters and ping to test the connectivity
+    LE_ASSERT_OK(le_mdc_StopBytesCounter());
+    status = system(systemCmd);
+    if (WEXITSTATUS(status))
+    {
+        le_mdc_StopSession(profileRef);
+    }
+    LE_ASSERT(!WEXITSTATUS(status));
+
+    // Get data counters
+    LE_ASSERT_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes));
+    LE_INFO("rxBytes %"PRIu64", txBytes %"PRIu64, rxBytes, txBytes);
+    LE_ASSERT(latestRxBytes == rxBytes);
+    LE_ASSERT(latestTxBytes == txBytes);
+
+    // Start data counters
+    LE_ASSERT_OK(le_mdc_StartBytesCounter());
 }
 //! [Statistics]
 
@@ -573,7 +593,6 @@ COMPONENT_INIT
     le_mdc_ProfileRef_t profileRef  = NULL;
     le_clk_Time_t myTimeout = { 0, 0 };
     myTimeout.sec = 120;
-    le_result_t res;
     Testcase_t test = TEST_SYNC;
     le_thread_Ref_t testThread;
 
@@ -591,46 +610,42 @@ COMPONENT_INIT
     le_thread_Start(testThread);
 
     // Wait for the call of the event handler
-    res = le_sem_WaitWithTimeOut(TestSemaphore, myTimeout);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_sem_WaitWithTimeOut(TestSemaphore, myTimeout));
 
     while (testsDef[test].testCase != TEST_MAX)
     {
         LE_INFO("======= MDC %s STARTED =======", testsDef[test].testName);
 
-        // start the profile
+        // Start the profile
         switch (testsDef[test].testCase)
         {
             case TEST_SYNC:
-                LE_ASSERT( le_mdc_StartSession(profileRef) == LE_OK );
-
-                LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
+                LE_ASSERT_OK(le_mdc_StartSession(profileRef));
+                LE_ASSERT_OK(le_mdc_ResetBytesCounter());
             break;
+
             case TEST_ASYNC:
             {
                 le_result_t sessionStart = LE_FAULT;
-
                 le_event_QueueFunctionToThread(testThread,
-                                   SessionStartAsync,
-                                   profileRef,
-                                   &sessionStart);
+                                               SessionStartAsync,
+                                               profileRef,
+                                               &sessionStart);
 
                 // Wait for the call of the event handler
-                res = le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout);
-                LE_ASSERT(res == LE_OK);
-                LE_ASSERT(sessionStart == LE_OK);
-
-                LE_ASSERT( le_mdc_ResetBytesCounter() == LE_OK );
+                LE_ASSERT_OK(le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout));
+                LE_ASSERT_OK(sessionStart);
+                LE_ASSERT_OK(le_mdc_ResetBytesCounter());
             }
             break;
+
             default:
                 LE_ERROR("Unknown test case");
                 exit(EXIT_FAILURE);
         }
 
         // Wait for the call of the event handler
-        res = le_sem_WaitWithTimeOut(TestSemaphore, myTimeout);
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT_OK(le_sem_WaitWithTimeOut(TestSemaphore, myTimeout));
 
         // Set the network configuration
         SetNetworkConfiguration(profileRef);
@@ -644,31 +659,30 @@ COMPONENT_INIT
         switch (testsDef[test].testCase)
         {
             case TEST_SYNC:
-                LE_ASSERT(le_mdc_StopSession(profileRef) == LE_OK);
-            break;
+                LE_ASSERT_OK(le_mdc_StopSession(profileRef));
+                break;
+
             case TEST_ASYNC:
             {
                 le_result_t sessionStart = LE_FAULT;
                 le_event_QueueFunctionToThread(testThread,
-                                   SessionStopAsync,
-                                   profileRef,
-                                   &sessionStart);
+                                               SessionStopAsync,
+                                               profileRef,
+                                               &sessionStart);
 
                 // Wait for the call of the event handler
-                res = le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout);
-                LE_ASSERT(res == LE_OK);
-                LE_ASSERT(sessionStart == LE_OK);
+                LE_ASSERT_OK(le_sem_WaitWithTimeOut(AsyncTestSemaphore, myTimeout));
+                LE_ASSERT_OK(sessionStart);
             }
             break;
+
             default:
                 LE_ERROR("Unknown test case");
                 exit(EXIT_FAILURE);
         }
 
-
         // Wait for the call of the event handler
-        res = le_sem_WaitWithTimeOut(TestSemaphore, myTimeout);
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT_OK(le_sem_WaitWithTimeOut(TestSemaphore, myTimeout));
 
         LE_INFO("======= MDC %s PASSED =======", testsDef[test].testName);
 

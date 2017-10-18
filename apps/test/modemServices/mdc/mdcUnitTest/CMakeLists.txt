@@ -9,6 +9,7 @@ set(LEGATO_MODEM_SERVICES "${LEGATO_ROOT}/components/modemServices/")
 set(IINFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-iin-conf.json")
 set(MCCMNCFILE "${LEGATO_ROOT}/components/modemServices/modemDaemon/apns-full-conf.json")
 set(JANSSON_INC_DIR "${CMAKE_BINARY_DIR}/framework/libjansson/include/")
+set(SIMU_CONFIG_TREE "${CMAKE_CURRENT_SOURCE_DIR}/simu/")
 
 if(TEST_COVERAGE EQUAL 1)
     set(CFLAGS "--cflags=\"--coverage\"")
@@ -25,6 +26,7 @@ mkexe(${TEST_EXEC}
     -i ${PA_DIR}/simu/components/simuConfig
     -i ${JANSSON_INC_DIR}
     -i ${LEGATO_ROOT}/
+    -i ${SIMU_CONFIG_TREE}
     -s ${PA_DIR}
     --cflags="-DWITHOUT_SIMUCONFIG"
     ${CFLAGS}

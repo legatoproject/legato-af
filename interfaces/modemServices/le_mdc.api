@@ -132,10 +132,15 @@
  *
  * @section le_mdc_dataStatistics Data Statistics
  *
- * Data bytes received/transmitted can be access through le_mdc_GetBytesCounters().
- * These values correspond to the number of bytes received/transmitted since the last software reset
- * or the last le_mdc_ResetBytesCounter() called.
- * Making these value persistent after a software reboot is the client responsibility.
+ * The amount of received and transmitted data can be retrieved through le_mdc_GetBytesCounters().
+ * The returned values correspond to the number of received and transmitted
+ * bytes since the last call to le_mdc_ResetBytesCounter().
+ *
+ * The data statistics collection can be enabled with le_mdc_StartBytesCounter() and disabled
+ * without resetting the counters with le_mdc_StopBytesCounter().
+ *
+ * @note The data statistics collection activation and the data counters are persistent even after
+ * a reboot of the platform.
  *
  * A sample code can be seen in the following page:
  * - @subpage c_mdcDataStatistics
@@ -793,6 +798,32 @@ FUNCTION le_result_t GetBytesCounters
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ResetBytesCounter
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop collecting received/transmitted data flow statistics
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StopBytesCounter
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start collecting received/transmitted data flow statistics
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartBytesCounter
 (
 );
 

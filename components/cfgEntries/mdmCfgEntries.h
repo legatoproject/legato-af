@@ -42,4 +42,14 @@
 #define CFG_NODE_RX_CB_COUNT                "rxCbCount"
 #define CFG_NODE_STATUS_REPORT              "statusReportEnabled"
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Paths to MDC data in the config tree
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_MDC                        "mdc"
+#define CFG_MODEMSERVICE_MDC_PATH           MODEMSERVICE_CONFIG_TREE_ROOT_DIR"/"CFG_NODE_MDC
+#define CFG_NODE_RX_BYTES                   "rxBytes"
+#define CFG_NODE_TX_BYTES                   "txBytes"
+
 #endif // LEGATO_MDMCFGENTRIES_INCLUDE_GUARD

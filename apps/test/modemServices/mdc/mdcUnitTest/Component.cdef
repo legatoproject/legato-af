@@ -6,6 +6,7 @@ requires:
         modemServices/le_mdmDefs.api     [types-only]
         modemServices/le_mrc.api         [types-only]
         modemServices/le_sim.api         [types-only]
+        le_cfg.api                       [types-only]
     }
 }
 
@@ -18,4 +19,5 @@ sources:
     simu/components/le_pa/pa_mrc_simu.c
     simu/components/le_pa/pa_mdc_simu.c
     simu/components/le_pa/pa_sim_simu.c
+    simu/le_cfg_simu.c
 }

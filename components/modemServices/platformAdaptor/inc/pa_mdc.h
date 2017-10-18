@@ -207,7 +207,8 @@ pa_mdc_ConnectionFailureCode_t;
  * Packet statistics structure
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct {
+typedef struct
+{
     uint64_t    transmittedBytesCount;  ///< Number of bytes transmitted without error.
     uint64_t    receivedBytesCount;     ///< Number of bytes received without error.
 }
@@ -559,7 +560,6 @@ LE_SHARED le_result_t pa_mdc_GetDataBearerTechnology
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for all other errors
- *
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mdc_GetDataFlowStatistics
@@ -574,10 +574,37 @@ LE_SHARED le_result_t pa_mdc_GetDataFlowStatistics
  * * @return
  *      - LE_OK on success
  *      - LE_FAULT for all other errors
- *
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t pa_mdc_ResetDataFlowStatistics
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop collecting data flow statistics
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_StopDataFlowStatistics
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start collecting data flow statistics
+ *
+ * * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_StartDataFlowStatistics
 (
     void
 );

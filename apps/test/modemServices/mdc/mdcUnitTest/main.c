@@ -13,6 +13,7 @@
 #include "pa_mdc_simu.h"
 #include "pa_mrc_simu.h"
 #include "pa_sim_simu.h"
+#include "le_cfg_simu.h"
 
 #define NB_PROFILE  5
 #define IP_STR_SIZE     16
@@ -587,6 +588,8 @@ static void* ThreadTestHandler( void* ctxPtr )
     le_sem_Post(ThreadSemaphore);
 
     le_event_RunLoop();
+
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -624,6 +627,8 @@ static void* AsyncStartStopSessionThread
 
     // Run the event loop
     le_event_RunLoop();
+
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -739,30 +744,29 @@ static void TestMdc_Stat
     void
 )
 {
-    pa_mdc_PktStatistics_t dataStatistics;
-    dataStatistics.transmittedBytesCount = 123456789;
-    dataStatistics.receivedBytesCount = 369258147;
-
-    /* Set the statistics value to the pa */
-    pa_mdcSimu_SetDataFlowStatistics(&dataStatistics);
-
     uint64_t rxBytes;
     uint64_t txBytes;
+    pa_mdc_PktStatistics_t dataStatistics;
+
+    /* Set the statistics value to the pa */
+    dataStatistics.transmittedBytesCount = 123456789;
+    dataStatistics.receivedBytesCount = 369258147;
+    pa_mdcSimu_SetDataFlowStatistics(&dataStatistics);
 
     /* Get the statistics and check the values */
-    le_result_t res = le_mdc_GetBytesCounters(&rxBytes, &txBytes);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes));
     LE_ASSERT(rxBytes == dataStatistics.receivedBytesCount);
     LE_ASSERT(txBytes == dataStatistics.transmittedBytesCount);
 
     /* Reset counter, check again statistics (0 values expected) */
-    res = le_mdc_ResetBytesCounter();
-    LE_ASSERT(res == LE_OK);
-
-    res = le_mdc_GetBytesCounters(&rxBytes, &txBytes);
-    LE_ASSERT(res == LE_OK);
+    LE_ASSERT_OK(le_mdc_ResetBytesCounter());
+    LE_ASSERT_OK(le_mdc_GetBytesCounters(&rxBytes, &txBytes));
     LE_ASSERT(rxBytes == 0);
     LE_ASSERT(txBytes == 0);
+
+    /* Stop and start statistics counters */
+    LE_ASSERT_OK(le_mdc_StopBytesCounter());
+    LE_ASSERT_OK(le_mdc_StartBytesCounter());
 }
 
 
@@ -851,7 +855,7 @@ COMPONENT_INIT
 
     LE_INFO("======== UnitTest of MDC API ends with SUCCESS ========");
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
 

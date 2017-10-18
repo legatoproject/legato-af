@@ -10,12 +10,10 @@
 
 #include "legato.h"
 #include "interfaces.h"
-#include "pa_mdc.h"
-
-// Include macros for printing out values
 #include "le_print.h"
-
 #include "jansson.h"
+#include "mdmCfgEntries.h"
+#include "pa_mdc.h"
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions.
@@ -79,7 +77,6 @@ le_mdc_Profile_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * Request command structure.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
@@ -88,12 +85,19 @@ typedef struct
     le_mdc_ProfileRef_t         profileRef;          ///< Profile reference.
     le_mdc_SessionHandlerFunc_t handlerFunc;         ///< The Handler function.
     void                        *contextPtr;         ///< Context.
-} CmdRequest_t;
-
+}
+CmdRequest_t;
 
 //--------------------------------------------------------------------------------------------------
 // Static declarations.
 //--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Data statistics
+ */
+//--------------------------------------------------------------------------------------------------
+static pa_mdc_PktStatistics_t DataStatistics;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -617,6 +621,11 @@ static void ProcessCommandEventHandler
         }
         else if(cmdRequestPtr->command == STOP_SESSION)
         {
+            uint64_t rxBytes, txBytes;
+
+            // Store data counters
+            le_mdc_GetBytesCounters(&rxBytes, &txBytes);
+
             result = pa_mdc_StopSession(profilePtr->profileIndex);
         }
         else
@@ -651,6 +660,9 @@ static void* CommandThread
 {
     le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
 
+    // Connect to services used by this thread
+    le_cfg_ConnectService();
+
     // Register for MDC command events
     le_event_AddHandler("ProcessCommandHandler", CommandEventId, ProcessCommandEventHandler);
 
@@ -659,6 +671,93 @@ static void* CommandThread
     // Run the event loop
     le_event_RunLoop();
     return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the data counter activation state
+ */
+//--------------------------------------------------------------------------------------------------
+static bool GetDataCounterState
+(
+    void
+)
+{
+    bool activationState;
+    le_cfg_IteratorRef_t iteratorRef;
+
+    iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MDC_PATH);
+    activationState = le_cfg_GetBool(iteratorRef, CFG_NODE_COUNTING, true);
+    le_cfg_CancelTxn(iteratorRef);
+
+    LE_DEBUG("Retrieved data counter activation state: %d", activationState);
+
+    return activationState;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the message counting state
+ */
+//--------------------------------------------------------------------------------------------------
+static void SetDataCounterState
+(
+    bool activationState    ///< New data counter activation state
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+
+    LE_DEBUG("New data counter activation state: %d", activationState);
+
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_MDC_PATH);
+    le_cfg_SetBool(iteratorRef, CFG_NODE_COUNTING, activationState);
+    le_cfg_CommitTxn(iteratorRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Read the saved data counters
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetDataCounters
+(
+    uint64_t* rxBytesPtr,   ///< Received bytes
+    uint64_t* txBytesPtr    ///< Transmitted bytes
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+
+    iteratorRef = le_cfg_CreateReadTxn(CFG_MODEMSERVICE_MDC_PATH);
+    *rxBytesPtr = le_cfg_GetFloat(iteratorRef, CFG_NODE_RX_BYTES, 0);
+    *txBytesPtr = le_cfg_GetFloat(iteratorRef, CFG_NODE_TX_BYTES, 0);
+    le_cfg_CancelTxn(iteratorRef);
+
+    LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, *rxBytesPtr, *txBytesPtr);
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Write the saved data counters
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t SetDataCounters
+(
+    uint64_t rxBytes,   ///< Received bytes
+    uint64_t txBytes    ///< Transmitted bytes
+)
+{
+    le_cfg_IteratorRef_t iteratorRef;
+
+    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_MDC_PATH);
+    le_cfg_SetFloat(iteratorRef, CFG_NODE_RX_BYTES, rxBytes);
+    le_cfg_SetFloat(iteratorRef, CFG_NODE_TX_BYTES, txBytes);
+    le_cfg_CommitTxn(iteratorRef);
+
+    LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, rxBytes, txBytes);
+
+    return LE_OK;
 }
 
 // =============================================
@@ -690,6 +789,17 @@ void le_mdc_Init
 
     // Subscribe to the session state handler
     pa_mdc_AddSessionStateHandler(NewSessionStateHandler, NULL);
+
+    // Initialize data counter state and values
+    if (GetDataCounterState())
+    {
+        pa_mdc_StartDataFlowStatistics();
+    }
+    else
+    {
+        pa_mdc_StopDataFlowStatistics();
+    }
+    GetDataCounters(&DataStatistics.receivedBytesCount, &DataStatistics.transmittedBytesCount);
 
     /* MT-PDP management */
     // Create an event Id for MT-PDP notification
@@ -979,12 +1089,16 @@ le_result_t le_mdc_StopSession
     le_mdc_ProfileRef_t profileRef     ///< [IN] Stop data session for this profile object
 )
 {
+    uint64_t rxBytes, txBytes;
     le_mdc_Profile_t* profilePtr = le_ref_Lookup(DataProfileRefMap, profileRef);
     if (profilePtr == NULL)
     {
         LE_KILL_CLIENT("Invalid reference (%p) found!", profileRef);
         return LE_BAD_PARAMETER;
     }
+
+    // Store data counters
+    le_mdc_GetBytesCounters(&rxBytes, &txBytes);
 
     return pa_mdc_StopSession(profilePtr->profileIndex);
 }
@@ -1627,12 +1741,12 @@ le_result_t le_mdc_GetBytesCounters
     uint64_t *txBytes   ///< [OUT] bytes amount transmitted since the last counter reset
 )
 {
-    if (rxBytes == NULL)
+    if (!rxBytes)
     {
         LE_KILL_CLIENT("rxBytes is NULL !");
         return LE_FAULT;
     }
-    if (txBytes == NULL)
+    if (!txBytes)
     {
         LE_KILL_CLIENT("txBytes is NULL !");
         return LE_FAULT;
@@ -1640,15 +1754,20 @@ le_result_t le_mdc_GetBytesCounters
 
     pa_mdc_PktStatistics_t data;
     le_result_t result = pa_mdc_GetDataFlowStatistics(&data);
-    if ( result != LE_OK )
+    if (LE_OK != result)
     {
         return result;
     }
 
-    *rxBytes = data.receivedBytesCount;
-    *txBytes = data.transmittedBytesCount;
+    *rxBytes = DataStatistics.receivedBytesCount + data.receivedBytesCount;
+    *txBytes = DataStatistics.transmittedBytesCount + data.transmittedBytesCount;
+    LE_DEBUG("Received and transmitted bytes: rx=%"PRIu64", tx=%"PRIu64, *rxBytes, *txBytes);
+
+    SetDataCounters(*rxBytes, *txBytes);
+
     return LE_OK;
 }
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1664,7 +1783,69 @@ le_result_t le_mdc_ResetBytesCounter
     void
 )
 {
-    return pa_mdc_ResetDataFlowStatistics();
+    LE_DEBUG("Reset received and transmitted bytes");
+
+    if (LE_OK == pa_mdc_ResetDataFlowStatistics())
+    {
+        DataStatistics.receivedBytesCount = 0;
+        DataStatistics.transmittedBytesCount = 0;
+        SetDataCounters(DataStatistics.receivedBytesCount, DataStatistics.transmittedBytesCount);
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop collecting received/transmitted data flow statistics
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_StopBytesCounter
+(
+    void
+)
+{
+    LE_DEBUG("Stop counting received and transmitted bytes");
+
+    if (LE_OK == pa_mdc_StopDataFlowStatistics())
+    {
+        SetDataCounterState(false);
+        return LE_OK;
+    }
+
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Start collecting received/transmitted data flow statistics
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_StartBytesCounter
+(
+    void
+)
+{
+    LE_DEBUG("Start counting received and transmitted bytes");
+
+    if (LE_OK == pa_mdc_StartDataFlowStatistics())
+    {
+        SetDataCounterState(true);
+        return LE_OK;
+    }
+
+    return LE_FAULT;
 }
 
 
