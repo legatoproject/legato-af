@@ -198,6 +198,14 @@ static void StatusHandler
             statusPtr = "AUTHENTICATION_FAILED";
             break;
 
+        case LE_AVC_CERTIFICATION_OK:
+            statusPtr = "CERTIFICATION_OK";
+            break;
+
+        case LE_AVC_CERTIFICATION_KO:
+            statusPtr = "CERTIFICATION_KO";
+            break;
+
         default:
             break;
     }

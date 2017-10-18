@@ -502,7 +502,9 @@ ENUM Status
                             ///< necessary after software update if device reboots(or session stops)
                             ///< in the middle of software update.
     AUTH_STARTED,           ///< Authentication with AV server started
-    AUTH_FAILED             ///< Authentication with AV server failed
+    AUTH_FAILED,            ///< Authentication with AV server failed
+    CERTIFICATION_OK,       ///< Package is certified sent by a trusted server
+    CERTIFICATION_KO        ///< Package is not certified sent by a trusted server
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1078,4 +1080,3 @@ FUNCTION le_result_t GetUserAgreement
     UserAgreement updateStatus IN,         ///< Operation for which user agreements has to be read.
     bool enable OUT                        ///< true = enable, false = disable.
 );
-
