@@ -908,6 +908,36 @@ static void PrintSummary
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Remove API from given set if the API is already present in client or server required APIs.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void SanitizeApiSet(model::Component_t* componentPtr,  std::set<const model::ApiFile_t*>& apiSet) {
+    for (auto iter = apiSet.begin(); iter != apiSet.end(); iter++) {
+        bool forceRemove = false;
+        for (auto comp : componentPtr->clientApis) {
+            if (comp->internalName == (*iter)->defaultPrefix) {
+                forceRemove = true;
+                break;
+            }
+        }
+        if (!forceRemove) {
+            for (auto comp : componentPtr->serverApis) {
+                if (comp->internalName == (*iter)->defaultPrefix && !comp->async) {
+                    forceRemove = true;
+                    break;
+                }
+            }
+        }
+        if (forceRemove) {
+            apiSet.erase(iter);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get a conceptual model for a single component residing in a given directory.
  *
  * @return Pointer to the component object.
@@ -995,6 +1025,13 @@ model::Component_t* GetComponent
                 mk::format(LE_I18N("Internal error: Unrecognized section '%s'."), sectionName)
             );
         }
+    }
+
+    // In case of Java code generation, remove client/server use types API
+    // which are already required to avoid duplicate classes
+    if (componentPtr->HasJavaCode()) {
+        SanitizeApiSet(componentPtr, componentPtr->clientUsetypesApis);
+        SanitizeApiSet(componentPtr, componentPtr->serverUsetypesApis);
     }
 
     // Build a path to the Legato library dir and the Legato lib so that we can add it as a
