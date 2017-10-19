@@ -9,8 +9,6 @@ General concepts about Legato AF and details to get started using the framework 
 | @subpage basicApps       | Basic Concepts to get you started developing your own Apps            |
 | @subpage defFiles        | Use Definition Files to build systems, Apps, components and drivers   |
 | @subpage apiFiles        | Work with the API files to develop Apps                               |
-| @subpage howToMain       | How To and Troubleshooting articles for common features               |
 | @subpage ccodingStdsMain | C Language Coding Standards                                           |
-| @subpage sampleApps      | Run Sample Applications                                               |
 
 **/

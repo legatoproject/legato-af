@@ -57,11 +57,13 @@ Dig further and discover our development concepts, API Guides for our core daemo
 (platform services), or our tool box that contains tools to help you configure and run
 the Legato Runtime Environment and the underlaying platform.
 
-| Section                            | Description                                            |
-| ---------------------------------- | ------------------------------------------------------ |
-| @subpage buildAppsConcepts         | Legato basic concepts                                  |
-| @subpage apiGuidesMain             | Service and C Library API reference                    |
-| @subpage tools                     | Target, Host, and Build tools' info                    |
+| Section                            | Description                                                 |
+| ---------------------------------- | ----------------------------------------------------------- |
+| @subpage buildAppsConcepts         | Legato basic concepts                                       |
+| @subpage apiGuidesMain             | Service and C Library API reference                         |
+| @subpage tools                     | Target, Host, and Build tools' info                         |
+| @subpage howToMain                 | How To and Troubleshooting articles for common features     |
+| @subpage sampleApps                | Sample Applications                                         |
 
 
 Copyright (C) Sierra Wireless Inc.

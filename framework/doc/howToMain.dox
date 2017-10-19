@@ -1,19 +1,20 @@
 /** @page howToMain How To
 
 This section contains topics about frequently needed tasks:
-| Section                            | Description                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------ |
-| @subpage howToLoginAuthentication  | Set up secure shell with ssh keys and passwords                          |
-| @subpage howToDebug                | Debug - General tips and tricks                                          |
-| @subpage howToDebugGDB             | Debug Apps using GDB                                                     |
-| @subpage howToPowerMgmt            | Manage device power                                                      |
-| @subpage howToEcall                | Manage Legato eCall features                                             |
-| @subpage howToGNSS                 | Mange GNSS on a target device                                            |
-| @subpage howToSecurity             | Configure sandboxes and SMACK                                            |
-| @subpage howToPortLegacyGen        | Port legacy Apps to Legato                                               |
-| @subpage howToSetUserTimebase      | Set up user timebase                                                     |
-| @subpage howToLogs                 | Access and use Legato Logs                                               |
-| @subpage howToSoftwareUpdate       | Update Software                                                          |
+| Section                            | Description                                                 |
+| ---------------------------------- | ------------------------------------------------------------|
+| @subpage howToLoginAuthentication  | Set up secure shell with ssh keys and passwords             |
+| @subpage howToKernelObject         | Build and Install a Kernel Object with Legato               |
+| @subpage howToDebug                | Debug - General tips and tricks                             |
+| @subpage howToDebugGDB             | Debug Apps using GDB                                        |
+| @subpage howToPowerMgmt            | Manage device power                                         |
+| @subpage howToEcall                | Manage Legato eCall features                                |
+| @subpage howToGNSS                 | Mange GNSS on a target device                               |
+| @subpage howToSecurity             | Configure sandboxes and SMACK                               |
+| @subpage howToPortLegacyGen        | Port legacy Apps to Legato                                  |
+| @subpage howToSetUserTimebase      | Set up user timebase                                        |
+| @subpage howToLogs                 | Access and use Legato Logs                                  |
+| @subpage howToSoftwareUpdate       | Update Software                                             |
 
 
 Copyright (C) Sierra Wireless Inc.
