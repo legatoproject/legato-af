@@ -1199,9 +1199,15 @@ static le_result_t CreateTmpFs
 
     // Make the mount options.
     char opt[LIMIT_MAX_APP_NAME_BYTES*2 + 100];
-    if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=%d,gid=%d,smackfsdef=%s,smackfsroot=%s",
-                 APP_TMPFS_SIZE, S_IRWXO, 0, 0,
-                 appDirLabelPtr, appDirLabelPtr) >= sizeof(opt))
+    if (snprintf(opt, sizeof(opt), "size=%d,mode=%.4o,uid=%d,gid=%d"
+#if (DISABLE_SMACK != 1)
+                                   ",smackfsdef=%s,smackfsroot=%s"
+#endif
+                 , APP_TMPFS_SIZE, S_IRWXO, 0, 0
+#if (DISABLE_SMACK != 1)
+                 , appDirLabelPtr, appDirLabelPtr
+#endif
+                 ) >= sizeof(opt))
     {
         LE_ERROR("Mount options string is too long (%s). Can't mount tmpfs for app '%s'.'",
                  opt,
@@ -2166,6 +2172,19 @@ static le_result_t CreateRequiredLinks
                     le_cfg_CancelTxn(appCfg);
                     return LE_FAULT;
                 }
+            }
+            // Treat /dev/shm differently.  These are shared memory expected to be shared between
+            // other apps but also other userland processes.  So export the entire directory.
+            else if (le_path_IsEquivalent("/dev/shm", srcPath, "/") ||
+                     le_path_IsSubpath("/dev/shm", srcPath, "/"))
+            {
+                if ((CreateDirLink(appRef, appDirLabelPtr, srcPath, destPath) != LE_OK) ||
+                    (smack_SetLabel(srcPath, "*") != LE_OK))
+                {
+                    le_cfg_CancelTxn(appCfg);
+                    return LE_FAULT;
+                }
+
             }
             else
             {

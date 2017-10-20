@@ -599,6 +599,9 @@ requires:
 
 @warning  This section is experimental.  Future releases of may not support this section.
 
+@note   If an access to the directory @c /dev/shm is required, it should be listed in the subsection
+        @c dir: because it is treated like a directory even if it is located in @c /dev.
+
 
 @subsection defFilesCdef_requiresDir dir
 
@@ -660,6 +663,9 @@ requires:
         @c /usr/bin, you can't then @a bundle a file into @c /usr/bin or @a require something to appear
         in @c /usr/bin; that would have an effect on the contents of the /bin directory outside
         of the app.
+
+@note   If an access to the directory @c /dev/shm is required, it should be listed in this
+        subsection because it is treated like a directory even if it is located in @c /dev.
 
 
 @subsection defFilesCdef_requiresLib lib
