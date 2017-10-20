@@ -1,8 +1,21 @@
 /**
  * This module implements the integration tests for AT commands server API.
  *
+ * Issue the following commands:
+ * @verbatim
+  $ app start atServerIntegrationTest
+  $ app runProc atServerIntegrationTest --exe=atServerTest -- <socket/tty> <tty name>
+  @endverbatim
+ *- Socket:
  * Use a TCP socket to connect to the atServer:
  * Open a connection (with telnet for instance) on port 1234
+ *- Serial devices:
+ * Provide the TTY name to connect to the atServer
+ * @note According to your platform, you may have to configure the mapping of the physical UART.
+ * Please refer to https://source.sierrawireless.com/resources/legato/howtos/customizeuart/ for full
+ * details.
+ * On host, open a TTY terminal to connect to the device with the following configuration:
+ * Speed(baud): 115200, Data bits: 8, Stop bits: 1, Parity: None, Flow control: None.
  *
  * The AT server bridge can be activated thanks to the AT command AT+BRIDGE:
  * - AT+BRIDGE="OPEN" opens the bridge
@@ -21,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <termios.h>
 
 #define NB_CLIENT_MAX 4
 
@@ -995,7 +1009,6 @@ static void* SocketThread
         return NULL;
     }
 
-
     memset(&myAddress,0,sizeof(myAddress));
 
     myAddress.sin_port = htons(1235);
@@ -1043,42 +1056,185 @@ static void* SocketThread
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * TTY link
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void TtyLink
+(
+  const char *ttyNamePtr
+  ///< [IN]
+  ///< TTY path name
+)
+{
+    struct termios portSettings;
+    le_atServer_DeviceRef_t devRef = NULL;
+
+    int fd = le_tty_Open(ttyNamePtr, O_RDWR | O_NOCTTY);
+    if (-1 == fd)
+    {
+        LE_FATAL("Failed to open %s", ttyNamePtr);
+    }
+
+    // Save configuration
+    if (-1 == tcgetattr(fd, &portSettings))
+    {
+        le_tty_Close(fd);
+        LE_FATAL("Failed to retrieve TTY settings");
+    }
+
+    if (LE_OK != le_tty_SetBaudRate(fd,LE_TTY_SPEED_115200))
+    {
+        LE_ERROR("Failed to configure TTY baud rate");
+        goto error;
+    }
+
+    if (LE_OK != le_tty_SetFraming(fd,'N', 8, 1))
+    {
+        LE_ERROR("Failed to configure TTY framing");
+        goto error;
+    }
+
+    if (LE_OK != le_tty_SetFlowControl(fd, LE_TTY_FLOW_CONTROL_NONE))
+    {
+        LE_ERROR("Failed to configure TTY flow control");
+        goto error;
+    }
+
+    // Set serial port into raw (non-canonical) mode. Disables conversion of EOL characters,
+    // disables local echo, numChars = 0 and timeout = 0: Read will be completetly non-blocking.
+    if (LE_OK != le_tty_SetRaw(fd, 0, 0))
+    {
+         LE_ERROR("Failed to configure TTY raw");
+         goto error;
+    }
+
+    devRef = le_atServer_Open(fd);
+    if (NULL == devRef)
+    {
+        LE_ERROR("Failed to open AT server");
+        goto error;
+    }
+
+    return;
+
+error:
+    // restore configuration
+    if (-1 == tcsetattr(fd, TCSANOW, &portSettings))
+    {
+        LE_ERROR("Failed to restore TTY settings");
+    }
+    // Close the TTY
+    le_tty_Close(fd);
+    LE_FATAL("Failed to connect to %s", ttyNamePtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void Print
+(
+    char* string
+)
+{
+    bool sandboxed = (getuid() != 0);
+
+    if (sandboxed)
+    {
+        LE_INFO("%s", string);
+    }
+    else
+    {
+        fprintf(stderr, "%s\n", string);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Main of the test
  *
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
-    LE_INFO("AT server test starts");
+    if (le_arg_NumArgs() < 1)
+    {
+        goto err_exit;
+    }
+
+    LE_INFO("============== AT server test starts =================");
     int i = 0;
+    bool socketUse = false;
+    const char* ttyNamePtr = NULL;
+
+    const char* testString = le_arg_GetArg(0);
+    if (NULL == testString)
+    {
+        LE_ERROR("testString is NULL");
+        goto err_exit;
+    }
+
+    if (0 == strncmp(testString, "socket", strlen("socket")))
+    {
+        socketUse = true;
+    }
+    else if (0 == strncmp(testString, "tty", strlen("tty")))
+    {
+        socketUse = false;
+
+        // Get the tty name
+        ttyNamePtr = le_arg_GetArg(1);
+        if (NULL == ttyNamePtr)
+        {
+            LE_ERROR("TTY Name is NULL");
+            goto err_exit;
+        }
+    }
 
     memset(&TestCtx, 0, sizeof(TestCtx));
 
     // Device pool allocation
-    TestCtx.devicesPool = le_mem_CreatePool("DevicesPool",sizeof(DeviceCtx_t));
+    TestCtx.devicesPool = le_mem_CreatePool("DevicesPool", sizeof(DeviceCtx_t));
     le_mem_ExpandPool(TestCtx.devicesPool, NB_CLIENT_MAX);
 
     TestCtx.mainThreadRef = le_thread_GetCurrent();
 
     // AT commands subscriptions
-    while ( i < NUM_ARRAY_MEMBERS(AtCmdCreation) )
+    while (i < NUM_ARRAY_MEMBERS(AtCmdCreation))
     {
         AtCmdCreation[i].cmdRef = le_atServer_Create(AtCmdCreation[i].atCmdPtr);
         LE_ASSERT(AtCmdCreation[i].cmdRef != NULL);
-
-        le_atServer_AddCommandHandler(
-            AtCmdCreation[i].cmdRef, AtCmdCreation[i].handlerPtr, AtCmdCreation[i].contextPtr);
-
+        le_atServer_AddCommandHandler(AtCmdCreation[i].cmdRef,
+                                      AtCmdCreation[i].handlerPtr,
+                                      AtCmdCreation[i].contextPtr);
         i++;
     }
 
     // Add a call handler
     le_mcc_AddCallEventHandler(MyCallEventHandler, &TestCtx.dialContext);
 
-    le_thread_Start(le_thread_Create("SocketThread",
-                                     SocketThread,
-                                     &TestCtx));
+    // open the link
+    if (true == socketUse)
+    {
+        le_thread_Start(le_thread_Create("SocketThread",
+                                         SocketThread,
+                                         &TestCtx));
+    }
+    else
+    {
+        TtyLink(ttyNamePtr);
+    }
 
+    // start the test
     automaticTest_Init();
-}
+    return;
 
+err_exit:
+    Print("PRINT USAGE => app runProc atServerIntegrationTest --exe=atServerTest -- <socket/tty> \
+    <tty name>");
+    LE_INFO("EXIT atServerIntegrationTest");
+    exit(EXIT_FAILURE);
+}

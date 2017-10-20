@@ -1,3 +1,6 @@
+// This test MUST run unsandboxed as it requires access to /dev/tty* devices.
+// All /dev/tty* cannot be imported inside the sandbox.
+sandboxed: false
 executables:
 {
     atServerTest = ( atServerTestComp )
@@ -8,19 +11,6 @@ processes:
     envVars:
     {
         LE_LOG_LEVEL = DEBUG
-    }
-
-    run:
-    {
-        ( atServerTest )
-    }
-}
-
-requires:
-{
-    device:
-    {
-        [rw]    /dev/ttyAT    /dev/ttyAT
     }
 }
 
