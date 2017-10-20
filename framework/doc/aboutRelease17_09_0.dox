@@ -99,6 +99,8 @@ investigation:
 @b AVC @b Service
 - If an users AVC Control app is removed while an AVC session is starting, the AVCService will
   reboot and may cause a temporary loss of service while the AVCService is restarting.
+- @c avcService does not support "." as a path separator for asset data. Developers
+  must use @b "/" to separate resource paths when sending asset data to the AirVantage Server.
 
 @b GNSS @b Service
 - NMEA masks do not support PTYPE, GPGRS or GPGLL at this time.
