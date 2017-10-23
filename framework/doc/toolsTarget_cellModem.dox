@@ -2,6 +2,10 @@
 
 Use the Cellular Modem tool to control modem functions.
 
+@warning This tool has been designed to be used for development and testing purposes by a user in
+real time.  This tool should not be called from user apps, and may cause instabilities if called
+continuously.  @ref c_le_data should be used to open and configure connections within user apps.
+
 <h1>Usage</h1>
 
 <b><c> cm [SERVICES] [COMMANDS] </c></b>
@@ -91,6 +95,23 @@ cm radio status @endverbatim
 > Resume automatic RAT selection.
 
 After setting the radio access technology, you'll need to do a <c>legato restart</c> before it's effective.
+
+@section toolsTarget_cm_rtc RTC
+
+@verbatim cm rtc read @endverbatim
+> Reads the RTC time
+
+@verbatim cm rtc set "21 Oct 2015 16:29:00" @endverbatim
+> Sets the RTC time
+
+Time Format:
+- day of the month (leading zeros are permitted)
+- month (either the abbreviated or the full name)
+- year with century
+- hour (leading zeros are permitted)
+- minute (leading zeros are permitted)
+- seconds (leading zeros are permitted)
+
 
 @section toolsTarget_cm_sim SIM
 
