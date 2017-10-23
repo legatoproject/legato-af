@@ -240,19 +240,27 @@
  * @subsection c_le_avc_PollingTimer Polling Timer
  *
  * The target will periodically initiate a connection to the AirVantage Server according to the
- * settings for the polling timer to check if there are any pending jobs.
+ * settings for the polling timer to check if there are any pending jobs.  The polling timer will
+ * initiate a session when it starts the count (at 0 minutes) and then again at the specified time
+ * set.
  *
- * If you need to disable the poling timer call le_avc_SetPollingTimer() and set the value to 0.
+ * To disable the polling timer call le_avc_SetPollingTimer() and set the value to 0.
  *
- * The polling timer accepts ranges from 0 to 525600 minutes and is persistent across reboots and
- * upgrades.
+ * The polling timer accepts ranges from 0 to 525600 minutes.  The polling timer does not get reset
+ * with reboots or power loss.  If the target is powered off during the polling time, it will
+ * connect to the AVC Server upon startup of the app.  For example, if the polling timer is set to 1
+ * hour then and the target reboots at the 20 minute mark, the polling timer will still initiate a
+ * connection at the 1 hour mark.  If the target is powered off or in the middle of rebooting at the
+ * 1 hour mark, as soon as the app is started again, the polling timer will initiate a connection to
+ * the AirVantage Server.
  *
  * To read the polling timer call: le_avc_GetPollingTimer()
  *
  * To write a new value to the polling timer call: le_avc_SetPollingTimer()
  *
  * Writing to the polling timer stops the current polling timer if it is running and starts a timer
- * with the new value. The next connection will be initated when the new polling timer expires.
+ * with the new value. The next connection will be initiated when the new polling timer reaches it's
+ * set value.
  *
  * @subsection c_le_avc_RetryTimers Retry Timers
  *
