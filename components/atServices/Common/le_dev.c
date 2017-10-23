@@ -264,7 +264,7 @@ ssize_t le_dev_Read
 (
     Device_t*   devicePtr,    ///< device pointer
     uint8_t*    rxDataPtr,    ///< Buffer where to read
-    ssize_t     size          ///< size of buffer
+    size_t      size          ///< size of buffer
 )
 {
     ssize_t count;

@@ -171,6 +171,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * ASCII line feed code.
+ */
+//--------------------------------------------------------------------------------------------------
+#define NEWLINE             0x0a
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * ASCII backspace code.
+ */
+//--------------------------------------------------------------------------------------------------
+#define BACKSPACE           0x08
+
+//--------------------------------------------------------------------------------------------------
+/**
  * The timer interval to kick the watchdog chain.
  */
 //--------------------------------------------------------------------------------------------------
@@ -311,6 +325,22 @@ RspState_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Text processing state.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    CONTINUE,
+    END_OF_LINE,
+    CANCEL,
+    INVALID_CHARACTER,
+    INVALID_SEQUENCE,
+}
+TextProcessingState_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Subscribed AT Command structure.
  *
  */
@@ -379,11 +409,12 @@ FinalRsp_t;
 typedef struct
 {
     bool                                mode;                           ///< Is text mode
-    size_t                              offset;                         ///< Buffer offset
-    char                                buf[LE_ATSERVER_TEXT_MAX_LEN];  ///< Text buffer
+    ssize_t                              offset;                        ///< Buffer offset
+    char                                buf[LE_ATDEFS_TEXT_MAX_BYTES];  ///< Text buffer
     le_atServer_GetTextCallbackFunc_t   callback;                       ///< Callback function
     void*                               ctxPtr;                         ///< Context
     le_atServer_CmdRef_t                cmdRef;                         ///< Received AT command
+    le_result_t                         result;                         ///< Text processing result
 }
 Text_t;
 
@@ -1724,7 +1755,130 @@ static void ReceiveCmd
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function handles receiving text
+ * This function removes a backspace and the character before it
+ *
+ * @return
+ *      modified string
+ */
+//--------------------------------------------------------------------------------------------------
+static char* RemoveBackspace
+(
+    char* strPtr
+)
+{
+    int i = 0, ch = 0;
+
+    if (!strPtr)
+    {
+        LE_ERROR("null string");
+        return NULL;
+    }
+
+    while (*strPtr)
+    {
+        if (*strPtr == '\b')
+        {
+            while (*strPtr)
+            {
+                if (ch)
+                {
+                    *(strPtr - 1) = *(strPtr + 1);
+                }
+                else
+                {
+                    *strPtr = *(strPtr + 1);
+                }
+                strPtr++;
+                i++;
+            }
+            break;
+        }
+        strPtr++;
+        i++;
+        ch++;
+    }
+
+    return (strPtr - i);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function processes received text buffer
+ *
+ * @return
+ *      processing state.
+ */
+//--------------------------------------------------------------------------------------------------
+static TextProcessingState_t ProcessText
+(
+    Text_t*     textPtr,
+    ssize_t     count,
+    Device_t*   dev
+)
+{
+    char* copyPtr = textPtr->buf + (textPtr->offset - count);
+    TextProcessingState_t state = CONTINUE;
+
+    textPtr->result = LE_OK;
+
+    while (*copyPtr)
+    {
+        if (state)
+        {
+            LE_ERROR("Invalid sequence");
+            state = INVALID_SEQUENCE;
+            break;
+        }
+        switch (*copyPtr)
+        {
+            case NEWLINE:
+                LE_DEBUG("Linefeed");
+                le_dev_Write(dev, (uint8_t *)TEXT_PROMPT, TEXT_PROMPT_LEN);
+                break;
+            case ESCAPE:
+                LE_DEBUG("Cancel request");
+                state = CANCEL;
+                break;
+            case SUBSTITUTE:
+                LE_DEBUG("End of text");
+                state = END_OF_LINE;
+                break;
+            default:
+                if (!isprint(*copyPtr))
+                {
+                    LE_ERROR("Invalid character");
+                    state = INVALID_CHARACTER;
+                }
+                break;
+        }
+        copyPtr++;
+    }
+
+    switch (state)
+    {
+        case CANCEL:
+            memset(textPtr->buf, 0, textPtr->offset);
+            textPtr->offset = 0;
+            break;
+        case INVALID_CHARACTER:
+        case INVALID_SEQUENCE:
+            memset(textPtr->buf, 0, textPtr->offset);
+            textPtr->offset = 0;
+            textPtr->result = LE_FORMAT_ERROR;
+            break;
+        case END_OF_LINE:
+            textPtr->buf[--textPtr->offset] = 0;
+            break;
+        default:
+            break;
+    }
+
+    return state;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function handles text receiving
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -1736,11 +1890,13 @@ static void ReceiveText
     size_t size;
     ssize_t count;
     Device_t device;
-    Text_t *textPtr;
+    Text_t* textPtr;
+    char* bufPtr;
     void* ctxPtr;
 
-    size = LE_ATSERVER_TEXT_MAX_LEN;
     textPtr = &devPtr->text;
+    bufPtr = textPtr->buf + textPtr->offset;
+    size = LE_ATDEFS_TEXT_MAX_LEN - textPtr->offset;
     device = devPtr->device;
     ctxPtr = NULL;
 
@@ -1749,11 +1905,10 @@ static void ReceiveText
         ctxPtr = textPtr->ctxPtr;
     }
 
-    count = le_dev_Read(&device, (uint8_t *)textPtr->buf+textPtr->offset, size-textPtr->offset);
+    count = le_dev_Read(&device, (uint8_t *)bufPtr, size);
     if (!count)
     {
         LE_ERROR("connection closed");
-        textPtr->buf[0] = '\0';
         if (textPtr->callback)
         {
             textPtr->callback(textPtr->cmdRef, LE_IO_ERROR, "", 0, ctxPtr);
@@ -1762,32 +1917,35 @@ static void ReceiveText
         return;
     }
 
-    if (devPtr->echo)
+    while (strchr((const char *)bufPtr, '\b'))
     {
-        le_dev_Write(&devPtr->device, (uint8_t *)textPtr->buf+textPtr->offset, count);
+        bufPtr = RemoveBackspace(bufPtr);
+        if (!bufPtr)
+        {
+            LE_ERROR("Failed to remove backspaces");
+            textPtr->callback(textPtr->cmdRef, LE_FAULT, "", 0, ctxPtr);
+            textPtr->mode = false;
+            return;
+        }
     }
+
+    count = strlen(bufPtr);
 
     textPtr->offset += count;
 
-    if (ESCAPE == textPtr->buf[textPtr->offset-1])
+    if (devPtr->echo)
     {
-        LE_DEBUG("Received a cancel request");
-        textPtr->buf[0] = '\0';
-        if (textPtr->callback)
-        {
-            textPtr->callback(textPtr->cmdRef, LE_OK, "", 0, ctxPtr);
-        }
-        textPtr->mode = false;
+        le_dev_Write(&device, (uint8_t *)bufPtr, count);
     }
 
-    if (SUBSTITUTE == textPtr->buf[textPtr->offset-1])
+    if (ProcessText(textPtr, count, &device))
     {
-        LE_DEBUG("Received text %s", textPtr->buf);
-        textPtr->buf[textPtr->offset-1] = '\0';
         if (textPtr->callback)
         {
-            textPtr->callback(textPtr->cmdRef, LE_OK, textPtr->buf, textPtr->offset-1, ctxPtr);
+            textPtr->callback(textPtr->cmdRef, textPtr->result, textPtr->buf,
+                textPtr->offset, ctxPtr);
         }
+
         textPtr->mode = false;
     }
 }
@@ -2983,16 +3141,12 @@ le_result_t le_atServer_GetTextAsync
 
     devPtr->text.mode = true;
     devPtr->text.offset = 0;
-    memset(devPtr->text.buf, 0, LE_ATSERVER_TEXT_MAX_LEN);
+    memset(devPtr->text.buf, 0, LE_ATDEFS_TEXT_MAX_BYTES);
     devPtr->text.callback = callback;
     devPtr->text.ctxPtr = ctxPtr;
     devPtr->text.cmdRef = cmdRef;
 
-    LE_INFO("%s", devPtr->text.buf);
-
     le_dev_Write(&devPtr->device, (uint8_t *)TEXT_PROMPT, TEXT_PROMPT_LEN);
-
-    cmdPtr->processing = false;
 
     return LE_OK;
 }

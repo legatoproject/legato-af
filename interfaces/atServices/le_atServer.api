@@ -168,7 +168,7 @@
  * to retrieve text and sends a prompt <CR><LF><greater_than><SPACE> on the current command's
  * device.
  *
- * It will receive at max LE_ATSERVER_TEXT_MAX_LEN bytes.
+ * It will receive at max LE_ATDEFS_TEXT_MAX_LEN bytes.
  * If Esc Key is hit then the command is canceled and an empty buffer is returned with result
  * set to LE_OK.
  * If Ctrl+z is hit then the received buffer is returned and the result is set to LE_OK.
@@ -225,13 +225,6 @@
 
 
 USETYPES le_atDefs;
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Maximum text length.
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE TEXT_MAX_LEN = 4096;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -649,14 +642,16 @@ FUNCTION DisableExtendedErrorCodes
  * @return
  *      - LE_OK: The function succeeded
  *      - LE_IO_ERROR: An io error happened and the function couldn't read from the device
+ *      - LE_FORMAT_ERROR: Received an invalid character or an invalid sequence
+ *      - LE_FAULT: Failed to remove backspaces
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER GetTextCallback
 (
-    Cmd         cmdRef              IN, ///< Received AT command reference
-    le_result_t result              IN, ///< Result
-    string      text[TEXT_MAX_LEN]  IN, ///< Received text
-    uint32      len                 IN  ///< Text length
+    Cmd         cmdRef                          IN, ///< Received AT command reference
+    le_result_t result                          IN, ///< Result
+    string      text[le_atDefs.TEXT_MAX_LEN]    IN, ///< Received text
+    uint32      len                             IN  ///< Text length
 
 );
 

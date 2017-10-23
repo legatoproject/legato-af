@@ -739,6 +739,34 @@ static void CmeeCmdHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get text callback
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetTextCallback
+(
+    le_atServer_CmdRef_t    cmdRef,
+    le_result_t             result,
+    char*                   textPtr,
+    uint32_t                len,
+    void*                   ctxPtr
+)
+{
+    le_atServer_FinalRsp_t resp = LE_ATSERVER_OK;
+
+    LE_INFO("callback [%s:%u:%s]", LE_RESULT_TXT(result), len, textPtr);
+    LE_ASSERT_OK(le_atServer_SendIntermediateResponse(cmdRef, textPtr));
+    LE_ASSERT_OK(le_atServer_SendIntermediateResponse(cmdRef, LE_RESULT_TXT(result)));
+    if (LE_OK != result)
+    {
+        resp = LE_ATSERVER_ERROR;
+    }
+
+    LE_ASSERT_OK(le_atServer_SendFinalResponse(cmdRef, resp, false, ""));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Text command handler
  *
  * tests:
@@ -754,25 +782,12 @@ static void TextCmdHandler
     void* contextPtr
 )
 {
-    AtSession_t* atSessionPtr = (AtSession_t *)contextPtr;
-    AtCmd_t atCmd;
-    le_atServer_GetTextCallbackFunc_t callback = NULL;
-    int i;
-
-    for (i = 0; i < COMMANDS_MAX; i++)
-    {
-        if (!strcmp("AT+TEXT", atSessionPtr->atCmds[i].atCmdPtr))
-        {
-            atCmd = atSessionPtr->atCmds[i];
-            callback = (le_atServer_GetTextCallbackFunc_t)atCmd.ctxPtr;
-            break;
-        }
-    }
-
     switch (type)
     {
         case LE_ATSERVER_TYPE_ACT:
-            LE_ASSERT_OK(le_atServer_GetTextAsync(cmdRef, callback, NULL));
+            LE_ASSERT_OK(le_atServer_GetTextAsync(cmdRef,
+                                                 (le_atServer_GetTextCallbackFunc_t)GetTextCallback,
+                                                 NULL));
             break;
         case LE_ATSERVER_TYPE_PARA:
         case LE_ATSERVER_TYPE_READ:
@@ -920,7 +935,6 @@ void AtServer
             .atCmdPtr = "AT+TEXT",
             .cmdRef = NULL,
             .handlerPtr = TextCmdHandler,
-            .ctxPtr = sharedDataPtr->callback,
         },
     };
 
