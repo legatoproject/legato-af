@@ -100,6 +100,7 @@ COMPONENT_INIT
         exit(EXIT_FAILURE);
     }
 
+    //! [DeviceBinding]
     //! [binding]
     int fd = open("/dev/ttyAT", O_RDWR | O_NOCTTY | O_NONBLOCK);
 
@@ -128,6 +129,8 @@ COMPONENT_INIT
     LE_ASSERT(le_atClient_SetDevice(cmdRef, DevRef) == LE_OK);
     LE_ASSERT(le_atClient_SetCommand(cmdRef, "AT+CGSN") == LE_OK);
     LE_ASSERT(le_atClient_SetFinalResponse(cmdRef, "OK|ERROR|+CME ERROR") == LE_OK);
+    //! [DeviceBinding]
+
     LE_ASSERT(le_atClient_Send(cmdRef) == LE_OK);
     LE_ASSERT(le_atClient_GetFinalResponse( cmdRef,buffer, LE_ATDEFS_RESPONSE_MAX_BYTES) == LE_OK);
     LE_INFO("final rsp: %s", buffer);

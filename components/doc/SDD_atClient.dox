@@ -1,0 +1,195 @@
+/** @page c_SDD_atClient  AT client SDD
+
+@section atClient_service AT Client Service
+
+@subsection Overview Overview
+The AT Client Service handles the AT commands sent to the modem on a specified serial device.
+It also supports getting AT command response. This service can be subscribed by several apps
+simultaneously.
+
+@subsection atClient_binding Device Binding
+
+le_atClient_Start() must be called to bind a specific device with the AT Client.
+This API starts the device thread, which polls until data is available on the device.
+A device can be unbound using le_atClient_Stop().
+
+le_atClient_Create() creates an AT command reference, then use le_atClient_SetCommand() to set the
+AT command to be sent to the modem. le_atClient_SetDevice() binds the command reference to the
+device reference.
+
+The following sample code demonstrates how to bind AT Client with device is presented below:
+@snippet "apps/test/atServices/atClientTest/atClientTestComp/atClientTest.c" DeviceBinding
+
+The final response of AT command can be set with le_atClient_SetFinalResponse(). If an AT command
+answers with a final response that does not belong to the final responses set, the AT command
+execution should end by timeout. The timeout can be set with le_atClient_SetTimeout(),
+default value is 30s.
+
+The following sample code demonstrates how to set timeout and final response for AT command:
+@snippet "apps/test/atServices/atClientTest/atClientTestComp/atClientTest.c" declarationText
+
+When the AT command declaration is complete, it can be sent using le_atClient_Send().
+This API is synchronous (blocking until final response is detected, or time out reached).
+
+@subsection atClient_state_machines State Machines
+
+There are two finite state machines, AT command client state machine and Rx parser state machine.
+The AT command client state machine takes care of writing of AT command onto modem device
+and Rx parser state machine looks for the response message from the modem device for the
+AT Command sent by client.
+
+The following diagram describes the client state machine:
+
+@startuml{client_state_machine.png}
+skinparam arrowFontSize 10
+skinparam arrowFontStyle Bell MT
+left to right direction
+[*] --> WaitingState
+WaitingState -[#black]--> SendingState: EVENT_SENDCMD\n & Command not NULL
+WaitingState -[#black]--> WaitingState: EVENT_SENDCMD\n & Command NULL
+SendingState -[#Red]--> SendingState:<color:Red>EVENT_SENDTEXT
+SendingState -[#Chocolate]--> WaitingState: EVENT_PROCESSLINE\n & Final pattern match
+SendingState -[#MidnightBlue]--> SendingState: EVENT_PROCESSLINE\n & Final pattern not match
+WaitingState -[#Purple]--> WaitingState:<color:Purple>EVENT_PROCESSLINE
+@enduml
+
+The following diagram describes the Rx parser state machine:
+
+@startuml{Rx_parser_state_machine.png}
+skinparam arrowFontSize 10
+skinparam arrowFontStyle Bell MT
+left to right direction
+[*] --> StartingState
+StartingState -[#black]--> InitializingState:<color:black>PARSER_CHAR
+InitializingState -[#Purple]--> ProcessingState:<color:Purple>PARSER_CRLF
+ProcessingState -[#Red]--> ProcessingState:<color:Red>PARSER_CRLF
+ProcessingState -[#MediumBlue]--> ProcessingState:<color:MediumBlue>PARSER_PROMPT
+StartingState -[#MidnightBlue]--> ProcessingState:<color:MidnightBlue>PARSER_CRLF
+@enduml
+
+@subsection atClient_send Sending
+
+le_atClient_Send() changes the client state from WaitingState to SendingState. In the SendingState
+the AT command is written on to the device by le_dev_write(). The reply for the AT command is
+received by RxNewData(). RxNewData() invokes ParseRxBuffer(), which is responsible for state
+change in the Rx parser state machine.
+
+ProcessingState sends the final reponse found from the device to the client with
+event EVENT_PROCESSLINE.
+
+SendingState checks if the response matches with the final string of the command using the
+CheckResponse(). After checking response, RxNewData() resets Rx buffer which is already read.
+Client state changes to WaitingState where as Rx parser state waits in ProcessingState.
+
+@subsection atClient__delete Deleting
+
+When the AT command is over, the reference has to be deleted by calling le_atClient_Delete().
+
+
+The following flow diagram describes the AT Client Service:
+
+@startuml{le_atClient.png}
+participant Application
+box "atClient component" #lightBlue
+participant mainThread
+participant deviceThread
+end box
+participant device
+
+Application -> device: open("/dev/ttyAT")
+device --> Application: @return device fd
+== Initialization ==
+Application -> mainThread: le_atClient_Start(fd)
+activate mainThread #Red
+mainThread o[#blue]-->o deviceThread:<b>Lock</b>
+mainThread -> deviceThread: Start device Thread
+activate deviceThread  #FFBBBB
+deviceThread --> mainThread: InitializeState
+note left
+DeviceThread initialize the
+AT Command Client state machine.
+end note
+deviceThread -> deviceThread: le_dev_AddFdMonitoring
+note left
+Monitor the specified file descriptor
+in the calling thread event loop.
+end note
+note right
+RxNewData starts
+and waits for data (POLLING).
+end note
+deviceThread o[#blue]-->o mainThread:<b>Unlock</b>
+mainThread --> Application: @return devRef
+Application -> mainThread: le_atClient_Create()
+mainThread --> Application: @return cmdRef
+Application -> mainThread: le_atClient_SetDevice(cmdRef, devRef)
+note left
+Set the device where
+the AT command will be sent.
+end note
+mainThread --> Application: @return LE_OK/LE_FAULT
+Application -> mainThread: le_atClient_SetCommand(cmdRef, "command")
+mainThread --> Application: @return LE_OK/LE_BAD_PARAMETER
+Application -> mainThread:le_atClient_SetTimeout(cmdRef, 0)
+note right
+If the AT Command reference is invalid,
+a fatal error occurs,
+the function won't return.
+end note
+mainThread --> Application:@return LE_OK/LE_BAD_PARAMETER
+Application -> mainThread:le_atClient_SetFinalResponse
+mainThread --> Application: @return LE_OK/LE_FAULT
+mainThread -> Application: le_atClient_Send(cmdRef)
+mainThread o[#blue]-->o deviceThread:<b>Lock</b>
+mainThread -> device: le_dev_Write
+note left
+WaitingState function will be called
+on client event EVENT_SNDCMD.
+Changes client state to sending state
+and starts timer.
+end note
+device --> deviceThread: le_dev_Read
+note left
+Changes parser state from
+StartingState to InitializingState
+when parser event is PARSER_CHAR
+end note
+
+== Repetition ==
+group loop
+device --> deviceThread: le_dev_Read
+note right
+Changes parser state from
+InitializingState to ProcessingState
+when parser event is PARSER_CRLF.
+Will be in InitializingState till
+parser event is PARSER_CRLF.
+end note
+end
+deviceThread --> mainThread: SendLine
+note left
+SendingState function will be called
+on client event EVENT_PROCESSLINE.
+Changes client state to waiting state and
+stops timer.
+end note
+
+== close ==
+deviceThread --> mainThread: CheckResponse
+deviceThread o[#blue]-->o mainThread:<b>Unlock</b>
+deviceThread --> mainThread: ResetRxBuffer
+deactivate deviceThread
+mainThread --> Application: @return LE_OK/LE_FAULT
+Application -> mainThread: le_atClient_Delete
+mainThread --> Application: @return LE_OK/LE_BAD_PARAMETER
+note right
+If AT Command reference is invalid
+client gets killed.
+end note
+deactivate mainThread
+
+@enduml
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
