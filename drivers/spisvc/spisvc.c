@@ -24,11 +24,22 @@ MODULE_DESCRIPTION(MOD_DESC);
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Sierra Wireless, Inc.");
 
+#define SPI_INVALID_BUS (-1)
+int busnum = SPI_INVALID_BUS;
+module_param(busnum, int, 0644);
+MODULE_PARM_DESC(busnum, "SPI bus number");
+
+unsigned int cs = 0;
+module_param(cs, uint, 0644);
+MODULE_PARM_DESC(cs, "SPI chip select");
+
+#define SPI_MAX_BUS	16	/* take a reasonable number */
+
 static struct spi_device *spidev;
 
 static __init int spisvc_init(void)
 {
-	struct spi_master *master;
+	struct spi_master *m = NULL;
 	struct spi_board_info board = {
 		.modalias = "spidev",
 		.max_speed_hz = 15058800,
@@ -39,15 +50,24 @@ static __init int spisvc_init(void)
 		.irq = 0,
 	};
 
-	master = spi_busnum_to_master(0);
-	if (!master) {
-		pr_err("No master for SPI bus 0.\n");
+	if (SPI_INVALID_BUS == busnum)
+		/* Bus not assigned: find SPI master with lowest bus number */
+		for (busnum = 0; SPI_MAX_BUS > busnum && NULL == m; busnum++)
+			m = spi_busnum_to_master(busnum);
+	else
+		m = spi_busnum_to_master(busnum);
+
+	if (!m) {
+		pr_err("SPI bus not available.\n");
 		return -ENODEV;
 	}
 
-	spidev = spi_new_device(master, &board);
+	board.bus_num = busnum = m->bus_num;
+	board.chip_select = cs;
+	spidev = spi_new_device(m, &board);
 	if (!spidev) {
-		pr_err("Error creating device '%s'\n", board.modalias);
+		dev_err(&m->dev, "Cannot add '%s' on bus %u, cs %u\n",
+			board.modalias, board.bus_num, board.chip_select);
 		return -ENODEV;
 	}
 	return 0;
