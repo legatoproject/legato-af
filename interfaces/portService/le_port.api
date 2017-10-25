@@ -105,14 +105,15 @@ FUNCTION Device Request
  * This function switches the device into data mode.
  *
  * @return
- *      - LE_OK    Function succeeded.
- *      - LE_FAULT Function failed.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDataMode
 (
     Device devRef IN,   ///< Device reference.
-    int8 fd OUT         ///< File descriptor of the device.
+    file fd OUT         ///< File descriptor of the device.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -120,8 +121,9 @@ FUNCTION le_result_t SetDataMode
  * This function switches the device into AT command mode.
  *
  * @return
- *      - LE_OK    Function succeeded.
- *      - LE_FAULT Function failed.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommandMode
@@ -134,8 +136,9 @@ FUNCTION le_result_t SetCommandMode
  * This function closes the device and releases the resources.
  *
  * @return
- *      - LE_OK    Function succeeded.
- *      - LE_FAULT Function failed.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Release
@@ -148,8 +151,9 @@ FUNCTION le_result_t Release
  * This function gets the device reference regarding to a given reference coming from the AT server.
  *
  * @return
- *      - LE_OK    Function succeeded.
- *      - LE_FAULT Function failed.
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetPortReference

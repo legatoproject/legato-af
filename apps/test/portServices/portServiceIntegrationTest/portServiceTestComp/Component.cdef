@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        portService/le_port.api
+        atServices/le_atServer.api
+    }
+}
+
+sources:
+{
+    portServiceTest.c
+}

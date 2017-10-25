@@ -1,0 +1,22 @@
+sandboxed: false
+
+executables:
+{
+    portServiceTest = ( portServiceTestComp )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+start: manual
+
+bindings:
+{
+    portServiceTest.portServiceTestComp.le_port -> portService.le_port
+    portServiceTest.portServiceTestComp.le_atServer -> atService.le_atServer
+}

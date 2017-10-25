@@ -129,3 +129,6 @@ add_subdirectory(fwupdate/fwupdateIntegrationTest)
 
 # Power Manager
 add_subdirectory(powerMgr/powerMgrTest)
+
+# Port Service
+add_subdirectory(portServices/portServiceIntegrationTest)
