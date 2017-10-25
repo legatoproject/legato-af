@@ -635,13 +635,7 @@ static void RedialStop
             // Redial state machine should be ECALL_REDIAL_STOPPED. Nothing else to do.
             break;
         }
-        case ECALL_REDIAL_STOP_NO_REDIAL_CONDITION:
-        {
-            StopTimers();
-            // Send End of redial event
-            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-            break;
-        }
+        case ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT:
         case ECALL_REDIAL_DURATION_EXPIRED:
         {
             StopTimers();
@@ -649,20 +643,8 @@ static void RedialStop
             ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
             break;
         }
-        case ECALL_REDIAL_STOP_MAX_DIAL_ATTEMPT:
-        {
-            StopTimers();
-            // Send End of redial event
-            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-            break;
-        }
+        case ECALL_REDIAL_STOP_NO_REDIAL_CONDITION:
         case ECALL_REDIAL_STOP_FROM_PSAP:
-        {
-            StopTimers();
-            // Send End of redial event
-            ReportState(LE_ECALL_STATE_END_OF_REDIAL_PERIOD);
-            break;
-        }
         case ECALL_REDIAL_STOP_FROM_USER:
         {
             StopTimers();
