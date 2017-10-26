@@ -267,63 +267,78 @@
  * The \b LE_ECALL_STATE_END_OF_REDIAL_PERIOD state event notifies the User of the redial period
  * end.
  *
- * @section le_ecall_samples Code samples
- *
- * A sample code that implements an eCall test session with a local voice prompt can be found in
- * \b eCallWPrompt.c file (please refer to @ref c_ecallWPromptSample page).
- *
- * A sample code that implements an eCall test session with a voice call connection can be found in
- * \b eCallWVoice.c file (please refer to @ref c_ecallWVoiceSample page).
- *
- * If you want to have a look at a more in-depth usage of these APIs, please refer to the
- * @ref c_ecall.
- *
  * @section le_ecall_configuration eCall configuration
+ *
+ * Some parameters used by the eCall service can be configured through APIs. This includes the
+ * number to dial, the deregistration time, the redial interval, and some MSD information.
+ *
+ * @subsection le_ecall_configuration_callNumber eCall number
  *
  * By default, the number to dial is read from the FDN/SDN (Fixed Dialling Numbers/Service
  * Dialling Numbers) of the U/SIM, depending upon the eCall operating mode.
  *
- * However, the PSAP telephone number can be specified and retrieved with:
- *  - le_ecall_SetPsapNumber()
+ * However, the PSAP phone number can be queried and set with:
  *  - le_ecall_GetPsapNumber()
+ *  - le_ecall_SetPsapNumber()
  *
- * @note That PSAP number is not applied to Manually or Automatically initiated eCall. For those
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" PsapNumber
+ *
+ * @note That PSAP number is not applied to a manual or an automatically initiated eCall. For these
  *       modes, an emergency call is launched.
 
- * @warning These two functions don't modified the U/SIM content nor read the U/SIM content.
+ * @warning These two functions don't modify or read the U/SIM content.
  *
- * le_ecall_UseUSimNumbers() function can be recalled to indicate the modem to read the number to
+ * le_ecall_UseUSimNumbers() API can be called to request the modem to read the number to
  * dial from the FDN/SDN of the U/SIM, depending upon the eCall operating mode.
  *
- * The NAD (Network Access Device, i.e. the Modem) deregistration time value can be set or get with:
- *  - le_ecall_SetNadDeregistrationTime()
- *  - le_ecall_GetNadDeregistrationTime()
+ * @subsection le_ecall_configuration_nad NAD deregistration time
  *
- * le_ecall_SetNadDeregistrationTime() API is used to set up timer T9 on PAN-EUROPEAN or
- * for T10 on ERA-GLONASS.
+ * The NAD (Network Access Device, i.e. the Modem) deregistration time value can be set with the
+ * le_ecall_SetNadDeregistrationTime() API and retrieved with the
+ * le_ecall_GetNadDeregistrationTime() API.
  *
- * 1. PAN-EUROPEAN (EN 16062) defines T9 and T10.
- * 2. ERA-GLONASS (ENG_GOST_R_54620) defines the NAD_DEREGISTRATION_TIME
- *    with minimal value to two hours and maximal value to twelve hours.
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" NadTime
  *
- * PAN-EUROPEAN:
- *  - T9's value is defined as one hour. This value is used to decide which event to be report
- *    when "Deregistration Fallback Timer" expires.
- *  - T10 stands for "Deregistration Fallback Timer" (DFT)'s value. Its minimum range is
- *    greater than one hour and maximum range is twelve hours, it can be set by users by using
- *    le_ecall_SetNadDeregistrationTime(value), but the default value is twelve hours.
- *  - T9=1 hour, if the NAD_DEREGISTRATION_TIME value is set to one hour then
- *    the LE_ECALL_STATE_TIMEOUT_T9 will be reported.
- *  - T9=1 hour, if the NAD_DEREGISTRATION_TIME value is higher than one hour and lower than o
- *    equal to twelve hours then the LE_ECALL_STATE_TIMEOUT_T10 will be reported instead of
- *    T9 timeout.
+ * 1. PAN-EUROPEAN standard (<em>EN 16062</em>) defines the T9 and T10 timers. After an eCall
+ *    clear-down, an <b>eCall only</b> IVS shall:
+ *    - Remain registered on the network for at least the duration of T9, which is set to
+ *      one hour by default.
+ *    - Deregister from the network after the expiration of T10, which duration is set to
+ *      twelve hours by default.
+ * 2. ERA-GLONASS standard (<em>ENG_GOST_R_54620</em>) defines the NAD_DEREGISTRATION_TIME
+ *    with a minimal value of two hours and a maximum value of twelve hours. After an eCall
+ *    clear-down, the IVS shall remain registered on the network and deregister from the network
+ *    after the expiration of the NAD_DEREGISTRATION_TIME.
  *
- * ERA-GLONASS:
- *  - LE_ECALL_STATE_TIMEOUT_T9 is not reported as it is not defined into ERA-GLONASS.
- *  - T10 default value two hours (GOST_R 54620 Table A.1), it can be changed
- *    with le_ecall_SetNadDeregistrationTime() from two to twelve hours.
+ * The le_ecall_SetNadDeregistrationTime() API is used to set the duration of a
+ * <em>deregistration timer</em>: after an eCall clear-down, the IVS remains registered on the
+ * network for the duration of this timer and then automatically deregisters from the network upon
+ * its expiration.
  *
- * Time is set in hours where:
+ * @subsubsection le_ecall_configuration_nad_panEU PAN-EUROPEAN standard
+ * As the T9 timer duration is fixed to one hour, the notified events depend on the
+ * <em>deregistration timer</em> duration:
+ *  - If its duration is set to one hour, the @ref LE_ECALL_STATE_TIMEOUT_T9 event will be reported.
+ *    In this case deregistration is automatically performed when the T9 timeout indication is
+ *    received.
+ *  - If its duration is set to more than one hour and less than twelve hours then the
+ *    @ref LE_ECALL_STATE_TIMEOUT_T10 event will be reported when the <em>deregistration timer</em>
+ *    expires. The T9 timeout (@ref LE_ECALL_STATE_TIMEOUT_T9 event) will not be notified.
+ *    In this case deregistration is automatically performed when the <em>deregistration timer</em>
+ *    expires, provided that the application didn't already deregister from the network before.
+ *
+ * @subsubsection le_ecall_configuration_nad_eraGlonass ERA-GLONASS standard
+ *  - The @ref LE_ECALL_STATE_TIMEOUT_T9 event is not reported as it is not defined in the
+ *    ERA-GLONASS standard.
+ *  - The NAD_DEREGISTRATION_TIME default value is eight hours, as defined by
+ *    <em>GOST_R 54620 Table A.1</em>. It can be changed with le_ecall_SetNadDeregistrationTime()
+ *    and the value must be set between two and twelve hours.
+ *  - The @ref LE_ECALL_STATE_TIMEOUT_T10 event will be reported when the NAD_DEREGISTRATION_TIME
+ *    expires. In this case deregistration is automatically performed when the timer expires.
+ *
+ * @subsubsection le_ecall_configuration_nad_timerValue Timer value
+ *
+ * Although the time is set in minutes the value is taken in hours, for example:
  * - from 1 to 60 minutes -> 1 hour
  * - from 61 to 120 minutes -> 2 hours, etc.
  *
@@ -331,14 +346,18 @@
  * @code ECallConfiguration.nad_deregistration_time = (deregTime+59)/60; @endcode
  *
  * After termination of an emergency call the in-vehicle system remains registered on the network
- * for the period of time, defined by the installation parameter 'NAD_DEREGISTRATION_TIME'.
+ * for the period of time, defined by the installation parameter NAD_DEREGISTRATION_TIME.
  *
- * @warning Be sure to check the possible values of 'NAD_DEREGISTRATION_TIME' for your specific
+ * @warning Be sure to check the possible values of NAD_DEREGISTRATION_TIME for your specific
  * platform.
+ *
+ * @subsection le_ecall_configuration_redialInterval Redial interval
  *
  * The minimum interval value between dial attempts can be set or get with:
  *  - le_ecall_SetIntervalBetweenDialAttempts()
  *  - le_ecall_GetIntervalBetweenDialAttempts()
+ *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" DialTimer
  *
  * The default value is set to 30 seconds.
  *
@@ -352,28 +371,51 @@
  *
  * In the case the call was connected, the redial will be immediate.
  *
- *  le_ecall_SetIntervalBetweenDialAttempts() is available for both manual and test modes.
+ * le_ecall_SetIntervalBetweenDialAttempts() is available for both manual and test modes.
  *
- * The prefered system standard defaults to PAN-EUROPEAN
+ * @subsection le_ecall_configuration_misc Miscellaneous
+ *
+ * The preferred system standard defaults to PAN-EUROPEAN
  * It can be set an gotten with the following functions:
  * - le_ecall_SetSystemStandard()
  * - le_ecall_GetSystemStandard()
+ *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" Standard
  *
  * The MSD version can be set and and gotten with the following functions:
  * - le_ecall_SetMsdVersion()
  * - le_ecall_GetMsdVersion()
  *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" MsdVersion
+ *
  * The vehicle type can be set and gotten with the following functions:
  * - le_ecall_SetVehicleType()
  * - le_ecall_GetVehicleType()
+ *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" Vehicle
  *
  * The vehicle identifier can be set and gotten with the following functions:
  * - le_ecall_SetVIN()
  * - le_ecall_GetVIN()
  *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" VIN
+ *
  * The propulsion type can be set and gotten with the following functions:
  * - le_ecall_SetPropulsionType()
  * - le_ecall_GetPropulsionType()
+ *
+ * @snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" Propulsion
+ *
+ * @section le_ecall_samples Code samples
+ *
+ * A sample code that implements an eCall test session with a local voice prompt can be found in
+ * \b eCallWPrompt.c file (please refer to @ref c_ecallWPromptSample page).
+ *
+ * A sample code that implements an eCall test session with a voice call connection can be found in
+ * \b eCallWVoice.c file (please refer to @ref c_ecallWVoiceSample page).
+ *
+ * If you want to have a look at a more in-depth usage of these APIs, please refer to the
+ * @ref le_ecall_interface.h.
  *
  * <HR>
  *

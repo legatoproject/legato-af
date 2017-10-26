@@ -11,3 +11,8 @@ requires:
         le_ecall.api
     }
 }
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/cfgEntries
+}

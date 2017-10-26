@@ -278,45 +278,61 @@ void Testle_ecall_ConfigSettings
     void
 )
 {
-    char                 psap[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
-    uint32_t             msdVersion = 1;
-    uint16_t             deregTime = 0;
     le_ecall_MsdTxMode_t      mode           = LE_ECALL_TX_MODE_PULL;
-    le_ecall_SystemStandard_t systemStandard;
-    le_ecall_MsdVehicleType_t vehicleType    = LE_ECALL_MSD_VEHICLE_BUS_M2;
 
     LE_INFO("Start Testle_ecall_ConfigSettings");
 
-    LE_ASSERT(le_ecall_UseUSimNumbers() == LE_OK);
+    LE_ASSERT_OK(le_ecall_UseUSimNumbers());
 
-    LE_ASSERT(le_ecall_SetPsapNumber("0102030405") == LE_OK);
-    LE_ASSERT(le_ecall_GetPsapNumber(psap, 1) == LE_OVERFLOW);
-    LE_ASSERT(le_ecall_GetPsapNumber(psap, sizeof(psap)) == LE_OK);
-    LE_ASSERT(strncmp(psap, "0102030405", strlen("0102030405")) == 0);
+    //! [PsapNumber]
+    LE_ASSERT_OK(le_ecall_SetPsapNumber("0102030405"));
 
+    char psapNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+    LE_ASSERT_OK(le_ecall_GetPsapNumber(psapNumber, sizeof(psapNumber)));
+    LE_INFO("PSAP number: %s", psapNumber);
+    //! [PsapNumber]
+    LE_ASSERT(0 == strncmp(psapNumber, "0102030405", strlen("0102030405")));
+    LE_ASSERT(LE_OVERFLOW == le_ecall_GetPsapNumber(psapNumber, 1));
 
     LE_ASSERT(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) == LE_OK);
     LE_ASSERT(le_ecall_GetMsdTxMode(&mode) == LE_OK);
     LE_ASSERT(mode == LE_ECALL_TX_MODE_PUSH);
 
-    LE_ASSERT(le_ecall_SetNadDeregistrationTime(180) == LE_OK);
-    LE_ASSERT(le_ecall_GetNadDeregistrationTime(&deregTime) == LE_OK);
-    LE_ASSERT(deregTime == 180);
+    //! [NadTime]
+    LE_ASSERT_OK(le_ecall_SetNadDeregistrationTime(180));
 
-    LE_ASSERT((LE_OK == le_ecall_SetSystemStandard(LE_ECALL_ERA_GLONASS)));
-    systemStandard = LE_ECALL_PAN_EUROPEAN;
-    LE_ASSERT((LE_OK == le_ecall_GetSystemStandard(&systemStandard)));
+    uint16_t deregistrationTime = 0;
+    LE_ASSERT_OK(le_ecall_GetNadDeregistrationTime(&deregistrationTime));
+    LE_INFO("Deregistration time: %d minutes", deregistrationTime);
+    //! [NadTime]
+    LE_ASSERT(deregistrationTime == 180);
+
+    //! [Standard]
+    LE_ASSERT_OK(le_ecall_SetSystemStandard(LE_ECALL_ERA_GLONASS));
+
+    le_ecall_SystemStandard_t systemStandard;
+    LE_ASSERT_OK(le_ecall_GetSystemStandard(&systemStandard));
+    LE_INFO("System standard: %d", systemStandard);
+    //! [Standard]
     LE_ASSERT(LE_ECALL_ERA_GLONASS == systemStandard);
 
-    LE_ASSERT((LE_OK == le_ecall_SetMsdVersion(msdVersion)));
-    msdVersion = 42;
-    LE_ASSERT((LE_OK == le_ecall_GetMsdVersion(&msdVersion)));
-    LE_ASSERT(( 1 == msdVersion  ));
+    //! [MsdVersion]
+    LE_ASSERT_OK(le_ecall_SetMsdVersion(1))
 
-    LE_ASSERT((LE_OK == le_ecall_SetVehicleType(vehicleType)));
-    vehicleType = LE_ECALL_MSD_VEHICLE_PASSENGER_M1;
-    LE_ASSERT((LE_OK == le_ecall_GetVehicleType(&vehicleType)));
-    LE_ASSERT(( LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType ));
+    uint32_t msdVersion = 0;
+    LE_ASSERT_OK(le_ecall_GetMsdVersion(&msdVersion));
+    LE_INFO("MSD version: %d", msdVersion);
+    //! [MsdVersion]
+    LE_ASSERT(1 == msdVersion);
+
+    //! [Vehicle]
+    LE_ASSERT_OK(le_ecall_SetVehicleType(LE_ECALL_MSD_VEHICLE_BUS_M2));
+
+    le_ecall_MsdVehicleType_t vehicleType;
+    LE_ASSERT_OK(le_ecall_GetVehicleType(&vehicleType));
+    LE_INFO("Vehicle type: %d", vehicleType);
+    //! [Vehicle]
+    LE_ASSERT(LE_ECALL_MSD_VEHICLE_BUS_M2 == vehicleType);
 
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37"));
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRiVE12345678"));
@@ -332,34 +348,44 @@ void Testle_ecall_ConfigSettings
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVEz2345678"));
     LE_ASSERT(LE_FAULT == le_ecall_SetVIN("VF37BRFVEZ2345678"));
 
-    LE_ASSERT(LE_OK == le_ecall_SetVIN("VF37BRFVE12345678"));
+    //! [VIN]
+    LE_ASSERT_OK(le_ecall_SetVIN("VF37BRFVE12345678"));
 
-    char vin[LE_ECALL_VIN_MAX_BYTES];
+    char vin[LE_ECALL_VIN_MAX_BYTES] = {0};
+    LE_ASSERT_OK(le_ecall_GetVIN(vin, sizeof(vin)));
+    LE_INFO("VIN: %s", vin);
+    //! [VIN]
+    LE_ASSERT(0 == strcmp("VF37BRFVE12345678", vin));
     LE_ASSERT(LE_BAD_PARAMETER == le_ecall_GetVIN(vin, LE_ECALL_VIN_MAX_LEN));
-    LE_ASSERT(LE_OK == le_ecall_GetVIN(vin, LE_ECALL_VIN_MAX_BYTES));
-    LE_ASSERT( 0 == strcmp("VF37BRFVE12345678", vin));
 
-    le_ecall_PropulsionTypeBitMask_t propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
+    //! [Propulsion]
+    LE_ASSERT_OK(le_ecall_SetPropulsionType(LE_ECALL_PROPULSION_TYPE_OTHER));
 
-    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(LE_ECALL_PROPULSION_TYPE_OTHER)));
-
-    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
-    LE_ASSERT((LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType));
-
-    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
-    LE_ASSERT((LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType));
+    le_ecall_PropulsionTypeBitMask_t propulsionType;
+    LE_ASSERT_OK(le_ecall_GetPropulsionType(&propulsionType));
+    LE_INFO("Propulsion type: 0x%02x", propulsionType);
+    //! [Propulsion]
+    LE_ASSERT(LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType);
 
     propulsionType = LE_ECALL_PROPULSION_TYPE_ELECTRIC;
-    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
+    LE_ASSERT_OK(le_ecall_SetPropulsionType(propulsionType));
 
     propulsionType = LE_ECALL_PROPULSION_TYPE_GASOLINE;
-    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
+    LE_ASSERT_OK(le_ecall_GetPropulsionType(&propulsionType));
     LE_ASSERT( LE_ECALL_PROPULSION_TYPE_ELECTRIC == propulsionType );
 
-    propulsionType = LE_ECALL_PROPULSION_TYPE_OTHER;
-    LE_ASSERT((LE_OK == le_ecall_SetPropulsionType(propulsionType)));
-    LE_ASSERT((LE_OK == le_ecall_GetPropulsionType(&propulsionType)));
-    LE_ASSERT( LE_ECALL_PROPULSION_TYPE_OTHER == propulsionType );
+    propulsionType = LE_ECALL_PROPULSION_TYPE_HYDROGEN;
+    LE_ASSERT_OK(le_ecall_SetPropulsionType(propulsionType));
+    LE_ASSERT_OK(le_ecall_GetPropulsionType(&propulsionType));
+    LE_ASSERT(LE_ECALL_PROPULSION_TYPE_HYDROGEN == propulsionType);
+
+    //! [DialTimer]
+    LE_ASSERT_OK(le_ecall_SetIntervalBetweenDialAttempts(30));
+
+    uint16_t pause = 0;
+    LE_ASSERT_OK(le_ecall_GetIntervalBetweenDialAttempts(&pause));
+    LE_INFO("Interval between dial attempts: %d seconds", pause);
+    //! [DialTimer]
 }
 
 //--------------------------------------------------------------------------------------------------
