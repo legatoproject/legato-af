@@ -3294,12 +3294,12 @@ le_result_t le_sms_SetText
     }
 
     msgPtr->format = LE_SMS_FORMAT_TEXT;
-    msgPtr->userdataLen=length;
+    msgPtr->userdataLen = length;
     msgPtr->pduReady = false;
-    LE_DEBUG("try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
-        textPtr, length, msgPtr->text, msgPtr);
+    LE_DEBUG("Try to copy data %s, len.%zd @ msgPtr->text.%p for msgPtr.%p",
+             textPtr, length, msgPtr->text, msgPtr);
 
-    le_utf8_Copy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES, NULL);
+    strncpy(msgPtr->text, textPtr, LE_SMS_TEXT_MAX_BYTES);
 
     return LE_OK;
 }

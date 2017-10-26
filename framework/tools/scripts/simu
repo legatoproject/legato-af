@@ -86,7 +86,11 @@ function check_ret {
 }
 
 function do_ssh {
-    ssh -p $SIMU_PORT root@$SIMU_IP $@
+    ssh -p $SIMU_PORT -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null root@$SIMU_IP $@
+}
+
+function do_scp {
+    scp -P $SIMU_PORT -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -r $@
 }
 
 function do_start {
@@ -150,9 +154,9 @@ elif [[ "$COMMAND" == "stop" ]]; then
 elif [[ "$COMMAND" == "shell" ]] || [[ "$COMMAND" == "ssh" ]] || [[ "$COMMAND" == "sh" ]]; then
     do_ssh ${*:2}
 elif [[ "$COMMAND" == "push" ]]; then
-    scp -P $SIMU_PORT -r $2 root@$SIMU_IP:$3
+    do_scp $2 root@$SIMU_IP:$3
 elif [[ "$COMMAND" == "pull" ]]; then
-    scp -P $SIMU_PORT -r root@$SIMU_IP:$2 $3
+    do_scp root@$SIMU_IP:$2 $3
 elif [[ "$COMMAND" == "instlegato" ]]; then
     CheckLegatoRoot
     export SSH_PORT=$SIMU_PORT
