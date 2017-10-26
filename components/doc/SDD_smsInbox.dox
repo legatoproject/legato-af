@@ -1,0 +1,104 @@
+/** @page c_SDD_smsInbox smsInbox SDD
+
+ * Legato provides an SMS Inbox service to allow apps to receive SMS messages through their own,
+ * private message box, without:
+ *
+ * - Having to manage SIM or modem memory;
+ * - Conflicting with other applications that also receive SMS messages;
+ * - Missing messages while being updated or restarted.
+ *
+ * The SMS Inbox Service handles the resource arbitration for the user app: the message
+ * reception is always guaranteed, for example the user app doesn't have to worry about freeing
+ * space in the SIM (or device's storage area) when it is full.
+ *
+ * In fact, at device's startup or when a SIM is inserted, the SIM content is copied into the "Inbox
+ * Message Storage" folder allocated in the root file system of the device. Then, the process frees
+ * automatically the SIM content.
+ * Moreover, every new received SMS message is automatically copied into the "Inbox
+ * Message Storage" folder and deleted from the SIM.
+ * This mechanism keeps the SIM always empty in order to guarantee the reception of SMS messages.
+ *
+ * This process is the same when the SMS message storage is the device's storage area (ME - Mobile
+ * Equipment).
+ *
+ * The message box is a persistent storage area. All files are saved in the
+ * directory /mnt/flash/smsInbox.There are two directories named "cfg" and "msg".
+ * "cfg" directory contain two json files: le_smsInbox1.json & le_smsInbox2.json which contains
+ * msgIds of messages.
+ * "msg" directory contains json files named <message_no>.json. It contains message information like
+ * "imsi,"format","text","pdu","msgLen" etc.
+ *
+ * The creation of SMS inboxes is done based on the message box configuration settings
+ * (cf. @subpage le_smsInbox_configdb section). This way, the message box contents will be kept up
+ * to date automatically by the SMS Inbox Service, even when the user app is slow to start, is
+ * stopped while it is being updated, or is being restarted to recover from a fault.
+ *
+ * A message box works as a circular buffer, when the message box is filled, the older messages
+ * are deleted to free space for new messages. But, the application can also explicitly delete
+ * messages if it doesn't need them anymore.
+ *
+ * A First & Second message box (named le_smsInbox1 & le_smsInbox2) can be used by application.
+ * These 2 message boxes are used independently. All functions of this second message box are
+ * prefixed by le_smsInbox2 (instead of le_smsInbox1).The user can implement other message boxes
+ * based on le_smsInbox1 and le_smsInbox2 model.
+ *
+ * Necessary modifications for adding / removing message box:
+ *
+ * - Modify le_smsInbox.c by adding / removing the message box name in le_smsInbox_mboxName[]
+ *   list and define the message box wrappers using DEFINE_MBX() macro.
+ * - Customize the "provides api" section of the component.cdef by adding the message box
+ *   name as an api.
+
+@startuml{le_smsInbox_GetMessage.png}
+
+participant Application
+box "smsInbox component" #lightBlue
+participant MainThread
+end box
+box "message storage area" #lightGreen
+participant Filesystem
+end box
+
+== Open message box & Read first message info ==
+Application -> MainThread: le_smsInbox1_Open()
+note left of MainThread
+Create smsInbox safe reference
+end note
+MainThread -> Application: Return smsInbox_session Reference
+Application -> MainThread: le_smsInbox1_Getfirst(smsInbox_session reference)
+MainThread -> Filesystem: Get the first message id from configuration json file
+Filesystem -> MainThread: msgId
+MainThread -> Application: msgId
+Application -> MainThread: le_smsInbox1_GetImsi(msgId)
+MainThread -> Application: return Imsi
+Application -> MainThread: le_smsInbox1_GetMsglen(msgId)
+MainThread -> Application: return msglen
+Application -> MainThread: le_smsInbox1_GetFormat(msgId)
+MainThread -> Application: return Format
+Application -> MainThread: le_smsInbox1_GetSenderTel(msgId, tel, 1)
+MainThread -> Application: return SenderTel
+Application -> MainThread: le_smsInbox1_GetTimesStamp(msgId, timestamp, 1)
+MainThread -> Application: return TimesStamp
+Application -> MainThread: le_smsInbox1_GetText(msgId, text, 1)
+MainThread -> Application: return Text
+Application -> MainThread: le_smsInbox1_GetBinary(msgId, bin, &uintval)
+MainThread -> Application: return Binary
+Application -> MainThread: le_smsInbox1_GetPdu(msgId, pdu, &uintval)
+MainThread -> Application: return pdu
+
+== Repetition ==
+Application -> MainThread: le_smsInbox1_Getnext(smsInbox_session reference)
+MainThread -> Filesystem: Get the next message id from configuration json file
+Filesystem -> MainThread: msgId
+MainThread -> Application: msgId
+note right of Application
+All the above APIs retrieve message information
+end note
+note right of Application
+Repeat until message id is not null
+end note
+
+@enduml
+Copyright (C) Sierra Wireless Inc.
+
+**/
