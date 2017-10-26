@@ -363,12 +363,32 @@ static const char * DataBearerTechnologyToString
         case LE_MDC_DATA_BEARER_TECHNOLOGY_HSPA:                return "HSPA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_HSPA_PLUS:           return "HSPA+";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSPA_PLUS:        return "DC-HSPA+";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSDPA:               return "HSDPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HSUPA:               return "HSUPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSUPA:            return "DC HSUPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_DC_HSPA:             return "DC HSPA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE:                 return "LTE";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_FDD:             return "LTE FDD";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_TDD:             return "LTE TDD";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_CA_DL:           return "LTE CA DL";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_LTE_CA_UL:           return "LTE CA UL";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_TD_SCDMA:            return "TD-SCDMA";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_1X:         return "CDMA 1X";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO:       return "CDMA Ev-DO";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EVDO_REVA:  return "CDMA Ev-DO Rev.A";
         case LE_MDC_DATA_BEARER_TECHNOLOGY_CDMA2000_EHRPD:      return "CDMA eHRPD";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_IS95_1X:             return "IS95 1X";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REV0_DPA:        return "HDR REV0 DPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVA_DPA:        return "HDR REVA DPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_DPA:        return "HDR REVB DPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVA_MPA:        return "HDR REVA MPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_MPA:        return "HDR REVB MPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVA_EMPA:       return "HDR REVA EMPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_EMPA:       return "HDR REVB EMPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_REVB_MMPA:       return "HDR REVB MMPA";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_HDR_EVDO_FMC:        return "HDR EVDO FMC";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_64_QAM:              return "64 QAM";
+        case LE_MDC_DATA_BEARER_TECHNOLOGY_S2B:                 return "S2B";
     }
 
     return "";
@@ -389,8 +409,8 @@ static void PrintDataBearerInformation
     le_result_t result;
 
     result = le_mdc_GetDataBearerTechnology(profileRef,
-                    &(currentDataBearerTechnologies.uplink),
-                    &(currentDataBearerTechnologies.downlink));
+                    &(currentDataBearerTechnologies.downlink),
+                    &(currentDataBearerTechnologies.uplink));
 
     if (result != LE_OK)
     {
