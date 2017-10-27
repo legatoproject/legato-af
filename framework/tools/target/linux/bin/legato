@@ -20,7 +20,18 @@ fi
 
 PrintUsage()
 {
-    echo "USAGE: `basename $0` [start|stop|restart|status|version|help]"
+    echo -e "NAME"
+    echo -e "  legato - Use the legato tool to control the Legato Application Framework.\n"
+    echo -e "SYNOPSIS"
+    echo -e "  legato [start|stop|restart|status|version|help]\n"
+    echo -e "DESCRIPTION"
+    echo -e "\tlegato start\n\t\tStarts the Legato Application Framework."
+    echo -e "\tlegato stop\n\t\tStops the Legato Application Framework."
+    echo -e "\tlegato restart\n\t\tRestarts the Legato Application Framework."
+    echo -e "\tlegato status\n\t\tDisplays the current running state (started, stopped),
+                system state (good, bad, probation) and system index of Legato."
+    echo -e "\tlegato version\n\t\tDisplays the current installed version."
+    echo -e "\tlegato help\n\t\tDisplays usage help."
 }
 
 
