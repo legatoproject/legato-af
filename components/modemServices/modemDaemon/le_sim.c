@@ -358,20 +358,13 @@ static le_result_t GetEID
 )
 {
   pa_sim_Eid_t eid;
-  le_result_t res;
 
   if (LE_OK != pa_sim_GetCardEID(eid))
   {
       return LE_FAULT;
   }
-  res = le_utf8_Copy(simPtr->EID, eid, sizeof(simPtr->EID), NULL);
 
-  // If a truncation error occurred when copying the result, ensure the cache is cleared.
-  if (LE_OK != res)
-  {
-      simPtr->EID[0] = '\0';
-  }
-  return res;
+  return le_utf8_Copy(simPtr->EID, eid, sizeof(simPtr->EID), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -385,7 +378,6 @@ static le_result_t GetICCID
     Sim_t* simPtr   ///< [IN] The SIM structure.
 )
 {
-  le_result_t res;
   pa_sim_CardId_t  iccid;
 
   if (LE_OK != pa_sim_GetCardIdentification(iccid))
@@ -393,14 +385,7 @@ static le_result_t GetICCID
       return LE_FAULT;
   }
 
-  res = le_utf8_Copy(simPtr->ICCID, iccid, sizeof(simPtr->ICCID), NULL);
-  if (LE_OK != res)
-  {
-      // If a truncation error occurred when copying the result, ensure the cache is cleared.
-      simPtr->ICCID[0] = '\0';
-  }
-
-  return res;
+  return le_utf8_Copy(simPtr->ICCID, iccid, sizeof(simPtr->ICCID), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -414,7 +399,6 @@ static le_result_t GetIMSI
     Sim_t* simPtr   ///< [IN] The SIM structure.
 )
 {
-  le_result_t res;
   pa_sim_Imsi_t    imsi;
 
   if (LE_OK != pa_sim_GetIMSI(imsi))
@@ -422,14 +406,28 @@ static le_result_t GetIMSI
       return LE_FAULT;
   }
 
-  res = le_utf8_Copy(simPtr->IMSI, imsi, sizeof(simPtr->IMSI), NULL);
-  if (LE_OK != res)
+  return le_utf8_Copy(simPtr->IMSI, imsi, sizeof(simPtr->IMSI), NULL);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the SIM Phone Number.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetPhoneNumber
+(
+    Sim_t* simPtr   ///< [IN] The SIM structure.
+)
+{
+  char phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0};
+
+  if (LE_OK != pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)))
   {
-      // If a truncation error occurred when copying the result, ensure the cache is cleared.
-      simPtr->IMSI[0] = '\0';
+      return LE_FAULT;
   }
 
-  return res;
+  return le_utf8_Copy(simPtr->phoneNumber, phoneNumber, sizeof(simPtr->phoneNumber), NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -921,25 +919,19 @@ le_result_t le_sim_GetICCID
         return LE_BAD_PARAMETER;
     }
 
-    if (0 == simPtr->ICCID[0])
+    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
+        (LE_OK == pa_sim_GetState(&state)) &&
+        ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
+       )
     {
-        if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-            (LE_OK == pa_sim_GetState(&state)) &&
-            ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
-           )
-        {
-            // Get ICCID
-            res = GetICCID(simPtr);
-        }
-        else
-        {
-            LE_ERROR("Failed to get the ICCID of sim identifier.%d", simPtr->simId);
-            return LE_FAULT;
-        }
+        // Get ICCID
+        res = GetICCID(simPtr);
     }
     else
     {
-        res = LE_OK;
+        LE_ERROR("Failed to get the ICCID of sim identifier.%d", simPtr->simId);
+        simPtr->ICCID[0] = '\0';
+        return LE_FAULT;
     }
 
     // The ICCID is available. Copy it to the result buffer.
@@ -997,24 +989,18 @@ le_result_t  le_sim_GetEID
         return LE_BAD_PARAMETER;
     }
 
-    if (0 == simPtr->EID[0])
+    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
+        (LE_OK == pa_sim_GetState(&state)) &&
+        ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
+       )
     {
-        if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-            (LE_OK == pa_sim_GetState(&state)) &&
-            ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
-           )
-        {
-            res = GetEID(simPtr);
-        }
-        else
-        {
-            LE_ERROR("Failed to get the EID of sim identifier.%d", simPtr->simId);
-            return LE_FAULT;
-        }
+        res = GetEID(simPtr);
     }
     else
     {
-        res = LE_OK;
+        LE_ERROR("Failed to get the EID of sim identifier.%d", simPtr->simId);
+        simPtr->EID[0] = '\0';
+        return LE_FAULT;
     }
 
     // The EID is available. Copy it to the result buffer.
@@ -1069,25 +1055,19 @@ le_result_t le_sim_GetIMSI
         return LE_BAD_PARAMETER;
     }
 
-    if (0 == simPtr->IMSI[0])
+    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
+        (LE_OK == pa_sim_GetState(&state)) &&
+        (LE_SIM_READY == state)
+       )
     {
-        if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
-            (LE_OK == pa_sim_GetState(&state)) &&
-            (LE_SIM_READY == state)
-           )
-        {
-            // Get identification information
-            res = GetIMSI(simPtr);
-        }
-        else
-        {
-            LE_ERROR("Failed to get the IMSI of sim identifier.%d", simPtr->simId);
-            return LE_FAULT;
-        }
+        // Get identification information
+        res = GetIMSI(simPtr);
     }
     else
     {
-        res = LE_OK;
+        LE_ERROR("Failed to get the IMSI of sim identifier.%d", simPtr->simId);
+        simPtr->IMSI[0] = '\0';
+        return LE_FAULT;
     }
 
     // The IMSI is available. Copy it to the result buffer.
@@ -1698,12 +1678,11 @@ void le_sim_RemoveNewStateHandler
 le_result_t le_sim_GetSubscriberPhoneNumber
 (
     le_sim_Id_t     simId,             ///< [IN] SIM identifier.
-    char           *phoneNumberStr,    ///< [OUT] Phone Number
+    char*           phoneNumberStr,    ///< [OUT] Phone Number
     size_t          phoneNumberStrSize ///< [IN]  Size of phoneNumberStr
 )
 {
     le_sim_States_t  state;
-    char             phoneNumber[LE_MDMDEFS_PHONE_NUM_MAX_BYTES] = {0} ;
     le_result_t      res = LE_FAULT;
     Sim_t*           simPtr = NULL;
 
@@ -1714,60 +1693,36 @@ le_result_t le_sim_GetSubscriberPhoneNumber
     }
     simPtr = &SimList[simId];
 
-    if (phoneNumberStr == NULL)
+    if (NULL == phoneNumberStr)
     {
         LE_KILL_CLIENT("phoneNumberStr is NULL !");
         return LE_BAD_PARAMETER;
     }
 
-    if (strlen(simPtr->phoneNumber) == 0)
+    if ((LE_OK == SelectSIMCard(simPtr->simId)) &&
+        (LE_OK == pa_sim_GetState(&state)) &&
+        ((LE_SIM_INSERTED == state) || (LE_SIM_READY == state) || (LE_SIM_BLOCKED == state))
+       )
     {
-        if (SelectSIMCard(simPtr->simId) == LE_OK)
-        {
-            if (pa_sim_GetState(&state) == LE_OK)
-            {
-                LE_DEBUG("Try get the Phone Number of sim identifier.%d in state %d",
-                                simPtr->simId, state);
-                if ((state == LE_SIM_INSERTED) ||
-                    (state == LE_SIM_READY)    ||
-                    (state == LE_SIM_BLOCKED))
-                {
-                    // Get identification information
-                    if(pa_sim_GetSubscriberPhoneNumber(phoneNumber, sizeof(phoneNumber)) != LE_OK)
-                    {
-                        LE_ERROR("Failed to get the Phone Number of sim identifier.%d",
-                                 simPtr->simId);
-                        simPtr->phoneNumber[0] = '\0';
-                    }
-                    else
-                    {
-                        // Note that it is not valid to truncate the ICCID.
-                        res = le_utf8_Copy(simPtr->phoneNumber,
-                                           phoneNumber, sizeof(simPtr->phoneNumber), NULL);
-                    }
-                }
-            }
-        }
-        else
-        {
-            LE_ERROR("Failed to get the Phone Number of sim identifier.%d", simPtr->simId);
-            simPtr->phoneNumber[0] = '\0';
-        }
+        // Get the phone number
+        res = GetPhoneNumber(simPtr);
     }
     else
     {
-        res = LE_OK;
+        LE_ERROR("Failed to get the Phone Number of sim identifier.%d", simPtr->simId);
+        simPtr->phoneNumber[0] = '\0';
+        return LE_FAULT;
     }
 
-    // The ICCID is available. Copy it to the result buffer.
-    if (res == LE_OK)
+    // The phone number is available. Copy it to the result buffer.
+    if (LE_OK == res)
     {
         res = le_utf8_Copy(phoneNumberStr,simPtr->phoneNumber,phoneNumberStrSize,NULL);
     }
 
-    // If the ICCID could not be retrieved for some reason, or a truncation error occurred when
-    // copying the result, then ensure the cache is cleared.
-    if (res != LE_OK)
+    // If the phone number could not be retrieved for some reason, or a truncation error occurred
+    // when copying the result, then ensure the cache is cleared.
+    if (LE_OK != res)
     {
         simPtr->phoneNumber[0] = '\0';
     }
