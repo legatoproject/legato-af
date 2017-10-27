@@ -209,7 +209,7 @@ FUNCTION le_result_t SetCommand
  *      - LE_FAULT when function failed
  *      - LE_OK when function succeed
  *
- * @note If the AT Command reference is invalid, a fatal error occurs,
+ * @note If the AT Command reference or set intermediate response is invalid, a fatal error occurs,
  *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ FUNCTION le_result_t SetIntermediateResponse
  *      - LE_FAULT when function failed
  *      - LE_OK when function succeed
  *
- * @note If the AT Command reference is invalid, a fatal error occurs,
+ * @note If the AT Command reference or set response is invalid, a fatal error occurs,
  *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------

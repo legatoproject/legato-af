@@ -1491,7 +1491,7 @@ le_result_t le_atClient_SetCommand
  *      - LE_FAULT when function failed
  *      - LE_OK when function succeed
  *
- * @note If the AT Command reference is invalid, a fatal error occurs,
+ * @note If the AT Command reference or set intermediate response is invalid, a fatal error occurs,
  *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1511,10 +1511,20 @@ le_result_t le_atClient_SetIntermediateResponse
         return LE_BAD_PARAMETER;
     }
 
+    if (intermediatePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid intermediatePtr (%p) provided!", intermediatePtr);
+        return LE_BAD_PARAMETER;
+    }
+
     if (strcmp(intermediatePtr, "\0") != 0)
     {
-        char *savePtr = (char*) intermediatePtr;
-        char * interPtr = strtok_r((char*) intermediatePtr,"|", &savePtr);
+        size_t len = strlen(intermediatePtr) + 1;
+        char tmpIntermediate[len];
+        memset(tmpIntermediate, 0, len);
+        strncpy(tmpIntermediate, intermediatePtr, len);
+        char *savePtr = (char*) tmpIntermediate;
+        char *interPtr = strtok_r((char*) tmpIntermediate, "|", &savePtr);
 
         while(interPtr != NULL)
         {
@@ -1552,7 +1562,7 @@ le_result_t le_atClient_SetIntermediateResponse
  *      - LE_FAULT when function failed
  *      - LE_OK when function succeed
  *
- * @note If the AT Command reference is invalid, a fatal error occurs,
+ * @note If the AT Command reference or set response is invalid, a fatal error occurs,
  *       the function won't return.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1572,10 +1582,21 @@ le_result_t le_atClient_SetFinalResponse
         return LE_BAD_PARAMETER;
     }
 
+    if (responsePtr == NULL)
+    {
+        LE_KILL_CLIENT("Invalid responsePtr (%p) provided!", responsePtr);
+        return LE_BAD_PARAMETER;
+    }
+
+
     if (strcmp(responsePtr, "\0") != 0)
     {
-        char *savePtr = (char*) responsePtr;
-        char * respPtr = strtok_r((char*) responsePtr,"|", &savePtr);
+        size_t len = strlen(responsePtr) + 1;
+        char tmpResponse[len];
+        memset(tmpResponse, 0, len);
+        strncpy(tmpResponse, responsePtr, len);
+        char *savePtr = (char*) tmpResponse;
+        char *respPtr = strtok_r((char*) tmpResponse, "|", &savePtr);
 
         while(respPtr != NULL)
         {
