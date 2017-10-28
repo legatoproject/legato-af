@@ -925,8 +925,9 @@ FUNCTION int32 GetPlatformSpecificRegistrationErrorCode
  * Set the Radio Access Technology preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT           Function failed.
+ *  - LE_OK              Function succeeded.
+ *  - LE_UNSUPPORTED     Not supported by platform.
  *
  * @note <b>NOT multi-app safe</b>
  */

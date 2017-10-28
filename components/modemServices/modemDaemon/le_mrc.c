@@ -1603,8 +1603,9 @@ int32_t le_mrc_GetPlatformSpecificRegistrationErrorCode
  * Set the Radio Access Technology preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_FAULT           Function failed.
+ *  - LE_OK              Function succeeded.
+ *  - LE_UNSUPPORTED     Not supported by platform.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetRatPreferences
@@ -1612,6 +1613,8 @@ le_result_t le_mrc_SetRatPreferences
     le_mrc_RatBitMask_t ratMask ///< [IN] Bit mask for the Radio Access Technology preferences.
 )
 {
+    le_result_t result;
+
     if (ratMask == 0)
     {
         LE_ERROR("Rat preference not selected !");
@@ -1627,7 +1630,13 @@ le_result_t le_mrc_SetRatPreferences
     }
     else
     {
-        if ( pa_mrc_SetRatPreferences(ratMask) != LE_OK )
+        result = pa_mrc_SetRatPreferences(ratMask);
+        if (LE_UNSUPPORTED == result)
+        {
+            LE_ERROR("Radio Access Technology is not supported");
+            return LE_UNSUPPORTED;
+        }
+        if (LE_OK != result)
         {
             LE_ERROR("Unable to set the Radio Access Technology preferences.");
             return LE_FAULT;

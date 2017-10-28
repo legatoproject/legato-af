@@ -472,8 +472,9 @@ le_result_t pa_mrc_GetRadioAccessTechInUse
  * Set the Radio Access Technology Preferences
  *
  * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ * - LE_OK              On success.
+ * - LE_FAULT           On failure.
+ * - LE_UNSUPPORTED     Not supported by platform.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SetRatPreferences
@@ -483,7 +484,7 @@ le_result_t pa_mrc_SetRatPreferences
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
