@@ -527,6 +527,9 @@ with a non-zero exit code or because of an un-caught signal (e.g., SIGSEGV, SIGB
 
 Possible values are:
 
+@todo If these values are changed, they need to be updated in the adef for watchdog and the runtime
+arch dox files. Need to find a way to just include them in the future (doxygen doesn't support it)
+
  - @c ignore - Supervisor just logs a warning message; no further action taken.
  - @c restart - log a critical message and restart the process.
  - @c restartApp - log a critical message and restart the entire app.
@@ -631,29 +634,38 @@ maxLockedMemoryBytes: 100K
 @note   Also limits the maximum number of bytes of shared memory the app can lock into
         memory using @c shmctl().
 
-@subsection defFilesAdef_processWatchdogAction watchdogAction
+@subsection defFilesAdef_processwatchdogAction watchdogAction
 
-Specifies the action the Supervisor should take when a process subscribed
-to the watchdog service fails to kick the watchdog before it expires. Possible values are the same
-as in @ref defFilesAdef_processFaultAction as well as:
+Specifies the action the Supervisor should take when a @b process that is subscribed
+to the @ref basicRuntimeArch_watchdog "watchdog daemon" fails to kick the watchdog before the
+process reaches it's timeout value.
 
-@c stop -  Supervisor terminates the process if it's still running.
-If a watchdog action has not been supplied, the default action will restart the process.
+Possible watchdog actions:
+ - @c ignore - Supervisor just logs a warning message; no further action taken.
+ - @c restart - log a critical message and restart the process.
+ - @c restartApp - log a critical message and restart the entire app.
+ - @c stop -  Supervisor terminates the process if it's still running.
+ - @c stopApp - log a critical message and terminate the entire app (send all processes
+the SIGTERM signal, followed shortly by SIGKILL).
+ - @c reboot - log an emergency message and reboot the system.
 
-@subsection defFilesAdef_processWatchdogTimeout watchdogTimeout
+If a watchdog action has not been supplied, the default action is @b restart.
+
+@subsection defFilesAdef_processwatchdogTimeout watchdogTimeout
 
 Specifies the timeout length (in milliseconds) for watchdogs called by processes
 in the enclosing processes section.
 
-Once a process has called @c le_wdog_Kick(), it's registered with
-the software watchdog service. If it then fails to call @c le_wdog_Kick() within the given timeout,
-the Supervisor is notified will take the action specified in @ref defFilesAdef_processWatchdogAction
+To register a process with the watchdog daemon call @c le_wdog_Kick() from within the process.
+The watchdog daemon then starts the timer, if the process fails to call @c le_wdog_Kick() within the
+given timeout, the Supervisor is notified will take the action specified in
+@ref defFilesAdef_processwatchdogAction
 
 @code
-watchdogTimeout: 10000 // Must call le_wdog_Kick() at least every 10 seconds.
+watchdogTimeout: 10000 // Process must call le_wdog_Kick() at least every 10 seconds.
 @endcode
 
-A special value "never" is permitted for this section.  If used, the watchdog will never time out.
+To disable the watchdog for a given process set the @c watchdogTimeout to @c never:
 
 @code
 watchdogTimeout: never  // Disable watchdog for these processes.
@@ -935,9 +947,6 @@ requires:
         in @c /usr/bin; that would have an effect on the contents of the /bin directory outside
         of the app.
 
-@note   If an access to the directory @c /dev/shm is required, it should be listed in this
-        subsection because it is treated like a directory even if it is located in @c /dev.
-
 @subsection defFilesAdef_requiresFile file
 
 Declares:
@@ -1075,8 +1084,6 @@ requires:
 
 @warning  This section is experimental.  Future releases of may not support this section.
 
-@note   If an access to the directory @c /dev/shm is required, it should be listed in the subsection
-        @c dir: because it is treated like a directory even if it is located in @c /dev.
 
 @section defFilesAdef_sandboxed sandboxed
 
@@ -1130,30 +1137,66 @@ version: 0.3a
 
 @section defFilesAdef_watchdogAction watchdogAction
 
-The @c watchdogAction section sets the recovery action to take if a process in this app
-expires its watchdog. This value will be used if there is no value set in the processes section
-for a given process. See @ref defFilesAdef_processWatchdogAction in the processes section.
+Specifies the action the Supervisor should take when any app's process fails to kick the
+@ref basicRuntimeArch_watchdog "watchdog daemon" before the app reaches it's timeout value. If a
+specific action need to be taken for individual processes then that should be set in the
+@ref defFilesAdef_processwatchdogAction .
+
+Possible watchdog actions:
+ - @c ignore - Supervisor just logs a warning message; no further action taken.
+ - @c restart - log a critical message and restart the process.
+ - @c restartApp - log a critical message and restart the entire app.
+ - @c stop - Supervisor terminates the process if it's still running.
+ - @c stopApp - log a critical message and terminate the entire app (send all processes
+   the SIGTERM signal, followed shortly by SIGKILL).
+ - @c reboot - log an emergency message and reboot the system.
+
+If a watchdog action has not been supplied, the default action is @b restart.
+
+To register a process with the watchdog daemon call @c le_wdog_Kick() from within the process.
+The watchdog daemon then starts the timer, if the process fails to call @c le_wdog_Kick() within the
+given timeout, the Supervisor is notified will take the action specified in
+@ref defFilesAdef_processwatchdogAction
 
 @section defFilesAdef_watchdogTimeout watchdogTimeout
 
-The @c watchdogTimeout section sets the default timeout in milliseconds for processes in this
-app. Will be used if there's no value set in the processes section for
-a given process. See @ref defFilesAdef_processWatchdogTimeout in the processes section.
+Specifies the timeout length (in milliseconds) for watchdogs called by an app.
 
-@section defFilesAdef_maxWatchdogTimeout maxWatchdogTimeout
+To register an app with the watchdog daemon call @c le_wdog_Kick() from within the app.
+The watchdog daemon then starts the timer, if the process fails to call @c le_wdog_Kick() within the
+given timeout, the Supervisor is notified will take the action specified in
+@ref defFilesAdef_watchdogAction
 
-The @c maxWatchdogTimeout section should be set for critical services.  If the @c maxWatchdogTimeout
-is set the watchdog will be started on system boot, and can't be stopped longer than the
-timeout given in @c maxWatchdogTimeout.  This is to ensure that the service is running as long as
-the system is running.
+@code
+watchdogTimeout: 10000 // Process will call le_wdog_Kick() every 10 seconds.
+@endcode
 
-Unlike the @c watchdogTimeout, the @c maxWatchdogTimeout value can not be
-set to @c never. If a @c maxWatchdogTimeout is set then le_wdog_Timeout() can not exceed the
-@c maxWatchdogTimeout value.
+To disable the watchdog for a given process set the @c watchdogTimeout to @c never:
 
-@note If @c maxWatchdogTimeout is not set, no more action is taken if performing the process'
-@c watchdogAction doesn't recover the process.  If @c maxWatchdogTimeout is specified the system
-will be rebooted if the process does not recover.
+@code
+watchdogTimeout: never  // Disable watchdog for these processes.
+@endcode
+
+@section defFilesAdef_maxwatchdogTimeout maxwatchdogTimeout
+
+The @c maxwatchdogTimeout section should be set for critical services.  Setting the
+@c maxwatchdogTimeout will invoke a recovery procedure that will:
+- first try to perform the watchdogAction to recover the hung process.
+- wait for the @c maxwatchdogTimeout value to elapse again.
+- if the process is still not started then the target will be rebooted.
+
+The @c maxwatchdogTimeout starts counting on system boot.  The app can't be stopped longer than the
+timeout given in @c maxwatchdogTimeout.  If it is the system will try and "recover itself" and may
+reboot the target.
+
+The @c maxwatchdogTimeout value can not be set to @c never, if you wish to disable it, remove the
+@c maxwatchdogTimeout from the app's .adef and reinstall the app.
+
+If a @c maxwatchdogTimeout is set then le_wdog_Timeout() can not exceed the @c maxwatchdogTimeout
+value.
+
+@warning @c watchdogActions @b ignore, @b stop and @b stopApp should not be used when a
+@c maxwatchdogTimeout is configured.
 
 Copyright (C) Sierra Wireless Inc.
 
