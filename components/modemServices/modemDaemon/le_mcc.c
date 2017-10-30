@@ -313,7 +313,7 @@ static le_mcc_Call_t* CreateCallObject
     callPtr->event = event;
     callPtr->termination = termination;
     callPtr->terminationCode = terminationCode;
-    callPtr->clirStatus = PA_MCC_DEACTIVATE_CLIR;
+    callPtr->clirStatus = PA_MCC_NO_CLIR;
     callPtr->inProgress = false;
     callPtr->refCount = 1;
     callPtr->creatorList=LE_DLS_LIST_INIT;
@@ -1161,7 +1161,7 @@ le_result_t le_mcc_Start
 
     res = pa_mcc_VoiceDial(callPtr->telNumber,
                           callPtr->clirStatus,
-                          PA_MCC_ACTIVATE_CUG,
+                          PA_MCC_NO_CUG,
                           &callId,
                           &callPtr->termination);
 
@@ -1397,8 +1397,9 @@ le_result_t le_mcc_HangUpAll
  *    - LE_OFF Enable presentation of own phone number to remote.
  *
  * @return
- *    - LE_OK        The function succeed.
- *    - LE_NOT_FOUND The call reference was not found.
+ *    - LE_OK          The function succeed.
+ *    - LE_NOT_FOUND   The call reference was not found.
+ *    - LE_UNAVAILABLE CLIR status was not set.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mcc_GetCallerIdRestrict
@@ -1413,6 +1414,12 @@ le_result_t le_mcc_GetCallerIdRestrict
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", callRef);
         return LE_NOT_FOUND;
+    }
+
+    if (callPtr->clirStatus == PA_MCC_NO_CLIR)
+    {
+        LE_INFO("CLIR field was not set");
+        return LE_UNAVAILABLE;
     }
 
     if (clirStatusPtr == NULL)
@@ -1437,7 +1444,7 @@ le_result_t le_mcc_GetCallerIdRestrict
 //--------------------------------------------------------------------------------------------------
 /**
  * This function set the Calling Line Identification Restriction (CLIR) status on the specific call.
- * Default value is LE_OFF (Enable presentation of own phone number to remote).
+ * By default the CLIR status is not set.
  *
  * @return
  *     - LE_OK        The function succeed.

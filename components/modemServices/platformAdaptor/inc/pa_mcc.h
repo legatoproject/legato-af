@@ -62,6 +62,7 @@ typedef enum
 {
     PA_MCC_ACTIVATE_CLIR   = 0, ///< Disable presentation of own phone number to remote.
     PA_MCC_DEACTIVATE_CLIR = 1, ///< Enable presentation of own phone number to remote.
+    PA_MCC_NO_CLIR         = 2  ///< Do not change presentation of own phone number to remote mode.
 }
 pa_mcc_clir_t;
 
@@ -76,6 +77,7 @@ typedef enum
 {
     PA_MCC_ACTIVATE_CUG   = 0, ///< Activate
     PA_MCC_DEACTIVATE_CUG = 1, ///< Deactivate
+    PA_MCC_NO_CUG         = 2  ///< Do not invoke CUG
 }
 pa_mcc_cug_t;
 

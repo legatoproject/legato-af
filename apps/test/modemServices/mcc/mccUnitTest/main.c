@@ -597,6 +597,7 @@ static void Testle_mcc_SetClir
     _ClientSessionRef = (le_msg_SessionRef_t)(tempSessionRef);
 
     LE_ASSERT((CurrentCallRef = le_mcc_Create(DESTINATION_NUMBER)) != NULL);
+    LE_ASSERT(le_mcc_GetCallerIdRestrict(CurrentCallRef, &localClirStatus) == LE_UNAVAILABLE);
     LE_ASSERT(le_mcc_SetCallerIdRestrict(CurrentCallRef, ClirStatus) == LE_OK);
     LE_ASSERT(le_mcc_GetCallerIdRestrict(CurrentCallRef, &localClirStatus) == LE_OK);
     LE_ASSERT(localClirStatus ==  ClirStatus);

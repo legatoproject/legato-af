@@ -25,6 +25,13 @@ typedef struct
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * CLIR field valid or not.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool ClirValid = true;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Calling Line Identification Restriction setting for the destination phone number to used.
  */
 //--------------------------------------------------------------------------------------------------
@@ -218,21 +225,25 @@ static le_result_t Testle_mcc_Call
 
     le_mcc_AddCallEventHandler(MyCallEventHandler, NULL);
 
-    res = le_mcc_SetCallerIdRestrict(TestCallRef, ClirStatus);
-    if (res != LE_OK)
+    if (ClirValid == true)
     {
-        LE_ERROR("Failed to set Caller Id Restriction");
-        return res;
+        res = le_mcc_SetCallerIdRestrict(TestCallRef, ClirStatus);
+        if (res != LE_OK)
+        {
+            LE_ERROR("Failed to set Caller Id Restriction");
+            return res;
+        }
     }
 
     res = le_mcc_GetCallerIdRestrict(TestCallRef, &localClirStatus);
-    if (res != LE_OK)
+    if (((ClirValid == true) && (res != LE_OK)) ||
+        ((ClirValid == false) && (res != LE_OK) && (res != LE_UNAVAILABLE)))
     {
-        LE_ERROR("Failed to set Caller Id Restriction");
+        LE_ERROR("Failed to get Caller Id Restriction");
         return res;
     }
 
-    if (localClirStatus !=  ClirStatus)
+    if ((res == LE_OK) && (localClirStatus !=  ClirStatus))
     {
         LE_ERROR("CLIR status doesn't match with CLIR set");
         return LE_FAULT;
@@ -296,11 +307,13 @@ static le_result_t Testle_mcc_HangUpAll
  * ME must be registered on Network with the SIM in ready state.
  * Check "logread -f | grep mcc" log
  * Start app : app start mccTest
- * Execute app : app runProc mccTest --exe=mccTest -- <Destination phone number> <CLIR_ON | CLIR_OFF>
- *  - CLIR_ON to activate the Calling line identification restriction. Phone Number is not
+ * Execute app :
+ *  app runProc mccTest --exe=mccTest -- <Destination phone number> <CLIR_ON | CLIR_OFF | NO_CLIR>
+ *   - CLIR_ON to activate the Calling line identification restriction. Phone Number is not
  * displayed on the remote side.
- *  - CLIR_OFF to deactivate the Calling line identification restriction. Phone Number can be
+ *   - CLIR_OFF to deactivate the Calling line identification restriction. Phone Number can be
  * displayed on the remote side.
+ *   - NO_CLIR to indicate not to set the Calling line identification restriction for this call.
  */
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
@@ -330,16 +343,29 @@ COMPONENT_INIT
 
         if (clirStatusStr)
         {
-           if (strcmp(clirStatusStr, "CLIR_ON") == 0)
+           if (0 == strcmp(clirStatusStr, "NO_CLIR"))
            {
+               ClirValid = false;
+               LE_INFO("Phone number %s, No CLIR", DestinationNumber);
+           }
+           else if (0 == strcmp(clirStatusStr, "CLIR_ON"))
+           {
+               ClirValid = true;
                ClirStatus = LE_ON;
+               LE_INFO("Phone number %s, CLIR ON", DestinationNumber);
+           }
+           else if (0 == strcmp(clirStatusStr, "CLIR_OFF"))
+           {
+               ClirValid = true;
+               ClirStatus = LE_OFF;
+               LE_INFO("Phone number %s, CLIR OFF", DestinationNumber);
            }
            else
            {
-               ClirStatus = LE_OFF;
+               LE_ERROR("Incorrect argument '%s'", clirStatusStr);
+               exit(EXIT_FAILURE);
            }
         }
-        LE_INFO("Phone number %s, CLIR %s", DestinationNumber, ((ClirStatus == LE_ON) ? "ON" : "OFF"));
 
         for (i=0; mcctest[i].ptrfunc != NULL; i++)
         {
@@ -360,7 +386,7 @@ COMPONENT_INIT
     else
     {
         LE_ERROR("PRINT USAGE => app runProc mccTest --exe=mccTest -- <Destination phone number>"
-                        " <CLIR_ON | CLIR_OFF>");
+                        " <CLIR_ON | CLIR_OFF | NO_CLIR>");
         exit(EXIT_SUCCESS);
     }
 }

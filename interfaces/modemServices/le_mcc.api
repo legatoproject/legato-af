@@ -78,9 +78,10 @@
  * @section le_mcc_ss Supplementary service
  *
  * Calling Line Identification Restriction (CLIR) can be activated or deactivated by
- *  le_mcc_SetCallerIdRestrict API. The status is independent for each call object reference.
- *  Status can be read with the le_mcc_GetCallerIdRestrict() API.
- * Default value is LE_OFF (Enable presentation of own phone number to remote).
+ * le_mcc_SetCallerIdRestrict() API. The status is independent for each call object reference.
+ * Status can be read with the le_mcc_GetCallerIdRestrict() API. If the status is not set,
+ * le_mcc_GetCallerIdRestrict() API returns LE_UNAVAILABLE.
+ * By default the CLIR status is not set.
  *
  * Call waiting supplementary service can be activated or deactivated by
  * le_mcc_SetCallWaitingService(). Its status can be given by le_mcc_GetCallWaitingService().
@@ -406,8 +407,9 @@ FUNCTION le_result_t HangUpAll
  *    - LE_OFF Enable presentation of own phone number to remote.
  *
  * @return
- *    - LE_OK        The function succeed.
- *    - LE_NOT_FOUND The call reference was not found.
+ *    - LE_OK          The function succeed.
+ *    - LE_NOT_FOUND   The call reference was not found.
+ *    - LE_UNAVAILABLE CLIR status was not set.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetCallerIdRestrict
@@ -419,7 +421,7 @@ FUNCTION le_result_t GetCallerIdRestrict
 //--------------------------------------------------------------------------------------------------
 /**
  * This function set the Calling Line Identification Restriction (CLIR) status on the specific call.
- * Default value is LE_OFF (Enable presentation of own phone number to remote).
+ * By default the CLIR status is not set.
  *
  * @return
  *     - LE_OK        The function succeed.
