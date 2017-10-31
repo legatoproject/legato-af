@@ -32,17 +32,12 @@
 //--------------------------------------------------------------------------------------------------
 static void TestSimStateHandler
 (
-    le_sim_Id_t     simId,
-    le_sim_States_t simState,
-    void*           contextPtr
+    le_sim_Id_t     simId,       ///< [IN] SIM identifier
+    le_sim_States_t simState,    ///< [IN] SIM state
+    void*           contextPtr   ///< [IN] Context
 )
 {
-    le_sim_States_t       state;
-
-    // Get SIM state
-    state = le_sim_GetState(simId);
-
-    switch(state)
+    switch (simState)
     {
         case LE_SIM_INSERTED:
             LE_INFO("-TEST- New state LE_SIM_INSERTED for SIM card.%d", simId);
@@ -63,16 +58,8 @@ static void TestSimStateHandler
             LE_INFO("-TEST- New state LE_SIM_STATE_UNKNOWN for SIM card.%d", simId);
             break;
         default:
-            LE_INFO("-TEST- New state %d for SIM card.%d", state, simId);
+            LE_INFO("-TEST- New state %d for SIM card.%d", simState, simId);
             break;
-    }
-    if((state>=LE_SIM_INSERTED) && (state<=LE_SIM_STATE_UNKNOWN))
-    {
-        LE_INFO("-TEST- Check le_sim_GetState passed.");
-    }
-    else
-    {
-        LE_ERROR("-TEST- Check le_sim_GetState failure !");
     }
 }
 //! [State handler]
@@ -481,15 +468,19 @@ void simTest_State
     const char* pinPtr
 )
 {
-    le_result_t                 res;
-    le_sim_NewStateHandlerRef_t testHdlrRef;
     le_sim_States_t             state;
+    le_sim_NewStateHandlerRef_t testHdlrRef;
     char                        string[100];
 
     memset(string, 0, 100);
 
+    // Add the state handler
+    LE_ASSERT((testHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL)) != NULL);
+
     // Get SIM state
     state = le_sim_GetState(simId);
+
+    LE_INFO("test: state %d", state);
 
     LE_ASSERT((state >= LE_SIM_INSERTED) && (state <= LE_SIM_BUSY));
     sprintf(string, "\nSIM Card.%d state:\n", simId);
@@ -497,20 +488,15 @@ void simTest_State
 
     DisplaySimState(state, simId);
 
-    if(state == LE_SIM_INSERTED)
+    if (LE_SIM_INSERTED == state)
     {
         // Enter PIN code
-        res = le_sim_EnterPIN(simId, pinPtr);
-        LE_ASSERT(res==LE_OK);
+        LE_ASSERT_OK(le_sim_EnterPIN(simId, pinPtr));
 
         // Get SIM state
         state = le_sim_GetState(simId);
         LE_ASSERT((state>=LE_SIM_INSERTED) && (state<=LE_SIM_BUSY));
     }
-
-    // Add the state handler
-    testHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL);
-    LE_ASSERT(testHdlrRef != NULL);
 }
 //! [State]
 

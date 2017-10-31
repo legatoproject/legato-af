@@ -74,20 +74,20 @@ static void PrintUsage
     const char * usagePtr[] =
     {
      "Usage of the 'simTest' application is:",
-     "SIM allocation test: app runProc simTest --exe=bin/simTest -- create <ext/emb> <pin>",
-     "SIM state test: app runProc simTest --exe=bin/simTest -- state <ext/emb> <pin>",
+     "SIM allocation test: app runProc simTest --exe=simTest -- create <ext/emb> <pin>",
+     "SIM state test: app runProc simTest --exe=simTest -- state <ext1/ext2/emb> <pin>",
      "SIM authentification test: app runProc simTest"
-     " --exe=bin/simTest -- auth <ext/emb> <pin> <puk>",
-     "No SIM test: app runProc simTest --exe=bin/simTest -- nosim <ext/emb>",
-     "SIM select: app runProc simTest --exe=bin/simTest -- select",
-     "SIM lock test: app runProc simTest --exe=bin/simTest -- lock <emb/ext1/ext2/rem> <pin>",
-     "SIM GetICCID test: app runProc simTest --exe=bin/simTest -- iccid <emb/ext1/ext2/rem>",
-     "SIM GetEID test: app runProc simTest --exe=bin/simTest -- eid <emb/ext1/ext2/rem>",
-     "SIM send apdu test: app runProc simTest --exe=bin/simTest -- access <emb/ext1/ext2/rem>",
+     " --exe=simTest -- auth <ext/emb> <pin> <puk>",
+     "No SIM test: app runProc simTest --exe=simTest -- nosim <ext/emb>",
+     "SIM select: app runProc simTest --exe=simTest -- select",
+     "SIM lock test: app runProc simTest --exe=simTest -- lock <emb/ext1/ext2/rem> <pin>",
+     "SIM GetICCID test: app runProc simTest --exe=simTest -- iccid <emb/ext1/ext2/rem>",
+     "SIM GetEID test: app runProc simTest --exe=simTest -- eid <emb/ext1/ext2/rem>",
+     "SIM send apdu test: app runProc simTest --exe=simTest -- access <emb/ext1/ext2/rem>",
      "",
     };
 
-    for(idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
+    for (idx = 0; idx < NUM_ARRAY_MEMBERS(usagePtr); idx++)
     {
         Print((char*) usagePtr[idx]);
     }

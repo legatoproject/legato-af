@@ -160,11 +160,11 @@ le_result_t pa_sim_RemoveNewStateHandler
 /**
  * This function enter the PIN code.
  *
+ * @return LE_OK            The function succeeded.
  * @return LE_BAD_PARAMETER The parameters are invalid.
  * @return LE_FAULT         The function failed.
- * @return LE_TIMEOUT       No response was received from the SIM card.
- * @return LE_OK            The function succeeded.
- */
+ * @return LE_TIMEOUT       No response received from the SIM card.
+  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_sim_EnterPIN
 (
