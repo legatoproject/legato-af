@@ -188,6 +188,28 @@ void PrintGnssHelp
          "\t\t\tgnss set nmeaSentences <nmeaMask>\n"
          "\t\t\t\t- Used to set the enabled NMEA sentences. \n"
          "\t\t\t\t  Bit mask should be set with hexadecimal values, e.g. 7FFF\n\n"
+         "\t\t\t\t- Used to set nmea sentences. Allowed when device in 'ready' state. May require\n"
+         "\t\t\t\t  platform reboot, please look platform documentation for details.\n"
+         "\t\t\t\t  nmeaMask can be as follows:\n"
+         "\t\t\t\t\t- 1 ------> GPGGA\n"
+         "\t\t\t\t\t- 2 ------> GPGSA\n"
+         "\t\t\t\t\t- 4 ------> GPGSV\n"
+         "\t\t\t\t\t- 8 ------> GPRMC\n"
+         "\t\t\t\t\t- 10 -----> GPVTG\n"
+         "\t\t\t\t\t- 20 -----> GLGSV\n"
+         "\t\t\t\t\t- 40 -----> GNGNS\n"
+         "\t\t\t\t\t- 80 -----> GNGSA\n"
+         "\t\t\t\t\t- 100 ----> GAGGA\n"
+         "\t\t\t\t\t- 200 ----> GAGSA\n"
+         "\t\t\t\t\t- 400 ----> GAGSV\n"
+         "\t\t\t\t\t- 800 ----> GARMC\n"
+         "\t\t\t\t\t- 1000 ---> GAVTG\n"
+         "\t\t\t\t\t- 2000 ---> PSTIS\n"
+         "\t\t\t\t\t- 4000 ---> PQXFI\n"
+         "\t\t\t\t\t- 8000 ---> PTYPE\n"
+         "\t\t\t\t\t- 10000 --> GPGRS\n"
+         "\t\t\t\t\t- 20000 --> GPGLL\n"
+         "\t\t\t\t\t- 40000 --> DEBUG\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n"
@@ -1124,6 +1146,10 @@ static int GetNmeaSentences
             if (nmeaMask & LE_GNSS_NMEA_MASK_GPGLL)
             {
                 printf("\tGPGLL (GPS Geographic position, latitude / longitude) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_DEBUG)
+            {
+               printf("\tDEBUG (Debug NMEA indication) enabled\n");
             }
             break;
         case LE_FAULT:

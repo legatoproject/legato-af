@@ -1045,6 +1045,9 @@ static void TestLeGnssNmeaSentences
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
     LE_ASSERT(nmeaMask == (LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE));
 
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_DEBUG));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT((LE_GNSS_NMEA_MASK_DEBUG == nmeaMask) || (0 == nmeaMask));
     // TODO Uncomment once the firmware fix is ready
     // LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPGRS));
     // LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));

@@ -267,7 +267,8 @@ static void Testle_pos_ActivateGpsNmeaSentences
     le_gnss_NmeaBitMask_t gpsNmeaMask = LE_GNSS_NMEA_MASK_GPGGA | LE_GNSS_NMEA_MASK_GPGSA |
                                      LE_GNSS_NMEA_MASK_GPGSV | LE_GNSS_NMEA_MASK_GPRMC |
                                      LE_GNSS_NMEA_MASK_GPVTG | LE_GNSS_NMEA_MASK_PSTIS |
-                                     LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE;
+                                     LE_GNSS_NMEA_MASK_PQXFI | LE_GNSS_NMEA_MASK_PTYPE |
+                                     LE_GNSS_NMEA_MASK_DEBUG;
     le_gnss_NmeaBitMask_t nmeaMask;
     LE_ASSERT_OK(le_gnss_SetNmeaSentences(gpsNmeaMask));
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));

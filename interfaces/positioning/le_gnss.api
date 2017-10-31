@@ -642,7 +642,8 @@ BITMASK NmeaBitMask
     NMEA_MASK_PQXFI,    ///< PQXFI type enabled: Proprietary Qualcomm eXtended Fix Information.
     NMEA_MASK_PTYPE,    ///< PTYPE type enabled: Proprietary Type mask.
     NMEA_MASK_GPGRS,    ///< GPGRS type enabled: GPS Range residuals.
-    NMEA_MASK_GPGLL     ///< GPGLL type enabled: GPS Geographic position, latitude / longitude.
+    NMEA_MASK_GPGLL,    ///< GPGLL type enabled: GPS Geographic position, latitude / longitude.
+    NMEA_MASK_DEBUG     ///< DEBUG type enabled: Debug NMEA indication.
 };
 
 //--------------------------------------------------------------------------------------------------
