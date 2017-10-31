@@ -270,6 +270,20 @@ static le_timer_Ref_t DefaultExternalWdogTimer; ///< Default external wdog timer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Remove the watchdog from our container, free the timer it contains and then free the storage
  * we allocated to hold the watchdog structure.
  */
@@ -1132,7 +1146,7 @@ void le_wdog_Kick
     void
 )
 {
-    LE_DEBUG("Attempting to kick the dog timer!");
+    TRACE("Attempting to kick the dog timer!");
     ResetClientWatchdog(TIMEOUT_KICK);
 }
 
@@ -1477,6 +1491,9 @@ static void InitMandatoryWdog
 //--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    // Get a reference to the trace keyword that is used to control tracing in this module.
+    TraceRef = le_log_GetTraceRef("wdog");
+
     InitializeTimerContainer();
 
     SystemProcessNotifySupervisor();

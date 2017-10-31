@@ -137,6 +137,19 @@ static pthread_mutex_t InitMutex = PTHREAD_MUTEX_INITIALIZER;   // POSIX "Fast" 
 /// Unlocks the mutex.
 #define UNLOCK_INIT  LE_ASSERT(pthread_mutex_unlock(&InitMutex) == 0);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -167,6 +180,9 @@ static le_result_t InitClientForThread
     bool isBlocking
 )
 {
+    // Get a reference to the trace keyword that is used to control tracing in this module.
+    TraceRef = le_log_GetTraceRef("ipc");
+
     // Open a session.
     le_msg_ProtocolRef_t protocolRef;
     le_msg_SessionRef_t sessionRef;
@@ -697,8 +713,9 @@ error_unpack:
     {%- endif %}
 
     // Send a request to the server and get the response.
-    LE_DEBUG("Sending message to server and waiting for response : %ti bytes sent",
-             _msgBufPtr-_msgPtr->buffer);
+    TRACE("Sending message to server and waiting for response : %ti bytes sent",
+          _msgBufPtr-_msgPtr->buffer);
+
     _responseMsgRef = le_msg_RequestSyncResponse(_msgRef);
     // It is a serious error if we don't get a valid response from the server.  Call disconnect
     // handler (if one is defined) to allow cleanup

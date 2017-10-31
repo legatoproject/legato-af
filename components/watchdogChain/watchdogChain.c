@@ -82,6 +82,19 @@ WatchdogObj_t;
 //--------------------------------------------------------------------------------------------------
 static WatchdogObj_t* WatchdogList[MAX_WATCHDOGS];
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -104,7 +117,8 @@ static void CheckEventLoopHandler
         return;
     }
 
-    LE_DEBUG("Kicking watchdog chain: %d", watchdog);
+    TRACE("Kicking watchdog chain: %d", watchdog);
+
     le_wdogChain_Kick(watchdog);
     le_timer_Restart(watchdogPtr->timer);
 }
@@ -128,7 +142,8 @@ void CheckChain
         // Yes; kick watchdog and reset kick list.  Could potentially be double kicked if
         // another thread calls le_wdogChain_Kick in here somewhere, but a double kick is not
         // a problem.
-        LE_DEBUG("Watchdog chain is all kicked, kick watchdog.");
+        TRACE("Watchdog chain is all kicked, kick watchdog.");
+
         le_wdog_Kick();
         __sync_and_and_fetch(&WatchdogChain, ((uint64_t)-(INT64_C(1) << MAX_WATCHDOGS)));
     }
@@ -315,5 +330,8 @@ void le_wdogChain_Stop
 
 COMPONENT_INIT
 {
+    // Get a reference to the trace keyword that is used to control tracing in this module.
+    TraceRef = le_log_GetTraceRef("wdog");
+
     WatchdogPool = le_mem_CreatePool("WatchdogChainPool", sizeof(WatchdogObj_t));
 }

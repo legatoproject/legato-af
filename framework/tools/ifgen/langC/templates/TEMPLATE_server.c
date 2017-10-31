@@ -146,6 +146,19 @@ static le_thread_Ref_t _ServerThreadRef;
 //--------------------------------------------------------------------------------------------------
 static le_msg_SessionRef_t _ClientSessionRef;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Trace reference used for controlling tracing in this module.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_log_TraceRef_t TraceRef;
+
+/// Macro used to generate trace output in this module.
+/// Takes the same parameters as LE_DEBUG() et. al.
+#define TRACE(...) LE_TRACE(TraceRef, ##__VA_ARGS__)
+
+/// Macro used to query current trace state in this module
+#define IS_TRACE_ENABLED LE_IS_TRACE_ENABLED(TraceRef)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -297,6 +310,9 @@ void {{apiName}}_AdvertiseService
 {
     LE_DEBUG("======= Starting Server %s ========", SERVICE_INSTANCE_NAME);
 
+    // Get a reference to the trace keyword that is used to control tracing in this module.
+    TraceRef = le_log_GetTraceRef("ipc");
+
     le_msg_ProtocolRef_t protocolRef;
 
     // Create the server data pool
@@ -373,9 +389,10 @@ static void AsyncResponse_{{apiName}}_{{function.name}}
     {{ pack.PackInputs(handler.apiType.parameters) }}
 
     // Send the async response to the client
-    LE_DEBUG("Sending message to client session %p : %ti bytes sent",
-             serverDataPtr->clientSessionRef,
-             _msgBufPtr-_msgPtr->buffer);
+    TRACE("Sending message to client session %p : %ti bytes sent",
+          serverDataPtr->clientSessionRef,
+          _msgBufPtr-_msgPtr->buffer);
+
     SendMsgToClient(_msgRef);
 
     {%- if function is not AddHandlerFunction %}
@@ -446,7 +463,8 @@ void {{apiName}}_{{function.name}}Respond
     {{- pack.PackOutputs(function.parameters) }}
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p", le_msg_GetSession(_msgRef));
+    TRACE("Sending response to client session %p", le_msg_GetSession(_msgRef));
+
     le_msg_Respond(_msgRef);
 
     // Release the command
@@ -650,9 +668,11 @@ static void Handle_{{apiName}}_{{function.name}}
     {{- pack.PackOutputs(function.parameters) }}
 
     // Return the response
-    LE_DEBUG("Sending response to client session %p : %ti bytes sent",
-             le_msg_GetSession(_msgRef),
-             _msgBufPtr-_msgBufStartPtr);
+    TRACE("Sending response to client session %p : %ti bytes sent",
+          le_msg_GetSession(_msgRef),
+          _msgBufPtr-_msgBufStartPtr);
+
+
     le_msg_Respond(_msgRef);
 
     return;
