@@ -116,24 +116,12 @@ static void TempSettingHandler
 
     LE_INFO("------------------- Server writes temperature setting [%d] times ------------",
                 WriteTempSettingCounter);
-    int targetTempLatest = 0;
-    le_result_t resultGetInt = le_avdata_GetInt(TARGET_TEMP_SET_RES, &targetTempLatest);
+    le_result_t resultGetInt = le_avdata_GetInt(TARGET_TEMP_SET_RES, &TargetTempSet);
     if (LE_FAULT == resultGetInt)
     {
         LE_ERROR("Error in getting latest TARGET_TEMP_SET_RES");
     }
-    // if targetTempLatest from server is not the same as the current TargetTempSet
-    // ,then set to the latest one
-    if (targetTempLatest != TargetTempSet){
-        TargetTempSet=targetTempLatest;
-        le_result_t resultSetTargetTemp = le_avdata_SetInt(TARGET_TEMP_SET_RES, TargetTempSet);
-        if (LE_FAULT == resultSetTargetTemp)
-        {
-            LE_ERROR("Error in getting latest TARGET_TEMP_SET_RES");
-        }
-        LE_INFO("Setting Write target temperature request: %s is %d C°",
-                                            "TARGET_TEMP_SET_RES", TargetTempSet);
-    }
+
     // turn on the air conditioning if room temperature is higher than target temperature
     if (TargetTempSet < RoomTempVar)
     {
