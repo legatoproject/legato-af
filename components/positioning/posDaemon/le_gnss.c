@@ -3744,6 +3744,9 @@ le_result_t le_gnss_DeleteSuplCertificate
  *
  * @warning The settings are platform dependent. Please refer to
  *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ *
+ * @deprecated LE_GNSS_NMEA_MASK_PQXFI is deprecated. LE_GNSS_NMEA_MASK_PTYPE should be used
+ *             instead. Setting LE_GNSS_NMEA_MASK_PTYPE will also set LE_GNSS_NMEA_MASK_PQXFI.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_gnss_SetNmeaSentences
