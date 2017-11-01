@@ -176,6 +176,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The default timeout for updateDaemon (in milliseconds)
+ **/
+//--------------------------------------------------------------------------------------------------
+#define UPDATEDAEMON_TIMEOUT_DEFAULT 600000
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Use the watchdog timer's default kick timeout interval.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -1415,10 +1422,12 @@ void InitFrameworkWdog
                                       CreateFrameworkWatchdog("logDaemon",
                                                               frameworkKickTimeout));
 
-    updateDaemonWdog_AddKickEventHandler(frameworkKickInterval,
+    // Allow a 10 minute timeout period for UD to manage large application updates from flash.
+    uint64_t updateDaemonKickInterval = UPDATEDAEMON_TIMEOUT_DEFAULT/4;
+    updateDaemonWdog_AddKickEventHandler(updateDaemonKickInterval,
                                          ResetFrameworkWatchdog,
                                          CreateFrameworkWatchdog("updateDaemon",
-                                                                 frameworkKickTimeout));
+                                                                 UPDATEDAEMON_TIMEOUT_DEFAULT));
 }
 
 
