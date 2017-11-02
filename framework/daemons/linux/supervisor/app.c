@@ -858,6 +858,7 @@ static void SetDefaultSmackRules
 
     // Set default permissions to allow the app to access the syslog.
     smack_SetRule(appLabelPtr, "w", "syslog");
+    smack_SetRule("syslog", "w", appLabelPtr);
 }
 
 
