@@ -15,6 +15,7 @@ help_usage=(
 "pull [LOCAL] [REMOTE]"
 "instlegato"
 "instapp [APP_PATH]"
+"update [UPDATE_PATH]"
 )
 
 help_long_description=(
@@ -39,6 +40,9 @@ help_long_description=(
 "$commandName instapp [APP_PATH]"
 "  - Install application from APP_PATH on the virtual target."
 ""
+"$commandName update [UPDATE_PATH]"
+"  - Update virtual target using package provided at UPDATE_PATH."
+""
 )
 
 function show_help {
@@ -51,6 +55,8 @@ function show_help {
     echo " - push <local> <remote>: Copy a file/directory to target"
     echo " - pull <local> <remote>: Copy a file/directory from target"
     echo " - instlegato"
+    echo " - instapp <path>"
+    echo " - update <path>"
     echo " - setup ssh"
     echo
 
@@ -147,6 +153,10 @@ if [ -z "$USER_DIR" ]; then
     USER_DIR="$HOME/.legato/virt"
 fi
 
+export SSH_PORT=$SIMU_PORT
+export SSH_EXTRA_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+export DEST_IP=$SIMU_IP
+
 if [[ "$COMMAND" == "start" ]]; then
     do_start
 elif [[ "$COMMAND" == "stop" ]]; then
@@ -159,12 +169,13 @@ elif [[ "$COMMAND" == "pull" ]]; then
     do_scp root@$SIMU_IP:$2 $3
 elif [[ "$COMMAND" == "instlegato" ]]; then
     CheckLegatoRoot
-    export SSH_PORT=$SIMU_PORT
     $LEGATO_ROOT/bin/instlegato $LEGATO_ROOT/build/virt $SIMU_IP
 elif [[ "$COMMAND" == "instapp" ]]; then
     CheckLegatoRoot
-    export SSH_PORT=$SIMU_PORT
     $LEGATO_ROOT/bin/app install $2 $SIMU_IP
+elif [[ "$COMMAND" == "update" ]]; then
+    CheckLegatoRoot
+    $LEGATO_ROOT/bin/update $2 $SIMU_IP
 else
     message $COLOR_ERROR "Unknown command '$COMMAND'"
 fi

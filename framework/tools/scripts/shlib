@@ -4,13 +4,14 @@
 
 BIN_PATH="/legato/systems/current/bin"
 
-# if SSH_PORT is defined add the port option to ssh
-SSH_PORT=${SSH_PORT:=22}
-SSH_OPTS="-p $SSH_PORT -o ServerAliveInterval=5 -o ServerAliveCountMax=1"
-#because scp uses upper case 'p' for port option!
-SCP_OPTS="-P $SSH_PORT"
+# If SSH_PORT is defined add the port option to ssh
+SSH_PORT="${SSH_PORT:=22}"
+SSH_EXTRA_OPTS="-o ServerAliveInterval=5 -o ServerAliveCountMax=1 ${SSH_EXTRA_OPTS}"
+SSH_OPTS="-p ${SSH_PORT} ${SSH_EXTRA_OPTS}"
+# Because scp uses upper case 'p' for port option!
+SCP_OPTS="-P ${SSH_PORT} ${SSH_EXTRA_OPTS}"
 
-commandName=$(basename $0)
+commandName="$(basename "$0")"
 
 SetMarkup() {
     markedup="<!--${MARKUP_HELP_DOX}-->"
@@ -27,12 +28,12 @@ SetMarkup() {
 }
 
 UsageHasOptionalTargetIp() {
-for name in ${help_usage[@]}; do
-    if [[ $name = "[TARGET_IP]" ]];then
-        return 0
-    fi
-done
-return 1
+    for name in ${help_usage[@]}; do
+        if [[ $name = "[TARGET_IP]" ]];then
+            return 0
+        fi
+    done
+    return 1
 }
 
 # We don't use options ergo don't implement options section yet
