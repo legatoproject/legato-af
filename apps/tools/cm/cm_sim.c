@@ -368,27 +368,22 @@ int cm_sim_GetSimInfo
     if (EXIT_SUCCESS != cm_sim_GetSimIccid())
     {
         ret = EXIT_FAILURE;
-        printf("Failed to get the SIM ICCID\n");
     }
     if (EXIT_SUCCESS != cm_sim_GetNetworkOperator())
     {
         ret = EXIT_FAILURE;
-        printf("Failed to get the SIM network operator\n");
     }
     if (EXIT_SUCCESS != cm_sim_GetSimEid())
     {
         ret = EXIT_FAILURE;
-        printf("Failed to get the SIM EID\n");
     }
     if (EXIT_SUCCESS != cm_sim_GetSimImsi())
     {
         ret = EXIT_FAILURE;
-        printf("Failed to get the SIM IMSI\n");
     }
     if (EXIT_SUCCESS != cm_sim_GetSimPhoneNumber())
     {
         ret = EXIT_FAILURE;
-        printf("Failed to get the SIM phone number\n");
     }
 
     return ret;
