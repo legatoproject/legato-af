@@ -18,9 +18,9 @@ processes:
 
     faultAction: restart
     #if ${LEGATO_SERVICES_WDOG_DISABLE} = 1
-        watchdogTimeout: never
+        maxWatchdogTimeout: never
     #else
-        watchdogTimeout: 30000
+        maxWatchdogTimeout: 120000
     #endif
 }
 

@@ -153,6 +153,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * The name of the node in the config tree that contains the default start manual option.
+ */
+//--------------------------------------------------------------------------------------------------
+#define CFG_NODE_WDOG_START_MANUAL                    "startManual"
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Size of the watchdog hash table.  Roughly equal to the expected number of watchdog users
  * (le_hashmap will take care of load factors).
  **/
@@ -231,7 +239,7 @@ WatchdogObj_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    uid_t appId;                                  ///< Application ID
+    char appName[LIMIT_MAX_APP_NAME_BYTES];       ///< App name
     char procName[LIMIT_MAX_PROCESS_NAME_BYTES];  ///< Process Name
 }
 AppProcKey_t;
@@ -247,8 +255,6 @@ typedef struct
 {
     WatchdogObj_t watchdog;               ///< The common watchdog definitions
     AppProcKey_t key;                     ///< The key in mandatory watchdog hash map
-    char appName[LIMIT_MAX_APP_NAME_BYTES]; ///< Store the app name as the UID will no longer exist
-                                            ///< when an app is uninstalled.
 }
 MandatoryWatchdogObj_t;
 
@@ -304,7 +310,7 @@ static void DeleteWatchdog
         if (deadDogPtr->procId >= 0)
         {
             deadDogPtr->procId = NO_PROC;
-            le_timer_SetContextPtr(deadDogPtr->timer, (void*)((intptr_t)NO_PROC));
+            le_timer_SetContextPtr(deadDogPtr->timer, deadDogPtr);
             le_timer_Start(deadDogPtr->timer);
         }
         le_mem_Release(deadDogPtr);
@@ -475,36 +481,37 @@ static void WatchdogHandleExpiry
 )
 {
     char appName[LIMIT_MAX_APP_NAME_BYTES];
-    pid_t procId = (intptr_t)le_timer_GetContextPtr(timerRef);
+    WatchdogObj_t* watchDogPtr = le_timer_GetContextPtr(timerRef);
+    LE_DEBUG("Watchdog expired [appuid: %d] [procid: %d]", watchDogPtr->appId, watchDogPtr->procId);
 
-
-    if (procId == NO_PROC)
+    if (watchDogPtr->procId == NO_PROC)
     {
         // Mandatory watchdog expired without the process restarting.  Restart Legato.
         LE_CRIT("A mandatory watchdog expired");
+        le_timer_Stop(DefaultExternalWdogTimer);
         pa_wdog_Shutdown();
     }
 
-    WatchdogObj_t* expiredDog = LookupClientWatchdogPtrById(procId);
+    WatchdogObj_t* expiredDog = LookupClientWatchdogPtrById(watchDogPtr->procId);
     if (expiredDog != NULL)
     {
         uid_t appId = expiredDog->appId;
 
-        if (LE_OK == GetAppNameFromPid(procId, appName, sizeof(appName) ))
+        if (LE_OK == GetAppNameFromPid(watchDogPtr->procId, appName, sizeof(appName) ))
         {
-            LE_CRIT("app %s, proc %d timed out", appName, procId);
+            LE_CRIT("app %s, proc %d timed out", appName, watchDogPtr->procId);
         }
         else
         {
-            LE_CRIT("app %d, proc %d timed out", appId, procId);
+            LE_CRIT("app %d, proc %d timed out", appId, watchDogPtr->procId);
         }
 
-        DeleteWatchdog(procId);
-        wdog_WatchdogTimedOut(appId, procId);
+        DeleteWatchdog(watchDogPtr->procId);
+        wdog_WatchdogTimedOut(appId, watchDogPtr->procId);
     }
     else
     {
-        LE_CRIT("Processing watchdog timeout for proc %d but watchdog already freed.", procId);
+        LE_CRIT("Processing watchdog timeout for proc %d but watchdog already freed.", watchDogPtr->procId);
     }
 }
 
@@ -830,7 +837,7 @@ static void InitNewWatchdog
     }
     newDogPtr->timer = le_timer_Create(timerName);
     _Static_assert (sizeof(pid_t) <= sizeof(intptr_t), "pid_t is truncated by cast to void*");
-    LE_ASSERT(LE_OK == le_timer_SetContextPtr(newDogPtr->timer, (void*)((intptr_t)clientPid)));
+    LE_ASSERT(LE_OK == le_timer_SetContextPtr(newDogPtr->timer, newDogPtr));
     LE_ASSERT(LE_OK == le_timer_SetHandler(newDogPtr->timer, WatchdogHandleExpiry));
 }
 
@@ -856,8 +863,8 @@ static WatchdogObj_t* CreateNewWatchdog
 
     // First see if there's a mandatory watchdog
     memset(&key, 0, sizeof(key));
-    key.appId = appId;
-    LE_ASSERT(LE_OK == GetProcessNameFromPid( clientPid, key.procName, sizeof(key.procName)));
+    LE_ASSERT(LE_OK == le_appInfo_GetName(clientPid, key.appName, sizeof(key.appName)));
+    LE_ASSERT(LE_OK == GetProcessNameFromPid(clientPid, key.procName, sizeof(key.procName)));
     mandatoryWdogPtr = le_hashmap_Get(MandatoryWatchdogRefs, &key);
     if (mandatoryWdogPtr)
     {
@@ -870,7 +877,7 @@ static WatchdogObj_t* CreateNewWatchdog
         le_timer_Stop(newDogPtr->timer);
         // Then update the proc ID to point to this new process.
         LE_ASSERT(LE_OK == le_timer_SetContextPtr(newDogPtr->timer,
-                                                  (void*)((intptr_t)clientPid)));
+                                                  newDogPtr));
         newDogPtr->procId = clientPid;
     }
     else
@@ -906,7 +913,7 @@ static void CreateMandatoryWatchdog
 
     memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
     LE_ASSERT(LE_OK == user_GetAppUid(appNamePtr, &appId));
-    newDogPtr->key.appId = appId;
+    strncpy(newDogPtr->key.appName, appNamePtr, sizeof(newDogPtr->key.appName));
     strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
@@ -914,8 +921,8 @@ static void CreateMandatoryWatchdog
     InitNewWatchdog(&(newDogPtr->watchdog), NO_PROC, appId,
                     maxWatchdogTime, maxWatchdogTime);
 
-    LE_INFO("Creating new mandatory watchdog for %d[%s]",
-             newDogPtr->key.appId, newDogPtr->key.procName);
+    LE_INFO("Creating new mandatory watchdog for [%s][%s]",
+             newDogPtr->key.appName, newDogPtr->key.procName);
     LE_ASSERT(NULL == le_hashmap_Put(MandatoryWatchdogRefs, &(newDogPtr->key), newDogPtr));
 
     // Immediately start this watchdog.
@@ -942,6 +949,7 @@ static MandatoryWatchdogObj_t* CreateFrameworkWatchdog
     le_clk_Time_t maxWatchdogTime = MakeTimerInterval(maxWatchdogTimeout);
 
     memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
+    strncpy(newDogPtr->key.appName, "framework", sizeof(newDogPtr->key.appName));
     strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
@@ -994,16 +1002,16 @@ static void CleanupMandatoryWdog
     uid_t appUid;
     le_result_t result;
 
-    result = user_GetAppUid(newDogPtr->appName, &appUid);
+    result = user_GetAppUid(newDogPtr->key.appName, &appUid);
     if (result == LE_NOT_FOUND)
     {
         LE_INFO("Removing mandatory watchdog for %s[%s]",
-                newDogPtr->appName, newDogPtr->key.procName);
+                newDogPtr->key.appName, newDogPtr->key.procName);
     }
     else
     {
         LE_FATAL("Cannot destroy mandatory watchdog for %s[%s]",
-                 newDogPtr->appName, newDogPtr->key.procName);
+                 newDogPtr->key.appName, newDogPtr->key.procName);
     }
 }
 
@@ -1297,6 +1305,12 @@ static void InitMandatoryWdogForApp
         LE_INFO("If this app has a mandatory watchdog, the system will fail.");
     }
 
+    if (le_cfg_GetBool(appCfg, CFG_NODE_WDOG_START_MANUAL, false))
+    {
+        LE_DEBUG("Application: %s is startManual, do not init mandatory wdog", appName);
+        return;
+    }
+
     appWatchdogTimeout = le_cfg_GetInt(appCfg, CFG_NODE_MANDATORY_WDOG, 0);
 
     le_cfg_GoToNode(appCfg, CFG_NODE_PROC_LIST);
@@ -1396,7 +1410,7 @@ void HandleAppUninstall
         MandatoryWatchdogObj_t* mandatoryWdogPtr = le_hashmap_GetValue(mandatoryWdogIterator);
         result = le_hashmap_NextNode(mandatoryWdogIterator);
 
-        if (0 == strcmp(mandatoryWdogPtr->appName, appName))
+        if (0 == strcmp(mandatoryWdogPtr->key.appName, appName))
         {
             // This watchdog belongs to the app which has just been uninstalled; remove it.
             LE_ASSERT(LE_OK == le_hashmap_Remove(MandatoryWatchdogRefs, &(mandatoryWdogPtr->key)));
@@ -1498,6 +1512,7 @@ COMPONENT_INIT
 
     SystemProcessNotifySupervisor();
     wdog_ConnectService();
+    le_appInfo_ConnectService();
 
     // Read the system defined external watchdog timeout from configtree
     le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn(SYSTEM_FRAMEWORK_CFG);

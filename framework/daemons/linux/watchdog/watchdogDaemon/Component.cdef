@@ -12,6 +12,7 @@ requires:
     {
         le_cfg.api
         le_instStat.api
+        le_appInfo.api [manual-start]
         configTreeWdog   = watchdog/frameworkWdog.api
         logDaemonWdog    = watchdog/frameworkWdog.api
         updateDaemonWdog = watchdog/frameworkWdog.api

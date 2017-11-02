@@ -23,7 +23,7 @@ processes:
     #if ${LEGATO_SERVICES_WDOG_DISABLE} = 1
         watchdogTimeout: never
     #else
-        watchdogTimeout: 30000
+        watchdogTimeout: 120000
     #endif
 }
 
