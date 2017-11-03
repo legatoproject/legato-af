@@ -248,6 +248,13 @@ static void HandleProbationExpiry
 )
 //--------------------------------------------------------------------------------------------------
 {
+    if (State != STATE_IDLE)
+    {
+        // An update is ongoing, so don't mark system good. Start the timer again
+        StartProbation();
+        return;
+    }
+
     if (updateCtrl_IsProbationLocked() == false)
     {
         updateDaemon_MarkGood();
@@ -2096,7 +2103,7 @@ COMPONENT_INIT
         // If a system update needs finishing, finish it now.
         FinishSystemUpdate();
 
-        // If an app update nees finishing, finish it now.
+        // If an app update needs finishing, finish it now.
         app_FinishUpdates();
 
         // Make sure the users and groups are set up correctly for the apps we have installed
