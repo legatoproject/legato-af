@@ -882,7 +882,6 @@ static void TestLeGnssTtffMeasurement
     LE_INFO("TTFF Hot restart = %d msec", ttff);
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Test: test Setting/Getting constellation mask
@@ -905,7 +904,11 @@ static void TestLeGnssConstellations
     constellationMask = LE_GNSS_CONSTELLATION_SBAS;
     LE_ASSERT((LE_UNSUPPORTED == le_gnss_SetConstellation(constellationMask)));
 
-    // Gps+Glonass selection
+    // GPS+SBAS
+    constellationMask = LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_SBAS;
+    LE_ASSERT(LE_UNSUPPORTED == le_gnss_SetConstellation(constellationMask));
+
+    // GPS+Glonass selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_GLONASS;
     LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
     LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
@@ -938,11 +941,7 @@ static void TestLeGnssConstellations
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
                         LE_GNSS_CONSTELLATION_SBAS |
                         LE_GNSS_CONSTELLATION_QZSS;
-
-    LE_ASSERT(LE_OK == le_gnss_SetConstellation(constellationMask));
-    LE_ASSERT(LE_OK == le_gnss_GetConstellation(&constellationMask));
-    LE_ASSERT((LE_GNSS_CONSTELLATION_GPS | LE_GNSS_CONSTELLATION_QZSS) == constellationMask);
-
+    LE_ASSERT(LE_UNSUPPORTED ==le_gnss_SetConstellation(constellationMask));
 
     // Gps+Glonass+Beidou selection
     constellationMask = LE_GNSS_CONSTELLATION_GPS |
@@ -1181,7 +1180,6 @@ static void TestSuplCertificate
     LE_ASSERT(LE_OK == (le_gnss_DeleteSuplCertificate(0)));
 
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
