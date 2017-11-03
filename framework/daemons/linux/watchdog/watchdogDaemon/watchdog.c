@@ -219,7 +219,6 @@
 typedef struct
 {
     pid_t procId;                       ///< The unique value by which to find this watchdog
-    uid_t appId;                        ///< The id of the app it belongs to
     le_clk_Time_t kickTimeoutInterval;  ///< Default timeout for this watchdog
     le_clk_Time_t maxKickTimeoutInterval; ///< Maximum timeout for this watchdog -- only used for
                                         ///< mandatory watchdogs but present everywhere so a
@@ -351,11 +350,10 @@ static void CleanUpClosedClient
     void*               contextPtr
 )
 {
-    uid_t clientUserId;
     pid_t clientProcId;
 
     LE_INFO("Client session closed");
-    if (LE_OK == le_msg_GetClientUserCreds(sessionRef, &clientUserId, &clientProcId))
+    if (LE_OK == le_msg_GetClientProcessId(sessionRef, &clientProcId))
     {
         DeleteWatchdog(clientProcId);
     }
@@ -480,9 +478,8 @@ static void WatchdogHandleExpiry
     le_timer_Ref_t timerRef ///< [IN] The reference to the expired timer
 )
 {
-    char appName[LIMIT_MAX_APP_NAME_BYTES];
     WatchdogObj_t* watchDogPtr = le_timer_GetContextPtr(timerRef);
-    LE_DEBUG("Watchdog expired [appuid: %d] [procid: %d]", watchDogPtr->appId, watchDogPtr->procId);
+    LE_DEBUG("Watchdog expired [procid: %d]", watchDogPtr->procId);
 
     if (watchDogPtr->procId == NO_PROC)
     {
@@ -495,19 +492,12 @@ static void WatchdogHandleExpiry
     WatchdogObj_t* expiredDog = LookupClientWatchdogPtrById(watchDogPtr->procId);
     if (expiredDog != NULL)
     {
-        uid_t appId = expiredDog->appId;
+        pid_t procId = watchDogPtr->procId;
 
-        if (LE_OK == GetAppNameFromPid(watchDogPtr->procId, appName, sizeof(appName) ))
-        {
-            LE_CRIT("app %s, proc %d timed out", appName, watchDogPtr->procId);
-        }
-        else
-        {
-            LE_CRIT("app %d, proc %d timed out", appId, watchDogPtr->procId);
-        }
+        LE_CRIT("proc %d timed out", procId);
 
-        DeleteWatchdog(watchDogPtr->procId);
-        wdog_WatchdogTimedOut(appId, watchDogPtr->procId);
+        DeleteWatchdog(procId);
+        wdog_WatchdogTimedOut(procId);
     }
     else
     {
@@ -724,8 +714,7 @@ static le_result_t GetProcessNameFromPid
 //--------------------------------------------------------------------------------------------------
 static le_clk_Time_t GetConfigKickTimeoutInterval
 (
-    pid_t procId,  ///< The process id of the client
-    uid_t appId    ///< The user id of the application
+    pid_t procId  ///< The process id of the client
 )
 {
     char appName[LIMIT_MAX_APP_NAME_BYTES] = "";
@@ -807,7 +796,6 @@ static void InitNewWatchdog
 (
     WatchdogObj_t* newDogPtr,
     pid_t clientPid,
-    uid_t appId,
     le_clk_Time_t kickTimeoutInterval,
     le_clk_Time_t maxKickTimeoutInterval
 )
@@ -815,7 +803,6 @@ static void InitNewWatchdog
     char timerName[LIMIT_MAX_TIMER_NAME_BYTES];
 
     newDogPtr->procId = clientPid;
-    newDogPtr->appId = appId;
     newDogPtr->kickTimeoutInterval = kickTimeoutInterval;
     newDogPtr->maxKickTimeoutInterval = maxKickTimeoutInterval;
 
@@ -824,17 +811,8 @@ static void InitNewWatchdog
         newDogPtr->kickTimeoutInterval = newDogPtr->maxKickTimeoutInterval;
     }
 
-    if (clientPid < 0)
-    {
-        // If no current client, just use address as identifier.  This is the case for
-        // mandatory watchdogs as their process is not yet created.
-        LE_ASSERT(0 <= snprintf(timerName, sizeof(timerName),
-                                "wdog_p%d:%p", appId, newDogPtr));
-    }
-    else
-    {
-        LE_ASSERT(0 <= snprintf(timerName, sizeof(timerName), "wdog_u%d:p%d", clientPid, appId));
-    }
+    LE_ASSERT(0 <= snprintf(timerName, sizeof(timerName),
+                            "wdog_p%p", newDogPtr));
     newDogPtr->timer = le_timer_Create(timerName);
     _Static_assert (sizeof(pid_t) <= sizeof(intptr_t), "pid_t is truncated by cast to void*");
     LE_ASSERT(LE_OK == le_timer_SetContextPtr(newDogPtr->timer, newDogPtr));
@@ -852,8 +830,7 @@ static void InitNewWatchdog
 //--------------------------------------------------------------------------------------------------
 static WatchdogObj_t* CreateNewWatchdog
 (
-    pid_t clientPid,   ///< The process id of the client
-    uid_t appId        ///< the user id of the client
+    pid_t clientPid   ///< The process id of the client
 )
 {
     AppProcKey_t key;
@@ -886,8 +863,8 @@ static WatchdogObj_t* CreateNewWatchdog
         LE_DEBUG("Making a new dog for %d", clientPid);
         newDogPtr = le_mem_ForceAlloc(WatchdogPool);
         maxKickTimeoutInterval = MakeTimerInterval(LE_WDOG_TIMEOUT_NEVER);
-        InitNewWatchdog(newDogPtr, clientPid, appId,
-                        GetConfigKickTimeoutInterval(clientPid, appId),
+        InitNewWatchdog(newDogPtr, clientPid,
+                        GetConfigKickTimeoutInterval(clientPid),
                         maxKickTimeoutInterval);
     }
 
@@ -908,17 +885,15 @@ static void CreateMandatoryWatchdog
 )
 {
     MandatoryWatchdogObj_t* newDogPtr = le_mem_ForceAlloc(MandatoryWatchdogPool);
-    uid_t appId;
     le_clk_Time_t maxWatchdogTime = MakeTimerInterval(maxWatchdogTimeout);
 
     memset(newDogPtr, 0, sizeof(MandatoryWatchdogObj_t));
-    LE_ASSERT(LE_OK == user_GetAppUid(appNamePtr, &appId));
     strncpy(newDogPtr->key.appName, appNamePtr, sizeof(newDogPtr->key.appName));
     strncpy(newDogPtr->key.procName, procNamePtr, sizeof(newDogPtr->key.procName));
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
     // time for the application to start.
-    InitNewWatchdog(&(newDogPtr->watchdog), NO_PROC, appId,
+    InitNewWatchdog(&(newDogPtr->watchdog), NO_PROC,
                     maxWatchdogTime, maxWatchdogTime);
 
     LE_INFO("Creating new mandatory watchdog for [%s][%s]",
@@ -954,7 +929,7 @@ static MandatoryWatchdogObj_t* CreateFrameworkWatchdog
 
     // Create watchdog setting initial timeout to max timeout.  This allows the maximum
     // time for the framework daemon to connect
-    InitNewWatchdog(&(newDogPtr->watchdog), NO_PROC, 0,
+    InitNewWatchdog(&(newDogPtr->watchdog), NO_PROC,
                     maxWatchdogTime, maxWatchdogTime);
 
     LE_ASSERT(NULL == le_hashmap_Put(MandatoryWatchdogRefs, &(newDogPtr->key), newDogPtr));
@@ -999,20 +974,9 @@ static void CleanupMandatoryWdog
 )
 {
     MandatoryWatchdogObj_t* newDogPtr = objPtr;
-    uid_t appUid;
-    le_result_t result;
 
-    result = user_GetAppUid(newDogPtr->key.appName, &appUid);
-    if (result == LE_NOT_FOUND)
-    {
-        LE_INFO("Removing mandatory watchdog for %s[%s]",
-                newDogPtr->key.appName, newDogPtr->key.procName);
-    }
-    else
-    {
-        LE_FATAL("Cannot destroy mandatory watchdog for %s[%s]",
-                 newDogPtr->key.appName, newDogPtr->key.procName);
-    }
+    LE_FATAL("Cannot destroy mandatory watchdog for %s[%s]",
+             newDogPtr->key.appName, newDogPtr->key.procName);
 }
 
 
@@ -1031,17 +995,16 @@ static WatchdogObj_t* GetClientWatchdogPtr
 )
 {
     /* Get the user id of the client */
-    uid_t clientUserId;
     pid_t clientProcId;
     le_msg_SessionRef_t sessionRef = le_wdog_GetClientSessionRef();
     WatchdogObj_t* watchdogPtr = NULL;
 
-    if (LE_OK == le_msg_GetClientUserCreds(sessionRef, &clientUserId, &clientProcId))
+    if (LE_OK == le_msg_GetClientProcessId(sessionRef, &clientProcId))
     {
         watchdogPtr = LookupClientWatchdogPtrById(clientProcId);
         if (watchdogPtr == NULL)
         {
-            watchdogPtr = CreateNewWatchdog(clientProcId, clientUserId);
+            watchdogPtr = CreateNewWatchdog(clientProcId);
             AddWatchdog(watchdogPtr);
         }
     }
@@ -1077,9 +1040,9 @@ static void ResetClientWatchdog
             timeoutValue = MakeTimerInterval(timeout);
             if (le_clk_GreaterThan(timeoutValue, watchDogPtr->maxKickTimeoutInterval))
             {
-                LE_WARN("Capping watchdog timeout for process [%d] app (%d) to maximum of %lu.%lds"
+                LE_WARN("Capping watchdog timeout for process [%d] to maximum of %lu.%lds"
                         " (was %lu.%lds).",
-                        watchDogPtr->procId, watchDogPtr->appId,
+                        watchDogPtr->procId,
                         watchDogPtr->maxKickTimeoutInterval.sec,
                         watchDogPtr->maxKickTimeoutInterval.usec,
                         timeoutValue.sec,

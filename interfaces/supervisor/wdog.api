@@ -33,6 +33,5 @@
 //--------------------------------------------------------------------------------------------------
 FUNCTION WatchdogTimedOut
 (
-    uint32 userId,   ///< [IN] The Id of the user that owns the process
     uint32 procId    ///< [IN] The Id of the process that timed out
 );

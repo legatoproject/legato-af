@@ -2216,12 +2216,11 @@ le_result_t le_appInfo_GetHash
 void wdog_WatchdogTimedOut
 (
     wdog_ServerCmdRef_t cmdRef,
-    uint32_t userId,
     uint32_t procId
 )
 {
     wdog_WatchdogTimedOutRespond(cmdRef);
-    LE_INFO("Handling watchdog expiry for: userId %d, procId %d", userId, procId);
+    LE_INFO("Handling watchdog expiry for: procId %d", procId);
 
     // Search for the process in the list of apps.
     le_dls_Link_t* appLinkPtr = le_dls_Peek(&ActiveAppsList);
