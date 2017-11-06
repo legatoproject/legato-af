@@ -536,6 +536,7 @@ static le_result_t ModifyJsonObj
 
     if (jsonValPtr == NULL)
     {
+        LE_ERROR("NULL jsonValPtr");
         return LE_FAULT;
     }
 
@@ -593,6 +594,7 @@ static le_result_t ModifyJsonObj
     }
     else
     {
+        LE_DEBUG("ModifyJsonObj OK");
         return LE_OK;
     }
 
@@ -621,11 +623,13 @@ static le_result_t ModifyMsgEntry
 
     GetSMSInboxMessagePath(messageId, path, pathLen);
 
+    LE_DEBUG("ModifyMsgEntry: messageId %d, path %s",messageId, path);
+
     json_t* jsonRootPtr = json_load_file(path, 0, &error);
 
     if ( jsonRootPtr == NULL )
     {
-        LE_ERROR("json decoder error %s", error.text);
+        LE_ERROR("Json decoder error %s", error.text);
         return LE_FAULT;
     }
 
@@ -647,7 +651,7 @@ static le_result_t ModifyMsgEntry
         }
         else
         {
-            LE_ERROR("indexKey: %d is out of range", indexKey);
+            LE_ERROR("IndexKey: %d is out of range", indexKey);
         }
 
         res = LE_FAULT;
@@ -661,7 +665,7 @@ static le_result_t ModifyMsgEntry
     {
         if (json_dump_file(jsonRootPtr, path, JSON_INDENT(1) | JSON_PRESERVE_ORDER) < 0)
         {
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             res = LE_FAULT;
         }
     }
@@ -703,8 +707,8 @@ static le_result_t ReadJsonObj
         {
             if ( decodePtr->type != DESC_STRING )
             {
+                LE_ERROR("Bad format %d", decodePtr->type);
                 res = LE_FAULT;
-                LE_ERROR("Bad format");
             }
 
             if (res == LE_OK)
@@ -728,7 +732,7 @@ static le_result_t ReadJsonObj
         {
             if ( decodePtr->type != DESC_INT )
             {
-                LE_ERROR("Bad format");
+                LE_ERROR("Bad format %d", decodePtr->type);
                 res = LE_FAULT;
             }
             else
@@ -742,7 +746,7 @@ static le_result_t ReadJsonObj
         {
             if ( decodePtr->type != DESC_BOOL )
             {
-                LE_ERROR("Bad format");
+                LE_ERROR("Bad format %d", decodePtr->type);
                 res = LE_FAULT;
             }
             else
@@ -764,11 +768,13 @@ static le_result_t ReadJsonObj
                 }
                 else
                 {
+                    LE_ERROR("Bad format");
                     res = LE_FAULT;
                 }
             }
             else
             {
+                LE_ERROR("Key error");
                 res = LE_FAULT;
             }
         }
@@ -777,6 +783,7 @@ static le_result_t ReadJsonObj
         case JSON_REAL:
         case JSON_NULL:
         default:
+            LE_ERROR("Bad json_typeof");
             res = LE_FAULT;
         break;
     }
@@ -807,7 +814,7 @@ static le_result_t GetMsgListFromMbox
 
         if ( !(*jsonRootObjPtr) )
         {
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             return LE_FAULT;
         }
     }
@@ -822,14 +829,14 @@ static le_result_t GetMsgListFromMbox
         if (!(*jsonArrayPtr))
         {
             json_decref(*jsonRootObjPtr);
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             return LE_FAULT;
         }
 
         if ( json_object_set(*jsonRootObjPtr, JSON_MSGINBOX, *jsonArrayPtr) < 0 )
         {
             json_decref(*jsonRootObjPtr);
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             return LE_FAULT;
         }
     }
@@ -851,14 +858,17 @@ static le_result_t DeleteMsgInAppCfg
 {
     uint32_t pathLen = GetSMSInboxConfigPathLen(appNamePtr);
     char path[pathLen];
-    memset(path,0,pathLen);
+    memset(path, 0, pathLen);
     GetSMSInboxConfigPath(appNamePtr, path, pathLen);
     json_t *jsonObjPtr;
     json_t *jsonArrayPtr;
 
+    LE_DEBUG("DeleteMessageId %d, path %s",deleteMessageId, path);
+
     if (GetMsgListFromMbox(path, &jsonObjPtr, &jsonArrayPtr) != LE_OK)
     {
-        return LE_FAULT;
+       LE_ERROR("No message");
+       return LE_FAULT;
     }
 
     int i;
@@ -888,6 +898,7 @@ static le_result_t DeleteMsgInAppCfg
     if ( json_dump_file(jsonObjPtr, path, JSON_INDENT(1) | JSON_PRESERVE_ORDER) < 0 )
     {
         res = LE_FAULT;
+        LE_ERROR("Json_dump_file error");
     }
 
     json_decref(jsonObjPtr);
@@ -902,7 +913,7 @@ static le_result_t DeleteMsgInAppCfg
  */
 //--------------------------------------------------------------------------------------------------
 
-le_result_t CheckMessageIdInMbox
+static le_result_t CheckMessageIdInMbox
 (
     char* mboxName,
     MessageId_t messageId
@@ -933,11 +944,12 @@ le_result_t CheckMessageIdInMbox
         }
         else
         {
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             json_decref(jsonRootObjPtr);
             return LE_FAULT;
         }
 
+        LE_DEBUG("MessageId %d, msgId %d, i %d", messageId, msgId, i);
         if (msgId == messageId)
         {
             json_decref(jsonRootObjPtr);
@@ -979,7 +991,7 @@ static le_result_t DecodeMsgEntry
 
     if ( jsonRootPtr == NULL )
     {
-        LE_ERROR("json decoder error %s", error.text);
+        LE_ERROR("Json decoder error %s mboxName %s", error.text, mboxName);
         DeleteMsgInAppCfg(mboxName, messageId);
         return LE_FAULT;
     }
@@ -1010,6 +1022,7 @@ static bool IsDeleted
 
     if (DecodeMsgEntry(appNamePtr, messageId, key, 2, &decode) == LE_OK)
     {
+        LE_DEBUG("Decode.uVal.boolVal %d", decode.uVal.boolVal);
         return decode.uVal.boolVal;
     }
     else
@@ -1046,10 +1059,11 @@ static void PerformDeletion
     {
         uint16_t pathLen = GetSMSInboxMessagePathLen();
         char path[pathLen];
-        memset(path,0,pathLen);
+        memset(path, 0, pathLen);
 
         GetSMSInboxMessagePath(messageId, path, pathLen);
 
+        LE_DEBUG("Delete messageId %d, path %s",messageId, path);
         unlink(path);
     }
 }
@@ -1075,8 +1089,12 @@ static le_result_t AddMsgInAppCfg
 
     if ( GetMsgListFromMbox (path, &jsonPtr, &jsonArrayPtr) != LE_OK )
     {
+        LE_ERROR("Message %s not found", path);
         return LE_FAULT;
     }
+    LE_DEBUG("Add messageId %d, path %s, array Size %zu", messageId,
+                                                          path,
+                                                          json_array_size(jsonArrayPtr) );
 
     if ( json_array_size(jsonArrayPtr) == appsPtr->inboxSize )
     {
@@ -1100,7 +1118,7 @@ static le_result_t AddMsgInAppCfg
 
             if (ModifyMsgEntry(messageId, key, 2, &modif) != LE_OK)
             {
-                LE_ERROR("Can't modify entry %08x", (int) messageId);
+                LE_ERROR("Can't modify entry %08x, path %s", (int) messageId, path);
             }
 
             PerformDeletion(messageId);
@@ -1108,7 +1126,7 @@ static le_result_t AddMsgInAppCfg
         else
         {
             json_decref(jsonPtr);
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             return LE_FAULT;
         }
     }
@@ -1116,14 +1134,14 @@ static le_result_t AddMsgInAppCfg
     if (AddIntegerKeyInJsonObject(jsonArrayPtr, NULL, messageId) != LE_OK)
     {
         json_decref(jsonPtr);
-        LE_ERROR("json error");
+        LE_ERROR("Json error");
         return LE_FAULT;
     }
 
     if ( json_dump_file(jsonPtr, path, JSON_INDENT(1) | JSON_PRESERVE_ORDER) < 0 )
     {
         json_decref(jsonPtr);
-        LE_ERROR("json error");
+        LE_ERROR("Json error");
         return LE_FAULT;
     }
 
@@ -1198,7 +1216,7 @@ static le_result_t EncodeMsgEntry
         case LE_SMS_FORMAT_BINARY:
         {
             char tel[LE_MDMDEFS_PHONE_NUM_MAX_BYTES];
-            memset(tel,0,LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
+            memset(tel, 0, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
 
             // Add phone number
             le_result_t result = le_sms_GetSenderTel(msgRef, tel, LE_MDMDEFS_PHONE_NUM_MAX_BYTES);
@@ -1209,7 +1227,7 @@ static le_result_t EncodeMsgEntry
             }
             else
             {
-                LE_DEBUG("tel num: %s", tel);
+                LE_DEBUG("Tel num: %s", tel);
                 AddStringKeyInJsonObject(jsonRootPtr, JSON_SENDERTEL, tel);
             }
 
@@ -1223,7 +1241,7 @@ static le_result_t EncodeMsgEntry
             }
             else
             {
-                LE_DEBUG("timestamp: %s", timeStamp);
+                LE_DEBUG("Timestamp: %s", timeStamp);
                 AddStringKeyInJsonObject(jsonRootPtr, JSON_TIMESTAMP, timeStamp);
             }
 
@@ -1234,10 +1252,10 @@ static le_result_t EncodeMsgEntry
             len++;
 
             uint8_t bin[len];
-            memset(bin,0,len);
+            memset(bin, 0, len);
             int32_t strLen = 2*len + 1;
             char string[strLen];
-            memset(string,0,strLen);
+            memset(string, 0, strLen);
             const char* jsonKey;
 
             if (format == LE_SMS_FORMAT_TEXT)
@@ -1277,10 +1295,10 @@ static le_result_t EncodeMsgEntry
             // Add a character for last '\0'
             len++;
             uint8_t pdu[len];
-            memset(pdu,0,len);
+            memset(pdu, 0, len);
             int32_t strLen = 2*len + 1;
             char string[strLen];
-            memset(string,0,strLen);
+            memset(string, 0, strLen);
 
             // Add pdu
             le_result_t result = le_sms_GetPDU(msgRef, pdu, &len);
@@ -1295,6 +1313,7 @@ static le_result_t EncodeMsgEntry
                 // Convert pdu in string
                 strLen = le_hex_BinaryToString(pdu, len, string, strLen);
                 AddStringKeyInJsonObject(jsonRootPtr, JSON_PDU, string);
+                LE_DEBUG("PDU format OK");
             }
         }
         break;
@@ -1308,7 +1327,7 @@ static le_result_t EncodeMsgEntry
                                     JSON_INDENT(1) | JSON_PRESERVE_ORDER);
     if (!jsondumpStr)
     {
-        LE_ERROR("jsondumpStr is NULL");
+        LE_ERROR("JsondumpStr is NULL");
         return LE_FAULT;
     }
 
@@ -1350,12 +1369,13 @@ static le_result_t CreateMsgEntry
     memset(path, 0, pathLen);
 
     GetSMSInboxMessagePath(NextMessageId, path, pathLen);
+    LE_DEBUG("Create entry: NextMessageId %d, path %s",NextMessageId, path);
 
     *fdPtr = open( path, O_CREAT | O_RDWR | O_SYNC, S_IRUSR | S_IWUSR );
 
     if (*fdPtr < 0)
     {
-        LE_ERROR("No such file: %s", path);
+        LE_ERROR("No such file: %s: %m", path);
         return LE_FAULT;
     }
 
@@ -1398,6 +1418,29 @@ static MessageId_t GetMessageId
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Create a directory
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t MkdirCreate
+(
+    const char* path    ///<[IN] path for directory creation
+)
+{
+    int status = mkdir(path, S_IRWXU|S_IRWXG);
+    if (0 != status)
+    {
+        if (EEXIST != errno)
+        {
+            LE_ERROR("Unable to create directory %s: %m", path);
+            return LE_FAULT;
+        }
+    }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init the SMSInBox directory
  *
  */
@@ -1413,28 +1456,28 @@ static void InitSmsInBoxDirectory
     LE_DEBUG("InitSmsInBoxDirectory");
 
     // create directories
-    if (0 > mkdir( SMSINBOX_PATH, S_IRWXU|S_IRWXG ))
+    if (LE_OK != MkdirCreate(SMSINBOX_PATH))
     {
-        LE_ERROR("Unable to create directory %s: %m", SMSINBOX_PATH);
-        return;
-    }
-    uint16_t pathLen = GetSMSInboxMessagePathLen();
-    char path[pathLen];
-    memset(path,0,pathLen);
-    snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, CONF_PATH);
-    if (0 > mkdir( path, S_IRWXU|S_IRWXG ))
-    {
-        LE_ERROR("Unable to create directory %s: %m", path );
-        return;
-    }
-    memset(path,0,pathLen);
-    snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, MSG_PATH);
-    if (0 > mkdir( path, S_IRWXU|S_IRWXG ))
-    {
-        LE_ERROR("Unable to create directory %s: %m", path );
         return;
     }
 
+    uint16_t pathLen = GetSMSInboxMessagePathLen();
+    char path[pathLen];
+    memset(path, 0, pathLen);
+    snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, CONF_PATH);
+
+    if (LE_OK != MkdirCreate(path))
+    {
+        return;
+    }
+
+    memset(path, 0, pathLen);
+    snprintf(path, pathLen, "%s%s", SMSINBOX_PATH, MSG_PATH);
+
+    if (LE_OK != MkdirCreate(path))
+    {
+        return;
+    }
 
     nbSmsEntries = scandir(path, &namelist, NULL, alphasort);
 
@@ -1505,7 +1548,8 @@ static void MoveSmsFromSimToFolder
         // Delete the SMS, whatever the result (if something is going wrong, delete it, otherwise
         // it will be copied in the folder at each startup of the SmsInbox service)
         // TODO: Check why the smsinbox is died after this call
-        le_sms_DeleteFromStorage(smsRef);
+        result = le_sms_DeleteFromStorage(smsRef);
+        LE_DEBUG("Delete from storage %d", result);
 
         smsRef = le_sms_GetNext(msgListRef);
     }
@@ -1529,20 +1573,31 @@ static void NewSmsMsgHandler
     le_result_t result;
     MessageId_t msgId;
 
+    LE_DEBUG("Receive new message");
+
     result = CreateMsgEntry(&msgId, &fd);
 
     if (result == LE_OK)
     {
         result = EncodeMsgEntry(fd, msgRef);
         close(fd);
-
+    }
+    else
+    {
+        LE_ERROR("CreateMsgEntry error");
     }
 
     if (result == LE_OK)
     {
-        le_sms_DeleteFromStorage(msgRef);
+        result = le_sms_DeleteFromStorage(msgRef);
+        LE_DEBUG("Delete from storage %d", result);
+
         le_sms_Delete(msgRef);
         le_event_Report(RxMsgEventId, &msgId, sizeof(MessageId_t));
+    }
+    else
+    {
+        LE_ERROR("EncodeMsgEntry error");
     }
 }
 
@@ -1559,7 +1614,7 @@ static void SimStateHandler
     void* contextPtr
 )
 {
-    LE_DEBUG("simId %d simState %d",simId, simState);
+    LE_DEBUG("SimId %d simState %d",simId, simState);
 
     switch (simState)
     {
@@ -1598,7 +1653,7 @@ static le_result_t LoadInboxSettings
 
     while (i < le_smsInbox_NbMbx)
     {
-        memset(mboxConfigPath,0,100);
+        memset(mboxConfigPath, 0, 100);
         snprintf(mboxConfigPath, sizeof(mboxConfigPath), "%s/%s/%s",
                                                          CFG_SMSINBOX_PATH,
                                                          CFG_NODE_APPS,
@@ -1667,7 +1722,7 @@ void SmsInbox_CloseSessionEventHandler
     void* contextPtr
 )
 {
-    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+    LE_DEBUG("SessionRef (%p) has been closed", sessionRef);
 
     if (!sessionRef)
     {
@@ -1803,6 +1858,7 @@ SmsInbox_SessionRef_t SmsInbox_Open
         }
     }
 
+    LE_ERROR("SmsInbox_Open error");
     return NULL;
 }
 
@@ -1953,7 +2009,7 @@ void SmsInbox_DeleteMsg
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return;
     }
 
@@ -2024,16 +2080,16 @@ le_result_t SmsInbox_GetImsi
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
     MessageId_t messageId = (MessageId_t) msgId;
     le_result_t res;
 
-    memset(imsiPtr,0,imsiNumElements);
+    memset(imsiPtr, 0, imsiNumElements);
 
-    if ( imsiNumElements < LE_SIM_IMSI_BYTES )
+    if (imsiNumElements < LE_SIM_IMSI_BYTES)
     {
         return LE_OVERFLOW;
     }
@@ -2091,7 +2147,7 @@ le_sms_Format_t SmsInbox_GetFormat
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return 0;
     }
 
@@ -2156,7 +2212,7 @@ le_result_t SmsInbox_GetSenderTel
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
@@ -2166,7 +2222,7 @@ le_result_t SmsInbox_GetSenderTel
     decode.type = DESC_STRING;
     decode.uVal.str.strPtr = telPtr;
     decode.uVal.str.lenStr = telNumElements;
-    memset(telPtr,0,telNumElements);
+    memset(telPtr, 0, telNumElements);
     char* key[1] = {JSON_SENDERTEL};
 
     if ((res = DecodeMsgEntry(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, messageId, key,
@@ -2226,7 +2282,7 @@ le_result_t SmsInbox_GetTimeStamp
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
@@ -2235,7 +2291,7 @@ le_result_t SmsInbox_GetTimeStamp
     decode.type = DESC_STRING;
     decode.uVal.str.strPtr = timestampPtr;
     decode.uVal.str.lenStr = timestampNumElements;
-    memset(timestampPtr,0,timestampNumElements);
+    memset(timestampPtr, 0, timestampNumElements);
     char* key[1] = {JSON_TIMESTAMP};
     le_result_t res;
 
@@ -2283,7 +2339,7 @@ size_t SmsInbox_GetMsgLen
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
@@ -2355,7 +2411,7 @@ le_result_t SmsInbox_GetText
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
@@ -2364,8 +2420,8 @@ le_result_t SmsInbox_GetText
     le_result_t res;
     size_t len = 2*textNumElements+1;
     char tmpTextPtr[len];
-    memset(tmpTextPtr,0,len);
-    memset(textPtr,0,textNumElements);
+    memset(tmpTextPtr, 0, len);
+    memset(textPtr, 0, textNumElements);
 
     decode.type = DESC_STRING;
     decode.uVal.str.strPtr = tmpTextPtr;
@@ -2436,7 +2492,7 @@ le_result_t SmsInbox_GetBinary
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
@@ -2445,8 +2501,8 @@ le_result_t SmsInbox_GetBinary
     EntryDesc_t decode;
     size_t len = 2*(*binNumElementsPtr)+1;
     char tmpBinPtr[len];
-    memset(tmpBinPtr,0,len);
-    memset(binPtr,0,*binNumElementsPtr);
+    memset(tmpBinPtr, 0, len);
+    memset(binPtr, 0, *binNumElementsPtr);
 
     decode.type = DESC_STRING;
     decode.uVal.str.strPtr = tmpBinPtr;
@@ -2525,7 +2581,7 @@ le_result_t SmsInbox_GetPdu
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return 0;
     }
 
@@ -2534,8 +2590,8 @@ le_result_t SmsInbox_GetPdu
     EntryDesc_t decode;
     size_t len = 2*(*pduNumElementsPtr)+1;
     char tmpPduPtr[len];
-    memset(tmpPduPtr,0,len);
-    memset(pduPtr,0,*pduNumElementsPtr);
+    memset(tmpPduPtr, 0, len);
+    memset(pduPtr, 0, *pduNumElementsPtr);
 
     decode.type = DESC_STRING;
     decode.uVal.str.strPtr = tmpPduPtr;
@@ -2600,7 +2656,7 @@ uint32_t SmsInbox_GetFirst
     uint32_t pathLen = GetSMSInboxConfigPathLen(clientRequestPtr->
                                                 mboxSessionPtr->mboxCtxPtr->namePtr);
     char path[pathLen];
-    memset(path,0,pathLen);
+    memset(path, 0, pathLen);
     GetSMSInboxConfigPath(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, path, pathLen);
     le_result_t res = LE_OK;
     MessageId_t messageId=0;
@@ -2609,14 +2665,14 @@ uint32_t SmsInbox_GetFirst
                         &clientRequestPtr->mboxSessionPtr->browseCtx.jsonObjPtr,
                         &clientRequestPtr->mboxSessionPtr->browseCtx.jsonArrayPtr) != LE_OK )
     {
-        LE_ERROR("error in GetMsgListFromMbox");
+        LE_ERROR("Error in GetMsgListFromMbox");
         return 0;
     }
 
     clientRequestPtr->mboxSessionPtr->browseCtx.maxIndex =
                       json_array_size(clientRequestPtr->mboxSessionPtr->browseCtx.jsonArrayPtr);
 
-    LE_DEBUG("maxIndex %d", clientRequestPtr->mboxSessionPtr->browseCtx.maxIndex);
+    LE_DEBUG("MaxIndex %d", clientRequestPtr->mboxSessionPtr->browseCtx.maxIndex);
 
     if ( clientRequestPtr->mboxSessionPtr->browseCtx.maxIndex > 0 )
     {
@@ -2629,7 +2685,7 @@ uint32_t SmsInbox_GetFirst
         }
         else
         {
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             res = LE_FAULT;
         }
 
@@ -2639,7 +2695,7 @@ uint32_t SmsInbox_GetFirst
         }
         else
         {
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
             res = LE_FAULT;
         }
     }
@@ -2696,7 +2752,7 @@ uint32_t SmsInbox_GetNext
     while(clientRequestPtr->mboxSessionPtr->browseCtx.maxIndex !=
           clientRequestPtr->mboxSessionPtr->browseCtx.currentMessageIndex)
     {
-        LE_DEBUG("currentIndex %d, maxIndex %d", clientRequestPtr->
+        LE_DEBUG("CurrentIndex %d, maxIndex %d", clientRequestPtr->
                                                  mboxSessionPtr->browseCtx.currentMessageIndex,
                                                  clientRequestPtr->
                                                  mboxSessionPtr->browseCtx.maxIndex);
@@ -2732,12 +2788,12 @@ uint32_t SmsInbox_GetNext
             }
             else
             {
-                LE_ERROR("json error");
+                LE_ERROR("Json error");
             }
         }
         else
         {
-            LE_ERROR("json error");
+            LE_ERROR("Json error");
         }
     }
 
@@ -2787,7 +2843,7 @@ bool SmsInbox_IsUnread
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return LE_BAD_PARAMETER;
     }
 
@@ -2842,7 +2898,7 @@ void SmsInbox_MarkRead
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return;
     }
 
@@ -2892,7 +2948,7 @@ void SmsInbox_MarkUnread
 
     if (CheckMessageIdInMbox(clientRequestPtr->mboxSessionPtr->mboxCtxPtr->namePtr, msgId) != LE_OK)
     {
-        LE_ERROR("message not included into the mbox");
+        LE_ERROR("Message not included into the mbox");
         return;
     }
 
