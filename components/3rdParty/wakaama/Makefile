@@ -1,0 +1,73 @@
+WAKAAMA_SOURCES=\
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/er-coap-13/er-coap-13.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/acl.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/bootstrap.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/block1.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/data.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/discover.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/json.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/liblwm2m.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/list.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/management.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/objects.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/observe.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/packet.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/registration.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/tlv.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/transaction.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/uri.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/utils.c
+
+INCLUDES=\
+    -I${LEGATO_ROOT}/framework/include \
+    -I${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcClient \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/include \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/include/platform-specific/linux \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/sessionManager \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core \
+    -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/core/er-coap-13 \
+    -I${LEGATO_BUILD}/3rdParty/tinydtls/include/tinydtls
+
+CFLAGS+=\
+    -DLWM2M_CLIENT_MODE \
+    -DLWM2M_LITTLE_ENDIAN \
+    -DLWM2M_BOOTSTRAP \
+    -DLWM2M_OLD_CONTENT_FORMAT_SUPPORT \
+    -DLEGATO_LWM2M_CLIENT \
+    -DWITH_TINYDTLS \
+    -DLWM2M_WITH_LOGS \
+    -DWITH_LOGS \
+    -DSIERRA \
+    -w \
+    -std=gnu99 \
+    -DWITH_SHA256
+
+ifeq ($(TEST_COVERAGE),1)
+    CFLAGS +=--coverage
+    LDFLAGS+=--coverage
+endif
+
+LOG_DEBUG=@
+ifeq ($(VERBOSE),1)
+    LOG_DEBUG=
+endif
+
+DEPFLAGS=-fPIC
+
+OBJDIR?=./obj
+
+WAKAAMA_OBJ=$(patsubst ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/%.c,${OBJDIR}/%.o,${WAKAAMA_SOURCES})
+
+wakaama: libwakaama.so libwakaama.a
+
+$(OBJDIR)/%.o: ${LEGATO_ROOT}/3rdParty/Lwm2mCore/wakaama/%.c
+	${LOG_DEBUG}mkdir -p $(dir $@)
+	${LOG_DEBUG}${CC} ${DEPFLAGS} ${CFLAGS} ${INCLUDES} -c -o $@ $<
+
+libwakaama.so: ${WAKAAMA_OBJ}
+	${LOG_DEBUG}${CC} -shared ${DEPFLAGS} ${LDFLAGS} -Wl,-soname,$@ -o $@ ${WAKAAMA_OBJ}
+
+libwakaama.a: ${WAKAAMA_OBJ}
+	${LOG_DEBUG}${AR} rcs $@ $(WAKAAMA_OBJ)

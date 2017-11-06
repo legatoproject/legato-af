@@ -1,0 +1,22 @@
+requires:
+{
+    component:
+    {
+        ${LEGATO_ROOT}/components/3rdParty/tinydtls
+    }
+}
+
+externalBuild:
+{
+    "LEGATO_ROOT=$${LEGATO_ROOT} LEGATO_BUILD=$${LEGATO_BUILD} TEST_COVERAGE=$${TEST_COVERAGE} make -f ${LEGATO_ROOT}/components/3rdParty/wakaama/Makefile"
+    "cp *.so ${LEGATO_BUILD}/3rdParty/lib/"
+    "cp *.a ${LEGATO_BUILD}/3rdParty/lib/"
+}
+
+bundles:
+{
+    file:
+    {
+        ${LEGATO_BUILD}/3rdParty/lib/libwakaama.so /lib/libwakaama.so
+    }
+}

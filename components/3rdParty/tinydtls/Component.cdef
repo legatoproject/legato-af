@@ -4,8 +4,3 @@ externalBuild:
     "cp -rf $${LEGATO_ROOT}/3rdParty/Lwm2mCore/tinydtls/* . && autoreconf -i"
     ${CURDIR}/make.sh
 }
-
-ldflags:
-{
-    ${LEGATO_BUILD}/3rdParty/tinydtls/lib/libtinydtls.a
-}
