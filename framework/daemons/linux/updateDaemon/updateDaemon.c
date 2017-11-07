@@ -2084,6 +2084,7 @@ COMPONENT_INIT
     ProbationTimer = le_timer_Create("Probation");
     le_timer_SetHandler(ProbationTimer, HandleProbationExpiry);
     le_timer_SetMsInterval(ProbationTimer, GetProbationPeriod());
+    le_timer_SetWakeup(ProbationTimer, false);
 
     // Make sure we can set file permissions properly.
     umask(0);

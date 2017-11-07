@@ -13,6 +13,49 @@
 // If greater than or equal, this indicates an overflow.
 #define LIMIT_USEC (1000000)
 
+// =============================================
+//  PRIVATE FUNCTIONS
+// =============================================
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get relative time since some fixed but unspecified starting point. However, retrieve the time
+ * based on the desired wakeup behaviour.
+   IsWakeup: False - Use non-waking clock. Otherwise not.
+ *
+ * @return
+ *      Relative time in seconds/microseconds
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_clk_Time_t clk_GetRelativeTime(bool IsWakeup)
+{
+    struct timespec systemTime;
+    le_clk_Time_t relativeTime;
+
+    if (!IsWakeup)
+    {
+        // Use a clock coherent with timerfd functions.
+        if (0 > clock_gettime(CLOCK_MONOTONIC, &systemTime))
+        {
+            LE_FATAL("clock_gettime() failed. errno = %d (%m)", errno);
+        }
+    }
+    else
+    {
+        // Use a clock coherent with timerfd functions.
+        if (0 > clock_gettime(timer_GetClockType(), &systemTime))
+        {
+            LE_FATAL("clock_gettime() failed. errno = %d (%m)", errno);
+        }
+    }
+
+    relativeTime.sec = systemTime.tv_sec;
+    relativeTime.usec = systemTime.tv_nsec/1000;
+
+    return relativeTime;
+}
 
 // =============================================
 //  PUBLIC API FUNCTIONS

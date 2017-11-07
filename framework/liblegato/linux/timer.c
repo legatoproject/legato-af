@@ -7,6 +7,7 @@
  */
 
 #include "legato.h"
+#include "clock.h"
 #include "timer.h"
 #include "thread.h"
 #include "fileDescriptor.h"
@@ -116,6 +117,7 @@ static Timer_t* CreateTimer
     timerPtr->expiryCount = 0;
     timerPtr->safeRef = NULL;
     timerPtr->safeRef = le_ref_CreateRef(SafeRefMap, timerPtr);
+    timerPtr->isWakeupEnabled = true;
 
     return timerPtr;
 }
@@ -474,7 +476,8 @@ static void TimerFdHandler
     // list and process them.
     firstTimerPtr = PeekFromTimerList(&threadRecPtr->activeTimerList);
     while ( firstTimerPtr != NULL &&
-            le_clk_GreaterThan(le_clk_GetRelativeTime(), firstTimerPtr->expiryTime) )
+            le_clk_GreaterThan(clk_GetRelativeTime(firstTimerPtr->isWakeupEnabled),
+                               firstTimerPtr->expiryTime) )
     {
         // Pop off the timer and process it
         firstTimerPtr = PopFromTimerList(&threadRecPtr->activeTimerList);
@@ -666,12 +669,13 @@ bool timer_CheckExpiry
 {
     timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
     const Timer_t* timerPtr;
-    le_clk_Time_t threshold = le_clk_GetRelativeTime();
+    le_clk_Time_t threshold;
 
     LE_DLS_FOREACH(&(threadRecPtr->activeTimerList), timerPtr, Timer_t, link)
     {
         // Timer should have expired, but is still on the active timer list.
         // There's a timer fault.
+        threshold = clk_GetRelativeTime(timerPtr->isWakeupEnabled);
         if (le_clk_GreaterThan(threshold, timerPtr->expiryTime))
         {
             return false;
@@ -873,6 +877,39 @@ le_result_t le_timer_SetRepeat
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Configure if timer expiry will wake up a suspended system.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY if the timer is currently running
+ *
+ * @note
+ *      The default timer expiry behaviour will wake up the system.
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_timer_SetWakeup
+(
+    le_timer_Ref_t timerRef,     ///< [IN] Disable system wake up for this timer object
+    bool wakeupEnabled           ///< [IN] Flag to determine timer will wakeup or not
+)
+{
+    Timer_t* timerPtr = le_ref_Lookup(SafeRefMap, timerRef);
+    LE_FATAL_IF(NULL == timerPtr, "Invalid timer reference %p.", timerRef);
+
+    if ( timerPtr->isActive )
+    {
+        return LE_BUSY;
+    }
+
+    timerPtr->isWakeupEnabled = wakeupEnabled;
+
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set context pointer for the timer
  *
  * This can be used to pass data to the timer when it expires
@@ -1005,7 +1042,17 @@ le_result_t le_timer_Start
         // stopped after it expired but before the handler was called.
         // We also want the FD to close on exec (TFD_CLOEXEC) so that the FD is not inherited by
         // any child processes.
-        threadRecPtr->timerFD = timerfd_create(TimerClockType, TFD_NONBLOCK | TFD_CLOEXEC);
+        if (timerPtr->isWakeupEnabled)
+        {
+            threadRecPtr->timerFD = timerfd_create(TimerClockType, TFD_NONBLOCK | TFD_CLOEXEC);
+        }
+        else
+        {
+            // If wakeup enabled is set to off, we should not wake up the system if our timer
+            // expires.
+            threadRecPtr->timerFD = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+        }
+
         if (0 > threadRecPtr->timerFD)
             // Should have succeeded if checks in timer_Init() passed.
             LE_FATAL("timerfd_create() failed with errno = %d (%m)", errno);
@@ -1020,7 +1067,8 @@ le_result_t le_timer_Start
 
     // Add the timer to the timer list. This is the only place we reset the expiry count.
     timerPtr->expiryCount = 0;
-    timerPtr->expiryTime = le_clk_Add(le_clk_GetRelativeTime(), timerPtr->interval);
+    timerPtr->expiryTime = le_clk_Add(clk_GetRelativeTime(!timerPtr->isWakeupEnabled),
+                                      timerPtr->interval);
     AddToTimerList(&threadRecPtr->activeTimerList, timerPtr);
     //PrintTimerList(&threadRecPtr->activeTimerList);
 

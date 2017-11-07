@@ -1052,6 +1052,7 @@ COMPONENT_INIT
         RebootTimer = le_timer_Create("Reboot");
         le_timer_SetHandler(RebootTimer, HandleRebootExpiry);
         le_timer_SetMsInterval(RebootTimer, GetBootExpirePeriod());
+        le_timer_SetWakeup(RebootTimer, false);
         le_timer_Start(RebootTimer);
 
     }

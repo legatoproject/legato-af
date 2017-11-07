@@ -35,7 +35,7 @@ void* KickContextPtr = NULL;
 /**
  * Reference for the watchdog kick timer.
  */
-le_timer_Ref_t KickTimerRef = NULL;
+static le_timer_Ref_t KickTimerRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -88,6 +88,7 @@ FRAMEWORK_WDOG(KickEventHandlerRef_t) FRAMEWORK_WDOG(AddKickEventHandler)
     le_timer_SetHandler(KickTimerRef, KickTimerHandler);
     le_timer_SetMsInterval(KickTimerRef, interval);
     le_timer_SetRepeat(KickTimerRef, 1);
+    le_timer_SetWakeup(KickTimerRef, false);
     le_timer_Start(KickTimerRef);
 
     KickHandler = handlerPtr;
