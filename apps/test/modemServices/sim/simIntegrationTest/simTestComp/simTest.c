@@ -475,7 +475,8 @@ void simTest_State
     memset(string, 0, 100);
 
     // Add the state handler
-    LE_ASSERT((testHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL)) != NULL);
+    testHdlrRef = le_sim_AddNewStateHandler(TestSimStateHandler, NULL);
+    LE_ASSERT(NULL != testHdlrRef);
 
     // Get SIM state
     state = le_sim_GetState(simId);
