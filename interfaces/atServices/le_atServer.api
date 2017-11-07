@@ -101,11 +101,6 @@
  * le_atServer_EnableEcho() allows the user to enable echo on a selected device.
  * le_atServer_DisableEcho() allows the user to disable echo on a selected device.
  *
- * le_atServer_EnableExtendedErrorCodes() allows the user to use extended error
- * codes on a selected device.
- * le_atServer_DisableExtendedErrorCodes() allows the user to disable extended
- * error codes on a selected device.
- *
  * @section atServer_handler Handler
  *
  * To handle the AT command, the application has to subscribe a handler using
@@ -136,7 +131,26 @@
  * The application has can send intermediate responses through
  * le_atServer_SendIntermediateResponse().
  *
+ * @subsection finalResultCode Final result code
+ *
+ * The application must return a final result code using le_atServer_SendFinalResultCode().
+ * The corresponding device will be locked until the final response is sent.
+ *
+ * If no answer is sent, the device will not accept any new AT commands (an error will be
+ * returned).
+ *
+ * le_atServer_SendFinalResultCode() takes as arguments the AT command reference, a pattern (which
+ * is the prefix of the final response), a final response type as defined in
+ * @ref le_atServer_FinalRsp_t and an error code identifier.
+ *
+ * The final response type permits to the AT command Server to continue or stop the parsing of
+ * concatenated commands: if one command is failed, next commands are not executed, the final result
+ * of the concatenated AT command is the last error.
+ *
  * @subsection finalRsp Final response
+ *
+ * @deprecated le_atServer_SendFinalResponse() should not be used anymore and will be removed soon.
+ * It has been replaced by le_atServer_SendFinalResultCode().
  *
  * In all cases, the application must send a final response using
  * le_atServer_SendFinalResponse(). The corresponding device will be locked until the final response
@@ -161,6 +175,26 @@
  * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
  * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
  * sends its final response).
+ *
+ * @section atServer_errors Error codes
+ *
+ * le_atServer_EnableExtendedErrorCodes() allows the user to use extended error codes on a selected
+ * device. When this mode is enabled, numerical codes are displayed when an error occurs.
+ * le_atServer_EnableVerboseErrorCodes() allows the user to enable verbose error codes on a selected
+ * device. Thus, instead of numerical codes, error are actually displayed as verbose messages.
+ * le_atServer_DisableExtendedErrorCodes() allows the user to disable the current error mode namely
+ * extended error codes or verbose error codes on a selected device.
+ *
+ * User can create custom error codes using le_atServer_CreateErrorCode() by providing an error
+ * code identifier and a specific pattern. The pattern is a prefix of the final response string.
+ * Standard error codes use the patterns "+CME ERROR: " and "+CMS ERROR: " for instance. These
+ * standard patterns are defined in the following macros: CME_ERROR and CMS_ERROR.
+ * The code identifier should be equal or higher than 512 as the range [0, 511] is reserved for
+ * standard error codes defined in 3GPP 27.007 9.2 and TS 127.005 3.2.5.
+ *
+ * le_atServer_CreateErrorCode() returns a reference which can be used to attach a custom verbose
+ * message to the error codes by calling le_atServer_SetVerboseErrorCode().
+ * le_atServer_DeleteErrorCode() allows the user to drop an already registered error code.
  *
  * @section Text
  *
@@ -228,6 +262,27 @@ USETYPES le_atDefs;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Maximum text length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_LEN = 4096;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  CME error pattern
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CME_ERROR = "+CME ERROR: ";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  CMS error pattern
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMS_ERROR = "+CMS ERROR: ";
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Reference type for an AT command.
  */
 //--------------------------------------------------------------------------------------------------
@@ -247,6 +302,12 @@ REFERENCE Device;
 //--------------------------------------------------------------------------------------------------
 REFERENCE Bridge;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for an error code.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE ErrorCode;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -264,15 +325,19 @@ ENUM Type
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Final response.
+ * Final response. This enum follows the V.250 numeric values.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM FinalRsp
 {
-    OK,        ///< AT command successfully treated, "\r\nOK\r\n" is sent if no custom
-               ///< response is set
-    ERROR      ///< error in AT command treatement, "\r\nERROR\r\n" is sent if no custom
-               ///< response is set
+    OK,         ///< AT command successfully treated
+    CONNECT,    ///< Connection has been established
+    RING,       ///< Incoming call signal from network
+    NO_CARRIER, ///< Connection terminated
+    ERROR,      ///< Error in AT command treatement
+    PADDING,    ///< Reserved
+    NO_DIALTONE,///< No dialtone detected
+    BUSY        ///< Busy signal detected
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -488,6 +553,9 @@ FUNCTION le_result_t SendIntermediateResponse
 /**
  * This function can be used to send the final response.
  *
+ * @deprecated le_atServer_SendFinalResponse() should not be used anymore and will be removed soon.
+ * It has been replaced by le_atServer_SendFinalResultCode()
+ *
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to send the final response.
@@ -501,6 +569,24 @@ FUNCTION le_result_t SendFinalResponse
     bool     customStringAvailable                  IN, ///< Custom final response has to be sent
                                                         ///< instead of the default one.
     string   finalRsp[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< custom final response string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the final result code.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the final result code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendFinalResultCode
+(
+    Cmd        commandRef                             IN, ///< AT command reference
+    FinalRsp   finalResult                            IN, ///< Final result code to be sent
+    string     pattern[le_atDefs.RESPONSE_MAX_BYTES]  IN, ///< Prefix of the return message
+    uint32     errorCode                              IN  ///< Numeric error code
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -619,6 +705,15 @@ FUNCTION le_result_t RemoveDeviceFromBridge
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function enables verbose error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION EnableVerboseErrorCodes
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function enables extended error codes on the selected device.
  */
 //--------------------------------------------------------------------------------------------------
@@ -633,6 +728,53 @@ FUNCTION EnableExtendedErrorCodes
 //--------------------------------------------------------------------------------------------------
 FUNCTION DisableExtendedErrorCodes
 (
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creates a custom error code.
+ * @return
+ *      - ErrorCode    Reference to the created error code
+ *      - NULL         Function failed to create the error code
+ *
+ * @note This function fails to create the error code if the combinaison (errorCode, pattern)
+ * already exists or if the errorCode number is lower than 512.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ErrorCode CreateErrorCode
+(
+    uint32    errorCode                             IN, ///< Numerical error code
+    string    pattern[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< Prefix of the response message
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes a custom error code.
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_FAULT         The function failed to delete the error code
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteErrorCode
+(
+    ErrorCode    errorCodeRef    IN///< Error code reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds a verbose message to a specified error code
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_FAULT         The function failed to set the verbose message
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetVerboseErrorCode
+(
+    ErrorCode  errorCodeRef                              IN, ///< Error code reference
+    string     verboseCode[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< Verbose message
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -2824,6 +2824,36 @@ le_result_t le_atServer_SendFinalResponse
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function can be used to send the final result code
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_FAULT         The function failed to send the final response
+ *
+ * @note
+ *      This function is currently stubbed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_SendFinalResultCode
+(
+    le_atServer_CmdRef_t commandRef,
+        ///< [IN] AT command reference
+
+    le_atServer_FinalRsp_t final,
+        ///< [IN] Final result code to be sent
+
+    const char* patternPtr,
+        ///< [IN] Prefix string of the return message
+
+    uint32_t errorCode
+        ///< [IN] Numeric error code
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function can be used to send the unsolicited response.
  *
  * @return
@@ -3082,7 +3112,22 @@ le_result_t le_atServer_RemoveDeviceFromBridge
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function enables extended error codes on the selected device.
+ * This function enables verbose error codes on the selected device
+ *
+ * @note
+ *      This function is currently stubbed
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_EnableVerboseErrorCodes
+(
+    void
+)
+{
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables extended error codes on the selected device
  */
 //--------------------------------------------------------------------------------------------------
 void le_atServer_EnableExtendedErrorCodes
@@ -3095,7 +3140,8 @@ void le_atServer_EnableExtendedErrorCodes
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function disables extended error codes on the selected device.
+ * This function disables the current error codes mode on the selected device
+ *
  */
 //--------------------------------------------------------------------------------------------------
 void le_atServer_DisableExtendedErrorCodes
@@ -3104,6 +3150,74 @@ void le_atServer_DisableExtendedErrorCodes
 )
 {
     ExtendedErrorCodes = false;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creates a custom error code
+ *
+ * @return
+ *      - le_atServer_ErrorCodeRef_t Reference to the new custom error code
+ *
+ * @note
+ *      This function is currently stubbed
+ */
+//--------------------------------------------------------------------------------------------------
+le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
+(
+    uint32_t errorCode,
+         ///< [IN] Numerical error code
+
+    const char* patternPtr
+        ///< [IN] Prefix of the final response string
+)
+{
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes a custom error code
+ *
+ * @return
+ *      - LE_OK            Error code deleted sucessfully
+ *      - LE_NOT_FOUND     Error code reference not found
+ *
+ * @note
+ *      This function is currently stubbed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_DeleteErrorCode
+(
+    le_atServer_ErrorCodeRef_t errorCodeRef
+        ///< [IN] Reference to a custom error code
+)
+{
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds a verbose message to a specified error code
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_FAULT         The function failed to set the verbose message
+ *
+ * @note
+ *      This function is currently stubbed
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_atServer_SetVerboseErrorCode
+(
+    le_atServer_ErrorCodeRef_t  errorCodeRef,
+        ///< [IN] Reference to a custom error code
+
+    const char*  messagePtr
+        ///< [IN] Verbose string
+)
+{
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
