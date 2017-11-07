@@ -1399,20 +1399,29 @@ static le_result_t CreateMsgEntry
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Convert the file name string in hexa
  *
+ * @return
+ *      - Positive integer corresponding to the hexadecimal input string
+ *      - -1 in case of error
  */
 //--------------------------------------------------------------------------------------------------
 static MessageId_t GetMessageId
 (
-    char* fileName  ///<[IN] file name to be converted
+    char* fileNamePtr  ///<[IN] file name to be converted
 )
 {
-    char *savePtr;
-    char *str = strtok_r(fileName,".", &savePtr);
+    char *savePtr=NULL;
+    char *str = strtok_r(fileNamePtr,".", &savePtr);
+
+    if (NULL == str)
+    {
+        LE_ERROR("Null file name ");
+        return -1;
+    }
+
     return le_hex_HexaToInteger(str);
 }
 
@@ -1480,15 +1489,23 @@ static void InitSmsInBoxDirectory
     }
 
     nbSmsEntries = scandir(path, &namelist, NULL, alphasort);
-
     if ( nbSmsEntries > 2 )
     {
         uint8_t len = strlen(namelist[nbSmsEntries-1]->d_name);
         char name[len+1];
+        MessageId_t id;
+
         memset(name, 0, len+1);
         strncpy(name, namelist[nbSmsEntries-1]->d_name, len);
-        NextMessageId = GetMessageId(name);
-        NextMessageId++;
+
+        id = GetMessageId(name);
+        if (-1 == id)
+        {
+            LE_ERROR("Unable to get the id of %s", name);
+            return;
+        }
+
+        NextMessageId = ++id;
 
         LE_DEBUG("NextMessageId %d", (int) NextMessageId);
     }
