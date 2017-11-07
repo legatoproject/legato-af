@@ -1,19 +1,36 @@
 /** @page platformConstraintsInfo Information
 
-@c le_info_GetResetInformation() API is only supported by AR759x and AR758x platforms.
+@c le_info_GetResetInformation() API provides the last reset reason. This API is supported by the
+following platforms:
 
-| Constraint                              | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
-| ----------------------------------------| :----: | :----: | :----: | :----: | :-----:| :----: | :-----:| :----: |
-| le_info_GetResetInformation()           |        | X      | X      |        |        | X      | X      |        |
+| API                             | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| ----------------------------- --| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| le_info_GetResetInformation()   |        | X      | X      |        |        | X      | X      |        |
 
-The specific reset information for LE_INFO_RESET_UPDATE reset reason can be:
 
-  - "software"      Software Update
-  - "swap"          System Swap (for dual system platform)
-  - "swap_sync"     System Swap and synchronize (for dual system platform)
+Since @c le_info_GetResetInformation() API is generic across supported targets, reset causes
+may be partially supported by some platforms. The table below lists the supported reset sources for
+each platform.
+Note that when a reset source is not supported, it is reported as @ref LE_INFO_RESET_UNKNOWN.
+
+| Reset cause                     | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| ----------------------------- --| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| "Reset, User Requested"         |        | X      | X      |        |        | X      | X      |        |
+| "Reset, Hardware Switch"        |        | X      | X      |        |        | X      | X      |        |
+| "Reset, Swap"                   |        | X      | X      |        |        |        |        |        |
+| "Reset, Swap_sync"              |        | X      | X      |        |        |        |        |        |
+| "Reset, Software Update"        |        | X      | X      |        |        |        |        |        |
+| "Reset, Configuration Update"   |        |        |        |        |        | X      | X      |        |
+| "Reset, LWM2M Update"           |        |        |        |        |        | X      | X      |        |
+| "Reset, OMA-DM Update"          |        |        |        |        |        |        |        |        |
+| "Reset, FOTA Update"            |        |        |        |        |        | X      | X      |        |
+| "Reset, Crash"                  |        | X      | X      |        |        | X      | X      |        |
+| "Power Down"                    |        | X      | X      |        |        | X      | X      |        |
+| "Power Down, Critical Temp"     |        |        |        |        |        | X      | X      |        |
+| "Power Down, Critical Voltage"  |        |        |        |        |        |        |        |        |
 
 See @ref c_info API
-@c le_info_GetResetInformation()
+@c le_info_GetResetInformation() for further information about reset sources.
 
 Copyright (C) Sierra Wireless Inc.
 

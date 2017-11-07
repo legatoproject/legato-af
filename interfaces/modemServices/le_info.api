@@ -72,8 +72,27 @@
  * @section le_info_reset Query Reset Information
  *
  * le_info_GetResetInformation() is used to retrieve the last reset reason.
+ * For each reset reason, an information string is provided to specify the reset cause. These
+ * strings are listed in the table below. This list may be partially supported by some plateforms.
  *
- * A specific reset information is provided by a string for LE_INFO_RESET_UPDATE reset reason.
+ * @note See platform constraints @subpage platformConstraintsInfo
+ *
+ * | Reset type            | Information string             | Description                                   |
+ * |:---------------------:|:------------------------------:|:---------------------------------------------:|
+ * | LE_INFO_RESET_USER    | "Reset, User Requested"        | User requested the reboot                     |
+ * | LE_INFO_RESET_HARD    | "Reset, Hardware Switch"       | Hardware switch pushed                        |
+ * | LE_INFO_RESET_UPDATE  | "Reset, Swap"                  | System Swap (dual platforms)                  |
+ * | LE_INFO_RESET_UPDATE  | "Reset, Swap_sync"             | System Swap and synchronize (dual platforms)  |
+ * | LE_INFO_RESET_UPDATE  | "Reset, Software Update"       | Software Update                               |
+ * | LE_INFO_RESET_UPDATE  | "Reset, Configuration Update"  | Reset caused by a configuration update        |
+ * | LE_INFO_RESET_UPDATE  | "Reset, LWM2M Update"          | Reset caused by a LWM2M update                |
+ * | LE_INFO_RESET_UPDATE  | "Reset, OMA-DM Update"         | Reset caused by a OMA-DM update               |
+ * | LE_INFO_RESET_UPDATE  | "Reset, FOTA Update"           | Reset caused by a FOTA update                 |
+ * | LE_INFO_POWER_DOWN    | "Reset, Crash"                 | Software crash                                |
+ * | LE_INFO_POWER_DOWN    | "Power Down"                   | Power source unplugged                        |
+ * | LE_INFO_TEMP_CRIT     | "Power Down, Critical Temp"    | Power down due to a critical voltage level    |
+ * | LE_INFO_VOLT_CRIT     | "Power Down, Critical Voltage" | Power down due to a ciritcal temperature level|
+ *
  *
  * le_info_GetExpectedResetsCount() returns the number of expected resets
  *
@@ -83,8 +102,6 @@
  *
  * Unexpected resets can be due to software crash, a critical voltage level or a critical
  * temperature level
- *
- * @note See platform constraints @subpage platformConstraintsInfo
  *
  * <HR>
  *
