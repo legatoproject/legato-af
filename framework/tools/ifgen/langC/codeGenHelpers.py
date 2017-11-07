@@ -124,7 +124,7 @@ def GetParameterCount(param):
     """
     if param.direction == interfaceIR.DIR_IN:
         if isinstance(param, interfaceIR.StringParameter):
-            return "strlen(%s)" % (param.name,)
+            return "strnlen(%s, %d)" % (param.name, param.maxCount)
         elif isinstance(param, interfaceIR.ArrayParameter):
             return "%sSize" % (param.name,)
     else:

@@ -558,6 +558,9 @@ function HostUnitTest()
     #  set_tests_properties(MyTest1 PROPERTIES TIMEOUT 100)
     UT_TIMEOUT=${UT_TIMEOUT:-120}
 
+    # Default to run all test cases
+    UT_FILTER=${UT_FILTER:-".*"}
+
     cd $BUILDDIR_BASE/localhost
     CheckRet
 
@@ -583,6 +586,7 @@ function HostUnitTest()
     ctest \
         -D ExperimentalTest \
         --no-compress-output \
+        --tests-regex "$UT_FILTER" \
         --timeout $UT_TIMEOUT \
         -VV
     local test_ret=$?

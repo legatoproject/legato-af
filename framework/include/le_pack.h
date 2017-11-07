@@ -375,10 +375,18 @@ static inline bool le_pack_PackString
         return false;
     }
 
+#if defined(__KLOCWORK__)
+    // Just like strncpy & strnlen, this function doesn't know the size of the source string,
+    // which can potentially result in a read overflow on the input buffer.
+    // Static code analyzer can report this issue, which is deliberatly ignored since this
+    // function expects NULL-terminated strings.
+    maxStringCount = strnlen(stringPtr, maxStringCount);
+#endif
+
     // First copy in the string -- up to maxStringCount bytes, allowing enough
     // space at the begining for a uint32.
     for (bytesCopied = 0;
-         bytesCopied < maxStringCount && stringPtr[bytesCopied];
+         (bytesCopied < maxStringCount) && (stringPtr[bytesCopied] != '\0');
          ++bytesCopied)
     {
         (*bufferPtr)[bytesCopied + sizeof(uint32_t)] = stringPtr[bytesCopied];
