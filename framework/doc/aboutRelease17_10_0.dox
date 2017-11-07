@@ -1,0 +1,129 @@
+/** @page releaseNotes17100 17.10.0 Release Notes
+
+Release Date: Nov 17, 2017
+
+See @ref aboutLicenses to view Legato AF Licensing Information.
+
+The following provides a summary of changes that have been made in the 17.10 Legato AF Release.
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section rn1710_Features New Features
+
+The following are the list of new features that have been added into the 17.10 Release:
+
+@subsection rn1710_Features_AV  AirVantage Improvements
+
+Version 17.10.0 introduces further stability updates to the AirVantage Connector and underlaying
+Platform Adapters. The code changes provide stability to over-the-air downloads and installs, and
+improves the reliability of downloads and installs resuming after the device has lost power or has
+been rebooted.
+
+@subsection rn1710_Features_SIM  Watchdog Daemon
+
+A @ref basicRuntimeArch_watchdog maximum timeout has been added to the following Legato Application
+Daemons and Platform Services.
+
+Legato Daemons:
+- supervisor
+- serviceDirectory
+- logDaemon
+- configTree
+- updateDaemon
+
+Platform Services:
+- atService
+- audioService
+- avcService
+- cellNetService
+- dataConnectionService
+- fwupdateService
+- gpioService
+- modemService
+- positioningService
+- powerMgr
+- secStore
+- voiceCallService
+
+All settings for watchdog are fully configurable and can be set on an
+@ref defFilesAdef_watchdogAction "app" (all processes in the app use the same settings) or on an
+@ref defFilesAdef_processWatchdogAction "individual process".
+
+The default timeout is set to @b 2 @b minutes and the default action is to @b restart the process.
+For more information on the watchdog daemon read the @ref basicRuntimeArch_watchdog "overview".
+
+@subsection rn1710_Features_wp77xx  WP77xx added as supported target
+
+The WP77xx has been added as a supported target into the Legato Application Framework.  To build
+for the WP77xx target @c make @c wp77xx can be run from the Legato Root Directory.
+
+@subsection rn1710_Features_HowTo  Build Kernel Objects
+
+@ref howToKernelObject documentation has been created to walk developers through bundling up a
+kernel object within a Legato System.  This allows for developers to add drivers for IoT cards
+without having to rebuild the Linux Distribution.
+
+@section rn1710_Fixes Fixed Issues
+
+All development work is tagged in GitHub as "17.10.0".  The list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 17.10.0 Fixes](https://github.com/legatoproject/legato-af/commits/17.10.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 17.10.0 in
+the individual repositories on GitHub.
+
+@section rn1710_KnownIssues Known Issues
+
+@subsection rn1710_Constraints Constraints and Limitations
+
+@subsubsection rn1710_ContraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1710_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsection rn1710_OpenIssues Open Issues
+
+The following is the list of known issues that still exist in Legato 17.10.0 and are currently under
+investigation:
+
+@b Legato @b AF
+
+@b AVC @b Service
+- If an users AVC Control app is removed while an AVC session is starting, the AVCService will
+  reboot and may cause a temporary loss of service while the AVCService is restarting.
+- @c avcService does not support "." as a path separator for asset data. Developers
+  must use @b "/" to separate resource paths when sending asset data to the AirVantage Server.
+- Targets are not updating the AirVantage Server when they have completed a Firmware update.  The
+  firmware update may update the server when the next connection is opened, but targets will not
+  open a connection to AirVantage when the update has completed.
+
+@b GNSS @b Service
+- NMEA masks do not support PTYPE, GPGRS or GPGLL at this time.
+
+@b Modem @b Service
+- @c le_mrc_GetNeighborCellId() and @c le_mrc_GetNeighborCellLocAreaCode() are not returning the
+  values requested.
+- @c le_mrc_GetCurrentNetworkName() is failing when the returned Network Name is over 18 characters.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
