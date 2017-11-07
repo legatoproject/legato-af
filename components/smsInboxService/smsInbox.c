@@ -3046,7 +3046,7 @@ le_result_t SmsInbox_SetMaxMessages
  * Get the maximum number of messages for message box.
  *
  * @return
- *  - LE_BAD_PARAMETER The message box name is invalid.
+ *  - LE_BAD_PARAMETER Invalid parameters.
  *  - LE_OK            Function succeeded.
  *  - LE_FAULT         Function failed.
  */
@@ -3065,6 +3065,12 @@ le_result_t SmsInbox_GetMaxMessages
     if (NULL == mboxNamePtr)
     {
         LE_ERROR("No mbox name");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (NULL == maxMessageCountPtr)
+    {
+        LE_ERROR("maxMessageCountPtr is NULL");
         return LE_BAD_PARAMETER;
     }
 
