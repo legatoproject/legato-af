@@ -23,10 +23,11 @@
  *
  * When writing a control app for the AirVantage Service it is up to the developer to ensure that
  * user agreements have been enabled for all actions the control app performs.  By default all
- * user agreements are enabled and the avcService app will notify the control app and wait for a
- * response before downloading or installing the update.  If the avcService can't communicate with
- * the control app it waits for 3 minutes and tries again.  To not have the avcService wait for the
- * control app to accept the agreement the user agreement must be disabled.
+ * user agreements are enabled except for LE_AVC_CONNECTION_PENDING and the avcService app will
+ * notify the control app and wait for a response before downloading or installing the update.
+ * If the avcService can't communicate with the control app it waits for 3 minutes and tries again.
+ * To not have the avcService wait for the control app to accept the agreement the user agreement
+ * must be disabled.
  *
  * There are 5 events that require user agreements:
  * - LE_AVC_CONNECTION_PENDING
