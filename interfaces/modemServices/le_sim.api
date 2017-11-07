@@ -244,33 +244,35 @@
  *
  * @section le_sim_stk SIM Toolkit
  *
- * The SIM application Toolkit allows the SIM card to initiates commands or asking input from the
- * modem to accept/reject SIM operations.  See @ref platformConstraintsStk Constraints.
+ * The SIM application Toolkit allows the SIM card to initiate commands or asking input from the
+ * modem to accept/reject SIM operations.
  *
- * One of the use case is the remote provisioning of an embedded UICC (eUICC).
- *
- * The embedded UICC (eUICC) format supports multiple subscription profiles, which can be remotely
- * provisioned, updated or selected through SIM tool kit procedures (Bearer Independent Protocol
- * -BIP-, SIM refresh).
+ * One of the use case is the remote provisioning of an embedded UICC (eUICC): the eUICC format
+ * supports multiple subscription profiles, which can be remotely provisioned, updated or selected
+ * through SIM Toolkit procedures (Bearer Independent Protocol @em BIP, SIM refresh).
  *
  * It is mainly used for in-vehicle emergency call service (eCall).
  *
  * An eUICC can be remotely managed to change the Mobile Network Operator subscription.
  *
- * The le_sim_AddSimToolkitEventHandler() function registers a handler to be notified of SIM
- * Toolkit events.
+ * The le_sim_AddSimToolkitEventHandler() API registers a handler to be notified of SIM
+ * Toolkit events. The le_sim_RemoveSimToolkitEventHandler() API unregisters the handler.
  *
- * The le_sim_RemoveSimToolkitEventHandler() function unregisters the handler.
+ * The last received SIM Toolkit command can:
+ * - Either be accepted by the device with the le_sim_AcceptSimToolkitCommand() API
+ * - Or be rejected by the device with the le_sim_RejectSimToolkitCommand() API.
  *
- * The le_sim_AcceptSimToolkitCommand() allows the device to accept the last SIM Toolkit command.
+ * In case the last SIM Toolkit command is a Refresh command (@ref LE_SIM_REFRESH), additional
+ * information can be retrieved:
+ * - The le_sim_GetSimToolkitRefreshStage() API gets the stage of the Refresh command.
+ * - The le_sim_GetSimToolkitRefreshMode() API gets the mode of the Refresh command, as defined in
+ *   ETSI TS 102 223 sections 6.4.7 and 8.6.
  *
- * The le_sim_RejectSimToolkitCommand() forbids the device to accept the last SIM Toolkit command.
- *
- * A sample code can be seen in the following page:
+ * A sample code using the SIM Toolkit APIs can be seen in the following page:
  * - @subpage c_simTestSimToolkit
  *
- * Information related to SIM Toolkit platform constraints can be seen in the
- * @subpage platformConstraintsStk page.
+ * Information related to SIM Toolkit platform constraints can be found in the
+ * @ref platformConstraintsStk "SIM Toolkit platform constraints" page.
  *
  * @section le_sim_access SIM access
  *
@@ -566,11 +568,43 @@ ENUM Command
 //--------------------------------------------------------------------------------------------------
 ENUM StkEvent
 {
-    OPEN_CHANNEL,    ///< SIM card ask to open a logical channel.
-    REFRESH,         ///< SIM card ask for a refresh.
+    OPEN_CHANNEL,    ///< SIM card asks to open a logical channel.
+    REFRESH,         ///< SIM card asks for a refresh.
     STK_EVENT_MAX    ///< Unknown SIM Toolkit event.
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM Toolkit Refresh modes, defined in ETSI TS 102 223 sections 6.4.7 and 8.6.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM StkRefreshMode
+{
+    REFRESH_INIT_FULL_FCN,              ///< Initialization and Full File Change Notification.
+    REFRESH_FCN,                        ///< File Change Notification.
+    REFRESH_INIT_FCN,                   ///< Initialization and File Change Notification.
+    REFRESH_INIT,                       ///< Initialization.
+    REFRESH_RESET,                      ///< SIM reset.
+    REFRESH_APP_RESET,                  ///< Application reset.
+    REFRESH_SESSION_RESET,              ///< Session reset.
+    REFRESH_STEERING_OF_ROAMING,        ///< Steering of Roaming as defined in 3GPP TS 23.122.
+    REFRESH_STEERING_OF_ROAMING_IWLAN,  ///< Steering of Roaming for I-WLAN
+                                        ///< as defined in 3GPP TS 24.234.
+    REFRESH_MODE_MAX                    ///< Invalid SIM Toolkit Refresh mode.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM Toolkit Refresh stages.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM StkRefreshStage
+{
+    STAGE_WAITING_FOR_OK,   ///< Waiting for OK to refresh.
+    STAGE_END_WITH_SUCCESS, ///< Refresh succeeded.
+    STAGE_END_WITH_FAILURE, ///< Refresh failed.
+    STAGE_MAX               ///< Invalid SIM Toolkit Refresh stage.
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1057,6 +1091,41 @@ FUNCTION le_result_t AcceptSimToolkitCommand
 FUNCTION le_result_t RejectSimToolkitCommand
 (
     Id           simId IN                ///< The SIM identifier.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the mode of the last SIM Toolkit Refresh command.
+ * The modes are defined in ETSI TS 102 223 sections 6.4.7 and 8.6.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNAVAILABLE    The last SIM Toolkit command is not a Refresh command.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSimToolkitRefreshMode
+(
+    Id              simId       IN,     ///< The SIM identifier.
+    StkRefreshMode  refreshMode OUT     ///< The Refresh mode.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the stage of the last SIM Toolkit Refresh command.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNAVAILABLE    The last SIM Toolkit command is not a Refresh command.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSimToolkitRefreshStage
+(
+    Id              simId           IN,     ///< The SIM identifier.
+    StkRefreshStage refreshStage    OUT     ///< The Refresh stage.
 );
 
 //--------------------------------------------------------------------------------------------------

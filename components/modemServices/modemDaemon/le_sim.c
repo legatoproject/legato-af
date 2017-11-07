@@ -2099,6 +2099,71 @@ le_result_t le_sim_RejectSimToolkitCommand
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Retrieve the mode of the last SIM Toolkit Refresh command.
+ * The modes are defined in ETSI TS 102 223 sections 6.4.7 and 8.6.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNAVAILABLE    The last SIM Toolkit command is not a Refresh command.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetSimToolkitRefreshMode
+(
+    le_sim_Id_t              simId,         ///< The SIM identifier.
+    le_sim_StkRefreshMode_t* refreshModePtr ///< The Refresh mode.
+)
+{
+    if (!refreshModePtr)
+    {
+        LE_ERROR("refreshModePtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (LE_OK != SelectSIMCard(simId))
+    {
+        return LE_FAULT;
+    }
+
+    *refreshModePtr = LE_SIM_REFRESH_MODE_MAX;
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the stage of the last SIM Toolkit Refresh command.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNAVAILABLE    The last SIM Toolkit command is not a Refresh command.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetSimToolkitRefreshStage
+(
+    le_sim_Id_t               simId,            ///< The SIM identifier.
+    le_sim_StkRefreshStage_t* refreshStagePtr   ///< The Refresh stage.
+)
+{
+    if (!refreshStagePtr)
+    {
+        LE_ERROR("refreshStagePtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (LE_OK != SelectSIMCard(simId))
+    {
+        return LE_FAULT;
+    }
+
+    *refreshStagePtr = LE_SIM_STAGE_MAX;
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Send APDU command to the SIM.
  *
  * @return
