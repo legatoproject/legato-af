@@ -57,6 +57,8 @@
  * handler will be called with a reference to the expired timer. If additional data is required in the
  * handler, @ref le_timer_SetContextPtr can be used to set the appropriate context before starting the
  * timer, and @ref le_timer_GetContextPtr can be used to retrieve the context while in the handler.
+ * In addition, a suspended system will also wake up by default if the timer expires. If this behaviour
+ * is not desired, user can disable the wake up by passing false into @ref le_timer_SetWakeup.
  *
  * The number of times that a timer has expired can be retrieved by @ref le_timer_GetExpiryCount. This
  * count is independent of whether there is an expiry handler for the timer.
@@ -95,6 +97,7 @@
  *     - @ref le_timer_SetContextPtr
  *     - @ref le_timer_GetContextPtr
  *     - @ref le_timer_GetExpiryCount
+ *     - @ref le_timer_SetWakeup
  *
  * @section timer_troubleshooting Troubleshooting
  *
@@ -255,6 +258,26 @@ le_result_t le_timer_SetRepeat
 (
     le_timer_Ref_t timerRef,     ///< [IN] Set repeat count for this timer object
     uint32_t repeatCount         ///< [IN] Number of times the timer will repeat (0 = forever).
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Configure if timer expiry will wake up a suspended system.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BUSY if the timer is currently running
+ *
+ * @note
+ *      The default timer expiry behaviour will wake up the system.
+ *      If an invalid timer object is given, the process exits.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_timer_SetWakeup
+(
+    le_timer_Ref_t timerRef,     ///< [IN] Disable system wake up for this timer object
+    bool wakeupEnabled           ///< [IN] Flag to determine timer will wakeup or not
 );
 
 

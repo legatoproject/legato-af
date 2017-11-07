@@ -32,6 +32,8 @@ typedef struct
     le_clk_Time_t expiryTime;                ///< Time at which the timer should expire
     uint32_t expiryCount;                    ///< Number of times the counter has expired
     le_timer_Ref_t safeRef;                  ///< For the API user to refer to this timer by
+    bool isWakeupEnabled;                    ///< Will system be woken up from suspended timer.
+                                             ///  Default behaviour will be set to true.
 }
 Timer_t;
 

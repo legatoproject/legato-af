@@ -817,6 +817,9 @@ static void InitNewWatchdog
     _Static_assert (sizeof(pid_t) <= sizeof(intptr_t), "pid_t is truncated by cast to void*");
     LE_ASSERT(LE_OK == le_timer_SetContextPtr(newDogPtr->timer, newDogPtr));
     LE_ASSERT(LE_OK == le_timer_SetHandler(newDogPtr->timer, WatchdogHandleExpiry));
+
+    // Do not wake up a suspended system.
+    LE_ASSERT(LE_OK == le_timer_SetWakeup(newDogPtr->timer, false));
 }
 
 
@@ -1500,6 +1503,7 @@ COMPONENT_INIT
     le_timer_SetMsInterval(DefaultExternalWdogTimer, timeout);
     le_timer_SetHandler(DefaultExternalWdogTimer, ExternalWatchdogHandler);
     le_timer_SetRepeat(DefaultExternalWdogTimer, 0); // repeat indefinitely
+    le_timer_SetWakeup(DefaultExternalWdogTimer, false);
     le_timer_Start(DefaultExternalWdogTimer);
     pa_wdog_Init();
 

@@ -216,6 +216,7 @@ void le_wdogChain_MonitorEventLoop
         le_timer_SetHandler(watchdogPtr->timer, CheckEventLoopHandler);
         le_timer_SetContextPtr(watchdogPtr->timer, watchdogPtr);
         le_timer_SetInterval(watchdogPtr->timer, watchdogInterval);
+        le_timer_SetWakeup(watchdogPtr->timer, false);
     }
 
     if (!watchdogPtr->isConnected)

@@ -275,6 +275,7 @@ ni_IteratorRef_t ni_CreateIterator
         LE_ASSERT(le_timer_SetInterval(iteratorRef->timerRef, timeout) == LE_OK);
         LE_ASSERT(le_timer_SetHandler(iteratorRef->timerRef, OnTransactionTimeout) == LE_OK);
         LE_ASSERT(le_timer_SetContextPtr(iteratorRef->timerRef, iteratorRef) == LE_OK);
+        LE_ASSERT(le_timer_SetWakeup(iteratorRef->timerRef, false) == LE_OK);
 
         LE_ASSERT(le_timer_Start(iteratorRef->timerRef) == LE_OK);
     }
