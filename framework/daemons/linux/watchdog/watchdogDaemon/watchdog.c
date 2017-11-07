@@ -479,14 +479,19 @@ static void WatchdogHandleExpiry
 )
 {
     WatchdogObj_t* watchDogPtr = le_timer_GetContextPtr(timerRef);
-    LE_DEBUG("Watchdog expired [procid: %d]", watchDogPtr->procId);
-
     if (watchDogPtr->procId == NO_PROC)
     {
         // Mandatory watchdog expired without the process restarting.  Restart Legato.
-        LE_CRIT("A mandatory watchdog expired");
+        MandatoryWatchdogObj_t *mandatoryDogPtr =
+            CONTAINER_OF(watchDogPtr, MandatoryWatchdogObj_t, watchdog);
+        LE_CRIT("Mandatory watchdog double fault on process [%s][%s]",
+                mandatoryDogPtr->key.appName, mandatoryDogPtr->key.procName);
         le_timer_Stop(DefaultExternalWdogTimer);
         pa_wdog_Shutdown();
+    }
+    else
+    {
+        LE_DEBUG("Watchdog expired [procid: %d]", watchDogPtr->procId);
     }
 
     WatchdogObj_t* expiredDog = LookupClientWatchdogPtrById(watchDogPtr->procId);
