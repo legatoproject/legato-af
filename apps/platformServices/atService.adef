@@ -18,7 +18,7 @@ processes:
     maxFileBytes: 5000K
     faultAction: restart
     #if ${LEGATO_SERVICES_WDOG_DISABLE} = 1
-        maxWatchdogTimeout: never
+        watchdogTimeout: never
     #else
         maxWatchdogTimeout: 120000
     #endif
