@@ -72,6 +72,7 @@ sysConfigFile="${OUTPUT_DIR}/systems/current/config/system.scissors"
 appsConfigFile="${OUTPUT_DIR}/systems/current/config/apps.cfg"
 usersConfigFile="${OUTPUT_DIR}/systems/current/config/users.cfg"
 modsConfigFile="${OUTPUT_DIR}/systems/current/config/modules.cfg"
+frameworkConfigFile="${OUTPUT_DIR}/systems/current/config/framework.cfg"
 
 # Construct the system config tree from the users.cfg and apps.cfg files.
 echo '{ "users" ' > $sysConfigFile
@@ -80,6 +81,8 @@ echo ' "apps" ' >> $sysConfigFile
 cat $appsConfigFile >> $sysConfigFile
 echo ' "modules" ' >> $sysConfigFile
 cat $modsConfigFile >> $sysConfigFile
+echo ' "framework" ' >> $sysConfigFile
+cat $frameworkConfigFile >> $sysConfigFile
 echo ' }' >> $sysConfigFile
 
 # Remove the users.cfg apps.cfg and modules.cfg files so the Update Daemon won't
