@@ -64,5 +64,6 @@ extern:
     modemDaemon.modemDaemon.le_adc
     modemDaemon.modemDaemon.le_rtc
     modemDaemon.modemDaemon.le_mdmCfg
+    modemDaemon.modemDaemon.le_lpt
     rSimDaemon.rSimDaemon.le_rsim
 }

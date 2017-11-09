@@ -30,6 +30,7 @@ provides:
         modemServices/le_adc.api
         modemServices/le_rtc.api
         modemServices/le_mdmCfg.api
+        modemServices/le_lpt.api
     }
 }
 
@@ -54,6 +55,7 @@ sources:
     le_rtc.c
     sysResets.c
     le_mdmCfg.c
+    le_lpt.c
 }
 
 cflags:
