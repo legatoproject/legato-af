@@ -32,7 +32,6 @@ CFLAGS+=\
     -DLWM2M_WITH_LOGS \
     -DWITH_LOGS \
     -DSIERRA \
-    -w \
     -std=gnu99 \
     -DWITH_SHA256
 
