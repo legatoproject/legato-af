@@ -24,7 +24,7 @@
 #define EEPROM_GPIO_CFG_OUTPUT_LOW	(0x4)
 #define EEPROM_GPIO_CFG_OUTPUT_HIGH	(0x5)
 
-struct i2c_client *eeprom_load(int slot);
+struct i2c_client *eeprom_load(int adap_id);
 void eeprom_unload(struct i2c_client *eeprom);
 struct list_head *eeprom_if_list(struct i2c_client *eeprom);
 int eeprom_num_slots(struct i2c_client *eeprom);

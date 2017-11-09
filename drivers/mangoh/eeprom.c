@@ -87,10 +87,10 @@ typedef enum eeprom_if_t_ {
  * Map in which EEPROM contents are read. This is global so make sure
  * buffer is invalidated beforehand and EEPROMs are read out one-by-one.
  */
-static struct eeprom_map {
+struct eeprom_map {
 	uint8_t buffer[IOT_EEPROM_SIZE];
 	struct list_head interfaces;
-} this_eeprom;
+};
 
 struct eeprom_if_map {
 	struct i2c_client *eeprom;	/* back pointer to eeprom */
@@ -103,12 +103,12 @@ struct eeprom_if_map {
 static void at24_eeprom_setup(struct memory_accessor *mem_acc, void *context)
 {
 	struct eeprom_map *map = (struct eeprom_map *)context;
-	/* Invalidate buffer before reading */
-	if (!map) {
-		pr_err("%s: Invalid buffer %p.\n", __func__, map);
-		return;
-	}
+
+	/* Make sure buffer is allocated and invalidated before reading */
+	BUG_ON(!map);
 	INIT_LIST_HEAD(&map->interfaces);
+	memset(map->buffer, 0xff, IOT_EEPROM_SIZE);
+
 	if (mem_acc->read(mem_acc, map->buffer, 0, sizeof(map->buffer))
 		 != sizeof(map->buffer)) {
 		/* Invalidate buffer again in case of failed/partial read */
@@ -123,25 +123,25 @@ static struct at24_platform_data at24_eeprom_data = {
 	.page_size = 32,
 	.flags = AT24_FLAG_ADDR16,
 	.setup = at24_eeprom_setup,
-	.context = &this_eeprom,
+	.context = NULL,
 };
 static struct i2c_board_info at24_eeprom_info = {
 	I2C_BOARD_INFO("at24", 0x52),
 	.platform_data = &at24_eeprom_data,
 };
 
+#define BUFFER_VALID(buffer) ((0xAA == (buffer)[0] && 0x55 == (buffer)[1]))
 static inline uint8_t *to_eeprom_buffer(struct i2c_client *eeprom)
 {
 	struct at24_platform_data *pdata = dev_get_platdata(&eeprom->dev);
-	uint8_t *buffer = ((struct eeprom_map *)pdata->context)->buffer;
+	uint8_t *b = ((struct eeprom_map *)pdata->context)->buffer;
 
-	if (0xAA != buffer[0] || 0x55 != buffer[1]) {
-		dev_err(&eeprom->dev, "Invalid header: %02x%02x.\n",
-			buffer[0], buffer[1]);
+	if (!BUFFER_VALID(b)) {
+		dev_err(&eeprom->dev, "Bad header: %02x%02x.\n", b[0], b[1]);
 		BUG();
 		return NULL;
 	}
-	return buffer;
+	return b;
 }
 
 static inline struct list_head *to_eeprom_if_list(struct i2c_client *eeprom)
@@ -219,36 +219,70 @@ static int eeprom_load_interfaces(struct i2c_client *eeprom)
 }
 
 /* Public functions */
-struct i2c_client *eeprom_load(int slot)
+struct i2c_client *eeprom_load(int adap_id)
 {
 	struct i2c_adapter *adapter;
 	struct i2c_client *eeprom;
+	struct at24_platform_data *pdata = at24_eeprom_info.platform_data;
 
-	adapter = i2c_get_adapter(1 + slot);
-	if (!adapter)
-		return NULL;
+	/* Allocate eeprom_map struct */
+	pdata->context = kzalloc(sizeof(struct eeprom_map), GFP_KERNEL);
+	if (!pdata->context) {
+		pr_err("%s: out of memory.\n", __func__);
+		goto err_no_mem;
+	}
+
+	/* We know that eeprom_map was properly allocated */
+	adapter = i2c_get_adapter(adap_id);
+	if (!adapter) {
+		pr_err("%s: I2C%d: no such bus.\n", __func__, adap_id);
+		goto err_no_device;
+	}
 
 	/* This automatically runs the setup() function */
 	eeprom = i2c_new_device(adapter, &at24_eeprom_info);
 	i2c_put_adapter(adapter);
+	if (!eeprom) {
+		pr_warn("%s: I2C%d: no EEPROM device.\n", __func__, adap_id);
+		goto err_no_device;
+	}
 
 	/* Validate EEPROM header */
-	if (!to_eeprom_buffer(eeprom)) {
-		dev_err(&eeprom->dev, "Header not found.\n");
-		i2c_unregister_device(eeprom);
-		return NULL;
+	if (!BUFFER_VALID(((struct eeprom_map*)pdata->context)->buffer)) {
+		dev_warn(&eeprom->dev, "Header invalid. Blank EEPROM?\n");
+		goto err_bad_eeprom;
 	}
-	return (eeprom_load_interfaces(eeprom) > 0 ? eeprom : NULL);
+
+	if (eeprom_load_interfaces(eeprom) > 0)
+		/* Success: interface descriptions found and read */
+		return eeprom;
+
+	/* Failed, unwind everything */
+	dev_warn(&eeprom->dev, "Bad/missing interface description.\n");
+	eeprom_free_interfaces(eeprom);
+
+err_bad_eeprom:
+	i2c_unregister_device(eeprom);
+
+err_no_device:
+	kfree(pdata->context);
+	pdata->context = NULL;
+
+err_no_mem:
+	return NULL;
 }
 
 void eeprom_unload(struct i2c_client *eeprom)
 {
+	struct at24_platform_data *pdata = at24_eeprom_info.platform_data;
 	uint8_t *buffer = to_eeprom_buffer(eeprom);
 
 	/* Free interface list and invalidate buffer */
 	eeprom_free_interfaces(eeprom);
 	memset(buffer, 0xff, IOT_EEPROM_SIZE);
 	i2c_unregister_device(eeprom);
+	kfree(pdata->context);
+	pdata->context = NULL;
 }
 
 int eeprom_num_slots(struct i2c_client *eeprom)

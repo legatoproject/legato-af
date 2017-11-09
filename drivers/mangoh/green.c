@@ -30,6 +30,7 @@
  * driver to request it.
  */
 
+#include <linux/version.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/i2c/pca954x.h>
@@ -92,23 +93,51 @@ static struct i2c_board_info sx150x_devinfo[] = {
 	},
 };
 
-static struct pca954x_platform_mode pca954x_adap_modes[] = {
-	{1, 1, 0}, {2, 1, 0}, {3, 1, 0}, {4, 1, 0},
-	{5, 1, 0}, {6, 1, 0}, {7, 1, 0}, {8, 1, 0}
+
+enum wp_model {
+	wp_model_wp85,
+	wp_model_wp76,
+	wp_model_last,
+};
+static struct pca954x_platform_mode pca954x_adap_modes[][8] = {
+	[wp_model_wp85] = {
+		{1, 1, 0}, {2, 1, 0}, {3, 1, 0}, {4, 1, 0},
+		{5, 1, 0}, {6, 1, 0}, {7, 1, 0}, {8, 1, 0}
+	},
+	[wp_model_wp76] = {
+		{5, 1, 0}, {6, 1, 0}, {7, 1, 0}, {8, 1, 0},
+		{9, 1, 0}, {10, 1, 0}, {11, 1, 0}, {12, 1, 0}
+	},
 };
 
-static struct pca954x_platform_data pca954x_pdata = {
-	pca954x_adap_modes,
-	ARRAY_SIZE(pca954x_adap_modes),
+static struct pca954x_platform_data pca954x_pdata[wp_model_last] = {
+	[wp_model_wp85] = {
+		pca954x_adap_modes[wp_model_wp85],
+		ARRAY_SIZE(pca954x_adap_modes[wp_model_wp85]),
+	},
+	[wp_model_wp76] = {
+		pca954x_adap_modes[wp_model_wp76],
+		ARRAY_SIZE(pca954x_adap_modes[wp_model_wp76]),
+	},
 };
 
-static struct i2c_board_info pca954x_device_info = {
-	I2C_BOARD_INFO("pca9548", 0x71),
-	.platform_data = &pca954x_pdata,
-	.irq = 0,
+static struct i2c_board_info pca954x_device_info[wp_model_last] = {
+	[wp_model_wp85] = {
+		I2C_BOARD_INFO("pca9548", 0x71),
+		.platform_data = &(pca954x_pdata[wp_model_wp85]),
+		.irq = 0,
+	},
+	[wp_model_wp76] = {
+		I2C_BOARD_INFO("pca9548", 0x71),
+		.platform_data = &(pca954x_pdata[wp_model_wp76]),
+		.irq = 0,
+	},
 };
 
 static struct green_platform_data {
+	char *wp_name;
+	int i2c_mux_bus;
+	int spi_bus;
 	struct i2c_client *mux;
 	struct i2c_client *expander[ARRAY_SIZE(sx150x_data)];
 	struct slot_status {
@@ -128,20 +157,43 @@ static struct green_platform_data {
 	int uart0_sw_gpio;
 	int uart1_sw_en_gpio;
 	int uart1_sw_gpio;
-} green_pdata = {
-	NULL,		/* Mux */
-	{		/* Expanders */
-		NULL
+} green_pdata [] = {
+	[wp_model_wp85] = {
+		"WP85",
+		0,		/* I2C mux bus */
+		0,		/* SPI bus */
+		NULL,		/* Mux */
+		{		/* Expanders */
+			NULL
+		},
+		{	/*
+			 * Slots: GPIO #s are relative to GPIO base on its chip
+			 *		GPIOs		present	busdev
+			 */
+			{{80, 78, 84, 29, 11, 4},	false,	{NULL}},
+			{{73, 79, 30, 50, 13, 3},	false,	{NULL}},
+			{{49, 54, 61, 92, 12, 2},	false,	{NULL}},
+		},
+		13, 14, 15, 10, 11, 8, 12,
 	},
-	{	/*
-		 * Slots: GPIO #s are relative to GPIO base on its chip
-		 *		GPIOs		present	busdev
-		 */
-		{{80, 78, 84, 29, 11, 4},	false,	{NULL}},
-		{{73, 79, 30, 50, 13, 3},	false,	{NULL}},
-		{{49, 54, 61, 92, 12, 2},	false,	{NULL}},
+	[wp_model_wp76] = {
+		"WP76",
+		4,		/* I2C mux bus */
+		1,		/* SPI bus */
+		NULL,		/* Mux */
+		{		/* Expanders */
+			NULL
+		},
+		{	/*
+			 * Slots: GPIO #s are relative to GPIO base on its chip
+			 *		GPIOs		present	busdev
+			 */
+			{{79, 78, 76, 58, 11, 4},	false,	{NULL}},
+			{{17, 16, 77,  8, 13, 3},	false,	{NULL}},
+			{{ 9, 10, 11, 54, 12, 2},	false,	{NULL}},
+		},
+		13, 14, 15, 10, 11, 8, 12,
 	},
-	13, 14, 15, 10, 11, 8, 12,
 };
 
 #define det_gpio	gpio[4] /* slot detect */
@@ -171,6 +223,28 @@ static inline struct slot_status *green_get_slot(struct platform_device *pdev,
 	return &(pdata->slot[slot]);
 }
 
+static inline int green_get_i2c_bus(struct platform_device *pdev, int slot)
+{
+	struct green_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	return pdata->i2c_mux_bus + 1 + slot;
+}
+
+static inline int green_get_spi_bus(struct platform_device *pdev, int slot)
+{
+	struct green_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	return pdata->spi_bus;
+}
+
+/*
+ * Unfortunately gpio_pull_up()/_down() have different prototypes in
+ * kernels 3.14 and 3.18.
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
+#define GPIO_REFERENCE(i) (i)
+#else
+#define GPIO_REFERENCE(i) gpio_to_desc((i))
+#endif
+
 static struct device *green_add_gpio(struct platform_device *pdev,
 				     int slot,
 				     struct list_head *item)
@@ -189,11 +263,11 @@ static struct device *green_add_gpio(struct platform_device *pdev,
 			break;
 		case EEPROM_GPIO_CFG_INPUT_PULL_UP:
 			gpio_direction_input(s->gpio[i]);
-			gpio_pull_up(s->gpio[i]);
+			gpio_pull_up(GPIO_REFERENCE(s->gpio[i]));
 			break;
 		case EEPROM_GPIO_CFG_INPUT_PULL_DOWN:
 			gpio_direction_input(s->gpio[i]);
-			gpio_pull_down(s->gpio[i]);
+			gpio_pull_down(GPIO_REFERENCE(s->gpio[i]));
 			break;
 		case EEPROM_GPIO_CFG_INPUT_FLOATING:
 			gpio_direction_input(s->gpio[i]);
@@ -228,7 +302,7 @@ static struct i2c_client *green_add_i2c(struct platform_device *pdev,
 	/* TODO: Find intelligent way to assign platform data */
 
 	/* Lookup I2C adapter */
-	adapter = i2c_get_adapter(1 + slot);
+	adapter = i2c_get_adapter(green_get_i2c_bus(pdev, slot));
 	if (!adapter) {
 		dev_err(&pdev->dev, "No I2C adapter for slot %d.\n", slot);
 		return NULL;
@@ -275,7 +349,7 @@ static struct spi_device *green_add_spi(struct platform_device *pdev,
 	strncpy(board.modalias, eeprom_if_spi_modalias(item),
 		sizeof(board.modalias));
 
-	master = spi_busnum_to_master(0);
+	master = spi_busnum_to_master(green_get_spi_bus(pdev, slot));
 	if (!master) {
 		dev_err(&pdev->dev, "No master for SPI bus 0.\n");
 		return NULL;
@@ -383,9 +457,9 @@ static int scan_slot_eeprom(struct platform_device *pdev, int slot)
 	s = green_get_slot(pdev, slot);
 	gpio_direction_output(s->det_gpio, 1);
 
-	eeprom = eeprom_load(slot);
+	eeprom = eeprom_load(green_get_i2c_bus(pdev, slot));
 	if (NULL == eeprom) {
-		dev_err(&pdev->dev, "Slot%d: No EEPROM.\n", slot);
+		dev_err(&pdev->dev, "Slot%d: Bad or missing EEPROM.\n", slot);
 		rv = -ENODEV;
 		goto eeprom_detect_failed;
 	}
@@ -429,8 +503,7 @@ static int scan_slot_eeprom(struct platform_device *pdev, int slot)
 	rv = eeprom_num_slots(eeprom);
 
 eeprom_detect_failed:
-	/* Free EEPROM and restore GPIO direction */
-	eeprom_unload(eeprom);
+	/* Restore GPIO direction */
 	gpio_direction_input(s->det_gpio);
 	return rv;
 }
@@ -577,40 +650,56 @@ static int mangoh_green_map(struct platform_device *pdev)
 {
 	int i;
 	struct i2c_adapter *adapter;
-	struct i2c_client *newdev;
-	struct green_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct i2c_client *newdev, *mux = NULL;
+	struct green_platform_data *pdata;
 
-	/* Assume master adapter zero */
-	adapter = i2c_get_adapter(0);
-	if (!adapter) {
-		dev_err(&pdev->dev, "Failed to get I2C adapter 0.\n");
+	/*
+	 * We first need to find out which WP model we're running on.
+	 * Do this by probing I2C bus(ses) for presence of I2C mux
+	 * device. Once we know the WP model, assign corresponding
+	 * platform data to device.
+	 */
+	for (i = 0; i < wp_model_last && !mux; i++) {
+		adapter = i2c_get_adapter(green_pdata[i].i2c_mux_bus);
+		if (!adapter)
+			continue;
+
+		/* try mapping the I2C mux */
+		mux = i2c_new_device(adapter, &(pca954x_device_info[i]));
+		if (!mux && adapter)
+			i2c_put_adapter(adapter);
+		if (mux)
+			/* exit loop for 'i' to index correct WP model */
+			break;
+	}
+	if (!mux) {
+		dev_err(&pdev->dev, "Failed to find I2C switch.\n");
 		return -ENODEV;
 	}
 
-	/* Map the I2C mux */
-	pdata->mux = i2c_new_device(adapter, &pca954x_device_info);
-	if (!pdata->mux) {
-		dev_err(&pdev->dev, "Failed to register %s\n",
-			pca954x_device_info.type);
-		return -ENODEV;
-	}
+	/* Point 'pdata' to this WP model's platform data */
+	pdata = &green_pdata[i];
+	dev_info(&pdev->dev, "Detected %s or compatible.\n", pdata->wp_name);
+	pdata->mux = mux;
 
-	/* Map GPIO expanders */
+	/* Map GPIO expanders, starting from bus 5 on I2C switch */
 	for (i = 0; i < ARRAY_SIZE(sx150x_devinfo); i++) {
-		/* Physical bus 4 on switch is virtual bus 5 in system */
-		adapter = i2c_get_adapter(5 + i);
+		int busno = pdata->i2c_mux_bus + 5 + i;
+		adapter = i2c_get_adapter(busno);
 		if (!adapter) {
-			dev_err(&pdev->dev, "No I2C bus %d.\n", 5 + i);
+			dev_err(&pdev->dev, "No I2C bus %d.\n", busno);
 			return -ENODEV;
 		}
 		newdev = i2c_new_device(adapter, &(sx150x_devinfo[i]));
 		if (!newdev) {
 			dev_err(&pdev->dev, "Bus%d: Device %s missing\n",
-			       5 + i, sx150x_devinfo[0].type);
+			       busno, sx150x_devinfo[0].type);
 			return -ENODEV;
 		}
 		pdata->expander[i] = newdev;
 	}
+	/* We know the WP model, assign platform data to device */
+	platform_device_add_data(pdev, pdata, sizeof(*pdata));
 
 	/* Now probe the slots */
 	return green_probe_slots(pdev);
@@ -643,7 +732,7 @@ struct platform_device mangoh_green = {
 	.name = "mangoh-green",
 	.id	= -1,
 	.dev	= {
-		.platform_data = &green_pdata,
+		.platform_data = NULL,	/* assign after determining WP model */
 		.release = mangoh_green_release,
 	},
 };

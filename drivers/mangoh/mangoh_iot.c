@@ -106,4 +106,4 @@ MODULE_ALIAS("platform:mangoh-iot");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sierra Wireless");
 MODULE_DESCRIPTION("Linux driver for MangOH IoT expander");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.2");
