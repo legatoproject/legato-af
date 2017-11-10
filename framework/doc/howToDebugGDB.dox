@@ -128,7 +128,7 @@ On the target, start @c gdbserver by starting the app with the arguments specifi
 (two dashes):
 
 @verbatim
-# app runProc <app name> --exe=/bin/gdbserver --localhost:2000 /bin/<app bin dir>
+# app runProc <app name> --exe=/bin/gdbserver -- localhost:2000 /bin/<app bin dir>
 @endverbatim
 
 For Example:
