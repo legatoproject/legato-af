@@ -20,6 +20,7 @@
 #include "le_temp_local.h"
 #include "le_antenna_local.h"
 #include "le_riPin_local.h"
+#include "le_lpt_local.h"
 #include "sysResets.h"
 #include "watchdogChain.h"
 
@@ -48,6 +49,7 @@ COMPONENT_INIT
     {
         LE_ERROR("Failed to initialize system resets counter");
     }
+    le_lpt_Init();
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };

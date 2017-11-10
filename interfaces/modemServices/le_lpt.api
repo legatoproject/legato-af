@@ -34,21 +34,35 @@
  * The use of eDRX for a given radio access technology (@ref le_lpt_EDrxRat_t) can be enabled and
  * disabled with le_lpt_SetEDrxState().
  *
+ * @snippet "apps/test/modemServices/lpt/lptIntegrationTest/lptTest/lptTest.c" Set state
+ *
  * The eDRX feature is controlled by two parameters, which are defined in the standard 3GPP
  * TS 24.008 Release 13 Section 10.5.5.32: the eDRX value, defining the eDRX cycle length, and
  * the Paging Time Window. These parameters are negotiated between the device and the network during
  * an attach or routing area updating procedure.
  *
  * The requested eDRX value can be set with le_lpt_SetRequestedEDrxValue() and retrieved with
- * le_lpt_GetRequestedEDrxValue(). The eDRX value provided by the network can be retrieved with
+ * le_lpt_GetRequestedEDrxValue().
+ *
+ * @snippet "apps/test/modemServices/lpt/lptIntegrationTest/lptTest/lptTest.c" eDRX value
+ *
+ * The eDRX value provided by the network can be retrieved with
  * le_lpt_GetNetworkProvidedEDrxValue().
+ *
+ * @snippet "apps/test/modemServices/lpt/lptIntegrationTest/lptTest/lptTest.c" NP eDRX value
  *
  * The requested Paging Time Window cannot be set, but the network-provided value can be retrieved
  * with le_lpt_GetNetworkProvidedPagingTimeWindow().
  *
+ * @snippet "apps/test/modemServices/lpt/lptIntegrationTest/lptTest/lptTest.c" NP PTW
+ *
  * A handler can also be registered with le_lpt_AddEDrxParamsChangeHandler() in order to be notified
- * of the changes in the network-provided eDRX parameters. The handler can be removed with
- * le_lpt_RemoveEDrxParamsChangeHandler().
+ * of the changes in the network-provided eDRX parameters.
+ *
+ * @snippet "apps/test/modemServices/lpt/lptIntegrationTest/lptTest/lptTest.c" eDRX handler
+ * @snippet "apps/test/modemServices/lpt/lptIntegrationTest/lptTest/lptTest.c" Add eDRX handler
+ *
+ * The handler can be removed with le_lpt_RemoveEDrxParamsChangeHandler().
  *
  * <HR>
  *

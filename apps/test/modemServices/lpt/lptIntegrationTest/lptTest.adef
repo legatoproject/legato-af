@@ -1,0 +1,24 @@
+executables:
+{
+    lptTest = ( lptTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( lptTest )
+    }
+}
+
+start: manual
+
+bindings:
+{
+    lptTest.lptTest.le_lpt -> modemService.le_lpt
+}

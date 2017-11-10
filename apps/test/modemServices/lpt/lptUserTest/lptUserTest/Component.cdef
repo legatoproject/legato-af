@@ -1,0 +1,12 @@
+sources:
+{
+    lptUserTest.c
+}
+
+requires:
+{
+    api:
+    {
+        le_lpt.api
+    }
+}

@@ -14,6 +14,7 @@ requires:
         le_adc.api      [types-only]
         le_rtc.api      [types-only]
         le_mdmCfg.api   [types-only]
+        le_lpt.api      [types-only]
     }
 }
 
@@ -33,6 +34,7 @@ sources:
     pa_rtc_default.c
     pa_riPin_default.c
     pa_mdmCfg_default.c
+    pa_lpt_default.c
 }
 
 cflags:

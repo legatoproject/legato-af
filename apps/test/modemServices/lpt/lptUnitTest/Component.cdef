@@ -1,0 +1,14 @@
+requires:
+{
+    api:
+    {
+        modemServices/le_lpt.api           [types-only]
+    }
+}
+
+sources:
+{
+    main.c
+    ${LEGATO_ROOT}/components/modemServices/modemDaemon/le_lpt.c
+    simu/components/le_pa/pa_lpt_simu.c
+}

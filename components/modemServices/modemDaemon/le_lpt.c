@@ -9,6 +9,7 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "pa_lpt.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -20,7 +21,72 @@
  * Maximal value for eDRX cycle length, defined in 3GPP TS 24.008 Rel-13 section 10.5.5.32.
  */
 //--------------------------------------------------------------------------------------------------
-#define MAX_EDRX_VALUE  15
+#define MAX_EDRX_VALUE      15
+
+
+//--------------------------------------------------------------------------------------------------
+// Static declarations.
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Event ID for eDRX parameters change notification.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t EDrxParamsChangeId;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer eDRX parameters change indication handler.
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerEDrxParamsChangeHandler
+(
+    void* reportPtr,                ///< [IN] Pointer to the event report payload.
+    void* secondLayerHandlerFunc    ///< [IN] Address of the second layer handler function.
+)
+{
+    if ((!reportPtr) || (!secondLayerHandlerFunc))
+    {
+        LE_ERROR("Invalid parameter");
+        return;
+    }
+
+    pa_lpt_EDrxParamsIndication_t* eDrxParamsChangeIndPtr;
+    le_lpt_EDrxParamsChangeHandlerFunc_t clientHandlerFunc;
+
+    eDrxParamsChangeIndPtr = (pa_lpt_EDrxParamsIndication_t*) reportPtr;
+
+    clientHandlerFunc = (le_lpt_EDrxParamsChangeHandlerFunc_t) secondLayerHandlerFunc;
+
+    clientHandlerFunc(eDrxParamsChangeIndPtr->rat,
+                      eDrxParamsChangeIndPtr->activation,
+                      eDrxParamsChangeIndPtr->eDrxValue,
+                      eDrxParamsChangeIndPtr->pagingTimeWindow,
+                      le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * eDRX parameters change handler function.
+ */
+//--------------------------------------------------------------------------------------------------
+static void EDrxParamsChangeHandler
+(
+    pa_lpt_EDrxParamsIndication_t* eDrxParamsChangeIndPtr   ///< [IN] New eDRX parameters
+)
+{
+    LE_DEBUG("New eDRX parameters for RAT %d: activation = %c, eDRX value = %d, PTW = %d",
+             eDrxParamsChangeIndPtr->rat,
+             ((LE_ON == eDrxParamsChangeIndPtr->activation) ? 'Y' : 'N'),
+             eDrxParamsChangeIndPtr->eDrxValue,
+             eDrxParamsChangeIndPtr->pagingTimeWindow);
+
+    le_event_ReportWithRefCounting(EDrxParamsChangeId, eDrxParamsChangeIndPtr);
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -54,7 +120,7 @@ le_result_t le_lpt_SetEDrxState
     {
         case LE_ON:
         case LE_OFF:
-            return LE_UNSUPPORTED;
+            return pa_lpt_SetEDrxState(eDrxRat, activation);
 
         default:
             LE_ERROR("Invalid activation state %d", activation);
@@ -81,6 +147,8 @@ le_result_t le_lpt_SetRequestedEDrxValue
                                     ///<      TS 24.008 Rel-13 section 10.5.5.32.
 )
 {
+    le_result_t result;
+
     if ((LE_LPT_EDRX_RAT_UNKNOWN == eDrxRat) || (eDrxRat >= LE_LPT_EDRX_RAT_MAX))
     {
         LE_ERROR("Invalid Radio Access Technology: %d", eDrxRat);
@@ -93,7 +161,14 @@ le_result_t le_lpt_SetRequestedEDrxValue
         return LE_BAD_PARAMETER;
     }
 
-    return LE_UNSUPPORTED;
+    result = pa_lpt_SetRequestedEDrxValue(eDrxRat, eDrxValue);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Failed to set requested eDRX cycle value (%s)", LE_RESULT_TXT(result));
+        return result;
+    }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -106,7 +181,6 @@ le_result_t le_lpt_SetRequestedEDrxValue
  *  - LE_BAD_PARAMETER  A parameter is invalid.
  *  - LE_UNSUPPORTED    eDRX is not supported by the platform.
  *  - LE_UNAVAILABLE    No requested eDRX cycle value.
- *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_lpt_GetRequestedEDrxValue
@@ -128,8 +202,7 @@ le_result_t le_lpt_GetRequestedEDrxValue
         return LE_BAD_PARAMETER;
     }
 
-    *eDrxValuePtr = 0;
-    return LE_UNSUPPORTED;
+    return pa_lpt_GetRequestedEDrxValue(eDrxRat, eDrxValuePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -164,8 +237,7 @@ le_result_t le_lpt_GetNetworkProvidedEDrxValue
         return LE_BAD_PARAMETER;
     }
 
-    *eDrxValuePtr = 0;
-    return LE_UNSUPPORTED;
+    return pa_lpt_GetNetworkProvidedEDrxValue(eDrxRat, eDrxValuePtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -200,8 +272,7 @@ le_result_t le_lpt_GetNetworkProvidedPagingTimeWindow
         return LE_BAD_PARAMETER;
     }
 
-    *pagingTimeWindowPtr = 0;
-    return LE_UNSUPPORTED;
+    return pa_lpt_GetNetworkProvidedPagingTimeWindow(eDrxRat, pagingTimeWindowPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -219,13 +290,21 @@ le_lpt_EDrxParamsChangeHandlerRef_t le_lpt_AddEDrxParamsChangeHandler
     void*                                contextPtr         ///< [IN] The handler's context.
 )
 {
+    le_event_HandlerRef_t handlerRef;
+
     if (!handlerFuncPtr)
     {
         LE_KILL_CLIENT("Handler function is NULL!");
         return NULL;
     }
 
-    return NULL;
+    handlerRef = le_event_AddLayeredHandler("EDrxParamsChangeHandler",
+                                            EDrxParamsChangeId,
+                                            FirstLayerEDrxParamsChangeHandler,
+                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_lpt_EDrxParamsChangeHandlerRef_t)(handlerRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -239,4 +318,21 @@ void le_lpt_RemoveEDrxParamsChangeHandler
 )
 {
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to initialize the LPT component.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_lpt_Init
+(
+    void
+)
+{
+    // Create an event Id for eDRX parameters change indication
+    EDrxParamsChangeId = le_event_CreateIdWithRefCounting("EDrxParamsChange");
+
+    // Register a handler function for eDRX parameters change indication
+    pa_lpt_AddEDrxParamsChangeHandler(EDrxParamsChangeHandler);
 }
