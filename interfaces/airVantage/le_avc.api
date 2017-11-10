@@ -85,6 +85,12 @@
     }
  * @endcode
  *
+ * An App can use le_avc_AddCommInfoHandler() to register a handler function and receive
+ * communication information notifications. This function returns a reference. To unregister
+ * the handler, le_avc_RemoveCommInfoHandler() should be called with the previously returned
+ * reference.
+ *
+ *
  * Sometimes, @c avcService may decide to start a session with the AirVantage
  * server; for instance if a call to le_avc_AcceptDownload() when the session is stopped,
  * @c avcService will open a session to proceed with the download. In this case, a session started
@@ -480,6 +486,44 @@ DEFINE RETRY_TIMER_MIN_VAL = 0;
 //--------------------------------------------------------------------------------------------------
 DEFINE HTTP_STATUS_INVALID = 0xFFFF;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Communication info max string size
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  COMM_INFO_STR_MAX_LEN = 256;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Communication info codes
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMM_INFO_UDP_NO_ERR                     = 0x00;
+DEFINE COMM_INFO_UDP_OPEN_ERR                   = 0x01;
+DEFINE COMM_INFO_UDP_CLOSE_ERR                  = 0x02;
+DEFINE COMM_INFO_UDP_SEND_ERR                   = 0x03;
+DEFINE COMM_INFO_UDP_RECV_ERR                   = 0x04;
+DEFINE COMM_INFO_UDP_CONNECT_ERR                = 0x05;
+DEFINE COMM_INFO_BEARER_UP                      = 0x06;
+DEFINE COMM_INFO_BEARER_DOWN                    = 0x07;
+DEFINE COMM_INFO_PDP_CONTEXT                    = 0x08;
+DEFINE COMM_INFO_COAP_201_CREATED               = 0x41;
+DEFINE COMM_INFO_COAP_202_DELETED               = 0x42;
+DEFINE COMM_INFO_COAP_204_CHANGED               = 0x44;
+DEFINE COMM_INFO_COAP_205_CONTENT               = 0x45;
+DEFINE COMM_INFO_COAP_231_CONTINUE              = 0x5F;
+DEFINE COMM_INFO_COAP_400_BAD_REQUEST           = 0x80;
+DEFINE COMM_INFO_COAP_401_UNAUTHORIZED          = 0x81;
+DEFINE COMM_INFO_COAP_402_BAD_OPTION            = 0x82;
+DEFINE COMM_INFO_COAP_404_NOT_FOUND             = 0x84;
+DEFINE COMM_INFO_COAP_405_METHOD_NOT_ALLOWED    = 0x85;
+DEFINE COMM_INFO_COAP_406_NOT_ACCEPTABLE        = 0x86;
+DEFINE COMM_INFO_COAP_408_REQ_ENTITY_INCOMPLETE = 0x88;
+DEFINE COMM_INFO_COAP_412_PRECONDITION_FAILED   = 0x8C;
+DEFINE COMM_INFO_COAP_413_ENTITY_TOO_LARGE      = 0x8D;
+DEFINE COMM_INFO_COAP_500_INTERNAL_SERVER_ERROR = 0xA0;
+DEFINE COMM_INFO_COAP_501_NOT_IMPLEMENTED       = 0xA1;
+DEFINE COMM_INFO_COAP_503_SERVICE_UNAVAILABLE   = 0xA3;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -605,7 +649,6 @@ ENUM CredentialStatus
     DM_CREDENTIAL_PROVISIONED       ///< Device Management credential is provisioned.
 };
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler for update availability status
@@ -655,6 +698,29 @@ HANDLER SessionRequestHandler
 EVENT SessionRequestEvent
 (
     SessionRequestHandler handler
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for receiving communication information.
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CommInfoHandler
+(
+    uint8   code                        IN, ///< Communication information code
+    string  str[COMM_INFO_STR_MAX_LEN]  IN  ///< Communication information string
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides communication errors.
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT CommInfo
+(
+    CommInfoHandler handler
 );
 
 
