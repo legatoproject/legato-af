@@ -101,8 +101,18 @@ public class {{apiName}}Client implements AutoCloseable, {{apiName}}
         HandlerMapper mapper = handlerMap.get(handlerId);
         {{handler.name}} handler = ({{handler.name}})mapper.handler;
         {%- for parameter in handler.parameters %}
+        {%- if parameter is ArrayParameter %}
+        {{parameter.apiType|FormatBoxedType}}[] _{{parameter.name}} = new {{parameter.apiType|FormatBoxedType}}[buffer.readInt()];
+        if (_{{parameter.name}}.length > {{parameter.maxCount}}) {
+            throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+        }
+        for (int i = 0; i < _{{parameter.name}}.length; i++) {
+            _{{parameter.name}}[i] = {{pack.UnpackValue(parameter.apiType, parameter.name)}};
+        }
+        {%- else %}
         {{parameter.apiType|FormatType}} _{{parameter.name}} =
             {#- #} {{pack.UnpackValue(parameter.apiType, "_"+parameter.name)}};
+        {%- endif %}
         {%- endfor %}
 
         handler.handle(
