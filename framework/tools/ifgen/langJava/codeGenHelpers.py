@@ -87,7 +87,9 @@ def FormatType(context, apiType, qualifiedTypes=None):
 
 _BoxTypeMapping = {
     "boolean": "Boolean",
-    "double":  "Double"
+    "double":  "Double",
+    "byte":    "Byte",
+    "char":    "Character"
 }
 
 @contextfilter
@@ -103,6 +105,7 @@ _LiteralInitMapping = {
     "boolean": "false",
     "float": "0.0f",
     "double": "0.0d",
+    "byte": "'\u0000'",
     "char": "'\u0000'"
 }
 

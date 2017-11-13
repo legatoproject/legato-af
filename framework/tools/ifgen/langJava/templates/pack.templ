@@ -5,12 +5,14 @@
 -#}
 {%- set _getterMap = { "boolean": "buffer.readBool()",
                        "double": "buffer.readDouble()",
+                       "byte": "buffer.readByte()",
                        "String": "buffer.readString()",
                        "FileDescriptor": "buffer.getFileDescriptor()",
                        "Result": "Result.fromInt(buffer.readInt())",
                        "OnOff": "OnOff.fromInt(buffer.readInt())" } %}
 {%- set _setterMap = { "boolean":  "buffer.writeBool",
                        "double":  "buffer.writeDouble",
+                       "byte": "buffer.writeByte",
                        "BigInteger": "buffer.writeNumber",
                        "FileDescriptor":  "buffer.setFileDescriptor",
                        "Result":  "buffer.writeInt",
