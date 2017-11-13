@@ -254,6 +254,7 @@ void Testle_ecall_OperationMode
     le_result_t         res;
     le_ecall_OpMode_t   mode = LE_ECALL_NORMAL_MODE;
 
+    //! [OpModes]
     LE_ASSERT((res=le_ecall_ForceOnlyMode()) == LE_OK);
     LE_ASSERT((res=le_ecall_GetConfiguredOperationMode(&mode)) == LE_OK);
     LE_ASSERT(mode == LE_ECALL_ONLY_MODE);
@@ -265,6 +266,7 @@ void Testle_ecall_OperationMode
     LE_ASSERT((res=le_ecall_ExitOnlyMode()) == LE_OK);
     LE_ASSERT((res=le_ecall_GetConfiguredOperationMode(&mode)) == LE_OK);
     LE_ASSERT(mode == LE_ECALL_NORMAL_MODE);
+    //! [OpModes]
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -294,8 +296,10 @@ void Testle_ecall_ConfigSettings
     LE_ASSERT(0 == strncmp(psapNumber, "0102030405", strlen("0102030405")));
     LE_ASSERT(LE_OVERFLOW == le_ecall_GetPsapNumber(psapNumber, 1));
 
+    //! [TxMode]
     LE_ASSERT(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) == LE_OK);
     LE_ASSERT(le_ecall_GetMsdTxMode(&mode) == LE_OK);
+    //! [TxMode]
     LE_ASSERT(mode == LE_ECALL_TX_MODE_PUSH);
 
     //! [NadTime]
@@ -408,6 +412,7 @@ void Testle_ecall_EraGlonassSettings
 
     LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
 
+    //! [DialConfig]
     LE_ASSERT(le_ecall_SetEraGlonassManualDialAttempts(7) == LE_OK);
     LE_ASSERT(le_ecall_GetEraGlonassManualDialAttempts(&attempts) == LE_OK);
     LE_ASSERT(attempts == 7);
@@ -419,7 +424,9 @@ void Testle_ecall_EraGlonassSettings
     LE_ASSERT(le_ecall_SetEraGlonassDialDuration(240) == LE_OK);
     LE_ASSERT(le_ecall_GetEraGlonassDialDuration(&duration) == LE_OK);
     LE_ASSERT(duration == 240);
+    //! [DialConfig]
 
+    //! [OptData]
     /* Crash Severity configuration */
     LE_ASSERT(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0) == LE_OK);
     LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef) == LE_OK);
@@ -455,6 +462,7 @@ void Testle_ecall_EraGlonassSettings
         LE_ASSERT_OK(le_ecall_SetMsdEraGlonassCoordinateSystemType(testECallRef,
                                                  LE_ECALL_MSD_COORDINATE_SYSTEM_TYPE_WGS84));
     }
+    //! [OptData]
 
     le_ecall_Delete(testECallRef);
 }
@@ -471,24 +479,34 @@ void Testle_ecall_LoadMsd
 )
 {
     le_ecall_CallRef_t   testECallRef = 0x00;
-
+    uint8_t              exportMsd[LE_ECALL_MSD_MAX_LEN] = {0};
+    size_t               msdSize = 0;
     LE_INFO("Start Testle_ecall_LoadMsd");
 
     LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
 
+    //! [SetMsd]
     LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48898064, +2218092, 0) == LE_OK);
     LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef,511,511) == LE_OK);
     LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef,-512,-512) == LE_OK);
 
     LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_OK);
 
+    //! [ExportMsd]
+    LE_ASSERT_OK(le_ecall_ExportMsd(testECallRef, exportMsd, &msdSize));
+
     // Check LE_DUPLICATE on le_ecall_SetMsdPosition and le_ecall_SetMsdPassengersCount
     LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
+
+    LE_ASSERT(le_ecall_ExportMsd(testECallRef, exportMsd, &msdSize) == LE_DUPLICATE);
+    //! [ExportMsd]
+
     LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48070380, -11310000, 45) ==
                                                                                 LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef, 511, 511) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef, -512, -512) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_DUPLICATE);
+    //! [SetMsd]
     LE_ASSERT(le_ecall_ResetMsdEraGlonassCrashSeverity(testECallRef) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_SetMsdEraGlonassCrashSeverity(testECallRef, 0) == LE_DUPLICATE);
     LE_ASSERT(le_ecall_ResetMsdEraGlonassDiagnosticResult(testECallRef) == LE_DUPLICATE);
@@ -531,6 +549,7 @@ void Testle_ecall_StartManual
 
     LE_ASSERT(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) == LE_OK);
 
+    //! [EcallSession]
     LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
 
     LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
@@ -546,6 +565,7 @@ void Testle_ecall_StartManual
     LE_ASSERT(((state>=LE_ECALL_STATE_STARTED) && (state<=LE_ECALL_STATE_FAILED)));
 
     le_ecall_Delete(testECallRef);
+    //! [EcallSession]
     sleep(5);
 }
 

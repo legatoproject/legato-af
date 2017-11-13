@@ -1,0 +1,512 @@
+/** @page c_SDD_eCall eCall SDD
+
+@section eCall eCall
+
+@subsection Overview Overview
+Ecall is a technology initiative intended to bring rapid assistance to auto accidents.
+When a serious vehicle accident occurs, sensors automatically trigger an eCall. When activated,
+the in-vehicle system (IVS) establishes a 112-voice connection. At the same time,
+a digital "minimum set of data" (MSD) message is sent over the voice call using in-band modem
+signals. The MSD includes accident information like time, location, driving direction
+and vehicle description.
+
+@subsection le_ecall_operation Operation modes
+The LE_ECALL component offers interfaces for the Client Application to handle the different eCall
+operation modes. In eCall Only mode, the IVS does not register to the network beforehand, thus not
+giving any burden to the network. It does however listen to cells to be prepared for make an eCall.
+To allow callback after an eCall, it is stated that the IVS should stay registered on the network
+for a time interval determined by the NAD deregistration time setting. There are number of timers
+running on the IVS side. T9 and T10 are timers tracking these registration times.
+
+The modem can be configured to operate in three different operation modes:
+- le_ecall_ForceOnlyMode(): this function configures the eCall operation mode to eCall only.
+  At startup, the modem doesn't try to register on the Cellular network. This function forces the
+  modem to behave as eCall only mode whatever U/SIM operation mode. The change doesn't persist over
+  power cycles. This function can be called before making an eCall.
+
+- le_ecall_ForcePersistentOnlyMode(): Same as le_ecall_ForceOnlyMode(), but the change persists
+  over power cycles.
+
+- le_ecall_ExitOnlyMode(): this function exits from eCall Only mode. It configures the eCall
+  operation mode to Normal mode, the modem uses the default operation mode at power up (or after
+  U/SIM hotswap). The modem behaves following the U/SIM eCall operation mode; for example the
+  U/SIM can be configured only for eCall, or a combination of eCall and commercial service
+  provision.
+
+- le_ecall_GetConfiguredOperationMode(): this function allows the user to retrieve the configured
+  Operation mode.
+
+The configured operation mode can be:
+- @c LE_ECALL_NORMAL_MODE : normal mode. The modem behaves following the U/SIM eCall operation mode;
+                            for example the U/SIM can be configured only for eCall, or a combination
+                            of eCall and commercial service provision.
+- @c LE_ECALL_ONLY_MODE : eCall only mode. This mode is enabled following the U/SIM operation mode
+                          if U/SIM is eCall only sim or forced by application through the
+                          le_ecall_ForceOnlyMode() function.
+- @c LE_ECALL_FORCED_PERSISTENT_ONLY_MODE : persistent eCall only mode.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" OpModes
+
+@subsection le_ecall_session eCall Session
+An eCall session is started by creating an eCall object with the le_ecall_Create() function.
+The eCall session can then be stopped with le_ecall_End().
+
+The eCall type and the kind of activation are specified using different functions to start the
+eCall session:
+- le_ecall_StartManual(): initiate a manual eCall session (triggered by a passenger)
+- le_ecall_StartAutomatic(): initiate an automatic eCall session (automatically triggered by
+the IVS in case of accident)
+- le_ecall_StartTest(): initiate a test eCall session (to test the communication between the
+IVS and the PSAP (Public Safety Answering Point, emergency operator))
+
+When the eCall object is no longer needed, call le_ecall_Delete() to free all allocated resources
+associated with the object.
+
+The current state of an eCall session can be queried using le_ecall_GetState(). Alternatively,
+an application can register a handler be notified when the session state changes. The handler can
+be managed using le_ecall_AddStateChangeHandler() and le_ecall_RemoveStateChangeHandler().
+
+An application can also call le_ecall_GetTerminationReason() to retrieve the reason of the call
+termination when call state is LE_ECALL_STATE_DISCONNECTED and
+le_ecall_GetPlatformSpecificTerminationCode() to get platform specific termination code.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" EcallSession
+
+@subsection le_ecall_msd Minimum Set of Data (MSD)
+The dynamic values of the MSD can be set with:
+- le_ecall_SetMsdPosition() sets the position of the vehicle.
+- le_ecall_SetMsdPositionN1() sets the first delta position of the vehicle.
+- le_ecall_SetMsdPositionN2() sets the second delta position of the vehicle.
+- le_ecall_SetMsdPassengersCount() sets the number of passengers.
+
+The MSD is automatically encoded with the values previously set with le_ecall_SetMsdXxx() APIs.
+
+@warning Those functions return a LE_DUPLICATE error when the MSD has been already imported with
+le_ecall_ImportMsd() function.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" SetMsd
+
+The MSD transmission mode can be set or get with:
+ - le_ecall_SetMsdTxMode()
+ - le_ecall_GetMsdTxMode()
+
+The transmission mode can be:
+- @c LE_ECALL_TX_MODE_PUSH : the MSD is pushed by the IVS
+- @c LE_ECALL_TX_MODE_PULL : the MSD is sent when requested by the PSAP
+
+Legato sets the correct transmission mode during eCall start and redialing based on eCall standard.
+There is no need to call these APIs explicitly.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" TxMode
+
+It's possible to import a prepared MSD using the le_ecall_ImportMsd() function.
+The prepared MSD must answer the requirements described in the "EN 15722:2013" publication (this
+publication has been prepared by Technical Committee CEN/TC 278 “Intelligent Transport Systems").
+
+@warning The imported MSD doesn't take into account the values provided by the
+le_ecall_SetMsdXxx() functions. It overwrites any previous imported MSD or encoded MSD.
+
+@warning The imported MSD overwrites the control flags (automaticActivation and testCall) set by
+le_ecall_StartXxx() functions (Manual, Automatic, Test). The User App is in charge of their
+correct settings.
+
+The encoded MSD can be retrieved with le_ecall_ExportMsd() function. It also exports the optional
+additional data of ERA-Glonass. le_ecall_ExportMsd() API returns LE_DUPLICATE if MSD is already
+imported using le_ecall_ImportMsd() function.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" ExportMsd
+
+@note The User app must perform the MSD transmission by calling le_ecall_SendMsd() when the
+LE_ECALL_STATE_PSAP_START_IND_RECEIVED event is received.
+The MSD can be updated before calling le_ecall_SendMsd(), using the e_ecall_ImportMsd() function
+or the le_ecall_SetMsdXxx() functions.
+
+Following diagram shows the eCall service state machine:
+
+@startuml{le_eCall_state_machine.png}
+participant Client_application
+participant Legato_eCall_service
+participant Legato_Audio_service
+participant Network
+
+Client_application -> Legato_eCall_service:le_ecall_Create()
+Client_application -> Legato_eCall_service:le_ecall_AddStateChangeHandler()
+Client_application -> Legato_eCall_service:le_ecall_SetPsapNumber()
+Client_application -> Legato_eCall_service:le_ecall_SetMsdPosition()
+Client_application -> Legato_eCall_service:le_ecall_SetMsdPassengersCount()
+Client_application -> Legato_Audio_service:MyConnectAndPlay()
+Client_application -> Legato_eCall_service:le_ecall_StartTest()
+Legato_eCall_service -> Network: Launch eCall
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Network -> Legato_eCall_service:Call connected
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_CONNECTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_WAITING_PSAP_START_IND
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_PSAP_START_IND_RECEIVED
+Client_application -> Legato_eCall_service:le_ecall_SendMsd()
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_MSD_TX_STARTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_LLNACK_RECEIVED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_LLNACK_RECEIVED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_MSD_TX_COMPLETED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_ALACK_RECEIVED_POSITIVE
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_COMPLETED
+Client_application -> Legato_Audio_service:MyOpenVoice()
+Network -> Legato_eCall_service:Call Ended
+Legato_Audio_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Client_application -> Legato_Audio_service:MyCloseAudio()
+Client_application -> Legato_eCall_service:le_ecall_End()
+Client_application -> Legato_eCall_service:le_ecall_Delete()
+@enduml
+
+@subsection le_ecall_eraglonass ERA-GLONASS compliancy
+
+To perform an emergency call following the ERA-GLONASS requirements, the 'systemStandard' entry
+of the configuration database must be set to 'ERA-GLONASS'.
+
+Moreover, the User can set some specific configuration settings in accordance with the PSAP
+configuration:
+
+- le_ecall_SetEraGlonassManualDialAttempts(): set the MANUAL_DIAL_ATTEMPTS value. If a dial
+  attempt under manual emergency call initiation failed, it should be repeated maximally
+  ECALL_MANUAL_DIAL_ATTEMPTS-1 times within the maximal time limit of ECALL_DIAL_DURATION.
+  The default value is 10.
+  Redial attempts stop once the call has been cleared down correctly, or if counter / timer
+  reached their limits.
+  Available for both manual and test modes.
+- le_ecall_SetEraGlonassAutoDialAttempts(): set the AUTO_DIAL_ATTEMPTS value. If a dial attempt
+  under automatic emergency call initiation failed, it should be repeated maximally
+  ECALL_AUTO_DIAL_ATTEMPTS-1 times within the maximal time limit of ECALL_DIAL_DURATION.
+  The default value is 10.
+  Redial attempts stop once the call has been cleared down correctly, or if counter / timer
+  reached their limits.
+- le_ecall_SetEraGlonassDialDuration(): set the ECALL_DIAL_DURATION time. It is the maximum time
+  the IVS have to connect the emergency call to the PSAP, including all redial attempts.
+  If the call is not connected within this time (or ManualDialAttempts/AutoDialAttempts dial
+  attempts), it will stop.
+
+The following getter functions let you retrieve the configuration settings values:
+
+- le_ecall_GetEraGlonassManualDialAttempts(): retrieves the MANUAL_DIAL_ATTEMPTS value.
+- le_ecall_GetEraGlonassAutoDialAttempts(): retrieves the AUTO_DIAL_ATTEMPTS value.
+- le_ecall_GetEraGlonassDialDuration(): retrieves the ECALL_DIAL_DURATION time.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" DialConfig
+
+@section le_ecall_eraGlonassData ERA-GLONASS MSD additional data
+
+ERA-GLONASS additional data are optional and provided in the MSD message if any. They are located
+in MSD data block number 12 as optional additional data. ERA-GLONASS additional data is encoded
+using the OID version "1.4.1" for MSD version 1 and the OID version "1.4.2" for MSD version 2.
+This was assigned to ERA-GLONASS optional additional data by CEN.
+
+ERA-GLONASS MSD additional data for MSD version 1 describes:
+- The crash severity (Accident Severity Index - ASI15)
+- The diagnostic result
+- The crash information
+
+ERA-GLONASS MSD additional data for MSD version 2 describes:
+- The crash severity (Accident Severity Index - ASI15)
+- The diagnostic result
+- The crash information
+- The coordinate system type
+
+ERA-GLONASS MSD additional data can be specified through the following functions:
+- le_ecall_SetMsdEraGlonassCrashSeverity().
+- le_ecall_ResetMsdEraGlonassCrashSeverity().
+- le_ecall_SetMsdEraGlonassDiagnosticResult().
+- le_ecall_ResetMsdEraGlonassDiagnosticResult().
+- le_ecall_SetMsdEraGlonassCrashInfo().
+- le_ecall_ResetMsdEraGlonassCrashInfo().
+- le_ecall_SetMsdEraGlonassCoordinateSystemType().
+- le_ecall_ResetMsdEraGlonassCoordinateSystemType().
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" OptData
+
+@subsection le_ecall_redial Redial Management
+
+When an eCall is disconnected, IVS might do a redial depending on several aspects such as number
+of dial attempts completed, dial duration elapsed, MSD transmission status and so on.
+The \b LE_ECALL_STATE_END_OF_REDIAL_PERIOD state event notifies the User of the redial period
+end. This part describes how the redial works for the PAN-EU and ERA-GLONASS eCall standards.
+
+ERA-GLONASS redialing:
+ERA GLONASS has a restriction in the specification of either dial attempts of 10 tries
+(default value) or dial duration of 5 minutes (default value), whatever comes first. The timer,
+with default value of 5 minutes, will be referred to as ECALL_DIAL_DURATION. The value is set by
+SetEraGlonassDialDuration(). The counter, with default value of 10, which is called either
+ECALL_AUTO_DIAL_ATTEMPTS or ECALL_MANUAL_DIAL_ATTEMPTS will be referred to as “ECALL*DIAL_ATTEMPTS”
+from now on. These default values can be changed via SetEraGlonassManualDialAttempts() or
+SetEraGlonassAutoDialAttempts().
+
+The timer and redial counter is implemented as follows:
+Every time a call is triggered, the ECALL_DIAL_DURATION (5 minutes by default) is started and call
+attempts are performed. If ECALL_DIAL_DURATION time expires, or all ECALL_*DIAL_ATTEMPS are
+performed (whatever happens first), no more attemps will be performed and ECALL_DIAL_DURATION timer
+will be stopped.
+
+If the call connects the timer is stopped and the attempts counter is reset. If a connected
+call is cut it will start a new redial attempt. For this redial attempt a new DIAL_DURATION timer
+period of 5 min and the attempts counter is again set to ECALL*DIAL_ATTEMPTS, default 10, tries.
+In order not to exhaust the ECALL*DIAL_ATTEMPTS times in case of bad radio conditions, the retries
+are spaced out in time. The default is a 30 seconds interval between each start of each call
+attempt. It can be changed via le_ecall_SetIntervalBetweenDialAttempts().
+
+If a call attempt takes longer than the IntervalBetweenDialAttempts before failing, it will start
+directly after 1 second. When the redial is initiated because of a call drop then it pauses only
+1 second to allow the network stack to get ready before starting a new dial attempt.
+
+@note - If call drop is produced before ALACK reception then IVS radials in PUSH mode.
+      - If call drops with abnormal cause is produced after ALACK then IVS redials in PULL mode.
+
+Following diagram shows redial mechanism ERA-Glonass eCall if call fails:
+
+@startuml{EraGlonass_eCall_and_callFails.png}
+participant Client_application
+participant Legato_eCall_service
+participant Network
+
+Client_application -> Legato_eCall_service:le_ecall_Create()
+Client_application -> Legato_eCall_service:le_ecall_AddStateChangeHandler()
+Client_application -> Legato_eCall_service:[Set parameters]
+Client_application -> Legato_eCall_service:le_ecall_StartTest()
+Legato_eCall_service -> Network: Launch eCall
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Network -> Legato_eCall_service:Call attempt failed, because busy
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Legato_eCall_service -> Network:Redial #1
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Legato_eCall_service -> Network:Redial #2
+Legato_eCall_service --> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service --> Network:Redial #3 ... #9
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Legato_eCall_service -> Network:Redial #10(last)
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_END_OF_REDIAL_PERIOD
+Network -> Legato_eCall_service:Call attempt failed, because busy
+Legato_eCall_service->Legato_eCall_service:Stops redial attempt
+@enduml
+
+PAN EU redialing:
+The PAN European redialing has different restrictions. Before the call is connected the first time,
+there is no formal restriction to the number of retries. It is up to the app to implement the
+retry limit as there is no formal restriction.
+
+@note If first connection is unsuccessful IVS redials until find the network coverage.
+
+If a call has been connected once before, and the MSD has not yet been sent, it has 120 seconds
+to reconnect the call. The 120 seconds are counted from the time the connected call was
+disconnected. This is because a PAN European eCall PSAP should call back after 3 minutes.
+
+If the MSD has been successfully sent, there will be no redials from the IVS if the call
+is disconnected.
+
+The retries are spaced out in time. The default is a 30 seconds interval between each start of each
+call attempt. It can be changed via le_ecall_SetIntervalBetweenDialAttempts(). If a call attempt
+takes longer than 30 seconds before failing, it will start directly after 1 second.
+
+Following diagram shows redial mechanism for PAN-EU ecall if call fails:
+
+@startuml{PanEU_eCall_and_callFails.png}
+participant Client_application
+participant Legato_eCall_service
+participant Network
+
+Client_application -> Legato_eCall_service:le_ecall_Create()
+Client_application -> Legato_eCall_service:le_ecall_AddStateChangeHandler()
+Client_application -> Legato_eCall_service:[Set parameters]
+Client_application -> Legato_eCall_service:le_ecall_StartTest()
+Legato_eCall_service -> Network: Launch eCall
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Network -> Legato_eCall_service:Call attempt failed, because busy
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service -> Network:Redial #1
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service -> Network:Redial #2
+Legato_eCall_service --> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service --> Network:Redial ...
+Legato_eCall_service --> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service --> Network:Redial ...
+Legato_eCall_service --> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service --> Network:Redial ...
+@enduml
+
+Following diagram shows redial mechanism for PAN-EU ecall if call connects and fails:
+
+@startuml{PanEU_eCallConnects_thenFails.png}
+participant Client_application
+participant Legato_eCall_service
+participant Network
+
+Client_application -> Legato_eCall_service:le_ecall_Create()
+Client_application -> Legato_eCall_service:le_ecall_AddStateChangeHandler()
+Client_application -> Legato_eCall_service:[Set parameters]
+Client_application -> Legato_eCall_service:le_ecall_StartTest()
+Legato_eCall_service -> Network: Launch eCall
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Network -> Legato_eCall_service:Call connected
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_CONNECTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Legato_eCall_service -> Network:Redial #1
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_STARTED
+Legato_eCall_service --> Network:Redial
+Legato_eCall_service --> Client_application:LE_ECALL_STATE_DISCONNECTED
+Legato_eCall_service --> Network:Redial (120s limit to reconnect, after connected call failure)
+Legato_eCall_service -> Client_application:LE_ECALL_STATE_END_OF_REDIAL_PERIOD
+Network -> Legato_eCall_service:Call attempt failed, because busy
+Legato_eCall_service->Legato_eCall_service:Stops redial attempt
+@enduml
+
+@section le_ecall_configuration eCall configuration
+
+Some parameters used by the eCall service can be configured through APIs. This includes the
+number to dial, the deregistration time, the redial interval, and some MSD information.
+
+@subsection le_ecall_configuration_callNumber eCall number
+
+By default, the number to dial is read from the FDN/SDN (Fixed Dialling Numbers/Service
+Dialling Numbers) of the U/SIM, depending upon the eCall operating mode.
+
+However, the PSAP phone number can be queried and set with:
+ - le_ecall_GetPsapNumber()
+ - le_ecall_SetPsapNumber()
+
+For eCall Test call, if USIM is an eCall Only, the API le_ecall_UseUSimNumbers() shall be used
+in order to dials first index stored into FDN/SDN directory. It is possible to use
+le_ecall_SetPsapNumber() if the PSAP number is the same as the number stored into first index of
+FDN directory.
+If USIM is not eCall Only but_le_ecall_ForceOnlyMode is forced to simulate eCallOnly behavior
+the API le_ecall_UseUSimNumbers() may be used. In this case, the PSAP number should be stored into
+the first index of FDN directory and the facility lock on FDN should be activated.
+PSAP number shall be defined before to start eCall Test. It is not possible to set it when eCall
+session is on progress.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" PsapNumber
+
+@note That PSAP number is not applied to a manual or an automatically initiated eCall. For these
+      modes, an emergency call is launched.
+
+@warning These two functions don't modify or read the U/SIM content.
+
+le_ecall_UseUSimNumbers() API can be called to request the modem to read the number to
+dial from the FDN/SDN of the U/SIM, depending upon the eCall operating mode.
+
+@subsection le_ecall_configuration_nad NAD deregistration time
+
+The NAD (Network Access Device, i.e. the Modem) deregistration time value can be set with the
+le_ecall_SetNadDeregistrationTime() API and retrieved with the
+le_ecall_GetNadDeregistrationTime() API.
+
+1. PAN-EUROPEAN standard (<em>EN 16062</em>) defines the T9 and T10 timers. After an eCall
+   clear-down, an <b>eCall only</b> IVS shall:
+   - Remain registered on the network for at least the duration of T9, which is set to
+     one hour by default.
+   - Deregister from the network after the expiration of T10, which duration is set to
+     twelve hours by default.
+2. ERA-GLONASS standard (<em>ENG_GOST_R_54620</em>) defines the NAD_DEREGISTRATION_TIME
+   with a minimal value of two hours and a maximum value of twelve hours. After an eCall
+   clear-down, the IVS shall remain registered on the network and deregister from the network
+   after the expiration of the NAD_DEREGISTRATION_TIME.
+
+The le_ecall_SetNadDeregistrationTime() API is used to set the duration of a
+<em>deregistration timer</em>: after an eCall clear-down, the IVS remains registered on the
+network for the duration of this timer and then automatically deregisters from the network upon
+its expiration.
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" NadTime
+
+@subsubsection le_ecall_configuration_nad_panEU PAN-EUROPEAN standard
+As the T9 timer duration is fixed to one hour, the notified events depend on the
+<em>deregistration timer</em> duration:
+ - If its duration is set to one hour, the @ref LE_ECALL_STATE_TIMEOUT_T9 event will be reported.
+   In this case deregistration is automatically performed when the T9 timeout indication is
+   received.
+ - If its duration is set to more than one hour and less than twelve hours then the
+   @ref LE_ECALL_STATE_TIMEOUT_T10 event will be reported when the <em>deregistration timer</em>
+   expires. The T9 timeout (@ref LE_ECALL_STATE_TIMEOUT_T9 event) will not be notified.
+   In this case deregistration is automatically performed when the <em>deregistration timer</em>
+   expires, provided that the application didn't already deregister from the network before.
+
+@subsubsection le_ecall_configuration_nad_eraGlonass ERA-GLONASS standard
+ - The @ref LE_ECALL_STATE_TIMEOUT_T9 event is not reported as it is not defined in the
+   ERA-GLONASS standard.
+ - The NAD_DEREGISTRATION_TIME default value is eight hours, as defined by
+   <em>GOST_R 54620 Table A.1</em>. It can be changed with le_ecall_SetNadDeregistrationTime()
+   and the value must be set between two and twelve hours.
+ - The @ref LE_ECALL_STATE_TIMEOUT_T10 event will be reported when the NAD_DEREGISTRATION_TIME
+   expires. In this case deregistration is automatically performed when the timer expires.
+
+@subsubsection le_ecall_configuration_nad_timerValue Timer value
+
+Although the time is set in minutes the value is taken in hours, for example:
+- from 1 to 60 minutes -> 1 hour
+- from 61 to 120 minutes -> 2 hours, etc.
+
+Example: if @c deregTime parameter unit is minutes, the effective time is:
+@code ECallConfiguration.nad_deregistration_time = (deregTime+59)/60; @endcode
+
+After termination of an emergency call the in-vehicle system remains registered on the network
+for the period of time, defined by the parameter NAD_DEREGISTRATION_TIME.
+
+@warning Be sure to check the possible values of NAD_DEREGISTRATION_TIME for your specific
+platform.
+
+@subsection le_ecall_configuration_redialInterval Redial interval
+
+The minimum interval time value between dial attempts can be set or get with:
+ - le_ecall_SetIntervalBetweenDialAttempts()
+ - le_ecall_GetIntervalBetweenDialAttempts()
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" DialTimer
+
+The default value is set to 30 seconds.
+
+The time is counted from the start of the first dial attempt.
+
+If a call attempt takes longer than the IntervalBetweenDialAttempts before failing, it will start
+directly after 1 second. When the redial is initiated because of a call drop then it pauses only
+1 second to allow the network stack to get ready before starting a new dial attempt.
+
+If less time than the IntervalBetweenDialAttempts has expired during the dial attempt, it will wait
+for time the IntervalBetweenDialAttempts seconds to allow hangup before redialing.
+
+le_ecall_SetIntervalBetweenDialAttempts() is available for both manual and test modes.
+
+@subsection le_ecall_configuration_misc Miscellaneous
+
+The preferred system standard defaults to PAN-EUROPEAN
+It can be set an gotten with the following functions:
+- le_ecall_SetSystemStandard()
+- le_ecall_GetSystemStandard()
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" Standard
+
+The MSD version can be set and and gotten with the following functions:
+- le_ecall_SetMsdVersion()
+- le_ecall_GetMsdVersion()
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" MsdVersion
+
+The vehicle type can be set and gotten with the following functions:
+- le_ecall_SetVehicleType()
+- le_ecall_GetVehicleType()
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" Vehicle
+
+The vehicle identifier can be set and gotten with the following functions:
+- le_ecall_SetVIN()
+- le_ecall_GetVIN()
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" VIN
+
+The propulsion type can be set and gotten with the following functions:
+- le_ecall_SetPropulsionType()
+- le_ecall_GetPropulsionType()
+
+@snippet "apps/test/modemServices/ecall/ecallIntegrationTest/eCallTest/le_ecallTest.c" Propulsion
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
