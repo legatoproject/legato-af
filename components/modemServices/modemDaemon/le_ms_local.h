@@ -18,6 +18,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * By default eCall is disabled
+ */
+//--------------------------------------------------------------------------------------------------
+#ifndef INCLUDE_ECALL
+#define INCLUDE_ECALL 0
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Enum for all watchdogs used by modem services
  */
 //--------------------------------------------------------------------------------------------------
@@ -25,10 +34,12 @@ typedef enum
 {
     MS_WDOG_MAIN_LOOP,
     MS_WDOG_MDC_LOOP,
-    MS_WDOG_ECALL_LOOP,
     MS_WDOG_SMS_LOOP,
     MS_WDOG_MRC_LOOP,
     MS_WDOG_RIPIN_LOOP,
+#if INCLUDE_ECALL
+    MS_WDOG_ECALL_LOOP,
+#endif
     MS_WDOG_COUNT
 }
 MS_Watchdog_t;

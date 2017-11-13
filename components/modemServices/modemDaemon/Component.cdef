@@ -58,6 +58,10 @@ sources:
 
 cflags:
 {
+#if ${INCLUDE_ECALL} = ""
+#else
+    -DINCLUDE_ECALL=${INCLUDE_ECALL}
+#endif
     -I$CURDIR
     -I$LEGATO_ROOT/components/modemServices/platformAdaptor/inc
     -I$LEGATO_ROOT/components/cfgEntries
