@@ -108,6 +108,7 @@ FUNCTION Device Request
  *      - LE_OK            Function succeeded.
  *      - LE_FAULT         Function failed.
  *      - LE_BAD_PARAMETER Invalid parameter.
+ *      - LE_UNAVAILABLE   JSON parsing is not completed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetDataMode
@@ -139,6 +140,7 @@ FUNCTION le_result_t SetCommandMode
  *      - LE_OK            Function succeeded.
  *      - LE_FAULT         Function failed.
  *      - LE_BAD_PARAMETER Invalid parameter.
+ *      - LE_UNAVAILABLE   JSON parsing is not completed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t Release

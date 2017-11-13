@@ -24,3 +24,12 @@ extern:
 {
     portDaemon.portDaemon.le_port
 }
+
+bundles:
+{
+    file:
+    {
+        [r] $LEGATO_ROOT/components/portService/portDaemon/ConfigurationFile.json    /usr/local/share/PortConfigurationFile.json
+    }
+}
+

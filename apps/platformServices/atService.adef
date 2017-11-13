@@ -4,7 +4,6 @@ executables:
 {
     atClientDaemon = ( $LEGATO_ROOT/components/atServices/atClient )
     atServerDaemon = ( $LEGATO_ROOT/components/atServices/atServer )
-    atBinderDaemon = ( $LEGATO_ROOT/components/atServices/atBinder )
 }
 
 processes:
@@ -13,7 +12,6 @@ processes:
     {
         (atClientDaemon)
         (atServerDaemon)
-        (atBinderDaemon)
     }
     maxFileBytes: 5000K
     faultAction: restart
@@ -28,8 +26,6 @@ bindings:
 {
     atServerDaemon.atServer.le_atClient -> atClientDaemon.atClient.le_atClient
     atServerDaemon.watchdogChain.le_wdog -> <root>.le_wdog
-    atBinderDaemon.atBinder.le_atServer -> atServerDaemon.atServer.le_atServer
-    atBinderDaemon.watchdogChain.le_wdog -> <root>.le_wdog
 }
 
 extern:
