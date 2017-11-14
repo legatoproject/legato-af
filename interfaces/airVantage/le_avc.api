@@ -503,15 +503,19 @@ ENUM Status
     UNINSTALL_IN_PROGRESS,  ///< Uninstall in progress
     UNINSTALL_COMPLETE,     ///< App has been successfully uninstalled
     UNINSTALL_FAILED,       ///< An error occurred uninstalling the update
-    SESSION_STARTED,        ///< Session with AV server started
-    SESSION_STOPPED,        ///< Session with AV server stopped
+    SESSION_STARTED,        ///< Session with AirVantage device management server started
+    SESSION_BS_STARTED,     ///< Session with bootstrap server started
+    SESSION_STOPPED,        ///< Session with AirVantage device management server or bootstrap
+                            ///< server stopped
     REBOOT_PENDING,         ///< Device reboot is pending
     CONNECTION_PENDING,     ///< Connection to the server is required. This is necessary when
                             ///< firmware package is installed (after a platform reboot). Also
                             ///< necessary after software update if device reboots(or session stops)
                             ///< in the middle of software update.
-    AUTH_STARTED,           ///< Authentication with AV server started
-    AUTH_FAILED,            ///< Authentication with AV server failed
+    AUTH_STARTED,           ///< Authentication with AirVantage device management server or
+                            ///< bootstrap server started
+    AUTH_FAILED,            ///< Authentication with AirVantage device management server or
+                            ///< bootstrap server failed
     CERTIFICATION_OK,       ///< Package is certified sent by a trusted server
     CERTIFICATION_KO        ///< Package is not certified sent by a trusted server
 };
