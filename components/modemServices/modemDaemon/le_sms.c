@@ -1669,13 +1669,6 @@ static void NewSmsHandler
         }
     }
 
-    // If no client session are subscribed for handler then do not decode the message.
-    if (false == handlerPresent)
-    {
-        LE_DEBUG("No client sessions are subscribed for handler. So do not decode the message");
-        return;
-    }
-
     LE_DEBUG("Handler Function called with message ID %d with protocol %d, Storage %d",
              newMessageIndicationPtr->msgIndex,
              newMessageIndicationPtr->protocol,
@@ -1767,6 +1760,14 @@ static void NewSmsHandler
         {
             LE_ERROR("Unexpected message type %d received", newSmsMsgObjPtr->type);
         }
+    }
+
+    // If no client sessions are subscribed for handler then free memory and return
+    if (false == handlerPresent)
+    {
+        LE_DEBUG("No client sessions are subscribed for handler.");
+        le_mem_Release(newSmsMsgObjPtr);
+        return;
     }
 
     // Notify all the registered client's handlers with own reference.
