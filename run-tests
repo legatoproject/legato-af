@@ -1,4 +1,74 @@
 #!/bin/bash
+copyright="
+Copyright (C) Sierra Wireless Inc.
+"
+
+. "$(dirname "${BASH_SOURCE[0]}")/framework/tools/scripts/shlib"
+
+help_usage=(
+"CMD <ARGS>"
+)
+
+help_short_desc="Build and run Legato unit-tests"
+
+help_long_description=(
+"$help_short_desc"
+""
+"CMD must be one of the following options:"
+" - host-ut:"
+"       build and run unit-tests on the local machine."
+"       Uses 'tests_localhost' make target."
+"       No extra arguments are needed."
+""
+" - run-host-ut:"
+"       use an existing build to execute the 'running' part of 'host-ut'."
+""
+" - target-ut:"
+"       build and run unit-tests for a specific target."
+"       Uses the 'tests_<target>' make target (e.g.: 'tests_wp76xx' or 'tests_wp85')."
+"       The following env. variables must be set before running this script:"
+"       - DEST_IP: IP of the device to test"
+"       - TARGET_TYPE: Type of the device to test (e.g.: 'wp76xx' or 'wp85')"
+""
+" - run-target-ut:"
+"       use an existing build to execute the 'running' part of 'target-ut'."
+""
+" - virt-target-ut:"
+"       similar to target-ut, but instantiate and run tests on a QEmu-based virtual"
+"       platform in a Docker environment."
+"       DEST_IP and TARGET_TYPE variables are not necessary."
+"       VIRT_TARGET_ARCH can be declared as to set the CPU architecture to emulate."
+""
+" - run-virt-target-ut:"
+"       use an existing build to execute the 'running' part of 'virt-target-ut'."
+""
+" - target-clean-coverage:"
+"       removes code coverage data stored on a target."
+"       IP must be provided as parameter, e.g.:"
+"        ./run-tests target-clean-coverage 192.168.2.2"
+""
+" - target-get-coverage:"
+"       fetches code coverage data stored on a target."
+"       Target type and IP must be provided as parameters."
+"       Coverage data is stored in build/$$target_type/coverage/raw/"
+"       e.g.:"
+"        ./run-tests target-get-coverage wp76xx 192.168.2.2"
+"       retrieves coverage data from the device and stores it in"
+"       'build/wp76xx/coverage/raw/'."
+""
+" - report-coverage:"
+"       generates code coverage report."
+"       Target type must be provided as parameter, e.g.:"
+"        ./run-tests report-coverage wp76xx"
+"       generates a report in build/wp76xx/coverage/html/ using"
+"       data stored in build/wp76xx/coverage/raw/."
+""
+" - dev-trial:"
+"       build and run unit-tests for localhost' and 'virt' targets."
+""
+" - quick-test:"
+"       quick check, at the moment an alias to 'host-ut'."
+)
 
 SOURCEDIR=$PWD
 BUILDDIR_BASE=$PWD/build
@@ -465,9 +535,9 @@ function TargetUnitTest()
     local test_ret=$?
 
     if [ $test_ret -ne 0 ]; then
-        message $COLOR_ERROR "Tests failed"
+        message $COLOR_ERROR "Target tests failed"
     else
-        message $COLOR_PASS "Tests OK"
+        message $COLOR_PASS "Target tests OK"
     fi
 
     if [[ "$TEST_COVERAGE" == "1" ]]; then
@@ -476,6 +546,8 @@ function TargetUnitTest()
 
     cd $SOURCEDIR
     CheckRet
+
+    return $test_ret
 }
 
 function HostUnitTest()
@@ -514,13 +586,22 @@ function HostUnitTest()
         --no-compress-output \
         --timeout $UT_TIMEOUT \
         -VV
-    CheckRet
+    local test_ret=$?
+
+    if [ $test_ret -ne 0 ]; then
+        message $COLOR_ERROR "Host tests failed"
+    else
+        message $COLOR_PASS "Host tests OK"
+    fi
+
     CheckDaemons
 
     StopDaemons
 
     cd $SOURCEDIR
     CheckRet
+
+    return $test_ret
 }
 
 function Build()
@@ -590,7 +671,11 @@ function Job_HostUnitTest()
         Build $TARGET_TYPE
     fi
     HostUnitTest
+    local test_ret=$?
+
     GenerateReport $TARGET_TYPE
+
+    Exit $test_ret
 }
 
 function Job_TargetUnitTest()
@@ -608,7 +693,11 @@ function Job_TargetUnitTest()
         Build $TARGET_TYPE
     fi
     TargetUnitTest
+    local test_ret=$?
+
     GenerateReport $TARGET_TYPE
+
+    Exit $test_ret
 }
 
 function Job_VirtualTargetUnitTest()
@@ -629,7 +718,11 @@ function Job_VirtualTargetUnitTest()
     fi
     StartVirtualTarget
     TargetUnitTest
+    local test_ret=$?
+
     GenerateReport $TARGET_TYPE
+
+    Exit $test_ret
 }
 
 function Manual_DeveloperPrePushTrial()
@@ -692,6 +785,8 @@ function Job_GenerateReport()
     GenerateReport $target
 }
 
+CheckForHelp $1
+
 message $COLOR_INFO "== Task: '$1' ==\n"
 
 if [ -e "$SOURCEDIR/bin/configlegatoenv" ]; then
@@ -699,7 +794,7 @@ if [ -e "$SOURCEDIR/bin/configlegatoenv" ]; then
 fi
 
 case "$1" in
-host-ut)
+host-ut | quick-test)
     Job_HostUnitTest true
     ;;
 run-host-ut)
@@ -728,11 +823,6 @@ report-coverage)
     ;;
 dev-trial)
     Manual_DeveloperPrePushTrial
-    ;;
-quick-test)
-    Build "localhost"
-    HostUnitTest
-    GenerateReport "localhost"
     ;;
 *)
     echo "Invalid argument: '$1'"
