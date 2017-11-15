@@ -39,7 +39,7 @@
 {{define.comment|FormatHeaderComment}}
 //--------------------------------------------------------------------------------------------------
 {%- if define.value is string %}
-#define {{apiName|upper}}_{{define.name}} "{{define.value}}"
+#define {{apiName|upper}}_{{define.name}} "{{define.value|EscapeString}}"
 {%- else %}
 #define {{apiName|upper}}_{{define.name}} {{define.value}}
 {%- endif %}
