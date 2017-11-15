@@ -321,12 +321,19 @@ static void DestroyPlayThread
 
     LE_INFO("DestroyPlayThread playDone %d PlayInLoop %d", threadCtxPtr->playDone, PlayInLoop);
 
-    if( threadCtxPtr->playDone && PlayInLoop )
+    if (RecPbThreadRef != NULL)
     {
-        le_event_QueueFunctionToThread(threadCtxPtr->mainThreadRef,
-                                        PlaySamples,
-                                        contextPtr,
-                                        NULL);
+        le_thread_Cancel(RecPbThreadRef);
+        RecPbThreadRef = NULL;
+
+        // Restart in case of looping playback
+        if (threadCtxPtr->playDone && PlayInLoop)
+        {
+            le_event_QueueFunctionToThread(threadCtxPtr->mainThreadRef,
+                                           PlaySamples,
+                                           contextPtr,
+                                           NULL);
+        }
     }
 }
 
