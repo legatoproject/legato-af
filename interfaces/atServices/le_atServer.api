@@ -82,10 +82,10 @@
  *
  * @section atServer_binding Device Binding
  *
- * le_atServer_Start() must be called to bind the file descriptor of the device with the AT commands
+ * le_atServer_Open() must be called to bind the file descriptor of the device with the AT commands
  * server. Note that a socket can also be bound.
  * Multiple devices can be bound.
- * A file descriptor can be unbound using le_atServer_Stop().
+ * A file descriptor can be unbound using le_atServer_Close().
  *
  * The server can be suspended using le_atServer_Suspend() in order to use the
  * opened fd for other purposes like starting a PPP service on the opened fd.
@@ -104,14 +104,18 @@
  * @section atServer_handler Handler
  *
  * To handle the AT command, the application has to subscribe a handler using
- * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().<br>
+ * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().
+ *
  * The called handler (le_atServer_CommandHandlerRef_t prototype) can use
- * le_atServer_GetCommandName() to retrieve the received AT command string.<br>
- * The device used to execute the AT command can be retrieve thanks to le_atServer_GetDevice().<br>
+ * le_atServer_GetCommandName() to retrieve the received AT command string.
+ *
+ * The device used to execute the AT command can be retrieve thanks to le_atServer_GetDevice().
+ *
  * It can also call le_atServer_GetParameter() to retrieve parameters of the AT command. This
  * function gets the string sending through the AT command. If the parameter was sent between
  * quotes, the quotes are removed. This API can be used for both formats:
- * - In case of a basic format command, if exists, the parameter can be retrieved at the index 0.<br>
+ * - In case of a basic format command, if exists, the parameter can be retrieved at the index 0.
+ *
  * For S command specific format (ATS<parameter_number>=\<value>), the <parameter_number> is
  * retrieved at the index 0, the \<value> parameter at the index 1.
  *
@@ -171,7 +175,8 @@
  * application using le_atServer_SendUnsolicitedResponse().
  *
  * This response is sent when no AT command is being processing on the device (i.e. unsolicited
- * response is sent between the latest final response and the next reception of an AT command).<br>
+ * response is sent between the latest final response and the next reception of an AT command).
+ *
  * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
  * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
  * sends its final response).
@@ -224,9 +229,23 @@
  * @section atServer_bridge Bridge
  *
  * A second file descriptor can be used thanks to le_atServer_OpenBridge() to send
- * all unknown AT commands to an altervative device (such as the modem). For all devices linked to
- * that bridge using le_atServer_AddDeviceToBridge(), unknown commands will be sent through that file
- * descriptor.
+ * all unknown AT commands to an alternative device (such as the modem). For all devices linked to
+ * that bridge using le_atServer_AddDeviceToBridge(), unknown commands will be sent through that
+ * file descriptor.
+ *
+ * The bridge only works with AT commands that have the following terminal responses:
+ * - "OK"
+ * - "NO CARRIER"
+ * - "NO DIALTONE"
+ * - "BUSY"
+ * - "NO ANSWSER"
+ * - "ERROR"
+ * - "+CME ERROR"
+ * - "+CMS ERROR"
+ *
+ * AT commands executed through the bridge do not support text mode (e.g.; +CMGS) or data mode
+ * (e.g.; ATD*99***1#). Sending these commands through the bridge may lock the Legato AT commands
+ * parser.
  *
  * @image html atCommandsParserBridge.png
  *
@@ -240,9 +259,8 @@
  * can be difficult to diagnose. The modem AT commands should be avoided whenever possible, and
  * should only be used with great care.
  *
- * The application can send an unsolicited on all opened device, or only one on a dedicated deivce.
+ * The application can send an unsolicited on all opened device, or only one on a dedicated device.
  *
- * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
  */
