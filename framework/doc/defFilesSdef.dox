@@ -465,6 +465,23 @@ commands:
 @warning When the command runs, it runs with the full privileges of the user that runs it.
          If you login as root and run a command, the command executes with root user privileges.
 
+@section defFilesSdef_externalWatchdogKick externalWatchdogKick
+
+If your system is hooked up to an external watchdog (e.g.; wp85 is externally hooked up to Linux's
+Softdog) the internal watchdog daemon will "kick" the external watchdog at a specified time as long
+as all watched processes and apps are running and have successfully "kicked" the internal watchdog.
+
+The externalWatchdogKick sets the interval for the internal watchdog daemon to kick the external
+watchdog.  If no external watchdog exists then externalWatchdogKick will have no effect on the
+system.
+
+If this section is not specified then the <b>default of 30 seconds</b> will be used.
+
+Example:
+@code
+externalWatchdogKick: 120000 // Configure external watchdog kick to 2mins
+@endcode
+
 Copyright (C) Sierra Wireless Inc.
 
 **/

@@ -50,6 +50,9 @@ Legato provides a monitoring service for applications with the @c watchdog daemo
 the Legato Runtime Environment.  If your target supports it, the watchdog daemon can also be enabled
 to kick an external watchdog such as Linux watchdog device.
 
+@note To configure the external watchdog kick interval, add a @ref defFilesSdef_externalWatchdogKick
+section to your systems @ref defFilesSdef .
+
 The daemon monitors app's processes for hangs or freezing and if the process doesn't
 "kick" the watchdog daemon in a specified time (the default is @b 30 @b seconds), the watchdog
 signals the @ref basicRuntimeArch_supervisor to perform a specified action.  Critical services
@@ -87,7 +90,8 @@ Possible watchdog actions:
  - @c reboot - log an emergency message and reboot the system.
 
 To disable the watchdog for all the daemons within the Legato Application Framework add the
-following line to the @c Makefile in the $LEGATO_ROOT directory: @c -DLEGATO_FRAMEWORK_WDOG_DISABLE.
+following line to the @c Makefile.framework in the $LEGATO_ROOT directory:
+@c -DLEGATO_FRAMEWORK_WDOG_DISABLE.
 The command is added to the @c mkexe arguments when building @c liblegato.
 
 Example:
@@ -100,8 +104,6 @@ watchdog: liblegato $(BIN_DIR)
                         $(SRC_DIR)/watchdog/watchdogDaemon \
                         -DLEGATO_FRAMEWORK_WDOG_DISABLE
 @endverbatim
-
-
 
 To disable the watchdog for the Platform Services on your target set
 @c LEGATO_SERVICES_WDOG_DISABLE=1 within the @ref defFilesSdef_buildVars section of your
