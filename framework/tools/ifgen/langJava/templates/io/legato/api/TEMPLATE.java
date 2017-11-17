@@ -25,118 +25,110 @@ import java.util.HashMap;
 import java.io.FileDescriptor;
 import java.math.BigInteger;
 
-public interface {{apiName}}
-{
-    {%- for definition in definitions %}
-    {%- if definition.value is number %}
-    public static final long {{definition.name}} = {{definition.value}}L;
-    {%- else %}
-    public static final String {{definition.name}} = "{{definition.value}}";
-    {%- endif %}
-    {%- endfor %}
+public interface {{apiName}} {
+{% for definition in definitions %}
+	{%- if definition.value is number %}
+	public static final long {{definition.name}} = {{definition.value}}L;
+	{%- else %}
+	public static final String {{definition.name}} = "{{definition.value}}";
+	{%- endif %}
+{%- endfor %}
+{% for type in types %}
+	{#- TODO: Is this exception necessary?  Maybe handler references should have a class as well #}
+	{%- if type is ReferenceType and type is not HandlerReferenceType %}
+	public class {{type.name}}Ref {
+		private final long nativeRef;
 
-    {%- for type in types %}
-    {#- TODO: Is this exception necessary?  Maybe handler references should have a class as well #}
-    {%- if type is ReferenceType and type is not HandlerReferenceType %}
-    public class {{type.name}}Ref
-    {
-        private final long nativeRef;
+		public static {{type.name}}Ref fromValue(long ref) {
+			// All references passed through an API must be safe references, so 0-bit will be set.
+			if (ref == 0) {
+				return null;
+			}
+			if (ref % 2 == 1) {
+				return new {{type.name}}Ref(ref);
+			}
+			throw new IllegalStateException("Invalid reference for {{type.name}}Ref: " + ref);
+		}
 
-        public static {{type.name}}Ref fromValue(long ref) {
-            // All references passed through an API must be safe references, so 0-bit will be set.
-            if (ref == 0) {
-                return null;
-            }
-            if (ref % 2 == 1) {
-                return new {{type.name}}Ref(ref);
-            }
-            throw new IllegalStateException("Invalid reference for {{type.name}}Ref: " + ref);
-        }
+		private {{type.name}}Ref(long newRef) {
+			nativeRef = newRef;
+		}
 
-        private {{type.name}}Ref(long newRef)
-        {
-            nativeRef = newRef;
-        }
+		public long getRef() {
+			return nativeRef;
+		}
+	}
+	{%- elif type is BitMaskType %}
+	public static class {{type.name}} {
+		public static final IntType TYPE = IntType.fromSize({{type.size}}, true);
 
-        public long getRef()
-        {
-            return nativeRef;
-        }
-    }
-    {%- elif type is BitMaskType %}
-    public static class {{type.name}} {
-        public static final IntType TYPE = IntType.fromSize({{type.size}}, true);
+		{%- for element in type.elements %}
+		public static final BigInteger {{element.name}} = new BigInteger("{{element.value}}");
+		{%- endfor %}
 
-        {%- for element in type.elements %}
-        public static final BigInteger {{element.name}} = new BigInteger("{{element.value}}");
-        {%- endfor %}
+		private final BigInteger value;
 
-        private final BigInteger value;
+		public {{type.name}}(BigInteger newValue) {
+			value = newValue;
+		}
 
-        public {{type.name}}(BigInteger newValue) {
-            value = newValue;
-        }
+		public static {{type.name}} fromValue(BigInteger newValue) {
+			return new {{type.name}}(newValue);
+		}
 
-        public static {{type.name}} fromValue(BigInteger newValue) {
-            return new {{type.name}}(newValue);
-        }
+		public BigInteger getValue() {
+			return value;
+		}
 
-        public BigInteger getValue() {
-            return value;
-        }
+		public IntType getType() {
+			return TYPE;
+		}
+	}
+	{%- elif type is EnumType %}
+	public enum {{type.name}} {
+		{% for element in type.elements -%}
+		{{element.name}}("{{element.value}}"){% if loop.last %};{% else %},{% endif %}
+		{%- endfor %}
 
-        public IntType getType() {
-            return TYPE;
-        }
-    }
-    {%- elif type is EnumType %}
-    public enum {{type.name}} {
-        {%- for element in type.elements %}
-        {{element.name}}("{{element.value}}"){% if loop.last %};{% else %},{% endif %}
-        {%- endfor %}
+		public static final IntType TYPE = IntType.fromSize({{type.size}}, true);
+		private BigInteger value;
 
-        public static final IntType TYPE = IntType.fromSize({{type.size}}, true);
-        private BigInteger value;
+		{{type.name}}(String newValue) {
+			value = new BigInteger(newValue);
+		}
 
-        {{type.name}}(String newValue) {
-            value = new BigInteger(newValue);
-        }
+		public BigInteger getValue() {
+			return value;
+		}
 
-        public BigInteger getValue() {
-            return value;
-        }
+		public static IntType getType() {
+			return TYPE;
+		}
 
-        public static IntType getType() {
-            return TYPE;
-        }
-
-        public static {{type.name}} fromValue(BigInteger value) {
-            for ({{type.name}} out : values()) {
-                if (out.value.equals(value)) {
-                    return out;
-                }
-            }
-            throw new IllegalStateException();
-        }
-    }
-    {%- elif type is HandlerType %}
-    public interface {{type.name}}
-    {
-        public void handle
-        (
-            {%- for parameter in type.parameters %}
-            {{parameter|FormatParameter}}{% if not loop.last %},{% endif %}
-            {%- endfor %}
-        );
-    }
-    {%- endif %}
-    {%- endfor %}
-    {%- for function in functions %}
-    public {{function.returnType|FormatType}} {{function.name}}
-    (
-        {%- for parameter in function.parameters %}
-        {{parameter|FormatParameter}}{% if not loop.last %},{% endif %}
-        {%- endfor %}
-    );
-    {%- endfor %}
+		public static {{type.name}} fromValue(BigInteger value) {
+			for ({{type.name}} out : values()) {
+				if (out.value.equals(value)) {
+					return out;
+				}
+			}
+			throw new IllegalStateException();
+		}
+	}
+	{%- elif type is HandlerType %}
+	public interface {{type.name}} {
+		public void handle(
+			{%- for parameter in type.parameters -%}
+			{{parameter|FormatParameter}}{% if not loop.last %}, {% endif %}
+			{%- endfor -%}
+			);
+	}
+	{%- endif %}
+{% endfor %}
+{% for function in functions %}
+	public {{function.returnType|FormatType}} {{function.name}}(
+		{%- for parameter in function.parameters -%}
+		{{parameter|FormatParameter}}{% if not loop.last %}, {% endif %}
+		{%- endfor -%}
+		);
+{% endfor %}
 }

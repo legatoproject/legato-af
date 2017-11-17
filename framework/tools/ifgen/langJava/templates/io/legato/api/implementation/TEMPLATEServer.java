@@ -34,177 +34,144 @@ import io.legato.api.{{import}};
 {% endfor %}
 import io.legato.api.{{apiName}};
 
-public class {{apiName}}Server implements AutoCloseable
-{
-    private static final String protocolIdStr = "{{idString}}";
-    private static final String serviceInstanceName = "{{apiName}}";
-    /// Max message size.  Id (4 bytes) + max packed function call size
-    private static final int maxMsgSize = 4 + {{messageSize}};
+public class {{apiName}}Server implements AutoCloseable {
+	private static final String protocolIdStr = "{{idString}}";
+	private static final String serviceInstanceName = "{{apiName}}";
+	/// Max message size. Id (4 bytes) + max packed function call size
+	private static final int maxMsgSize = 4 + {{messageSize}};
 
-    private Service service;
-    private ServerSession currentSession;
-    private {{apiName}} serverImpl;
+	private Service service = null;
+	private ServerSession currentSession = null;
+	private {{apiName}} serverImpl;
 
-    public {{apiName}}Server({{apiName}} newServerImpl)
-    {
-        service = null;
-        currentSession = null;
-        serverImpl = newServerImpl;
-    }
+	public {{apiName}}Server({{apiName}} newServerImpl) {
+		serverImpl = newServerImpl;
+	}
 
-    public void open()
-    {
-        open(serviceInstanceName);
-    }
+	public void open() {
+		open(serviceInstanceName);
+	}
 
-    public void open(String serviceName)
-    {
-        currentSession = null;
-        service = new Service(new Protocol(protocolIdStr, maxMsgSize), serviceName);
+	public void open(String serviceName) {
+		currentSession = null;
+		service = new Service(new Protocol(protocolIdStr, maxMsgSize), serviceName);
+		service.setReceiveHandler(this::OnClientMessageReceived);
+		service.addCloseHandler(session -> {
+			// TODO: Clean up...
+		});
+		service.advertiseService();
+	}
 
-        service.setReceiveHandler(new MessageEvent()
-            {
-                public void handle(Message message)
-                {
-                    OnClientMessageReceived(message);
-                }
-            });
+	@Override
+	public void close() {
+		if (service != null) {
+			currentSession = null;
+			service.close();
+			service = null;
+		}
+	}
+{% for function in functions %}
+	private void handle{{function.name}}(MessageBuffer buffer) {
+		{%- if any(function.parameters, "OutParameter") %}
+		int _requiredOutputs = buffer.readInt();
+		{%- endif %}
 
-        service.addCloseHandler(new SessionEvent<ServerSession>()
-            {
-                public void handle(ServerSession session)
-                {
-                    // TODO: Clean up...
-                }
-            });
+		// Unpack inputs
+		{%- for parameter in function.parameters if parameter is InParameter %}
+		{%- if parameter.apiType is HandlerType %}
+		long {{parameter.name}}Context = buffer.readLongRef();
+		{%- endif %}
+		{%- if parameter is ArrayParameter %}
+		{{parameter.apiType|FormatType}}[] _{{parameter.name}} = new {{parameter.apiType|FormatType}}[buffer.readInt()];
+		if (_{{parameter.name}}.length > {{parameter.maxCount}}) {
+			throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+		}
+		for (int i = 0; i < _{{parameter.name}}.length; i++) {
+			_{{parameter.name}}[i] = {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)}};
+		}
+		{%- else %}
+		{{parameter.apiType|FormatType}} _{{parameter.name}} =
+			{#- #} {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)|indent(8)}};
+		{%- endif %}
+		{%- endfor %}
 
-        service.advertiseService();
-    }
+		// Create space for outputs
+		{%- for parameter in function.parameters if parameter is OutParameter %}
+		{%- if parameter is ArrayParameter %}
+		Ref<{{parameter.apiType|FormatBoxedType}}[]> _{{parameter.name}} = null;
+		{% else %}
+		Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} = null;
+		{% endif %}
+		if ((_requiredOutputs & (1 << {{loop.index0}})) != 0) {
+			_{{parameter.name}} = new Ref<>();
+		}
 
-    @Override
-    public void close()
-    {
-        if (service != null)
-        {
-            currentSession = null;
-            service.close();
-            service = null;
-        }
-    }
-    {%- for function in functions %}
+		{%- endfor %}
+		{% if function.returnType %}{{function.returnType|FormatType}} result = {% endif -%}
+		serverImpl.{{function.name}}(
+			{%- for parameter in function.parameters -%}
+			_{{parameter.name}}{% if not loop.last %}, {% endif -%}
+			{%- endfor %});
+		buffer.resetPosition();
+		buffer.writeInt(MessageID_{{function.name}});
+		{%- if function.returnType %}
 
-    private void handle{{function.name}}(MessageBuffer buffer)
-    {
-        {%- if any(function.parameters, "OutParameter") %}
-        int _requiredOutputs = buffer.readInt();
-        {%- endif %}
+		{{pack.PackValue(function.returnType, "result")}}
+		{%- endif %}
+		{%- for parameter in function.parameters if parameter is OutParameter %}
+		if (_{{parameter.name}} != null) {
+			if (!_{{parameter.name}}.isSet()) {
+				{%- if parameter is ArrayParameter %}
+				_{{parameter.name}}.setValue(new {{parameter.apiType|FormatBoxedType}}[0]);
+				{%- elif parameter.apiType is EnumType %}
+				_{{parameter.name}}.setValue({{parameter.apiType|FormatBoxedType}}.values()[0]);
+				{%- elif parameter.apiType is BitMaskType %}
+				_{{parameter.name}}.setValue(new {{parameter.apiType|FormatBoxedType}}(BigInteger.ZERO));
+				{%- else %}
+				_{{parameter.name}}.setValue({{parameter.apiType|DefaultValue}});
+				{%- endif %}
+				if (!_{{parameter.name}}.isSet()) {
+					throw new IllegalStateException("Cannot return null value");
+				}
+			}
+			{%- if parameter is ArrayParameter %}
+			if (_{{parameter.name}}.getValue().length > {{parameter.maxCount}}) {
+				throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+			}
+			buffer.writeInt(_{{parameter.name}}.getValue().length);
+			for ({{parameter.apiType|FormatBoxedType}} element : _{{parameter.name}}.getValue()) {
+				{{pack.PackParameter(parameter, "element")}}
+			}
+			{%- else %}
+			{{pack.PackParameter(parameter, "_"+parameter.name+".getValue()")}}
+			{%- endif %}
+		}
+		{%- endfor %}
+	}
+{% endfor %}
+{%- for function in functions %}
+	private static final int MessageID_{{function.name}} = {{loop.index0}};
+{%- endfor %}
 
-        // Unpack inputs
-        {%- for parameter in function.parameters if parameter is InParameter %}
-        {%- if parameter.apiType is HandlerType %}
-        long {{parameter.name}}Context = buffer.readLongRef();
-        {%- endif %}
-        {%- if parameter is ArrayParameter %}
-        {{parameter.apiType|FormatType}}[] _{{parameter.name}} = new {{parameter.apiType|FormatType}}[buffer.readInt()];
-        if ( _{{parameter.name}}.length > {{parameter.maxCount}}) {
-            throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
-        }
-        for (int i = 0; i < _{{parameter.name}}.length; i++) {
-            _{{parameter.name}}[i] = {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)}};
-        }
-        {%- else %}
-        {{parameter.apiType|FormatType}} _{{parameter.name}} =
-            {#- #} {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)|indent(8)}};
-        {%- endif %}
-        {%- endfor %}
-
-        // Create space for outputs
-        {%- for parameter in function.parameters if parameter is OutParameter %}
-        {%- if parameter is ArrayParameter %}
-        Ref<{{parameter.apiType|FormatBoxedType}}[]> _{{parameter.name}} = null;
-        {% else %}
-        Ref<{{parameter.apiType|FormatBoxedType}}> _{{parameter.name}} = null;
-        {% endif %}
-        if ((_requiredOutputs & (1 << {{loop.index0}})) != 0) {
-            _{{parameter.name}} = new Ref<>();
-        }
-
-        {%- endfor %}
-        {% if function.returnType %}{{function.returnType|FormatType}} result = {% endif -%}
-        serverImpl.{{function.name}}(
-            {%- for parameter in function.parameters -%}
-            _{{parameter.name}}{% if not loop.last %}, {% endif -%}
-            {%- endfor %});
-        buffer.resetPosition();
-        buffer.writeInt(MessageID_{{function.name}});
-        {%- if function.returnType %}
-
-        {{pack.PackValue(function.returnType, "result")}}
-        {%- endif %}
-        {%- for parameter in function.parameters if parameter is OutParameter %}
-        if (_{{parameter.name}} != null) {
-            if (!_{{parameter.name}}.isSet()) {
-                {%- if parameter is ArrayParameter %}
-                _{{parameter.name}}.setValue(new {{parameter.apiType|FormatBoxedType}}[0]);
-                {%- elif parameter.apiType is EnumType %}
-                _{{parameter.name}}.setValue({{parameter.apiType|FormatBoxedType}}.values()[0]);
-                {%- elif parameter.apiType is BitMaskType %}
-                _{{parameter.name}}.setValue(new {{parameter.apiType|FormatBoxedType}}(BigInteger.ZERO));
-                {%- else %}
-                _{{parameter.name}}.setValue({{parameter.apiType|DefaultValue}});
-                {%- endif %}
-                if (!_{{parameter.name}}.isSet()) {
-                    throw new IllegalStateException("Cannot return null value");
-                }
-            }
-            {%- if parameter is ArrayParameter %}
-            if ( _{{parameter.name}}.getValue().length > {{parameter.maxCount}}) {
-                throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
-            }
-            buffer.writeInt(_{{parameter.name}}.getValue().length);
-            for ({{parameter.apiType|FormatBoxedType}} element : _{{parameter.name}}.getValue()) {
-                {{pack.PackParameter(parameter, "element")}};
-            }
-            {%- else %}
-            {{pack.PackParameter(parameter, "_"+parameter.name+".getValue()")}}
-            {%- endif %}
-        }
-        {%- endfor %}
-    }
-    {%- endfor %}
-    {%- for function in functions %}
-    private static final int MessageID_{{function.name}} = {{loop.index0}};
-    {%- endfor %}
-
-    private void OnClientMessageReceived(Message clientMessage)
-    {
-        MessageBuffer buffer = null;
-
-        try
-        {
-            buffer = clientMessage.getBuffer();
-            currentSession = clientMessage.getServerSession();
-            int messageId = buffer.readInt();
-
-            switch (messageId)
-            {
-                {%- for function in functions %}
-                case MessageID_{{function.name}}:
-                    handle{{function.name}}(buffer);
-                    break;
-                {%- endfor %}
-            }
-
-            clientMessage.respond();
-        }
-        finally
-        {
-            currentSession = null;
-
-            if (buffer != null)
-            {
-                buffer.close();
-            }
-        }
-    }
+	private void OnClientMessageReceived(Message clientMessage) {
+		MessageBuffer buffer = null;
+		try {
+			buffer = clientMessage.getBuffer();
+			currentSession = clientMessage.getServerSession();
+			int messageId = buffer.readInt();
+			switch (messageId) {
+			{%- for function in functions %}
+			case MessageID_{{function.name}}:
+				handle{{function.name}}(buffer);
+				break;
+			{%- endfor %}
+			}
+			clientMessage.respond();
+		} finally {
+			currentSession = null;
+			if (buffer != null) {
+				buffer.close();
+			}
+		}
+	}
 }

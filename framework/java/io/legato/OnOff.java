@@ -10,8 +10,8 @@
 
 package io.legato;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -19,27 +19,27 @@ import java.util.HashMap;
  */
 // --------------------------------------------------------------------------------------------------
 public enum OnOff {
-    OFF(0), ON(1);
+	OFF(0), ON(1);
 
-    private final int value;
+	private final int value;
 
-    OnOff(int newValue) {
-        value = newValue;
-    }
+	OnOff(int newValue) {
+		value = newValue;
+	}
 
-    public int getValue() {
-        return value;
-    }
+	public int getValue() {
+		return value;
+	}
 
-    private static final Map<Integer, OnOff> valueMap = new HashMap<Integer, OnOff>();
+	private static final Map<Integer, OnOff> valueMap = new HashMap<Integer, OnOff>();
 
-    static {
-        for (OnOff item : OnOff.values()) {
-            valueMap.put(item.value, item);
-        }
-    }
+	static {
+		for (OnOff item : OnOff.values()) {
+			valueMap.put(item.value, item);
+		}
+	}
 
-    public static OnOff fromInt(int newValue) {
-        return valueMap.get(newValue);
-    }
+	public static OnOff fromInt(int newValue) {
+		return valueMap.get(newValue);
+	}
 }

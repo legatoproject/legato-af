@@ -11,107 +11,62 @@ import io.legato.Ref;
 import io.legato.Component;
 import io.legato.api.ipcTest;
 
-public class JavaServer extends Component implements ipcTest
-{
-    @Override
-    public void EchoSimple
-    (
-        BigInteger InValue,
-        Ref<BigInteger> OutValue
-    )
-    {
-        if (OutValue != null)
-        {
-            OutValue.setValue(InValue);
-        }
-    }
+public class JavaServer extends Component implements ipcTest {
+	@Override
+	public void EchoSimple(BigInteger in, Ref<BigInteger> out) {
+		if (out != null) {
+			out.setValue(in);
+		}
+	}
 
-    @Override
-    public void EchoSmallEnum
-    (
-        ipcTest.SmallEnum InValue,
-        Ref<ipcTest.SmallEnum> OutValue
-    )
-    {
-        if (OutValue != null)
-        {
-            OutValue.setValue(InValue);
-        }
-    }
+	@Override
+	public void EchoSmallEnum(ipcTest.SmallEnum in, Ref<ipcTest.SmallEnum> out) {
+		if (out != null) {
+			out.setValue(in);
+		}
+	}
 
-    @Override
-    public void EchoLargeEnum
-    (
-        ipcTest.LargeEnum InValue,
-        Ref<ipcTest.LargeEnum> OutValue
-    )
-    {
-        if (OutValue != null)
-        {
-            OutValue.setValue(InValue);
-        }
-    }
+	@Override
+	public void EchoLargeEnum(ipcTest.LargeEnum in, Ref<ipcTest.LargeEnum> out) {
+		if (out != null) {
+			out.setValue(in);
+		}
+	}
 
-    @Override
-    public void EchoSmallBitMask
-    (
-        ipcTest.SmallBitMask InValue,
-        Ref<ipcTest.SmallBitMask> OutValue
-    )
-    {
-        if (OutValue != null)
-        {
-            OutValue.setValue(new ipcTest.SmallBitMask(InValue.getValue()));
-        }
-    }
+	@Override
+	public void EchoSmallBitMask(ipcTest.SmallBitMask in, Ref<ipcTest.SmallBitMask> out) {
+		if (out != null) {
+			out.setValue(new ipcTest.SmallBitMask(in.getValue()));
+		}
+	}
 
-    @Override
-    public void EchoLargeBitMask
-    (
-        ipcTest.LargeBitMask InValue,
-        Ref<ipcTest.LargeBitMask> OutValue
-    )
-    {
-        if (OutValue != null)
-        {
-            OutValue.setValue(new ipcTest.LargeBitMask(InValue.getValue()));
-        }
-    }
+	@Override
+	public void EchoLargeBitMask(ipcTest.LargeBitMask in, Ref<ipcTest.LargeBitMask> out) {
+		if (out != null) {
+			out.setValue(new ipcTest.LargeBitMask(in.getValue()));
+		}
+	}
 
-    @Override
-    public void EchoReference
-    (
-        ipcTest.SimpleRef InValue,
-        Ref<ipcTest.SimpleRef> OutValue
-    )
-    {
-        if (OutValue != null)
-        {
-            OutValue.setValue(InValue);
-        }
-    }
+	@Override
+	public void EchoReference(ipcTest.SimpleRef in, Ref<ipcTest.SimpleRef> out) {
+		if (out != null) {
+			out.setValue(in);
+		}
+	}
 
-    @Override
-    public void EchoString
-    (
-        String InString,
-        Ref<String> OutString
-    )
-    {
-        if (OutString != null)
-        {
-            OutString.setValue(new String(InString));
-        }
-    }
+	@Override
+	public void EchoString(String InString, Ref<String> OutString) {
+		if (OutString != null) {
+			OutString.setValue(new String(InString));
+		}
+	}
 
-    @Override
-    public void ExitServer()
-    {
-        System.exit(-1);
-    }
+	@Override
+	public void ExitServer() {
+		System.exit(-1);
+	}
 
-    @Override
-    public void componentInit()
-    {
-    }
+	@Override
+	public void componentInit() {
+	}
 }

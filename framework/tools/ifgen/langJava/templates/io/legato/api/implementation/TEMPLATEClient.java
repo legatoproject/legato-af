@@ -33,246 +33,212 @@ import io.legato.api.{{import}};
 {% endfor %}
 import io.legato.api.{{apiName}};
 
-public class {{apiName}}Client implements AutoCloseable, {{apiName}}
-{
-    private static final String protocolIdStr = "{{idString}}";
-    private static final String serviceInstanceName = "{{apiName}}";
-    /// Max message size.  Id (4 bytes) + max packed function call size
-    private static final int maxMsgSize = 4 + {{messageSize}};
+public class {{apiName}}Client implements AutoCloseable, {{apiName}} {
+	private static final String protocolIdStr = "{{idString}}";
+	private static final String serviceInstanceName = "{{apiName}}";
+	/// Max message size.  Id (4 bytes) + max packed function call size
+	private static final int maxMsgSize = 4 + {{messageSize}};
 
-    private class HandlerMapper
-    {
-        public Object handler;
-        public long serverRef;
-        public boolean isOneShot;
+	private class HandlerMapper {
+		public Object handler;
+		public long serverRef;
+		public boolean isOneShot;
 
-        public HandlerMapper(Object newHandler, boolean newIsOneShot)
-        {
-            handler = newHandler;
-            isOneShot = newIsOneShot;
-            serverRef = 0;
-        }
-    }
+		public HandlerMapper(Object newHandler, boolean newIsOneShot) {
+			handler = newHandler;
+			isOneShot = newIsOneShot;
+			serverRef = 0;
+		}
+	}
 
-    private ClientSession session;
-    private SafeRef<HandlerMapper> handlerMap;
+	private ClientSession session = null;
+	private final SafeRef<HandlerMapper> handlerMap = new SafeRef<HandlerMapper>();;
 
-    public {{apiName}}Client()
-    {
-        session = null;
-        handlerMap = new SafeRef<HandlerMapper>();
-    }
+	public void open() {
+		open(serviceInstanceName);
+	}
 
-    public void open()
-    {
-        open(serviceInstanceName);
-    }
+	public void open(String serviceName) {
+		session = new ClientSession(new Protocol(protocolIdStr, maxMsgSize), serviceName);
+		session.setReceiveHandler(new MessageEvent() {
+			public void handle(Message message) {
+				OnServerMessageReceived(message);
+			}
+		});
+		session.open();
+	}
 
-    public void open(String serviceName)
-    {
-        session = new ClientSession(new Protocol(protocolIdStr, maxMsgSize), serviceName);
+	@Override
+	public void close() {
+		if (session != null) {
+			session.close();
+			session = null;
+		}
+	}
+{% for handler in types if handler is HandlerType %}
+	private void handle{{handler.name}}(MessageBuffer buffer) {
+		long handlerId = buffer.readLongRef();
+		HandlerMapper mapper = handlerMap.get(handlerId);
+		{{handler.name}} handler = ({{handler.name}})mapper.handler;
+		{%- for parameter in handler.parameters %}
+		{%- if parameter is ArrayParameter %}
+		{{parameter.apiType|FormatBoxedType}}[] _{{parameter.name}} = new {{parameter.apiType|FormatBoxedType}}[buffer.readInt()];
+		if (_{{parameter.name}}.length > {{parameter.maxCount}}) {
+			throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+		}
+		for (int i = 0; i < _{{parameter.name}}.length; i++) {
+			_{{parameter.name}}[i] = {{pack.UnpackValue(parameter.apiType, parameter.name)}};
+		}
+		{%- else %}
+		{{parameter.apiType|FormatType}} _{{parameter.name}} =
+			{#- #} {{pack.UnpackValue(parameter.apiType, "_"+parameter.name)}};
+		{%- endif %}
+		{%- endfor %}
 
-        session.setReceiveHandler(
-            new MessageEvent()
-            {
-                public void handle(Message message)
-                {
-                    OnServerMessageReceived(message);
-                }
-            });
+		handler.handle(
+			{%- for parameter in handler.parameters -%}
+			_{{parameter.name}}{% if not loop.last %}, {% endif -%}
+			{%- endfor %});
 
-        session.open();
-    }
+		if (mapper.isOneShot) {
+			handlerMap.remove(handlerId);
+		}
+	}
+{% endfor %}
+{%- for function in functions %}
+	@Override
+	public {{function.returnType|FormatType}} {{function.name}}(
+		{%- for parameter in function.parameters -%}
+		{{parameter|FormatParameter(name="_"+parameter.name)}}{%- if not loop.last %},{% endif %}
+		{%- endfor %}) {
+		Message message = session.createMessage();
+		MessageBuffer buffer = message.getBuffer();
 
-    @Override
-    public void close()
-    {
-        if (session != null)
-        {
-            session.close();
-            session = null;
-        }
-    }
-    {%- for handler in types if handler is HandlerType %}
+		buffer.writeInt(MessageID_{{function.name}});
+		{%- if any(function.parameters, "OutParameter") %}
 
-    private void handle{{handler.name}}(MessageBuffer buffer)
-    {
-        long handlerId = buffer.readLongRef();
-        HandlerMapper mapper = handlerMap.get(handlerId);
-        {{handler.name}} handler = ({{handler.name}})mapper.handler;
-        {%- for parameter in handler.parameters %}
-        {%- if parameter is ArrayParameter %}
-        {{parameter.apiType|FormatBoxedType}}[] _{{parameter.name}} = new {{parameter.apiType|FormatBoxedType}}[buffer.readInt()];
-        if (_{{parameter.name}}.length > {{parameter.maxCount}}) {
-            throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
-        }
-        for (int i = 0; i < _{{parameter.name}}.length; i++) {
-            _{{parameter.name}}[i] = {{pack.UnpackValue(parameter.apiType, parameter.name)}};
-        }
-        {%- else %}
-        {{parameter.apiType|FormatType}} _{{parameter.name}} =
-            {#- #} {{pack.UnpackValue(parameter.apiType, "_"+parameter.name)}};
-        {%- endif %}
-        {%- endfor %}
+		int _requiredOutputs = 0;
+		{%- for output in function.parameters if output is OutParameter %}
+		if (_{{output.name}} != null) {
+			_requiredOutputs |= (1 << {{loop.index0}});
+		}
+		{%- endfor %}
+		buffer.writeInt(_requiredOutputs);
+		{%- endif %}
+		{%- if function is AddHandlerFunction %}
+		{%- for parameter in function.parameters %}
+		{%- if parameter.apiType is HandlerType %}
 
-        handler.handle(
-            {%- for parameter in handler.parameters -%}
-            _{{parameter.name}}{% if not loop.last %}, {% endif -%}
-            {%- endfor %});
+		HandlerMapper mapper = new HandlerMapper(_{{parameter.name}}, false);
+		long newRef = handlerMap.newRef(mapper);
+		buffer.writeLongRef(newRef);
+		{%- elif parameter is InParameter %}
+		{{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
+		{%- elif parameter is StringParameter %}
+		buffer.writeInt({{parameter.maxCount}});
+		{%- endif %}
+		{%- endfor %}
 
-        if (mapper.isOneShot)
-        {
-            handlerMap.remove(handlerId);
-        }
-    }
-    {%- endfor %}
-    {%- for function in functions %}
+		Message response = message.requestResponse();
+		buffer = response.getBuffer();
 
-    @Override
-    public {{function.returnType|FormatType}} {{function.name}}
-    (
-        {%- for parameter in function.parameters %}
-        {{parameter|FormatParameter(name="_"+parameter.name)}}
-            {%- if not loop.last %},{% endif %}
-        {%- endfor %}
-    )
-    {
-        Message message = session.createMessage();
-        MessageBuffer buffer = message.getBuffer();
+		mapper.serverRef = buffer.readLongRef();
 
-        buffer.writeInt(MessageID_{{function.name}});
-        {%- if any(function.parameters, "OutParameter") %}
+		return newRef;
+		{%- elif function is RemoveHandlerFunction %}
 
-        int _requiredOutputs = 0;
-        {%- for output in function.parameters if output is OutParameter %}
-        if (_{{output.name}} != null)
-        {
-            _requiredOutputs |= (1 << {{loop.index0}});
-        }
-        {%- endfor %}
-        buffer.writeInt(_requiredOutputs);
-        {%- endif %}
-        {%- if function is AddHandlerFunction %}
-        {%- for parameter in function.parameters %}
-        {%- if parameter.apiType is HandlerType %}
+		HandlerMapper handler = handlerMap.get(_{{function.parameters[0].name}});
+		buffer.writeLongRef(handler.serverRef);
+		handlerMap.remove(_{{function.parameters[0].name}});
 
-        HandlerMapper mapper = new HandlerMapper(_{{parameter.name}}, false);
-        long newRef = handlerMap.newRef(mapper);
-        buffer.writeLongRef(newRef);
-        {%- elif parameter is InParameter %}
-        {{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
-        {%- elif parameter is StringParameter %}
-        buffer.writeInt({{parameter.maxCount}});
-        {%- endif %}
-        {%- endfor %}
+		message.requestResponse();
+		{%- else %}
+		{%- for parameter in function.parameters %}
+		{%- if parameter is InParameter %}
+		{%- if parameter is ArrayParameter %}
+		// ArrayParameter
+		if ( _{{parameter.name}}.length > {{parameter.maxCount}}) {
+			throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+		}
+		buffer.writeInt(_{{parameter.name}}.length);
+		for ({{parameter.apiType|FormatType}} element : _{{parameter.name}}) {
+			{{pack.PackParameter(parameter, "element")}};
+		}
+		{% else %}
+		{{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
+		{% endif %}
+		{%- elif parameter is StringParameter or parameter is ArrayParameter %}
+		buffer.writeInt({{parameter.maxCount}});
+		{%- endif %}
+		{%- endfor %}
+		{%- set hasOuts = (function.returnType or any(function.parameters, "OutParameter")) %}
 
-        Message response = message.requestResponse();
-        buffer = response.getBuffer();
+		{% if hasOuts -%}
+		Message response = {% endif -%}
+		message.requestResponse();
+		{%- if hasOuts %}
+		buffer = response.getBuffer();
+		buffer.readInt();
+		{%- endif %}
+		{%- if function.returnType %}
 
-        mapper.serverRef = buffer.readLongRef();
+		{{function.returnType|FormatType}}
+			{#- #} result = {{pack.UnpackValue(function.returnType, "result", function.name)}};
+		{%- endif -%}
+		{%- if function is AddHandlerFunction %}
 
-        return newRef;
-        {%- elif function is RemoveHandlerFunction %}
+		// If add fails, remove the function from the map
+		if (result == 0) {
+			handlerMap.remove(newRef);
+		}
+		{%- endif %}
+		{%- for parameter in function.parameters if parameter is OutParameter %}
+		if (_{{parameter.name}} != null) {
+			{%- if parameter is ArrayParameter %}
+			{{parameter.apiType|FormatBoxedType}}[] tmpArray = new {{parameter.apiType|FormatBoxedType}}[buffer.readInt()];
+			if (tmpArray.length > {{parameter.maxCount}}) {
+				throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
+			}
+			for (int i = 0; i < tmpArray.length; i++) {
+				tmpArray[i] = {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)}};
+			}
+			_{{parameter.name}}.setValue(tmpArray);
+			{%- else %}
+			_{{parameter.name}}.setValue({{pack.UnpackValue(parameter.apiType,
+															parameter.name,
+															function.name)}});
+			{%- endif %}
+		}
+		{%- endfor %}
+		{%- if function.returnType %}
 
-        HandlerMapper handler = handlerMap.get(_{{function.parameters[0].name}});
-        buffer.writeLongRef(handler.serverRef);
-        handlerMap.remove(_{{function.parameters[0].name}});
+		return result;
+		{%- endif %}
+		{%- endif %}
+	}
+{% endfor %}
+{%- for function in functions %}
+	private static final int MessageID_{{function.name}} = {{loop.index0}};
+{%- endfor %}
 
-        message.requestResponse();
-        {%- else %}
-        {%- for parameter in function.parameters %}
-        {%- if parameter is InParameter %}
-        {%- if parameter is ArrayParameter %}
-        // ArrayParameter
-        if ( _{{parameter.name}}.length > {{parameter.maxCount}}) {
-            throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
-        }
-        buffer.writeInt(_{{parameter.name}}.length);
-        for ({{parameter.apiType|FormatType}} element : _{{parameter.name}}) {
-            {{pack.PackParameter(parameter, "element")}};
-        }
-        {% else %}
-        {{pack.PackParameter(parameter, "_"+parameter.name)|indent(8)}}
-        {% endif %}
-        {%- elif parameter is StringParameter or parameter is ArrayParameter %}
-        buffer.writeInt({{parameter.maxCount}});
-        {%- endif %}
-        {%- endfor %}
-        {%- set hasOuts = (function.returnType or any(function.parameters, "OutParameter")) %}
-
-        {% if hasOuts -%}
-        Message response = {% endif -%}
-        message.requestResponse();
-        {%- if hasOuts %}
-        buffer = response.getBuffer();
-        buffer.readInt();
-        {%- endif %}
-        {%- if function.returnType %}
-
-        {{function.returnType|FormatType}}
-            {#- #} result = {{pack.UnpackValue(function.returnType, "result", function.name)}};
-        {%- endif -%}
-        {%- if function is AddHandlerFunction %}
-
-        // If add fails, remove the function from the map
-        if (result == 0)
-        {
-            handlerMap.remove(newRef);
-        }
-        {%- endif %}
-        {%- for parameter in function.parameters if parameter is OutParameter %}
-        if (_{{parameter.name}} != null)
-        {
-            {%- if parameter is ArrayParameter %}
-            {{parameter.apiType|FormatBoxedType}}[] tmpArray = new {{parameter.apiType|FormatBoxedType}}[buffer.readInt()];
-            if (tmpArray.length > {{parameter.maxCount}}) {
-                throw new IllegalStateException("Invalid size for parameter: {{parameter.name}}");
-            }
-            for (int i = 0; i < tmpArray.length; i++) {
-                tmpArray[i] = {{pack.UnpackValue(parameter.apiType, parameter.name, function.name)}};
-            }
-            _{{parameter.name}}.setValue(tmpArray);
-            {%- else %}
-            _{{parameter.name}}.setValue({{pack.UnpackValue(parameter.apiType,
-                                                            parameter.name,
-                                                            function.name)}});
-            {%- endif %}
-        }
-        {%- endfor %}
-        {%- if function.returnType %}
-
-        return result;
-        {%- endif %}
-        {%- endif %}
-    }
-    {%- endfor %}
-    {%- for function in functions %}
-    private static final int MessageID_{{function.name}} = {{loop.index0}};
-    {%- endfor %}
-
-    private void OnServerMessageReceived(Message serverMessage)
-    {
-        {%- set clientEventHandlers=functions|select("HasCallbackFunction")|list %}
-        {%- if clientEventHandlers|length > 0 %}
-        try (MessageBuffer buffer = serverMessage.getBuffer())
-        {
-            int messageId = buffer.readInt();
-
-            switch (messageId)
-            {
-                {%- for function in clientEventHandlers %}
-                case MessageID_{{function.name}}:
-                    {%- for handler in function.parameters
-                                        if handler.apiType is HandlerType %}
-                    handle{{handler.apiType.name}}(buffer);
-                    {%- endfor %}
-                    break;
-                {%- endfor %}
-            }
-
-            buffer.close();
-        }
-        {%- else %}
-{% endif %}
-    }
+	private void OnServerMessageReceived(Message serverMessage) {
+		{%- set clientEventHandlers=functions|select("HasCallbackFunction")|list %}
+		{%- if clientEventHandlers|length > 0 %}
+		try (MessageBuffer buffer = serverMessage.getBuffer())
+		{
+			int messageId = buffer.readInt();
+			switch (messageId) {
+			{%- for function in clientEventHandlers %}
+			case MessageID_{{function.name}}:
+				{%- for handler in function.parameters
+									if handler.apiType is HandlerType %}
+				handle{{handler.apiType.name}}(buffer);
+				{%- endfor %}
+				break;
+			{%- endfor %}
+			}
+			buffer.close();
+		}
+		{% endif %}
+	}
 }
