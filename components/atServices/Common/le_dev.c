@@ -275,13 +275,14 @@ ssize_t le_dev_Read
         LE_INFO("%s", DevInfo.devInfoStr);
     }
 
-    count = read(devicePtr->fd, rxDataPtr, size);
+    count = read(devicePtr->fd, rxDataPtr, (size - 1));
     if (count == -1)
     {
         LE_ERROR("read error: %s", StrError(errno));
         return 0;
     }
 
+    *(char *)(rxDataPtr+count) = '\0';
     PrintBuffer(devicePtr->fd, rxDataPtr, count);
 
     return count;
