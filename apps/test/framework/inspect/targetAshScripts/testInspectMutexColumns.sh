@@ -8,7 +8,7 @@ PrintUsage()
 }
 
 
-inspect mutexes `ps -ef | grep MutexFlux | grep -v grep | awk '{print $2}'` >> $logFileName
+inspect mutexes `ps -ef | grep mutexFlux | grep -v grep | awk '{print $2}'` >> $logFileName
 
 
 mutexName=$1

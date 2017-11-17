@@ -364,7 +364,7 @@ function StartVirtualTarget()
         sleep 15
     done
 
-    echo "Virtual target[$VIRT_TARGET_ARCH]: IP[$DEST_IP] Countainer[$VIRT_CNT_NAME]"
+    echo "Virtual target[$VIRT_TARGET_ARCH]: IP[$DEST_IP] Container[$VIRT_CNT_NAME]"
 
     WaitSsh
     CheckRet

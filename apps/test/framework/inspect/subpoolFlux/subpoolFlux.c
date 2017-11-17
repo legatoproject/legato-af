@@ -131,7 +131,7 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() != 3)
     {
-        LE_ERROR("Usage: SubpoolFlux [1toN | Alter | None] [delete interval] [number of pools created]");
+        LE_ERROR("Usage: subpoolFlux [1toN | Alter | None] [delete interval] [number of pools created]");
         exit(EXIT_FAILURE);
     }
 

@@ -19,13 +19,13 @@ threadNum=$4
 
 case "$cmd" in
     timers)
-        appName="TimerFlux"
+        appName="timerFlux"
         ;;
     mutexes)
-        appName="MutexFlux"
+        appName="mutexFlux"
         ;;
     semaphores)
-        appName="SemaphoreFlux"
+        appName="semaphoreFlux"
         ;;
     *)
         echo "[FAILED] invalid inspect cmd [$appName]."

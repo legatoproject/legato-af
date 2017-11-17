@@ -1,0 +1,30 @@
+start: manual
+
+
+executables:
+{
+    timerFlux = ( timerFlux )
+}
+
+maxThreads: 100
+
+processes:
+{
+    run:
+    {
+         ( timerFlux None 5000000 20000 1)
+//         ( timerFlux 1toN-1 5000000 30 3)
+//         ( timerFlux 1toN-1 5000000 2000 1)
+//         ( timerFlux 1toN-1 999999999 3 1)
+//         ( timerFlux 1toN-1 999999999 100 3)
+
+
+//         ( timerFlux AllTimers1stThread 5000000 10 3)
+//         ( timerFlux AllTimersMidThread 5000000 10 3)
+//         ( timerFlux 1stThread 5000000 10 3)
+//         ( timerFlux MidThread 5000000 10 3)
+
+
+    }
+}
+

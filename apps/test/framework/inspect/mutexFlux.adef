@@ -1,0 +1,27 @@
+start: manual
+
+
+executables:
+{
+    mutexFlux = ( mutexFlux )
+}
+
+maxThreads: 100
+
+processes:
+{
+    run:
+    {
+         ( mutexFlux TestWaitingList )
+//         ( mutexFlux TestRecursive )
+//         ( mutexFlux TestTraceableRecursive)
+
+//         ( mutexFlux None 5000000 20 3 )
+//         ( mutexFlux 1toN-1 5000000 20 3 )
+//         ( mutexFlux AllMutexes1stThread 5000000 20 3 )
+//         ( mutexFlux AllMutexesMidThread 5000000 20 3 )
+//         ( mutexFlux 1stThread 5000000 20 3 )
+//         ( mutexFlux MidThread 5000000 20 3 )
+    }
+}
+

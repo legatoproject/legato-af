@@ -22,10 +22,10 @@ runInspectPools()
     deleteStrat=$1
     deleteInterval=$2
     subPoolNum=$3
-    config set "apps/SubpoolFlux/procs/SubpoolFlux/args/1" $deleteStrat
-    config set "apps/SubpoolFlux/procs/SubpoolFlux/args/2" $deleteInterval
-    config set "apps/SubpoolFlux/procs/SubpoolFlux/args/3" $subPoolNum
-    app restart SubpoolFlux
+    config set "apps/subpoolFlux/procs/subpoolFlux/args/1" $deleteStrat
+    config set "apps/subpoolFlux/procs/subpoolFlux/args/2" $deleteInterval
+    config set "apps/subpoolFlux/procs/subpoolFlux/args/3" $subPoolNum
+    app restart subpoolFlux
 }
 
 testInspectPoolsInterrupted()
@@ -91,11 +91,11 @@ runInspectTimers()
     timerNum=$3
     threadNum=$4
 
-    config set "apps/TimerFlux/procs/TimerFlux/args/1" $deleteStrat
-    config set "apps/TimerFlux/procs/TimerFlux/args/2" $deleteInterval
-    config set "apps/TimerFlux/procs/TimerFlux/args/3" $timerNum
-    config set "apps/TimerFlux/procs/TimerFlux/args/4" $threadNum
-    app restart TimerFlux
+    config set "apps/timerFlux/procs/timerFlux/args/1" $deleteStrat
+    config set "apps/timerFlux/procs/timerFlux/args/2" $deleteInterval
+    config set "apps/timerFlux/procs/timerFlux/args/3" $timerNum
+    config set "apps/timerFlux/procs/timerFlux/args/4" $threadNum
+    app restart timerFlux
 }
 
 # TODO: For "list in list" such as mutex, timer, and semaphore, two specific sceanrios need to be tested.
@@ -156,10 +156,10 @@ runInspectThreads()
     deleteStrat=$1
     deleteInterval=$2
     threadNum=$3
-    config set "apps/ThreadFlux/procs/ThreadFlux/args/1" $deleteStrat
-    config set "apps/ThreadFlux/procs/ThreadFlux/args/2" $deleteInterval
-    config set "apps/ThreadFlux/procs/ThreadFlux/args/3" $threadNum
-    app restart ThreadFlux
+    config set "apps/threadFlux/procs/threadFlux/args/1" $deleteStrat
+    config set "apps/threadFlux/procs/threadFlux/args/2" $deleteInterval
+    config set "apps/threadFlux/procs/threadFlux/args/3" $threadNum
+    app restart threadFlux
 }
 
 testInspectThreadsInterrupted()
@@ -191,21 +191,21 @@ runInspectMutexes()
     mutexNum=$3
     threadNum=$4
 
-    config set "apps/MutexFlux/procs/MutexFlux/args/1" $testType
+    config set "apps/mutexFlux/procs/mutexFlux/args/1" $testType
 
     # Set the option only if it's provided, and if it's not, actively delete the argument.
     # There could be left-over arguments from previous tests. Unhandled arguments make
     # test app barf.
-    [ "$deleteInterval" ] && { config set "apps/MutexFlux/procs/MutexFlux/args/2" $deleteInterval; true; }\
-                          || config delete "apps/MutexFlux/procs/MutexFlux/args/2"
+    [ "$deleteInterval" ] && { config set "apps/mutexFlux/procs/mutexFlux/args/2" $deleteInterval; true; }\
+                          || config delete "apps/mutexFlux/procs/mutexFlux/args/2"
 
-    [ "$mutexNum" ] && { config set "apps/MutexFlux/procs/MutexFlux/args/3" $mutexNum; true; }\
-                    || config delete "apps/MutexFlux/procs/MutexFlux/args/3"
+    [ "$mutexNum" ] && { config set "apps/mutexFlux/procs/mutexFlux/args/3" $mutexNum; true; }\
+                    || config delete "apps/mutexFlux/procs/mutexFlux/args/3"
 
-    [ "$threadNum" ] && { config set "apps/MutexFlux/procs/MutexFlux/args/4" $threadNum; true; }\
-                     || config delete "apps/MutexFlux/procs/MutexFlux/args/4"
+    [ "$threadNum" ] && { config set "apps/mutexFlux/procs/mutexFlux/args/4" $threadNum; true; }\
+                     || config delete "apps/mutexFlux/procs/mutexFlux/args/4"
 
-    app restart MutexFlux
+    app restart mutexFlux
 }
 
 # TODO: For "list in list" such as mutex, timer, and semaphore, two specific sceanrios need to be tested.
@@ -265,29 +265,29 @@ testInspectMutexesRecursive()
 runInspectSemaphores()
 {
     testType=$1
-    config set "apps/SemaphoreFlux/procs/SemaphoreFlux/args/1" $testType
+    config set "apps/semaphoreFlux/procs/semaphoreFlux/args/1" $testType
 
     if [ $# -eq 1 ]
     then
-        config delete "apps/SemaphoreFlux/procs/SemaphoreFlux/args/2"
-        config delete "apps/SemaphoreFlux/procs/SemaphoreFlux/args/3"
+        config delete "apps/semaphoreFlux/procs/semaphoreFlux/args/2"
+        config delete "apps/semaphoreFlux/procs/semaphoreFlux/args/3"
     elif [ $# -eq 2 ]
     then
         threadNum=$2
-        config set "apps/SemaphoreFlux/procs/SemaphoreFlux/args/2" $threadNum
-        config delete "apps/SemaphoreFlux/procs/SemaphoreFlux/args/3"
+        config set "apps/semaphoreFlux/procs/semaphoreFlux/args/2" $threadNum
+        config delete "apps/semaphoreFlux/procs/semaphoreFlux/args/3"
     elif [ $# -eq 3 ]
     then
         deleteInterval=$2
         threadNum=$3
-        config set "apps/SemaphoreFlux/procs/SemaphoreFlux/args/2" $deleteInterval
-        config set "apps/SemaphoreFlux/procs/SemaphoreFlux/args/3" $threadNum
+        config set "apps/semaphoreFlux/procs/semaphoreFlux/args/2" $deleteInterval
+        config set "apps/semaphoreFlux/procs/semaphoreFlux/args/3" $threadNum
     else
         echo "runInspectSemaphores - bad argument list."
         false || Fail
     fi
 
-    app restart SemaphoreFlux
+    app restart semaphoreFlux
 }
 
 testInspectSemaphoresInterrupted()
@@ -355,7 +355,7 @@ testInspectPoolsInterval
 #testInspectPoolsRaceCondition
 
 # clean up
-app stop SubpoolFlux
+app stop subpoolFlux
 
 
 
@@ -369,7 +369,7 @@ testInspectTimersDel1stThread
 testInspectTimersDelMidThread
 
 # clean up
-app stop TimerFlux
+app stop timerFlux
 
 
 
@@ -378,7 +378,7 @@ testInspectThreadsInterrupted
 testInspectThreadsComplete
 
 # clean up
-app stop ThreadFlux
+app stop threadFlux
 
 
 
@@ -393,7 +393,7 @@ testInspectMutexesWaitingList
 testInspectMutexesRecursive
 
 # clean up
-app stop MutexFlux
+app stop mutexFlux
 
 
 
@@ -409,7 +409,7 @@ testInspectSemaphoresDelMidThread
 testInspectSemaphoresWaitingList
 
 # clean up
-app stop SemaphoreFlux
+app stop semaphoreFlux
 
 
 

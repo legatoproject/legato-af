@@ -16,7 +16,7 @@ logFileTemplate="${0}_log_`date +%F_%H-%M-%S`"
 /mnt/flash/startup/fg_02_RestartSyslogd
 
 # restart the test app
-app restart SubpoolFlux > /dev/null
+app restart subpoolFlux > /dev/null
 if [ $? -ne 0 ]
 then
     echo "Error restarting app"
@@ -39,7 +39,7 @@ count=0
 while ! logread | grep -q "FINISHED"
 do
     logFile="${logFileTemplate}_Sample${count}"
-    inspect pools `ps -ef | grep SubpoolFlux | grep -v grep | awk '{print $2}'` >> $logFile
+    inspect pools `ps -ef | grep subpoolFlux | grep -v grep | awk '{print $2}'` >> $logFile
     sleep $interval
     count=$((count+1))
 done

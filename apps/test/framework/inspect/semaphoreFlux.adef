@@ -1,0 +1,28 @@
+start: manual
+
+
+executables:
+{
+    semaphoreFlux = ( semaphoreFlux )
+}
+
+maxThreads: 2000
+
+processes:
+{
+    run:
+    {
+//         ( semaphoreFlux TestWaitingList )
+//         ( semaphoreFlux TestTraceable )
+
+//         ( semaphoreFlux 1toN-1Threads 100000 100 )
+         ( semaphoreFlux Sem1toN-1Threads 100000 100 )
+
+//         ( semaphoreFlux Sem1stThread 10 )
+//         ( semaphoreFlux SemMidThread 10 )
+//         ( semaphoreFlux 1stThread 10 )
+//         ( semaphoreFlux MidThread 10 )
+//         ( semaphoreFlux None 10 )
+    }
+}
+

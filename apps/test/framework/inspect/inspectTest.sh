@@ -20,11 +20,11 @@ OnFail()
 appDir="$LEGATO_ROOT/build/$targetType/tests/apps"
 
 targetTestApps=(
-    SubpoolFlux
-    ThreadFlux
-    TimerFlux
-    MutexFlux
-    SemaphoreFlux
+    subpoolFlux
+    threadFlux
+    timerFlux
+    mutexFlux
+    semaphoreFlux
 )
 
 ashScriptPath=targetAshScripts

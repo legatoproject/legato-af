@@ -3,24 +3,24 @@
 #--------------------------------------------------------------------------------------------------
 
 # Build the on-target test app.
-mkapp(SubpoolFlux.adef)
+mkapp(subpoolFlux.adef)
 
-mkapp(ThreadFlux.adef)
+mkapp(threadFlux.adef)
 
-mkapp(TimerFlux.adef
+mkapp(timerFlux.adef
       -i ${LEGATO_ROOT}/framework/liblegato
       -i ${LEGATO_ROOT}/framework/liblegato/linux/
       )
 
-mkapp(MutexFlux.adef
+mkapp(mutexFlux.adef
       -i ${LEGATO_ROOT}/framework/liblegato
       -i ${LEGATO_ROOT}/framework/liblegato/linux/
       )
 
-mkapp(SemaphoreFlux.adef
+mkapp(semaphoreFlux.adef
       -i ${LEGATO_ROOT}/framework/liblegato
       -i ${LEGATO_ROOT}/framework/liblegato/linux/
     )
 
 # This is a C test
-add_dependencies(tests_c SubpoolFlux TimerFlux MutexFlux SemaphoreFlux)
+add_dependencies(tests_c subpoolFlux threadFlux timerFlux mutexFlux semaphoreFlux)

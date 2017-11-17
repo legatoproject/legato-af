@@ -17,23 +17,23 @@ rowPattern=
 
 case "$cmd" in
     pools)
-        appName="SubpoolFlux"
+        appName="subpoolFlux"
         rowPattern="Subpool[0-9]"
         ;;
     threads)
-        appName="ThreadFlux"
+        appName="threadFlux"
         rowPattern="Thread[0-9]"
         ;;
     timers)
-        appName="TimerFlux"
+        appName="timerFlux"
         rowPattern=".*_[0-9]"
         ;;
     mutexes)
-        appName="MutexFlux"
+        appName="mutexFlux"
         rowPattern="Mutex[0-9]"
         ;;
     semaphores)
-        appName="SemaphoreFlux"
+        appName="semaphoreFlux"
         rowPattern="Sem[0-9]"
         ;;
     *)

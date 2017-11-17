@@ -96,7 +96,7 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() != 3)
     {
-        LE_ERROR("Usage: ThreadFlux [1toN | None] [delete interval] [number of threads created]");
+        LE_ERROR("Usage: threadFlux [1toN | None] [delete interval] [number of threads created]");
         exit(EXIT_FAILURE);
     }
     argDeleteStratPtr = le_arg_GetArg(0);

@@ -12,7 +12,7 @@ logFileName=__Inspect_testMutexWaitingList_log_deleteme
 #                  Mutex1 |          1 |         0 |         0 |                  Thread3 |
 #                                                                                 Thread2
 
-inspect mutexes `ps -ef | grep MutexFlux | grep -v grep | awk '{print $2}'` >> $logFileName
+inspect mutexes `ps -ef | grep mutexFlux | grep -v grep | awk '{print $2}'` >> $logFileName
 
 
 if  ! grep Mutex3 "$logFileName" | grep -q Thread5 ||

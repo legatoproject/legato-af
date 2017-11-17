@@ -14,7 +14,7 @@ defaultRetryInterval=0.5
 #####################################
 
 logFileName=__InspectMemoryPool_testInterval_log_deleteme
-appName=SubpoolFlux
+appName=subpoolFlux
 intervalUnderTest=$1
 
 if [ "$intervalUnderTest" == "f" ]

@@ -12,19 +12,19 @@ DetectedChangesPattern=">>> Detected list changes. Stopping inspection. <<<"
 
 case "$cmd" in
     pools)
-        appName="SubpoolFlux"
+        appName="subpoolFlux"
         ;;
     threads)
-        appName="ThreadFlux"
+        appName="threadFlux"
         ;;
     timers)
-        appName="TimerFlux"
+        appName="timerFlux"
         ;;
     mutexes)
-        appName="MutexFlux"
+        appName="mutexFlux"
         ;;
     semaphores)
-        appName="SemaphoreFlux"
+        appName="semaphoreFlux"
         ;;
     *)
         echo "[FAILED] unknown inspect cmd [$appName]."

@@ -339,8 +339,8 @@ static void PrintHelp
     void
 )
 {
-    LE_ERROR("Usage: MutexFlux [TestWaitingList | TestRecursive]");
-    LE_ERROR("       MutexFlux [1toN-1 | AllMutexes1stThread | AllMutexesMidThread | 1stThread |"
+    LE_ERROR("Usage: mutexFlux [TestWaitingList | TestRecursive]");
+    LE_ERROR("       mutexFlux [1toN-1 | AllMutexes1stThread | AllMutexesMidThread | 1stThread |"
               " MidThread | None] [delete interval] [number of mutexes] [number of threads]");
     exit(EXIT_FAILURE);
 }
@@ -410,7 +410,7 @@ static void Init
     MutexIndexMutexRef = le_mutex_CreateNonRecursive("MutexIndexMutex");
 
     // syncrhonizing among threads for locking/unlocking mutexes
-    SemaRef = le_sem_Create("MutexFluxSemaphore", 0);
+    SemaRef = le_sem_Create("mutexFluxSemaphore", 0);
 
     // Initializing the array storing thread refs.
     ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
@@ -477,5 +477,5 @@ COMPONENT_INIT
 
     RunTests();
 
-    LE_INFO("================== END of MutexFlux =====================");
+    LE_INFO("================== END of mutexFlux =====================");
 }

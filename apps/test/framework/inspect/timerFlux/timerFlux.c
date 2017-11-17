@@ -124,9 +124,9 @@ static le_timer_Ref_t CreateTimer
     TimerAttr_Ref_t timerAttrRef
 )
 {
-    char timerNameBuffer[LIMIT_MAX_TIMER_NAME_BYTES] = {0};
+    char timerNameBuffer[LIMIT_MAX_TIMER_NAME_BYTES+20] = {0};
 
-    snprintf(timerNameBuffer, LIMIT_MAX_TIMER_NAME_BYTES, "[%s]%s%ld",
+    snprintf(timerNameBuffer, sizeof(timerNameBuffer), "[%s]%s%ld",
              le_thread_GetMyName(), timerAttrRef->name, TimerCreateIdx);
 
     le_timer_Ref_t timerRef = le_timer_Create(timerNameBuffer);
@@ -337,15 +337,15 @@ COMPONENT_INIT
 
     if (le_arg_NumArgs() != 4)
     {
-        LE_ERROR("Usage: TimerFlux [1toN-1 | AllTimers1stThread | AllTimersMidThread |"
+        LE_ERROR("Usage: timerFlux [1toN-1 | AllTimers1stThread | AllTimersMidThread |"
                  " 1stThread | MidThread | None] [delete interval] [number of timers] [number of threads]");
         exit(EXIT_FAILURE);
     }
 
     (void) pthread_key_create(&TsdKey, NULL);
 
-    MutexRef = le_mutex_CreateNonRecursive("TimerFluxMutex");
-    SemaRef = le_sem_Create("TimerFluxSemaphore", 0);
+    MutexRef = le_mutex_CreateNonRecursive("timerFluxMutex");
+    SemaRef = le_sem_Create("timerFluxSemaphore", 0);
     if (NULL == argDeleteStratPtr)
     {
         LE_ERROR("argDeleteStratPtr is NULL");

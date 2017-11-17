@@ -3,7 +3,7 @@ start: manual
 
 executables:
 {
-    ThreadFlux = ( ThreadFlux )
+    threadFlux = ( threadFlux )
 }
 
 maxThreads: 2000 // any number large enough to not be a limit.
@@ -21,7 +21,7 @@ processes:
         // Since pthread_create in le_thread_Start returns error 12 (ENOMEM), this might be due to a
         // bug that fails to map ENOMEM to EAGAIN:
         // https://sourceware.org/bugzilla/show_bug.cgi?id=386
-        ( ThreadFlux 1toN   50000000 350 )
+        ( threadFlux 1toN   50000000 350 )
     }
 }
 

@@ -195,9 +195,9 @@ static void PrintHelp
     void
 )
 {
-    LE_ERROR("Usage: SemaphoreFlux TestWaitingList");
-    LE_ERROR("       SemaphoreFlux [1toN-1Threads | Sem1toN-1Threads] [delete interval] [number of threads]");
-    LE_ERROR("       SemaphoreFlux [Sem1stThread | SemMidThread | 1stThread | MidThread | None] [number of threads]");
+    LE_ERROR("Usage: semaphoreFlux TestWaitingList");
+    LE_ERROR("       semaphoreFlux [1toN-1Threads | Sem1toN-1Threads] [delete interval] [number of threads]");
+    LE_ERROR("       semaphoreFlux [Sem1stThread | SemMidThread | 1stThread | MidThread | None] [number of threads]");
     LE_ERROR(" ");
     LE_ERROR("       [TestWaitingList] create a scenario to display the waiting list");
     LE_ERROR(" ");
@@ -271,7 +271,7 @@ static void Init
     SemIndexMutexRef = le_mutex_CreateNonRecursive("SemIndexMutex");
 
     // syncrhonizing among threads for waiting/posting semas.
-    SemaRef = le_sem_Create("SemaphoreFluxSemaphore", 0);
+    SemaRef = le_sem_Create("semaphoreFluxSemaphore", 0);
 
     // Initializing the array storing thread refs.
     ThreadRefArray = malloc(ThreadNum * sizeof(le_thread_Ref_t));
@@ -357,5 +357,5 @@ COMPONENT_INIT
 
     RunTests();
 
-    LE_INFO("================== END of SemaphoreFlux =====================");
+    LE_INFO("================== END of semaphoreFlux =====================");
 }

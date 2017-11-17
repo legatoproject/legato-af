@@ -12,7 +12,7 @@ PrintUsage()
 }
 
 
-inspect semaphores `ps -ef | grep SemaphoreFlux | grep -v grep | awk '{print $2}'` >> $logFileName
+inspect semaphores `ps -ef | grep semaphoreFlux | grep -v grep | awk '{print $2}'` >> $logFileName
 
 
 semaName=$1
