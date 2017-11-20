@@ -51,7 +51,7 @@ void cm_info_PrintInfoHelp
             "\tcm info pri\n\n"
             "To print the SKU:\n"
             "\tcm info sku\n\n"
-            "To print the last reset reason:\n"
+            "To print the last reset cause:\n"
             "\tcm info reset\n\n"
             "To print the number of resets:\n"
             "\tcm info resetsCount\n\n"
@@ -108,10 +108,10 @@ void cm_info_PrintImeiSv
 
 //-------------------------------------------------------------------------------------------------
 /**
- * Print the last reset reason
+ * Print the last reset cause
  */
 //-------------------------------------------------------------------------------------------------
-void cm_info_PrintResetReason
+void cm_info_PrintResetCause
 (
     bool withHeaders
 )
@@ -123,13 +123,13 @@ void cm_info_PrintResetReason
     result = le_info_GetResetInformation(&reset, resetStr, LE_INFO_MAX_RESET_BYTES);
     if (LE_OK != result)
     {
-        LE_ERROR("Failed to get last reset reason: %s", LE_RESULT_TXT(result));
+        LE_ERROR("Failed to get last reset cause: %s", LE_RESULT_TXT(result));
         snprintf(resetStr, LE_INFO_MAX_RESET_BYTES, "Unknown");
     }
 
     if (withHeaders)
     {
-        cm_cmn_FormatPrint("LAST RESET REASON", resetStr);
+        cm_cmn_FormatPrint("Last Reset Cause", resetStr);
     }
     else
     {
@@ -177,7 +177,7 @@ void cm_info_PrintFirmwareVersion
 
     if(withHeaders)
     {
-        cm_cmn_FormatPrint("Firmware", version);
+        cm_cmn_FormatPrint("Firmware Version", version);
     }
     else
     {
@@ -201,7 +201,7 @@ void cm_info_PrintBootloaderVersion
 
     if(withHeaders)
     {
-        cm_cmn_FormatPrint("Bootloader", version);
+        cm_cmn_FormatPrint("Bootloader Version", version);
     }
     else
     {
@@ -247,7 +247,9 @@ void cm_info_PrintGetPriId
     char priIdRev[LE_INFO_MAX_PRIID_REV_BYTES] = {0};
     le_result_t  res;
 
-    res = le_info_GetPriId(priIdPn, LE_INFO_MAX_PRIID_PN_BYTES, priIdRev,
+    res = le_info_GetPriId(priIdPn,
+                           LE_INFO_MAX_PRIID_PN_BYTES,
+                           priIdRev,
                            LE_INFO_MAX_PRIID_REV_BYTES);
     if (LE_OK != res)
     {
@@ -256,8 +258,8 @@ void cm_info_PrintGetPriId
     }
     if(withHeaders)
     {
-        cm_cmn_FormatPrint("PRI PN", priIdPn);
-        cm_cmn_FormatPrint("PRI Rev", priIdRev);
+        cm_cmn_FormatPrint("PRI Part Number (PN)", priIdPn);
+        cm_cmn_FormatPrint("PRI Revision", priIdRev);
     }
     else
     {
@@ -286,7 +288,7 @@ void cm_info_PrintGetCarrierPri
     if(withHeaders)
     {
         cm_cmn_FormatPrint("Carrier PRI Name", priName);
-        cm_cmn_FormatPrint("Carrier PRI Rev", priRev);
+        cm_cmn_FormatPrint("Carrier PRI Revision", priRev);
     }
     else
     {
@@ -373,7 +375,7 @@ void cm_info_PrintResetsCount
 
     if (withHeaders)
     {
-        cm_cmn_FormatPrint("RESETS COUNT", buf);
+        cm_cmn_FormatPrint("Resets Count", buf);
     }
     else
     {
@@ -404,11 +406,11 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintSerialNumber(true);
         cm_info_PrintFirmwareVersion(true);
         cm_info_PrintBootloaderVersion(true);
+        cm_info_PrintMcuVersion(true);
         cm_info_PrintGetPriId(true);
         cm_info_PrintGetCarrierPri(true);
         cm_info_PrintGetSku(true);
-        cm_info_PrintMcuVersion(true);
-        cm_info_PrintResetReason(true);
+        cm_info_PrintResetCause(true);
         cm_info_PrintResetsCount(true);
     }
     else if (strcmp(command, "firmware") == 0)
@@ -453,7 +455,7 @@ void cm_info_ProcessInfoCommand
     }
     else if (0 == strcmp(command, "reset"))
     {
-        cm_info_PrintResetReason(false);
+        cm_info_PrintResetCause(false);
     }
     else if (0 == strcmp(command, "resetsCount"))
     {
