@@ -1829,8 +1829,8 @@ FUNCTION le_result_t GetUmtsSignalMetrics
     uint32   bler       OUT, ///< Block error rate
     int32    ecio       OUT, ///< Ec/Io value in dB with 1 decimal place (-15 = -1.5 dB) (Negative
                              ///< value)
-    int32    rscp       OUT, ///< Measured RSCP in dBm (only applicable for TD-SCDMA network,
-                             ///< negative value, value INT32_MAX means that RSCP is not available)
+    int32    rscp       OUT, ///< Measured RSCP in dBm (negative value, value INT32_MAX means
+                             ///< that RSCP is not available)
     int32    sinr       OUT  ///< Measured SINR in dB (only applicable for TD-SCDMA network, value
                              ///< INT32_MAX means that the SINR is not available)
 );
@@ -1857,7 +1857,7 @@ FUNCTION le_result_t GetLteSignalMetrics
     uint32   bler       OUT, ///< Block error rate
     int32    rsrq       OUT, ///< RSRQ value in dB as measured by L1 with 1 decimal place
     int32    rsrp       OUT, ///< Current RSRP in dBm as measured by L1 with 1 decimal place
-    int32    sinr       OUT  ///< SNR level in dB with 1 decimal place (15 = 1.5 dB)
+    int32    snr        OUT  ///< SNR level in dB with 1 decimal place (15 = 1.5 dB)
 );
 
 //--------------------------------------------------------------------------------------------------

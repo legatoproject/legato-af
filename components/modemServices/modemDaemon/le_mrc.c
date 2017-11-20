@@ -1163,7 +1163,7 @@ static void CloseSessionEventHandler
         return;
     }
 
-    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+    LE_DEBUG("SessionRef (%p) has been closed", sessionRef);
 
     // Search for all references used by the current client session that has been closed.
     le_ref_IterRef_t iterRef = le_ref_GetIterator(CellListRefMap);
@@ -3695,9 +3695,8 @@ le_result_t le_mrc_GetUmtsSignalMetrics
     uint32_t*           blerPtr,    ///< [OUT] Block error rate
     int32_t*            ecioPtr,    ///< [OUT] Ec/Io value in dB with 1 decimal place (-15 = -1.5
                                     ///<       dB) (Negative value)
-    int32_t*            rscpPtr,    ///< [OUT] Measured RSCP in dBm (only applicable for TD-SCDMA
-                                    ///<       network, negative value, value INT32_MAX means that
-                                    ///<       the value is not available)
+    int32_t*            rscpPtr,    ///< [OUT] Measured RSCP in dBm (negative value, value INT32_MAX
+                                    ///<       means that the value is not available)
     int32_t*            sinrPtr     ///< [OUT] Measured SINR in dB (only applicable for TD-SCDMA
                                     ///<       network, value INT32_MAX means that the value is
                                     ///<       not available)
@@ -3722,7 +3721,7 @@ le_result_t le_mrc_GetUmtsSignalMetrics
         *ssPtr = signalMetricsPtr->paSignalMetricsPtr->ss;
         *blerPtr = signalMetricsPtr->paSignalMetricsPtr->er;
         *ecioPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.ecio;
-        *rscpPtr = INT32_MAX;
+        *rscpPtr = signalMetricsPtr->paSignalMetricsPtr->umtsMetrics.rscp;
         *sinrPtr = INT32_MAX;
         return LE_OK;
     }

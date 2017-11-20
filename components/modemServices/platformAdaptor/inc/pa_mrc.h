@@ -142,7 +142,8 @@ pa_mrc_ScanInformation_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int32_t   ecio; ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t   ecio; ///< Ec/Io value in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t   rscp; ///< Measured RSCP in dBm
 }
 pa_mrc_UmtsMetrics_t;
 
@@ -154,7 +155,7 @@ pa_mrc_UmtsMetrics_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    int32_t   ecio; ///< Ec/Io value  in dB with 1 decimal place (15 = 1.5 dB)
+    int32_t   ecio; ///< Ec/Io value in dB with 1 decimal place (15 = 1.5 dB)
     int32_t   rscp; ///< Measured RSCP in dBm
     int32_t   sinr; ///< Measured SINR in dB
 }
