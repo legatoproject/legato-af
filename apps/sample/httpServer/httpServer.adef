@@ -57,6 +57,17 @@ requires:
     }
 }
 
+extern:
+{
+    requires:
+    {
+        le_cfg = $LEGATO_ROOT/interfaces/le_cfg.api
+        le_update = $LEGATO_ROOT/interfaces/le_update.api
+        le_appInfo = $LEGATO_ROOT/interfaces/le_appInfo.api
+    }
+
+}
+
 bindings:
 {
     *.le_cfg -> <root>.le_cfg
