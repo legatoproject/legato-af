@@ -793,7 +793,8 @@ static void Testle_pos_AddMovementHandler
     le_thread_Start(NavigationThreadRef);
 
     LE_INFO("Request activation of the positioning service");
-    LE_ASSERT((ActivationRef = le_posCtrl_Request()) != NULL);
+    ActivationRef = le_posCtrl_Request();
+    LE_ASSERT(NULL != ActivationRef);
 
     // Wait that the tasks have started before continuing the test
     SynchTest();

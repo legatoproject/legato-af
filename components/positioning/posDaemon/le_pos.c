@@ -2516,9 +2516,15 @@ le_result_t le_pos_GetFixState
     }
 
     // Get position fix state.
-    le_gnss_GetPositionState(positionSampleRef, &gnssState);
-
-    *statePtr = (le_pos_FixState_t)gnssState;
+    if (LE_OK != le_gnss_GetPositionState(positionSampleRef, &gnssState))
+    {
+        *statePtr = LE_POS_STATE_UNKNOWN;
+        LE_ERROR("Failed to get the position fix state");
+    }
+    else
+    {
+        *statePtr = (le_pos_FixState_t)gnssState;
+    }
 
     // Release provided Position sample reference
     le_gnss_ReleaseSampleRef(positionSampleRef);

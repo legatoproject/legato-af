@@ -335,8 +335,8 @@ static void* AppHandler
 
     LOCK
     // Subscribe position handler
-    LE_ASSERT((GnssPositionHandlerRef = le_gnss_AddPositionHandler(GnssPositionHandlerFunction,
-                                                                 NULL)) != NULL);
+    GnssPositionHandlerRef = le_gnss_AddPositionHandler(GnssPositionHandlerFunction, NULL);
+    LE_ASSERT(NULL != GnssPositionHandlerRef);
     UNLOCK
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
