@@ -1,6 +1,6 @@
 /** @page releaseNotes17100 17.10.0 Release Notes
 
-Release Date: Nov 17, 2017
+Release Date: Nov 21, 2017
 
 See @ref aboutLicenses to view Legato AF Licensing Information.
 
@@ -50,8 +50,11 @@ All settings for watchdog are fully configurable and can be set on an
 @ref defFilesAdef_watchdogAction "app" (all processes in the app use the same settings) or on an
 @ref defFilesAdef_processWatchdogAction "individual process".
 
-The default timeout is set to @b 2 @b minutes and the default action is to @b restart the process.
+The default timeout is set to @b 2 @b minutes for the platform services and 30 seconds for the
+application framework; the default action is to @b restart the process.
 For more information on the watchdog daemon read the @ref basicRuntimeArch_watchdog "overview".
+
+To disable the watchdog refer to the @ref basicRuntimeArch_watchdog Overview for instructions.
 
 @subsection rn1710_Features_wp77xx  WP77xx added as supported target
 
