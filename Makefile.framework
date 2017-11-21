@@ -214,7 +214,8 @@ watchdog: liblegato $(BIN_DIR)
 	mkexe $(LOCAL_MKEXE_FLAGS) \
 		-i $(LEGATO_ROOT)/framework/liblegato \
 		-i $(LEGATO_ROOT)/framework/liblegato/linux \
-		$(SRC_DIR)/watchdog/watchdogDaemon
+		$(SRC_DIR)/watchdog/watchdogDaemon #\
+		#--cflags=-DLEGATO_FRAMEWORK_WDOG_DISABLE
 
 .PHONY: updateDaemon
 updateDaemon: liblegato $(BIN_DIR)

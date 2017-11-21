@@ -89,10 +89,12 @@ Possible watchdog actions:
    the SIGTERM signal, followed shortly by SIGKILL).
  - @c reboot - log an emergency message and reboot the system.
 
-To disable the watchdog for all the daemons within the Legato Application Framework add the
-following line to the @c Makefile.framework in the $LEGATO_ROOT directory:
-@c -DLEGATO_FRAMEWORK_WDOG_DISABLE.
-The command is added to the @c mkexe arguments when building @c liblegato.
+To disable the watchdog for all the daemons within the Legato Application Framework remove the two
+"#" symbols from the watchdog build section in @c Makefile.framework.
+
+The command has already been added to the @c mkexe arguments for @c liblegato, but has been
+commented out. Remove the "#" from the following line and the line above it:
+@c --cflags=-DLEGATO_FRAMEWORK_WDOG_DISABLE
 
 Example:
 @verbatim
@@ -101,8 +103,8 @@ watchdog: liblegato $(BIN_DIR)
             mkexe $(LOCAL_MKEXE_FLAGS) \
                         -i $(LEGATO_ROOT)/framework/liblegato \
                         -i $(LEGATO_ROOT)/framework/liblegato/linux \
-                        $(SRC_DIR)/watchdog/watchdogDaemon \
-                        -DLEGATO_FRAMEWORK_WDOG_DISABLE
+                        $(SRC_DIR)/watchdog/watchdogDaemon #\            #uncomment the \
+                        #--cflags=-DLEGATO_FRAMEWORK_WDOG_DISABLE        #uncomment this line
 @endverbatim
 
 To disable the watchdog for the Platform Services on your target set
