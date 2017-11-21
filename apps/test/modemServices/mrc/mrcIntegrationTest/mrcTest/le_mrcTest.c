@@ -1411,6 +1411,8 @@ static void Testle_mrc_SetSignalStrengthIndDelta
     LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UNKNOWN,2));
     LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UNKNOWN,0));
     LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_GSM,0));
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,1));
+    LE_ASSERT(LE_BAD_PARAMETER == le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,9));
 
     // test correct parameters.
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_GSM, 1));
@@ -1421,9 +1423,24 @@ static void Testle_mrc_SetSignalStrengthIndDelta
     // #define RSSI_MIN        51   /* per 3GPP 27.007  (negative value) */
     // #define RSSI_MAX        113  /* per 3GPP 27.007  (negative value) */
     // It is up to user to set a reasonable delta.
-    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_LTE,63));
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_LTE,630));
     LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_UMTS,1000));
-    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,1));
+
+    // TD-SCDMA tests.
+    // set 1 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,10));
+    // set 1 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,14));
+    // set 2 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,16));
+    // set 9 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,95));
+    // set 10 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,101));
+    // set 19 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,195));
+    // set 20 dBm RSSI delta
+    LE_ASSERT_OK(le_mrc_SetSignalStrengthIndDelta(LE_MRC_RAT_TDSCDMA,196));
 
     LE_ASSERT_OK(le_mrc_GetRadioAccessTechInUse(&rat));
     LE_ASSERT(LE_MRC_RAT_UNKNOWN != rat);

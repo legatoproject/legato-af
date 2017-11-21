@@ -23,6 +23,7 @@ the User must consider the constraints described in the corresponding page.
 | @subpage platformConstraintsStk (@ref le_sim_stk "le_sim for STK")     | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsTemperature (@ref c_temp "le_temp")        | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsReadOnly                                   | X      | X      | X      | X      | X      | X      | X      |
+| @subpage platformConstraintsMdc                                        | X      | X      | X      | X      | X      | X      | X      |
 | @subpage platformConstraintsDualSys (@ref c_fwupdate "le_fwupdate")    | NA     | X      | X      | NA     | NA     | NA     | NA     |
 | @subpage platformConstraintsInfo (@ref c_info "le_info")               | NA     | X      | X      | NA     | NA     | X      | X      |
 | @subpage platformConstraintsmdmCfg                                     | NA     | X      | X      | NA     | NA     | NA     | NA     |

@@ -3877,8 +3877,11 @@ le_result_t le_mrc_SetSignalStrengthIndThresholds
  *  - LE_BAD_PARAMETER  Bad parameters.
  *  - LE_FAULT          Function failed.
  *
- * @note The minimum signal delta is one unit of 0.1 dBm
+ * @note The signal delta is set in units of 0.1 dBm. For example, to set a delta of 10.6 dBm, the
+ *       delta value must be set to 106.
  *
+ * @warning The signal delta resolution is platform dependent. Please refer to
+ *          @ref platformConstraintsModemRadiocontrol section for full details.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetSignalStrengthIndDelta

@@ -1,0 +1,22 @@
+/** @page platformConstraintsMdc Modem Radio Control platform constraints
+
+On Qualcomm-based platform, the signal strength indication delta resolution set in
+le_mrc_SetSignalStrengthIndDelta API depends on the Radio Access Technology (RAT) used.
+
+For TD-SCDMA RAT technology, the signal delta is set with steps of 1 dBm with a minimum of one dBm.
+Intermediate values less than 1 dBm are rounded.
+For the other RAT technologies, the signal delta is set with steps of 0.1 dBm with a minimum of 0.1
+dBm.
+
+For example, to set a signal strength indication delta of 10.6 dBm, the delta value must be set to
+106. This value is rounded to 11 dBm for TD-SCDMA RAT technology. (105 would have been equivalent to
+10dBm on TD-SCDMA).
+
+Under TD-SCDMA RAT technology, a delta value less than 10 is forbiden.
+
+See @ref  c_mrc API
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
+
