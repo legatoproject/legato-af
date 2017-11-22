@@ -2,7 +2,8 @@
 
 Use the Power Manager @c pmtool to set power management options.
 
-Usage:
+<h1>Usage</h1>
+
 <b>@verbatim
 pmtool bootOn gpio  <gpioNum> <triggerOption>
 pmtool bootOn timer <timeOutVal>

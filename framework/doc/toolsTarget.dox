@@ -9,14 +9,15 @@ Legato has these tools to run on the target:
 | @subpage toolsTarget_configEcm     | setup an ECM interface                             |
 | @subpage toolsTarget_fwUpdate      | download image files directly to                   |
 | @subpage toolsTarget_inspect       | examine running Legato processes and memory pools  |
-| @subpage toolsTarget_gnss           | monitor and debug GNSS        |
+| @subpage toolsTarget_gnss          | monitor and debug GNSS                             |
 | @subpage toolsTarget_legato        | run Legato framework                               |
 | @subpage toolsTarget_log           | set logging variables for components               |
-| @subpage toolsTarget_sbtrace  |  help import files into sandboxed app        |
+| @subpage toolsTarget_sbtrace       | help import files into sandboxed app               |
 | @subpage toolsTarget_sdir          | control IPC bindings and troubleshoot              |
 | @subpage toolsTarget_setNet        | set your MAC address or static IP                  |
 | @subpage toolsTarget_pmTool        | set power manager target options                   |
 | @subpage toolsTarget_update        | install, update, and remove software               |
+| @subpage wifi_toolsTarget_wifi     | configure and control the WiFi service             |
 
 Copyright (C) Sierra Wireless Inc.
 
