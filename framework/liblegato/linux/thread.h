@@ -50,15 +50,15 @@ typedef struct
     }
     state;
 
-    le_thread_MainFunc_t    mainFunc;       ///< The main function for the thread.
-    void*                   context;        ///< Context value to be passed to mainFunc.
-    le_dls_List_t           destructorList; ///< The destructor list for this thread.
-    mutex_ThreadRec_t       mutexRec;       ///< The thread's mutex record.
-    sem_ThreadRec_t         semaphoreRec;   ///< the thread's semaphore record.
-    event_PerThreadRec_t    eventRec;       ///< The thread's event record.
-    pthread_t               threadHandle;   ///< The pthreads thread handle.
-    le_thread_Ref_t         safeRef;        ///< Safe reference for this object.
-    timer_ThreadRec_t       timerRec;       ///< The thread's timer record.
+    le_thread_MainFunc_t    mainFunc;                       ///< The main function for the thread.
+    void*                   context;                        ///< Context value to be passed to mainFunc.
+    le_dls_List_t           destructorList;                 ///< The destructor list for this thread.
+    mutex_ThreadRec_t       mutexRec;                       ///< The thread's mutex record.
+    sem_ThreadRec_t         semaphoreRec;                   ///< The thread's semaphore record.
+    event_PerThreadRec_t    eventRec;                       ///< The thread's event record.
+    pthread_t               threadHandle;                   ///< The pthreads thread handle.
+    le_thread_Ref_t         safeRef;                        ///< Safe reference for this object.
+    timer_ThreadRec_t       timerRec[TIMER_TYPE_COUNT];     ///< The thread's timer records.
 }
 thread_Obj_t;
 
@@ -157,12 +157,12 @@ event_PerThreadRec_t* thread_GetOtherEventRecPtr
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the calling thread's timer record.
+ * Gets the specified calling thread's timer record.
  */
 //--------------------------------------------------------------------------------------------------
 timer_ThreadRec_t* thread_GetTimerRecPtr
 (
-    void
+    timer_Type_t timerType
 );
 
 

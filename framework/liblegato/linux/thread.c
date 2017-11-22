@@ -430,7 +430,7 @@ static thread_Obj_t* CreateThread
     memset(&threadPtr->mutexRec, 0, sizeof(threadPtr->mutexRec));
     memset(&threadPtr->semaphoreRec, 0, sizeof(threadPtr->semaphoreRec));
     memset(&threadPtr->eventRec, 0, sizeof(threadPtr->eventRec));
-    memset(&threadPtr->timerRec, 0, sizeof(threadPtr->timerRec));
+    memset(threadPtr->timerRec, 0, TIMER_TYPE_COUNT * sizeof(timer_ThreadRec_t));
 
     // Create a safe reference for this object and put this object on the thread object list (for
     // the Inpsect tool).
@@ -636,15 +636,15 @@ event_PerThreadRec_t* thread_GetOtherEventRecPtr
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Gets the calling thread's timer record pointer.
+ * Gets the specified calling thread's timer record.
  */
 //--------------------------------------------------------------------------------------------------
 timer_ThreadRec_t* thread_GetTimerRecPtr
 (
-    void
+    timer_Type_t timerType
 )
 {
-    return &((GetCurrentThreadPtr())->timerRec);
+    return &((GetCurrentThreadPtr())->timerRec[timerType]);
 }
 
 

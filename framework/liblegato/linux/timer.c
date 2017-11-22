@@ -54,6 +54,14 @@ static int ClockClockType = CLOCK_MONOTONIC;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Determines whether the target supports suspended system wake up using timers.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsWakeupSupported = false;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Trace reference used for controlling tracing in this module.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -305,6 +313,30 @@ static void PrintTimerList
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get thread timer record depending on what is specified by the timer and what is supported by the
+ * device.
+ */
+//--------------------------------------------------------------------------------------------------
+static timer_ThreadRec_t* GetThreadTimerRec
+(
+    Timer_t* timerPtr
+)
+{
+    if (!timerPtr->isWakeupEnabled || !IsWakeupSupported)
+    {
+        /* Return non-wake up timer record if specified by user or wake up is not supported by
+         * the device. */
+        return thread_GetTimerRecPtr(TIMER_NON_WAKEUP);
+    }
+    else
+    {
+        return thread_GetTimerRecPtr(TIMER_WAKEUP);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Arm and (re)start the timerFD
  */
 //--------------------------------------------------------------------------------------------------
@@ -313,7 +345,8 @@ static void RestartTimerFD
     Timer_t* timerPtr      ///< [IN] (Re)start this timer object
 )
 {
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
+
     struct itimerspec timerInterval;
 
     // Set the timer to expire at the expiry time of the given timer
@@ -347,10 +380,9 @@ static void RestartTimerFD
 //--------------------------------------------------------------------------------------------------
 static void StopTimerFD
 (
-    void
+    timer_ThreadRec_t* threadRecPtr
 )
 {
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
     struct itimerspec timerInterval;
 
     // Setting all values to zero will stop the timerFD
@@ -383,7 +415,7 @@ static void ProcessExpiredTimer
     Timer_t* expiredTimer
 )
 {
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(expiredTimer);
 
     TRACE("Timer '%s' expired", expiredTimer->name);
 
@@ -431,7 +463,7 @@ static void TimerFdHandler
 {
     uint64_t expiry;
     ssize_t numBytes;
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    timer_ThreadRec_t* threadRecPtr = le_fdMonitor_GetContextPtr();
     Timer_t* firstTimerPtr;
 
     LE_ASSERT((events & ~POLLIN) == 0);
@@ -492,7 +524,7 @@ static void TimerFdHandler
     // but the timerFD is still running, then we need to stop it.
     if ( (firstTimerPtr == NULL) && ( threadRecPtr->firstTimerPtr != NULL ) )
     {
-        StopTimerFD();
+        StopTimerFD(threadRecPtr);
     }
 
     // If the next timer on the active list exists, then if the timerFD is not running, or it is
@@ -558,6 +590,7 @@ void timer_Init
             fd_Close(timerFd);
             TimerClockType = CLOCK_BOOTTIME_ALARM;
             ClockClockType = CLOCK_BOOTTIME;
+            IsWakeupSupported = true;
         }
         else
         {
@@ -596,11 +629,16 @@ void timer_InitThread
     void
 )
 {
-    timer_ThreadRec_t* recPtr = thread_GetTimerRecPtr();
+    timer_Type_t i;
 
-    recPtr->timerFD = -1;
-    recPtr->activeTimerList = LE_DLS_LIST_INIT;
-    recPtr->firstTimerPtr = NULL;
+    for (i = TIMER_NON_WAKEUP; i < TIMER_TYPE_COUNT; i++)
+    {
+        timer_ThreadRec_t* recPtr = thread_GetTimerRecPtr(i);
+
+        recPtr->timerFD = -1;
+        recPtr->activeTimerList = LE_DLS_LIST_INIT;
+        recPtr->firstTimerPtr = NULL;
+    }
 }
 
 
@@ -629,61 +667,37 @@ void timer_DestructThread
     void
 )
 {
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    timer_Type_t i;
 
-    // Close the file descriptor
-    if (threadRecPtr->timerFD != -1)
+    for (i = TIMER_NON_WAKEUP; i < TIMER_TYPE_COUNT; i++)
     {
-        fd_Close(threadRecPtr->timerFD);
-    }
+        timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr(i);
 
-    le_dls_Link_t* linkPtr;
-
-    // Get the start of the list
-    linkPtr = le_dls_Peek(&threadRecPtr->activeTimerList);
-
-    // Release the timer list
-    while ( linkPtr != NULL )
-    {
-        Timer_t* timerPtr = CONTAINER_OF(linkPtr, Timer_t, link);
-
-        linkPtr = le_dls_PeekNext(&threadRecPtr->activeTimerList, linkPtr);
-
-        le_dls_Remove(&threadRecPtr->activeTimerList, &timerPtr->link);
-
-        le_mem_Release(timerPtr);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Check all timers on the active list to ensure they have not expired for too long
- *
- * @return true if all active timers are set to expire in the future, false otherwise.
- */
-//--------------------------------------------------------------------------------------------------
-bool timer_CheckExpiry
-(
-    void
-)
-{
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
-    const Timer_t* timerPtr;
-    le_clk_Time_t threshold;
-
-    LE_DLS_FOREACH(&(threadRecPtr->activeTimerList), timerPtr, Timer_t, link)
-    {
-        // Timer should have expired, but is still on the active timer list.
-        // There's a timer fault.
-        threshold = clk_GetRelativeTime(timerPtr->isWakeupEnabled);
-        if (le_clk_GreaterThan(threshold, timerPtr->expiryTime))
+        // Close the file descriptor
+        if (threadRecPtr->timerFD != -1)
         {
-            return false;
+            fd_Close(threadRecPtr->timerFD);
+        }
+
+        le_dls_Link_t* linkPtr;
+
+        // Get the start of the list
+        linkPtr = le_dls_Peek(&threadRecPtr->activeTimerList);
+
+        // Release the timer list
+        while ( linkPtr != NULL )
+        {
+            Timer_t* timerPtr = CONTAINER_OF(linkPtr, Timer_t, link);
+
+            linkPtr = le_dls_PeekNext(&threadRecPtr->activeTimerList, linkPtr);
+
+            le_dls_Remove(&threadRecPtr->activeTimerList, &timerPtr->link);
+
+            le_mem_Release(timerPtr);
         }
     }
-
-    return true;
 }
+
 
 // =============================================
 //  PUBLIC API FUNCTIONS
@@ -1024,7 +1038,8 @@ le_result_t le_timer_Start
 
     TRACE("Starting timer '%s'", timerPtr->name);
 
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
+
     Timer_t* firstTimerPtr;
 
     // todo: verify that the minimum number of fields have been appropriately initialized
@@ -1042,7 +1057,7 @@ le_result_t le_timer_Start
         // stopped after it expired but before the handler was called.
         // We also want the FD to close on exec (TFD_CLOEXEC) so that the FD is not inherited by
         // any child processes.
-        if (timerPtr->isWakeupEnabled)
+        if (timerPtr->isWakeupEnabled && IsWakeupSupported)
         {
             threadRecPtr->timerFD = timerfd_create(TimerClockType, TFD_NONBLOCK | TFD_CLOEXEC);
         }
@@ -1062,12 +1077,13 @@ le_result_t le_timer_Start
 
         // Register the timerFD with the event loop.
         // It will not be triggered until the timer is actually started
-        (void)le_fdMonitor_Create("Timer", threadRecPtr->timerFD, TimerFdHandler, POLLIN);
+        le_fdMonitor_Ref_t fdMonitor = le_fdMonitor_Create("Timer", threadRecPtr->timerFD, TimerFdHandler, POLLIN);
+        le_fdMonitor_SetContextPtr(fdMonitor, threadRecPtr);
     }
 
     // Add the timer to the timer list. This is the only place we reset the expiry count.
     timerPtr->expiryCount = 0;
-    timerPtr->expiryTime = le_clk_Add(clk_GetRelativeTime(!timerPtr->isWakeupEnabled),
+    timerPtr->expiryTime = le_clk_Add(clk_GetRelativeTime(timerPtr->isWakeupEnabled),
                                       timerPtr->interval);
     AddToTimerList(&threadRecPtr->activeTimerList, timerPtr);
     //PrintTimerList(&threadRecPtr->activeTimerList);
@@ -1118,7 +1134,7 @@ le_result_t le_timer_Stop
     le_result_t result;
     Timer_t* firstTimerPtr;
 
-    timer_ThreadRec_t* threadRecPtr = thread_GetTimerRecPtr();
+    timer_ThreadRec_t* threadRecPtr = GetThreadTimerRec(timerPtr);
 
     result = RemoveFromTimerList(&threadRecPtr->activeTimerList, timerPtr);
     if (result == LE_OK)
@@ -1137,7 +1153,7 @@ le_result_t le_timer_Stop
             }
             else
             {
-                StopTimerFD();
+                StopTimerFD(threadRecPtr);
 
             }
         }

@@ -21,7 +21,7 @@
 #include "limit.h"
 #include "addr.h"
 #include "fileDescriptor.h"
-
+#include "timer.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1106,7 +1106,7 @@ static le_dls_Link_t* GetThreadMemberObjList
     switch (memberObjType)
     {
         case INSPECT_INSP_TYPE_TIMER:
-            return threadObjRef->timerRec.activeTimerList.headLinkPtr;
+            return threadObjRef->timerRec[TIMER_NON_WAKEUP].activeTimerList.headLinkPtr;
             break;
 
         case INSPECT_INSP_TYPE_MUTEX:
