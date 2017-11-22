@@ -82,6 +82,7 @@ static const char LdconfigNotDoneMarkerFile[] = "/legato/systems/needs_ldconfig"
 static const char GoldenVersionFile[] = "/mnt/legato/system/version";
 static const char CurrentVersionFile[] = "/legato/systems/current/version";
 
+static const char NoRebootFile[] = "/tmp/legato/.DEBUG_NO_REBOOT";
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1451,6 +1452,7 @@ static int RunCurrentSystem
 )
 {
     int exitCode = TryToRun();
+    int retCode;
 
     switch (exitCode)
     {
@@ -1459,13 +1461,39 @@ static int RunCurrentSystem
             // Sync file systems before rebooting.
             sync();
 
-            // TODO: Dump the last 40 lines of the syslog to the console.
-            system("logread | tail -n 40 > /dev/console");
+            // Dump the last 100 lines from logread excluding Legato: { INFO, DBUG,-WRN-} to
+            // prevent pollution by DEBUG, INFO or WRN messages.
+            system("logread | "
+                   "egrep -v 'Legato: [ -][IDW][NBR][FUN][OG-]' | "
+                   "tail -n 100 > /dev/console");
 
-            // Reboot the system.
-            if (reboot(RB_AUTOBOOT) == -1)
+            // Sync again file systems before rebooting.
+            sync();
+
+            // If the file NoRebootFile is present, do not request a reboot
+            if (0 == access(NoRebootFile, R_OK))
             {
-                LE_FATAL("Failed to reboot. Errno = %s.", strerror(errno));
+                LE_FATAL("Reboot is disabled. Exit with failure");
+            }
+
+            // Try first the /sbin/reboot, less hard that the reboot(2) system call
+            retCode = system("/sbin/reboot");
+            if (WIFEXITED(retCode) && (0 == WEXITSTATUS(retCode)))
+            {
+                LE_FATAL("System will reboot now !");
+            }
+            // Reboot the system.
+            else if (reboot(RB_AUTOBOOT) == -1)
+            {
+                struct timespec waitBeforeReboot = { 2, 0 };
+
+                LE_EMERG("Failed to reboot. Errno = %s.", strerror(errno));
+                // Last chance ! Use /proc/sysrq entries to force reboot...
+                // If this fails, no way to reboot from Legato side.
+                nanosleep(&waitBeforeReboot, NULL);
+                retCode = system("echo 1 > /proc/sys/kernel/sysrq; "
+                                 "echo b > /proc/sysrq-trigger");
+                LE_FATAL("Failed to reboot using /proc/sysrq-trigger: retCode = %x", retCode);
             }
             else
             {

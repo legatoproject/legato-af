@@ -498,8 +498,19 @@ static void WatchdogHandleExpiry
     if (expiredDog != NULL)
     {
         pid_t procId = watchDogPtr->procId;
+        int fd;
+        char procName[LE_LIMIT_PROC_NAME_LEN + 1];
+        char procPidPath[LE_LIMIT_PROC_NAME_LEN + 1];
 
-        LE_CRIT("proc %d timed out", procId);
+        snprintf(procPidPath, sizeof(procPidPath), "/proc/%d/cmdline", procId);
+        memset(procName, 0, sizeof(procName));
+        fd = open(procPidPath, O_RDONLY);
+        if (0 <= fd)
+        {
+            read(fd, procName, LE_LIMIT_PROC_NAME_LEN);
+            close(fd);
+        }
+        LE_CRIT("proc %d [%s] timed out", procId, procName);
 
         DeleteWatchdog(procId);
         wdog_WatchdogTimedOut(procId);
