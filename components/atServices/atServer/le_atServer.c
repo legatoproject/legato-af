@@ -1717,11 +1717,11 @@ static le_result_t ParseParam
     CmdParser_t* cmdParserPtr
 )
 {
-    ParamString_t* paramPtr = le_mem_ForceAlloc(ParamStringPool);
-    memset(paramPtr,0,sizeof(ParamString_t));
     uint32_t index = 0;
     bool tokenQuote = false;
     bool loop = true;
+    ParamString_t* paramPtr = le_mem_ForceAlloc(ParamStringPool);
+    memset(paramPtr, 0, sizeof(ParamString_t));
 
     if (le_dls_NumLinks(&(cmdParserPtr->currentCmdPtr->paramList)) != 0)
     {
@@ -2004,6 +2004,17 @@ static void ParseAtCmd
                 }
             }
 
+            // Incurred error in parsing AT command. Clear all parsed parameters.
+            if (cmdParserPtr->currentCmdPtr)
+            {
+                ATCmdSubscribed_t* cmdPtr = cmdParserPtr->currentCmdPtr;
+                le_dls_Link_t* linkPtr;
+                while ((linkPtr = le_dls_Pop(&cmdPtr->paramList)) != NULL)
+                {
+                    ParamString_t *paraPtr = CONTAINER_OF(linkPtr, ParamString_t, link);
+                    le_mem_Release(paraPtr);
+                }
+            }
             goto sendErrorRsp;
         }
     }
@@ -3223,7 +3234,7 @@ le_result_t le_atServer_SendFinalResponse
 
     // clean AT command context, not in use now
     le_dls_Link_t* linkPtr;
-    while ((linkPtr=le_dls_Pop(&cmdPtr->paramList)) != NULL)
+    while ((linkPtr = le_dls_Pop(&cmdPtr->paramList)) != NULL)
     {
         ParamString_t *paraPtr = CONTAINER_OF(linkPtr, ParamString_t, link);
         le_mem_Release(paraPtr);
