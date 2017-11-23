@@ -292,6 +292,9 @@ static void* AtHost
                 "\r\n+CBC: 1,70,4190\r\n"
                 "\r\n+CBC: 2,100,4190\r\n"));
 
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=0",
+                "\r\nOK\r\n"));
+
     // Test bridge feature
     LE_ASSERT_OK(Testle_atServer_Bridge(socketFd, epollFd, sharedDataPtr));
 
@@ -311,10 +314,10 @@ static void* AtHost
                                      "\r\nOK\r\n"));
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "ATD>me\"John\"IG;D>1ig;D>ME1",
-                                    "\r\n>ME\"John\"IG;\r\n"
-                                    "\r\n>1ig;\r\n"
-                                    "\r\n>ME1\r\n"
-                                    "\r\nOK\r\n"));
+                                     "\r\n>ME\"John\"IG;\r\n"
+                                     "\r\n>1ig;\r\n"
+                                     "\r\n>ME1\r\n"
+                                     "\r\nOK\r\n"));
 
     LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+TEXT", "\r\n> "));
     LE_ASSERT_OK(SendText(socketFd, epollFd, "testing\x1c"));
@@ -429,11 +432,52 @@ static void* AtHost
                                                   "\r\nLE_OK\r\n"
                                                   "\r\nOK\r\n"));
 
-    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CLOSE?",
-                "\r\nERROR\r\n"));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+ERRCODE?", "\r\nOK\r\n"));
 
-    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CLOSE",
-                ""));
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=1", "\r\nOK\r\n"));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"513\",\"CUSTOM_ERROR: \"",
+                                     "\r\nCUSTOM_ERROR: 513\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=2", "\r\nOK\r\n"));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"514\",\"CUSTOM_ERROR: \",\"VERBOSE_MSG\"",
+                                     "\r\nCUSTOM_ERROR: VERBOSE_MSG\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"159\",\"+CME ERROR: \"",
+                                     "\r\n+CME ERROR: Uplink busy\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"159\",\"+CMS ERROR: \"",
+                                     "\r\n+CMS ERROR: Unspecified TP-DCS error\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"127\",\"+CME ERROR: \"",
+                                    "\r\n+CME ERROR: Missing or unknown APN\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"127\",\"+CMS ERROR: \"",
+                                    "\r\n+CMS ERROR: Interworking, unspecified\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd,
+                                     "AT+ERRCODE=\"128\",\"+UNDEF ERROR: \"",
+                                    "\r\n+UNDEF ERROR: 128\r\n"
+                                     ));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CMEE=0", "\r\nOK\r\n"));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CLOSE?", "\r\nERROR\r\n"));
+
+    LE_ASSERT_OK(SendCommandsAndTest(socketFd, epollFd, "AT+CLOSE", ""));
 
 
     LE_INFO("======== ATServer unit test PASSED ========");

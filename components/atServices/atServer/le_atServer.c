@@ -49,12 +49,17 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Command responses types
+ * User-defined error strings pool size
  */
 //--------------------------------------------------------------------------------------------------
-#define RSP_TYPE_OK         0
-#define RSP_TYPE_ERROR      1
-#define RSP_TYPE_RESPONSE   2
+#define USER_ERROR_POOL_SIZE       50
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Number of standard error strings defined in 3GPP TS 27.007 9.2 and 3GPP TS 27.005 3.2.5
+ */
+//--------------------------------------------------------------------------------------------------
+#define STD_ERROR_CODE_SIZE       512
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -192,6 +197,19 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Error codes modes enum
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    MODE_DISABLED,
+    MODE_EXTENDED,
+    MODE_VERBOSE
+}
+ErrorCodesMode_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Pool for device context
  */
 //--------------------------------------------------------------------------------------------------
@@ -221,6 +239,20 @@ static le_mem_PoolRef_t  RspStringPool;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Pool for user-defined error codes
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t UserErrorPool;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Map for user-defined error codes
+ */
+//--------------------------------------------------------------------------------------------------
+static le_ref_MapRef_t UserErrorRefMap;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Map for devices
  */
 //--------------------------------------------------------------------------------------------------
@@ -242,10 +274,245 @@ static le_hashmap_Ref_t   CmdHashMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Extended error codes
+ * Error codes current mode
  */
 //--------------------------------------------------------------------------------------------------
-static bool ExtendedErrorCodes = false;
+static ErrorCodesMode_t ErrorCodesMode = MODE_DISABLED;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pre-formatted strings corresponding to AT commands +CME error codes
+ * (see 3GPP TS 27.007 9.2)
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+const char* const CmeErrorCodes[STD_ERROR_CODE_SIZE] =
+{
+    ///< 3GPP TS 27.007 §9.2.1: General errors
+    [0]   =   "Phone failure",
+    [1]   =   "No connection to phone",
+    [2]   =   "Phone-adaptor link reserved",
+    [3]   =   "Operation not allowed",
+    [4]   =   "Operation not supported",
+    [5]   =   "PH-SIM PIN required",
+    [6]   =   "PH-FSIM PIN required",
+    [7]   =   "PH-FSIM PUK required",
+    [10]  =   "SIM not inserted",
+    [11]  =   "SIM PIN required",
+    [12]  =   "SIM PUK required",
+    [13]  =   "SIM failure",
+    [14]  =   "SIM busy",
+    [15]  =   "SIM wrong",
+    [16]  =   "Incorrect password",
+    [17]  =   "SIM PIN2 required",
+    [18]  =   "SIM PUK2 required",
+    [20]  =   "Memory full",
+    [21]  =   "Invalid index",
+    [22]  =   "Not found",
+    [23]  =   "Memory failure",
+    [24]  =   "Text string too long",
+    [25]  =   "Invalid characters in text string",
+    [26]  =   "Dial string too long",
+    [27]  =   "Invalid characters in dial string",
+    [30]  =   "No network service",
+    [31]  =   "Network timeout",
+    [32]  =   "Network not allowed - emergency calls only",
+    [40]  =   "Network personalization PIN required",
+    [41]  =   "Network personalization PUK required",
+    [42]  =   "Network subset personalization PIN required",
+    [43]  =   "Network subset personalization PUK required",
+    [44]  =   "Service provider personalization PIN required",
+    [45]  =   "Service provider personalization PUK required",
+    [46]  =   "Corporate personalization PIN required",
+    [47]  =   "Corporate personalization PUK required",
+    [48]  =   "Hidden key required",
+    [49]  =   "EAP method not supported",
+    [50]  =   "Incorrect parameters",
+    [51]  =   "Command implemented but currently disabled",
+    [52]  =   "Command aborted by user",
+    [53]  =   "Not attached to network due to MT functionality restrictions",
+    [54]  =   "Modem not allowed - MT restricted to emergency calls only",
+    [55]  =   "Operation not allowed because of MT functionality restrictions",
+    [56]  =   "Fixed dial number only allowed - called number is not a fixed dial number",
+    [57]  =   "Temporarily out of service due to other MT usage",
+    [58]  =   "Language/alphabet not supported",
+    [59]  =   "Unexpected data value",
+    [60]  =   "System failure",
+    [61]  =   "Data missing",
+    [62]  =   "Call barred",
+    [63]  =   "Message waiting indication subscription failure",
+    [100] =   "Unknown",
+
+    ///< 3GPP TS 27.007 §9.2.2.1: GPRS and EPS errors related to a failure to perform an attach
+    [103] =   "Illegal MS",
+    [106] =   "Illegal ME",
+    [107] =   "GPRS services not allowed",
+    [108] =   "GPRS services and non-GPRS services not allowed",
+    [111] =   "PLMN not allowed",
+    [112] =   "Location area not allowed",
+    [113] =   "Roaming not allowed in this location area",
+    [114] =   "GPRS services not allowed in this PLMN",
+    [115] =   "No Suitable Cells In Location Area",
+    [122] =   "Congestion",
+    [125] =   "Not authorized for this CSG",
+    [172] =   "Semantically incorrect message",
+    [173] =   "Mandatory information element error",
+    [174] =   "Information element non-existent or not implemented",
+    [175] =   "Conditional IE error",
+    [176] =   "Protocol error, unspecified",
+
+    ///< 3GPP TS 27.007 §9.2.2.2: GPRS and EPS errors related to a failure to activate a context
+    [177] =   "Operator Determined Barring",
+    [126] =   "Insufficient resources",
+    [127] =   "Missing or unknown APN",
+    [128] =   "Unknown PDP address or PDP type",
+    [129] =   "User authentication failed",
+    [130] =   "Activation rejected by GGSN, Serving GW or PDN GW",
+    [131] =   "Activation rejected, unspecified",
+    [132] =   "Service option not supported",
+    [133] =   "Requested service option not subscribed",
+    [134] =   "Service option temporarily out of order",
+    [140] =   "Feature not supported",
+    [141] =   "Semantic error in the TFT operation",
+    [142] =   "Syntactical error in the TFT operation",
+    [143] =   "Unknown PDP context",
+    [144] =   "Semantic errors in packet filter(s)",
+    [145] =   "Syntactical errors in packet filter(s)",
+    [146] =   "PDP context without TFT already activated",
+    [149] =   "PDP authentication failure",
+    [178] =   "Maximum number of PDP contexts reached",
+    [179] =   "Requested APN not supported in current RAT and PLMN combination",
+    [180] =   "Request rejected, Bearer Control Mode violation",
+    [181] =   "Unsupported QCI value",
+
+    ///< 3GPP TS 27.007 §9.2.2.2: GPRS and EPS errors related to a failure to disconnect a PDN
+    [171] =   "Last PDN disconnection not allowed",
+
+    ///< 3GPP TS 27.007 §9.2.2.4: Other GPRS errors
+    [148] =   "Unspecified GPRS error",
+    [150] =   "Invalid mobile class",
+    [182] =   "User data transmission via control plane is congested",
+
+    ///< 3GPP TS 27.007 §9.2.3: VBS, VGCS and eMLPP-related errors
+    [151] =   "VBS/VGCS not supported by the network",
+    [152] =   "No service subscription on SIM",
+    [153] =   "No subscription for group ID",
+    [154] =   "Group Id not activated on SIM",
+    [155] =   "No matching notification",
+    [156] =   "VBS/VGCS call already present",
+    [157] =   "Congestion",
+    [158] =   "Network failure",
+    [159] =   "Uplink busy",
+    [160] =   "No access rights for SIM file",
+    [161] =   "No subscription for priority",
+    [162] =   "Operation not applicable or not possible",
+    [163] =   "Group Id prefixes not supported",
+    [164] =   "Group Id prefixes not usable for VBS",
+    [165] =   "Group Id prefix value invalid",
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pre-formatted strings corresponding to AT commands +CMS error codes
+ * (see 3GPP TS 27.005 3.2.5, 3GPP TS 24.011 E-2 and 3GPP TS 23.040 9.2.3.22)
+ *
+ */
+const char* const CmsErrorCodes[STD_ERROR_CODE_SIZE] =
+{
+    ///< 3GPP TS 24.011 §E-2:  RP-cause definition mobile originating SM-transfer
+    [1]    = "Unassigned (unallocated) number",
+    [8]    =  "Operator determined barring",
+    [10]   = "Call barred",
+    [21]   = "Short message transfer rejected",
+    [27]   = "Destination out of service",
+    [28]   = "Unidentified subscriber",
+    [29]   = "Facility rejected",
+    [30]   = "Unknown subscriber",
+    [38]   = "Network out of order",
+    [41]   = "Temporary failure",
+    [42]   = "Congestion",
+    [47]   = "Resources unavailable, unspecified",
+    [50]   = "Requested facility not subscribed",
+    [69]   = "Requested facility not implemented",
+    [81]   = "Invalid short message transfer reference value",
+    [95]   = "Invalid message, unspecified",
+    [96]   = "Invalid mandatory information",
+    [97]   = "Message type non-existent or not implemented",
+    [98]   = "Message not compatible with short message protocol state",
+    [99]   = "Information element non-existent or not implemented",
+    [111]  = "Protocol error, unspecified",
+    [17]   = "Network failure",
+    [22]   = "Congestion",
+    [127]  = "Interworking, unspecified",
+
+    ///< 3GPP TS 23.040 §9.2.3.22: TP-Failure-Cause
+    [128]   = "Telematic interworking not supported",
+    [129]   = "Short message Type 0 not supported",
+    [130]   = "Cannot replace short message",
+    [143]   = "Unspecified TP-PID error",
+    [144]   = "Data coding scheme (alphabet) not supported",
+    [145]   = "Message class not supported",
+    [159]   = "Unspecified TP-DCS error",
+    [160]   = "Command cannot be actioned",
+    [161]   = "Command unsupported",
+    [175]   = "Unspecified TP-Command error",
+    [176]   = "TPDU not supported",
+    [192]   = "SC busy",
+    [193]   = "No SC subscription",
+    [194]   = "SC system failure ",
+    [195]   = "Invalid SME address",
+    [196]   = "Destination SME barred",
+    [197]   = "SM Rejected-Duplicate SM",
+    [198]   = "TP-VPF not supported",
+    [199]   = "TP-VP not supported",
+    [208]   = "(U)SIM SMS storage full",
+    [209]   = "No SMS storage capability in (U)SIM",
+    [210]   = "Error in MS",
+    [211]   = "Memory Capacity Exceeded",
+    [212]   = "(U)SIM Application Toolkit Busy",
+    [213]   = "(U)SIM data download error",
+    [255]   = "Unspecified error cause",
+
+    ///< 3GPP TS 27.005 §3.2.5: Message service failure errors
+    [300] =   "ME failure",
+    [301] =   "SMS service of ME reserved",
+    [302] =   "Operation not allowed",
+    [303] =   "Operation not supported",
+    [304] =   "Invalid PDU mode parameter",
+    [305] =   "Invalid text mode parameter",
+    [310] =   "(U)SIM not inserted",
+    [311] =   "(U)SIM PIN required",
+    [312] =   "PH-(U)SIM PIN required",
+    [313] =   "(U)SIM failure",
+    [314] =   "(U)SIM busy",
+    [315] =   "(U)SIM wrong",
+    [316] =   "(U)SIM PUK required",
+    [317] =   "(U)SIM PIN2 required",
+    [318] =   "(U)SIM PUK2 required",
+    [320] =   "Memory failure",
+    [321] =   "Invalid memory index",
+    [322] =   "Memory full",
+    [330] =   "SMSC address unknown",
+    [331] =   "No network service",
+    [332] =   "Network timeout",
+    [340] =   "No +CNMA acknowledgement expected",
+    [500] =   "Unknown error",
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure used to hold user-defined error codes
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    le_atServer_ErrorCodeRef_t ref;                                      ///< Ref of the error code
+    uint32_t                   errorCode;                                ///< Error code identifier
+    char                       pattern[LE_ATDEFS_RESPONSE_MAX_BYTES];    ///< Response prefix
+    char                       verboseMsg[LE_ATDEFS_RESPONSE_MAX_BYTES]; ///< Verbose message
+}
+UserErrorCode_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -394,9 +661,12 @@ CmdParser_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_atServer_FinalRsp_t  final;                               ///< final result code
-    bool                    customStringAvailable;               /// custom string available
-    char                    resp[LE_ATDEFS_RESPONSE_MAX_BYTES];  ///< string value
+    le_atServer_FinalRsp_t final;                                 ///< Final result code
+    uint32_t               errorCode;                             ///< Final error code
+    char                   pattern[LE_ATDEFS_RESPONSE_MAX_BYTES]; ///< Prefix to the return string
+    bool                   customStringAvailable;                 ///< Custom string available(kept
+                                                                  ///  for legacy purpose)
+    char                   resp[LE_ATDEFS_RESPONSE_MAX_BYTES];    ///< Response string
 }
 FinalRsp_t;
 
@@ -409,7 +679,7 @@ FinalRsp_t;
 typedef struct
 {
     bool                                mode;                           ///< Is text mode
-    ssize_t                              offset;                        ///< Buffer offset
+    ssize_t                             offset;                         ///< Buffer offset
     char                                buf[LE_ATDEFS_TEXT_MAX_BYTES];  ///< Text buffer
     le_atServer_GetTextCallbackFunc_t   callback;                       ///< Callback function
     void*                               ctxPtr;                         ///< Context
@@ -605,41 +875,102 @@ static void AtCmdPoolDestructor
 static void SendRspString
 (
     DeviceContext_t* devPtr,
-    uint8_t rspType,
     const char* rspPtr
 )
 {
-    char string[LE_ATDEFS_RESPONSE_MAX_BYTES+4];
+    char string[LE_ATDEFS_RESPONSE_MAX_BYTES+4] = {0};
 
-    memset(string,0,LE_ATDEFS_RESPONSE_MAX_BYTES+4);
-
-    switch (rspType)
+    if ((devPtr->rspState == AT_RSP_FINAL) || (devPtr->rspState == AT_RSP_UNSOLICITED) ||
+        ((devPtr->rspState == AT_RSP_INTERMEDIATE) && devPtr->isFirstIntermediate))
     {
-        case RSP_TYPE_OK:
-            snprintf(string,LE_ATDEFS_RESPONSE_MAX_BYTES,"\r\nOK\r\n");
-            break;
-        case RSP_TYPE_ERROR:
-            snprintf(string,LE_ATDEFS_RESPONSE_MAX_BYTES,"\r\nERROR\r\n");
-            break;
-        case RSP_TYPE_RESPONSE:
-            if ( (devPtr->rspState == AT_RSP_FINAL) ||
-                (devPtr->rspState == AT_RSP_UNSOLICITED) ||
-                ((devPtr->rspState == AT_RSP_INTERMEDIATE) &&
-                    devPtr->isFirstIntermediate) )
-            {
-                snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+4, \
-                    "\r\n%s\r\n", rspPtr);
-                devPtr->isFirstIntermediate = false;
-            }
-            else
-            {
-                snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+2, \
-                    "%s\r\n", rspPtr);
-            }
-            break;
+        snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+4, "\r\n%s\r\n", rspPtr);
+        devPtr->isFirstIntermediate = false;
+    }
+    else
+    {
+        snprintf(string, LE_ATDEFS_RESPONSE_MAX_BYTES+2, "%s\r\n", rspPtr);
     }
 
     le_dev_Write(&devPtr->device, (uint8_t*)string, strlen(string));
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the pointer of a custom error code using its error code and pattern
+ *
+ * @return
+  *      - UserErrorCode_t Pointer to the error code, NULL if it doesn't exist
+ */
+//--------------------------------------------------------------------------------------------------
+static UserErrorCode_t* GetCustomErrorCode
+(
+    uint32_t errorCode,
+         ///< [IN] Numerical error code
+
+    const char* patternPtr
+        ///< [IN] Prefix of the final response string
+)
+{
+    le_ref_IterRef_t iter;
+    UserErrorCode_t* errorCodePtr = NULL;
+
+    if (NULL == patternPtr)
+    {
+        return NULL;
+    }
+
+    iter = le_ref_GetIterator(UserErrorRefMap);
+    while (LE_OK == le_ref_NextNode(iter))
+    {
+        errorCodePtr = (UserErrorCode_t*)le_ref_GetValue(iter);
+        if (errorCodePtr)
+        {
+            if ((errorCode == errorCodePtr->errorCode) &&
+                (0 == strncmp(patternPtr, errorCodePtr->pattern, sizeof(errorCodePtr->pattern))))
+            {
+                return errorCodePtr;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get standard verbose message code
+ *
+ * @return
+ *      - char* pointer to the verbose message
+ *      - NULL if unable to retreive a verbose message
+ */
+//--------------------------------------------------------------------------------------------------
+static const char* GetStdVerboseMsg
+(
+    uint32_t errorCode,
+         ///< [IN] Numerical error code
+
+    const char* patternPtr
+        ///< [IN] Prefix of the final response string
+)
+{
+    if (errorCode >= STD_ERROR_CODE_SIZE)
+    {
+        return NULL;
+    }
+
+    if (0 == strcmp(patternPtr, LE_ATDEFS_CME_ERROR))
+    {
+        return CmeErrorCodes[errorCode];
+    }
+
+    if (0 == strcmp(patternPtr, LE_ATDEFS_CMS_ERROR))
+    {
+        return CmsErrorCodes[errorCode];
+    }
+
+    LE_DEBUG("Not a standard pattern");
+    return NULL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -653,25 +984,114 @@ static void SendFinalRsp
     DeviceContext_t* devPtr
 )
 {
+    UserErrorCode_t* errorCodePtr;
+    int patternLength = 0;
+
     devPtr->rspState = AT_RSP_FINAL;
 
-    if (devPtr->finalRsp.customStringAvailable && ExtendedErrorCodes)
+    // This check is kept for legacy purposes since le_atServer_SendFinalResponse() is deprecated
+    // but still in use
+    if (devPtr->finalRsp.customStringAvailable && (MODE_DISABLED != ErrorCodesMode))
     {
-        SendRspString(devPtr, RSP_TYPE_RESPONSE, devPtr->finalRsp.resp);
-    }
-    else
-    {
-        switch (devPtr->finalRsp.final)
-        {
-            case LE_ATSERVER_OK:
-                SendRspString(devPtr, RSP_TYPE_OK, "");
-            break;
-            default:
-                SendRspString(devPtr, RSP_TYPE_ERROR, "");
-            break;
-        }
+        LE_DEBUG("Custom string mode");
+        SendRspString(devPtr, devPtr->finalRsp.resp);
+        goto end_processing;
     }
 
+    patternLength = strnlen(devPtr->finalRsp.pattern, sizeof(devPtr->finalRsp.pattern));
+
+    // This check is kept for legacy compatibility with old API. When a pattern is introducted
+    // and the final response is not an error, we use it as a custom string
+    if ((LE_ATSERVER_ERROR != devPtr->finalRsp.final) && patternLength)
+    {
+        SendRspString(devPtr, devPtr->finalRsp.pattern);
+        goto end_processing;
+    }
+
+    switch (devPtr->finalRsp.final)
+    {
+        case LE_ATSERVER_OK:
+            snprintf(devPtr->finalRsp.resp, LE_ATDEFS_RESPONSE_MAX_BYTES,"OK");
+            break;
+
+        case LE_ATSERVER_NO_CARRIER:
+            snprintf(devPtr->finalRsp.resp, LE_ATDEFS_RESPONSE_MAX_BYTES,"NO CARRIER");
+            break;
+
+        case LE_ATSERVER_NO_DIALTONE:
+            snprintf(devPtr->finalRsp.resp, LE_ATDEFS_RESPONSE_MAX_BYTES,"NO DIALTONE");
+            break;
+
+        case LE_ATSERVER_BUSY:
+            snprintf(devPtr->finalRsp.resp, LE_ATDEFS_RESPONSE_MAX_BYTES,"BUSY");
+            break;
+
+        case LE_ATSERVER_ERROR:
+            if ((MODE_DISABLED == ErrorCodesMode) || (0 == patternLength))
+            {
+                snprintf(devPtr->finalRsp.resp, LE_ATDEFS_RESPONSE_MAX_BYTES,"ERROR");
+                break;
+            }
+
+            // Build the response string [pattern + error code] or [pattern + verbose msg]
+            strncpy(devPtr->finalRsp.resp, devPtr->finalRsp.pattern, sizeof(devPtr->finalRsp.resp));
+
+            if (MODE_EXTENDED == ErrorCodesMode)
+            {
+                LE_DEBUG("Extended mode");
+                snprintf(devPtr->finalRsp.resp + patternLength,
+                         LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength,
+                         "%d",
+                         devPtr->finalRsp.errorCode);
+            }
+            else if (MODE_VERBOSE == ErrorCodesMode)
+            {
+                LE_DEBUG("Verbose mode");
+                if (devPtr->finalRsp.errorCode < STD_ERROR_CODE_SIZE)
+                {
+                    const char* msgPtr = GetStdVerboseMsg(devPtr->finalRsp.errorCode,
+                                                          devPtr->finalRsp.pattern);
+                    if (NULL != msgPtr)
+                    {
+                        strncpy(devPtr->finalRsp.resp + patternLength,
+                                msgPtr,
+                                LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength);
+                    }
+                    else
+                    {
+                        snprintf(devPtr->finalRsp.resp + patternLength,
+                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength,
+                                 "%d",
+                                 devPtr->finalRsp.errorCode);
+                    }
+                }
+                else
+                {
+                    errorCodePtr = GetCustomErrorCode(devPtr->finalRsp.errorCode,
+                                                      devPtr->finalRsp.pattern);
+                    if (errorCodePtr)
+                    {
+                        strncpy(devPtr->finalRsp.resp + patternLength,
+                                errorCodePtr->verboseMsg,
+                                LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength);
+                    }
+                    else
+                    {
+                        snprintf(devPtr->finalRsp.resp + patternLength,
+                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLength,
+                                 "%d",
+                                 devPtr->finalRsp.errorCode);
+                    }
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+    SendRspString(devPtr, devPtr->finalRsp.resp);
+
+end_processing:
     devPtr->processing = false;
 
     memset( &devPtr->cmdParser, 0, sizeof(CmdParser_t) );
@@ -686,7 +1106,7 @@ static void SendFinalRsp
                                     RspString_t,
                                     link);
 
-        SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
+        SendRspString(devPtr, rspStringPtr->resp);
         le_mem_Release(rspStringPtr);
     }
 }
@@ -727,7 +1147,7 @@ static void SendIntermediateRsp
         return;
     }
 
-    SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
+    SendRspString(devPtr, rspStringPtr->resp);
     le_mem_Release(rspStringPtr);
 }
 
@@ -760,7 +1180,7 @@ static void SendUnsolRsp
 
     if (!devPtr->processing && !devPtr->suspended)
     {
-        SendRspString(devPtr, RSP_TYPE_RESPONSE, rspStringPtr->resp);
+        SendRspString(devPtr, rspStringPtr->resp);
         le_mem_Release(rspStringPtr);
     }
     else
@@ -1691,7 +2111,7 @@ static void ParseBuffer
                     else
                     {
                         LE_ERROR("Command in progress");
-                        SendRspString(devPtr, RSP_TYPE_ERROR, "");
+                        SendRspString(devPtr, "ERROR");
                     }
 
                     devPtr->parseIndex=0;
@@ -1720,7 +2140,7 @@ static void ParseBuffer
     {
         devPtr->indexRead = devPtr->parseIndex = 0;
         devPtr->cmdParser.rxState = PARSER_SEARCH_A;
-        SendRspString(devPtr, RSP_TYPE_ERROR, "");
+        SendRspString(devPtr, "ERROR");
     }
 }
 
@@ -2752,6 +3172,9 @@ le_result_t le_atServer_SendIntermediateResponse
 /**
  * This function can be used to send the final response.
  *
+ * @deprecated le_atServer_SendFinalResponse() should not be used anymore and will be removed soon.
+ * It has been replaced by le_atServer_SendFinalResultCode()
+ *
  * @return
  *      - LE_OK            The function succeeded.
  *      - LE_FAULT         The function failed to send the final response.
@@ -2809,7 +3232,7 @@ le_result_t le_atServer_SendFinalResponse
     cmdPtr->deviceRef = NULL;
     cmdPtr->processing = false;
 
-    if (final == LE_ATSERVER_OK)
+    if (final != LE_ATSERVER_ERROR)
     {
         // Parse next AT commands, if any
         ParseAtCmd(devPtr);
@@ -2830,8 +3253,6 @@ le_result_t le_atServer_SendFinalResponse
  *      - LE_OK            The function succeeded
  *      - LE_FAULT         The function failed to send the final response
  *
- * @note
- *      This function is currently stubbed
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_SendFinalResultCode
@@ -2849,6 +3270,51 @@ le_result_t le_atServer_SendFinalResultCode
         ///< [IN] Numeric error code
 )
 {
+    ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
+
+    if (NULL == cmdPtr)
+    {
+        LE_ERROR("Bad command reference");
+        return LE_FAULT;
+    }
+
+    DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, cmdPtr->deviceRef);
+
+    if (NULL == devPtr)
+    {
+        LE_ERROR("Bad device reference");
+        return LE_FAULT;
+    }
+
+    devPtr->finalRsp.final = final;
+    devPtr->finalRsp.errorCode = errorCode;
+
+    if (NULL != patternPtr)
+    {
+        strncpy(devPtr->finalRsp.pattern, patternPtr, strlen(patternPtr));
+    }
+
+    // Clean AT command context, not in use now
+    le_dls_Link_t* linkPtr;
+    while ((linkPtr=le_dls_Pop(&cmdPtr->paramList)) != NULL)
+    {
+        ParamString_t *paraPtr = CONTAINER_OF(linkPtr, ParamString_t, link);
+        le_mem_Release(paraPtr);
+    }
+
+    cmdPtr->deviceRef = NULL;
+    cmdPtr->processing = false;
+
+    if (final != LE_ATSERVER_ERROR)
+    {
+        // Parse next AT commands, if any
+        ParseAtCmd(devPtr);
+    }
+    else
+    {
+        SendFinalRsp(devPtr);
+    }
+
     return LE_OK;
 }
 
@@ -3113,9 +3579,6 @@ le_result_t le_atServer_RemoveDeviceFromBridge
 //--------------------------------------------------------------------------------------------------
 /**
  * This function enables verbose error codes on the selected device
- *
- * @note
- *      This function is currently stubbed
  */
 //--------------------------------------------------------------------------------------------------
 void le_atServer_EnableVerboseErrorCodes
@@ -3123,6 +3586,7 @@ void le_atServer_EnableVerboseErrorCodes
     void
 )
 {
+    ErrorCodesMode = MODE_VERBOSE;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3135,7 +3599,7 @@ void le_atServer_EnableExtendedErrorCodes
     void
 )
 {
-    ExtendedErrorCodes = true;
+    ErrorCodesMode = MODE_EXTENDED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3149,18 +3613,19 @@ void le_atServer_DisableExtendedErrorCodes
     void
 )
 {
-    ExtendedErrorCodes = false;
+    ErrorCodesMode = MODE_DISABLED;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function creates a custom error code
- *
+ * This function creates a custom error code.
  * @return
- *      - le_atServer_ErrorCodeRef_t Reference to the new custom error code
+ *      - ErrorCode    Reference to the created error code
+ *      - NULL         Function failed to create the error code
  *
- * @note
- *      This function is currently stubbed
+ * @note This function fails to create the error code if the combinaison (errorCode, pattern)
+ * already exists or if the errorCode number is lower than 512.
+ *
  */
 //--------------------------------------------------------------------------------------------------
 le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
@@ -3172,7 +3637,30 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
         ///< [IN] Prefix of the final response string
 )
 {
-    return NULL;
+    int patternLength = 0;
+
+    if ((errorCode < STD_ERROR_CODE_SIZE) || (NULL == patternPtr))
+    {
+        // Invalid input parameters
+        return NULL;
+    }
+
+    if (NULL != GetCustomErrorCode(errorCode, patternPtr))
+    {
+        // The error code already exists, return a NULL reference
+        return NULL;
+    }
+
+    UserErrorCode_t* newErrorCode = le_mem_ForceAlloc(UserErrorPool);
+    newErrorCode->errorCode = errorCode;
+
+    patternLength = strlen(patternPtr);
+    strncpy(newErrorCode->pattern, patternPtr, patternLength);
+    newErrorCode->pattern[patternLength] = '\0';
+
+    newErrorCode->ref = le_ref_CreateRef(UserErrorRefMap, newErrorCode);
+
+    return newErrorCode->ref;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3181,10 +3669,7 @@ le_atServer_ErrorCodeRef_t le_atServer_CreateErrorCode
  *
  * @return
  *      - LE_OK            Error code deleted sucessfully
- *      - LE_NOT_FOUND     Error code reference not found
- *
- * @note
- *      This function is currently stubbed
+        - LE_NOT_FOUND     Error code reference not found
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_DeleteErrorCode
@@ -3193,6 +3678,15 @@ le_result_t le_atServer_DeleteErrorCode
         ///< [IN] Reference to a custom error code
 )
 {
+    UserErrorCode_t* errorCodePtr = le_ref_Lookup(UserErrorRefMap, errorCodeRef);
+    if (NULL == errorCodePtr)
+    {
+        return LE_NOT_FOUND;
+    }
+
+    le_ref_DeleteRef(UserErrorRefMap, errorCodeRef);
+    le_mem_Release(errorCodePtr);
+
     return LE_OK;
 }
 
@@ -3203,9 +3697,6 @@ le_result_t le_atServer_DeleteErrorCode
  * @return
  *      - LE_OK            The function succeeded
  *      - LE_FAULT         The function failed to set the verbose message
- *
- * @note
- *      This function is currently stubbed
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_atServer_SetVerboseErrorCode
@@ -3217,6 +3708,25 @@ le_result_t le_atServer_SetVerboseErrorCode
         ///< [IN] Verbose string
 )
 {
+    int msgLength = 0;
+
+    if (NULL == messagePtr)
+    {
+        // Invalid input parameter
+        return LE_FAULT;
+    }
+
+    UserErrorCode_t* errorCodePtr = le_ref_Lookup(UserErrorRefMap, errorCodeRef);
+    if (NULL == errorCodePtr)
+    {
+        // Error code not found
+        return LE_FAULT;
+    }
+
+    msgLength = strlen(messagePtr);
+    strncpy(errorCodePtr->verboseMsg, messagePtr, msgLength);
+    errorCodePtr->verboseMsg[msgLength] = '\0';
+
     return LE_OK;
 }
 
@@ -3296,6 +3806,11 @@ COMPONENT_INIT
     // Parameters pool allocation
     RspStringPool = le_mem_CreatePool("RspStringPool",sizeof(RspString_t));
     le_mem_ExpandPool(RspStringPool,RSP_POOL_SIZE);
+
+    // User-defined errors pool allocation
+    UserErrorPool = le_mem_CreatePool("UserErrorPool",sizeof(UserErrorCode_t));
+    le_mem_ExpandPool(UserErrorPool,USER_ERROR_POOL_SIZE);
+    UserErrorRefMap = le_ref_CreateMap("UserErrorCmdRefMap", USER_ERROR_POOL_SIZE);
 
     // Add a handler to the close session service
     le_msg_AddServiceCloseHandler(

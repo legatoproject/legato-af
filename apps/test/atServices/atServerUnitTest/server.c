@@ -108,7 +108,7 @@ static int ExtendedErrorCode = 0;
  *      le_atServer_GetCommandName
  *      le_atServer_SendIntermediateResponse
  *      le_atServer_GetParameter
- *      le_atServer_SendFinalResponse
+ *      le_atServer_SendFinalResultCode
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -192,7 +192,7 @@ static void AtCmdHandler
                                        LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_BAD_PARAMETER);
 
     // send OK final response
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -203,7 +203,7 @@ static void AtCmdHandler
  *
  * tested APIs:
  *      le_atServer_SendIntermediateResponse
- *      le_atServer_SendFinalResponse
+ *      le_atServer_SendFinalResultCode
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -223,9 +223,10 @@ static void AtiCmdHandler
         case LE_ATSERVER_TYPE_PARA:
         case LE_ATSERVER_TYPE_TEST:
         case LE_ATSERVER_TYPE_READ:
-            LE_ASSERT(
-                // send and ERROR final response
-                le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef,
+                                                         LE_ATSERVER_ERROR,
+                                                         "",
+                                                         0));
             break;
         // this is an action type command so send multiple intermediate
         // responses and an OK final response
@@ -233,38 +234,39 @@ static void AtiCmdHandler
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s",
                 "Manufacturer: Sierra Wireless, Incorporated");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "Model: WP8548");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s",
                 "Revision: SWI9X15Y_07.10.04.00 12c1700 jenkins"
                 " 2016/06/02 02:52:45");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "IMEI: 359377060009700");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "IMEI SV: 42");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "FSN: LL542500111503");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
             memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
             sprintf(rsp, "%s", "+GCAP: +CGSM");
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
+
             // send an OK final response
-            LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                    LE_ATSERVER_OK,
-                                                    false,
-                                                    "") == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef,
+                                                         LE_ATSERVER_OK,
+                                                         "",
+                                                         0));
             break;
 
         default:
@@ -277,6 +279,11 @@ static void AtiCmdHandler
 /**
  * AT+ECHO command handler (echo)
  *
+ * tested APIs:
+ *      le_atServer_EnableEcho
+ *      le_atServer_DisableEcho
+ *      le_atServer_SendIntermediateResponse
+ *      le_atServer_SendFinalResultCode
  */
 //--------------------------------------------------------------------------------------------------
 static void AtEchoCmdHandler
@@ -297,9 +304,9 @@ static void AtEchoCmdHandler
 
     // check whether command's name is registred on the server app
     memset(atCommandName,0,LE_ATDEFS_COMMAND_MAX_BYTES);
-    LE_ASSERT(le_atServer_GetCommandName(commandRef,
-                                         atCommandName,
-                                         LE_ATDEFS_COMMAND_MAX_BYTES) == LE_OK);
+    LE_ASSERT_OK(le_atServer_GetCommandName(commandRef,
+                                            atCommandName,
+                                            LE_ATDEFS_COMMAND_MAX_BYTES));
 
     LE_DEBUG("AT command name %s", atCommandName);
 
@@ -312,30 +319,30 @@ static void AtEchoCmdHandler
             LE_INFO("Type PARA");
             snprintf(rsp+strlen(rsp), LE_ATDEFS_RESPONSE_MAX_BYTES-strlen(rsp), "PARA");
             memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
-            LE_ASSERT(le_atServer_GetParameter(commandRef,
-                                               0,
-                                               param,
-                                               LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
+            LE_ASSERT_OK(le_atServer_GetParameter(commandRef,
+                                                  0,
+                                                  param,
+                                                  LE_ATDEFS_PARAMETER_MAX_BYTES));
             if (0 == strncmp(param, "1", strlen("1")))
             {
                 LE_ASSERT(le_atServer_EnableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
                                                                             == LE_BAD_PARAMETER);
-                LE_ASSERT(le_atServer_EnableEcho(atSessionPtr->devRef) == LE_OK);
+                LE_ASSERT_OK(le_atServer_EnableEcho(atSessionPtr->devRef));
             }
             else if (0 == strncmp(param, "0", strlen("0")))
             {
                 LE_ASSERT(le_atServer_DisableEcho((le_atServer_DeviceRef_t)0xdeadbeef)
                                                                             == LE_BAD_PARAMETER);
 
-                LE_ASSERT(le_atServer_DisableEcho(atSessionPtr->devRef) == LE_OK);
+                LE_ASSERT_OK(le_atServer_DisableEcho(atSessionPtr->devRef));
             }
             else
             {
                 res = LE_FAULT;
-                LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                        LE_ATSERVER_ERROR,
-                                                        false,
-                                                        "") == LE_OK);
+                LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef,
+                                                             LE_ATSERVER_ERROR,
+                                                             "",
+                                                             0));
             }
         break;
 
@@ -362,10 +369,10 @@ static void AtEchoCmdHandler
     if (LE_OK == res)
     {
         // Send the command type into an intermediate response
-        LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
+        LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, rsp));
 
         // Send Final response
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
     }
 }
 
@@ -407,7 +414,7 @@ static le_atServer_CmdRef_t GetRef
  * tested APIs:
  *      le_atServer_GetParameter
  *      le_atServer_SendIntermediateResponse
- *      le_atServer_SendFinalResponse
+ *      le_atServer_SendFinalResultCode
  *      le_atServer_Delete
  *
  */
@@ -433,17 +440,15 @@ static void DelCmdHandler
             {
                 memset(param,0,LE_ATDEFS_PARAMETER_MAX_BYTES);
                 // get the command to delete
-                LE_ASSERT(
-                le_atServer_GetParameter(commandRef,
-                                        i,
-                                        param,
-                                        LE_ATDEFS_PARAMETER_MAX_BYTES)
-                                    == LE_OK);
+                LE_ASSERT_OK(le_atServer_GetParameter(commandRef,
+                                                      i,
+                                                      param,
+                                                      LE_ATDEFS_PARAMETER_MAX_BYTES));
                 // get its refrence
                 cmdRef = GetRef(atSessionPtr->atCmds, atSessionPtr->cmdsCount, param);
                 LE_DEBUG("Deleting %p => %s", cmdRef, param);
                 // delete the command
-                LE_ASSERT(le_atServer_Delete(cmdRef) == LE_OK);
+                LE_ASSERT_OK(le_atServer_Delete(cmdRef));
             }
             // send an OK final response
             finalRsp = LE_ATSERVER_OK;
@@ -465,7 +470,7 @@ static void DelCmdHandler
         break;
     }
     // send final response
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, finalRsp, false, "") == LE_OK);
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, finalRsp, "", 0));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -475,7 +480,7 @@ static void DelCmdHandler
  * tests closing server session
  *
  * tested APIs:
- *      le_atServer_SendFinalResponse
+ *      le_atServer_SendFinalResultCode
  *      le_atServer_Close
  */
 //--------------------------------------------------------------------------------------------------
@@ -495,12 +500,12 @@ static void CloseCmdHandler
     case LE_ATSERVER_TYPE_PARA:
     case LE_ATSERVER_TYPE_TEST:
     case LE_ATSERVER_TYPE_READ:
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
-
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_ERROR, "", 0));
         break;
+
     case LE_ATSERVER_TYPE_ACT:
-        LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
-        LE_ASSERT(le_atServer_Close(atSessionPtr->devRef) == LE_OK);
+        LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_OK, "", 0));
+        LE_ASSERT_OK(le_atServer_Close(atSessionPtr->devRef));
         break;
 
     default:
@@ -517,9 +522,8 @@ static void CloseCmdHandler
  *
  * tested APIs:
  *      le_atServer_SendIntermediateResponse
- *      le_atServer_SendFinalResponse
+ *      le_atServer_SendFinalResultCode
  *      le_atServer_SendUnsolicitedResponse, specific device and all devices
- *
  */
 //------------------------------------------------------------------------------
 static void CbcCmdHandler
@@ -569,8 +573,7 @@ static void CbcCmdHandler
             break;
     }
     // send an OK final response
-    LE_ASSERT(le_atServer_SendFinalResponse(commandRef, finalRsp, false, "")
-        == LE_OK);
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, finalRsp, "", 0));
 }
 
 //------------------------------------------------------------------------------
@@ -583,7 +586,7 @@ static void CbcCmdHandler
  *      le_atServer_Suspend
  *      le_atServer_Resume
  *      le_atServer_SendIntermediateResponse
- *      le_atServer_SendFinalResponse
+ *      le_atServer_SendFinalResultCode
  *      le_atServer_SendUnsolicitedResponse, specific device
  *
  */
@@ -604,25 +607,28 @@ static void DataCmdHandler
         // send an ERROR final response
         case LE_ATSERVER_TYPE_READ:
         case LE_ATSERVER_TYPE_PARA:
-            LE_ASSERT(
-                le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_ERROR, false, "") == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef,
+                                                         LE_ATSERVER_ERROR,
+                                                         "",
+                                                         0));
             break;
+
         // send an OK final response
         case LE_ATSERVER_TYPE_TEST:
-            LE_ASSERT(le_atServer_SendFinalResponse(commandRef,
-                                                    LE_ATSERVER_OK,
-                                                    false,
-                                                    "") == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef,
+                                                         LE_ATSERVER_OK,
+                                                         "",
+                                                         0));
             break;
+
         case LE_ATSERVER_TYPE_ACT:
-            LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, "CONNECT") == LE_OK);
-            LE_ASSERT(le_atServer_Suspend(atSessionPtr->devRef) == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendIntermediateResponse(commandRef, "CONNECT"));
+            LE_ASSERT_OK(le_atServer_Suspend(atSessionPtr->devRef));
 
             for (i=0; i<3; i++)
             {
-                LE_ASSERT(le_atServer_SendUnsolicitedResponse("CONNECTED",
-                            LE_ATSERVER_SPECIFIC_DEVICE, atSessionPtr->devRef)
-                    == LE_OK);
+                LE_ASSERT_OK(le_atServer_SendUnsolicitedResponse("CONNECTED",
+                            LE_ATSERVER_SPECIFIC_DEVICE, atSessionPtr->devRef));
             }
 
             if (write(atSessionPtr->fd, "testing the data mode", 21) == -1)
@@ -630,10 +636,9 @@ static void DataCmdHandler
                 LE_ERROR("write failed: %s", strerror(errno));
             }
 
-            LE_ASSERT(le_atServer_Resume(atSessionPtr->devRef) == LE_OK);
+            LE_ASSERT_OK(le_atServer_Resume(atSessionPtr->devRef));
 
-            LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, true, "NO CARRIER")
-                == LE_OK);
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, LE_ATSERVER_NO_CARRIER,"",0));
             break;
 
         default:
@@ -646,8 +651,11 @@ static void DataCmdHandler
 /**
  * Dial command handler
  *
- * tests parameter get fro an ATD command
+ * test getting parameters from an ATD command
  *
+ * tested APIs:
+ *      le_atServer_SendIntermediateResponse
+ *      le_atServer_SendFinalResponse (deprecated API)
  */
 //--------------------------------------------------------------------------------------------------
 static void AtdCmdHandler
@@ -671,6 +679,7 @@ static void AtdCmdHandler
     // echo the command in intermediate rsp
     LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, param) == LE_OK);
 
+    // final response using the deprecated API
     LE_ASSERT(le_atServer_SendFinalResponse(commandRef, LE_ATSERVER_OK, false, "") == LE_OK);
 }
 
@@ -679,8 +688,10 @@ static void AtdCmdHandler
  * Cmee command handler
  *
  * tests:
- *  - le_atServer_EnableExtendedErrorCodes()
- *  - le_atServer_DisableExtendedErrorCodes()
+ *  - le_atServer_EnableExtendedErrorCodes
+ *  - le_atServer_EnableVerboseErrorCodes
+ *  - le_atServer_DisableExtendedErrorCodes
+ *  - le_atServer_SendFinalResultCode
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -710,8 +721,10 @@ static void CmeeCmdHandler
                     le_atServer_DisableExtendedErrorCodes();
                     break;
                 case ENABLE_NUMERIC_EXTENDED_ERROR_CODES:
-                case ENABLE_STRING_EXTENDED_ERROR_CODES:
                     le_atServer_EnableExtendedErrorCodes();
+                    break;
+                case ENABLE_STRING_EXTENDED_ERROR_CODES:
+                    le_atServer_EnableVerboseErrorCodes();
                     break;
                 default:
                     finalRsp = LE_ATSERVER_ERROR;
@@ -734,7 +747,7 @@ static void CmeeCmdHandler
             break;
     }
 
-    LE_ASSERT_OK(le_atServer_SendFinalResponse(commandRef, finalRsp, false, ""));
+    LE_ASSERT_OK(le_atServer_SendFinalResultCode(commandRef, finalRsp, "", 0));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -762,6 +775,7 @@ static void GetTextCallback
         resp = LE_ATSERVER_ERROR;
     }
 
+    // final response using the deprecated API
     LE_ASSERT_OK(le_atServer_SendFinalResponse(cmdRef, resp, false, ""));
 }
 
@@ -789,11 +803,121 @@ static void TextCmdHandler
                                                  (le_atServer_GetTextCallbackFunc_t)GetTextCallback,
                                                  NULL));
             break;
+
         case LE_ATSERVER_TYPE_PARA:
         case LE_ATSERVER_TYPE_READ:
         case LE_ATSERVER_TYPE_TEST:
         default:
+            // final response using the deprecated API
             LE_ASSERT_OK(le_atServer_SendFinalResponse(cmdRef, LE_ATSERVER_ERROR, false, ""));
+            break;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error code handler
+ *
+ * tests:
+ *  - le_atServer_CreateErrorCode()
+ *  - le_atServer_DeleteErrorCode()
+ *  - le_atServer_SetVerboseErrorCode()
+ *  - le_atServer_SendFinalResultCode()
+ *
+ * @note
+ *     Command parameters are: [ErrorCode] [Pattern] [Verbose msg, optional]
+ *     Introduced parameters are returned in the final response of the command
+ *     If a read is performed then the command performs an auto test of the APIs listed above
+ */
+//--------------------------------------------------------------------------------------------------
+static void ErrorCodeCmdHandler
+(
+    le_atServer_CmdRef_t cmdRef,
+    le_atServer_Type_t type,
+    uint32_t parametersNumber,
+    void* contextPtr
+)
+{
+    char param[LE_ATDEFS_PARAMETER_MAX_BYTES] = {0};
+    char patternStr[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
+    char verboseStr[LE_ATDEFS_RESPONSE_MAX_BYTES] = {0};
+    uint32_t errorCodeID;
+    le_atServer_ErrorCodeRef_t ref;
+
+    switch (type)
+    {
+        case LE_ATSERVER_TYPE_PARA:
+
+            if (parametersNumber < 2)
+            {
+                LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef,
+                                                             LE_ATSERVER_ERROR,
+                                                             LE_ATDEFS_CME_ERROR,
+                                                             0));
+            }
+
+            LE_ASSERT_OK(le_atServer_GetParameter(cmdRef,
+                                                  0,
+                                                  param,
+                                                  LE_ATDEFS_PARAMETER_MAX_BYTES));
+
+            errorCodeID = (int)strtol(param, NULL, BASE10);
+
+            LE_ASSERT_OK(le_atServer_GetParameter(cmdRef,
+                                                  1,
+                                                  patternStr,
+                                                  LE_ATDEFS_PARAMETER_MAX_BYTES));
+
+            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
+
+            // Optional parameter
+            if (3 == parametersNumber)
+            {
+                LE_ASSERT_OK(le_atServer_GetParameter(cmdRef,
+                                                      2,
+                                                      verboseStr,
+                                                      LE_ATDEFS_PARAMETER_MAX_BYTES));
+                LE_ASSERT_OK(le_atServer_SetVerboseErrorCode(ref, verboseStr));
+            }
+
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef, LE_ATSERVER_ERROR,
+                                                         patternStr, errorCodeID));
+            break;
+
+        case LE_ATSERVER_TYPE_READ:
+        {
+            uint32_t errorCodeID = 512;
+            char patternStr[] = "CUSTOM ERROR: ";
+            char verboseStr[] = "MESSAGE";
+
+            // Nominal case
+            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
+            LE_ASSERT(NULL != ref);
+            LE_ASSERT_OK(le_atServer_SetVerboseErrorCode(ref, verboseStr));
+            LE_ASSERT_OK(le_atServer_DeleteErrorCode(ref));
+
+            // Error code already exists
+            ref = le_atServer_CreateErrorCode(errorCodeID, patternStr);
+            LE_ASSERT(NULL != ref);
+            LE_ASSERT(NULL == le_atServer_CreateErrorCode(errorCodeID, patternStr));
+
+            // Reference not found
+            le_atServer_DeleteErrorCode(ref);
+            LE_ASSERT(LE_OK != le_atServer_SetVerboseErrorCode(ref, verboseStr));
+            LE_ASSERT(LE_OK != le_atServer_DeleteErrorCode(ref));
+
+            // Invalid parameter
+            LE_ASSERT(NULL == le_atServer_CreateErrorCode(1, patternStr));
+
+            LE_ASSERT_OK(le_atServer_SendFinalResultCode(cmdRef,
+                                                         LE_ATSERVER_OK,
+                                                         "",
+                                                         0));
+            break;
+        }
+
+        default:
+            LE_ASSERT(0);
             break;
     }
 }
@@ -935,6 +1059,11 @@ void AtServer
             .atCmdPtr = "AT+TEXT",
             .cmdRef = NULL,
             .handlerPtr = TextCmdHandler,
+        },
+        {
+            .atCmdPtr = "AT+ERRCODE",
+            .cmdRef = NULL,
+            .handlerPtr = ErrorCodeCmdHandler,
         },
     };
 

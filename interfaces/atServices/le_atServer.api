@@ -343,17 +343,14 @@ ENUM Type
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Final response. This enum follows the V.250 numeric values.
+ * Final response.
  */
 //--------------------------------------------------------------------------------------------------
 ENUM FinalRsp
 {
     OK,         ///< AT command successfully treated
-    CONNECT,    ///< Connection has been established
-    RING,       ///< Incoming call signal from network
     NO_CARRIER, ///< Connection terminated
     ERROR,      ///< Error in AT command treatement
-    PADDING,    ///< Reserved
     NO_DIALTONE,///< No dialtone detected
     BUSY        ///< Busy signal detected
 };
