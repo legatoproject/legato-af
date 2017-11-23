@@ -64,7 +64,21 @@
  * Each GPIO pin is accessed through a single IPC service.  This makes it possible to use bindings
  * to control which GPIO pins each app is allowed to access.  It also simplifies the API by removing
  * the need to specify which pin is desired and allows the pins to be named differently in the
- * client and the server, so the client can be more portable. Only one client can connect to each pin.
+ * client and the server, so the client can be more portable. Only one client can connect to each
+ * pin.
+ *
+ * @section thread Using the GPIOs in a thread
+ *
+ * Each GPIO pin can be accessed in a thread. APIs @c le_gpioPinXX_ConnectService or
+ * @c le_gpioPinXXTryConnectService need to be called to connect the GPIOXX to the GPIO service
+ * APIs in a thread. Normally, the ConnectService is automatically called for the main thread.
+ *
+ * Once the GPIOXX is used, it cannot be accessed by another thread. When no longer used, it can be
+ * relinquished by calling API @c le_gpioPinXX_DisconnectService. The GPIO service for GPIOXX will
+ * be disconnected leaving the GPIOXX free to be used by another thread.
+ *
+ * @warning In order to use the GPIO service for GPIOXX in a thread, API
+ * @c le_gpioPinXX_DisconnectService must explicitly be called previously in the main thread.
  *
  * @section bindings Using Bindings
  *
