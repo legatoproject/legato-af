@@ -23,6 +23,10 @@
  *
  * All the functions of this API are provided by the @b audioService.
  *
+ * @note The functions that are highly dependent on the initialization of the lower layers of the
+ * @b audioService will return LE_UNAVAILABLE error code if those layers failed to initialize.
+ * Recovery can be attempted by restarting the service.
+ *
  * Here's a code sample binding to audio services:
  * @verbatim
    bindings:
@@ -638,10 +642,11 @@ FUNCTION Close
 /**
  * Set the Gain value of an input or output stream.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Audio stream reference is invalid.
- * @return LE_OUT_OF_RANGE  Gain value is out of range
- * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_OUT_OF_RANGE  The gain value is out of range.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
+ * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -657,9 +662,10 @@ FUNCTION le_result_t SetGain
 /**
  * Get the Gain value of an input or output stream.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Audio stream reference is invalid.
- * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
+ * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -675,9 +681,10 @@ FUNCTION le_result_t GetGain
 /**
  * Mute an audio stream.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Audio stream reference is invalid.
- * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
+ * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -692,9 +699,10 @@ FUNCTION le_result_t Mute
 /**
  * Unmute an audio stream.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER Audio stream reference is invalid.
- * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
+ * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -733,10 +741,11 @@ FUNCTION DeleteConnector
 /**
  * Connect an audio stream to the connector reference.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BUSY          Insufficient DSP resources available.
- * @return LE_BAD_PARAMETER Connector and/or the audio stream references are invalid.
- * @return LE_OK            Function succeeded.
+ * @return LE_BUSY          There are insufficient DSP resources available.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_BAD_PARAMETER The connector and/or the audio stream references are invalid.
+ * @return LE_FAULT         On any other failure.
+ * @return LE_OK            The function succeeded.
  *
  * @note If the caller is passing a bad reference into this function, it is a fatal error, the
  *       function will not return.
@@ -790,7 +799,9 @@ EVENT DtmfDetector
 /**
  * This function must be called to enable the Noise Suppressor.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -805,7 +816,9 @@ FUNCTION le_result_t EnableNoiseSuppressor
 /**
  * This function must be called to disable the Noise Suppressor.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -820,7 +833,9 @@ FUNCTION le_result_t DisableNoiseSuppressor
 /**
  * This function must be called to enable the Echo Canceller.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -835,7 +850,9 @@ FUNCTION le_result_t EnableEchoCanceller
 /**
  * This function must be called to disable the Echo Canceller.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -850,8 +867,9 @@ FUNCTION le_result_t DisableEchoCanceller
 /**
  * This function must be called to get the status of Noise Suppressor.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER If streamRef contains an invalid audioInterface.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -867,8 +885,9 @@ FUNCTION le_result_t IsNoiseSuppressorEnabled
 /**
  * This function must be called to get the status of Echo Canceller.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER If streamRef contains an invalid audioInterface.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -884,7 +903,9 @@ FUNCTION le_result_t IsEchoCancellerEnabled
 /**
  * This function must be called to enable the FIR (Finite Impulse Response) filter.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -899,7 +920,9 @@ FUNCTION le_result_t EnableFirFilter
 /**
  * This function must be called to disable the FIR (Finite Impulse Response) filter.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -914,7 +937,9 @@ FUNCTION le_result_t DisableFirFilter
 /**
  * This function must be called to enable the IIR (Infinite Impulse Response) filter.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -929,7 +954,9 @@ FUNCTION le_result_t EnableIirFilter
 /**
  * This function must be called to disable the IIR (Infinite Impulse Response) filter.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -944,7 +971,9 @@ FUNCTION le_result_t DisableIirFilter
 /**
  * This function must be called to enable the automatic gain control on the selected audio stream.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -959,7 +988,9 @@ FUNCTION le_result_t EnableAutomaticGainControl
 /**
  * This function must be called to disable the automatic gain control on the selected audio stream.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_BAD_PARAMETER The audio stream reference is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  * @note The process exits, if an invalid audio stream reference is given.
@@ -974,7 +1005,8 @@ FUNCTION le_result_t DisableAutomaticGainControl
 /**
  * This function must be called to set the audio profile.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -988,7 +1020,8 @@ FUNCTION le_result_t SetProfile
 /**
  * This function must be called to get the audio profile in use.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -1461,6 +1494,8 @@ FUNCTION le_result_t GetSampleAmrMode
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetSampleAmrDtx
@@ -1476,6 +1511,8 @@ FUNCTION le_result_t SetSampleAmrDtx
  * @return LE_FAULT         Function failed.
  * @return LE_OK            Function succeeded.
  *
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
+ *       function will not return.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetSampleAmrDtx
@@ -1488,11 +1525,15 @@ FUNCTION le_result_t GetSampleAmrDtx
 /**
  * Set the value of a platform specific gain in the audio subsystem.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_NOT_FOUND     The specified gain name is not recognized in your audio subsystem.
- * @return LE_OUT_OF_RANGE  The gain parameter is out of range
+ * @return LE_BAD_PARAMETER The pointer to the name of the platform specific gain is invalid.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_OUT_OF_RANGE  The gain parameter is out of range.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  *
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
+ *       function will not return.
  * @warning Ensure to check the names of supported gains for your specific platform.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1506,10 +1547,14 @@ FUNCTION le_result_t SetPlatformSpecificGain
 /**
  * Get the value of a platform specific gain in the audio subsystem.
  *
- * @return LE_FAULT         The function failed.
- * @return LE_NOT_FOUND     The specified gain name is not recognized in your audio subsystem.
+ * @return LE_BAD_PARAMETER The pointer to the name of the platform specific gain is invalid.
+ * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  *
+ * @note If the caller is passing a bad reference into this function, it is a fatal error, the
+ *       function will not return.
  * @warning Ensure to check the names of supported gains for your specific platform.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1523,7 +1568,8 @@ FUNCTION le_result_t GetPlatformSpecificGain
 /**
  * Mute the Call Waiting Tone.
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1535,7 +1581,8 @@ FUNCTION le_result_t MuteCallWaitingTone
 /**
  * Unmute the Call Waiting Tone.
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------

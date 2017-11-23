@@ -36,6 +36,7 @@ COMPONENT_INIT
 /**
  * This function must be called to set the timeslot number of a PCM interface.
  *
+ * @return LE_BAD_PARAMETER The audio stream is not valid.
  * @return LE_FAULT         The function failed to set the timeslot number.
  * @return LE_OK            The function succeeded.
  */
@@ -54,6 +55,7 @@ le_result_t pa_audio_SetPcmTimeSlot
 /**
  * This function must be called to set the channel mode of an I2S interface.
  *
+ * @return LE_BAD_PARAMETER The audio stream or interface is not valid.
  * @return LE_FAULT         The function failed to set the channel mode.
  * @return LE_OK            The function succeeded.
  */
@@ -106,7 +108,9 @@ le_result_t pa_audio_SetSlaveMode
 /**
  * This function must be called to set the DSP Audio path
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_BAD_PARAMETER The input or output audio stream is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -124,6 +128,10 @@ le_result_t pa_audio_SetDspAudioPath
 /**
  * This function must be called to reset the DSP Audio path
  *
+ * @return LE_BAD_PARAMETER The input or output audio stream is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
+ * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_audio_ResetDspAudioPath
@@ -140,8 +148,10 @@ le_result_t pa_audio_ResetDspAudioPath
 /**
  * This function must be called to set the interface gain
  *
- * @return LE_OUT_OF_RANGE  The gain parameter is out of range
- * @return LE_FAULT         The function failed to set the interface gain
+ * @return LE_BAD_PARAMETER The input audio stream is invalid.
+ * @return LE_OUT_OF_RANGE  The gain parameter is out of range.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -159,7 +169,9 @@ le_result_t pa_audio_SetGain
 /**
  * This function must be called to get the interface gain
  *
- * @return LE_FAULT         The function failed to get the interface gain
+ * @return LE_BAD_PARAMETER The input audio stream or gain value is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -178,7 +190,7 @@ le_result_t pa_audio_GetGain
  * This function must be called to start the DTMF Decoder.
  *
  * @return LE_OK            The decoder is started
- * @return LE_BAD_PARAMETER The interface is not valid
+ * @return LE_BAD_PARAMETER The audio stream or interface is not valid
  * @return LE_FAULT         On other errors
  */
 //--------------------------------------------------------------------------------------------------
@@ -213,8 +225,9 @@ le_result_t pa_audio_StopDtmfDecoder
 /**
  * This function must be called to enable or disable the Noise Suppressor.
  *
- * @return LE_FAULT         Function failed.
  * @return LE_BAD_PARAMETER The audio interface is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -233,8 +246,9 @@ le_result_t pa_audio_NoiseSuppressorSwitch
 /**
  * This function must be called to enable or disable the Echo Canceller.
  *
- * @return LE_FAULT         Function failed.
  * @return LE_BAD_PARAMETER The audio interface is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -254,8 +268,9 @@ le_result_t pa_audio_EchoCancellerSwitch
  * This function must be called to enable or disable the FIR (Finite Impulse Response) filter on the
  * downlink or uplink audio path.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER The audio interface is invalid.
+ * @return LE_BAD_PARAMETER The audio stream or interface is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -275,8 +290,9 @@ le_result_t pa_audio_FirFilterSwitch
  * This function must be called to enable or disable the IIR (Infinite Impulse Response) filter on
  * the downlink or uplink audio path.
  *
- * @return LE_FAULT         Function failed.
  * @return LE_BAD_PARAMETER The audio interface is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -296,8 +312,9 @@ le_result_t pa_audio_IirFilterSwitch
  * This function must be called to enable or disable the automatic gain control on the selected
  * audio stream.
  *
- * @return LE_FAULT         Function failed.
- * @return LE_BAD_PARAMETER The audio interface is invalid.
+ * @return LE_BAD_PARAMETER The audio stream is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -316,7 +333,8 @@ le_result_t pa_audio_AutomaticGainControlSwitch
 /**
  * This function must be called to set the audio profile.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -334,7 +352,8 @@ le_result_t pa_audio_SetProfile
 /**
  * This function must be called to get the audio profile in use.
  *
- * @return LE_FAULT         Function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            Function succeeded.
  *
  */
@@ -540,7 +559,9 @@ le_result_t pa_audio_PlaySignallingDtmf
 /**
  * This function must be called to mute or unmute the interface
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_BAD_PARAMETER The input audio stream is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -558,9 +579,11 @@ le_result_t pa_audio_Mute
 /**
  * Set the value of a platform specific gain in the audio subsystem.
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_BAD_PARAMETER The pointer to name of the platform specific gain is invalid.
  * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
- * @return LE_OUT_OF_RANGE  The gain parameter is not between 0 and 100
+ * @return LE_OUT_OF_RANGE  The gain parameter is out of range.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -578,8 +601,10 @@ le_result_t pa_audio_SetPlatformSpecificGain
 /**
  * Get the value of a platform specific gain in the audio subsystem.
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_BAD_PARAMETER The pointer to name of the platform specific gain is invalid.
  * @return LE_NOT_FOUND     The specified gain's name is not recognized in your audio subsystem.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -597,7 +622,8 @@ le_result_t pa_audio_GetPlatformSpecificGain
 /**
  * Mute/Unmute the Call Waiting Tone.
  *
- * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   On audio service initialization failure.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -628,7 +654,9 @@ void pa_audio_ReleasePaParameters
 /**
  * This function must be called to get the Noise Suppressor status
  *
- * @return LE_FAULT         The function failed to get the interface NS status
+ * @return LE_BAD_PARAMETER The input audio stream or noise suppressor status is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------
@@ -646,7 +674,9 @@ le_result_t pa_audio_GetNoiseSuppressorStatus
 /**
  * This function must be called to get the Echo Canceller status
  *
- * @return LE_FAULT         The function failed to get the interface EC status
+ * @return LE_BAD_PARAMETER The input audio stream or echo canceller status is invalid.
+ * @return LE_UNAVAILABLE   The audio service initialization failed.
+ * @return LE_FAULT         On any other failure.
  * @return LE_OK            The function succeeded.
  */
 //--------------------------------------------------------------------------------------------------

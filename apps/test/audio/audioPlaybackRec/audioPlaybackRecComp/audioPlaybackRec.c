@@ -734,9 +734,11 @@ static void ConnectAudioToUsb
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
     {
         res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect USB Rx on Input connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect USB Rx on Input connector (%s)!",
+                    LE_RESULT_TXT(res));
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect USB Tx on Output connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect USB Tx on Output connector (%s)!",
+                    LE_RESULT_TXT(res));
     }
 }
 
@@ -779,7 +781,8 @@ static void ConnectAudioToFileLocalPlay
         res = le_audio_Connect(AudioOutputConnectorRef, FileAudioRef);
         if(res != LE_OK)
         {
-            LE_ERROR("Failed to connect FilePlayback on output connector!");
+            LE_ERROR("Failed to connect FilePlayback on output connector (%s)!",
+                     LE_RESULT_TXT(res));
             return;
         }
 
@@ -850,7 +853,8 @@ static void ConnectAudioToFileLocalRec
         res = le_audio_Connect(AudioInputConnectorRef, FileAudioRef);
         if(res!=LE_OK)
         {
-            LE_ERROR("Failed to connect FileRecording on input connector!");
+            LE_ERROR("Failed to connect FileRecording on input connector (%s)!",
+                     LE_RESULT_TXT(res));
             return;
         }
 
@@ -944,9 +948,11 @@ static void ConnectAudioToCodec
 
     {
         res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect Mic on Input connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Mic on Input connector (%s)!",
+                    LE_RESULT_TXT(res));
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect Speaker on Output connector (res %s)!",
+                    LE_RESULT_TXT(res));
     }
 }
 
@@ -976,9 +982,11 @@ static void ConnectAudioToPcm
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
     {
         res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM RX on Input connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM RX on Input connector (%s)!",
+                    LE_RESULT_TXT(res));
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM TX on Output connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect PCM TX on Output connector (%s)!",
+                    LE_RESULT_TXT(res));
     }
 }
 
@@ -1009,9 +1017,11 @@ static void ConnectAudioToI2s
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
     {
         res = le_audio_Connect(AudioInputConnectorRef, FeInRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S RX on Input connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S RX on Input connector (%s)!",
+                    LE_RESULT_TXT(res));
         res = le_audio_Connect(AudioOutputConnectorRef, FeOutRef);
-        LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S TX on Output connector!");
+        LE_ERROR_IF((res!=LE_OK), "Failed to connect I2S TX on Output connector (%s)!",
+                    LE_RESULT_TXT(res));
     }
     LE_INFO("Open I2s: FeInRef.%p FeOutRef.%p", FeInRef, FeOutRef);
 }
