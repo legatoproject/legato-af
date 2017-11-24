@@ -1,0 +1,176 @@
+/** @page c_SDD_mdc Modem Data Control SDD
+
+@section mdc_service MDC Service
+
+@subsection Overview Overview
+
+A data session is useful for applications that need to send or receive data over
+a network. To start a data session, a data profile must be configured as specified
+by the target network.
+
+The Modem Data Control (MDC) API is used to manage data profiles and data sessions.
+
+@subsection mdc_dataProfile Data profiles
+
+If a pre-defined data profile has been configured then this profile can be loaded using
+le_mdc_GetProfile(). le_mdc_GetProfile() must be called with LE_MDC_DEFAULT_PROFILE to
+retrieve the default index used by the modem for data connection. le_mdc_GetProfile()
+must be called with LE_MDC_SIMTOOLKIT_BIP_DEFAULT_PROFILE to retrieve the default index
+used by the modem for Bearer Independent Protocol (BIP).
+
+@warning 0 is not a valid index.
+
+The following data profile parameters can be retrieved:
+
+    Packet Data Protocol using le_mdc_GetPDP().
+    Access Point Name using le_mdc_GetAPN().
+    Authentication settings using le_mdc_GetAuthentication().
+
+The following data profile parameters can be set:
+
+    Packet Data Protocol using le_mdc_SetPDP().
+    Access Point Name using le_mdc_SetAPN().
+    Authentication settings using le_mdc_SetAuthentication().
+
+The following sample code demonstrates data profile parameters:
+@snippet "apps/test/modemServices/mdc/mdcIntegrationTest/mdcTestComp/mdcTest.c" Profile_parameters
+
+@subsection mdc_StartSession Start Data Session
+
+A data session can be started using le_mdc_StartSession(). To start a data session,
+a data profile must be created and written to the modem, or an existing data profile
+can be used. The number of simultaneous data sessions supported is dependent on the
+modem, but cannot be more than the maximum number of supported profiles.
+
+A data session can be started asynchronously using le_mdc_StartSessionAsync(),
+which is not blocking. The response will be returned with the le_mdc_SessionHandlerFunc_t
+handler function.
+
+When le_mdc_GetProfile() called with LE_MDC_DEFAULT_PROFILE, profile index 1(default index) is
+retrieved from the modem.
+To register with another profile other than LE_MDC_DEFAULT_PROFILE, the required profile
+index should be passed to le_mdc_GetProfile().
+
+@note:
+The maximum number of data profiles supported is modem dependent and can be retrieved
+with le_mdc_NumProfiles(). Profile index passed to le_mdc_GetProfile(profile_index)
+should be less than or equal to maximum number of data profiles supported.
+
+@subsection mdc_StopSession Stop Data Session
+
+A data session can be stopped using le_mdc_StopSession().
+
+A data session started can be stopped either synchronously with le_mdc_StopSession()
+(or) asynchronously with le_mdc_StopSessionAsync(). le_mdc_StopSessionAsync() response will
+be returned with the le_mdc_SessionHandlerFunc_t handler function.
+
+The following sample code demonstrates Data Session Functionality:
+@snippet "apps/test/modemServices/mdc/mdcIntegrationTest/mdcTestComp/mdcTest.c" Data_session
+@note
+Data session started synchronously can be stopped asynchronously and vice-versa.
+
+@subsection le_mdc_dataStatistics Data Statistics
+
+The amount of received and transmitted data can be retrieved through le_mdc_GetBytesCounters().
+The returned values correspond to the number of received and transmitted bytes since the last
+call to le_mdc_ResetBytesCounter().
+
+The data statistics collection can be started with le_mdc_StartBytesCounter()
+and stopped without resetting the counters with le_mdc_StopBytesCounter().
+
+@note The data statistics collection activation and the data counters are persistent even after
+a reboot of the platform.
+
+The following sample code demonstrates Data Statistics usage:
+@snippet "apps/test/modemServices/mdc/mdcIntegrationTest/mdcTestComp/mdcTest.c" Statistics
+
+
+The following flow diagram describes how MDC data profile is retrieved:
+
+@startuml{le_mdc_GetProfile.png}
+participant Application
+box "MDC component" #lightBlue
+participant Main_thread
+participant Platform_Adapter
+end box
+participant QMI
+
+== Initialization ==
+Application -> Main_thread: le_mdc_GetProfile(profileIndex)
+Main_thread -> Platform_Adapter: pa_mdc_GetDefaultProfileIndex(&profileIndex)
+Platform_Adapter -> QMI: mdc_qmi_GetDefaultWdsClient()
+Platform_Adapter o[#blue]-->o QMI:<b>Lock</b>
+group loop
+QMI --> Platform_Adapter: return QMI WDS client handle
+end
+note right
+Check for the a profile currently
+in use till MAX_WDS_CLIENTS.
+end note
+QMI o[#blue]-->o Platform_Adapter: <b>Unlock</b>
+Platform_Adapter -> Platform_Adapter: pa_mrc_GetRadioAccessTechInUse(&rat)
+Platform_Adapter --> Main_thread: return LE_OK
+note right
+updates the profileIndexPtr
+end note
+Main_thread -> Main_thread: CreateModemProfile(profileIndex)
+Main_thread --> Application: return profileIndex reference
+@enduml
+
+The following flow diagram describes the MDC start session:
+
+@startuml{le_mdc_StartSession.png}
+participant Application
+box "MDC component" #lightBlue
+participant Main_thread
+participant Platform_Adapter
+end box
+participant QMI
+
+== Initialization ==
+Application -> Main_thread: le_mdc_GetProfile(profileIndex)
+Main_thread --> Application: return profileIndex reference
+Application -> Main_thread: le_mdc_StartSession(profileIndex)
+
+== Start Data Session ==
+Main_thread -> Platform_Adapter: pa_mdc_StartSessionIPV4(profileIndex)
+Platform_Adapter -> Platform_Adapter: StartSession()
+Platform_Adapter -> QMI: GetWdsClient()
+QMI --> Platform_Adapter: return The QMI WDS client handle
+Platform_Adapter -> QMI: SetIpFamily(wdsClient, ipFamily)
+QMI --> Platform_Adapter: return LE_OK
+note left
+Return the call reference of data session,
+to be used when stopping the data session
+end note
+Platform_Adapter --> Main_thread: return LE_OK
+Main_thread --> Application: return LE_OK
+@enduml
+
+The following flow diagram describes the MDC stop session:
+
+@startuml{le_mdc_StopSession.png}
+participant Application
+box "MDC component" #lightBlue
+participant Main_thread
+participant Platform_Adapter
+end box
+participant QMI
+
+== Stop Data Session ==
+Application -> Main_thread: le_mdc_StopSession(profileIndex)
+Main_thread -> Platform_Adapter: pa_mdc_StopSession(profileIndex)
+Platform_Adapter -> QMI: GetWdsClient()
+Platform_Adapter -> Platform_Adapter: StopSession()
+QMI --> Platform_Adapter: return LE_OK
+note right
+If the session has become disconnected,
+unassign the wds client.
+end note
+Platform_Adapter --> Main_thread: return LE_OK
+Main_thread --> Application: return LE_OK
+@enduml
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

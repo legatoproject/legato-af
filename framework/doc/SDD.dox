@@ -7,6 +7,7 @@ This section contains the list of the SDD.
 | @subpage c_SDD_audio                  | audio design document                              |
 | @subpage c_SDD_fwupdate_DualSys       | FW update on dual system platform document         |
 | @subpage c_SDD_atClient               | AT client design document                          |
+| @subpage c_SDD_mdc                    | Modem data control design document                 |
 
 Copyright (C) Sierra Wireless Inc.
 

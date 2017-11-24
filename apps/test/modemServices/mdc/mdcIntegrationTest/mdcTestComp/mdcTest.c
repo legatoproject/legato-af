@@ -79,6 +79,7 @@ struct
 };
 
 
+//! [Data_session]
 //--------------------------------------------------------------------------------------------------
 /**
  * Session handler response for connection and disconnection.
@@ -131,6 +132,7 @@ static void SessionStopAsync
     le_mdc_StopSessionAsync(profileRef, SessionHandlerFunc, param2Ptr);
 }
 
+//! [Data_session]
 //--------------------------------------------------------------------------------------------------
 /**
  * Set the configuration.
@@ -279,6 +281,8 @@ static void SetConfiguration
         }
     }
 
+//! [Profile_parameters]
+
     // Get the profile reference
     *profileRefPtr = le_mdc_GetProfile(profile);
     LE_ASSERT(NULL != *profileRefPtr);
@@ -355,6 +359,7 @@ static void SetConfiguration
             configuration.apn, auth, configuration.userName, configuration.password);
 }
 //! [Profiles]
+//! [Profile_parameters]
 
 //! [Sessions]
 //--------------------------------------------------------------------------------------------------
