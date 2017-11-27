@@ -25,14 +25,22 @@ CheckForHelp $@
 TARGET_MODEL=$(echo $1 | tr '[:lower:]' '[:upper:]')
 
 case $TARGET_MODEL in
+    AR758*)
+        echo ar758x;;
+    AR759*)
+        echo ar759x;;
     AR7*)
         echo ar7;;
     AR86*)
         echo ar86;;
     WP85*)
         echo wp85;;
-    WP750X*)
+    WP750*)
         echo wp750x;;
+    WP76*)
+        echo wp76xx;;
+    WP77*)
+        echo wp77xx;;
     VIRT*)
         echo virt;;
     *)

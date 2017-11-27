@@ -6,11 +6,11 @@
 #
 
 # Use port 12345 for debugging by default.
-DEBUG_PORT=12345
+DEBUG_PORT=${DEBUG_PORT:-12345}
 
 usage()
 {
-    echo >&1 "Usage: $0 appName processName [dest_ip]"
+    echo >&1 "Usage: $0 appName processName [targetIp] [targetType]"
 }
 
 if [[ $# != 2 ]] && [[ $# != 3 ]]; then
@@ -20,11 +20,14 @@ fi
 
 APP_NAME=$1
 PROC_NAME=$2
-if [[ $# == 3 ]]; then
+if [ $# -ge 3 ]; then
     export DEST_IP=$3
 fi
+if [ $# -ge 4 ]; then
+    TARGET_TYPE=$4
+fi
 
-if app status devMode |grep -q "^\[not installed\]"; then
+if app status devMode | grep -q "^\[not installed\]"; then
     cat >&2 <<EOF
 devMode not installed on target.  The devMode application must be installed on
 the target to debug.
@@ -47,20 +50,31 @@ fi
 
 APP_MD5=$(echo "$APP_INFO" |sed 's/  app.md5: //;t;d')
 
-TARGET_MODEL=$(ssh -o ConnectTimeout=5 root@$DEST_IP \
-                   "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2>/dev/null)
-if [ -z "$TARGET_MODEL" ]; then
-    echo >&1 "Unable to determine remote target model"
-    exit 1
+if [ -z "$TARGET_TYPE" ]; then
+    TARGET_MODEL=$(ssh -o ConnectTimeout=5 root@$DEST_IP \
+                       "bsinfo -l | grep \" - \$(bsinfo -s -t)\" | sed -e 's/BS//' -e 's/ - .*$//'" 2>/dev/null)
+    if [ -z "$TARGET_MODEL" ]; then
+        echo >&1 "Unable to determine remote target model"
+        exit 1
+    fi
+
+    TARGET_TYPE=$(${LEGATO_ROOT}/bin/gettargettype $TARGET_MODEL)
 fi
 
-TARGET=$(${LEGATO_ROOT}/bin/gettargettype $TARGET_MODEL)
-if [ -z "$TARGET" ]; then
+if [ -z "$TARGET_TYPE" ]; then
     echo >&1 "Unable to determine remote target type"
     exit 1
 fi
 
-if [[ ! -e "${LEGATO_ROOT}/build/${TARGET}/staging/apps/${APP_MD5}/read-only/bin/${PROC_NAME}" ]]; then
+if [ -z "$LEGATO_BUILD" ]; then
+    LEGATO_BUILD="${LEGATO_ROOT}/build/${TARGET_TYPE}"
+    if [ ! -e "$LEGATO_BUILD" ]; then
+        echo "Build directory $LEGATO_BUILD does not exist"
+        exit 1
+    fi
+fi
+
+if [ ! -e "${LEGATO_BUILD}/staging/apps/${APP_MD5}/read-only/bin/${PROC_NAME}" ]; then
     echo >&2 "Cannot find executable for target"
     exit 1
 fi
@@ -70,13 +84,15 @@ ssh -f -L ${DEBUG_PORT}:localhost:${DEBUG_PORT} root@${DEST_IP} \
     /legato/systems/current/apps/devMode/read-only/bin/gdbserver \
     --attach localhost:${DEBUG_PORT} ${PROC_PID}
 
-TOOLCHAIN_DIR_PARAM="${TARGET^^}_TOOLCHAIN_DIR"
-TOOLCHAIN_PREFIX_PARAM="${TARGET^^}_TOOLCHAIN_PREFIX"
-if [[ -z "$DEBUGGER" ]]; then
-    DEBUGGER="${!TOOLCHAIN_DIR_PARAM}/${!TOOLCHAIN_PREFIX_PARAM}gdb"
+TOOLCHAIN_DIR="$(findtoolchain ${TARGET_TYPE} dir)"
+TOOLCHAIN_PREFIX="$(findtoolchain ${TARGET_TYPE} prefix)"
+if [ -z "$DEBUGGER" ]; then
+    export PATH="${TOOLCHAIN_DIR}:${PATH}"
+    DEBUGGER="${TOOLCHAIN_PREFIX}gdb"
 fi
 
 $DEBUGGER -ex "set sysroot remote:/" \
-          -ex "set debug-file-directory ${LEGATO_ROOT}/build/${TARGET}/debug" \
-          -ex "file ${LEGATO_ROOT}/build/${TARGET}/staging/apps/${APP_MD5}/read-only/bin/${PROC_NAME}" \
+          -ex "set debug-file-directory ${LEGATO_BUILD}/debug" \
+          -ex "file ${LEGATO_BUILD}/staging/apps/${APP_MD5}/read-only/bin/${PROC_NAME}" \
           -ex "target remote localhost:${DEBUG_PORT}" \
+
