@@ -809,30 +809,35 @@ static void Testle_ecall_StartManual
     void
 )
 {
-    le_ecall_CallRef_t  testECallRef = 0x00;
-    le_ecall_State_t    state;
+    le_ecall_CallRef_t testECallRef = 0x00;
+    le_ecall_State_t state;
+    int nbLoop=0;
 
     LE_INFO("Start Testle_ecall_StartManual");
 
-    LE_ASSERT(le_ecall_SetPsapNumber("0102030405") == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetPsapNumber("0102030405"));
 
-    LE_ASSERT(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH));
 
-    LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
+    while (nbLoop < 2)
+    {
+        testECallRef = le_ecall_Create();
+        LE_ASSERT(NULL != testECallRef);
 
-    LE_ASSERT(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)) == LE_OK);
+        LE_ASSERT_OK(le_ecall_ImportMsd(testECallRef, ImportedMsd, sizeof(ImportedMsd)));
 
-    LE_ASSERT(le_ecall_StartManual(testECallRef) == LE_OK);
+        LE_ASSERT_OK(le_ecall_StartManual(testECallRef));
 
-    LE_ASSERT(le_ecall_StartTest(testECallRef) == LE_BUSY);
-    LE_ASSERT(le_ecall_StartAutomatic(testECallRef) == LE_BUSY);
+        LE_ASSERT(LE_BUSY == le_ecall_StartTest(testECallRef));
+        LE_ASSERT(LE_BUSY == le_ecall_StartAutomatic(testECallRef));
 
-    LE_ASSERT(le_ecall_End(testECallRef) == LE_OK);
+        LE_ASSERT_OK(le_ecall_End(testECallRef));
 
-    state=le_ecall_GetState(testECallRef);
-    LE_ASSERT(((state>=LE_ECALL_STATE_STARTED) && (state<=LE_ECALL_STATE_FAILED)));
-
-    le_ecall_Delete(testECallRef);
+        state = le_ecall_GetState(testECallRef);
+        LE_ASSERT(((state >= LE_ECALL_STATE_STARTED) && (state <= LE_ECALL_STATE_FAILED)));
+        le_ecall_Delete(testECallRef);
+        nbLoop++;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -846,30 +851,38 @@ static void Testle_ecall_StartTest
     void
 )
 {
-    le_ecall_CallRef_t                 testECallRef = 0x00;
-    le_ecall_State_t                   state;
+    le_ecall_CallRef_t testECallRef = 0x00;
+    le_ecall_State_t state;
+    int nbLoop=0;
 
-    LE_ASSERT(le_ecall_SetPsapNumber("0102030405") == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetPsapNumber("0102030405"));
 
-    LE_ASSERT(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) == LE_OK);
+    LE_ASSERT_OK(le_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH));
 
-    LE_ASSERT((testECallRef=le_ecall_Create()) != NULL);
+    while (nbLoop < 2)
+    {
+        testECallRef = le_ecall_Create();
+        LE_ASSERT(NULL != testECallRef);
 
-    LE_ASSERT(le_ecall_SetMsdPosition(testECallRef, true, +48898064, +2218092, 0) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdPositionN1(testECallRef, 511, 511) == LE_OK);
-    LE_ASSERT(le_ecall_SetMsdPositionN2(testECallRef, -512, -512) == LE_OK);
+        LE_ASSERT_OK(le_ecall_SetMsdPosition(testECallRef, true, +48898064, +2218092, 0));
+        LE_ASSERT_OK(le_ecall_SetMsdPositionN1(testECallRef, 511, 511));
+        LE_ASSERT_OK(le_ecall_SetMsdPositionN2(testECallRef, -512, -512));
 
-    LE_ASSERT(le_ecall_SetMsdPassengersCount(testECallRef, 3) == LE_OK);
+        LE_ASSERT_OK(le_ecall_SetMsdPassengersCount(testECallRef, 3));
 
-    LE_ASSERT(le_ecall_StartTest(testECallRef) == LE_OK);
+        LE_ASSERT_OK(le_ecall_StartTest(testECallRef));
 
-    LE_ASSERT(le_ecall_StartManual(testECallRef) == LE_BUSY);
-    LE_ASSERT(le_ecall_StartAutomatic(testECallRef) == LE_BUSY);
+        LE_ASSERT(LE_BUSY == le_ecall_StartManual(testECallRef));
+        LE_ASSERT(LE_BUSY == le_ecall_StartAutomatic(testECallRef));
 
-    state=le_ecall_GetState(testECallRef);
-    LE_ASSERT(((state>=LE_ECALL_STATE_STARTED) && (state<=LE_ECALL_STATE_FAILED)));
+        LE_ASSERT_OK(le_ecall_End(testECallRef));
 
-    le_ecall_Delete(testECallRef);
+        state = le_ecall_GetState(testECallRef);
+
+        LE_ASSERT(((state>=LE_ECALL_STATE_STARTED) && (state<=LE_ECALL_STATE_FAILED)));
+        le_ecall_Delete(testECallRef);
+        nbLoop++;
+    }
 }
 
 //--------------------------------------------------------------------------------------------------

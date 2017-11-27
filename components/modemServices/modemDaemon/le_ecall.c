@@ -2928,20 +2928,27 @@ le_result_t le_ecall_End
     ECall_t*   eCallPtr = le_ref_Lookup(ECallRefMap, ecallRef);
     le_result_t result;
 
-    if (eCallPtr == NULL)
+    if (NULL == eCallPtr)
     {
         LE_KILL_CLIENT("Invalid reference (%p) provided!", ecallRef);
         return LE_BAD_PARAMETER;
     }
 
-    if (eCallPtr->startType == PA_ECALL_START_AUTO)
+    // Automatic eCall session:
+    // don't end current eCall session unless ECALL_SESSION_STOPPED state is reached.
+    if ((PA_ECALL_START_AUTO == eCallPtr->startType) &&
+        (ECALL_SESSION_STOPPED != eCallPtr->sessionState))
     {
         LE_ERROR("An automatic Ecall cannot be terminated");
         return LE_FAULT;
     }
 
-    if ( (eCallPtr->startType == PA_ECALL_START_MANUAL) &&
-        (eCallPtr->sessionState >= ECALL_SESSION_CONNECTED) )
+    // Manual eCall session:
+    // don't end current eCall session if eCall session state is ECALL_SESSION_CONNECTED or
+    // ECALL_SESSION_COMPLETED.
+    if ((PA_ECALL_START_MANUAL == eCallPtr->startType) &&
+        ((ECALL_SESSION_CONNECTED == eCallPtr->sessionState) ||
+         (ECALL_SESSION_COMPLETED == eCallPtr->sessionState)))
     {
         LE_ERROR("Ecall transaction cannot be terminated, Ecall in progress");
         return LE_FAULT;
@@ -2953,7 +2960,7 @@ le_result_t le_ecall_End
     result = pa_ecall_End();
 
     // Stop redial
-    if(result == LE_OK)
+    if (LE_OK == result)
     {
         // Update eCall session state
         ECallObj.sessionState = ECALL_SESSION_STOPPED;
