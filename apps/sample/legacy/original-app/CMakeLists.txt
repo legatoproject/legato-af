@@ -4,8 +4,6 @@
 
 include(CMakeForceCompiler)
 
-CMAKE_FORCE_C_COMPILER(${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}gcc LegatoCrossCompiler)
-
 # Build the legacy app binary
 add_executable(legacy-app-bin main.c)
 

@@ -1,12 +1,12 @@
+#!/bin/bash
+
 ################################################################################
 #                                                                              #
 # cm.test                                                                      #
 #                                                                              #
-# Copyright (C) Sierra Wireless Inc.    #
+# Copyright (C) Sierra Wireless Inc.                                           #
 #                                                                              #
 ################################################################################
-
-#!/bin/bash
 
 # prints test name and success or failure. On failure it exits immediately
 handle_err() {

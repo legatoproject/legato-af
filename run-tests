@@ -313,7 +313,6 @@ function WaitSsh()
     return 1
 }
 
-
 function StartVirtualTarget()
 {
     VIRT_TARGET_ARCH=${VIRT_TARGET_ARCH:-arm}

@@ -13,25 +13,19 @@ services:
 
 install:
   - sudo apt-get -qq update
-  - sudo apt-get --yes --assume-yes install
-                                           build-essential
-                                           python python-jinja2 python-pkg-resources cmake
-                                           git subversion libsdl-dev
-                                           diffstat texinfo gawk chrpath wget cpio
-                                           vim zsh bash ninja-build screen sshpass
-                                           bc python-git unzip libxml2-utils gcovr
-                                           libcurl4-gnutls-dev zlib1g-dev libbz2-dev
-                                           bsdiff libssl-dev autoconf automake
-  - sudo apt-get --yes --assume-yes install
-                                           expect-dev openjdk-8-jdk gcovr
-  - sudo wget -O /usr/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
-  - sudo chmod +x /usr/bin/repo
+  - sudo apt-get --yes --assume-yes install build-essential
+                                            python python-jinja2 python-pkg-resources python-git
+                                            cmake git libsdl-dev diffstat texinfo gawk chrpath
+                                            wget cpio bash ninja-build bc unzip libxml2-utils gcovr
+                                            libcurl4-gnutls-dev zlib1g-dev libbz2-dev
+                                            bsdiff libssl-dev autoconf automake iputils-ping
+  - sudo apt-get --yes --assume-yes install openjdk-8-jdk phablet-tools
   - git config --global color.ui false
   - git config --global user.name "Travis"
   - git config --global user.email "legato@travis-ci.org"
 
 script:
-  - if [ "$CC" == "clang" ]; then export USE_CLANG=1 && which clang; fi
+  - if [ "$CC" == "clang" ]; then export USE_CLANG=1 CC=clang CXX=clang++ && which clang; fi
   - cd ..
   - mkdir workspace
   - cd workspace
@@ -46,4 +40,8 @@ script:
   - git fetch local HEAD
   - git reset --hard FETCH_HEAD
   - repo forall -c 'echo -n "$REPO_PATH " && git rev-parse HEAD 2>/dev/null'
+  - export JDK_INCLUDE_DIR=/usr/lib/jvm/java-8-openjdk-amd64/include
   - make localhost
+  - if [[ "$CC" == "gcc" ]] && ! make tests_localhost > /tmp/legato-logs 2>&1 ; then
+        echo "Test build failed" && tail -1000 /tmp/legato-logs && exit 1 ;
+    fi

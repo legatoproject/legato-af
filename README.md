@@ -17,8 +17,7 @@ $ sudo apt-get install -y build-essential \
                           bsdiff libssl-dev autoconf automake iputils-ping
 ```
 
-Optional packages: ```vim``` (or any text editor),
-                   ```openjdk-8-jdk``` (for Java support, at least Java 8 is required),
+Optional packages: ```openjdk-8-jdk``` (for Java support, at least Java 8 is required),
                    ```doxygen graphviz``` (for doc generation)
 
   - Cross-build toolchain(s)<br/>

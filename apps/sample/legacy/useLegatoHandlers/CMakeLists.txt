@@ -4,8 +4,6 @@
 
 include(CMakeForceCompiler)
 
-CMAKE_FORCE_C_COMPILER(${TOOLCHAIN_DIR}/${TOOLCHAIN_PREFIX}gcc LegatoCrossCompiler)
-
 # Build legacy binary
 include_directories(${LEGATO_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 generate_client(${LEGATO_ROOT}/interfaces/modemServices/le_mdmDefs.api)
