@@ -41,8 +41,8 @@ cflags:
     -DADC_COUNT=4
 
     // PDP Contexts
-    // 24 profiles, 4 PDPs context in UMTS and 8 PDPs context in LTE network
-    -DPDP_MAX_PROFILE=24
+    // 16 profiles, 4 PDPs context in UMTS and 8 PDPs context in LTE network
+    -DPDP_MAX_PROFILE=16
     -DPDP_MAX_MULTIPDP=8
 
     #if ${DISABLE_SMACK} = 1
