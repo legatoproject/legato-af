@@ -397,8 +397,10 @@ static void RemoveHandler
     void* param2Ptr
 )
 {
+    LOCK
     le_gnss_RemovePositionHandler(GnssPositionHandlerRef);
     GnssPositionHandlerRef = NULL;
+    UNLOCK
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
 }
