@@ -1614,6 +1614,7 @@ static void ProcessCommand
     if (REQUEST_COMMAND == command)
     {
         RequestCount++;
+        LE_DEBUG("RequestCount %d, IsConnected %d", RequestCount, IsConnected);
 
         if (!IsConnected)
         {
@@ -1701,11 +1702,24 @@ static void ConnectionStatusHandler
     // Check if the default data connection is still necessary
     if ((false == connected) && (RequestCount > 0))
     {
+        le_data_Technology_t nextTech;
+        char techStr[DCS_TECH_BYTES] = {0};
+
         // Disconnect the current technology which is not available anymore
         TryStopTechSession(CurrentTech);
 
+        nextTech = GetNextTech(CurrentTech);
+
+        // Get current technology string
+        GetTechnologyString(CurrentTech, techStr, sizeof(techStr));
+        LE_DEBUG("Current technology used for the data connection: '%s'", techStr);
+
+        // Get next technology string
+        GetTechnologyString(nextTech, techStr, sizeof(techStr));
+        LE_DEBUG("Next technology to use for the data connection: '%s'", techStr);
+
         // Connect the next technology to use
-        TryStartTechSession(GetNextTech(CurrentTech));
+        TryStartTechSession(nextTech);
     }
 }
 

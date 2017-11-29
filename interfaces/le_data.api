@@ -2,13 +2,12 @@
 /**
  * @page c_le_data Data Connection
  *
- * @ref le_data_interface.h "API Reference"
+ * @ref le_data_interface.h "API Reference" <br>
+ * @ref le_data_sample <br>
  *
- * <HR>
- *
- * A data connection is needed for applications that exchange data with
- * devices where SMS messages are insufficient or not possible.  The data connection can
- * be over a mobile network, over Wi-Fi, or over a fixed link (e.g., Ethernet).
+ * A data connection is needed for applications that exchange data with devices where SMS messages
+ * are insufficient or not possible.  The data connection can be established over a mobile network,
+ * WiFi or a fixed link (e.g., ethernet).
  *
  * The data connection service provides a basic API for requesting and releasing a data connection.
  *
@@ -28,34 +27,34 @@
  *
  * @section c_le_data_default Default Data Connection
  *
- * Default data connection is obtained using le_data_Request().  Before the data
- * connection is requested, an application registers a connection state handler using
- * le_data_AddConnectionStateHandler().  Once the data connection is established, the
- * handler will be called indicating it's now connected.  If the state of the data
- * connection changes, then the handler will be called with the new state. To release a data
- * connection, an application can use le_data_Release().
+ * Default data connection is obtained using le_data_Request().  Before the data connection is
+ * requested, an application registers a connection state handler using
+ * le_data_AddConnectionStateHandler().  Once the data connection is established, the handler will
+ * be called indicating it's now connected.  If the state of the data connection changes, then the
+ * handler will be called with the new state. To release a data connection, an application can use
+ * le_data_Release().
  *
  * The technology of the established connection can be retrieved with le_data_GetTechnology().
  *
- * If the default data connection is not currently available when le_data_Request() is called,
- * the data connection service first ensures all pre-conditions are satisfied (e.g.,
- * modem is registered on the network), before trying to start the data connection.
+ * If the default data connection is not currently available when le_data_Request() is called, the
+ * data connection service first ensures all pre-conditions are satisfied (e.g., modem is registered
+ * on the network), before trying to start the data connection.
  *
- * If the default data connection is already available when le_data_Request() is called, a
- * new connection will not be started.  Instead, the existing data connection will be used.  This
- * happens if another application also requested the default data connection.  This
- * is how multiple applications can share the same data connection.
+ * If the default data connection is already available when le_data_Request() is called, a new
+ * connection will not be started.  Instead, the existing data connection will be used. This happens
+ * if another application also requested the default data connection. This is how multiple
+ * applications can share the same data connection.
  *
  * Once an application makes a data connection request, it should monitor the connection state
- * reported to the registered connection state handler.  The application
- * should only try transmitting data when the state is connected, and should stop transmitting
- * data when the state is not connected.  If the state is not connected, the data connection
- * service will try to re-establish the connection. There's no need for an application to
- * issue a new connection request.
+ * reported to the registered connection state handler.  The application should only try
+ * transmitting data when the state is connected, and should stop transmitting data when the state
+ * is not connected. If the state is not connected, the data connection service will try to
+ * establish or re-establish the connection endlessly until le_data_Release() is called. There's no
+ * need for an application to issue a new connection request.
  *
  * The default data connection will not necessarily be released when an application calls
- * le_data_Release().  The data connection will be released only after le_data_Release()
- * is called by all applications that previously called le_data_Request().
+ * le_data_Release(). The data connection will be released only after le_data_Release() is called by
+ * all applications that previously called le_data_Request().
  *
  * @note When using the cellular technology, the data connection service can use a specific cellular
  * data profile if it has been set with the le_data_SetCellularProfileIndex() API or in the
@@ -63,6 +62,11 @@
  * retrieved by le_data_GetCellularProfileIndex(). The profile to use is loaded when the first data
  * connection is initiated. The cellular data profile can be configured by le_mdc APIs or
  * cm data tool.
+ *
+ * @section le_data_sample Code sample
+ *
+ * A sample code that implements the establishment of a data connection service can be found in
+ * \b dcsTest.c file (please refer to @ref c_dataConnectionServiceSample page).
  *
  * @section c_le_data_routing Data connection routing
  *
@@ -195,6 +199,12 @@
  * Copyright (C) Sierra Wireless Inc.
  */
 //--------------------------------------------------------------------------------------------------
+
+/**
+ * @page c_dataConnectionServiceSample Sample code for data connection service establishment
+ *
+ * @include "apps/test/dataConnectionService/dataConnectionServiceTest/dcsTestComp/dcsTest.c"
+ */
 
 USETYPES le_mdc.api;
 
