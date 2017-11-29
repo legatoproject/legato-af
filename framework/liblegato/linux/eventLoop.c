@@ -1531,11 +1531,13 @@ le_result_t le_event_ServiceLoop
     int epollFd = perThreadRecPtr->epollFd;
     struct epoll_event epollEventList[MAX_EPOLL_EVENTS];
 
-    // If there are still live events remaining in the queue, process a single event, then return
-    if (perThreadRecPtr->liveEventCount--)
-    {
-        ProcessOneEventReport(perThreadRecPtr); // This function assumes the mutex is NOT locked.
+    LE_DEBUG("perThreadRecPtr->liveEventCount is" "%" PRIu64, perThreadRecPtr->liveEventCount);
 
+    // If there are still live events remaining in the queue, process a single event, then return
+    if (perThreadRecPtr->liveEventCount > 0)
+    {
+        perThreadRecPtr->liveEventCount--;
+        ProcessOneEventReport(perThreadRecPtr); // This function assumes the mutex is NOT locked.
         return LE_OK;
     }
 
@@ -1603,11 +1605,13 @@ le_result_t le_event_ServiceLoop
     // are added.
     perThreadRecPtr->liveEventCount = ReadEventFd(perThreadRecPtr);
 
-    // If events were read, process the top event
-    if (perThreadRecPtr->liveEventCount--)
-    {
-        ProcessOneEventReport(perThreadRecPtr);
+    LE_DEBUG("perThreadRecPtr->liveEventCount is" "%" PRIu64, perThreadRecPtr->liveEventCount);
 
+    // If events were read, process the top event
+    if (perThreadRecPtr->liveEventCount > 0)
+    {
+        perThreadRecPtr->liveEventCount--;
+        ProcessOneEventReport(perThreadRecPtr);
         return LE_OK;
     }
     else
