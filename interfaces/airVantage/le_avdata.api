@@ -8,7 +8,7 @@
  * This API provides a data service to allow Apps to manage App-specific data on the AirVantage
  * server.
  *
- * @section le_data_binding IPC Interfaces Binding
+ * @section le_avdata_binding IPC Interfaces Binding
  *
  * All the functions of this API are provided by the @b avcService platform service.
  *
@@ -21,7 +21,7 @@
  * @endverbatim
  *
  *
- * @section le_data_overview AirVantage Data Overview
+ * @section le_avdata_overview AirVantage Data Overview
  *
  * Data is setup as @b Assets &mdash;  a collection of fields that can be managed by the AirVantage
  * server.
@@ -135,6 +135,44 @@
  *       le_avdata_PushStream("<Path>", fd, PushCallbackHandler, NULL);
  * }
  * @endcode
+ *
+ * @section le_avdata_namespace Namespace
+ *
+ * By default all asset data path are created and managed under the application namespace.
+ * Calling le_avdata_GetXXX/le_avdata_SetXXX/le_avdata_AddResourceEventHandler/le_avdata_Push with the
+ * path "/a/b/c" will search for the "/a/b/c" data under the apps namespace. In order to query any
+ * paths created under an application namespace, user must append the app name in front of the request
+ * on the server side. If creating asset data under application namespace is not desired, users must
+ * call le_avdata_SetNamespace and set the value to global. An application that changes its namespace
+ * to global will be creating asset data in the global space. All asset data API will use the last
+ * namespace set until the function is called again and the namespace is set to something new.
+ *
+ * Example:
+ *
+ * @code
+ * #define RESOURCE_A         "/test/resourceA"
+ *
+ * COMPONENT_INIT
+ * {
+ *     int intVal;
+ *     LE_ASSERT(le_avdata_CreateResource(RESOURCE_A, LE_AVDATA_ACCESS_VARIABLE) == LE_OK);
+ *     LE_ASSERT(le_avdata_SetInt(RESOURCE_A, 1) == LE_OK);
+ *     LE_ASSERT(le_avdata_GetInt(RESOURCE_A, &intVal) == LE_OK);
+ *     LE_ASSERT(intVal == 1); // value obtained under the application namespace
+ *
+ *     // Switch to global namespace
+ *     LE_ASSERT(le_avdata_SetNamespace(LE_AVDATA_NAMESPACE_GLOBAL) == LE_OK);
+ *
+ *     LE_ASSERT(le_avdata_CreateResource(RESOURCE_A, LE_AVDATA_ACCESS_VARIABLE) == LE_OK);
+ *     LE_ASSERT(le_avdata_SetInt(RESOURCE_A, 2) == LE_OK);
+ *     LE_ASSERT(le_avdata_GetInt(RESOURCE_A, &intVal) == LE_OK);
+ *     LE_ASSERT(intVal == 2); // value obtained under the global namespace
+ * }
+ *
+ * An application starts by creating a path "/test/resourceA" under the default application namespace
+ * and sets it to 1. Then it sets the namespace to global and creates another path "/test/resourceA"
+ * with a value of 2. A read request from the server on "<appName>/test/resourceA" will return 1;
+ * whereas a read request on "/test/resourceA" will return 2.
  *
  * @section le_avdata_timeseries Time Series
  *
@@ -265,6 +303,18 @@ BITMASK AccessType
 };
 
 
+//--------------------------------------------------------------------------------------------------q
+/**
+ * Resource namespace
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Namespace
+{
+    NAMESPACE_APPLICATION,
+    NAMESPACE_GLOBAL
+};
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Data types
@@ -362,6 +412,21 @@ FUNCTION le_result_t CreateResource
 (
     string path[PATH_NAME_LEN] IN,
     AccessMode accessMode
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sets the namespace for asset data.
+ *
+ * @return:
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER if the namespace is unknown
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetNamespace
+(
+    Namespace namespace
 );
 
 
