@@ -59,4 +59,8 @@ cflags:
     // External ADCs
     -DADC_BEGIN_NUM=0
     -DADC_COUNT=4
+
+    // PDP Contexts
+    -DPDP_MAX_PROFILE=16
+    -DPDP_MAX_MULTIPDP=8
 }
