@@ -9,15 +9,15 @@
  * By default, the profile used is LE_MDC_DEFAULT_PROFILE, and the APN is automatically set.
  * Some customize parameters can be set by creating a "/tmp/config.txt" file and fill a command
  * line with the syntax:
- * <profile number> <pdp_type> <apn> [<authentification_type> <username> <password>]
+ * <profile number> <pdp_type> <apn> [<authentication_type> <username> <password>]
  * Where:
  *  - <profile number> is the profile number to be used (or "default" to use the default profile)
  *  - <pdp_type> if the packet data protocol to be used: "ipv4", "ipv6", or "ipv4v6"
  *  - <apn> is the APN to be used
- *  - <authentification_type> (optional): authentification requested: "auth_none" (default), pap",
+ *  - <authentication_type> (optional): authentication requested: "auth_none" (default), pap",
  *  "chap", "pap-chap"
- *  - <username> (optional): username for authentification
- *  - <password> (optional): password for authentification
+ *  - <username> (optional): username for authentication
+ *  - <password> (optional): password for authentication
  *
  * Copyright (C) Sierra Wireless Inc.
  *
@@ -53,9 +53,9 @@ typedef struct
     char   cid[10];                                 // profile identifier
     char   pdp[10];                                 // packet data protocol
     char   apn[LE_MDC_APN_NAME_MAX_LEN];            // access point network
-    char   auth[10];                                // authentification level
-    char   userName[LE_MDC_USER_NAME_MAX_LEN];      // username for authentification
-    char   password[LE_MDC_PASSWORD_NAME_MAX_LEN];  // password for authentification
+    char   auth[10];                                // authentication level
+    char   userName[LE_MDC_USER_NAME_MAX_LEN];      // username for authentication
+    char   password[LE_MDC_PASSWORD_NAME_MAX_LEN];  // password for authentication
 }
 Configuration_t;
 
@@ -188,7 +188,7 @@ static void SetConfiguration
         LE_ASSERT(NULL != apnPtr);
         le_utf8_Copy(configuration.apn, apnPtr, sizeof(configuration.apn), NULL);
 
-        // Get authentification
+        // Get authentication
         char* authPtr = strtok_r(NULL, " ", &saveParamPtr);
         if (NULL != authPtr)
         {
@@ -327,12 +327,12 @@ static void SetConfiguration
     le_mdc_Auth_t auth = LE_MDC_AUTH_NONE;
     if ('\0' != configuration.auth[0])
     {
-        // Set the authentification, username and password
+        // Set the authentication, username and password
         if (0 == strncmp(configuration.auth, AuthPapChap, sizeof(AuthPapChap)))
         {
             auth = LE_MDC_AUTH_PAP | LE_MDC_AUTH_CHAP;
         }
-        // Set the authentification, username and password
+        // Set the authentication, username and password
         else if (0 == strncmp(configuration.auth, AuthPap, sizeof(AuthPap)))
         {
             auth = LE_MDC_AUTH_PAP;

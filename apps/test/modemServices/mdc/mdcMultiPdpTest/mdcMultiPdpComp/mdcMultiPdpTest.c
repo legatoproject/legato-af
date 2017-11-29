@@ -412,7 +412,7 @@ static void* TestThreadMtPdp(void* contextPtr)
 
     LE_INFO("MT-PDP APN: %s", apn);
     LE_INFO("MT-PDP PDP type: %d", pdp);
-    LE_INFO("MT-PDP Authentification: %d", auth);
+    LE_INFO("MT-PDP Authentication: %d", auth);
     LE_INFO("MT-PDP userName: %s", userName);
     LE_INFO("MT-PDP password: %s", password);
 

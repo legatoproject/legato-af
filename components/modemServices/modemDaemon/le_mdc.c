@@ -2108,7 +2108,7 @@ le_result_t le_mdc_GetAPN
  *       function will not return.
  * @note If password is too long (max PASSWORD_NAME_MAX_LEN digits), it is a fatal error, the
  *       function will not return.
- * @note Both PAP and CHAP authentification can be set for 3GPP network: in this case, the device
+ * @note Both PAP and CHAP authentication can be set for 3GPP network: in this case, the device
  *       decides which authentication procedure is performed. For example, the device can have a
  *       policy to select the most secure authentication mechanism.
  *

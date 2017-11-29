@@ -76,7 +76,7 @@ static void PrintUsage
      "Usage of the 'simTest' application is:",
      "SIM allocation test: app runProc simTest --exe=simTest -- create <ext/emb> <pin>",
      "SIM state test: app runProc simTest --exe=simTest -- state <ext1/ext2/emb> <pin>",
-     "SIM authentification test: app runProc simTest"
+     "SIM authentication test: app runProc simTest"
      " --exe=simTest -- auth <ext/emb> <pin> <puk>",
      "No SIM test: app runProc simTest --exe=simTest -- nosim <ext/emb>",
      "SIM select: app runProc simTest --exe=simTest -- select",
@@ -203,7 +203,7 @@ COMPONENT_INIT
         // Call the test function
         simTest_Create(cardId, pin);
     }
-    // Test: authentification
+    // Test: authentication
     else if (strcmp(testString, "auth") == 0)
     {
         const char* pin;

@@ -170,7 +170,7 @@ static void TestMdc_Configuration( void )
     LE_ASSERT_OK(le_mdc_GetProfileFromApn(newAPN, &profile));
     LE_ASSERT(profile == ProfileRef[0]);
 
-    /* Get and change authentification */
+    /* Get and change authentication */
     le_mdc_Auth_t auth;
     char userName[10];
     char password[10];
