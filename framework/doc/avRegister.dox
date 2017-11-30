@@ -9,8 +9,7 @@ Detailed AirVantage documentation:
 contact.
 
 @note If you are a mangOH customer, your device comes with a free account and you just need to
-register on the [Europe Server](https://eu.airvantage.net/accounts/signup?type=Mangoh) or the
-[North America Server](https://na.airvantage.net/accounts/signup?type=Mangoh).
+register on the [Europe Server](https://eu.airvantage.net/accounts/signup?type=Mangoh).
 
 After you connect to your AirVantage account, the next steps are to register your target in the
 AirVantage console.

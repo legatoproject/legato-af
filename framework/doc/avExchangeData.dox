@@ -355,7 +355,7 @@ App that we just walked you through. You are welcome to use any REST API app to 
 Before you can send any requests you must first request an Authentication Token from the AirVantage
 Server.
 
-@c 1. Log in to the AirVantage Web UI: [Europe](https://eu.airvantage.net) OR [North America](https://na.airvantage.net)
+@c 1. Log in to the AirVantage Web UI: [Europe](https://eu.airvantage.net).
 
 @c 2. Click on "Develop", "API clients"
 
@@ -367,7 +367,7 @@ Once you've gotten the client ID and secret key you will need to make a request 
 obtain an access token.
 
 @verbatim
-server="https://eu.airvantage.net or https://na.airvantage.net"
+server="https://eu.airvantage.net"
 login="<AirVantage login>"
 password="<AirVantage password>"
 client_id="<client ID obtained from the step above>"
@@ -398,7 +398,7 @@ Services.
 To obtain your UID:
 
 @c 1. Log in to the AirVantage Web UI: [Europe](https://eu.airvantage.net)
-[North America](https://na.airvantage.net)
+
 
 @c 2. Click "Monitor", then "Systems" and select your system
 
@@ -412,7 +412,7 @@ request data with a Read request.
 
 Example read request:
 @verbatim
-server="https://na.airvantage.net"
+server="https://eu.airvantage.net"
 access_token="<access token>"                     # refer to the step above to get your access token
 uid="<UID>"                                       # refer to the step above to get uid
 resource="assetData.home.room1.AC.IsACOn"         # resource we want to read from the device
