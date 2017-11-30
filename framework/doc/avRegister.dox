@@ -47,9 +47,9 @@ at
 OK
 @endverbatim
 
-- Configure your CF3 module to connect to the AirVantage server, by entering @c at+wdsi @c = @c 8191
+- Configure your CF3 module to connect to the AirVantage server, by entering @c at+wdsi @c = @c 4479
 @verbatim
-at+wdsi=8191
+at+wdsi=4479
 OK          # returning OK means you have configured the connection to the AirVantage server
 @endverbatim
 

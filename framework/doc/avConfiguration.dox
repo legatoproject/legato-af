@@ -173,13 +173,13 @@ AirVantage.
 Steps to connect to the AirVantage Server with AT commands:
  - @c ssh to device: @c ssh @c 192.168.2.2
  - open an AT connection: <c>microcom -E /dev/ttyAT</c>
- - enable all notification: @c at+wdsi=8191
+ - enable all notification: @c at+wdsi=4479
  - connect to the AirVantage Server: @c at+wdss=1,1
 
 Example for WPX5XX/WP76XX/FX30 Customers:
 @verbatim
 # microcom -E /dev/ttyAT
-at+wdsi=8191  # activates all AirVantage Server notifications
+at+wdsi=4479  # activates all AirVantage Server notifications
 OK
 at+wdss=1,1   # starts a connection to the AirVantage Server
 OK
