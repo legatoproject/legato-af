@@ -2015,6 +2015,7 @@ static void ParseAtCmd
                     le_mem_Release(paraPtr);
                 }
             }
+
             goto sendErrorRsp;
         }
     }
@@ -2034,6 +2035,15 @@ static void ParseAtCmd
         {
             // Command exists, but no handler associate to it
             cmdParserPtr->currentCmdPtr->processing = false;
+
+            // Clean AT command context, not in use now
+            le_dls_Link_t* linkPtr;
+            while ((linkPtr=le_dls_Pop(&cmdPtr->paramList)) != NULL)
+            {
+                ParamString_t *paraPtr = CONTAINER_OF(linkPtr, ParamString_t, link);
+                le_mem_Release(paraPtr);
+            }
+
             goto sendErrorRsp;
         }
     }
