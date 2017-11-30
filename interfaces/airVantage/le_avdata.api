@@ -34,9 +34,14 @@
  * - @b setting allowing the AirVantage server to read/write the value, and can be read by an App.
  * - @b command allowing the AirVantage server to invoke a function in the App.
  *
- * A field is referred to by a path, much like a path in Unix-like OSes. A path is separated by a
- * slash ("/"), a parent path @b cannot contain a field, and a parent path cannot contain a parent
- * path and a child path of the same name.
+ * Fields are referred to by paths and need to follow these rules:
+ *
+ * - A parent path @b can't contain a field, parent path or child path that has the same name.
+ * - Paths must be separated by a slash ("/") or a dot (".").
+ * - When using a ("/") the path must start with a ("/") (e.g., /a/b/c)
+ * - When using a (".") the path must start with the first field, (e.g., a.b.c)
+ *
+ * @note There is no leading "." when using "." delimiter.
  *
  * Variable and setting fields also have types. The available field types are:
  * - string
@@ -298,7 +303,9 @@ REFERENCE ArgumentList;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Handler for resource activity
+ * Handler for resource activity. Note that the path returned by this event follows the unix format
+ * (e.g. "/a/b/c") even if the app uses the URL format (e.g "a.b.c") when registering
+ * the handler.
  */
 //--------------------------------------------------------------------------------------------------
 HANDLER ResourceHandler
