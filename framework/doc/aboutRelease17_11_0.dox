@@ -1,0 +1,100 @@
+/** @page releaseNotes17110 17.11.0 Release Notes
+
+Release Date: Dec 14, 2017
+
+See @ref aboutLicenses to view Legato AF Licensing Information.
+
+The following provides a summary of changes that have been made in the 17.11 Legato AF Release.
+
+<b> Download the @ref aboutReleaseInfo "source code" and get started with @ref basicBuild
+"building Legato AF". </b>
+
+@section rn1711_Features New Features
+
+The following are the list of new features that have been added into the 17.11 Release:
+
+@subsection rn1711_Features_AV  AirVantage Improvements
+
+Version 17.11.0 introduces further stability updates to the AirVantage Connector and underlaying
+Platform Adapters. The code changes provide stability to over-the-air downloads and installs, and
+improves the reliability of downloads and installs resuming after the device has lost power or has
+been rebooted.
+
+@subsection rn1711_Features_lpt  Extended Idle-Mode Discontinuous Reception API (eDRX)
+
+A @ref c_lpt "new API, le_lpt.api", has been added to Modem Services allow developers to interact
+with functions to reduce power consumption and extend the sleep cycle when the device is idle or
+in low power mode.
+
+eDRX features include the ability to:
+- Activate/deactivate eDRX.
+- Set/get the requested eDRX cycle value.
+- Get the network-provided eDRX cycle value.
+- Get the network-provided Paging Time Window.
+- Add/remove an event handler notifying if there is a change in the network-provided eDRX
+  parameters.
+
+@subsection rn1711_Features_eCall eCall Improvements
+
+Version 17.11 introduces bug fixes and stability improvements to the eCall service within Modem
+Services.
+
+@section rn1711_Fixes Fixed Issues
+
+All development work is tagged in GitHub as "17.11.0".  The list of changes and commit
+messages can be found on GitHub.
+
+- [Legato AF 17.11.0 Fixes](https://github.com/legatoproject/legato-af/commits/17.11.0)
+
+@note This is only the list of fixes for the Application Framework and Platform Services, for the
+list of changes in the Platform Adapters and AVC Service view the commits under the tag 17.11.0 in
+the individual repositories on GitHub.
+
+@section rn1711_KnownIssues Known Issues
+
+@subsection rn1711_Constraints Constraints and Limitations
+
+@subsubsection rn1711_ContraintsLinuxSupport Dev Machine Linux Version
+
+To develop applications within the Legato Application Framework, a current supported
+[Long Term Support version of Ubuntu Linux](https://www.ubuntu.com/info/release-end-of-life) is
+required on your dev machine (or running in a virtual box on Windows).  Ubuntu 16.04 is the current
+@b recommended version to use on your dev machine.
+
+@subsubsection rn1711_ConstECMUSB ECM-USB modem manager issue
+
+Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
+conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
+Network Manager to crash on your host and/or your target device to become unavailable over USB.
+
+@b Symptoms:
+- NetworkManager crashing when plugging into your device over USB, or
+- The target device becomes inaccessible after 30 seconds.
+
+@b Recommended  @b Work  @b Around:
+- Uninstall @c modemmanager from Ubuntu or
+- [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
+
+@subsection rn1711_OpenIssues Open Issues
+
+The following is the list of known issues that still exist in Legato 17.11.0 and are currently under
+investigation:
+
+@b AT @b Commands
+ - AT command @c WDSI will accept the invalid syntax "" and will return @c OK and not @c ERROR.
+   (e.g.; "", "0" and "4447" should return an @c ERROR but returns @c OK). These "" values will be
+   stored in memory causing further issues for subsequent commands.
+
+@b AVC @b Service
+- Targets are not updating the AirVantage Server when they have completed a Firmware update.  The
+  firmware update may update the server when the next connection is opened, but targets will not
+  open a connection to AirVantage when the update has completed.
+
+@b Modem @b Service
+- @c le_mrc_GetNeighborCellId() and @c le_mrc_GetNeighborCellLocAreaCode() are not returning the
+  values requested.
+- @c le_mrc_GetCurrentNetworkName() is failing when the returned Network Name is over 18 characters.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
