@@ -187,8 +187,15 @@ void le_dls_Remove
         le_dls_Link_t* nextLinkPtr = linkToRemovePtr->nextPtr;
         le_dls_Link_t* prevLinkPtr = linkToRemovePtr->prevPtr;
 
-        nextLinkPtr->prevPtr = prevLinkPtr;
-        prevLinkPtr->nextPtr = nextLinkPtr;
+        if (NULL != nextLinkPtr)
+        {
+            nextLinkPtr->prevPtr = prevLinkPtr;
+        }
+
+        if (NULL != prevLinkPtr)
+        {
+            prevLinkPtr->nextPtr = nextLinkPtr;
+        }
 
         // Update the head pointer if necessary.
         if (linkToRemovePtr == listPtr->headLinkPtr)
