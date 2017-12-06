@@ -951,6 +951,7 @@ le_mdc_ProfileRef_t le_mdc_GetProfile
     uint32_t index ///< index of the profile.
 )
 {
+    MdcProfile.profileIndex = index;
     return MdcProfile.profileRef;
 }
 

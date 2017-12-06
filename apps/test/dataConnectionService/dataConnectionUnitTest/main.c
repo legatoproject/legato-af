@@ -364,7 +364,7 @@ static void Testle_data_Service
 )
 {
     int i;
-    int32_t profileIndex;
+    int32_t profileIndex, defaultProfileIndex;
     le_result_t result;
     uint32_t loop;
     uint16_t year, month, day, hour, minute, second, millisecond;
@@ -385,8 +385,8 @@ static void Testle_data_Service
 
     LE_ASSERT(le_data_GetDefaultRouteStatus());
 
-    profileIndex = le_data_GetCellularProfileIndex();
-    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    // Read the default profile index
+    defaultProfileIndex = le_data_GetCellularProfileIndex();
 
     // Set RAT to GSM
     le_mrcTest_SetRatInUse(LE_MRC_RAT_GSM);
@@ -394,14 +394,14 @@ static void Testle_data_Service
     result = le_data_SetCellularProfileIndex(0);
     LE_ASSERT(LE_BAD_PARAMETER == result);
     profileIndex = le_data_GetCellularProfileIndex();
-    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    LE_ASSERT(defaultProfileIndex == profileIndex);
 
     for (loop = 17; loop < 200; loop++)
     {
         result = le_data_SetCellularProfileIndex(loop);
         LE_ASSERT(LE_BAD_PARAMETER == result);
         profileIndex = le_data_GetCellularProfileIndex();
-        LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+        LE_ASSERT(defaultProfileIndex == profileIndex);
     }
 
     for (loop = 1; loop < 17; loop++)
@@ -416,7 +416,7 @@ static void Testle_data_Service
     result = le_data_SetCellularProfileIndex(LE_MDC_DEFAULT_PROFILE);
     LE_ASSERT(LE_OK == result);
     profileIndex = le_data_GetCellularProfileIndex();
-    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    LE_ASSERT(defaultProfileIndex == profileIndex);
 
     // Set RAT to CDMA
     le_mrcTest_SetRatInUse(LE_MRC_RAT_CDMA);
@@ -426,7 +426,7 @@ static void Testle_data_Service
         result = le_data_SetCellularProfileIndex(loop);
         LE_ASSERT(LE_BAD_PARAMETER == result);
         profileIndex = le_data_GetCellularProfileIndex();
-        LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+        LE_ASSERT(defaultProfileIndex == profileIndex);
     }
 
     for (loop = 108; loop < 200; loop++)
@@ -434,7 +434,7 @@ static void Testle_data_Service
         result = le_data_SetCellularProfileIndex(loop);
         LE_ASSERT(LE_BAD_PARAMETER == result);
         profileIndex = le_data_GetCellularProfileIndex();
-        LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+        LE_ASSERT(defaultProfileIndex == profileIndex);
     }
 
     for (loop = 101; loop < 108; loop++)
@@ -448,7 +448,7 @@ static void Testle_data_Service
     result = le_data_SetCellularProfileIndex(LE_MDC_DEFAULT_PROFILE);
     LE_ASSERT(LE_OK == result);
     profileIndex = le_data_GetCellularProfileIndex();
-    LE_ASSERT(LE_MDC_DEFAULT_PROFILE == profileIndex);
+    LE_ASSERT(defaultProfileIndex == profileIndex);
 
     // Start threads in order to simulate multi-users of data connection service
     for (i = 0; i < CLIENTS_NB; i++)
