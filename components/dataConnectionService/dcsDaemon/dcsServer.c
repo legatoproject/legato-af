@@ -704,6 +704,7 @@ static int32_t GetDataProfileIndex
 )
 {
     int32_t index = LE_MDC_DEFAULT_PROFILE;
+    le_mdc_ProfileRef_t profileRef;
 
     char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
@@ -718,6 +719,17 @@ static int32_t GetDataProfileIndex
     }
     le_cfg_CancelTxn(cfg);
 
+    profileRef = le_mdc_GetProfile(index);
+    if (NULL == profileRef)
+    {
+        // If data profile could not be created/retrieved, we keep the index from config tree as is
+        LE_ERROR("Unable to retrieve data profile");
+    }
+    else
+    {
+        index = le_mdc_GetProfileIndex(profileRef);
+    }
+
     return index;
 }
 
@@ -731,8 +743,21 @@ static void SetDataProfileIndex
     int32_t profileIndex            ///< [IN] Profile index to be stored
 )
 {
+    le_mdc_ProfileRef_t profileRef;
+
     char configPath[LE_CFG_STR_LEN_BYTES];
     snprintf(configPath, sizeof(configPath), "%s/%s", DCS_CONFIG_TREE_ROOT_DIR, CFG_PATH_CELLULAR);
+
+    profileRef = le_mdc_GetProfile(profileIndex);
+    if (NULL == profileRef)
+    {
+        // If data profile could not be created/retrieved, we keep the index from config tree as is.
+        LE_ERROR("Unable to retrieve data profile");
+    }
+    else
+    {
+        profileIndex = le_mdc_GetProfileIndex(profileRef);
+    }
 
     le_cfg_IteratorRef_t cfg = le_cfg_CreateWriteTxn(configPath);
     // Set Cid Profile
