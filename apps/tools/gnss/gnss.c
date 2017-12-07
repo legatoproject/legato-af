@@ -210,6 +210,8 @@ void PrintGnssHelp
          "\t\t\t\t\t- 10000 --> GPGRS\n"
          "\t\t\t\t\t- 20000 --> GPGLL\n"
          "\t\t\t\t\t- 40000 --> DEBUG\n"
+         "\t\t\t\t\t- 80000 --> GPDTM\n"
+         "\t\t\t\t\t- 100000 -> GAGNS\n"
          "\t\t\tgnss set minElevation <minElevation in degrees>\n"
          "\t\t\t\t- Used to set the minimum elevation in degrees [range 0..90].\n\n"
          "\t\t\tgnss watch [WatchPeriod in seconds]\n"
@@ -1150,6 +1152,14 @@ static int GetNmeaSentences
             if (nmeaMask & LE_GNSS_NMEA_MASK_DEBUG)
             {
                printf("\tDEBUG (Debug NMEA indication) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GPDTM)
+            {
+               printf("\tGPDTM (Local geodetic datum and datum offset from a reference) enabled\n");
+            }
+            if (nmeaMask & LE_GNSS_NMEA_MASK_GAGNS)
+            {
+               printf("\tGAGNS (Fix data for Galileo) enabled\n");
             }
             break;
         case LE_FAULT:

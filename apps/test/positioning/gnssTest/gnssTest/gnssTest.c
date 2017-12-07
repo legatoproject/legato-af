@@ -1058,6 +1058,13 @@ static void TestLeGnssNmeaSentences
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
     LE_ASSERT((LE_GNSS_NMEA_MASK_DEBUG == nmeaMask) || (0 == nmeaMask));
 
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GPDTM));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT((LE_GNSS_NMEA_MASK_GPDTM == nmeaMask) || (0 == nmeaMask));
+
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(LE_GNSS_NMEA_MASK_GAGNS));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT((LE_GNSS_NMEA_MASK_GAGNS == nmeaMask) || (0 == nmeaMask));
     // Test 3: test bit mask combinations
     saveNmeaMask = LE_GNSS_NMEA_MASK_GPGGA | LE_GNSS_NMEA_MASK_GPGSA | LE_GNSS_NMEA_MASK_GPGSV |
                    LE_GNSS_NMEA_MASK_GPRMC | LE_GNSS_NMEA_MASK_GPVTG | LE_GNSS_NMEA_MASK_GLGSV |
@@ -1081,6 +1088,14 @@ static void TestLeGnssNmeaSentences
     LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG));
     LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
     LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_DEBUG) == nmeaMask) || (saveNmeaMask == nmeaMask));
+
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_GPDTM) == nmeaMask) || (saveNmeaMask == nmeaMask));
+
+    LE_ASSERT_OK(le_gnss_SetNmeaSentences(saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS));
+    LE_ASSERT_OK(le_gnss_GetNmeaSentences(&nmeaMask));
+    LE_ASSERT(((saveNmeaMask | LE_GNSS_NMEA_MASK_GAGNS) == nmeaMask) || (saveNmeaMask == nmeaMask));
 }
 
 //--------------------------------------------------------------------------------------------------
