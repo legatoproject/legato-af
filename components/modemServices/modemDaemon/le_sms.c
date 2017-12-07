@@ -2272,7 +2272,7 @@ static void* SmsSenderThread
     le_cfg_ConnectService();
 
     // Register for SMS command events.
-    le_event_AddHandler("ProcessSmsSendingCommandHandler", SmsCommandEventId,
+    le_event_AddHandler(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsCommandEventId,
         ProcessSmsSendingCommandHandler);
 
     le_sem_Post(SmsSem);

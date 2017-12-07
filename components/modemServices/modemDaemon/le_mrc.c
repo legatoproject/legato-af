@@ -851,7 +851,7 @@ static void* MrcCommandThread
     le_sem_Ref_t initSemaphore = (le_sem_Ref_t)contextPtr;
 
     // Register for MRC command events
-    le_event_AddHandler("ProcessMrcCommandHandler",
+    le_event_AddHandler(WDOG_THREAD_NAME_MRC_COMMAND_PROCESS,
                         MrcCommandEventId,
                         ProcessMrcCommandEventHandler);
 

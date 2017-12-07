@@ -27,6 +27,15 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Thread name maintained by watchdog in modem service.
+ */
+//--------------------------------------------------------------------------------------------------
+#define WDOG_THREAD_NAME_MDC_COMMAND_EVENT "CommandEventThread"
+#define WDOG_THREAD_NAME_MRC_COMMAND_PROCESS "ProcessMrcCommandHandler"
+#define WDOG_THREAD_NAME_SMS_COMMAND_SENDING "ProcessSmsSendingCommandHandler"
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Enum for all watchdogs used by modem services
  */
 //--------------------------------------------------------------------------------------------------
