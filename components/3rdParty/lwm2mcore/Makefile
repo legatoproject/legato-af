@@ -1,6 +1,8 @@
 LWM2MCORE_SRC=\
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/sessionManager/dtlsConnection.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/sessionManager/lwm2mcoreSession.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/aclConfiguration.c \
+    ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/bootstrapConfiguration.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/objects.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/objectsTable.c \
     ${LEGATO_ROOT}/3rdParty/Lwm2mCore/objectManager/handlers.c \
