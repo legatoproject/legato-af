@@ -157,12 +157,20 @@ function GenerateAppManifest()
     # Get app name and version from info.properties
     local line=$(grep "app.name" $infoPropPath)
     local appName=${line#app.name=}
+
+    if [ -z "$NAME" ]
+    then
+        local forcedName=$appName
+    else
+        local forcedName="$NAME"
+    fi
+
     line=$(grep "app.version" $infoPropPath)
     local appVer=${line#app.version=}
 
     cat <<EndOfManifest > $manifestPath
 <?xml version="1.0" encoding="UTF-8"?>
-<app:application xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0" name="$appName" type="" revision="$appVer">
+<app:application xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0" name="$forcedName" type="" revision="$appVer">
   <application-manager use="LWM2M_SW"/>
   <capabilities>
     <communication use="legato"/>
