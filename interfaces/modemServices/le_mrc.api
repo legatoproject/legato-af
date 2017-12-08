@@ -301,7 +301,8 @@
  *   the single cell information retrieved with le_mrc_GetNeighborCellsInfo(). These two functions
  *   return a reference of le_mrc_CellInfoRef_t type.
  * - le_mrc_GetNeighborCellId() gets the identifier of the cell specified with the
- *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT).
+ *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT). UINT32_MAX value is
+ *   returned if the value is not available.
  * - le_mrc_GetNeighborCellLocAreaCode() gets the location area code of the cell specified with the
  *   le_mrc_CellInfoRef_t parameter (can be called for any kind of RAT). UINT16_MAX value is
  *   returned if the value is not available.
@@ -1612,7 +1613,8 @@ FUNCTION CellInfo GetNextNeighborCellInfo
 /**
  * This function must be called to get the Cell Identifier.
  *
- * @return The Cell Identifier.
+ * @return The Cell Identifier. UINT32_MAX value is returned if the Cell Identifier is not
+ * available.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.

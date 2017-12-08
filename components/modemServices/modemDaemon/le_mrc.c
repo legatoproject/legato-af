@@ -3347,7 +3347,8 @@ le_mrc_CellInfoRef_t le_mrc_GetNextNeighborCellInfo
 /**
  * This function must be called to get the Cell Identifier.
  *
- * @return The Cell Identifier.
+ * @return The Cell Identifier. UINT32_MAX value is returned if the Cell Identifier is not
+ * available.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.

@@ -358,6 +358,7 @@ void Testle_mrc_RegisterTest
     bool isManualOrigin, isManual;
     char nameStr[100] = {0};
     le_mrc_NetRegState_t value;
+    le_mrc_NeighborCellsRef_t ngbrRef;
 
     // Get the home PLMN to compare results.
     LE_ASSERT(le_sim_GetHomeNetworkMccMnc(LE_SIM_EXTERNAL_SLOT_1, mccHomeStr, LE_MRC_MCC_BYTES,
@@ -408,6 +409,9 @@ void Testle_mrc_RegisterTest
 
     LE_ASSERT(le_mrc_GetNetRegState(&value) == LE_OK);
     LE_ASSERT(value == LE_MRC_REG_HOME);
+
+    ngbrRef = le_mrc_GetNeighborCellsInfo();
+    LE_ASSERT(!ngbrRef);
 }
 
 //--------------------------------------------------------------------------------------------------
