@@ -23,6 +23,19 @@ case "$1" in
         # Where the Unix time-stamp is the count in seconds since the Epoch.
         echo "core-%e-%t" > /proc/sys/kernel/core_pattern
 
+        # Configure the maximum messages size up to 260 Kbytes as some APIs may require big chunck
+        # of data to pass.
+        sysctl -w net.unix.max_dgram_qlen=32 >/dev/null || \
+            echo "Failed to set net.unix.max_dgram_qlen"
+        sysctl -w net.core.wmem_max=266240 >/dev/null || \
+            echo "Failed to set net.core.wmem_max"
+        sysctl -w net.core.wmem_default=266240 >/dev/null || \
+            echo "Failed to set net.core.wmem_default"
+        sysctl -w net.core.rmem_max=266240 >/dev/null || \
+            echo "Failed to set net.core.rmem_max"
+        sysctl -w net.core.rmem_default=266240 >/dev/null || \
+            echo "Failed to set net.core.rmem_default"
+
         # Add LEGATO_SYSTEM_PATH to /etc/profile if it is not added there.
         grep -F $LEGATO_SYSTEM_PATH /etc/profile >/dev/null
         if [ $? -ne 0 ]; then
