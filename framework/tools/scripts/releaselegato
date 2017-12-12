@@ -240,7 +240,13 @@ for alias in $(echo $TARGETS | tr ',' ' '); do
 
     if [ -n "$target" ]; then
         echo "Aliasing $alias to $target"
-        ln -s $target $STAGE_DIR/platformAdaptor/qmi/bin/$alias
+        ln -s "$target" "$STAGE_DIR/platformAdaptor/qmi/bin/$alias"
+
+        for app in $(ls -1 "$STAGE_DIR/apps/proprietary"); do
+            if [ -e "$STAGE_DIR/apps/proprietary/$app/bin/$target" ]; then
+                ln -s "$target" "$STAGE_DIR/apps/proprietary/$app/bin/$alias"
+            fi
+        done
     fi
 done
 
