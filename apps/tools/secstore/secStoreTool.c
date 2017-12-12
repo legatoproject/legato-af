@@ -81,6 +81,7 @@ static void PrintHelp
         "       Writes the data from <inputFile> into the item specified by <path>.  <path> is\n"
         "       assumed to be absolute and must not end with a separator '/'.  Writing will stop once the end of\n"
         "       the <inputFile> is reached or the maximum secure storage item size is reached.\n"
+        "       <path> can eventually be '-' to capture the standard input.\n"
         "       Note that this write will not respect an application's secure storage limit.\n"
         "\n"
         "    secstore rm <path>\n"
@@ -278,13 +279,21 @@ static void WriteEntry
 
     do
     {
-        fd = open(InputFilePtr, O_RDONLY);
+        if((InputFilePtr[0] == '-') &&
+           (InputFilePtr[1] == '\0'))
+        {
+            fd = 0; // STDIN
+        }
+        else
+        {
+            fd = open(InputFilePtr, O_RDONLY);
+        }
     }
     while ( (fd == -1) && (errno == EINTR) );
 
     if (fd == -1)
     {
-        fprintf(stderr, "Could not open file %s.  %m.\n", Path);
+        fprintf(stderr, "Could not open file '%s'.  %m.\n", InputFilePtr);
         exit(EXIT_FAILURE);
     }
 
