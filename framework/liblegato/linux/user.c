@@ -1064,8 +1064,11 @@ le_result_t user_CreateGroup
             *gidPtr = gid;
         }
     }
+    else
+    {
+        le_atomFile_CancelStream(groupFilePtr);
+    }
 
-    le_atomFile_CancelStream(groupFilePtr);
     return result;
 }
 
