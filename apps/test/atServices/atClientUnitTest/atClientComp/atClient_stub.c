@@ -7,10 +7,11 @@
 
 #include "legato.h"
 #include "interfaces.h"
+#include "defs.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the server service refrence stub
+ * Get the client service reference stub
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -24,7 +25,7 @@ le_msg_ServiceRef_t le_atClient_GetServiceRef
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the client session refrence stub
+ * Get the client session reference stub
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -44,9 +45,9 @@ le_msg_SessionRef_t le_atClient_GetClientSessionRef
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionEventHandlerRef_t AddServiceOpenHandler
 (
-    le_msg_ServiceRef_t serviceRef,
-    le_msg_SessionEventHandler_t handlerFunc,
-    void *contextPtr
+    le_msg_ServiceRef_t               serviceRef,
+    le_msg_SessionEventHandler_t      handlerFunc,
+    void                              *contextPtr
 )
 {
     return NULL;
@@ -60,9 +61,9 @@ le_msg_SessionEventHandlerRef_t AddServiceOpenHandler
 //--------------------------------------------------------------------------------------------------
 le_msg_SessionEventHandlerRef_t AddServiceCloseHandler
 (
-    le_msg_ServiceRef_t serviceRef,
-    le_msg_SessionEventHandler_t handlerFunc,
-    void *contextPtr
+    le_msg_ServiceRef_t               serviceRef,
+    le_msg_SessionEventHandler_t      handlerFunc,
+    void                              *contextPtr
 )
 {
     return NULL;
@@ -88,8 +89,8 @@ void le_wdogChain_Init
 //--------------------------------------------------------------------------------------------------
 void le_wdogChain_MonitorEventLoop
 (
-    uint32_t watchdog,          ///< Watchdog to use for monitoring
-    le_clk_Time_t watchdogInterval ///< Interval at which to check event loop is functioning
+    uint32_t            watchdog,         ///< Watchdog to use for monitoring
+    le_clk_Time_t       watchdogInterval  ///< Interval at which to check event loop is functioning
 )
 {
 }

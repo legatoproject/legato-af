@@ -9,4 +9,6 @@ requires:
 sources:
 {
     main.c
+    client.c
+    strerror.c
 }

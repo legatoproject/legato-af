@@ -17,9 +17,11 @@ endif()
 
 mkexe(${TEST_EXEC}
     atClientComp
+    .
     ${TEST_SOURCE}
     -i ${LEGATO_FRAMEWORK_SRC}
     -i ${LEGATO_AT_SERVICES}/Common
+    -i ${LEGATO_ROOT}/components/watchdogChain
     ${CFLAGS}
     ${LFLAGS}
     -C ${MKEXE_CFLAGS}
