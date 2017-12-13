@@ -26,9 +26,6 @@ The main input for @c mkapp is an @ref defFilesAdef file that contains these def
 source files are needed, build those into the libraries and executables required, generate the
 on-target configuration data needed, and add everything to an app bundle.
 
-To display usage, run
-@verbatim mkapp --help@endverbatim
-
 See @ref defFilesAdef for details on app def files.
 
 See @ref defFiles for more info on Legato definition files, in general.
@@ -63,8 +60,7 @@ apps:
 Note that this binary app package is compiled specifically for the given target, so an app compiled
 for one target is not necessarily compatible with another target.
 
-
-@section buildToolsmkapp_AppBundle Building an App Bundle (App Update Pack)
+@section buildToolsmkapp_AppBundle Building an App Bundle
 
 @c mkapp can be used to generate an app bundle (also known as an
 @ref legatoServicesUpdatePack "update pack [@c .update] file") to install and run on a target device.
@@ -82,7 +78,73 @@ But, use of @ref buildToolsmksys is preferred over using @c mkapp in this way.
  - ensures that all apps are updated together
  - reduces the chances of an app hanging at start-up because of missing or misspelled bindings
 
-<HR>
+@section buildToolsmkapp_Usage Usage
+
+@c mkapp provides flags to set the target, set build options, and specify additional search
+directories:
+
+@verbatim
+Command line parameters
+  -C, --cflags, <string>
+        (Multiple, optional) Specify extra flags to be passed to the C compiler.
+
+  -L, --ldflags, <string>
+        (Multiple, optional) Specify extra flags to be passed to the linker when linking executables.
+
+  -X, --cxxflags, <string>
+        (Multiple, optional) Specify extra flags to be passed to the C++ compiler.
+
+  -a, --append-to-version, <string>
+        (Multiple, optional) Specify a suffix to append to the application version specified in the
+        .adef file.  Will automatically insert a '.' between the .adef's version string and any
+        version strings specified on the command-line.  Multiple occurrences of this argument will
+        be combined into a single string.
+
+  -b, --bin-pack
+        (Optional) Generate a binary-app package instead of a .update file. Binary-app packages can
+        be used to distribute an application without its original source code.  This binary app
+        package file is intended to be included in a system definition (.sdef)  file's 'apps:'
+        section in place of a .adef file.
+
+  -c, --component-search, <string>
+        (Multiple, optional) (DEPRECATED) Add a directory to the source search path (same as -s).
+
+  -d, --debug-dir, <string>
+        (Optional) Generate debug symbols and place them in the specified directory.  Debug symbol
+        files will be named with build-id
+
+  -g, --generate-code
+        (Optional) Only generate code, but don't compile, link, or bundle anything. The interface
+        definition (include) files will be generated, along with component and executable main files
+        and configuration files. This is useful for supporting context-sensitive auto-complete and
+        related features in source code editors, for example.
+
+  -i, --interface-search, <string>
+        (Multiple, optional) Add a directory to the interface search path.
+
+  -n, --dont-run-ninja
+        (Optional) Even if a build.ninja file exists, ignore it, delete the staging area, parse all
+        inputs, and generate all output files, including a new copy of the build.ninja, then exit
+        without running ninja.  This is used by the build.ninja to to regenerate itself and any
+        other files that need to be regenerated when the build.ninja finds itself out of date.
+
+  -o, --output-dir, <string>
+        (Optional) Specify the directory into which the final, built application file (ready to be
+        installed on the target) should be put.
+
+  -s, --source-search, <string>
+        (Multiple, optional) Add a directory to the source search path.
+
+  -t, --target, <string>
+        (Optional) Set the compile target (wp85 | wp76xx).
+
+  -v, --verbose
+        (Optional) Set into verbose mode for extra diagnostic information.
+
+  -w, --object-dir, <string>
+        (Optional) Specify the directory into which any intermediate build artifacts (such as .o
+        files and generated source code files) should be put.
+@endverbatim
 
 Copyright (C) Sierra Wireless Inc.
 

@@ -14,17 +14,67 @@ necessary.  Command-line tools can be placed inside an app and either that app c
 directly on the target (see @ref defFilesSdef_commands), or the executable can be copied from
 the app's build directory on the build PC file system after the app has been built.
 
-To display usage info, run
+@section buildToolsmkexe_Usage Usage
 
+@c mkexe provides flags to set the target, set build options, and specify additional search
+directories:
+
+Command line parameters:
 @verbatim
-$ mkexe --help
+  -C, --cflags, <string>
+        (Multiple, optional) Specify extra flags to be passed to the C compiler.
+
+  -L, --ldflags, <string>
+        (Multiple, optional) Specify extra flags to be passed to the linker when linking
+        executables.
+
+  -X, --cxxflags, <string>
+        (Multiple, optional) Specify extra flags to be passed to the C++ compiler.
+
+  -c, --component-search, <string>
+        (Multiple, optional) (DEPRECATED) Add a directory to the source search path (same as -s).
+
+  -d, --debug-dir, <string>
+        (Optional) Generate debug symbols and place them in the specified directory.  Debug symbol
+        files will be named with build-id
+
+  -g, --generate-code
+        (Optional) Only generate code, but don't compile or link anything. The interface definition
+        (include) files will be generated, along with component and executable main files. This is
+        useful for supporting context-sensitive auto-complete and related features in source code
+        editors, for example.
+
+  -i, --interface-search, <string>
+        (Multiple, optional) Add a directory to the interface search path.
+
+  -l, --lib-output-dir, <string>
+        (Optional) Specify the directory into which any generated runtime libraries should be put.
+
+  -n, --dont-run-ninja
+        (Optional) Even if a build.ninja file exists, ignore it, parse all inputs, and generate all
+        output files, including a new copy of the build.ninja, then exit without running ninja.
+        This is used by the build.ninja to to regenerate itself and any other files that need to be
+        regenerated when the build.ninja finds itself out of date.
+
+  -o, --output, <string>
+        The path of the executable file to generate.
+
+  -s, --source-search, <string>
+        (Multiple, optional) Add a directory to the source search path.
+
+  -t, --target, <string>
+        (Optional) Specify the target device to build for (wp85 | wp76xx).
+
+  -v, --verbose
+        (Optional) Set into verbose mode for extra diagnostic information.
+
+  -w, --object-dir, <string>
+        (Optional) Specify the directory into which any intermediate build artifacts (such as .o
+        files and generated source code files) should be put.
 @endverbatim
 
 See @ref buildToolsmk_ToolChainConfig for information on how @c mkexe decides what compilers, etc.
 to use.
-
-
-<HR>
 
 Copyright (C) Sierra Wireless Inc.
 
