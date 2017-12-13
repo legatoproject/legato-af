@@ -1134,8 +1134,7 @@ le_result_t le_gnss_GetPositionState
  *  - LE_OUT_OF_RANGE  One of the retrieved parameter is invalid (set to INT32_MAX).
  *  - LE_OK            Function succeeded.
  *
- * @note latitudePtr, longitudePtr, hAccuracyPtr, altitudePtr, vAccuracyPtr can be set to NULL
- *       if not needed.
+ * @note latitudePtr, longitudePtr and hAccuracyPtr can be set to NULL if not needed.
  *
  * @note The latitude and longitude values are based on the WGS84 standard coordinate system.
  *
