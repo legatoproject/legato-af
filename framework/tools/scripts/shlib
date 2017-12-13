@@ -234,7 +234,7 @@ FindToolchain() {
 
     TOOLCHAIN_ROOT=$(readlink -f "$TOOLCHAIN_DIR/../../..")
 
-    export PATH=$TOOLCHAIN_ROOT/usr/bin:$TOOLCHAIN_ROOT/usr/sbin:$PATH
+    export PATH=$TOOLCHAIN_ROOT/usr/bin:$TOOLCHAIN_ROOT/usr/sbin:$TOOLCHAIN_ROOT/sbin:$PATH
 }
 
 # Function to find a tool, eventually considering the toolchain if FindToolchain

@@ -7,6 +7,8 @@ if [ -z "$LEGATO_ROOT" ]; then
     exit 1
 fi
 
+. "$LEGATO_ROOT/framework/tools/scripts/shlib"
+
 SCRIPT_PATH="$( cd `dirname "$0"` && pwd )/`basename $0`"
 if [ -L "$SCRIPT_PATH" ]; then
     SCRIPT_PATH=$(readlink $SCRIPT_PATH)
@@ -31,11 +33,16 @@ cp "$LEGATO_ROOT/framework/tools/scripts/legato-qemu" "$BUILD_DIR"
 if [ -z "$SKIP_DOWNLOAD" ]; then
     export USER_DIR="$BUILD_DIR"
 
-    ONLY_PREPARE=1 $BUILD_DIR/legato-qemu
+    # Use ONLY_PREPARE=1 to prevent the script from starting qemu.
+    # Use OPT_PERSIST=0 to prevent the script from generating an empty userfs partition.
+    ONLY_PREPARE=1 OPT_PERSIST=0 $BUILD_DIR/legato-qemu
 
-    export LEGATO_IMG="$USER_DIR/img-virt-${VIRT_TARGET_ARCH}/legato.squashfs"
     export KERNEL_IMG="$USER_DIR/img-virt-${VIRT_TARGET_ARCH}/kernel"
     export ROOTFS_IMG="$USER_DIR/img-virt-${VIRT_TARGET_ARCH}/rootfs.qcow2"
+
+    export LEGATO_IMG="$USER_DIR/img-virt-${VIRT_TARGET_ARCH}/legato.squashfs"
+
+    export QEMU_CONFIG="$USER_DIR/img-virt-${VIRT_TARGET_ARCH}/qemu-config"
 fi
 
 if [ ! -f "$LEGATO_IMG" ]; then
@@ -44,9 +51,59 @@ if [ ! -f "$LEGATO_IMG" ]; then
     exit 1
 fi
 
-cp "$LEGATO_IMG" "$BUILD_DIR"
+if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
+
+    USERFS_SIZE=${USERFS_SIZE:-2G}
+    USERFS_IMG=${USERFS_IMG:-"$BUILD_DIR/userfs.qcow2"}
+
+    echo "userfs image ($USERFS_IMG) does not exist, creating one that contain sample apps."
+
+    TARGET="virt_${VIRT_TARGET_ARCH}"
+    FindToolchain
+
+    FindTool "qemu-img" QEMU_IMG
+    CheckRet
+
+    FindTool "mkfs.ext4" MKFS_EXT4
+    CheckRet
+
+    set -e
+
+    $QEMU_IMG create -f raw "${USERFS_IMG}.ext4" $USERFS_SIZE
+
+    # Prepare content
+    rm -rf "$BUILD_DIR/userfs"
+    mkdir "$BUILD_DIR/userfs"
+
+    # ... copy sample apps
+    if ! cp -R "$LEGATO_ROOT/build/virt/samples" "$BUILD_DIR/userfs/"; then
+        echo "sample apps not available, did you run 'make tests_virt' to build sample and test code?"
+        exit 1
+    fi
+
+    # Generate an ext4 partition that will be used as /mnt/flash
+    $MKFS_EXT4 -L userfs -d "$BUILD_DIR/userfs/" "${USERFS_IMG}.ext4"
+
+    # Convert to qcow2 (mostly to save space)
+    $QEMU_IMG convert -f raw -O qcow2 "${USERFS_IMG}.ext4" "$USERFS_IMG"
+
+    rm -f "${USERFS_IMG}.ext4"
+
+    set +e
+fi
+
+# Linux
 cp "$KERNEL_IMG" "$BUILD_DIR"
 cp "$ROOTFS_IMG" "$BUILD_DIR"
+
+# Legato
+cp "$LEGATO_IMG" "$BUILD_DIR"
+
+# User FS
+cp "$USERFS_IMG" "$BUILD_DIR"
+
+# Config
+cp "$QEMU_CONFIG" "$BUILD_DIR"
 
 cp $(dirname ${SCRIPT_PATH})/Dockerfile.${VIRT_TARGET_ARCH} ${BUILD_DIR}/Dockerfile
 
@@ -72,4 +129,5 @@ if [ -z "$LONG_BUILD_ID" ]; then
     exit 1
 fi
 
-echo $LONG_BUILD_ID > image.id
+echo "$LONG_BUILD_ID" > image.id
+

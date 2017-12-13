@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 copyright="
 Copyright (C) Sierra Wireless Inc.
 "
@@ -11,6 +11,8 @@ SIMU_PORT=${SIMU_PORT:=$(($OFFSET_PORT + 5000))}
 ONLY_PREPARE=${ONLY_PREPARE:-0}
 
 ROOTFS_METHOD=-sd
+
+USERFS_SIZE=${USERFS_SIZE:-2G}
 
 HOST_ARCH=$(uname -m)
 
@@ -133,7 +135,7 @@ function img_url_for_target {
     if [[ "$img_type" == "yocto" ]]; then
         if [ -z "$IMG_MIRROR_LINUX" ]; then
             if $swi_dev; then
-                IMG_MIRROR_LINUX="http://get-legato/yocto/merged/latest/${target}/images"
+                IMG_MIRROR_LINUX="http://get-legato/lxswi/merged/latest/master-virt/${target}/images"
             else
                 IMG_MIRROR_LINUX="http://downloads.sierrawireless.com/legato/virt"
             fi
@@ -240,14 +242,15 @@ function fetch_image {
     fi
 
     message $COLOR_INFO "Fetching images from $IMG_SRC ..."
-    (cd $img_dest && wget -O $(basename $IMG_SRC) -L $IMG_SRC)
+    local img_dest_name="$(basename $IMG_SRC)"
+    (cd $img_dest && rm -f $img_dest_name && wget -O "$img_dest_name" -L $IMG_SRC)
     if [ $? -ne 0 ]; then
         message $COLOR_ERROR "Failed to retrieve image"
         exit 1
     fi
 
-    if [[ "$IMG_SRC" == *.tar.bz2 ]]; then
-        (cd $img_dest && tar jxf $(basename $IMG_SRC))
+    if [[ "$img_dest_name" == *.tar.bz2 ]]; then
+        (cd $img_dest && tar jxf "$img_dest_name")
         check_ret
     fi
 
@@ -358,19 +361,15 @@ fi
 function configure_virt_common {
     message $COLOR_TITLE "Virtual target ($VIRT_TARGET_ARCH)"
 
+    # Linux
     if [ -z "$KERNEL_IMG" ] && [ -z "$ROOTFS_IMG" ]; then
         fetch_image $OPT_TARGET 'yocto'
-
-        # Let the image define it's own default arguments for QEmu.
-        # It is still possible to override them after that.
-        if [ -e $USER_DIR/img-$OPT_TARGET/qemu-config ]; then
-            source $USER_DIR/img-$OPT_TARGET/qemu-config
-        fi
 
         KERNEL_IMG="$USER_DIR/img-$OPT_TARGET/kernel"
         ROOTFS_IMG="$USER_DIR/img-$OPT_TARGET/rootfs.qcow2"
     fi
 
+    # Legato image
     if [ -z "$LEGATO_IMG" ]; then
         LEGATO_IMG="$USER_DIR/img-$OPT_TARGET/legato.squashfs"
 
@@ -380,6 +379,35 @@ function configure_virt_common {
         else
             fetch_image $OPT_TARGET 'legato'
         fi
+    fi
+
+    # User FS image
+    if [ -z "$USERFS_IMG" ] && [ "$OPT_PERSIST" -eq 1 ]; then
+        USERFS_IMG="$USER_DIR/img-$OPT_TARGET/userfs.qcow2"
+
+        if [ ! -e "$USERFS_IMG" ]; then
+            USERFS_IMG_ext4="$USER_DIR/img-$OPT_TARGET/userfs.ext4"
+
+            # Generate an empty ext4 partition that will be used as /mnt/flash
+            qemu-img create -f raw "$USERFS_IMG_ext4" $USERFS_SIZE
+
+            mkfs -t ext4 "$USERFS_IMG_ext4"
+
+            # Convert to qcow2 (mostly to save space)
+            qemu-img convert -f raw -O qcow2 "$USERFS_IMG_ext4" "$USERFS_IMG"
+            USERFS_IMG="$USERFS_IMG"
+        fi
+    fi
+
+    # Config
+    if [ -z "$QEMU_CONFIG" ]; then
+        QEMU_CONFIG="$USER_DIR/img-$OPT_TARGET/qemu-config"
+    fi
+
+    # Let the image define it's own default arguments for QEmu.
+    # It is still possible to override them after that.
+    if [ -e "$QEMU_CONFIG" ]; then
+        source "$QEMU_CONFIG"
     fi
 }
 
@@ -423,6 +451,11 @@ fi
 # Legato image
 if [ -e "$LEGATO_IMG" ]; then
     ARG_LEGATO="-drive format=raw,index=1,file=${LEGATO_IMG}"
+fi
+
+# User FS image
+if [ -e "$USERFS_IMG" ]; then
+    ARG_USERFS="-drive format=qcow2,index=2,file=${USERFS_IMG}"
 fi
 
 # Kernel Messages
@@ -533,11 +566,9 @@ ROOTFS="$ROOTFS_METHOD $ROOTFS_IMG"
 if [ -z "$QEMU_BIN" ]; then
     if [ -z "$QEMU_ARCH" ]; then
         if [[ "$VIRT_TARGET_ARCH" == "x86" ]]; then
-            if [[ "$HOST_ARCH" != "x86_64" ]]; then
-                QEMU_ARCH=i386
-            else
-                QEMU_ARCH=x86_64
-            fi
+            QEMU_ARCH=i386
+        elif [[ "$VIRT_TARGET_ARCH" == "x86_64" ]]; then
+            QEMU_ARCH=x86_64
         else
             QEMU_ARCH=arm
         fi
@@ -560,7 +591,7 @@ message $COLOR_MSG " => $CMDLINE"
 message $COLOR_MSG "QEmu binary ($QEMU_ARCH):"
 message $COLOR_MSG " => $QEMU_BIN ($QEMU_VERSION)"
 
-ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM $ARG_ATCMD $ARG_PPPCMD"
+ARGS="-kernel $KERNEL_IMG $ROOTFS $ARG_LEGATO $ARG_USERFS $ARG_COMMON $ARG_TARGET $ARG_PERSIST $ARG_NET $ARG_NET2 $ARG_SERIAL $ARG_SOUND $ARG_PID $ARG_GDB $ARG_KVM $ARG_ATCMD $ARG_PPPCMD"
 message $COLOR_MSG "QEmu arguments:"
 message $COLOR_MSG " => $ARGS"
 
