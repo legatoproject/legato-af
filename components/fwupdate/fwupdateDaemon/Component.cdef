@@ -29,6 +29,7 @@ requires:
         $LEGATO_FWUPDATE_PA_DEFAULT
         $LEGATO_FWUPDATE_PA
         $LEGATO_FWUPDATE_PA_DUALSYS
+        $LEGATO_FWUPDATE_PA_FLASH
 
         ${LEGATO_ROOT}/components/watchdogChain
     }

@@ -92,10 +92,8 @@ pa_fwupdate_SubSysId_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Sub system ID: 3 sub system are defined:
- *     - MODEM = sbl, tz, rpm, modem
- *     - LK    = aboot
- *     - LINUX = boot, system, lefwkro, customer0
+ * System ID: The dual system platforms have 2 systems: 1 and 2. Some partitions are present in both
+ * systems. Some others are shared (common) between the both systems.
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -107,6 +105,36 @@ typedef enum pa_fwupdate_System
 }
 pa_fwupdate_System_t;
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * MTD partition table of the allowed partition managed.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char*                  name;          // Partition name
+    char*                  systemName[PA_FWUPDATE_SYSTEM_2];
+                                          // Real MTD name for system 1 and system 2
+    pa_fwupdate_SubSysId_t systemMask;    // System owning the partion (modem, lk or linux)
+    bool                   isLogical;     // True if it is a "logical" partition
+}
+pa_fwupdate_MtdPartition_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Internal generic UBI volume name to volume name and volume id suffix translation table
+ * The array is terminated by the two fields volumeName and suffixName set to NULL.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct
+{
+    char*               volumeName; // Generic UBI volume name
+    char*               suffixName; // Expected volume name suffix to fetch the UBI volume
+    uint8_t             volumeId;   // Volume ID corresponding to this name
+}
+pa_fwupdate_UbiVolume_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -434,6 +462,65 @@ LE_SHARED le_result_t pa_fwupdate_StartBadImageIndication
 LE_SHARED void pa_fwupdate_StopBadImageIndication
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Request the flash access for a SW update
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_UNAVAILABLE   the flash access is not granted for SW update
+ *      - LE_FAULT         on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_RequestUpdate
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the flash access after a SW update
+ *
+ * @return
+ *      - LE_OK           on success
+ *      - LE_FAULT        on failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_CompleteUpdate
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the MTD partition table
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_BAD_PARAMETER if mtdPartPtr is NULL
+ *      - LE_FAULT         on other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetMtdPartitionTab
+(
+    pa_fwupdate_MtdPartition_t **mtdPartPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the UBI generic name, volume suffix and volume ID
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_BAD_PARAMETER if ubiVolumeTabPtr is NULL
+ *      - LE_FAULT         on other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fwupdate_GetUbiVolumeTab
+(
+    pa_fwupdate_UbiVolume_t **ubiVolumeTabPtr
 );
 
 #endif // LEGATO_PA_FWUPDATE_INCLUDE_GUARD

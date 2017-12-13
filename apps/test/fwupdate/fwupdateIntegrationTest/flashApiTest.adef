@@ -1,0 +1,28 @@
+sandboxed: false
+
+executables:
+{
+    flashApiTest = ( flashApiTest )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        (flashApiTest)
+    }
+
+    maxFileBytes: 200000K
+}
+
+start: manual
+
+bindings:
+{
+    flashApiTest.flashApiTest.le_flash -> fwupdateService.le_flash
+}

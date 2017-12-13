@@ -48,9 +48,19 @@
  * successively. le_flash_CloseUbiVolume() has to be called before changing the volume.
  * Please refer to @subpage platformConstraintsFlash for details.
  *
+ * A sample code showing how to open, retrieve information and close can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" Info
+ *
+ * A sample code showing how to open UBI, retrieve UBI information and close UBI can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiInfo
+ *
  * @section le_flash_Close Close a partition
  * When the read/write operation are over, the application has to call le_flash_Close() API to
  * release resources and make the partition usable.
+ *
+ * @section le_flash_EraseBlock Erase a block inside a partition
+ * When a block needs to be erased; the application has to call le_flash_EraseBlock() API to perform
+ * the erase operation on the given block index. If the erase fails, the block is marked "bad".
  *
  * @section le_flash_Read Read a data chunk
  * To read data, le_flash_Read() has to be called. The data are read at the specified block index.
@@ -63,6 +73,12 @@
  *      - an erase block size minus 2 pages for UBI partitions (UBI uses 2 pages for its internal
  * need)
  *
+ * A sample code showing how to read a whole partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" Dump
+ *
+ * A sample code showing how to read a whole UBI volume inside an UBI partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiDump
+ *
  * @section le_flash_Write Write a data chunk
  * To write some data, le_flash_Write() can be used. The data are written at a specified block
  * index. This index is a logical block index (see @ref le_flash_Read).
@@ -73,6 +89,12 @@
  *      - an erase block size for MTD usage partition
  *      - an erase block size minus 2 pages for UBI partitions (UBI uses 2 pages for its internal
  * need)
+ *
+ * A sample code showing how to write a whole partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" FlashErase
+ *
+ * A sample code showing how to write a whole UBI volume inside an UBI partition can be seen below:
+ * @snippet "apps/test/fwupdate/fwupdateIntegrationTest/flashApiTest/main.c" UbiFlash
  *
  * @section le_flash_GetBlockInformation Retrieve information about blocks and pages for a
  * partition.
@@ -230,6 +252,7 @@ EVENT BadImageDetection
  * @return
  *      - LE_OK            On success
  *      - LE_UNAVAILABLE   The flash access is temporarily unavailable
+ *      - LE_DUPLICATE     If the a request access for the client was already performed
  *      - LE_FAULT         On failure
  *
  */
@@ -347,7 +370,7 @@ FUNCTION le_result_t Close
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Erase a block inside a flash partition.
+ * Erase a block inside a flash partition. If the erase fails, the block is marked bad.
  *
  * @return
  *      - LE_OK            On success

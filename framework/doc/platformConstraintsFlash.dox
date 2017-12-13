@@ -57,10 +57,10 @@ details.
     | lefwkro_2          | lefwkro2               |
     | lefwkro_active     | lefwkro or lefwkro2    |
     | lefwkro_update     | lefwkro or lefwkro2    |
-    | customer0_1        | customer0              | (dual)
-    | customer0_2        | customer1              | (dual)
-    | customer0_active   | customer0 or customer1 | (dual)
-    | customer0_update   | customer1 or customer1 | (dual)
+    | customer_1         | customer0              | (dual)
+    | customer_2         | customer1              | (dual)
+    | customer_active    | customer0 or customer1 | (dual)
+    | customer_update    | customer1 or customer1 | (dual)
     | customer0          | customer0              | (not dual)
     | customer1          | customer1              | (not dual)
     | customer2          | customer2              | (not dual)

@@ -15,6 +15,7 @@ requires:
 cflags:
 {
     -I$LEGATO_ROOT/3rdParty/include
+    -I$LEGATO_ROOT/components/fwupdate/platformAdaptor/inc
     -I$LEGATO_ROOT/platformAdaptor/fwupdate/pa_flash/inc
     -I$LEGATO_ROOT/platformAdaptor/fwupdate/pa_flash/src
 }

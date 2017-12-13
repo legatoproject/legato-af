@@ -415,6 +415,81 @@ void pa_fwupdate_StopBadImageIndication
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Request the flash access for a SW update
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_UNAVAILABLE   the flash access is not granted for SW update
+ *      - LE_FAULT         on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_RequestUpdate
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Release the flash access after a SW update
+ *
+ * @return
+ *      - LE_OK           on success
+ *      - LE_FAULT        on failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_CompleteUpdate
+(
+    void
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the MTD partition table
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_BAD_PARAMETER if mtdPartPtr is NULL
+ *      - LE_FAULT         on other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_GetMtdPartitionTab
+(
+    pa_fwupdate_MtdPartition_t **mtdPartPtr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the UBI generic name, volume suffix and volume ID
+ *
+ * @return
+ *      - LE_OK            on success
+ *      - LE_BAD_PARAMETER if ubiVolumeTabPtr is NULL
+ *      - LE_FAULT         on other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_fwupdate_GetUbiVolumeTab
+(
+    pa_fwupdate_UbiVolume_t **ubiVolumeTabPtr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init this component
  */
 //--------------------------------------------------------------------------------------------------
