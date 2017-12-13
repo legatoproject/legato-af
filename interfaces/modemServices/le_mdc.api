@@ -903,7 +903,7 @@ FUNCTION Pdp GetPDP
  *       function will not return.
  *
  * @warning The maximum APN length might be limited by the platform.
- *          Please refer to the platform documentation.
+ *          Please refer to the platform documentation @ref platformConstraintsMdc.
  *
  * @note
  *      The process exits, if an invalid profile object is given

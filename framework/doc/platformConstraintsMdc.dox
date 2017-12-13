@@ -1,7 +1,8 @@
-/** @page platformConstraintsMdc Modem Radio Control platform constraints
+/** @page platformConstraintsMdc Modem Control platform constraints
 
+@section mrc_SetSignalStrengthIndDelta Signal strength
 On Qualcomm-based platform, the signal strength indication delta resolution set in
-le_mrc_SetSignalStrengthIndDelta API depends on the Radio Access Technology (RAT) used.
+le_mrc_SetSignalStrengthIndDelta() API depends on the Radio Access Technology (RAT) used.
 
 For TD-SCDMA RAT technology, the signal delta is set with steps of 1 dBm with a minimum of one dBm.
 Intermediate values less than 1 dBm are rounded.
@@ -14,8 +15,17 @@ For example, to set a signal strength indication delta of 10.6 dBm, the delta va
 
 Under TD-SCDMA RAT technology, a delta value less than 10 is forbiden.
 
-See @ref  c_mrc API
+@section APN_length APN Length
+To set the Access Point Name (APN) for the given profile, le_mdc_SetAPN() API is used.
 
+The maximum APN length is limited by the platform.<br>
+
+|                                 | AR755x | AR758x | AR759x | AR8652 | WP750x | WP76xx | WP77xx | WP8548 |
+| ----------------------------- --| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
+| Maxmium APN length              |        | 62     | 62     |        |        |        |        | 100    |
+
+See @ref  c_mrc API<br>
+See @ref c_mdc API<br>
 Copyright (C) Sierra Wireless Inc.
 
 **/
