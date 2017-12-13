@@ -138,14 +138,19 @@
  *
  * @section le_avdata_namespace Namespace
  *
- * By default all asset data path are created and managed under the application namespace.
- * Calling le_avdata_GetXXX/le_avdata_SetXXX/le_avdata_AddResourceEventHandler/le_avdata_Push with the
- * path "/a/b/c" will search for the "/a/b/c" data under the apps namespace. In order to query any
- * paths created under an application namespace, user must append the app name in front of the request
- * on the server side. If creating asset data under application namespace is not desired, users must
- * call le_avdata_SetNamespace and set the value to global. An application that changes its namespace
- * to global will be creating asset data in the global space. All asset data API will use the last
- * namespace set until the function is called again and the namespace is set to something new.
+ * By default all asset data paths are created and managed under the application namespace.
+ * Calling @c le_avdata_GetXXX / @c le_avdata_SetXXX/ le_avdata_AddResourceEventHandler() /
+ * le_avdata_Push() with the path "/a/b/c" will search for the "/a/b/c" data under the apps
+ * namespace. In order to query any paths created under an application namespace, user must append
+ * the app name in front of the request on the server side. If creating asset data under application
+ * namespace is not desired, users must call le_avdata_SetNamespace() and set the value to global.
+ * An application that changes its namespace to global will be creating asset data in the global
+ * space. All asset data API will use the last namespace set until the function is called again and
+ * the namespace is set to something new.
+ *
+ * @note All asset data paths created by the application are deleted when it is stopped, even
+ * the asset data created under global namespace. No asset data can therefore be persistent after
+ * an application restart, regardless of the namespace used to create it.
  *
  * Example:
  *
@@ -168,11 +173,12 @@
  *     LE_ASSERT(le_avdata_GetInt(RESOURCE_A, &intVal) == LE_OK);
  *     LE_ASSERT(intVal == 2); // value obtained under the global namespace
  * }
+ * @endcode
  *
- * An application starts by creating a path "/test/resourceA" under the default application namespace
- * and sets it to 1. Then it sets the namespace to global and creates another path "/test/resourceA"
- * with a value of 2. A read request from the server on "<appName>/test/resourceA" will return 1;
- * whereas a read request on "/test/resourceA" will return 2.
+ * An application starts by creating a path "/test/resourceA" under the default application
+ * namespace and sets it to 1. Then it sets the namespace to global and creates another path
+ * "/test/resourceA" with a value of 2. A read request from the server on "<appName>/test/resourceA"
+ * will return 1; whereas a read request on "/test/resourceA" will return 2.
  *
  * @section le_avdata_timeseries Time Series
  *
