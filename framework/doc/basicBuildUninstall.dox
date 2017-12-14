@@ -1,0 +1,24 @@
+/** @page basicBuildUninstall Uninstall the Application Framework
+
+To uninstall Legato from your Linux development machine, delete the directory where you extracted
+Legato.
+
+@verbatim
+$ rm -rf workspace
+@endverbatim
+
+Remove the @c /opt/swi directory and all of it contents.
+
+@verbatim
+$ cd /opt
+$ rm -rf swi/
+@endverbatim
+
+Revert any changes you may have made to your .bashrc, .profile that were used to set up
+xxxxx_TOOLCHAIN_DIR and related build environment variables.
+
+Remove any packages (that are no longer needed) that were installed in @ref buildPackages .
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

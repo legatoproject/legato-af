@@ -18,8 +18,8 @@ toolchains for the WP Series Modules and has been tested on both the WPX5XX and 
 
 This tutorial requires you to have:
 - Legato AF version 16.10.3 or newer installed on your dev machine and target device.
-- The @ref buildToolchain "toolchain" associated with your Module and Linux Distribution installed
-  on your dev machine.
+- The @ref basicBuildToolchain "toolchain" associated with your Module and Linux Distribution
+  installed on your dev machine.
 - The source driver files for the IoT expansion card (.c files) or the pre-built kernel object
   (.ko file)
 
@@ -36,7 +36,8 @@ used to compile your module on your dev machine; the script to build the objects
 in a directory in the toolchain.  If you have installed the toolchain with Developer Studio or
 legato-spm these steps are already done for you.
 
-@c 1. Verify that you have installed the @ref buildToolchain "toolchain" for your specific target.
+@c 1. Verify that you have installed the @ref basicBuildToolchain "toolchain" for your specific
+   target.
 
 @c 2. Add the following directory to your PATH:
 @c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
@@ -117,7 +118,7 @@ kernelModules:
 @section howToKernelObject_Building Building your System
 
 Once you've set up your system to include the source driver files or binary .ko the next step
-is to build your update system by running @ref basicBuildLegato_make "make <target>".
+is to build your update system by running @ref basicBuildMake "make <target>".
 
 @warning @c make @c clean must be run before making a build with a new .ko file or the .ko file will
 not build.

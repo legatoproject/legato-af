@@ -1,0 +1,142 @@
+/** @page basicBuildToolchain Install the Toolchain
+
+Toolchains are a collection of tools, libraries and programs that are needed to build a system for
+a target.  Each module will have a different toolchain as the libraries and tools that are used are
+often dependent on the kernel/os version.  The toolchain also includes all the kernel headers that
+are needed to build kernel objects and libraries used to enable additional hardware on your target.
+
+While the toolchains are target/module specific we walk through installing toolchains as well as
+providing best practices to manage the toolchains as they are needed to build kernel modules,
+applications, and the runtime environment for your target.  The Legato Application Framework does
+not maintain any of the toolchains but does test toolchains to ensure that they work with the
+Application Framework.
+
+@warning When switching between different models of targets or upgrading your firmware/OS
+verify that you have the matching toolchain installed and it is the right version of toolchain that
+you need to build for that target.
+
+@section basicBuildToolchain_basicBuildToolchainSWI SWI WP Series Device Toolchain
+
+Make sure that all old toolchain installers have been archived or deleted before you download a new
+toolchain.
+
+@verbatim
+$ cd ~/Downloads
+$ mkdir old_toolchains
+$ mv poky* old_toolchains
+@endverbatim
+
+
+Each target maintains it's own unique toolchain as the toolchain needs to be built as part of the OS
+distribution.  Visit [source.sierrawireless.com](https://source.sierrawireless.com/) to download and
+install the toolchain for your target.
+
+| Module         | Download Site                                                                   |
+| -------------- | ------------------------------------------------------------------------------- |
+| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
+| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
+| AR Modules     | See your FAE to download and install the toolchain for your module              |
+
+After downloading the toolchain installer copy it into your workspace for safe keeping:
+@verbatim
+$mv <toolchain> ~/workspace/firmware/<module>/.
+@endverbatim
+
+You may also need to grant execute rights before the toolchain installer can be run:
+@verbatim
+$ cd ~/workspace/firmware/<module>/
+$ chmod +x <toolchain>
+@endverbatim
+
+Upon running the toolchain installer you will be prompted where you want to install the tools.
+
+Enter: @verbatim /opt/swi/y17-ext-<legato version> @endverbatim
+
+When prompted, answer "Y" to proceed with the install.
+
+@verbatim
+$ ./poky-swi-ext-glibc-x86_64-meta-toolchain-swi-ext-armv7a-vfp-neon-toolchain-swi-ext-1.7.3.sh
+Enter target directory for SDK (default: /opt/swi/y17-ext): /opt/swi/y17-ext-1610
+You are about to install the SDK to "/opt/swi/y17-ext-1610". Proceed[Y/n]?Y
+Extracting SDK...done
+Setting it up...done
+SDK has been successfully set up and is ready to be used.
+@endverbatim
+
+Create a soft link from the versioned folder to /y17-ext (delete the existing soft link if needed)
+
+@verbatim
+$ cd /opt/swi
+$ rm y-17-ext
+$ ln -s y17-ext-1610 y17-ext
+@endverbatim
+
+@note Each version of Legato requires its own toolchain. To support multiple versions on one host:
+-  create a folder for each version
+-  update the softlink "/opt/swi/y17-ext" to point to the legato version that are currently working
+   with.
+To change versions update the soft link to point to the new Legato version you are working with.
+
+@subsection basicBuildLegato_ToolchainSWI_KO Run Kernel Build Scripts
+
+If you wish to include kernel objects within your Legato System (e.g.; the sensor you have
+connected to your target has it's own driver) you must run the kernel build scripts first.
+
+Add the following directory to your PATH:
+@c /opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+
+@verbatim
+$ export PATH=/opt/swi/y17-ext/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
+@endverbatim
+
+Change directory to: @c /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
+
+@verbatim
+$ cd /opt/swi/y17-ext/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
+@endverbatim
+
+Take ownership of the files in the directory and run make scripts, when done return ownership to the
+root user.
+
+@note The root user does not know the path to the Legato compiler so file ownership must be
+temporarily transfered to yourself so that the scripts build properly and then given back when the
+script is completed.
+
+@verbatim
+$ sudo chown -R $USER .
+$ ARCH=arm CROSS_COMPILE=arm-poky-linux-gnueabi- make scripts
+$ sudo chown -R root .
+@endverbatim
+
+You are now ready to @ref basicBuildMake "build and configure" the Legato Runtime Environment
+for your target device.
+
+@section basicBuildToolchain_RaspbToolChain Raspberry Pi Toolchain
+
+If you are building Legato AF directly on a Raspberry Pi then no toolchain is needed and you only
+need to install @b native @b [GCC](https://gcc.gnu.org/install/).  If you are cross-compiling
+the Legato AF on a Linux machine for use on a Raspberry Pi Device, then you will need to install
+Raspberry Pi's toolchain.
+
+Raspberry Pi platforms (clone from the GitHub repo):
+@verbatim
+git clone https://github.com/raspberrypi/tools
+@endverbatim
+
+Copy the @c /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian directory to a shared
+location on your Linux Development Host.
+
+Add @c /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin to your $PATH
+@verbatim
+export PATH=$PATH:${PWD}/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
+@endverbatim
+
+@note The 64bit Raspberry Pi toolchain is located:
+@c /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64
+
+You are now ready to @ref basicBuildMake "build and configure" the Legato Runtime Environment
+for your target device.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

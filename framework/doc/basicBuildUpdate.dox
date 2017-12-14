@@ -1,0 +1,34 @@
+/** @page basicBuildUpdate Update the Application Framework
+
+When a new version of the Legato Application Framework is released you can easily update your Legato
+Repository and update your target to the new release.
+
+@section basicBuildLegato_UpdateGitHub Update through GitHub
+
+If you have installed the Legato Application Framework through GitHub then you just need to checkout
+the new version of the repository and then sync with that version.
+
+@verbatim
+$ cd ~/workspace/legatoAF
+$ repo init -u git://github.com/legatoproject/manifest -m legato/releases/17.11.0.xml
+$ repo sync
+@endverbatim
+
+Now make a new default build for your target, this will build any new tools that have been included
+with the release and configure any new environment variables.
+
+@verbatim
+$ make <target>
+@endverbatim
+
+If you are using a custom system on your Target you must create a new system update pack with
+@c mksys and update your target so that the newest version of the Legato Runtime Environment is
+installed on the target.
+
+@note You may also have to install new Firmware and/or OS with the update, check
+with your target manufacturer to find out if the latest version of Legato is compatible with your
+target's firmware and OS, or if your target needs an update.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/

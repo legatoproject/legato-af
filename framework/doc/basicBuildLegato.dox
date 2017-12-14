@@ -1,9 +1,29 @@
-/** @page basicBuildLegato Install/Remove Legato
+/** @page basicBuildLegato Install the Application Framework
 
-The following directions will guide you to set up your Linux development machine, download the
-Legato AF and install a build on your Target Device using the command line.
+Use this guide to:
+- @ref basicBuild_prep "Setup a Workspace"
+- @ref basicBuildLegato_Download "Install the Legato Application Framework"
+- @ref basicBuildToolchain "Install a Toolchain"
+- @ref basicBuildMake "Make an initial build" and setup the Legato Application Framework
+  for a specific target
 
-@section buildPackages Install Linux Packages
+@note This guide is not specific to a target device, please refer to your target documentation to
+set-up any hardware, additional software and download the toolchain for your target.
+
+@section basicBuild_prep Setup Workspace
+
+A development machine is used to write your custom applications and build, configure and install the
+runtime environment for your target.
+
+Requirements:
+Linux PC or Virtual Machine with:
+ - Ubuntu: A currently supported LTS Version installed
+ - CPU: Dual Hyper-threaded or Quad Core @ 2.8Ghz (Recommended)
+ - RAM: 6Gb
+ - Disk Space: 5Gb (2.5gb for the toolchain, and 2.5gb for the Framework and Workspace)
+
+The following Linux software needs to be installed on your dev machine to use the Legato Application
+Framework:
 
 @verbatim
 $ sudo apt-get install -y build-essential \
@@ -14,122 +34,58 @@ $ sudo apt-get install -y build-essential \
                           bsdiff libssl-dev autoconf automake iputils-ping
 @endverbatim
 
-Optional packages: openjdk-8-jdk (for Java support)
-                   doxygen graphviz (for doc generation)
-                   [TLA toolbox](http://lamport.azurewebsites.net/tla/toolbox.html)
-                       (Formal specification & verification).
+@b Optional @b packages:
+ - @c openjdk-8-jdk (for Java support)
+ - @c doxygen and @c graphviz (for doc generation)
+ - [TLA toolbox](http://lamport.azurewebsites.net/tla/toolbox.html)
+   (Formal specification & verification).
 
-@section buildToolchain Install a Toolchain
+Now that you have the required Linux software we recommend setting up a directory structure that
+allows you to easily work with the Legato Application Framework tools from within your own projects.
 
-If you are building the Legato AF for a SWI WP Series Device you will need to download and install a
-Toolchain which includes GCC and other tools needed to make a build for your Target Device.
+@note While we are suggesting the following structure as a recommendation there may be other
+directory structures that make more sense for your projects (e.g., if different projects depend on
+different Legato AF or firmware versions, it may make more sense to setup a copy of the firmware or
+Legato AF files within a project).
 
-If you are building Legato AF directly on a Raspberry Pi then no toolchain is needed and you only
-need to install the @b native @b [GCC](https://gcc.gnu.org/install/).  If you are cross-compiling
-the Legato AF on a Linux machine for use on a Raspberry Pi Device, then you will need to install
-Raspberry Pi's toolchain.
+<b>Example User Environment:</b>
+@image html basicBuildLegato_InstallOverview.png
 
-@subsection buildToolchainSWI SWI WP Series Device Toolchain
-
-Each target maintains it's own unique toolchain.  Visit
-[source.sierrawireless.com](https://source.sierrawireless.com/) to download and install the
-toolchain for your target.
-
-| Module         | Download Site                                                                   |
-| -------------- | ------------------------------------------------------------------------------- |
-| WPX5XX         | [WPX5XX Download Page](https://source.sierrawireless.com/resources/legato/downloads/)                                                 |
-| WP76XX         | [WP76XX Firmware Download Page](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) |
-| All AR Modules | See your FAE to download and install the toolchain for your module              |
-
-Once you've downloaded the SWI toolchain installer you may need to grant execute rights before it
-can be run.
+In your home directory create the following directories:
 @verbatim
-$ chmod +x <toolchain>
+$ mkdir workspace
+$ cd workspace
+$ mkdir boardSupport
+$ mkdir legatoAF
+$ mkdir firmware
 @endverbatim
 
-Upon running the toolchain installer you will be prompted where you want to install the tools.
-
-Enter: @verbatim /opt/swi/y17-ext-<legato version> @endverbatim
-
-When prompted, answer "Y" to proceed with the install.
-
+It should look like this:
 @verbatim
-$ ./poky-swi-ext-glibc-x86_64-meta-toolchain-swi-ext-armv7a-vfp-neon-toolchain-swi-ext-1.7.3.sh
-Enter target directory for SDK (default: /opt/swi/y17-ext): /opt/swi/y17-ext-1610
-You are about to install the SDK to "/opt/swi/y17-ext-1610". Proceed[Y/n]?Y
-Extracting SDK...done
-Setting it up...done
-SDK has been successfully set up and is ready to be used.
+workspace/
+├── firmware
+├── legatoAF
+└── mangOh
 @endverbatim
 
-Create a soft link from the versioned folder to /y17-ext (delete the existing soft link if needed)
+@section basicBuildLegato_Download Download Source Code
 
-@verbatim
-$ cd /opt/swi
-$ rm y-17-ext
-$ ln -s y17-ext-1610 y17-ext
-@endverbatim
+Next download the source code into the @c legatoAF directory, you can either checkout the repo via
+GitHub or download a copy of the tarball.  GitHub gives you the advantage of tracking changes and
+gives you access to the whole history of changes and releases.
 
-@note Each version of Legato requires its own toolchain. To support multiple versions on one host:
--  create a folder for each version
--  update the softlink "/opt/swi/y17-ext" to point to the legato version that are currently working
-   with.
-To change versions update the soft link to point to the new Legato version you are working with.
-
-@subsection buildRaspberryToolChain Raspberry Pi Toolchain
-
-Raspberry Pi platforms (clone from the GitHub repo):
-@verbatim
-git clone https://github.com/raspberrypi/tools
-@endverbatim
-
-Copy the @c /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian directory to a shared
-location on your Linux Development Host.
-
-Add @c /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin to your $PATH
-@verbatim
-export PATH=$PATH:${PWD}/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
-@endverbatim
-
-@note The 64bit Raspberry Pi toolchain is located:
-@c /tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64
-
-@section buildDownload Download the Source Code
-
-To start with building Legato you first need to download or clone the source.
-
-@subsection buildTarball Download Tarball
-
-Visit our @ref aboutReleaseInfo "Release Info" page to download the Legato AF.
-
-Download the Tarball and extract it to a directory on your local machine
-@verbatim
-$ mkdir legato-demo
-$ mv ~/Downloads/legato-16.10.1.tar.bz2 legato-demo/
-$ cd legato-demo/
-$ tar -xvf legato-16.10.1.tar.bz2
-@endverbatim
-
-@subsection buildClone Clone from GitHub
+@subsection basicBuildLegato_Clone Clone from GitHub
 
 The [GitHub Legato Project](https://github.com/legatoproject/legato-af#clone-from-github)
 provides all up-to-date code development as well as official releases.  To clone the latest official
-release clone the last release tag (e.g., -m legato/releases/16.10.1.xml), and not the master branch.
+release clone the last release tag (e.g., -m legato/releases/17.10.0.xml), and not the master branch.
 
 See the @ref aboutReleaseInfo page to list the supported releases.
 
 Install repo:
 
-On Ubuntu >= 16.04
-
 @verbatim
 $ sudo apt-get install repo
-@endverbatim
-
-On < 16.04
-
-@verbatim
-$ sudo apt-get install phablet-tools
 @endverbatim
 
 OR
@@ -142,8 +98,7 @@ $ chmod a+x ~/bin/repo
 Clone a specific release:
 
 @verbatim
-$ mkdir workspace
-$ cd workspace
+$ cd legatoAF
 $ repo init -u git://github.com/legatoproject/manifest -m legato/releases/17.07.1.xml
 $ repo sync
 @endverbatim
@@ -151,56 +106,42 @@ $ repo sync
 Clone from master (latest in progress development):
 
 @verbatim
-$ mkdir workspace
-$ cd workspace
+$ cd legatoAF
 $ repo init -u git://github.com/legatoproject/manifest
 $ repo sync
 @endverbatim
 
-@section buildDirs Directory Structure Overview
+@subsection basicBuildLegato_Tarball Download Tarball
 
-Directory Structure on your Host Machine:
+Visit our @ref aboutReleaseInfo "Release Info" page to download the Legato AF.
+
+Download the Tarball and extract it to a directory on your local machine
+@verbatim
+$ mv ~/Downloads/legato-17.11.0.tar.bz2 legatoAF/
+$ cd legatoAF/
+$ tar -xvf legato-17.11.0.tar.bz2
+@endverbatim
+
+@section basicBuildLegato_Dirs Directory Overview
+
+Directory Overview of the Legato AF Repo:
 
 |Directory          | Description                                                                        |
 |---------------    | -----------------------------------------------------------------------------------|
-| @c apps           | Source Code for Apps                                                               |
+| @c apps           | Source Code for Apps included with the Framework                                   |
 | @c bin            | Created by build system and populated with executable files run on the development host that ran the build. Contains files like @c mksys, @c app and @c update. |
 | @c build          | Results of a framework build. Includes @c build/tools and @c build/target.         |
 | @c cmake          | CMake scripts used by the build system.                                            |
 | @c components     | Platform-independent components that are used in apps.                             |
 | @c framework      | Source code for the Legato framework.                                              |
 | @c targetFiles    | Files needed for installation on target devices.                                   |
-| @c targets        | All the .sinc files that are needs to build modules                                |
+| @c targets        | Target specific configuration files                                                |
 | @c platformAdaptor| Components specific to specific platforms. **covered under other licenses          |
 | @c modules        | Other repositories that extend Legato.                                             |
 | @c 3rdParty       | Third-party code that is integrated with Legato. **covered under other licenses    |
 
-@section Using Tools and Make
-
-You are now ready to work with your host and your target device.
-
-| Section                           | Description                                                        |
-|-------------------                | -------------------------------------------------------------------|
-| @ref tools "Tools"                | Tools used for building/configuring/diagnosing your target or host |
-| @ref basicBuildLegato_make "Make" | How to Make a build and Update a Target Device                     |
-| @ref basicTarget                  | How to setup and configure a Target Device                         |
-| [WP Module Software](https://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
-
-@note Sierra Wireless WP Series Software includes free development tools for use with the WP Series
-Devices.  These tools will install an Eclipse based IDE with the toolchain, Legato AF pre-built,
-Legato Linux Distro and can be used either with Windows or Linux.
-
-@section basicBuildUninstall Uninstall Legato
-
-To uninstall Legato from your Linux development machine, delete the directory where you extracted
-Legato.
-
-Remove the @c /opt/swi directory and all of it contents.
-
-Revert any changes you may have made to your .bashrc, .profile etc. that were used to set up
-xxxxx_TOOLCHAIN_DIR and related build environment variables.
-
-Remove any packages (that are no longer needed) that were installed in @ref buildPackages .
+Next, @ref basicBuildToolchain "install a toolchain" then
+@ref basicBuildLegato_make "configure your environment" before you start coding.
 
 Copyright (C) Sierra Wireless Inc.
 

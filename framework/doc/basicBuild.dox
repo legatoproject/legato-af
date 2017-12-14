@@ -2,12 +2,15 @@
 
 These topics contain info on how to build, install and remove the Legato Application Framework:
 
-| Section                            | Description                                                 |
-| ---------------------------------- | ----------------------------------------------------------- |
-| @subpage basicBuildLegato          | How to install Legato on a Linux development machine        |
-| @subpage basicBuildLegato_make     | How to install Legato AF on a Target Device                 |
-| @ref basicBuildUninstall           | How to remove Legato from a Linux development machine       |
-| @ref basicTarget                   | How to setup and configure a Target Device                  |
+| Section                            | Description                                                         |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| @subpage basicBuildLegato          | Install the Application Framework on a Linux development machine    |
+| @subpage basicBuildToolchain       | Install a toolchain for your target                                 |
+| @subpage basicBuildMake            | Configure your environment and update your target                   |
+| @subpage basicBuildUpdate          | Update the Application Framework to a new version                   |
+| @subpage basicBuildUninstall       | Uninstall the Application Framework from a development machine      |
+| @ref basicTarget                   | Setup and configure a Sierra Wireless target device                 |
+| @ref raspbianMain                  | Setup and configure a Raspberry Pi target device                    |
 | [WPx5xx Module Software](https://source.sierrawireless.com/devices/wp-series/wp8548/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
 | [WP76xx Module Software](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release/) | Tools to install and build the Legato AF with Developer Studio on either Windows or Linux. |
 
