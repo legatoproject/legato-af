@@ -88,8 +88,11 @@ cm radio status @endverbatim
 @verbatim cm radio <on/off> @endverbatim
 > Enable/disable radio.
 
-@verbatim cm radio rat <CDMA | GSM/UMTS | LTE> @endverbatim
-> Set radio access technology.
+@verbatim cm radio rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]> @endverbatim
+> Set the prefered radio access technologies.
+
+@verbatim cm radio getRAT @endverbatim
+> Get the prefered radio access technologies.
 
 @verbatim cm radio rat AUTO @endverbatim
 > Resume automatic RAT selection.

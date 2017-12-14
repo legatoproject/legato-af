@@ -13,6 +13,7 @@
 #include "cm_mrc.h"
 #include "cm_common.h"
 
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the radio help text to stdout.
@@ -30,8 +31,10 @@ void cm_mrc_PrintRadioHelp
             "\tcm radio status\n\n"
             "To enable/disable radio:\n"
             "\tcm radio <on/off>\n\n"
-            "To set radio access technology prefererences\n"
+            "To set radio access technologies prefererences\n"
             "\tcm radio rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]>\n\n"
+            "To get radio access technologies prefererences\n"
+            "\tcm radio getRAT \n\n"
             "To resume automatic RAT selection.\n"
             "\tcm radio rat AUTO\n\n"
             );
@@ -200,7 +203,6 @@ static le_result_t GetSignalQuality
     return res;
 }
 
-
 //-------------------------------------------------------------------------------------------------
 /**
  * This function will attempt to get the radio access technology.
@@ -208,7 +210,7 @@ static le_result_t GetSignalQuality
  * @return LE_OK if the call was successful.
  */
 //-------------------------------------------------------------------------------------------------
-static le_result_t GetRAT
+static le_result_t GetCurrentRAT
 (
     void
 )
@@ -220,28 +222,29 @@ static le_result_t GetRAT
 
     if (res != LE_OK)
     {
-        return res;
+       cm_cmn_FormatPrint("Current RAT", "Not available");
+       return res;
     }
 
     switch (rat)
     {
         case LE_MRC_RAT_GSM:
-            cm_cmn_FormatPrint("RAT", "GSM network (LE_MRC_RAT_GSM)");
+            cm_cmn_FormatPrint("Current RAT", "GSM network (LE_MRC_RAT_GSM)");
             break;
         case LE_MRC_RAT_UMTS:
-            cm_cmn_FormatPrint("RAT", "UMTS network (LE_MRC_RAT_UMTS)");
+            cm_cmn_FormatPrint("Current RAT", "UMTS network (LE_MRC_RAT_UMTS)");
             break;
         case LE_MRC_RAT_TDSCDMA:
-            cm_cmn_FormatPrint("RAT", "TD-SCDMA network (LE_MRC_RAT_TDSCDMA)");
+            cm_cmn_FormatPrint("Current RAT", "TD-SCDMA network (LE_MRC_RAT_TDSCDMA)");
             break;
         case LE_MRC_RAT_LTE:
-            cm_cmn_FormatPrint("RAT", "LTE network (LE_MRC_RAT_LTE)");
+            cm_cmn_FormatPrint("Current RAT", "LTE network (LE_MRC_RAT_LTE)");
             break;
         case LE_MRC_RAT_CDMA:
-            cm_cmn_FormatPrint("RAT", "CDMA network (LE_MRC_RAT_CDMA)");
+            cm_cmn_FormatPrint("Current RAT", "CDMA network (LE_MRC_RAT_CDMA)");
             break;
         default:
-            cm_cmn_FormatPrint("RAT", "Unknown network (LE_MRC_RAT_UNKNOWN)");
+            cm_cmn_FormatPrint("Current RAT", "Unknown network (LE_MRC_RAT_UNKNOWN)");
             break;
     }
 
@@ -373,7 +376,7 @@ int cm_mrc_GetModemStatus
         exitStatus = EXIT_FAILURE;
     }
 
-    res = GetRAT();
+    res = GetCurrentRAT();
 
     if (res != LE_OK)
     {
@@ -423,6 +426,56 @@ int cm_mrc_SetRat
     return le_mrc_SetRatPreferences(rat);
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * This function gets the radio access technology preferences.
+ *
+ * @return
+ * - LE_OK    If the call was successful
+ * - LE_FAULT Otherwise.
+ */
+//-------------------------------------------------------------------------------------------------
+int cm_mrc_GetRat
+(
+    void
+)
+{
+    le_mrc_RatBitMask_t rat;
+
+    if (LE_OK != le_mrc_GetRatPreferences(&rat))
+    {
+        return LE_FAULT;
+    }
+
+    printf("Prefered RATs : ");
+    if (rat & LE_MRC_BITMASK_RAT_GSM)
+    {
+        printf("GSM ");
+    }
+
+    if (rat & LE_MRC_BITMASK_RAT_UMTS)
+    {
+        printf("UMTS ");
+    }
+
+    if (rat & LE_MRC_BITMASK_RAT_TDSCDMA)
+    {
+        printf("TDSCDMA ");
+    }
+
+    if (rat & LE_MRC_BITMASK_RAT_LTE)
+    {
+        printf("LTE ");
+    }
+
+    if (rat & LE_MRC_BITMASK_RAT_CDMA)
+    {
+        printf("CDMA ");
+    }
+    printf("\n");
+    return LE_OK;
+
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -515,6 +568,10 @@ void cm_mrc_ProcessRadioCommand
             printf("Failed to set rat value\n");
         }
         exit(EXIT_FAILURE);
+    }
+    else if (0 == strcmp(command, "getRAT"))
+    {
+        exit(cm_mrc_GetRat());
     }
     else
     {

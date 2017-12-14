@@ -128,7 +128,8 @@
  * - @subpage c_mrcBandCapabilities
  *
  * @section le_mrc_rat Radio Access Technology (RAT)
- * le_mrc_GetRadioAccessTechInUse() API retrieves the current active Radio Access Technology.
+ * le_mrc_GetRadioAccessTechInUse() API retrieves the current active Radio Access Technology (RAT).
+ * @note  The API returns the RAT only if the device is registered on the network.
  *
  * The application can register a handler function to retrieve the Radio Access Technology each time
  * the RAT changes.
@@ -1526,12 +1527,14 @@ FUNCTION le_result_t GetCurrentNetworkMccMnc
 /**
  * This function must be called to get the current Radio Access Technology in use.
  *
- * @return LE_FAULT         Function failed to get the Radio Access Technology.
- * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid parameter.
+ * @return LE_FAULT         Function failed to get the Radio Access Technology.
  *
  * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
  *       function won't return.
+ *
+ * @note The API returns the RAT only if the device is registered on the network.
  *
  * @note <b>multi-app safe</b>
  */

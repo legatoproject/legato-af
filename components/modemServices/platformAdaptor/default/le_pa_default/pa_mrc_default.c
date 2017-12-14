@@ -454,8 +454,9 @@ le_result_t pa_mrc_SetAutomaticNetworkRegistration
 /**
  * This function gets the Radio Access Technology currently in use.
  *
- * @return LE_FAULT The function failed to get the Radio Access Technology.
- * @return LE_OK    The function succeeded.
+ * @return
+ * - LE_OK              On success
+ * - LE_FAULT           On failure
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetRadioAccessTechInUse

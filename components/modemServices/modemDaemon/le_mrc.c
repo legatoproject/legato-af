@@ -2491,12 +2491,14 @@ le_result_t le_mrc_GetRadioPower
 /**
  * This function must be called to get the current Radio Access Technology in use.
  *
- * @return LE_FAULT         Function failed to get the Radio Access Technology.
- * @return LE_BAD_PARAMETER A bad parameter was passed.
  * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid parameter.
+ * @return LE_FAULT         Function failed to get the Radio Access Technology.
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @note The API returns the RAT only if the device is registered on the network.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetRadioAccessTechInUse
