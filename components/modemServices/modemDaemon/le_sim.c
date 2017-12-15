@@ -1737,9 +1737,10 @@ le_result_t le_sim_GetSubscriberPhoneNumber
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
- *      - LE_NOT_FOUND if the network is not found
  *      - LE_BAD_PARAMETER if a parameter is invalid
  *      - LE_FAULT on any other failure
+ *
+ * @note  The home network name can be given even if the device is not registered on the network.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_GetHomeNetworkOperator
@@ -1749,15 +1750,15 @@ le_result_t le_sim_GetHomeNetworkOperator
     size_t             nameStrSize     ///< [IN] nameStr size
 )
 {
-    if (SelectSIMCard(simId) != LE_OK)
-    {
-        return LE_FAULT;
-    }
-
-    if (nameStr == NULL)
+    if (NULL == nameStr)
     {
         LE_KILL_CLIENT("nameStr is NULL !");
         return LE_BAD_PARAMETER;
+    }
+
+    if (LE_OK != SelectSIMCard(simId))
+    {
+        return LE_FAULT;
     }
 
     return pa_sim_GetHomeNetworkOperator(nameStr,nameStrSize);

@@ -964,12 +964,13 @@ FUNCTION le_result_t GetSubscriberPhoneNumber
  * @return
  *      - LE_OK on success
  *      - LE_OVERFLOW if the Home Network Name can't fit in nameStr
- *      - LE_NOT_FOUND if the network is not found
  *      - LE_BAD_PARAMETER if a parameter is invalid
  *      - LE_FAULT on any other failure
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
+ *
+ * @note The home network name can be given even if the device is not registered on the network.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetHomeNetworkOperator
