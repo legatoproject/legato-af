@@ -339,7 +339,7 @@ static void GenerateBundlesSection
 (
     std::ostream& defStream,
     model::App_t* appPtr,
-    BundledFsObject_t bundled
+    const BundledFsObject_t& bundled
 )
 //--------------------------------------------------------------------------------------------------
 {
