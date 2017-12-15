@@ -8,6 +8,10 @@
 
 #include "$LEGATO_ROOT/apps/platformServices/defaultAirVantage.sinc"
 #include "$LEGATO_ROOT/apps/platformServices/defaultAtCommands.sinc"
+#if ${LEGATO_EXTRA_SINC} = ""
+#else
+    #include "$LEGATO_EXTRA_SINC"
+#endif
 
 apps:
 {

@@ -29,17 +29,22 @@ BUILD_PRODUCTS = 	config		\
 					scripts \
 					devMode
 
+# Create a list of all proprietary apps, then add them as product to build
 ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)
-	# Create list of all proprietay apps, then add them as product to build
-	APPS_PROPRIETARY_SRC_DIR = $(LEGATO_ROOT)/apps/proprietary
-	ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/atAirVantage/src/atAirVantage.adef),)
-		PROPRIETARY_APPS += atAirVantage
-	endif
-	ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/atQmiLinker/src/atQmiLinker.adef),)
-		PROPRIETARY_APPS += atQmiLinker
-	endif
-	BUILD_PRODUCTS += ${PROPRIETARY_APPS}
+  APPS_PROPRIETARY_SRC_DIR = $(LEGATO_ROOT)/apps/proprietary
+  ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/atAirVantage/src/atAirVantage.adef),)
+    PROPRIETARY_APPS += atAirVantage
+  endif
+  ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/atQmiLinker/src/atQmiLinker.adef),)
+    PROPRIETARY_APPS += atQmiLinker
+  endif
 endif
+ifneq ($(findstring $(TARGET), wp76xx wp77xx),)
+  ifneq ($(wildcard $(APPS_PROPRIETARY_SRC_DIR)/qmiAirVantage/src/qmiAirVantage.adef),)
+    PROPRIETARY_APPS += qmiAirVantage
+  endif
+endif
+BUILD_PRODUCTS += ${PROPRIETARY_APPS}
 
 .PHONY: all $(BUILD_PRODUCTS)
 all: $(BUILD_PRODUCTS)

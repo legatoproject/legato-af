@@ -120,6 +120,7 @@ COMPONENT_INIT
         LE_INFO("Modem-based AVC disabled.");
         le_appCtrl_Start(AVC_APP_NAME);
         le_appCtrl_Start(AT_APP_NAME);
+        le_appCtrl_Start(QMI_APP_NAME);
         ImportConfig();
     }
     else

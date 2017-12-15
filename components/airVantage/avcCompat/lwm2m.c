@@ -153,6 +153,7 @@ void RetryDisable
         le_timer_Stop(RetryTimerRef);
         le_appCtrl_Start(AVC_APP_NAME);
         le_appCtrl_Start(AT_APP_NAME);
+        le_appCtrl_Start(QMI_APP_NAME);
         ImportConfig();
     }
 }
