@@ -1282,9 +1282,9 @@ FUNCTION le_result_t UseUSimNumbers
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the NAD_DEREGISTRATION_TIME value. After termination of an emergency call the in-vehicle
- * system remains registered on the network for the period of time, defined by the installation
- * parameter NAD_DEREGISTRATION_TIME.
+ * Set the NAD (network access device) deregistration time value. After termination of an emergency
+ * call the in-vehicle system remains registered on the network for the period of time, defined by
+ * the installation parameter NAD (network access device) deregistration time.
  *
  * @return
  *  - LE_OK on success
@@ -1293,12 +1293,12 @@ FUNCTION le_result_t UseUSimNumbers
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetNadDeregistrationTime
 (
-    uint16    deregTime  IN  ///< the NAD_DEREGISTRATION_TIME value (in minutes).
+    uint16 deregTime IN ///< the NAD (network access device) deregistration time value (in minutes).
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the NAD_DEREGISTRATION_TIME value.
+ * Get the NAD (network access device) deregistration time value.
  *
  * @return
  *  - LE_OK on success
@@ -1307,7 +1307,8 @@ FUNCTION le_result_t SetNadDeregistrationTime
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetNadDeregistrationTime
 (
-    uint16    deregTime  OUT  ///< the NAD_DEREGISTRATION_TIME value (in minutes).
+    uint16    deregTime  OUT  ///< the NAD (network access device) deregistration time value
+                              /// (in minutes).
 );
 
 //--------------------------------------------------------------------------------------------------

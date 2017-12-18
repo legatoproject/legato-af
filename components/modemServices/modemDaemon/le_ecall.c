@@ -3142,9 +3142,9 @@ le_result_t le_ecall_UseUSimNumbers
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the NAD_DEREGISTRATION_TIME value. After termination of an emergency call the in-vehicle
- * system remains registered on the network for the period of time, defined by the installation
- * parameter NAD_DEREGISTRATION_TIME.
+ * Set the NAD (network access device) deregistration time value. After termination of an emergency
+ * call the in-vehicle system remains registered on the network for the period of time, defined by
+ * the installation parameter NAD (network access device) deregistration time.
  *
  * @return
  *  - LE_OK on success
@@ -3153,7 +3153,7 @@ le_result_t le_ecall_UseUSimNumbers
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_SetNadDeregistrationTime
 (
-    uint16_t    deregTime  ///< [IN] NAD_DEREGISTRATION_TIME value (in minutes).
+    uint16_t deregTime ///< [IN] NAD (network access device) deregistration time value (in minutes).
 )
 {
     ECallObj.eraGlonass.nadDeregistrationTime = deregTime;
@@ -3162,7 +3162,7 @@ le_result_t le_ecall_SetNadDeregistrationTime
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get the NAD_DEREGISTRATION_TIME value.
+ * Get the NAD (network access device) deregistration time value.
  *
  * @return
  *  - LE_OK on success
@@ -3171,7 +3171,8 @@ le_result_t le_ecall_SetNadDeregistrationTime
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_GetNadDeregistrationTime
 (
-    uint16_t*    deregTimePtr  ///< [OUT] NAD_DEREGISTRATION_TIME value (in minutes).
+    uint16_t* deregTimePtr ///< [OUT] NAD (network access device) deregistration time value
+                           /// (in minutes).
 )
 {
     le_result_t result;
