@@ -1487,7 +1487,7 @@ static int GetTimeAccuracy
 
     if (result == LE_OK)
     {
-        printf("GPS time accuracy %dms\n", timeAccuracy);
+        printf("GPS time accuracy %dns\n", timeAccuracy);
     }
     else if (result == LE_OUT_OF_RANGE)
     {

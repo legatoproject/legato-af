@@ -906,7 +906,7 @@ le_result_t le_gnss_GetTimeAccuracy
         ///< [IN] Position sample's reference.
 
     uint32_t* timeAccuracyPtr
-        ///< [OUT] Estimated time accuracy in milliseconds
+        ///< [OUT] Estimated time accuracy in nanoseconds
 )
 {
     return LE_OK;

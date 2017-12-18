@@ -1168,7 +1168,7 @@ FUNCTION le_result_t GetEpochTime
 FUNCTION le_result_t GetTimeAccuracy
 (
     Sample positionSampleRef  IN,       ///< Position sample's reference.
-    uint32 timeAccuracy OUT             ///< Estimated time accuracy in milliseconds
+    uint32 timeAccuracy OUT             ///< Estimated time accuracy in nanoseconds
 );
 
 //--------------------------------------------------------------------------------------------------

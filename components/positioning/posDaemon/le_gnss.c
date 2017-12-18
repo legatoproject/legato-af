@@ -142,7 +142,7 @@ typedef struct le_gnss_PositionSample
     uint32_t          gpsWeek;                ///< GPS week number from midnight, Jan. 6, 1980.
     uint32_t          gpsTimeOfWeek;          ///< Amount of time in milliseconds into the GPS week.
     bool              timeAccuracyValid;      ///< if true, timeAccuracy is set
-    uint32_t          timeAccuracy;           ///< Estimated Accuracy for time in milliseconds
+    uint32_t          timeAccuracy;           ///< Estimated Accuracy for time in nenoseconds
     bool              leapSecondsValid;       ///< if true, leapSeconds is set
     uint8_t           leapSeconds;            ///< UTC leap seconds in advance in seconds
     bool              positionLatencyValid;   ///< if true, positionLatency is set
@@ -1543,7 +1543,7 @@ le_result_t le_gnss_GetTimeAccuracy
         ///< [IN] Position sample's reference.
 
     uint32_t* timeAccuracyPtr
-        ///< [OUT] Estimated time accuracy in milliseconds
+        ///< [OUT] Estimated time accuracy in nanoseconds
 )
 {
     le_result_t result = LE_OK;

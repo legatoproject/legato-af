@@ -190,7 +190,7 @@ typedef struct {
     uint32_t           gpsTimeOfWeek;       ///< Amount of time in milliseconds into the GPS week.
     // Time accuracy
     bool            timeAccuracyValid;      ///< if true, timeAccuracy is set
-    uint32_t        timeAccuracy;           ///< Estimated Accuracy for time in milliseconds
+    uint32_t        timeAccuracy;           ///< Estimated Accuracy for time in nanoseconds
 
     // Position measurement latency
     bool            positionLatencyValid;   ///< if true, positionLatency is set
