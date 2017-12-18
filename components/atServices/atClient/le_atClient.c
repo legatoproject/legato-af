@@ -2037,7 +2037,7 @@ le_atClient_UnsolicitedResponseHandlerRef_t le_atClient_AddUnsolicitedResponseHa
     Unsolicited_t* unsolicitedPtr = le_mem_ForceAlloc(UnsolicitedPool);
 
     memset(unsolicitedPtr, 0 ,sizeof(Unsolicited_t));
-    le_utf8_Copy(unsolicitedPtr->unsolRsp, unsolRsp, strlen(unsolRsp), NULL);
+    le_utf8_Copy(unsolicitedPtr->unsolRsp, unsolRsp, LE_ATDEFS_UNSOLICITED_MAX_BYTES, NULL);
     unsolicitedPtr->lineCount    = lineCount;
     unsolicitedPtr->handlerPtr = handlerPtr;
     unsolicitedPtr->contextPtr = contextPtr;
@@ -2250,6 +2250,6 @@ COMPONENT_INIT
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
-    le_wdogChain_Init(1);
+    le_wdogChain_Init(WDOG_COUNT);
     le_wdogChain_MonitorEventLoop(WDOG_MAIN_LOOP, watchdogInterval);
 }
