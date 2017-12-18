@@ -59,7 +59,7 @@ This utility triggers the eCallDemo application.
 
 Run @c trig like this:
 @verbatim
-$ app runProc eCallDemo trig <number of passengers>
+$ app runProc eCallDemo --exe=trig -- <number of passengers>
 @endverbatim
 
 <HR>
