@@ -77,8 +77,8 @@ if [ -z "$USERFS_IMG" ] || [ ! -e "$USERFS_IMG" ]; then
 
     # ... copy sample apps
     if ! cp -R "$LEGATO_ROOT/build/virt/samples" "$BUILD_DIR/userfs/"; then
-        echo "sample apps not available, did you run 'make tests_virt' to build sample and test code?"
-        exit 1
+        echo "Sample apps not available, did you run 'make tests_virt' to build sample and test code?"
+        echo "Continuing without ..."
     fi
 
     # Generate an ext4 partition that will be used as /mnt/flash
