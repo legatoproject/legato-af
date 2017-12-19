@@ -122,19 +122,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Enumeration of watchdogs used by this component
- */
-//--------------------------------------------------------------------------------------------------
-enum
-{
-    WDOG_MAIN_LOOP,
-    WDOG_RX_LOOP,
-    WDOG_COUNT
-} Watchdog_t;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Enumeration of AT Commands Client events
  *
  */
@@ -738,9 +725,6 @@ static void *DeviceThread
 
     le_sem_Post(interfacePtr->waitingSemaphore);
 
-    // Try to kick a couple of times before each timeout.
-    le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
-    le_wdogChain_MonitorEventLoop(WDOG_RX_LOOP, watchdogInterval);
     le_event_RunLoop();
 
     return NULL; // Should not happen
@@ -2250,6 +2234,6 @@ COMPONENT_INIT
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
-    le_wdogChain_Init(WDOG_COUNT);
-    le_wdogChain_MonitorEventLoop(WDOG_MAIN_LOOP, watchdogInterval);
+    le_wdogChain_Init(1);
+    le_wdogChain_MonitorEventLoop(0, watchdogInterval);
 }
