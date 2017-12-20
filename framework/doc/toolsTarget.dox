@@ -16,6 +16,7 @@ Legato has these tools to run on the target:
 | @subpage toolsTarget_sdir          | control IPC bindings and troubleshoot              |
 | @subpage toolsTarget_setNet        | set your MAC address or static IP                  |
 | @subpage toolsTarget_pmTool        | set power manager target options                   |
+| @subpage toolsTarget_uartMode      | set uart target options                            |
 | @subpage toolsTarget_update        | install, update, and remove software               |
 | @subpage wifi_toolsTarget_wifi     | configure and control the WiFi service             |
 

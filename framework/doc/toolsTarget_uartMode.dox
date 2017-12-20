@@ -1,0 +1,43 @@
+/** @page toolsTarget_uartMode uartMode
+
+Use the uartMode tool to set the mode for either UART1 or UART2 (requires a reboot for the new
+mode to take effect).
+
+<h1>Usage</h1>
+
+<b><c>uartMode [OPTIONS]</c></b>
+
+<h1>Options</h1>
+
+@verbatim get <uartNum> @endverbatim
+> Gets the mode for the specified UART.  uartNum can be either 1 or 2.
+
+@verbatim set <uartNum> <mode> @endverbatim
+> Sets the mode for the specified UART.  uartNum can be either 1 or 2.<br>
+>     mode can be:<br>
+>          - 'disable' = Disable UART.<br>
+>          - 'atCmds' = AT Command services (not valid for UART2).<br>
+>          - 'diag' = Diagnostic Message service.<br>
+>          - 'nmea' = NMEA service.<br>
+>          - 'console' = Linux /dev/console.<br>
+>          - 'app' = Linux application usage.<br>
+
+@verbatim --help | -h @endverbatim
+> Display help and exit.
+
+<h1>Output Sample</h1>
+
+@verbatim
+# uartMode get 1
+UART1 is available for use by Linux applications.
+
+# uartMode get 2
+UART2 is being used for the /dev/console.
+
+# uartMode set 1 diag
+UART1 will be set to 'diag' after the next reboot.
+@endverbatim
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
