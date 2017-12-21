@@ -134,7 +134,6 @@ typedef char pa_sim_Imsi_t[PA_SIM_IMSI_MAX_LEN+1];
 //--------------------------------------------------------------------------------------------------
 /**
  * Type definition for a pin code (8 digit max)
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef char pa_sim_Pin_t[PA_SIM_PIN_MAX_LEN+1];
@@ -142,7 +141,6 @@ typedef char pa_sim_Pin_t[PA_SIM_PIN_MAX_LEN+1];
 //--------------------------------------------------------------------------------------------------
 /**
  * Type definition for a puk code (8 digit max)
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef char pa_sim_Puk_t[PA_SIM_PUK_MAX_LEN+1];
@@ -150,7 +148,6 @@ typedef char pa_sim_Puk_t[PA_SIM_PUK_MAX_LEN+1];
 //--------------------------------------------------------------------------------------------------
 /**
  * Type definition for EID code (32 digits)
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef char pa_sim_Eid_t[PA_SIM_EID_MAX_LEN+1];
@@ -158,26 +155,26 @@ typedef char pa_sim_Eid_t[PA_SIM_EID_MAX_LEN+1];
 //--------------------------------------------------------------------------------------------------
 /**
  * Event type used for new SIM state notification.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_sim_Id_t      simId;   ///< The SIM identififier
-    le_sim_States_t  state;   ///< The SIM state.
+    le_sim_Id_t      simId;   ///< The SIM identifier
+    le_sim_States_t  state;   ///< The SIM state
 }
 pa_sim_Event_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Event type used for SIM Toolkit notification.
- *
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_sim_Id_t        simId;      ///< The SIM identififier
-    le_sim_StkEvent_t  stkEvent;   ///< The SIM Toolkit event.
+    le_sim_Id_t              simId;             ///< The SIM identifier
+    le_sim_StkEvent_t        stkEvent;          ///< The SIM Toolkit event
+    le_sim_StkRefreshMode_t  stkRefreshMode;    ///< The SIM Toolkit Refresh mode
+    le_sim_StkRefreshStage_t stkRefreshStage;   ///< The SIM Toolkit Refresh stage
 }
 pa_sim_StkEvent_t;
 
@@ -710,6 +707,20 @@ LE_SHARED le_result_t pa_sim_ReadFPLMNOperators
 (
     pa_sim_FPLMNOperator_t* FPLMNOperatorPtr,   ///< [OUT] FPLMN operators.
     uint32_t* FPLMNOperatorCountPtr             ///< [IN/OUT] FPLMN operator count.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve the last SIM Toolkit status.
+ *
+ * @return
+ *      - LE_OK           On success.
+ *      - LE_UNSUPPORTED  The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_GetLastStkStatus
+(
+    pa_sim_StkEvent_t*  stkStatus  ///< [OUT] last SIM Toolkit event status
 );
 
 #endif // LEGATO_PASIM_INCLUDE_GUARD

@@ -538,8 +538,7 @@ static void FirstLayerSimToolkitHandler
     pa_sim_StkEvent_t*                  stkEventPtr = reportPtr;
     le_sim_SimToolkitEventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
 
-    LE_DEBUG("Report stkEvent %d on SIM Id %d", stkEventPtr->stkEvent, stkEventPtr->simId);
-
+    LE_DEBUG("Report STK event %d on SIM %d", stkEventPtr->stkEvent, stkEventPtr->simId);
     clientHandlerFunc(stkEventPtr->simId, stkEventPtr->stkEvent, le_event_GetContextPtr());
 }
 
@@ -554,7 +553,7 @@ static void SimToolkitHandler
     pa_sim_StkEvent_t* eventPtr
 )
 {
-    LE_DEBUG("Report stkEvent %d on SIM Id %d", eventPtr->stkEvent, eventPtr->simId);
+    LE_DEBUG("Report STK event %d on SIM %d", eventPtr->stkEvent, eventPtr->simId);
     le_event_Report(SimToolkitEventId, eventPtr, sizeof(pa_sim_StkEvent_t));
 }
 
@@ -1994,11 +1993,9 @@ le_result_t le_sim_IsEmergencyCallSubscriptionSelected
 //--------------------------------------------------------------------------------------------------
 le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
 (
-    le_sim_SimToolkitEventHandlerFunc_t handlerPtr,
-        ///< [IN] Handler function for New State notification.
-
-    void* contextPtr
-        ///< [IN] Handler's context.
+    le_sim_SimToolkitEventHandlerFunc_t handlerPtr,     ///< [IN] Handler function for
+                                                        ///<      New State notification.
+    void* contextPtr                                    ///< [IN] Handler's context.
 )
 {
     le_event_HandlerRef_t handlerRef;
@@ -2013,7 +2010,6 @@ le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
     {
         // Register a handler function for SIM Toolkit notification
         PaSimToolkitHandlerRef = pa_sim_AddSimToolkitEventHandler(SimToolkitHandler, NULL);
-
         if (!PaSimToolkitHandlerRef)
         {
             LE_ERROR("Add PA SIM Toolkit handler failed");
@@ -2041,7 +2037,7 @@ le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
 //--------------------------------------------------------------------------------------------------
 void le_sim_RemoveSimToolkitEventHandler
 (
-    le_sim_SimToolkitEventHandlerRef_t   handlerRef ///< [IN] Handler reference.
+    le_sim_SimToolkitEventHandlerRef_t handlerRef   ///< [IN] Handler reference.
 )
 {
     SimToolkitHandlerCount--;
@@ -2056,46 +2052,44 @@ void le_sim_RemoveSimToolkitEventHandler
 /**
  * Accept the last SIM Toolkit command.
  *
- * @return LE_FAULT    Function failed.
- * @return LE_OK       Function succeeded.
+ * @return
+ *  - LE_OK       The function succeeded.
+ *  - LE_FAULT    The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_AcceptSimToolkitCommand
 (
-    le_sim_Id_t         simId        ///< [IN] SIM identifier.
+    le_sim_Id_t simId   ///< [IN] SIM identifier.
 )
 {
-    if (SelectSIMCard(simId) != LE_OK)
+    if (LE_OK != SelectSIMCard(simId))
     {
         return LE_FAULT;
     }
-    else
-    {
-        return pa_sim_ConfirmSimToolkitCommand(true);
-    }
+
+    return pa_sim_ConfirmSimToolkitCommand(true);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Reject the last SIM Toolkit command.
  *
- * @return LE_FAULT     Function failed.
- * @return LE_OK        Function succeeded.
+ * @return
+ *  - LE_OK       The function succeeded.
+ *  - LE_FAULT    The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_sim_RejectSimToolkitCommand
 (
-    le_sim_Id_t         simId        ///< [IN] SIM identifier.
+    le_sim_Id_t simId   ///< [IN] SIM identifier.
 )
 {
-    if (SelectSIMCard(simId) != LE_OK)
+    if (LE_OK != SelectSIMCard(simId))
     {
         return LE_FAULT;
     }
-    else
-    {
-        return pa_sim_ConfirmSimToolkitCommand(false);
-    }
+
+    return pa_sim_ConfirmSimToolkitCommand(false);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2116,6 +2110,8 @@ le_result_t le_sim_GetSimToolkitRefreshMode
     le_sim_StkRefreshMode_t* refreshModePtr ///< The Refresh mode.
 )
 {
+    pa_sim_StkEvent_t stkStatus;
+
     if (!refreshModePtr)
     {
         LE_ERROR("refreshModePtr is NULL!");
@@ -2127,8 +2123,15 @@ le_result_t le_sim_GetSimToolkitRefreshMode
         return LE_FAULT;
     }
 
-    *refreshModePtr = LE_SIM_REFRESH_MODE_MAX;
-    return LE_FAULT;
+    pa_sim_GetLastStkStatus(&stkStatus);
+    if (LE_SIM_REFRESH != stkStatus.stkEvent)
+    {
+        LE_INFO("Wrong event. Expected LE_SIM_REFRESH");
+        return LE_FAULT;
+    }
+
+    *refreshModePtr = stkStatus.stkRefreshMode;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2148,6 +2151,8 @@ le_result_t le_sim_GetSimToolkitRefreshStage
     le_sim_StkRefreshStage_t* refreshStagePtr   ///< The Refresh stage.
 )
 {
+    pa_sim_StkEvent_t stkStatus;
+
     if (!refreshStagePtr)
     {
         LE_ERROR("refreshStagePtr is NULL!");
@@ -2159,8 +2164,15 @@ le_result_t le_sim_GetSimToolkitRefreshStage
         return LE_FAULT;
     }
 
-    *refreshStagePtr = LE_SIM_STAGE_MAX;
-    return LE_FAULT;
+    pa_sim_GetLastStkStatus(&stkStatus);
+    if (LE_SIM_REFRESH != stkStatus.stkEvent)
+    {
+        LE_INFO("Wrong event. Expected LE_SIM_REFRESH");
+        return LE_FAULT;
+    }
+
+    *refreshStagePtr = stkStatus.stkRefreshStage;
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

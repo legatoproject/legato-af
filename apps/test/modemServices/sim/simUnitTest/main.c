@@ -23,6 +23,8 @@ typedef struct
     le_sim_States_t simState;
     le_sim_SimToolkitEventHandlerRef_t stkHandler;
     le_sim_StkEvent_t  stkEvent;
+    le_sim_StkRefreshMode_t stkRefreshMode;
+    le_sim_StkRefreshStage_t stkRefreshStage;
 } AppContext_t;
 
 static AppContext_t AppCtx[NB_CLIENT];
@@ -45,7 +47,9 @@ static char Puk[]="12345678";
 static char ShortPuk[]="1234567";
 static char LongPuk[]="123456789";
 static char NewPin[]="6789";
-static le_sim_StkEvent_t  StkEvent;
+static le_sim_StkEvent_t  StkEvent = LE_SIM_STK_EVENT_MAX;
+static le_sim_StkRefreshMode_t StkRefreshMode = LE_SIM_REFRESH_MODE_MAX;
+static le_sim_StkRefreshStage_t StkRefreshStage = LE_SIM_STAGE_MAX;
 
 le_result_t le_sim_Init(void);
 
@@ -246,7 +250,7 @@ static void* AppHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Stk handler: this handler is called on stk event
+ * STK handler: this handler is called on STK event
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -263,13 +267,19 @@ static void StkHandler
 
     appCtxPtr->stkEvent = stkEvent;
 
+    LE_ASSERT_OK(le_sim_GetSimToolkitRefreshMode(simId, &appCtxPtr->stkRefreshMode));
+    LE_ASSERT(StkRefreshMode == appCtxPtr->stkRefreshMode);
+
+    LE_ASSERT_OK(le_sim_GetSimToolkitRefreshStage(simId, &appCtxPtr->stkRefreshStage));
+    LE_ASSERT(StkRefreshStage == appCtxPtr->stkRefreshStage);
+
     // Semaphore is used to synchronize the task execution with the core test
     le_sem_Post(ThreadSemaphore);
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add stk handler: this function is used to add a stk event handler
+ * Add STK handler: this function is used to add an STK event handler
  *
  */
 //--------------------------------------------------------------------------------------------------
@@ -816,7 +826,7 @@ static void TestSim_Stk
     void
 )
 {
-    // Stk handler semaphore
+    // STK handler semaphore
     StkHandlerSem = (le_sem_Ref_t) le_sem_Create("StkHandlerSem",1);
 
     // each thread subscribes to state handler using le_sim_AddSimToolkitEventHandler
@@ -835,7 +845,7 @@ static void TestSim_Stk
 
     StkEvent = LE_SIM_REFRESH;
 
-    // Invoke Stk event
+    // Invoke STK event
     pa_simSimu_ReportSTKEvent(StkEvent);
 
     // Wait for the call of the handlers
@@ -853,6 +863,27 @@ static void TestSim_Stk
     LE_ASSERT( le_sim_AcceptSimToolkitCommand(CurrentSimId) == LE_OK );
     pa_simSimu_SetExpectedSTKConfirmationCommand(false);
     LE_ASSERT( le_sim_RejectSimToolkitCommand(CurrentSimId) == LE_OK );
+
+    // Change refresh mode and stage
+    StkEvent = LE_SIM_REFRESH;
+    StkRefreshMode = LE_SIM_REFRESH_INIT_FULL_FCN;
+    StkRefreshStage = LE_SIM_STAGE_END_WITH_SUCCESS;
+
+    pa_simSimu_SetRefreshMode(StkRefreshMode);
+    pa_simSimu_SetRefreshStage(StkRefreshStage);
+
+    // Invoke STK event
+    pa_simSimu_ReportSTKEvent(StkEvent);
+
+    // Wait for the call of the handlers
+    SynchTest();
+
+    // Check the result
+    for (i=0; i<NB_CLIENT; i++)
+    {
+        LE_ASSERT(AppCtx[i].stkRefreshMode == StkRefreshMode);
+        LE_ASSERT(AppCtx[i].stkRefreshStage == StkRefreshStage);
+    }
 
     // Check that all handlers have been called as expected
     LE_ASSERT( le_sem_GetValue(ThreadSemaphore) == 0 );
@@ -897,7 +928,7 @@ static void TestSim_LocalSwap
 
         // There's a semaphore in the le_sim to wait for the refresh => report refresh event
         StkEvent = LE_SIM_REFRESH;
-        // Invoke Stk event
+        // Invoke STK event
         pa_simSimu_ReportSTKEvent(StkEvent);
 
         // Wait for the call of the handlers
@@ -947,13 +978,13 @@ static void TestSim_RemoveHandlers
     // Wait for the tasks
     SynchTest();
 
-    // Provoke events which called the handlers (sim state event, and stk event)
+    // Provoke events which called the handlers (sim state event, and STK event)
 
     // Go into ABSENT state
     CurrentSimState = LE_SIM_ABSENT;
     pa_simSimu_ReportSIMState(CurrentSimState);
 
-    // Invoke Stk event, and check that no handler is called
+    // Invoke STK event, and check that no handler is called
     pa_simSimu_ReportSTKEvent(StkEvent);
 
     // Wait for the semaphore timeout to check that handlers are not called

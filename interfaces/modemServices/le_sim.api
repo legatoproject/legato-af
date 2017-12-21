@@ -590,6 +590,7 @@ ENUM StkRefreshMode
     REFRESH_STEERING_OF_ROAMING,        ///< Steering of Roaming as defined in 3GPP TS 23.122.
     REFRESH_STEERING_OF_ROAMING_IWLAN,  ///< Steering of Roaming for I-WLAN
                                         ///< as defined in 3GPP TS 24.234.
+    REFRESH_EUICC_PROFILE_CHANGE,       ///< eUICC Profile State Change.
     REFRESH_MODE_MAX                    ///< Invalid SIM Toolkit Refresh mode.
 };
 
@@ -1072,26 +1073,28 @@ FUNCTION le_result_t IsEmergencyCallSubscriptionSelected
 /**
  * Accept the last SIM Toolkit command.
  *
- * @return LE_FAULT    Function failed.
- * @return LE_OK       Function succeeded.
+ * @return
+ *  - LE_OK       The function succeeded.
+ *  - LE_FAULT    The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t AcceptSimToolkitCommand
 (
-    Id           simId IN                ///< The SIM identifier.
+    Id  simId IN    ///< The SIM identifier.
 );
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Reject the last SIM Toolkit command.
  *
- * @return LE_FAULT     Function failed.
- * @return LE_OK        Function succeeded.
+ * @return
+ *  - LE_OK       The function succeeded.
+ *  - LE_FAULT    The function failed.
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t RejectSimToolkitCommand
 (
-    Id           simId IN                ///< The SIM identifier.
+    Id  simId IN    ///< The SIM identifier.
 );
 
 //--------------------------------------------------------------------------------------------------

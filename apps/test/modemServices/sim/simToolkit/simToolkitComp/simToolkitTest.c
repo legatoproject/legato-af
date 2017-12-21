@@ -31,6 +31,9 @@ static void TestSimToolkitHandler
     void*             contextPtr
 )
 {
+    le_sim_StkRefreshMode_t refreshMode;
+    le_sim_StkRefreshStage_t refreshStage;
+
     switch(stkEvent)
     {
         case LE_SIM_OPEN_CHANNEL:
@@ -38,6 +41,9 @@ static void TestSimToolkitHandler
             break;
         case LE_SIM_REFRESH:
             LE_INFO("-TEST- REFRESH SIM Toolkit event for SIM card.%d", simId);
+            LE_ASSERT_OK(le_sim_GetSimToolkitRefreshMode(simId, &refreshMode));
+            LE_ASSERT_OK(le_sim_GetSimToolkitRefreshStage(simId, &refreshStage));
+            LE_INFO("REFRESH SIM MODE: %d, STAGE: %d", refreshMode, refreshStage);
             break;
         case LE_SIM_STK_EVENT_MAX:
         default:
