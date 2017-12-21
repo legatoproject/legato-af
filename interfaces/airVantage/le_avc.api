@@ -551,6 +551,8 @@ ENUM Status
     SESSION_BS_STARTED,     ///< Session with bootstrap server started
     SESSION_STOPPED,        ///< Session with AirVantage device management server or bootstrap
                             ///< server stopped
+    SESSION_FAILED,         ///< Session with AirVantage device management server or bootstrap
+                            ///< server failed
     REBOOT_PENDING,         ///< Device reboot is pending
     CONNECTION_PENDING,     ///< Connection to the server is required. This is necessary when
                             ///< firmware package is installed (after a platform reboot). Also
