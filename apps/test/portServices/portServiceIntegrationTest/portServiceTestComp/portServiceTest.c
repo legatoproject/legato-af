@@ -257,6 +257,7 @@ static void* ATServerAddHandler
 COMPONENT_INIT
 {
     le_result_t result;
+    le_atServer_DeviceRef_t atServerDevRef;
 
     Semaphore = le_sem_Create("HandlerSem",0);
 
@@ -303,7 +304,7 @@ COMPONENT_INIT
     le_sem_Wait(Semaphore);
     le_thread_Cancel(AppThreadRef);
 
-    result = le_port_SetCommandMode(devRef);
+    result = le_port_SetCommandMode(devRef, &atServerDevRef);
     if (LE_OK == result)
     {
         LE_INFO("le_port_SetCommandMode() API success...");

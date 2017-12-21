@@ -119,7 +119,7 @@ FUNCTION le_result_t SetDataMode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function switches the device into AT command mode.
+ * This function switches the device into AT command mode and returns AT server device reference.
  *
  * @return
  *      - LE_OK            Function succeeded.
@@ -129,7 +129,8 @@ FUNCTION le_result_t SetDataMode
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetCommandMode
 (
-    Device devRef IN    ///< Device reference.
+    Device devRef IN,                       ///< Device reference.
+    le_atServer.Device atServerDevRef OUT   ///< AT server device reference.
 );
 
 //--------------------------------------------------------------------------------------------------

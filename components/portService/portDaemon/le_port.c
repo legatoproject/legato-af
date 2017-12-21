@@ -1402,7 +1402,7 @@ le_result_t le_port_SetDataMode
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function switches the device into AT command mode.
+ * This function switches the device into AT command mode and returns At server device reference.
  *
  * @return
  *      - LE_OK            Function succeeded.
@@ -1412,7 +1412,8 @@ le_result_t le_port_SetDataMode
 //--------------------------------------------------------------------------------------------------
 le_result_t le_port_SetCommandMode
 (
-    le_port_DeviceRef_t devRef    ///< [IN] Device reference.
+    le_port_DeviceRef_t devRef,           ///< [IN] Device reference.
+    le_atServer_DeviceRef_t* deviceRefPtr ///< [OUT] AT server device reference.
 )
 {
     le_result_t result;
@@ -1420,18 +1421,23 @@ le_result_t le_port_SetCommandMode
     OpenedInstanceCtx_t* openedInstanceCtxPtr = le_ref_Lookup(DeviceRefMap, devRef);
     if (NULL == openedInstanceCtxPtr)
     {
-        LE_ERROR("devRef is invalid!");
+        LE_ERROR("DevRef is invalid!");
         return LE_BAD_PARAMETER;
     }
 
-    le_atServer_DeviceRef_t atServerDeviceRef = openedInstanceCtxPtr->atServerDevRef;
-    if (NULL == atServerDeviceRef)
+    if (NULL == deviceRefPtr)
     {
-        LE_ERROR("atServerDeviceRef is NULL!");
+        LE_ERROR("deviceRefPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+    *deviceRefPtr = openedInstanceCtxPtr->atServerDevRef;
+    if (NULL == *deviceRefPtr)
+    {
+        LE_ERROR("*deviceRefPtr is NULL!");
         return LE_FAULT;
     }
 
-    result = le_atServer_Resume(atServerDeviceRef);
+    result = le_atServer_Resume(*deviceRefPtr);
     if (LE_FAULT == result)
     {
         LE_ERROR("Device is not able to switch into command mode");
