@@ -689,6 +689,7 @@ BITMASK CrashInfoBitMask
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForceOnlyMode
@@ -702,6 +703,7 @@ FUNCTION le_result_t ForceOnlyMode
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ForcePersistentOnlyMode
@@ -718,6 +720,7 @@ FUNCTION le_result_t ForcePersistentOnlyMode
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t ExitOnlyMode
@@ -731,6 +734,7 @@ FUNCTION le_result_t ExitOnlyMode
  * @return
  *      - LE_OK     on success
  *      - LE_FAULT  for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -957,6 +961,7 @@ FUNCTION le_result_t GetPropulsionType
  * @return
  *  - LE_OK on success
  *  - LE_FAULT for other failures
+ *  - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t SetMsdTxMode
@@ -971,6 +976,7 @@ FUNCTION le_result_t SetMsdTxMode
  * @return
  *      - LE_OK     on success
  *      - LE_FAULT  for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -1130,6 +1136,7 @@ FUNCTION le_result_t ExportMsd
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note On failure, the process exits, so you don't have to worry about checking the returned
  *       reference for validity.
@@ -1149,6 +1156,7 @@ FUNCTION le_result_t SendMsd
  *      - LE_BUSY an eCall session is already in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -1167,6 +1175,7 @@ FUNCTION le_result_t StartAutomatic
  *      - LE_BUSY an eCall session is already in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -1185,6 +1194,7 @@ FUNCTION le_result_t StartManual
  *      - LE_BUSY an eCall session is already in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -1202,6 +1212,7 @@ FUNCTION le_result_t StartTest
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t End

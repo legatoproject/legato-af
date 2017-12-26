@@ -690,7 +690,7 @@ static le_result_t DialAttempt
         // Cf. ERA-GLONASS GOST R 54620-2011, 7.5.1.2
         if ((ECallObj.eraGlonass.pullModeSwitch) && (ECallObj.isPushed))
         {
-            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL) != LE_OK)
+            if (LE_OK != pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PULL))
             {
                 LE_WARN("Unable to set the Pull mode!");
             }
@@ -704,7 +704,7 @@ static le_result_t DialAttempt
     {
         if (!ECallObj.isPushed)
         {
-            if (pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH) != LE_OK)
+            if (LE_OK != pa_ecall_SetMsdTxMode(LE_ECALL_TX_MODE_PUSH))
             {
                 LE_WARN("Unable to set the Push mode!");
             }
@@ -720,15 +720,14 @@ static le_result_t DialAttempt
     {
         LE_INFO("Start dial attempt #%d",
                 ECallObj.redial.dialAttemptsCount+1);
-        if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+        result = pa_ecall_Start(ECallObj.startType);
+        if (LE_OK == result)
         {
             ECallObj.redial.dialAttemptsCount++;
-            result = LE_OK;
         }
         else
         {
             LE_ERROR("Dial attempt failed!");
-            result = LE_FAULT;
         }
     }
     else
@@ -738,15 +737,14 @@ static le_result_t DialAttempt
             LE_INFO("Start dial attempt %d of %d",
                     ECallObj.redial.dialAttemptsCount+1,
                     ECallObj.redial.maxDialAttempts);
-            if(pa_ecall_Start(ECallObj.startType) == LE_OK)
+            result = pa_ecall_Start(ECallObj.startType);
+            if (LE_OK == result)
             {
                 ECallObj.redial.dialAttemptsCount++;
-                result = LE_OK;
             }
             else
             {
                 LE_ERROR("Dial attempt failed!");
-                result = LE_FAULT;
             }
         }
         else
@@ -2171,6 +2169,7 @@ le_result_t le_ecall_Init
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ForceOnlyMode
@@ -2188,6 +2187,7 @@ le_result_t le_ecall_ForceOnlyMode
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ForcePersistentOnlyMode
@@ -2208,6 +2208,7 @@ le_result_t le_ecall_ForcePersistentOnlyMode
  * @return
  *      - LE_OK on success
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_ExitOnlyMode
@@ -2225,6 +2226,7 @@ le_result_t le_ecall_ExitOnlyMode
  * @return
  *      - LE_OK     on success
  *      - LE_FAULT  for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
  *       function will not return.
@@ -2563,6 +2565,7 @@ le_result_t le_ecall_ImportMsd
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note On failure, the process exits, so you don't have to worry about checking the returned
  *       reference for validity.
@@ -2652,6 +2655,7 @@ le_result_t le_ecall_ExportMsd
  *      - LE_BUSY an eCall session is already in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -2724,12 +2728,7 @@ le_result_t le_ecall_StartAutomatic
         }
     }
 
-    if (DialAttempt() == LE_OK)
-    {
-        return LE_OK;
-    }
-
-    return LE_FAULT;
+    return DialAttempt();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2741,6 +2740,7 @@ le_result_t le_ecall_StartAutomatic
  *      - LE_BUSY an eCall session is already in progress
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -2813,12 +2813,7 @@ le_result_t le_ecall_StartManual
         }
     }
 
-    if (DialAttempt() == LE_OK)
-    {
-        return LE_OK;
-    }
-
-    return LE_FAULT;
+    return DialAttempt();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2830,6 +2825,7 @@ le_result_t le_ecall_StartManual
  *       - LE_BUSY an eCall session is already in progress
  *       - LE_BAD_PARAMETER bad eCall reference
  *       - LE_FAULT for other failures
+ *       - LE_UNSUPPORTED Not supported on this platform
  *
  * @note The process exits, if an invalid eCall reference is given
  */
@@ -2902,12 +2898,7 @@ le_result_t le_ecall_StartTest
         }
     }
 
-    if (DialAttempt() == LE_OK)
-    {
-        return LE_OK;
-    }
-
-    return LE_FAULT;
+    return DialAttempt();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2918,6 +2909,7 @@ le_result_t le_ecall_StartTest
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER bad eCall reference
  *      - LE_FAULT for other failures
+ *      - LE_UNSUPPORTED Not supported on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_ecall_End
