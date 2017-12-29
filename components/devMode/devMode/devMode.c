@@ -83,9 +83,76 @@ COMPONENT_INIT
         }
     }
 
-    if (0 != system("/usr/sbin/tcf-agent -d -L- -l0"))
+    if (0 == system("/legato/systems/current/apps/devMode/read-only/sbin/tcf-agent -d -L- -l0"))
+    {
+        // Do nothing
+    }
+    else if (0 == system("/usr/sbin/tcf-agent -d -L- -l0"))
+    {
+        // Do nothing
+    }
+    else
     {
         LE_ERROR("Unable to launch tcf-agent");
+    }
+
+    if (stat("/usr/lib/openssh", &buf) != 0)
+    {
+        if (0 != system("mkdir -p /tmp/ulib /tmp/ulib_wk"))
+        {
+            LE_ERROR("Unable to create directories /tmp/ulib");
+        }
+        if (0 == system("mount -t overlay"
+                        " -o upperdir=/tmp/ulib,lowerdir=/usr/lib,workdir=/tmp/ulib_wk"
+                        " overlay /usr/lib"))
+        {
+            // Do nothing
+        }
+        else if (0 == system("mount -t aufs"
+                             " -o dirs=/tmp/ulib=rw:/usr/lib=ro"
+                             " aufs /usr/lib"))
+        {
+            // Do nothing
+        }
+        else
+        {
+            LE_ERROR("Unable to mount overlay over /usr/lib");
+        }
+        if (0 != system("mkdir -p /usr/lib/openssh &&"
+                        " ln -s /legato/systems/current/apps/devMode/read-only/bin/sftp-server"
+                        " /usr/lib/openssh/"))
+        {
+            LE_ERROR("Unable to link sftp-server");
+        }
+    }
+
+    if (stat("/usr/libexec/sftp-server", &buf) != 0)
+    {
+        if (0 != system("mkdir -p /tmp/libexec /tmp/libexec_wk"))
+        {
+            LE_ERROR("Unable to create directories /tmp/libexec");
+        }
+        if (0 == system("mount -t overlay"
+                        " -o upperdir=/tmp/libexec,lowerdir=/usr/libexec,workdir=/tmp/libexec_wk"
+                        " overlay /usr/libexec"))
+        {
+            // Do nothing
+        }
+        else if (0 == system("mount -t aufs"
+                             " -o dirs=/tmp/libexec=rw:/usr/libexec=ro"
+                             " aufs /usr/libexec"))
+        {
+            // Do nothing
+        }
+        else
+        {
+            LE_ERROR("Unable to mount overlay over /usr/libexec");
+        }
+        if (0 != system("ln -s /legato/systems/current/apps/devMode/read-only/bin/sftp-server"
+                        " /usr/libexec/"))
+        {
+            LE_ERROR("Unable to link sftp-server");
+        }
     }
 
     /* Obtain a wake lock */
@@ -105,11 +172,4 @@ COMPONENT_INIT
     // In case a new system has been installed, handle this system change. Otherwise calling this
     // handler does no harm.
     SysChangeHandler(NULL, NULL);
-
-    // Provide a warning if 'gdbserver' is not packaged with this app
-    if (stat("/bin/gdbserver", &buf) != 0)
-    {
-        LE_WARN("'/bin/gdbserver' has not been packaged with this app, usage of gdbCfg is "
-                "not possible");
-    }
 }

@@ -2,8 +2,9 @@
 
 # Configure a sandboxed app with a debug tool.
 
-gdbserverPath="/legato/systems/current/apps/devMode/read-only/bin/gdbserver"
-stracePath="/usr/bin/strace"
+export PATH=/legato/systems/current/apps/devMode/read-only/bin/:$PATH
+gdbserverPath=`which gdbserver`
+stracePath=`which strace`
 externalToolName="`basename $0`"
 debugToolName=
 debugToolPath=

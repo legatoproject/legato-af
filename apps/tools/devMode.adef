@@ -8,6 +8,18 @@ bundles:
         #if file_exists($LEGATO_SYSROOT/usr/bin/gdbserver)
             [rx] $LEGATO_SYSROOT/usr/bin/gdbserver        /bin/gdbserver
         #endif
+        // Only package strace if it is provided by the toolchain.
+        #if file_exists($LEGATO_SYSROOT/usr/bin/strace)
+            [rx] $LEGATO_SYSROOT/usr/bin/strace        /bin/strace
+        #endif
+        // Only package tcf-agent if it is provided by the toolchain.
+        #if file_exists($LEGATO_SYSROOT/usr/sbin/tcf-agent)
+            [rx] $LEGATO_SYSROOT/usr/sbin/tcf-agent        /sbin/tcf-agent
+        #endif
+        // Only package sftp-server if it is provided by the toolchain.
+        #if file_exists($LEGATO_SYSROOT/usr/libexec/sftp-server)
+            [rx] $LEGATO_SYSROOT/usr/libexec/sftp-server        /bin/sftp-server
+        #endif
     }
 }
 
