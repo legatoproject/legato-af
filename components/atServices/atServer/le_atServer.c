@@ -1034,7 +1034,16 @@ static void SendFinalRsp
             }
 
             // Build the response string [pattern + error code] or [pattern + verbose msg]
-            strncpy(devPtr->finalRsp.resp, devPtr->finalRsp.pattern, sizeof(devPtr->finalRsp.resp));
+            {
+                int sizeMax = sizeof(devPtr->finalRsp.resp);
+                if (sizeMax > 0)
+                {
+                    strncpy(devPtr->finalRsp.resp, devPtr->finalRsp.pattern, sizeMax - 1);
+                    // Make devPtr->finalRsp.resp string null terminated if devPtr->finalRsp.pattern
+                    // string size is bigger than sizeMax - 1.
+                    devPtr->finalRsp.resp[sizeMax-1] = '\0';
+                }
+            }
 
             if (MODE_EXTENDED == ErrorCodesMode)
             {
@@ -3312,7 +3321,14 @@ le_result_t le_atServer_SendFinalResultCode
 
     if (NULL != patternPtr)
     {
-        strncpy(devPtr->finalRsp.pattern, patternPtr, strlen(patternPtr));
+        int sizeMax = sizeof(devPtr->finalRsp.pattern);
+        if (sizeMax > 0)
+        {
+            strncpy(devPtr->finalRsp.pattern, patternPtr, sizeMax - 1);
+            // Make devPtr->finalRsp.pattern string null terminated if patternPtr
+            // string size is bigger than sizeMax - 1.
+            devPtr->finalRsp.pattern[sizeMax-1] = '\0';
+        }
     }
 
     // Clean AT command context, not in use now
