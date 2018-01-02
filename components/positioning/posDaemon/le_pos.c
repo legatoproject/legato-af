@@ -553,6 +553,24 @@ static le_result_t ComputeMove
     LE_DEBUG("Last Position lat.%d, long.%d",
                  posSampleHandlerNodePtr->lastLat, posSampleHandlerNodePtr->lastLong);
 
+    // Save the current latitude values into lastLat.
+    if (posSampleHandlerNodePtr->lastLat == 0)
+    {
+        posSampleHandlerNodePtr->lastLat = posParamPtr->latitude;
+    }
+
+    // Save the current longitude values into lastLong.
+    if (posSampleHandlerNodePtr->lastLong == 0)
+    {
+        posSampleHandlerNodePtr->lastLong = posParamPtr->longitude;
+    }
+
+    // Save the current altitude values into lastAlt.
+    if (posSampleHandlerNodePtr->lastAlt == 0)
+    {
+        posSampleHandlerNodePtr->lastAlt = posParamPtr->altitude;
+    }
+
     uint32_t horizontalMove = ComputeDistance(posSampleHandlerNodePtr->lastLat,
                                               posSampleHandlerNodePtr->lastLong,
                                               posParamPtr->latitude,
@@ -1217,6 +1235,11 @@ le_pos_MovementHandlerRef_t le_pos_AddMovementHandler
 
     posSampleHandlerNodePtr->horizontalMagnitude = horizontalMagnitude;
     posSampleHandlerNodePtr->verticalMagnitude = verticalMagnitude;
+
+    // Initialization of lastLat, lastLong and lastAlt.
+    posSampleHandlerNodePtr->lastLat = 0;
+    posSampleHandlerNodePtr->lastLong = 0;
+    posSampleHandlerNodePtr->lastAlt = 0;
 
     // Start acquisition
     if (NumOfHandlers == 0)
