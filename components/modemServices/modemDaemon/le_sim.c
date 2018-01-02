@@ -210,6 +210,35 @@ static le_mem_PoolRef_t FPLMNListPool;
 //--------------------------------------------------------------------------------------------------
 static le_mem_PoolRef_t FPLMNOperatorPool;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the APDU response notifies a correct execution of the APDU command with a normal ending.
+ *
+ * @return
+ *      - TRUE if the APDU command ended normally
+ *      - FALSE if an error occured
+ */
+//--------------------------------------------------------------------------------------------------
+static bool IsCommandCorrectlyExecuted
+(
+    uint8_t* respPtr,    ///< [IN] APDU response pointer
+    int respLen          ///< [IN] APDU response length
+)
+{
+    if (2 != respLen)
+    {
+        return false;
+    }
+
+    // Values defined in 3GPP TS 11.11 V8.14.0 paragraph 9.4.1
+    if (((0x90 == respPtr[0]) && (0x00 == respPtr[1])) || (0x91 == respPtr[0])
+        || (0x9E == respPtr[0]) || (0x9F == respPtr[0]))
+    {
+        return true;
+    }
+
+    return false;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -235,9 +264,6 @@ static le_result_t LocalSwap
     uint8_t  resp[LE_SIM_RESPONSE_MAX_BYTES] = {0};
     size_t   lenResp = LE_SIM_RESPONSE_MAX_BYTES;
 
-    // Response for APDU command successfully executed
-    uint8_t  respOk[2]= {0x90, 0x00};
-
     // Get the logical channel to send APDu command.
     if (LE_OK != pa_sim_OpenLogicalChannel(&channel))
     {
@@ -260,8 +286,7 @@ static le_result_t LocalSwap
         }
 
         // Check if the command is successfully executed.
-        if ((lenResp < sizeof(respOk))
-            || (0 != memcmp(resp, respOk, sizeof(respOk))))
+        if (!IsCommandCorrectlyExecuted(resp, lenResp))
         {
             LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
             return LE_FAULT;
@@ -286,8 +311,7 @@ static le_result_t LocalSwap
     }
 
     // Check if the command is successfully executed.
-    if ((lenResp < sizeof(respOk))
-        || (0 != memcmp(resp, respOk, sizeof(respOk))))
+    if (!IsCommandCorrectlyExecuted(resp, lenResp))
     {
         LE_ERROR("APDU response: %02X, %02X", resp[0], resp[1]);
         return LE_FAULT;
