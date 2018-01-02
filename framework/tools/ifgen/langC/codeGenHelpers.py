@@ -192,7 +192,7 @@ def GetUnpackFunction(apiType):
         return _PackFunctionMapping[apiType] % ("Unpack", )
 
 def EscapeString(string):
-    return string.encode('string_escape')
+    return string.encode('string_escape').replace('"', '\\"')
 
 #---------------------------------------------------------------------------------------------------
 # Test functions
