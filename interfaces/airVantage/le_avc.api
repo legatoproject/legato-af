@@ -261,6 +261,11 @@
  * 1 hour mark, as soon as the app is started again, the polling timer will initiate a connection to
  * the AirVantage Server.
  *
+ * Polling timer initiated sessions will be disconnected after 20 seconds of inactivity. This does
+ * not apply to AirVantage sessions that have been initiated by an app. The app is responsible for
+ * disconnecting the session it initiates within a reasonable timeframe. Leaving the session open
+ * for long period will result in power wastage.
+ *
  * To read the polling timer call: le_avc_GetPollingTimer()
  *
  * To write a new value to the polling timer call: le_avc_SetPollingTimer()
