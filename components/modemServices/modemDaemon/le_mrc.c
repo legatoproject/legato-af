@@ -1811,8 +1811,9 @@ le_result_t le_mrc_GetLteBandPreferences
  * Set the TD-SCDMA Band preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK           Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_UNSUPPORTED  The platform doesn't support setting TD-SCDMA Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_SetTdScdmaBandPreferences
@@ -1820,21 +1821,14 @@ le_result_t le_mrc_SetTdScdmaBandPreferences
     le_mrc_TdScdmaBandBitMask_t bandMask ///< [IN] Bit mask for TD-SCDMA Band preferences.
 )
 {
-    if (bandMask == 0)
+
+    if (0 == bandMask)
     {
         LE_ERROR("No Band Selected");
         return LE_FAULT;
     }
 
-    if ( pa_mrc_SetTdScdmaBandPreferences(bandMask) != LE_OK )
-    {
-        LE_ERROR("Unable to set the TD-SCDMA Band preferences.");
-        return LE_FAULT;
-    }
-    else
-    {
-        return LE_OK;
-    }
+    return pa_mrc_SetTdScdmaBandPreferences(bandMask);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1842,8 +1836,9 @@ le_result_t le_mrc_SetTdScdmaBandPreferences
  * Get the Bit mask for TD-SCDMA Band preferences.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK           Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_UNSUPPORTED  The platform doesn't support getting TD-SCDMA Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetTdScdmaBandPreferences
@@ -1851,19 +1846,13 @@ le_result_t le_mrc_GetTdScdmaBandPreferences
     le_mrc_TdScdmaBandBitMask_t* bandMaskPtr ///< [OUT] Bit mask for TD-SCDMA Band preferences.
 )
 {
-    if (bandMaskPtr == NULL)
+    if (NULL == bandMaskPtr)
     {
         LE_KILL_CLIENT("bandMaskPtr is NULL !");
         return LE_FAULT;
     }
 
-    if ( pa_mrc_GetTdScdmaBandPreferences(bandMaskPtr) != LE_OK )
-    {
-        LE_ERROR("Unable to get TD-SCDMA Band preferences.");
-        return LE_FAULT;
-    }
-
-    return LE_OK;
+    return pa_mrc_GetTdScdmaBandPreferences(bandMaskPtr);
 }
 
 

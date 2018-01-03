@@ -1026,8 +1026,9 @@ FUNCTION le_result_t GetLteBandPreferences
  * Set the TD-SCDMA Band preferences by using a bit mask.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK           Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_UNSUPPORTED  The platform doesn't support setting TD-SCDMA Band preferences.
  *
  * @note <b>NOT multi-app safe</b>
  */
@@ -1042,8 +1043,9 @@ FUNCTION le_result_t SetTdScdmaBandPreferences
  * Get the Bit mask for TD-SCDMA Band preferences.
  *
  * @return
- *  - LE_FAULT  Function failed.
- *  - LE_OK     Function succeeded.
+ *  - LE_OK           Function succeeded.
+ *  - LE_FAULT        Function failed.
+ *  - LE_UNSUPPORTED  The platform doesn't support getting TD-SCDMA Band preferences.
  *
  * @note <b>multi-app safe</b>
  */

@@ -1040,21 +1040,29 @@ static void Testle_mrc_TdScdmaBandPreferences
 
     // Get the current rat preference.
     res = le_mrc_GetTdScdmaBandPreferences(&bandMaskOrigin);
-    LE_ASSERT(res == LE_OK);
-    PRINT_BANDCDMA(bandMaskOrigin);
+    LE_ASSERT((LE_OK == res) || (LE_UNSUPPORTED == res));
 
-    LE_WARN_IF(( bandMaskOrigin == 0), "le_mrc_GetTdScdmaBandPreferences bandMaskOrigin = 0");
-
-    if (bandMaskOrigin != 0)
+    if (LE_OK == res)
     {
-        res = le_mrc_SetTdScdmaBandPreferences(bandMaskOrigin);
-        LE_ASSERT(res == LE_OK);
+        // The TD-SCDMA is supported
+        LE_ASSERT(0 != bandMaskOrigin);
+        PRINT_BANDCDMA(bandMaskOrigin);
+        LE_ASSERT_OK(le_mrc_SetTdScdmaBandPreferences(bandMaskOrigin));
 
         // Get the current rat preference.
-        res = le_mrc_GetTdScdmaBandPreferences(&bandMask);
-        LE_ASSERT(res == LE_OK);
+        LE_ASSERT_OK(le_mrc_GetTdScdmaBandPreferences(&bandMask));
         PRINT_BANDCDMA(bandMask);
         LE_ASSERT(bandMask == bandMaskOrigin);
+    }
+    else
+    {
+        // Try to set a Band when TD-SCDMA is not supported
+        LE_ASSERT(LE_UNSUPPORTED == le_mrc_SetTdScdmaBandPreferences(
+                                                       LE_MRC_BITMASK_TDSCDMA_BAND_A |
+                                                       LE_MRC_BITMASK_TDSCDMA_BAND_F));
+
+        // Try to get the TD-SCDMA Band Preferences when TD-SCDMA is not supported
+        LE_ASSERT(LE_UNSUPPORTED == le_mrc_GetTdScdmaBandPreferences(&bandMask));
     }
 }
 //! [Band Preferences]

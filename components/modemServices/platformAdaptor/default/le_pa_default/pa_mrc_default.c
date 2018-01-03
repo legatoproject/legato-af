@@ -602,8 +602,9 @@ le_result_t pa_mrc_GetLteBandPreferences
  * Set the TD-SCDMA Band Preferences
  *
  * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ * - LE_OK           On success
+ * - LE_FAULT        On failure
+ * - LE_UNSUPPORTED  The platform doesn't support setting TD-SCDMA Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_SetTdScdmaBandPreferences
@@ -612,7 +613,7 @@ le_result_t pa_mrc_SetTdScdmaBandPreferences
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -620,18 +621,19 @@ le_result_t pa_mrc_SetTdScdmaBandPreferences
  * Get the TD-SCDMA Band Preferences
  *
  * @return
- * - LE_OK              on success
- * - LE_FAULT           on failure
+ * - LE_OK           On success
+ * - LE_FAULT        On failure
+ * - LE_UNSUPPORTED  The platform doesn't support getting TD-SCDMA Band preferences.
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t pa_mrc_GetTdScdmaBandPreferences
 (
     le_mrc_TdScdmaBandBitMask_t* bandsPtr ///< [OUT] A bit mask to get the TD-SCDMA Band
-                                          ///<  preferences.
+                                          ///<       preferences.
 )
 {
     LE_ERROR("Unsupported function called");
-    return LE_FAULT;
+    return LE_UNSUPPORTED;
 }
 
 //--------------------------------------------------------------------------------------------------
