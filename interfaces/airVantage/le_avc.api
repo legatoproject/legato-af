@@ -663,9 +663,9 @@ HANDLER StatusHandler
                                     ///< only valid when updateStatus is one of
                                     ///< DOWNLOAD_PENDING, DOWNLOAD_IN_PROGRESS or DOWNLOAD_COMPLETE.
                                     ///< returns -1 if value is unknown
-    int32 dloadProgress IN          ///< download completion in percentage
-                                    ///< only valid when updateStatus is one of
-                                    ///< DOWNLOAD_PENDING, DOWNLOAD_IN_PROGRESS or DOWNLOAD_COMPLETE.
+    int32 progress IN               ///< Task completion in percentage
+                                    ///< Valid when updateStatus is one of DOWNLOAD_IN_PROGRESS,
+                                    ///< INSTALL_IN_PROGRESS or UNINSTALL_IN_PROGRESS.
                                     ///< returns -1 if value is unknown
 );
 
