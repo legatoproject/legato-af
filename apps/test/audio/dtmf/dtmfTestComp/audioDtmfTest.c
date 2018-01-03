@@ -3,7 +3,7 @@
  *
  * On the target, you must issue the following commands:
  * $ app runProc dtmfTest --exe=dtmfTest -- <loc/rem>
- *    <MIC/I2S/PCM/USBTXI2SRX/USBTXPCMRX/USBRXI2STX/USBRXPCMTX> <dtmfs>
+ *    <MIC/I2S/PCM/USB/USBTXI2SRX/USBTXPCMRX/USBRXI2STX/USBRXPCMTX> <dtmfs>
  *    <duration in ms> <pause in ms> [<tel number> <inband/outband>]
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -56,7 +56,7 @@ static void PrintUsage
     const char * usagePtr[] = {
        "Usage of the 'dtmfTest' app is:",
        "  app runProc dtmfTest --exe=dtmfTest -- <loc/rem>"
-       "<MIC/I2S/PCM/USBTXI2SRX/USBTXPCMRX/USBRXI2STX/USBRXPCMTX>"
+       "<MIC/I2S/PCM/USB/USBTXI2SRX/USBTXPCMRX/USBRXI2STX/USBRXPCMTX>"
        "<dtmfs> <duration in ms> <pause in ms> [<tel number> <inband/outband>]",
        "",
     };
@@ -655,6 +655,13 @@ static void PlayLocalDtmf
         FeOutRef = le_audio_OpenSpeaker();
         LE_ERROR_IF((FeOutRef==NULL), "OpenSpeaker returns NULL!");
      }
+    else if(strncmp(argString, "USB", strlen("USB")) == 0)
+    {
+        LE_INFO("Play DTMF on USB");
+        // Redirect audio to the USB output interface.
+        FeOutRef = le_audio_OpenUsbTx();
+        LE_ERROR_IF((FeOutRef==NULL), "OpenUsbTx returns NULL!");
+    }
 
     AudioOutputConnectorRef = le_audio_CreateConnector();
     LE_ERROR_IF((AudioOutputConnectorRef==NULL), "AudioOutputConnectorRef is NULL!");
