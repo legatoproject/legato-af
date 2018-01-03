@@ -4112,7 +4112,7 @@ uint32_t le_mrc_GetServingCellLocAreaCode
  * @return
  *  - LE_OK              on success
  *  - LE_FAULT           on failure
- *  - LE_UNSUPPORTED     The platform does not support this operation.
+ *  - LE_UNSUPPORTED     Unable to get the 2G/3G Band capabilities on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetBandCapabilities
@@ -4136,7 +4136,7 @@ le_result_t le_mrc_GetBandCapabilities
  * @return
  *  - LE_OK              on success
  *  - LE_FAULT           on failure
- *  - LE_UNSUPPORTED     The platform does not support this operation.
+ *  - LE_UNSUPPORTED     Unable to get the LTE Band capabilities on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetLteBandCapabilities
@@ -4160,7 +4160,7 @@ le_result_t le_mrc_GetLteBandCapabilities
  * @return
  *  - LE_OK              on success
  *  - LE_FAULT           on failure
- *  - LE_UNSUPPORTED     The platform does not support this operation.
+ *  - LE_UNSUPPORTED     Unable to get the TD-SCDMA Band Capabilities on this platform
  */
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mrc_GetTdScdmaBandCapabilities

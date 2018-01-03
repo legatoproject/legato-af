@@ -1950,7 +1950,7 @@ FUNCTION uint16 GetServingCellLteTracAreaCode
  * @return
  *  - LE_OK              on success
  *  - LE_FAULT           on failure
- *  - LE_UNSUPPORTED     The platform does not support this operation.
+ *  - LE_UNSUPPORTED     Unable to get the 2G/3G Band capabilities on this platform
  *
  * @note <b>multi-app safe</b>
  */
@@ -1967,7 +1967,7 @@ FUNCTION le_result_t GetBandCapabilities
  * @return
  *  - LE_OK              on success
  *  - LE_FAULT           on failure
- *  - LE_UNSUPPORTED     The platform does not support this operation.
+ *  - LE_UNSUPPORTED     Unable to get the LTE Band capabilities on this platform
  *
  * @note <b>multi-app safe</b>
  */
@@ -1984,7 +1984,7 @@ FUNCTION le_result_t GetLteBandCapabilities
  * @return
  *  - LE_OK              on success
  *  - LE_FAULT           on failure
- *  - LE_UNSUPPORTED     The platform does not support this operation.
+ *  - LE_UNSUPPORTED     Unable to get the TD-SCDMA Band Capabilities on this platform
  *
  * @note <b>multi-app safe</b>
  */

@@ -201,7 +201,10 @@ static void TestNetRegHandler
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_Power()
+static void Testle_mrc_Power
+(
+    void
+)
 {
     le_result_t   res;
     le_onoff_t    onoff;
@@ -244,7 +247,10 @@ static void Testle_mrc_Power()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetRat()
+static void Testle_mrc_GetRat
+(
+    void
+)
 {
     le_result_t   res;
     le_mrc_Rat_t  rat;
@@ -299,7 +305,10 @@ static void Testle_mrc_GetPSState
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_NetRegHdlr()
+static void Testle_mrc_NetRegHdlr
+(
+    void
+)
 {
     le_mrc_NetRegStateEventHandlerRef_t testHdlrRef;
 
@@ -313,7 +322,10 @@ static void Testle_mrc_NetRegHdlr()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_RatHdlr()
+static void Testle_mrc_RatHdlr
+(
+    void
+)
 {
     le_mrc_RatChangeHandlerRef_t testHdlrRef;
 
@@ -347,7 +359,10 @@ static void Testle_mrc_PSHdlr
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetCurrentNetworkMccMnc()
+static void Testle_mrc_GetCurrentNetworkMccMnc
+(
+    void
+)
 {
     le_result_t res;
     int i;
@@ -386,7 +401,10 @@ static void Testle_mrc_GetCurrentNetworkMccMnc()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetCurrentNetworkName()
+static void Testle_mrc_GetCurrentNetworkName
+(
+    void
+)
 {
 
     le_result_t res;
@@ -414,7 +432,10 @@ static void Testle_mrc_GetCurrentNetworkName()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_RegisterMode()
+static void Testle_mrc_RegisterMode
+(
+    void
+)
 {
     le_result_t res;
     int cmpRes;
@@ -541,7 +562,10 @@ static void* MyRegisterModeAsyncThread
  * le_mrc_SetAutomaticRegisterMode() API test
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_RegisterModeAsync()
+static void Testle_mrc_RegisterModeAsync
+(
+    void
+)
 {
     char mccStr[LE_MRC_MNC_BYTES] = {0};
     char mncStr[LE_MRC_MNC_BYTES] = {0};
@@ -634,7 +658,10 @@ static void PrintRat
  * le_mrc_SetRatPreferences() API test
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_RatPreferences()
+static void Testle_mrc_RatPreferences
+(
+    void
+)
 {
     le_mrc_RatBitMask_t bitMask = 0;
     le_mrc_RatBitMask_t bitMaskOrigin = 0;
@@ -661,7 +688,6 @@ static void Testle_mrc_RatPreferences()
             else
             {
                 le_mrc_SetRatPreferences(bitMaskOrigin);
-                LE_ASSERT(LE_MRC_BITMASK_RAT_LTE == bitMask);
             }
         }
     }
@@ -761,7 +787,10 @@ static void ReadScanInfo
  * le_mrc_PerformCellularNetworkScan() API test
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_PerformCellularNetworkScan()
+static void Testle_mrc_PerformCellularNetworkScan
+(
+    void
+)
 {
     le_result_t res;
     le_mrc_RatBitMask_t bitMaskOrigin = 0;
@@ -875,7 +904,10 @@ static void* MyNetworkScanAsyncThread
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_PerformCellularNetworkScanAsync()
+static void Testle_mrc_PerformCellularNetworkScanAsync
+(
+    void
+)
 {
     le_result_t res;
     le_clk_Time_t time = {0,0};
@@ -903,7 +935,6 @@ static void Testle_mrc_PerformCellularNetworkScanAsync()
     sleep(5);
 }
 
-
 //! [Band Preferences]
 //--------------------------------------------------------------------------------------------------
 /**
@@ -914,7 +945,10 @@ static void Testle_mrc_PerformCellularNetworkScanAsync()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_BandPreferences()
+static void Testle_mrc_BandPreferences
+(
+    void
+)
 {
     le_result_t res;
     le_mrc_BandBitMask_t bandMask = 0;
@@ -952,7 +986,10 @@ static void Testle_mrc_BandPreferences()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_LteBandPreferences()
+static void Testle_mrc_LteBandPreferences
+(
+    void
+)
 {
     le_result_t res;
     le_mrc_LteBandBitMask_t bandMask = 0;
@@ -990,7 +1027,10 @@ static void Testle_mrc_LteBandPreferences()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_TdScdmaBandPreferences()
+static void Testle_mrc_TdScdmaBandPreferences
+(
+    void
+)
 {
     le_result_t res;
     le_mrc_TdScdmaBandBitMask_t bandMask = 0;
@@ -1027,7 +1067,10 @@ static void Testle_mrc_TdScdmaBandPreferences()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetStateAndQual()
+static void Testle_mrc_GetStateAndQual
+(
+    void
+)
 {
     le_result_t           res;
     le_mrc_NetRegState_t  state;
@@ -1049,7 +1092,10 @@ static void Testle_mrc_GetStateAndQual()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetSignalMetrics()
+static void Testle_mrc_GetSignalMetrics
+(
+    void
+)
 {
     le_result_t   res;
     le_mrc_Rat_t  rat;
@@ -1117,7 +1163,10 @@ static void Testle_mrc_GetSignalMetrics()
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetNeighboringCellsInfo()
+static void Testle_mrc_GetNeighboringCellsInfo
+(
+    void
+)
 {
     le_result_t res;
     le_mrc_NeighborCellsRef_t ngbrRef;
@@ -1580,7 +1629,10 @@ static void Testle_mrc_SsHdlr
  *
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetLocInfo()
+static void Testle_mrc_GetLocInfo
+(
+    void
+)
 {
     uint32_t  cellId, lac;
     uint16_t  tac;
@@ -1609,7 +1661,10 @@ static void Testle_mrc_GetLocInfo()
  * le_mrc_RemovePreferredOperator() API test
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_PreferredPLMN()
+static void Testle_mrc_PreferredPLMN
+(
+    void
+)
 {
     le_result_t res;
     char mccStr[LE_MRC_MCC_BYTES] = {0};
@@ -1772,7 +1827,6 @@ static void Testle_mrc_PreferredPLMN()
     LE_INFO("======== PreferredPLMN Test PASSED ========");
 }
 
-
 //! [Band Capabilities]
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1783,59 +1837,102 @@ static void Testle_mrc_PreferredPLMN()
  * le_mrc_GetTdScdmaBandCapabilities() API test
  */
 //--------------------------------------------------------------------------------------------------
-static void Testle_mrc_GetBandCapabilities()
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test band capabilities according to RAT
+ */
+//--------------------------------------------------------------------------------------------------
+static bool Test_BandCapabilities
+(
+    le_mrc_RatBitMask_t ratMask,
+    le_result_t res
+)
 {
-    le_mrc_BandBitMask_t            bands = 0;
-    le_mrc_LteBandBitMask_t         lteBands = 0;
-    le_mrc_TdScdmaBandBitMask_t     tdScdmaBands = 0;
-    le_result_t res;
+    bool test = true;
+    le_mrc_RatBitMask_t bitMaskOrigin;
+
+    // Get the current rat preference.
+    LE_ASSERT_OK(le_mrc_GetRatPreferences(&bitMaskOrigin));
+
+    if ((LE_UNSUPPORTED == le_mrc_SetRatPreferences(ratMask)) && (LE_UNSUPPORTED != res))
+    {
+        test = false;
+    }
+    // Restore origin RAT.
+    LE_ASSERT_OK(le_mrc_SetRatPreferences(bitMaskOrigin));
+    return test;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Test: Get platform band capabilities.
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_mrc_GetBandCapabilities
+(
+    void
+)
+{
+    le_mrc_BandBitMask_t        bands;
+    le_mrc_LteBandBitMask_t     lteBands;
+    le_mrc_TdScdmaBandBitMask_t tdScdmaBands;
+    le_result_t                 res;
 
     res = le_mrc_GetBandCapabilities(&bands);
-    LE_ASSERT(res != LE_FAULT);
+    LE_ASSERT(LE_FAULT != res);
     // Not supported on all platform
     switch(res)
     {
         case LE_OK:
+            LE_ASSERT(0L != bands);
             LE_INFO("Get 2G/3G Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)bands);
             break;
         case LE_UNSUPPORTED:
-            LE_WARN("Get 2G/3G Band Capabilities Not Supported");
+            LE_WARN("Unable to get Band Capabilities on this platform");
             break;
         default:
-            LE_FATAL("le_mrc_GetBandCapabilities Failed");
+            LE_FATAL("le_mrc_GetBandCapabilities failed");
             break;
     }
 
+    // Test if LTE Band Capabilities are supported
     res = le_mrc_GetLteBandCapabilities(&lteBands);
-    LE_ASSERT(res != LE_FAULT);
-    // Not supported on all platform
+    LE_ASSERT(LE_FAULT != res);
+
+    LE_ASSERT(true == Test_BandCapabilities(LE_MRC_BITMASK_RAT_LTE, res));
+
     switch(res)
     {
         case LE_OK:
+            LE_ASSERT(0 != lteBands);
             LE_INFO("Get LTE Band Capabilities bit mask: 0x%016"PRIX64, (uint64_t)lteBands);
             break;
         case LE_UNSUPPORTED:
-            LE_WARN("Get LTE Band Capabilities Not Supported");
+            LE_WARN("Unable to get Band Capabilities on this platform");
             break;
         default:
-            LE_FATAL("le_mrc_GetLteBandCapabilities Failed");
+            LE_FATAL("le_mrc_GetLteBandCapabilities failed");
             break;
     }
 
+    // Test if TD-SCDMA Band Capabilities are supported
     res = le_mrc_GetTdScdmaBandCapabilities(&tdScdmaBands);
-    LE_ASSERT(res != LE_FAULT);
-    // Not supported on all platform
+    LE_ASSERT(LE_FAULT != res);
+
+    LE_ASSERT(true == Test_BandCapabilities(LE_MRC_BITMASK_RAT_TDSCDMA, res));
+
     switch(res)
     {
         case LE_OK:
+            LE_ASSERT(0 != tdScdmaBands);
             LE_INFO("Get TD-SCDMA Band Capabilities bit mask: 0x%016"PRIX64,
-                (uint64_t)tdScdmaBands);
+                    (uint64_t)tdScdmaBands);
             break;
         case LE_UNSUPPORTED:
-            LE_WARN("Get TD-SCDMA Band Capabilities Not Supported");
+            LE_WARN("Unable to get Band Capabilities on this platform");
             break;
         default:
-            LE_FATAL("le_mrc_GetTdScdmaBandCapabilities Failed");
+            LE_FATAL("le_mrc_GetTdScdmaBandCapabilities failed");
             break;
     }
 }
