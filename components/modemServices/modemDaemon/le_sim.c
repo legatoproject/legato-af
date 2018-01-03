@@ -114,7 +114,6 @@ ApduMsg_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * Current selected SIM card.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_sim_Id_t  SelectedCard;
@@ -122,7 +121,6 @@ static le_sim_Id_t  SelectedCard;
 //--------------------------------------------------------------------------------------------------
 /**
  * Event ID for New SIM state notification.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t NewSimStateEventId;
@@ -130,15 +128,13 @@ static le_event_Id_t NewSimStateEventId;
 //--------------------------------------------------------------------------------------------------
 /**
  * Event ID for SIM Toolkit notification.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_Id_t SimToolkitEventId;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * ECounter for SIM Toolkit event handlers.
- *
+ * Counter for SIM Toolkit event handlers.
  */
 //--------------------------------------------------------------------------------------------------
 static uint32_t SimToolkitHandlerCount = 0;
@@ -146,7 +142,6 @@ static uint32_t SimToolkitHandlerCount = 0;
 //--------------------------------------------------------------------------------------------------
 /**
  * PA SIM Toolkit handler reference.
- *
  */
 //--------------------------------------------------------------------------------------------------
 static le_event_HandlerRef_t PaSimToolkitHandlerRef = NULL;
@@ -260,14 +255,14 @@ static le_result_t LocalSwap
     uint32_t              swapApduLen     ///< [IN] The swap APDU message length in bytes.
 )
 {
-    uint8_t  channel = 0;
-    uint8_t  resp[LE_SIM_RESPONSE_MAX_BYTES] = {0};
-    size_t   lenResp = LE_SIM_RESPONSE_MAX_BYTES;
+    uint8_t channel = 0;
+    uint8_t resp[LE_SIM_RESPONSE_MAX_BYTES] = {0};
+    size_t  lenResp = LE_SIM_RESPONSE_MAX_BYTES;
 
     // Get the logical channel to send APDu command.
     if (LE_OK != pa_sim_OpenLogicalChannel(&channel))
     {
-        LE_ERROR("Cannot open Logical Channel!");
+        LE_ERROR("Cannot open logical channel!");
         return LE_FAULT;
     }
 
@@ -772,7 +767,7 @@ static void CloseSessionEventHandler
     }
 
     // Clean session context.
-    LE_ERROR("SessionRef (%p) has been closed", sessionRef);
+    LE_DEBUG("SessionRef (%p) has been closed", sessionRef);
 
     le_ref_IterRef_t iterRef = le_ref_GetIterator(FPLMNListRefMap);
     le_result_t result = le_ref_NextNode(iterRef);
@@ -2219,11 +2214,14 @@ le_result_t le_sim_SendApdu
     size_t* responseApduNumElementsPtr  ///< [INOUT]
 )
 {
-    le_result_t res;
-    uint8_t  channel = 0;
+    if ((!commandApduPtr) || (!responseApduPtr) || (!responseApduNumElementsPtr))
+    {
+        LE_ERROR("NULL pointer provided");
+        return LE_BAD_PARAMETER;
+    }
 
-    if ((commandApduNumElements > LE_SIM_APDU_MAX_BYTES) ||
-                    (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
+    if (   (commandApduNumElements > LE_SIM_APDU_MAX_BYTES)
+        || (*responseApduNumElementsPtr > LE_SIM_RESPONSE_MAX_BYTES))
     {
         LE_ERROR("Too many elements");
         return LE_BAD_PARAMETER;
@@ -2240,25 +2238,12 @@ le_result_t le_sim_SendApdu
         return LE_NOT_FOUND;
     }
 
-    // Get the logical channel to send APDU command.
-    if (LE_OK != pa_sim_OpenLogicalChannel(&channel))
-    {
-        LE_WARN("Can't open logical channel");
-    }
-
-    res = pa_sim_SendApdu(channel,
-        commandApduPtr,
-        commandApduNumElements,
-        responseApduPtr,
-        responseApduNumElementsPtr);
-
-    // Close the logical channel.
-    if (LE_OK != pa_sim_CloseLogicalChannel(channel))
-    {
-        LE_WARN("Can't close logical channel");
-    }
-
-    return res;
+    // Send APDU on basic logical channel 0, which is always opened
+    return pa_sim_SendApdu(0,
+                           commandApduPtr,
+                           commandApduNumElements,
+                           responseApduPtr,
+                           responseApduNumElementsPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

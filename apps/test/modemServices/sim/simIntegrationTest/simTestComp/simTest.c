@@ -574,33 +574,36 @@ void simTest_SimAccess
     // 1. Read IMSI using le_sim_SendApdu API
     //========================================
 
-    // Select IMSI file (6F07) (USIM commands)
-    uint8_t selectApdu[]={   0x00, 0xA4, 0x00, 0x0C, 0x02, 0x6F, 0x07 };
-
-    size_t rspImsiLen = SIM_RSP_LEN;
+    uint8_t selectDfAdfApdu[] = {0x00, 0xA4, 0x00, 0x0C, 0x02, 0x7F, 0xFF};
+    uint8_t selectApdu[] = {0x00, 0xA4, 0x00, 0x0C, 0x02, 0x6F, 0x07};
+    uint8_t readApdu[] = {0x00, 0xB0, 0x00, 0x00, 0x09};
     uint8_t rspImsi[SIM_RSP_LEN];
+    size_t rspImsiLen = SIM_RSP_LEN;
 
-    // Select the EF(IMSI)
-    LE_ASSERT( le_sim_SendApdu(simId,
-                               selectApdu,
-                               sizeof(selectApdu),
-                               rspImsi,
-                               &rspImsiLen) == LE_OK );
-
+    // Select ADF Dedicated File (DF_ADF)
+    LE_ASSERT_OK(le_sim_SendApdu(simId,
+                                selectDfAdfApdu,
+                                sizeof(selectDfAdfApdu),
+                                rspImsi,
+                                &rspImsiLen));
     PrintApdu(rspImsi, rspImsiLen);
 
+    // Select the EF(IMSI)
     rspImsiLen = SIM_RSP_LEN;
+    LE_ASSERT_OK(le_sim_SendApdu(simId,
+                                selectApdu,
+                                sizeof(selectApdu),
+                                rspImsi,
+                                &rspImsiLen));
+    PrintApdu(rspImsi, rspImsiLen);
 
     // Read the EF(IMSI)
-    // Read file
-    uint8_t readApdu[]={ 0x00, 0xB0, 0x00, 0x00, 0x09};
-
-    LE_ASSERT( le_sim_SendApdu(simId,
-                               readApdu,
-                               sizeof(readApdu),
-                               rspImsi,
-                               &rspImsiLen) == LE_OK );
-
+    rspImsiLen = SIM_RSP_LEN;
+    LE_ASSERT_OK(le_sim_SendApdu(simId,
+                                readApdu,
+                                sizeof(readApdu),
+                                rspImsi,
+                                &rspImsiLen));
     PrintApdu(rspImsi, rspImsiLen);
 
     //=====================================================================================
@@ -637,7 +640,7 @@ void simTest_SimAccess
     {
         strcpy(dfGsmPath, "3F007F20");
 
-        // Check backward compatibilty
+        // Check backward compatibility
         res = le_sim_SendCommand(simId,
                                  LE_SIM_READ_BINARY,
                                  "6F07",
@@ -659,11 +662,10 @@ void simTest_SimAccess
     PrintApdu(rspImsi2, rspImsiLen2);
 
     // Check both IMSI results
-    LE_ASSERT( memcmp(rspImsi, rspImsi2, rspImsiLen2) == 0 );
+    LE_ASSERT(0 == memcmp(rspImsi, rspImsi2, rspImsiLen2));
 
     size_t rspLen = SIM_RSP_LEN;
     uint8_t rsp[rspLen];
-    rspLen = 0;
 
     //==================================================================================
     // 3. Check read and write record elementary file
@@ -672,50 +674,48 @@ void simTest_SimAccess
     //==================================================================================
 
     // Write EF(ADN) using the le_sim_SendSimCommand API.
-    uint8_t dataAdn[] = {0x4A,0x61,0x63,0x6B,0x79,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x05,
-                            0x81,0x10,0x92,0x90,0x71,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+    uint8_t dataAdn[] = {0x4A, 0x61, 0x63, 0x6B, 0x79, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                         0xFF, 0xFF, 0xFF, 0xFF, 0x05, 0x81, 0x10, 0x92, 0x90, 0x71,
+                         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                         0xFF, 0xFF, 0xFF, 0xFF};
 
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_UPDATE_RECORD,
-                             "6F3A",
-                             5,
-                             0,
-                             0,
-                             dataAdn,
-                             sizeof(dataAdn),
-                             "3F007F10",
-                             &swi1,
-                             &swi2,
-                             NULL,
-                             &rspLen);
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                    LE_SIM_UPDATE_RECORD,
+                                    "6F3A",
+                                    5,
+                                    0,
+                                    0,
+                                    dataAdn,
+                                    sizeof(dataAdn),
+                                    "3F007F10",
+                                    &swi1,
+                                    &swi2,
+                                    rsp,
+                                    &rspLen));
 
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
-    LE_ASSERT(res == LE_OK);
-
-    rspLen = SIM_RSP_LEN;
 
     // Read EF(ADN) using the le_sim_SendSimCommand API.
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_READ_RECORD,
-                             "6F3A",
-                             5,
-                             0,
-                             0,
-                             NULL,
-                             0,
-                             "3F007F10",
-                             &swi1,
-                             &swi2,
-                             rsp,
-                             &rspLen);
-
-    LE_ASSERT(res == LE_OK);
+    rspLen = SIM_RSP_LEN;
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                    LE_SIM_READ_RECORD,
+                                    "6F3A",
+                                    5,
+                                    0,
+                                    0,
+                                    NULL,
+                                    0,
+                                    "3F007F10",
+                                    &swi1,
+                                    &swi2,
+                                    rsp,
+                                    &rspLen));
 
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rsp, rspLen);
 
     LE_ASSERT(rspLen == sizeof(dataAdn));
-    LE_ASSERT(memcmp(rsp, dataAdn, rspLen) == 0);
+    LE_ASSERT(0 == memcmp(rsp, dataAdn, rspLen));
 
     //==================================================================================
     // 4. Check read and write transparent elementary file
@@ -730,112 +730,103 @@ void simTest_SimAccess
     size_t rspLenLi = SIM_RSP_LEN;
     uint8_t rspLi[rspLenLi];
 
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_READ_BINARY,
-                             "6F05",
-                             0,
-                             0,
-                             0,
-                             NULL,
-                             0,
-                             dfGsmPath,
-                             &swi1,
-                             &swi2,
-                             rspLi,
-                             &rspLenLi);
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                   LE_SIM_READ_BINARY,
+                                   "6F05",
+                                   0,
+                                   0,
+                                   0,
+                                   NULL,
+                                   0,
+                                   dfGsmPath,
+                                   &swi1,
+                                   &swi2,
+                                   rspLi,
+                                   &rspLenLi));
 
-
-    LE_ASSERT(res == LE_OK);
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rspLi, rspLenLi);
 
-
+    uint8_t dataLi[] = {0xFF, 0xFF};
+    // Erase first Language entry
     rspLen = 0;
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                    LE_SIM_UPDATE_BINARY,
+                                    "6F05",
+                                    0,
+                                    0,
+                                    0,
+                                    dataLi,
+                                    sizeof(dataLi),
+                                    dfGsmPath,
+                                    &swi1,
+                                    &swi2,
+                                    rsp,
+                                    &rspLen));
 
-    uint8_t dataLi[]={0xFF, 0xFF};
-    // erase first Language entry
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_UPDATE_BINARY,
-                             "6F05",
-                             0,
-                             0,
-                             0,
-                             dataLi,
-                             sizeof(dataLi),
-                             dfGsmPath,
-                             &swi1,
-                             &swi2,
-                             NULL,
-                             &rspLen);
-
-    LE_ASSERT(res == LE_OK);
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
-    rspLen = SIM_RSP_LEN;
 
     // Read again...
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_READ_BINARY,
-                             "6F05",
-                             0,
-                             0,
-                             0,
-                             NULL,
-                             0,
-                             dfGsmPath,
-                             &swi1,
-                             &swi2,
-                             rsp,
-                             &rspLen);
+    rspLen = SIM_RSP_LEN;
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                    LE_SIM_READ_BINARY,
+                                    "6F05",
+                                    0,
+                                    0,
+                                    0,
+                                    NULL,
+                                    0,
+                                    dfGsmPath,
+                                    &swi1,
+                                    &swi2,
+                                    rsp,
+                                    &rspLen));
 
-    LE_ASSERT(res == LE_OK);
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rsp, rspLen);
-    rspLen = 0;
 
     // Check it is correctly erased
-    LE_ASSERT( memcmp(rsp, dataLi, sizeof(dataLi)) == 0 );
+    LE_ASSERT(0 == memcmp(rsp, dataLi, sizeof(dataLi)));
 
     // Re-write initial values
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_UPDATE_BINARY,
-                             "6F05",
-                             0,
-                             0,
-                             0,
-                             rspLi,
-                             rspLenLi,
-                             dfGsmPath,
-                             &swi1,
-                             &swi2,
-                             NULL,
-                             &rspLen);
+    rspLen = 0;
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                    LE_SIM_UPDATE_BINARY,
+                                    "6F05",
+                                    0,
+                                    0,
+                                    0,
+                                    rspLi,
+                                    rspLenLi,
+                                    dfGsmPath,
+                                    &swi1,
+                                    &swi2,
+                                    rsp,
+                                    &rspLen));
 
-    LE_ASSERT(res == LE_OK);
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
 
-    rspLen = SIM_RSP_LEN;
-
     // And read again...
-    res = le_sim_SendCommand(simId,
-                             LE_SIM_READ_BINARY,
-                             "6F05",
-                             0,
-                             0,
-                             0,
-                             NULL,
-                             0,
-                             dfGsmPath,
-                             &swi1,
-                             &swi2,
-                             rsp,
-                             &rspLen);
+    rspLen = SIM_RSP_LEN;
+    LE_ASSERT_OK(le_sim_SendCommand(simId,
+                                    LE_SIM_READ_BINARY,
+                                    "6F05",
+                                    0,
+                                    0,
+                                    0,
+                                    NULL,
+                                    0,
+                                    dfGsmPath,
+                                    &swi1,
+                                    &swi2,
+                                    rsp,
+                                    &rspLen));
 
-    LE_ASSERT(res == LE_OK);
     LE_INFO("swi1=0x%02X, swi2=0x%02X", swi1, swi2);
     PrintApdu(rsp, rspLen);
 
     // Check it is correctly erased
-    LE_ASSERT( memcmp(rsp, rspLi, sizeof(rspLenLi)) == 0 );
+    LE_ASSERT(0 == memcmp(rsp, rspLi, sizeof(rspLenLi)));
 
     LE_INFO("SIM access test OK");
 }
